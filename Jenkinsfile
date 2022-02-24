@@ -8,19 +8,16 @@ import com.cloudogu.ces.dogubuildlib.*
 Git git = new Git(this, "cesmarvin")
 git.committerName = 'cesmarvin'
 git.committerEmail = 'cesmarvin@cloudogu.com'
-GitFlow gitflow = new GitFlow(this, git)
-GitHub github = new GitHub(this, git)
-Changelog changelog = new Changelog(this)
 
 // Configuration of repository
-String repositoryOwner = 'cloudogu'
-String repositoryName = "k8s-dogu-operator"
-String project = "github.com/${repositoryOwner}/${repositoryName}"
+def repositoryOwner = "cloudogu"
+def repositoryName = "k8s-dogu-operator"
+def project = "github.com/${repositoryOwner}/${repositoryName}"
 
 // Configuration of branches
-String productionReleaseBranch = "main"
-String developmentBranch = "develop"
-String currentBranch = "${env.BRANCH_NAME}"
+def productionReleaseBranch = "main"
+def developmentBranch = "develop"
+def currentBranch = "${env.BRANCH_NAME}"
 
 node('docker') {
     timestamps {
@@ -30,6 +27,7 @@ node('docker') {
 
         new Docker(this)
                 .image('golang:1.17.7')
+                .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
                             stage('Build') {
