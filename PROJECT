@@ -1,0 +1,16 @@
+domain: cloudogu.com
+layout:
+- go.kubebuilder.io/v3
+projectName: k8s-dogu-operator
+repo: github.com/cloudogu/k8s-dogu-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cloudogu.com
+  group: k8s
+  kind: Dogu
+  path: github.com/cloudogu/k8s-dogu-operator/api/v1
+  version: v1
+version: "3"

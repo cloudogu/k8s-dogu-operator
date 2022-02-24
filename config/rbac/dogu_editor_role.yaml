@@ -1,0 +1,24 @@
+# permissions for end users to edit dogus.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dogu-editor-role
+rules:
+- apiGroups:
+  - k8s.cloudogu.com
+  resources:
+  - dogus
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - k8s.cloudogu.com
+  resources:
+  - dogus/status
+  verbs:
+  - get

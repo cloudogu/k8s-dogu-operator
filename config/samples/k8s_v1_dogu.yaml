@@ -1,0 +1,6 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: dogu-sample
+spec:
+  # TODO(user): Add fields here

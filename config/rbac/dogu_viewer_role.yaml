@@ -1,0 +1,20 @@
+# permissions for end users to view dogus.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dogu-viewer-role
+rules:
+- apiGroups:
+  - k8s.cloudogu.com
+  resources:
+  - dogus
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - k8s.cloudogu.com
+  resources:
+  - dogus/status
+  verbs:
+  - get
