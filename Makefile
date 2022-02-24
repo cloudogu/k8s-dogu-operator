@@ -1,15 +1,31 @@
+# Set these to the desired values
+ARTIFACT_ID=k8s-dogu-operator
+VERSION=0.0.1
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= ${ARTIFACT_ID}:${VERSION}
+
+MAKEFILES_VERSION=4.7.1
+
+.DEFAULT_GOAL:=
+
+include build/make/variables.mk
+include build/make/self-update.mk
+include build/make/info.mk
+include build/make/dependencies-gomod.mk
+include build/make/build.mk
+include build/make/test-common.mk
+include build/make/test-integration.mk
+include build/make/test-unit.mk
+include build/make/static-analysis.mk
+include build/make/clean.mk
+include build/make/digital-signature.mk
+
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
-
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
+K8S_INTEGRATION_TEST_DIR=${TARGET_DIR}/k8s-integration-test
+K8S_UTILITY_BIN_PATH=$(WORKDIR)/.bin
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -37,36 +53,40 @@ all: build
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-##@ Development
+##@ Development (without go container)
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@echo "Generate manifests..."
+	@$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	@echo "Auto-generate deepcopy functions..."
+	@$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
+##@ Development (to be containered)
 
 .PHONY: vet
-vet: ## Run go vet against code.
-	go vet ./...
+vet: $(STATIC_ANALYSIS_DIR) ## Run go vet against code.
+	@go vet ./... | tee ${STATIC_ANALYSIS_DIR}/report-govet.out
 
-.PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+$(K8S_INTEGRATION_TEST_DIR):
+	@mkdir -p $@
+
+.PHONY: k8s-integration-test
+k8s-integration-test: $(K8S_INTEGRATION_TEST_DIR) manifests generate vet envtest ## Run tests.
+	@echo "Running k8s integration tests..."
+	@KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -tags=k8s_integration ./... -coverprofile ${K8S_INTEGRATION_TEST_DIR}/report-k8s-integration.out
 
 ##@ Build
 
 .PHONY: build
-build: generate fmt vet ## Build manager binary.
+build: generate vet ## Build manager binary.
 	go build -o bin/manager main.go
 
 .PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
+run: manifests generate vet ## Run a controller from your host.
 	go run ./main.go
 
 .PHONY: docker-build
@@ -100,23 +120,33 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+CONTROLLER_GEN = $(K8S_UTILITY_BIN_PATH)/controller-gen
 .PHONY: controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
 
-KUSTOMIZE = $(shell pwd)/bin/kustomize
+KUSTOMIZE = $(K8S_UTILITY_BIN_PATH)/kustomize
 .PHONY: kustomize
 kustomize: ## Download kustomize locally if necessary.
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
-ENVTEST = $(shell pwd)/bin/setup-envtest
+ENVTEST = $(K8S_UTILITY_BIN_PATH)/setup-envtest
 .PHONY: envtest
 envtest: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 
+
+
+
+
+
+
+
+
+
+
+
 # go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 define go-get-tool
 @[ -f $(1) ] || { \
 set -e ;\
@@ -124,7 +154,7 @@ TMP_DIR=$$(mktemp -d) ;\
 cd $$TMP_DIR ;\
 go mod init tmp ;\
 echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+GOBIN=$(K8S_UTILITY_BIN_PATH) go get $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
