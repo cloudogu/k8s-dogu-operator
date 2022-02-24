@@ -28,39 +28,22 @@ node('docker') {
             checkout scm
         }
 
-//        stage('Build Operator') {
-//            new Docker(this).build('cloudogu/k8s-dogu-operator:0.0.0-dev', '-f Dockerfile .')
-//        }
+        new Docker(this)
+                .image('golang:1.17.7')
+                .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
+                        {
+                            stage('Build') {
+                                sh "make build"
+                            }
+
+                            stage('Test') {
+                                sh "make test"
+                            }
+                        }
 
         stage('Build Operator Image (Docker)') {
             new Docker(this).build('cloudogu/k8s-dogu-operator:0.0.0-dev', '-f Dockerfile .')
         }
-
-//        new Docker(this).image('cloudogu/buildbaseline:0.1.0')
-//                .mountJenkinsUser()
-//                .inside("--volume ${WORKSPACE}:/project -w /project") {
-//
-//                    stage('Build') {
-//                        sh "make clean package"
-//                    }
-//
-//                    stage('Unit Test') {
-//                        sh "make unit-test"
-//                        junit allowEmptyResults: true, testResults: 'target/unit-tests/*-tests.xml'
-//                    }
-//
-//                    stage('Static Analysis') {
-//                        def commitSha = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
-//
-//                        withCredentials([
-//                                [$class: 'UsernamePasswordMultiBinding', credentialsId: 'sonarqube-gh', usernameVariable: 'USERNAME', passwordVariable: 'REVIEWDOG_GITHUB_API_TOKEN']
-//                        ]) {
-//                            withEnv(["CI_PULL_REQUEST=${env.CHANGE_ID}", "CI_COMMIT=${commitSha}", "CI_REPO_OWNER=cloudogu", "CI_REPO_NAME=${repositoryName}"]) {
-//                                sh "make static-analysis-ci"
-//                            }
-//                        }
-//                    }
-//                }
 
         stage('SonarQube') {
             def scannerHome = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
