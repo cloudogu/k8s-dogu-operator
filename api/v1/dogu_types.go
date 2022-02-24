@@ -25,9 +25,6 @@ import (
 
 // DoguSpec defines the desired state of Dogu
 type DoguSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Name of the dogu (e.g. official/ldap)
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
