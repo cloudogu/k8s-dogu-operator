@@ -1,10 +1,9 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=0.0.1
+VERSION=0.0.2
 GOTAG?=1.17.7
 # Image URL to use all building/pushing image targets
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
-
 MAKEFILES_VERSION=4.7.1
 
 .DEFAULT_GOAL:=
@@ -94,10 +93,10 @@ run: manifests generate vet ## Run a controller from your host.
 
 ##@ Release
 
-# todo[jsprey] wip
 .PHONY: controller-release
 controller-release:
-	build/make/release.sh controller-tool
+	@echo "Starting git flow release..."
+	@build/make/release.sh controller-tool
 
 ##@ Deployment
 

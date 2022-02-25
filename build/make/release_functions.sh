@@ -71,8 +71,23 @@ start_git_flow_release(){
   git flow release start v"${NEW_RELEASE_VERSION}"
 }
 
+# update_versions updates files with the new release version and interactively asks the user for verification. If okay
+# the updated files will be staged to git and finally committed.
+#
+# extension points:
+# - update_versions_modify_files <newVersionNumber> - update a file with the new version number
+# - update_versions_stage_modified_files - stage a modified file to prepare the file for the up-coming commit
 update_versions(){
   local NEW_RELEASE_VERSION="${1}"
+
+  if [[ $(type -t update_versions_modify_files) == function ]]; then
+    preSkriptExitCode=0
+    update_versions_modify_files "${NEW_RELEASE_VERSION}" || preSkriptExitCode=$?
+    if [[ ${preSkriptExitCode} -ne 0 ]]; then
+      echo "ERROR: custom update_versions_modify_files() exited with exit code ${preSkriptExitCode}"
+      exit 1
+    fi
+  fi
 
   # Update version in dogu.json
   if [ -f "dogu.json" ]; then
@@ -107,6 +122,15 @@ update_versions(){
   wait_for_ok "Please make sure that all versions have been updated correctly now (e.g. via \"git diff\")."
 
   ### The `git add` command has to be after the okay. Otherwise user-made changes to versions would not be added.
+
+  if [[ $(type -t update_versions_stage_modified_files) == function ]]; then
+    preSkriptExitCode=0
+    update_versions_stage_modified_files "${NEW_RELEASE_VERSION}" || preSkriptExitCode=$?
+    if [[ ${preSkriptExitCode} -ne 0 ]]; then
+      echo "ERROR: custom update_versions_stage_modified_files exited with exit code ${preSkriptExitCode}"
+      exit 1
+    fi
+  fi
 
   if [ -f "dogu.json" ]; then
       git add dogu.json
