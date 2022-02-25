@@ -1,7 +1,7 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
 VERSION=0.0.1
-
+GOTAG?=1.17.7
 # Image URL to use all building/pushing image targets
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
 
@@ -10,6 +10,10 @@ MAKEFILES_VERSION=4.7.1
 .DEFAULT_GOAL:=
 
 include build/make/variables.mk
+
+ADDITIONAL_CLEAN=clean-vendor
+PRE_COMPILE=generate vet
+
 include build/make/self-update.mk
 include build/make/info.mk
 include build/make/dependencies-gomod.mk
@@ -80,8 +84,9 @@ k8s-integration-test: $(K8S_INTEGRATION_TEST_DIR) manifests generate vet envtest
 ##@ Build
 
 .PHONY: build
-build: generate vet ## Build controller binary.
-	go build -o ${TARGET_DIR}/${ARTIFACT_ID} main.go
+build: ## Build controller binary.
+# pseudo target to support make help for compile target
+	@make compile
 
 .PHONY: run
 run: manifests generate vet ## Run a controller from your host.
@@ -153,3 +158,7 @@ GOBIN=$(K8S_UTILITY_BIN_PATH) go get $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
+
+.PHONY: clean-vendor
+clean-vendor:
+	rm -rf vendor
