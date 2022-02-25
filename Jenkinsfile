@@ -39,11 +39,6 @@ node('docker') {
 
         stageStaticAnalysis()
         stageAutomaticRelease()
-
-//        todo remove this
-        stage('Build Image') {
-            sh 'make docker-build'
-        }
     }
 }
 
@@ -137,10 +132,11 @@ void stageAutomaticRelease() {
         }
 
         stage('Add Github-Release') {
+            def targetOperatorResourceYaml="target/${repositoryName}_${releaseVersion}.yaml"
             releaseId = github.createReleaseWithChangelog(releaseVersion, changelog)
-            github.addReleaseAsset("${releaseId}", "target/${repositoryName}_${releaseVersion}.yaml")
-            github.addReleaseAsset("${releaseId}", "target/${repositoryName}_${releaseVersion}.yaml.sha256sum")
-            github.addReleaseAsset("${releaseId}", "target/${repositoryName}_${releaseVersion}.yaml.sha256sum.asc")
+            github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}")
+            github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}.sha256sum")
+            github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}.sha256sum.asc")
         }
     }
 }
