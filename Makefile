@@ -94,16 +94,6 @@ run: manifests generate vet ## Run a controller from your host.
 controller-release:
 	build/make/release.sh controller-tool
 
-##@ Docker-related functions
-
-.PHONY: docker-build
-docker-build: ## Build docker image with the controller.
-	docker build -t ${IMG} .
-
-.PHONY: docker-push
-docker-push: ## Push docker image with the controller.
-	docker push ${IMG}
-
 ##@ Deployment
 
 ifndef ignore-not-found

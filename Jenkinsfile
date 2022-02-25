@@ -118,13 +118,16 @@ void stageAutomaticRelease() {
     if (gitflow.isReleaseBranch()) {
         String releaseVersion = git.getSimpleBranchName()
 
-        stage('Finish Release') {
-            gitflow.finishRelease(releaseVersion)
+        stage('Build & Push Image') {
+            def dockerImage = docker.build("cloudogu/${repositoryName}:${releaseVersion}")
+
+            docker.withRegistry('https://registry.hub.docker.com/', 'dockerHubCredentials') {
+                dockerImage.push("${releaseVersion}")
+            }
         }
 
-        stage('Build & Push Image') {
-            make 'docker-build'
-            //todo[jsprey] implement push with docker credentials
+        stage('Finish Release') {
+            gitflow.finishRelease(releaseVersion)
         }
 
         stage('Sign after Release') {
