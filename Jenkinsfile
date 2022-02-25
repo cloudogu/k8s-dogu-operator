@@ -5,27 +5,27 @@ import com.cloudogu.ces.cesbuildlib.*
 import com.cloudogu.ces.dogubuildlib.*
 
 // Creating necessary git objects
-Git git = new Git(this, "cesmarvin")
+git = new Git(this, "cesmarvin")
 git.committerName = 'cesmarvin'
 git.committerEmail = 'cesmarvin@cloudogu.com'
-GitFlow gitflow = new GitFlow(this, git)
-GitHub github = new GitHub(this, git)
-Changelog changelog = new Changelog(this)
+gitflow = new GitFlow(this, git)
+github = new GitHub(this, git)
+changelog = new Changelog(this)
 
 // Configuration of repository
-def repositoryOwner = "cloudogu"
-def repositoryName = "k8s-dogu-operator"
-def project = "github.com/${repositoryOwner}/${repositoryName}"
+repositoryOwner = "cloudogu"
+repositoryName = "k8s-dogu-operator"
+project = "github.com/${repositoryOwner}/${repositoryName}"
 
 // Configuration of branches
-def productionReleaseBranch = "main"
-def developmentBranch = "develop"
-def currentBranch = "${env.BRANCH_NAME}"
+productionReleaseBranch = "main"
+developmentBranch = "develop"
+currentBranch = "${env.BRANCH_NAME}"
 
 node('docker') {
     timestamps {
         stageCheckoutProject()
-        stageLintDockerfile()
+//      stageLintDockerfile()
 
         new Docker(this)
                 .image('golang:1.17.7')
@@ -33,7 +33,6 @@ node('docker') {
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
                             stageBuildController()
-
                             stageK8SIntegrationTest()
                         }
 
@@ -91,20 +90,20 @@ void stageStaticAnalysis() {
             gitWithCredentials("fetch --all")
 
             if (currentBranch == productionReleaseBranch) {
-                echo "This currentBranch has been detected as the production branch."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.currentBranch.name=${env.BRANCH_NAME}"
+                echo "This branch has been detected as the production branch."
+                sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
             } else if (currentBranch == developmentBranch) {
-                echo "This currentBranch has been detected as the development branch."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.currentBranch.name=${env.BRANCH_NAME}"
+                echo "This branch has been detected as the development branch."
+                sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
             } else if (env.CHANGE_TARGET) {
-                echo "This currentBranch has been detected as a pull request."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.currentBranch=${env.CHANGE_BRANCH} -Dsonar.pullrequest.base=${developmentBranch}"
+                echo "This branch has been detected as a pull request."
+                sh "${scannerHome}/bin/sonar-scanner -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.branch=${env.CHANGE_BRANCH} -Dsonar.pullrequest.base=${developmentBranch}"
             } else if (currentBranch.startsWith("feature/")) {
-                echo "This currentBranch has been detected as a feature branch."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.currentBranch.name=${env.BRANCH_NAME}"
+                echo "This branch has been detected as a feature branch."
+                sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
             } else {
-                echo "This currentBranch has been detected as a miscellaneous currentBranch."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.currentBranch.name=${env.BRANCH_NAME} "
+                echo "This branch has been detected as a miscellaneous branch."
+                sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME} "
             }
         }
         timeout(time: 2, unit: 'MINUTES') { // Needed when there is no webhook for example

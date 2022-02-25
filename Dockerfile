@@ -20,6 +20,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
+LABEL maintainer="hello@cloudogu.com" \
+      NAME="k8s-dogu-operator" \
+      VERSION="0.0.1"
+
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532
