@@ -25,8 +25,7 @@ include build/make/digital-signature.mk
 ENVTEST_K8S_VERSION = 1.23
 K8S_INTEGRATION_TEST_DIR=${TARGET_DIR}/k8s-integration-test
 K8S_UTILITY_BIN_PATH=$(WORKDIR)/.bin
-K8S_RESOURCE_DISTRIBUTIONS=$(WORKDIR)/dist
-K8S_LATEST_RESOURCE=$(K8S_RESOURCE_DISTRIBUTIONS)/latest.yaml
+K8S_RESOURCE_YAML=$(TARGET_DIR)/${ARTIFACT_ID}_${VERSION}.yaml
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -88,6 +87,13 @@ build: generate vet ## Build controller binary.
 run: manifests generate vet ## Run a controller from your host.
 	go run ./main.go
 
+##@ Release
+
+# todo[jsprey] wip
+.PHONY: controller-release
+controller-release:
+	build/make/release.sh controller-tool
+
 ##@ Docker-related functions
 
 .PHONY: docker-build
@@ -112,24 +118,21 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
-${K8S_RESOURCE_DISTRIBUTIONS}:
-	@mkdir -p $@
-
-${K8S_LATEST_RESOURCE}: ${K8S_RESOURCE_DISTRIBUTIONS} manifests kustomize
+${K8S_RESOURCE_YAML}: ${TARGET_DIR} manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default > ${K8S_LATEST_RESOURCE}
+	$(KUSTOMIZE) build config/default > ${K8S_RESOURCE_YAML}
 
 .PHONY: k8s-generate
-k8s-generate: ${K8S_LATEST_RESOURCE} ## Create required k8s resources in ./dist/...
+k8s-generate: ${K8S_RESOURCE_YAML} ## Create required k8s resources in ./dist/...
 	@echo "Generating new kubernetes resources..."
 
 .PHONY: k8s-deploy
 k8s-deploy: k8s-generate ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cat ${K8S_LATEST_RESOURCE} | kubectl apply -f -
+	cat ${K8S_RESOURCE_YAML} | kubectl apply -f -
 
 .PHONY: k8s-undeploy
 k8s-undeploy: k8s-generate ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	cat ${K8S_LATEST_RESOURCE} | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	cat ${K8S_RESOURCE_YAML} | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Download Kubernetes Utility Tools
 

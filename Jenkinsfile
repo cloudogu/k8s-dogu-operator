@@ -34,17 +34,15 @@ node('docker') {
                         {
                             stageBuildController()
                             stageK8SIntegrationTest()
+                            stageGenerateK8SResources()
                         }
 
         stageStaticAnalysis()
         stageAutomaticRelease()
 
+//        todo remove this
         stage('Build Image') {
-            make 'docker-build'
-        }
-
-        stage('Generate k8s Resources') {
-            make 'k8s-generate'
+            sh 'make docker-build'
         }
     }
 }
@@ -79,6 +77,12 @@ void stageBuildController() {
 void stageK8SIntegrationTest() {
     stage('k8s-Integration-Test') {
         sh "make k8s-integration-test"
+    }
+}
+
+void stageGenerateK8SResources() {
+    stage('Generate k8s Resources') {
+        sh 'make k8s-generate'
     }
 }
 
@@ -119,34 +123,24 @@ void stageAutomaticRelease() {
     if (gitflow.isReleaseBranch()) {
         String releaseVersion = git.getSimpleBranchName()
 
-        stage('Build Image') {
-            make 'docker-build'
-        }
-
-        stage('Generate k8s Resources') {
-            make 'k8s-generate'
-        }
-
         stage('Finish Release') {
             gitflow.finishRelease(releaseVersion)
         }
 
-        withBuildDependencies {
-            stage('Build after Release') {
-                git.checkout(releaseVersion)
-                make 'clean build checksum'
-            }
+        stage('Build & Push Image') {
+            make 'docker-build'
+            //todo[jsprey] implement push with docker credentials
         }
 
-        stage('Sign after Release'){
+        stage('Sign after Release') {
             gpg.createSignature()
         }
 
         stage('Add Github-Release') {
-            releaseId=github.createReleaseWithChangelog(releaseVersion, changelog)
-            github.addReleaseAsset("${releaseId}", "target/k8s-dogu-operator.sha256sum")
-            github.addReleaseAsset("${releaseId}", "target/k8s-dogu-operator.sha256sum.asc")
-            github.addReleaseAsset("${releaseId}", "dist/latest.yaml")
+            releaseId = github.createReleaseWithChangelog(releaseVersion, changelog)
+            github.addReleaseAsset("${releaseId}", "target/${repositoryName}_${releaseVersion}.yaml")
+            github.addReleaseAsset("${releaseId}", "target/${repositoryName}_${releaseVersion}.yaml.sha256sum")
+            github.addReleaseAsset("${releaseId}", "target/${repositoryName}_${releaseVersion}.yaml.sha256sum.asc")
         }
     }
 }
