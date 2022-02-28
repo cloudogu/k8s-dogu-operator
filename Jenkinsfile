@@ -24,7 +24,10 @@ currentBranch = "${env.BRANCH_NAME}"
 
 node('docker') {
     timestamps {
-        stageCheckoutProject()
+        stage('Checkout') {
+            stageCheckoutProject()
+        }
+
 //      stageLintDockerfile()
 
         new Docker(this)
@@ -32,16 +35,30 @@ node('docker') {
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
-                            stageBuildController()
+                            stage('Build') {
+                                stageBuildController()
+                            }
 
-                            stageK8SIntegrationTest()
+                            stage('k8s-Integration-Test') {
+                                stageK8SIntegrationTest()
+                            }
 
-                            stageGenerateK8SResources()
+                            stage("Review dog analysis") {
+                                stageStaticAnalysisReviewDog()
+                            }
 
-                            stageStaticAnalysisReviewDog()
+                            stage('Generate k8s Resources') {
+                                stageGenerateK8SResources()
+                            }
                         }
 
-        stageStaticAnalysisSonarQube()
+        stage("Lint k8s Resources") {
+            stageLintK8SResources()
+        }
+
+        stage('SonarQube') {
+            stageStaticAnalysisSonarQube()
+        }
 
         stageAutomaticRelease()
     }
@@ -57,9 +74,7 @@ void gitWithCredentials(String command) {
 }
 
 void stageCheckoutProject() {
-    stage('Checkout') {
-        checkout scm
-    }
+    checkout scm
 }
 
 void stageLintDockerfile() {
@@ -69,64 +84,66 @@ void stageLintDockerfile() {
 }
 
 void stageBuildController() {
-    stage('Build') {
-        make 'build'
-    }
+    make 'build'
 }
 
 void stageK8SIntegrationTest() {
-    stage('k8s-Integration-Test') {
-        make 'k8s-integration-test'
-    }
+    make 'k8s-integration-test'
 }
 
 void stageGenerateK8SResources() {
-    stage('Generate k8s Resources') {
-        make 'k8s-generate'
-    }
+    make 'k8s-generate'
+}
+
+void stageLintK8SResources() {
+    String kubevalImage = "cytopia/kubeval:0.13"
+    String controllerVersion = getCurrentControllerVersion()
+
+    new Docker(this)
+            .image(kubevalImage)
+            .inside("-v ${WORKSPACE}/target:/data -t --entrypoint=")
+                    {
+                        sh "kubeval /data/${repositoryName}_${controllerVersion}.yaml --ignore-missing-schemas"
+                    }
 }
 
 void stageStaticAnalysisReviewDog() {
-    stage("Review dog analysis") {
-        def commitSha = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+    def commitSha = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
 
-        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'sonarqube-gh', usernameVariable: 'USERNAME', passwordVariable: 'REVIEWDOG_GITHUB_API_TOKEN']]) {
-            withEnv(["CI_PULL_REQUEST=${env.CHANGE_ID}", "CI_COMMIT=${commitSha}", "CI_REPO_OWNER=cloudogu", "CI_REPO_NAME=${repositoryName}"]) {
-                make 'static-analysis-ci'
-            }
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'sonarqube-gh', usernameVariable: 'USERNAME', passwordVariable: 'REVIEWDOG_GITHUB_API_TOKEN']]) {
+        withEnv(["CI_PULL_REQUEST=${env.CHANGE_ID}", "CI_COMMIT=${commitSha}", "CI_REPO_OWNER=cloudogu", "CI_REPO_NAME=${repositoryName}"]) {
+            make 'static-analysis-ci'
         }
     }
 }
 
 void stageStaticAnalysisSonarQube() {
-    stage('SonarQube') {
-        def scannerHome = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-        withSonarQubeEnv {
-            sh "git config 'remote.origin.fetch' '+refs/heads/*:refs/remotes/origin/*'"
-            gitWithCredentials("fetch --all")
+    def scannerHome = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+    withSonarQubeEnv {
+        sh "git config 'remote.origin.fetch' '+refs/heads/*:refs/remotes/origin/*'"
+        gitWithCredentials("fetch --all")
 
-            if (currentBranch == productionReleaseBranch) {
-                echo "This branch has been detected as the production branch."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
-            } else if (currentBranch == developmentBranch) {
-                echo "This branch has been detected as the development branch."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
-            } else if (env.CHANGE_TARGET) {
-                echo "This branch has been detected as a pull request."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.branch=${env.CHANGE_BRANCH} -Dsonar.pullrequest.base=${developmentBranch}"
-            } else if (currentBranch.startsWith("feature/")) {
-                echo "This branch has been detected as a feature branch."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
-            } else {
-                echo "This branch has been detected as a miscellaneous branch."
-                sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME} "
-            }
+        if (currentBranch == productionReleaseBranch) {
+            echo "This branch has been detected as the production branch."
+            sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
+        } else if (currentBranch == developmentBranch) {
+            echo "This branch has been detected as the development branch."
+            sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
+        } else if (env.CHANGE_TARGET) {
+            echo "This branch has been detected as a pull request."
+            sh "${scannerHome}/bin/sonar-scanner -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.branch=${env.CHANGE_BRANCH} -Dsonar.pullrequest.base=${developmentBranch}"
+        } else if (currentBranch.startsWith("feature/")) {
+            echo "This branch has been detected as a feature branch."
+            sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME}"
+        } else {
+            echo "This branch has been detected as a miscellaneous branch."
+            sh "${scannerHome}/bin/sonar-scanner -Dsonar.branch.name=${env.BRANCH_NAME} "
         }
-        timeout(time: 2, unit: 'MINUTES') { // Needed when there is no webhook for example
-            def qGate = waitForQualityGate()
-            if (qGate.status != 'OK') {
-                unstable("Pipeline unstable due to SonarQube quality gate failure")
-            }
+    }
+    timeout(time: 2, unit: 'MINUTES') { // Needed when there is no webhook for example
+        def qGate = waitForQualityGate()
+        if (qGate.status != 'OK') {
+            unstable("Pipeline unstable due to SonarQube quality gate failure")
         }
     }
 }
@@ -152,7 +169,7 @@ void stageAutomaticRelease() {
         }
 
         stage('Add Github-Release') {
-            def targetOperatorResourceYaml="target/${repositoryName}_${releaseVersion}.yaml"
+            def targetOperatorResourceYaml = "target/${repositoryName}_${releaseVersion}.yaml"
             releaseId = github.createReleaseWithChangelog(releaseVersion, changelog)
             github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}")
             github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}.sha256sum")
@@ -161,6 +178,10 @@ void stageAutomaticRelease() {
     }
 }
 
-void make(def makeArgs) {
+void make(String makeArgs) {
     sh "make ${makeArgs}"
+}
+
+String getCurrentControllerVersion() {
+    return sh(returnStdout: true, script: 'cat Makefile | grep -e "^VERSION=" | sed "s/VERSION=//g"').trim()
 }
