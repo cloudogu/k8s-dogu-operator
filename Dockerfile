@@ -26,6 +26,8 @@ LABEL maintainer="hello@cloudogu.com" \
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
+# the linter has a problem with the valid colon-syntax
+# dockerfile_lint - ignore
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]
