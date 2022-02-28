@@ -15,7 +15,7 @@ COPY api/ api/
 COPY controllers/ controllers/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o k8s-dogu-operator main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
@@ -25,9 +25,9 @@ LABEL maintainer="hello@cloudogu.com" \
       VERSION="0.0.1"
 
 WORKDIR /
-COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/k8s-dogu-operator .
 # the linter has a problem with the valid colon-syntax
 # dockerfile_lint - ignore
 USER 65532:65532
 
-ENTRYPOINT ["/manager"]
+ENTRYPOINT ["/k8s-dogu-operator"]
