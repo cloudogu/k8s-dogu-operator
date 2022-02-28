@@ -49,6 +49,6 @@ start_git_flow_release "${NEW_RELEASE_VERSION}"
 update_versions "${NEW_RELEASE_VERSION}"
 update_changelog "${NEW_RELEASE_VERSION}"
 show_diff
-#finish_release_and_push "${CURRENT_TOOL_VERSION}" "${NEW_RELEASE_VERSION}"
+finish_release_and_push "${CURRENT_TOOL_VERSION}" "${NEW_RELEASE_VERSION}"
 
 echo "=====Finished Release process====="
