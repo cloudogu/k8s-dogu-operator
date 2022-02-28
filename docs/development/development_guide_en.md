@@ -15,8 +15,6 @@
     - `export CES_REGISTRY_USER=instanceId && export CES_REGISTRY_PASS='instanceSecret'`
 7. Run `make run` to run the dogu operator locally
 
-This document contains information about all make targets used for this controller.
-
-## Target Overview (make)
+## Makefile-Targets
 
 The command `make help` prints all available targets and their descriptions in the command line.

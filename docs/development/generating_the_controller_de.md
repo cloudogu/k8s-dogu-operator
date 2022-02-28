@@ -4,7 +4,7 @@ Dieses Dokument enthält die Anweisung, die zur Erzeugung des Controllers ausgef
 
 ## Installieren Sie kubebuilder
 
-Für Installationsanweisungen siehe https://book.kubebuilder.io/quick-start.html#installation.
+Für Installationsanweisungen siehe [https://book.kubebuilder.io/quick-start.html#installation](https://book.kubebuilder.io/quick-start.html#installation).
 
 ## Controller generieren
 

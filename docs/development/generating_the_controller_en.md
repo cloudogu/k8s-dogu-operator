@@ -4,7 +4,7 @@ This document contains the instruction performed to generate the controller. For
 
 ## Install kubebuilder
 
-For installation instructions see https://book.kubebuilder.io/quick-start.html#installation.
+For installation instructions see [https://book.kubebuilder.io/quick-start.html#installation](https://book.kubebuilder.io/quick-start.html#installation).
 
 ## Generate controller
 

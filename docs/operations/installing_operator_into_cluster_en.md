@@ -2,7 +2,7 @@
 
 ## Installation from GitHub
 
-The installation from GitHub requires the installation YAML which contains all required k8s resources. 
+The installation from GitHub requires the installation YAML which contains all required K8s resources. 
 
 ```
 GITHUB_VERSION=0.0.6

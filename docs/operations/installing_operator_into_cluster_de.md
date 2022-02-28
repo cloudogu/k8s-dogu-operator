@@ -2,7 +2,7 @@
 
 ## Installation von GitHub
 
-Die Installation von GitHub erfordert die Installations-YAML, die alle benötigten k8s-Ressourcen enthält.
+Die Installation von GitHub erfordert die Installations-YAML, die alle benötigten K8s-Ressourcen enthält.
 
 ```
 GITHUB_VERSION=0.0.6
