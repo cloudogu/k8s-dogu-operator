@@ -94,7 +94,7 @@ run: manifests generate vet ## Run a controller from your host.
 ##@ Release
 
 .PHONY: controller-release
-controller-release:
+controller-release: ## Interactively starts the release workflow.
 	@echo "Starting git flow release..."
 	@build/make/release.sh controller-tool
 
