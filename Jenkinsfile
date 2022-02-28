@@ -25,10 +25,13 @@ currentBranch = "${env.BRANCH_NAME}"
 node('docker') {
     timestamps {
         stage('Checkout') {
-            stageCheckoutProject()
+            checkout scm
+            make 'clean'
         }
 
-//      stageLintDockerfile()
+        stage('Lint') {
+            lintDockerfile()
+        }
 
         new Docker(this)
                 .image('golang:1.17.7')
@@ -36,11 +39,11 @@ node('docker') {
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
                             stage('Build') {
-                                stageBuildController()
+                                make 'build'
                             }
 
                             stage('k8s-Integration-Test') {
-                                stageK8SIntegrationTest()
+                                make 'k8s-integration-test'
                             }
 
                             stage("Review dog analysis") {
@@ -48,7 +51,8 @@ node('docker') {
                             }
 
                             stage('Generate k8s Resources') {
-                                stageGenerateK8SResources()
+                                make 'k8s-generate'
+                                archiveArtifacts 'target/*.yaml'
                             }
                         }
 
@@ -71,29 +75,6 @@ void gitWithCredentials(String command) {
                 returnStdout: true
         )
     }
-}
-
-void stageCheckoutProject() {
-    checkout scm
-}
-
-void stageLintDockerfile() {
-    stage('Lint') {
-        lintDockerfile()
-    }
-}
-
-void stageBuildController() {
-    make 'build'
-}
-
-void stageK8SIntegrationTest() {
-    make 'k8s-integration-test'
-}
-
-void stageGenerateK8SResources() {
-    make 'k8s-generate'
-    archiveArtifacts 'target/*.yaml'
 }
 
 void stageLintK8SResources() {
