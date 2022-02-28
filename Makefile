@@ -4,7 +4,7 @@ VERSION=0.0.1
 GOTAG?=1.17.7
 # Image URL to use all building/pushing image targets
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
-MAKEFILES_VERSION=4.7.1
+MAKEFILES_VERSION=4.8.0
 
 .DEFAULT_GOAL:=
 
