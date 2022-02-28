@@ -153,7 +153,8 @@ void stageAutomaticRelease() {
         }
 
         stage('Add Github-Release') {
-            def targetOperatorResourceYaml = "target/${repositoryName}_${releaseVersion}.yaml"
+            String controllerVersion = getCurrentControllerVersion()
+            def targetOperatorResourceYaml = "target/${repositoryName}_${controllerVersion}.yaml"
             releaseId = github.createReleaseWithChangelog(releaseVersion, changelog, productionReleaseBranch)
             github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}")
             github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}.sha256sum")
