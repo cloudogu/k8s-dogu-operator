@@ -30,27 +30,27 @@ node('docker') {
             checkout scm
             make 'clean'
         }
-//
-//        stage('Lint') {
-//            lintDockerfile()
-//        }
+
+        stage('Lint') {
+            lintDockerfile()
+        }
 
         docker
                 .image('golang:1.17.7')
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
-//                            stage('Build') {
-//                                make 'build'
-//                            }
-//
-//                            stage('k8s-Integration-Test') {
-//                                make 'k8s-integration-test'
-//                            }
-//
-//                            stage("Review dog analysis") {
-//                                stageStaticAnalysisReviewDog()
-//                            }
+                            stage('Build') {
+                                make 'build'
+                            }
+
+                            stage('k8s-Integration-Test') {
+                                make 'k8s-integration-test'
+                            }
+
+                            stage("Review dog analysis") {
+                                stageStaticAnalysisReviewDog()
+                            }
 
                             stage('Generate k8s Resources') {
                                 make 'k8s-generate'
@@ -58,13 +58,13 @@ node('docker') {
                             }
                         }
 
-//        stage("Lint k8s Resources") {
-//            stageLintK8SResources()
-//        }
-//
-//        stage('SonarQube') {
-//            stageStaticAnalysisSonarQube()
-//        }
+        stage("Lint k8s Resources") {
+            stageLintK8SResources()
+        }
+
+        stage('SonarQube') {
+            stageStaticAnalysisSonarQube()
+        }
 
         stageAutomaticRelease()
     }
