@@ -11,6 +11,8 @@ git.committerEmail = 'cesmarvin@cloudogu.com'
 gitflow = new GitFlow(this, git)
 github = new GitHub(this, git)
 changelog = new Changelog(this)
+Docker docker = new Docker(this)
+Gpg gpg = new Gpg(this, docker)
 
 // Configuration of repository
 repositoryOwner = "cloudogu"
@@ -33,7 +35,7 @@ node('docker') {
             lintDockerfile()
         }
 
-        new Docker(this)
+        docker
                 .image('golang:1.17.7')
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
@@ -81,7 +83,7 @@ void stageLintK8SResources() {
     String kubevalImage = "cytopia/kubeval:0.13"
     String controllerVersion = getCurrentControllerVersion()
 
-    new Docker(this)
+    docker
             .image(kubevalImage)
             .inside("-v ${WORKSPACE}/target:/data -t --entrypoint=")
                     {
@@ -143,7 +145,7 @@ void stageAutomaticRelease() {
         }
 
         stage('Finish Release') {
-            gitflow.finishRelease(releaseVersion)
+            gitflow.finishRelease(releaseVersion, productionReleaseBranch)
         }
 
         stage('Sign after Release') {
