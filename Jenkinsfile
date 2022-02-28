@@ -33,11 +33,16 @@ node('docker') {
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
                             stageBuildController()
+
                             stageK8SIntegrationTest()
+
                             stageGenerateK8SResources()
                         }
 
-        stageStaticAnalysis()
+        stageStaticAnalysisReviewDog()
+
+        stageStaticAnalysisSonarQube()
+
         stageAutomaticRelease()
     }
 }
@@ -81,7 +86,17 @@ void stageGenerateK8SResources() {
     }
 }
 
-void stageStaticAnalysis() {
+void stageStaticAnalysisReviewDog() {
+    def commitSha = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'sonarqube-gh', usernameVariable: 'USERNAME', passwordVariable: 'REVIEWDOG_GITHUB_API_TOKEN']]) {
+        withEnv(["CI_PULL_REQUEST=${env.CHANGE_ID}", "CI_COMMIT=${commitSha}", "CI_REPO_OWNER=cloudogu", "CI_REPO_NAME=${repositoryName}"]) {
+            make 'static-analysis-ci'
+        }
+    }
+}
+
+void stageStaticAnalysisSonarQube() {
     stage('SonarQube') {
         def scannerHome = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
         withSonarQubeEnv {
