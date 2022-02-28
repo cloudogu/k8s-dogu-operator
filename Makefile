@@ -5,8 +5,7 @@ GOTAG?=1.17.7
 # Image URL to use all building/pushing image targets
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
 MAKEFILES_VERSION=4.8.0
-# reduce binary size by omitting symbol tables during the linking
-ADDITIONAL_LDFLAGS=-s -w
+
 .DEFAULT_GOAL:=
 
 include build/make/variables.mk
