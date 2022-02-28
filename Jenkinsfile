@@ -93,6 +93,7 @@ void stageK8SIntegrationTest() {
 
 void stageGenerateK8SResources() {
     make 'k8s-generate'
+    archiveArtifacts 'target/*.yaml'
 }
 
 void stageLintK8SResources() {
