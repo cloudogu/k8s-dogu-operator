@@ -1,8 +1,6 @@
 # Build the manager binary
 FROM golang:1.17 as builder
 
-ENV VERSION="0.0.5"
-
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
@@ -24,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -a -o k8s-do
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="0.0.1"
+      VERSION="0.0.0"
 
 WORKDIR /
 COPY --from=builder /workspace/k8s-dogu-operator .
