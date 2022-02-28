@@ -37,9 +37,9 @@ node('docker') {
                             stageK8SIntegrationTest()
 
                             stageGenerateK8SResources()
-                        }
 
-        stageStaticAnalysisReviewDog()
+                            stageStaticAnalysisReviewDog()
+                        }
 
         stageStaticAnalysisSonarQube()
 
@@ -70,28 +70,30 @@ void stageLintDockerfile() {
 
 void stageBuildController() {
     stage('Build') {
-        sh "make build"
+        make 'build'
     }
 }
 
 void stageK8SIntegrationTest() {
     stage('k8s-Integration-Test') {
-        sh "make k8s-integration-test"
+        make 'k8s-integration-test'
     }
 }
 
 void stageGenerateK8SResources() {
     stage('Generate k8s Resources') {
-        sh 'make k8s-generate'
+        make 'k8s-generate'
     }
 }
 
 void stageStaticAnalysisReviewDog() {
-    def commitSha = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+    stage("Review dog analysis") {
+        def commitSha = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
 
-    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'sonarqube-gh', usernameVariable: 'USERNAME', passwordVariable: 'REVIEWDOG_GITHUB_API_TOKEN']]) {
-        withEnv(["CI_PULL_REQUEST=${env.CHANGE_ID}", "CI_COMMIT=${commitSha}", "CI_REPO_OWNER=cloudogu", "CI_REPO_NAME=${repositoryName}"]) {
-            make 'static-analysis-ci'
+        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'sonarqube-gh', usernameVariable: 'USERNAME', passwordVariable: 'REVIEWDOG_GITHUB_API_TOKEN']]) {
+            withEnv(["CI_PULL_REQUEST=${env.CHANGE_ID}", "CI_COMMIT=${commitSha}", "CI_REPO_OWNER=cloudogu", "CI_REPO_NAME=${repositoryName}"]) {
+                make 'static-analysis-ci'
+            }
         }
     }
 }
@@ -157,4 +159,8 @@ void stageAutomaticRelease() {
             github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}.sha256sum.asc")
         }
     }
+}
+
+void make(def makeArgs) {
+    sh "make ${makeArgs}"
 }
