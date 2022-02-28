@@ -6,7 +6,7 @@ GOTAG?=1.17.7
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
 MAKEFILES_VERSION=4.8.0
 
-.DEFAULT_GOAL:=
+.DEFAULT_GOAL:=help
 
 include build/make/variables.mk
 
