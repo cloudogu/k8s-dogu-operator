@@ -1,3 +1,6 @@
+//go:build k8s_integration
+// +build k8s_integration
+
 package controllers
 
 import (
