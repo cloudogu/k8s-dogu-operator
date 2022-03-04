@@ -39,7 +39,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
 
-	deployment, err := m.resourceGenerator.getDoguDeployment(doguResource, dogu)
+	deployment := m.resourceGenerator.GetDoguDeployment(doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu deployment: %w", err)
 	}
@@ -52,7 +52,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	}
 	logger.Info(fmt.Sprintf("createOrUpdate deployment result: %+v", result))
 
-	service, err := m.resourceGenerator.getDoguService(doguResource)
+	service := m.resourceGenerator.GetDoguService(doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu service: %w", err)
 	}

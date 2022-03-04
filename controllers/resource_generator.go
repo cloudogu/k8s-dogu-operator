@@ -11,7 +11,7 @@ import (
 type ResourceGenerator struct {
 }
 
-func (r *ResourceGenerator) getDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) *appsv1.Deployment {
 	// Create deployment
 	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
 		Name:      doguResource.Name,
@@ -31,17 +31,18 @@ func (r *ResourceGenerator) getDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 			},
 			Spec: corev1.PodSpec{
 				Hostname: doguResource.Name,
-				Containers: []corev1.Container{{Name: doguResource.Name,
+				Containers: []corev1.Container{{
+					Name:            doguResource.Name,
 					Image:           dogu.Image + ":" + dogu.Version,
 					ImagePullPolicy: corev1.PullIfNotPresent}},
 			},
 		},
 	}
 
-	return deployment, nil
+	return deployment
 }
 
-func (r *ResourceGenerator) getDoguService(doguResource *k8sv1.Dogu) (*corev1.Service, error) {
+func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu) *corev1.Service {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      doguResource.Name,
@@ -54,5 +55,5 @@ func (r *ResourceGenerator) getDoguService(doguResource *k8sv1.Dogu) (*corev1.Se
 		},
 	}
 
-	return service, nil
+	return service
 }
