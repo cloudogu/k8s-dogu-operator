@@ -2,10 +2,10 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -22,7 +22,6 @@ var _ = Describe("Dogu Controller", func() {
 
 	Context("Handle new dogu resource", func() {
 		It("Should install dogu in cluster", func() {
-
 			newDogu := &k8sv1.Dogu{
 				TypeMeta: metav1.TypeMeta{
 					Kind: "Dogu",
@@ -50,15 +49,25 @@ var _ = Describe("Dogu Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Expect created deployment")
-			deployments := &v1.DeploymentList{}
+			deployments := &appsv1.DeploymentList{}
 
 			Eventually(func() bool {
 				err := k8sClient.List(context.Background(), deployments)
-				fmt.Println(deployments)
 				if err != nil {
 					return false
 				}
 				return len(deployments.Items) == 1
+			}, timeout, interval).Should(BeTrue())
+
+			By("Expect created service")
+			services := &corev1.ServiceList{}
+
+			Eventually(func() bool {
+				err := k8sClient.List(context.Background(), services)
+				if err != nil {
+					return false
+				}
+				return len(services.Items) == 1
 			}, timeout, interval).Should(BeTrue())
 		})
 	})

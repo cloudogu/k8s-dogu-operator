@@ -2,8 +2,11 @@ package controllers
 
 import (
 	"context"
+	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"path/filepath"
@@ -60,10 +63,15 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&DoguReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
+	doguRegistry := mocks.DoguRegistry{}
+	doguRegistry.Mock.On("GetDogu", mock.Anything).Return(&core.Dogu{
+		Image:   "image",
+		Version: "version",
+	}, nil)
+	resourceGenerator := ResourceGenerator{}
+	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &doguRegistry)
+
+	err = NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), *doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

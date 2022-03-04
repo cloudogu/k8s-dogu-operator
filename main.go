@@ -37,8 +37,10 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme         = runtime.NewScheme()
+	setupLog       = ctrl.Log.WithName("setup")
+	dockerUsername = os.Getenv("CES_REGISTRY_USER")
+	dockerPassword = os.Getenv("CES_REGISTRY_PASS")
 )
 
 func init() {
@@ -78,10 +80,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.DoguReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	doguRegistry := controllers.NewHttpDoguRegistry(dockerUsername, dockerPassword, "https://dogu.cloudogu.com/api/v2/dogus")
+	resourceGenerator := controllers.ResourceGenerator{}
+	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry)
+
+	if err = (controllers.NewDoguReconciler(mgr.GetClient(), mgr.GetScheme(), *doguManager)).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
 		os.Exit(1)
 	}
