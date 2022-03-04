@@ -9,21 +9,21 @@ import (
 	"net/http"
 )
 
-type HttpDoguRegistry struct {
+type HTTPDoguRegistry struct {
 	username string
 	password string
 	url      string
 }
 
-func NewHttpDoguRegistry(username string, password string, url string) *HttpDoguRegistry {
-	return &HttpDoguRegistry{
+func NewHTTPDoguRegistry(username string, password string, url string) *HTTPDoguRegistry {
+	return &HTTPDoguRegistry{
 		username: username,
 		password: password,
 		url:      url,
 	}
 }
 
-func (h HttpDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+func (h HTTPDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s/%s", h.url, doguResource.Spec.Name, doguResource.Spec.Version), nil)
 	if err != nil {
 		return nil, err

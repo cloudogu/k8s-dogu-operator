@@ -42,10 +42,7 @@ var _ = Describe("Dogu Controller", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), doguLookupKey, createdDogu)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
 			By("Expect created deployment")

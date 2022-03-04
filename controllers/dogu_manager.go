@@ -31,7 +31,7 @@ func NewDoguManager(client client.Client, scheme *runtime.Scheme, resourecGenera
 	}
 }
 
-func (m DoguManager) Install(doguResource *k8sv1.Dogu, ctx context.Context) error {
+func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	dogu, err := m.doguRegistry.GetDogu(doguResource)
@@ -47,6 +47,10 @@ func (m DoguManager) Install(doguResource *k8sv1.Dogu, ctx context.Context) erro
 	result, err := ctrl.CreateOrUpdate(ctx, m.Client, deployment, func() error {
 		return ctrl.SetControllerReference(doguResource, deployment, m.Scheme)
 	})
+	if err != nil {
+		return fmt.Errorf("failed to create dogu deployment: %w", err)
+	}
+	logger.Info(fmt.Sprintf("createOrUpdate deployment result: %+v", result))
 
 	service, err := m.resourceGenerator.getDoguService(doguResource)
 	if err != nil {
@@ -56,12 +60,10 @@ func (m DoguManager) Install(doguResource *k8sv1.Dogu, ctx context.Context) erro
 	result, err = ctrl.CreateOrUpdate(ctx, m.Client, service, func() error {
 		return ctrl.SetControllerReference(doguResource, service, m.Scheme)
 	})
-
 	if err != nil {
-		return fmt.Errorf("failed to install dogu: %w", err)
+		return fmt.Errorf("failed to create dogu service: %w", err)
 	}
-
-	logger.Info(fmt.Sprintf("createOrUpdate deployment result: %+v", result))
+	logger.Info(fmt.Sprintf("createOrUpdate service result: %+v", result))
 
 	return nil
 }

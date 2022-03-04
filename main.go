@@ -80,7 +80,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	doguRegistry := controllers.NewHttpDoguRegistry(dockerUsername, dockerPassword, "https://dogu.cloudogu.com/api/v2/dogus")
+	doguRegistry := controllers.NewHTTPDoguRegistry(dockerUsername, dockerPassword, "https://dogu.cloudogu.com/api/v2/dogus")
 	resourceGenerator := controllers.ResourceGenerator{}
 	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry)
 

@@ -62,7 +62,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	logger.Info(fmt.Sprintf("found doguResource in state: %+v", doguResource))
 
-	err = r.doguManager.Install(&doguResource, ctx)
+	err = r.doguManager.Install(ctx, &doguResource)
 
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)
