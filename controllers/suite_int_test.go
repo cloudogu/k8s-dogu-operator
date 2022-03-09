@@ -1,15 +1,13 @@
-//go:build k8s_integration
-// +build k8s_integration
-
 package controllers
 
 import (
 	"context"
-	"github.com/cloudogu/cesapp/v4/core"
+	_ "embed"
+	"encoding/json"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"path/filepath"
@@ -33,6 +31,23 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
+
+// Used in controller integration test
+var ImageRegistryMock mocks.ImageRegistry
+
+// Used in controller integration test
+var DoguRegistryMock mocks.DoguRegistry
+
+//go:embed testdata/image-config.json
+var imageConfigBytes []byte
+var imageConfig = &v1.ConfigFile{}
+
+func init() {
+	err := json.Unmarshal(imageConfigBytes, imageConfig)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -66,13 +81,9 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	doguRegistry := mocks.DoguRegistry{}
-	doguRegistry.Mock.On("GetDogu", mock.Anything).Return(&core.Dogu{
-		Image:   "image",
-		Version: "version",
-	}, nil)
-	resourceGenerator := ResourceGenerator{}
-	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &doguRegistry)
+	resourceGenerator := &ResourceGenerator{}
+
+	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock)
 
 	err = NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), *doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
@@ -84,7 +95,6 @@ var _ = BeforeSuite(func() {
 
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
-
 }, 60)
 
 var _ = AfterSuite(func() {

@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -17,8 +18,26 @@ import _ "embed"
 var ldapBytes []byte
 var ldapDogu = &core.Dogu{}
 
+//go:embed testdata/image-config.json
+var imageConfBytes []byte
+var imageConf = &imagev1.ConfigFile{}
+
+//go:embed testdata/dogu_cr.json
+var doguCrBytes []byte
+var doguCr = &k8sv1.Dogu{}
+
 func init() {
 	err := json.Unmarshal(ldapBytes, ldapDogu)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(imageConfBytes, imageConf)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(doguCrBytes, doguCr)
 	if err != nil {
 		panic(err)
 	}
@@ -27,16 +46,7 @@ func init() {
 func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 	generator := ResourceGenerator{}
 	t.Run("Return simple deployment", func(t *testing.T) {
-		actualDeployment := generator.GetDoguDeployment(&k8sv1.Dogu{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "ldap",
-				Namespace: "clusterns",
-			},
-			Spec: k8sv1.DoguSpec{
-				Name:    "official/ldap",
-				Version: "2.4.48-4",
-			},
-		}, ldapDogu)
+		actualDeployment := generator.GetDoguDeployment(doguCr, ldapDogu)
 		labels := map[string]string{"dogu": "ldap"}
 		expectedDeployment := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -72,26 +82,22 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 func TestResourceGenerator_GetDoguService(t *testing.T) {
 	generator := ResourceGenerator{}
 	t.Run("Return simple service", func(t *testing.T) {
-		actualService := generator.GetDoguService(&k8sv1.Dogu{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "testdogu",
-				Namespace: "clusterns",
-			},
-			Spec: k8sv1.DoguSpec{
-				Name:    "testing/testdogu",
-				Version: "1.0.0-1",
-			},
-		})
+		actualService, err := generator.GetDoguService(doguCr, imageConf)
+
+		assert.NoError(t, err)
 
 		expectedService := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "testdogu",
+				Name:      "ldap",
 				Namespace: "clusterns",
-				Labels:    map[string]string{"app": cesLabel, "dogu": "testdogu"},
+				Labels:    map[string]string{"app": cesLabel, "dogu": "ldap"},
 			},
 			Spec: corev1.ServiceSpec{
 				Type:     corev1.ServiceTypeClusterIP,
-				Selector: map[string]string{"dogu": "testdogu"},
+				Selector: map[string]string{"dogu": "ldap"},
+				Ports: []corev1.ServicePort{
+					{Name: "80", Port: 80, Protocol: "TCP"},
+				},
 			},
 		}
 		assert.Equal(t, expectedService, actualService)

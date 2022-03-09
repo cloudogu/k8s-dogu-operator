@@ -4,43 +4,56 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"io/ioutil"
+	"io"
 	"k8s.io/apimachinery/pkg/util/json"
 	"net/http"
 )
 
+// HTTPDoguRegistry is a component which can communicate with a dogu registry.
+// It is used for pulling the dogu descriptor via http
 type HTTPDoguRegistry struct {
-	username string
-	password string
-	url      string
+	HttpClient HttpClient
+	IoReader   func(r io.Reader) ([]byte, error)
+	username   string
+	password   string
+	url        string
 }
 
+// HttpClient is used to do http request
+type HttpClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// NewHTTPDoguRegistry create a new instance of HTTPDoguRegistry
 func NewHTTPDoguRegistry(username string, password string, url string) *HTTPDoguRegistry {
 	return &HTTPDoguRegistry{
-		username: username,
-		password: password,
-		url:      url,
+		username:   username,
+		password:   password,
+		url:        url,
+		HttpClient: http.DefaultClient,
+		IoReader:   io.ReadAll,
 	}
 }
 
+// GetDogu fetches a dogu.json with a given dogu custom resource. It uses basic auth for registry authentication
 func (h HTTPDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s/%s", h.url, doguResource.Spec.Name, doguResource.Spec.Version), nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error building request: %w", err)
 	}
 	req.SetBasicAuth(h.username, h.password)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := h.HttpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error doing request: %w", err)
 	}
 
 	if resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("dogu registry returned status code %d", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := h.IoReader(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	var dogu core.Dogu

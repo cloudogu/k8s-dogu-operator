@@ -14,13 +14,13 @@ type DoguRegistry struct {
 	mock.Mock
 }
 
-// GetDogu provides a mock function with given fields: a0
-func (_m *DoguRegistry) GetDogu(a0 *v1.Dogu) (*core.Dogu, error) {
-	ret := _m.Called(a0)
+// GetDogu provides a mock function with given fields: _a0
+func (_m *DoguRegistry) GetDogu(_a0 *v1.Dogu) (*core.Dogu, error) {
+	ret := _m.Called(_a0)
 
 	var r0 *core.Dogu
 	if rf, ok := ret.Get(0).(func(*v1.Dogu) *core.Dogu); ok {
-		r0 = rf(a0)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*core.Dogu)
@@ -29,7 +29,7 @@ func (_m *DoguRegistry) GetDogu(a0 *v1.Dogu) (*core.Dogu, error) {
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(*v1.Dogu) error); ok {
-		r1 = rf(a0)
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}

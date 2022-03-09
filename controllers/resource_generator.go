@@ -1,16 +1,21 @@
 package controllers
 
 import (
+	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strconv"
+	"strings"
 )
 
 type ResourceGenerator struct {
 }
 
+// GetDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
 func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) *appsv1.Deployment {
 	// Create deployment
 	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
@@ -42,7 +47,9 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 	return deployment
 }
 
-func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu) *corev1.Service {
+// GetDoguService creates a new instance of a service with the given dogu custom resource and container image.
+// The container image is used to extract the exposed ports
+func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      doguResource.Name,
@@ -52,8 +59,38 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu) *corev1.Ser
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
 			Selector: map[string]string{"dogu": doguResource.Name},
+			Ports:    []corev1.ServicePort{},
 		},
 	}
 
-	return service
+	for exposedPort := range imageConfig.Config.ExposedPorts {
+		port, protocol, err := splitPortConfig(exposedPort)
+		if err != nil {
+			return service, fmt.Errorf("error splitting port config: %w", err)
+		}
+		service.Spec.Ports = append(service.Spec.Ports, corev1.ServicePort{
+			Name:     strconv.Itoa(int(port)),
+			Protocol: protocol,
+			Port:     port,
+		})
+	}
+
+	service.Spec.Selector = map[string]string{"dogu": doguResource.Name}
+
+	return service, nil
+}
+
+func splitPortConfig(exposedPort string) (int32, corev1.Protocol, error) {
+	portAndPotentiallyProtocol := strings.Split(exposedPort, "/")
+
+	port, err := strconv.Atoi(portAndPotentiallyProtocol[0])
+	if err != nil {
+		return 0, "", fmt.Errorf("error parsing int: %w", err)
+	}
+
+	if len(portAndPotentiallyProtocol) == 2 {
+		return int32(port), corev1.Protocol(strings.ToUpper(portAndPotentiallyProtocol[1])), nil
+	}
+
+	return int32(port), corev1.ProtocolTCP, nil
 }
