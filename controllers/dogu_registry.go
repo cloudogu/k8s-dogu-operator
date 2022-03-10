@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"io"
+	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/json"
 	"net/http"
 )
@@ -12,26 +12,17 @@ import (
 // HTTPDoguRegistry is a component which can communicate with a dogu registry.
 // It is used for pulling the dogu descriptor via http
 type HTTPDoguRegistry struct {
-	HttpClient HttpClient
-	IoReader   func(r io.Reader) ([]byte, error)
-	username   string
-	password   string
-	url        string
-}
-
-// HttpClient is used to do http request
-type HttpClient interface {
-	Do(req *http.Request) (*http.Response, error)
+	username string
+	password string
+	url      string
 }
 
 // NewHTTPDoguRegistry create a new instance of HTTPDoguRegistry
 func NewHTTPDoguRegistry(username string, password string, url string) *HTTPDoguRegistry {
 	return &HTTPDoguRegistry{
-		username:   username,
-		password:   password,
-		url:        url,
-		HttpClient: http.DefaultClient,
-		IoReader:   io.ReadAll,
+		username: username,
+		password: password,
+		url:      url,
 	}
 }
 
@@ -42,7 +33,7 @@ func (h HTTPDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) 
 		return nil, fmt.Errorf("error building request: %w", err)
 	}
 	req.SetBasicAuth(h.username, h.password)
-	resp, err := h.HttpClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error doing request: %w", err)
 	}
@@ -51,7 +42,7 @@ func (h HTTPDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) 
 		return nil, fmt.Errorf("dogu registry returned status code %d", resp.StatusCode)
 	}
 
-	body, err := h.IoReader(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}

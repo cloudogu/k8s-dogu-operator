@@ -1,91 +1,66 @@
 package controllers
 
 import (
-	"errors"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"io"
+	"github.com/stretchr/testify/require"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
 func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
-	doguRegistry := NewHTTPDoguRegistry("user", "pw", "url")
-	err := errors.New("err")
+	validUser := "user"
+	validPw := "pw"
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u, p, ok := r.BasicAuth()
+		if !(ok && u == validUser && p == validPw) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(200)
+		_, err := w.Write(ldapBytes)
+		if err != nil {
+			panic(err)
+		}
+	}))
 
-	t.Run("Error on Do", func(t *testing.T) {
-		httpMock := &mocks.HttpClient{}
-		doguRegistry.HttpClient = httpMock
-		httpMock.Mock.On("Do", mock.Anything).Return(nil, err)
+	t.Run("Successful get dogu", func(t *testing.T) {
+		doguRegistry := NewHTTPDoguRegistry(validUser, validPw, testServer.URL)
 
 		result, err := doguRegistry.GetDogu(doguCr)
+		require.NoError(t, err)
 
-		assert.Nil(t, result)
+		assert.Equal(t, ldapDogu, result)
+	})
+
+	t.Run("Error while doing request", func(t *testing.T) {
+		doguRegistry := NewHTTPDoguRegistry(validUser, validPw, "wrongurl")
+
+		_, err := doguRegistry.GetDogu(doguCr)
+
 		assert.Error(t, err)
 	})
 
-	t.Run("Error on status code >= 300", func(t *testing.T) {
-		response := &http.Response{StatusCode: 300}
-		httpMock := &mocks.HttpClient{}
-		doguRegistry.HttpClient = httpMock
-		httpMock.Mock.On("Do", mock.Anything).Return(response, nil)
+	t.Run("Error with status code 401", func(t *testing.T) {
+		doguRegistry := NewHTTPDoguRegistry(validUser, "invalid", testServer.URL)
 
-		result, err := doguRegistry.GetDogu(doguCr)
+		_, err := doguRegistry.GetDogu(doguCr)
 
-		assert.Nil(t, result)
-		assert.Error(t, err)
-	})
-
-	t.Run("Error reading body", func(t *testing.T) {
-		response := &http.Response{StatusCode: 200}
-		httpMock := &mocks.HttpClient{}
-		doguRegistry.HttpClient = httpMock
-		doguRegistry.IoReader = ReadFailure
-		httpMock.Mock.On("Do", mock.Anything).Return(response, nil)
-
-		result, err := doguRegistry.GetDogu(doguCr)
-
-		assert.Nil(t, result)
-		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "status code 401")
 	})
 
 	t.Run("Error unmarshal dogu", func(t *testing.T) {
-		response := &http.Response{StatusCode: 200}
-		doguRegistry.IoReader = ReadSuccessNoDogu
-		httpMock := &mocks.HttpClient{}
-		doguRegistry.HttpClient = httpMock
-		httpMock.Mock.On("Do", mock.Anything).Return(response, nil)
+		testServer2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(200)
+			_, err := w.Write([]byte("not a dogu"))
+			if err != nil {
+				panic(err)
+			}
+		}))
+		doguRegistry := NewHTTPDoguRegistry(validUser, validPw, testServer2.URL)
 
-		result, err := doguRegistry.GetDogu(doguCr)
+		_, err := doguRegistry.GetDogu(doguCr)
 
-		assert.Nil(t, result)
-		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unmarshal")
 	})
-
-	t.Run("Successful get dogu", func(t *testing.T) {
-		response := &http.Response{StatusCode: 200}
-		httpMock := &mocks.HttpClient{}
-		doguRegistry.HttpClient = httpMock
-		httpMock.Mock.On("Do", mock.Anything).Return(response, nil)
-		doguRegistry.HttpClient = httpMock
-		doguRegistry.IoReader = ReadSuccessDogu
-
-		result, err := doguRegistry.GetDogu(doguCr)
-
-		assert.Equal(t, ldapDogu, result)
-		assert.NoError(t, err)
-	})
-}
-
-func ReadSuccessDogu(_ io.Reader) ([]byte, error) {
-	return ldapBytes, nil
-}
-
-func ReadSuccessNoDogu(_ io.Reader) ([]byte, error) {
-	return make([]byte, 8), nil
-}
-
-func ReadFailure(_ io.Reader) ([]byte, error) {
-	return ldapBytes, errors.New("error")
 }

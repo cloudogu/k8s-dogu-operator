@@ -8,6 +8,7 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -27,53 +28,64 @@ func init() {
 }
 
 func TestDoguManager_Install(t *testing.T) {
-
 	resourceGenerator := ResourceGenerator{}
-	mockErr := errors.New("error")
+	testError := errors.New("test error")
 	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "dogu.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogu",
+	}, ldapCr)
+
 	// fake k8sClient
 	client := fake.NewClientBuilder().Build()
+
+	t.Run("success", func(t *testing.T) {
+		doguRegsitry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
+
+		err := doguManager.Install(ctx, ldapCr)
+		require.NoError(t, err)
+	})
 
 	t.Run("error get dogu", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(nil, mockErr)
-
+		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(nil, testError)
 		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
 
 		err := doguManager.Install(ctx, ldapCr)
 
-		assert.Error(t, err)
+		assert.True(t, errors.Is(err, testError))
+		doguRegsitry.AssertExpectations(t)
 	})
 
 	t.Run("error create deployment", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
+		doguManager := NewDoguManager(client, runtime.NewScheme(), &resourceGenerator, doguRegsitry, imageRegistry)
 
 		err := doguManager.Install(ctx, ldapCr)
 
 		assert.Error(t, err)
+		doguRegsitry.AssertExpectations(t)
 	})
 
 	t.Run("error pull image config", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, mockErr)
-		scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-			Group:   "dogu.cloudogu.com",
-			Version: "v1",
-			Kind:    "dogu",
-		}, ldapCr)
-
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, testError)
 		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
 
 		err := doguManager.Install(ctx, ldapCr)
 
-		assert.Error(t, err)
+		assert.True(t, errors.Is(err, testError))
+		doguRegsitry.AssertExpectations(t)
 	})
 
 	t.Run("error create service resource", func(t *testing.T) {
@@ -81,38 +93,15 @@ func TestDoguManager_Install(t *testing.T) {
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 		exposedPorts := make(map[string]struct{})
-		//wrong port
+		// wrong port
 		exposedPorts["tcp/80"] = struct{}{}
-		errImageConfig := &imagev1.ConfigFile{Config: imagev1.Config{ExposedPorts: exposedPorts}}
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(errImageConfig, nil)
-		scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-			Group:   "dogu.cloudogu.com",
-			Version: "v1",
-			Kind:    "dogu",
-		}, ldapCr)
-
+		brokenImageConfig := &imagev1.ConfigFile{Config: imagev1.Config{ExposedPorts: exposedPorts}}
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(brokenImageConfig, nil)
 		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
 
 		err := doguManager.Install(ctx, ldapCr)
 
 		assert.Error(t, err)
-	})
-
-	t.Run("success", func(t *testing.T) {
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-		scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-			Group:   "dogu.cloudogu.com",
-			Version: "v1",
-			Kind:    "dogu",
-		}, ldapCr)
-
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
-
-		err := doguManager.Install(ctx, ldapCr)
-
-		assert.NoError(t, err)
+		doguRegsitry.AssertExpectations(t)
 	})
 }

@@ -13,12 +13,11 @@ import (
 )
 
 func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
+	imageRegistry := NewCraneContainerImageRegistry("user", "password")
 
 	t.Run("successful pulling image", func(t *testing.T) {
 		server, src := setupCraneRegistry(t)
 		defer server.Close()
-
-		imageRegistry := NewCraneContainerImageRegistry("user", "password")
 
 		imageConfig, err := imageRegistry.PullImageConfig(context.Background(), src)
 
@@ -27,15 +26,9 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 	})
 
 	t.Run("error pulling image", func(t *testing.T) {
-		server, src := setupCraneRegistry(t)
-		server.Close()
+		_, err := imageRegistry.PullImageConfig(context.Background(), "wrong url")
 
-		imageRegistry := NewCraneContainerImageRegistry("user", "password")
-
-		imageConfig, err := imageRegistry.PullImageConfig(context.Background(), src)
-
-		assert.Error(t, err)
-		assert.Nil(t, imageConfig)
+		assert.Contains(t, err.Error(), "error pulling image")
 	})
 }
 
