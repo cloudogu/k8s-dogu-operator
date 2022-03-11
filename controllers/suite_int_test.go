@@ -1,15 +1,15 @@
+//go:build k8s_integration
+// +build k8s_integration
+
 package controllers
 
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,11 +25,8 @@ import (
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-
-var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
-var ctx context.Context
 var cancel context.CancelFunc
 
 // Used in controller integration test
@@ -37,17 +34,6 @@ var ImageRegistryMock mocks.ImageRegistry
 
 // Used in controller integration test
 var DoguRegistryMock mocks.DoguRegistry
-
-//go:embed testdata/image-config.json
-var imageConfigBytes []byte
-var imageConfig = &v1.ConfigFile{}
-
-func init() {
-	err := json.Unmarshal(imageConfigBytes, imageConfig)
-	if err != nil {
-		panic(err)
-	}
-}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -60,6 +46,7 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
+	var ctx context.Context
 	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")

@@ -17,6 +17,9 @@ type ResourceGenerator struct {
 
 // GetDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
 func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) *appsv1.Deployment {
+	volumes := getVolumesForDogu(doguResource, dogu)
+	volumeMounts := getVolumeMountsForDogu(doguResource, dogu)
+
 	// Create deployment
 	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
 		Name:      doguResource.Name,
@@ -37,15 +40,83 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 			Spec: corev1.PodSpec{
 				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "registry-cloudogu-com"}},
 				Hostname:         doguResource.Name,
+				Volumes:          volumes,
 				Containers: []corev1.Container{{
 					Name:            doguResource.Name,
 					Image:           dogu.Image + ":" + dogu.Version,
-					ImagePullPolicy: corev1.PullIfNotPresent}},
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					VolumeMounts:    volumeMounts}},
 			},
 		},
 	}
 
 	return deployment
+}
+
+func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
+	nodeMasterVolume := corev1.Volume{
+		Name: "node-master-file",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "node-master-file"},
+			},
+		},
+	}
+	privateVolume := corev1.Volume{
+		Name: doguResource.GetPrivateVolumeName(),
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: doguResource.GetPrivateVolumeName(),
+			},
+		},
+	}
+
+	volumes := []corev1.Volume{
+		nodeMasterVolume,
+		privateVolume,
+	}
+
+	if len(dogu.Volumes) > 0 {
+		dataVolume := corev1.Volume{
+			Name: doguResource.GetDataVolumeName(),
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: doguResource.Name,
+				},
+			},
+		}
+		volumes = append(volumes, dataVolume)
+	}
+
+	return volumes
+}
+
+func getVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+	doguVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "node-master-file",
+			ReadOnly:  true,
+			MountPath: "/etc/ces/node_master",
+			SubPath:   "node_master",
+		},
+		{
+			Name:      doguResource.GetPrivateVolumeName(),
+			ReadOnly:  true,
+			MountPath: "/private",
+		},
+	}
+
+	for _, doguVolume := range dogu.Volumes {
+		newVolume := corev1.VolumeMount{
+			Name:      doguResource.GetDataVolumeName(),
+			ReadOnly:  false,
+			MountPath: doguVolume.Path,
+			SubPath:   doguVolume.Name,
+		}
+		doguVolumeMounts = append(doguVolumeMounts, newVolume)
+	}
+
+	return doguVolumeMounts
 }
 
 // GetDoguService creates a new instance of a service with the given dogu custom resource and container image.

@@ -49,6 +49,14 @@ type Dogu struct {
 	Status DoguStatus `json:"status,omitempty"`
 }
 
+func (d Dogu) GetDataVolumeName() string {
+	return d.Name + "-data"
+}
+
+func (d Dogu) GetPrivateVolumeName() string {
+	return d.Name + "-private"
+}
+
 //+kubebuilder:object:root=true
 
 // DoguList contains a list of Dogu
