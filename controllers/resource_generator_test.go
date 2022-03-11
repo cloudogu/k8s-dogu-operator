@@ -64,7 +64,8 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 						Labels: labels,
 					},
 					Spec: corev1.PodSpec{
-						Hostname: "ldap",
+						ImagePullSecrets: []corev1.LocalObjectReference{{Name: "registry-cloudogu-com"}},
+						Hostname:         "ldap",
 						Containers: []corev1.Container{{
 							Name:            "ldap",
 							Image:           "registry.cloudogu.com/official/ldap:2.4.48-4",

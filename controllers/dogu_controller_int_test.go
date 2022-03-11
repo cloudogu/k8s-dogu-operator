@@ -5,11 +5,9 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -87,51 +85,6 @@ var _ = Describe("Dogu Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 			Expect(doguName).To(Equal(service.Name))
 			Expect(namespace).To(Equal(service.Namespace))
-		})
-
-		It("update dogu in cluster", func() {
-			// Simulate port change
-			exposedPorts := make(map[string]struct{})
-			exposedPorts["8080/tcp"] = struct{}{}
-			errImageConfig := &imagev1.ConfigFile{Config: imagev1.Config{ExposedPorts: exposedPorts}}
-			ImageRegistryMock = mocks.ImageRegistry{}
-			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(errImageConfig, nil)
-
-			// Simulate version update in dogu.json
-			newVersion := "1.0.1"
-			doguJson := &core.Dogu{Image: "image", Version: newVersion}
-			DoguRegistryMock = mocks.DoguRegistry{}
-			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(doguJson, nil)
-
-			dogu := &k8sv1.Dogu{}
-			k8sClient.Get(ctx, doguLookupKey, dogu)
-			dogu.Spec.Version = newVersion
-
-			By("Update dogu resource")
-			Expect(k8sClient.Update(ctx, dogu)).Should(Succeed())
-
-			By("Expect updated deployment with image " + newVersion)
-			deployment := &appsv1.Deployment{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, doguLookupKey, deployment)
-				if err != nil {
-					return false
-				}
-				fmt.Println(deployment.Spec.Template.Spec.Containers[0].Image)
-				return "image:"+newVersion == deployment.Spec.Template.Spec.Containers[0].Image
-			}, timeout, interval).Should(BeTrue())
-
-			By("Expect updated service with port 8080")
-			service := &corev1.Service{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, doguLookupKey, service)
-				if err != nil {
-					return false
-				}
-				return 8080 == service.Spec.Ports[0].Port
-			}, timeout, interval).Should(BeTrue())
 		})
 	})
 })

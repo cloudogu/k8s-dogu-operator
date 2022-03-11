@@ -85,7 +85,7 @@ var _ = BeforeSuite(func() {
 
 	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock)
 
-	err = NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), *doguManager).SetupWithManager(k8sManager)
+	err = NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
