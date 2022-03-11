@@ -101,3 +101,13 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 
 	return nil
 }
+
+// Update TODO
+func (m DoguManager) Update(_ context.Context, _ *k8sv1.Dogu) error {
+	return nil
+}
+
+// Delete TODO
+func (m DoguManager) Delete(_ context.Context, _ *k8sv1.Dogu) error {
+	return nil
+}

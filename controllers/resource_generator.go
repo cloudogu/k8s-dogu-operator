@@ -35,7 +35,8 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 				Labels: labels,
 			},
 			Spec: corev1.PodSpec{
-				Hostname: doguResource.Name,
+				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "registry-cloudogu-com"}},
+				Hostname:         doguResource.Name,
 				Containers: []corev1.Container{{
 					Name:            doguResource.Name,
 					Image:           dogu.Image + ":" + dogu.Version,

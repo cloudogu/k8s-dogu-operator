@@ -27,15 +27,22 @@ import (
 )
 
 const cesLabel = "ces"
+const finalizerName = "dogu-finalizer"
 
 // DoguReconciler reconciles a Dogu object
 type DoguReconciler struct {
 	client.Client
 	scheme      *runtime.Scheme
-	doguManager DoguManager
+	doguManager Manager
 }
 
-func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager DoguManager) *DoguReconciler {
+type Manager interface {
+	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
+	Update(ctx context.Context, doguResource *k8sv1.Dogu) error
+	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
+}
+
+func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager Manager) *DoguReconciler {
 	return &DoguReconciler{
 		Client:      client,
 		scheme:      scheme,
@@ -46,6 +53,10 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 //+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/finalizers,verbs=update
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=persistentvolumes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
