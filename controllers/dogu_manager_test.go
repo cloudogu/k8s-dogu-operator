@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -36,11 +37,29 @@ func TestDoguManager_Install(t *testing.T) {
 		Version: "v1",
 		Kind:    "dogu",
 	}, ldapCr)
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "Deployment",
+	}, &v1.Deployment{})
 
 	// fake k8sClient
-	client := fake.NewClientBuilder().Build()
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	t.Run("success", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegsitry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
+		_ = client.Create(ctx, ldapCr)
+
+		err := doguManager.Install(ctx, ldapCr)
+		require.NoError(t, err)
+	})
+
+	t.Run("dogu resource not found", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
@@ -48,7 +67,10 @@ func TestDoguManager_Install(t *testing.T) {
 		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
 
 		err := doguManager.Install(ctx, ldapCr)
-		require.NoError(t, err)
+
+		assert.Contains(t, err.Error(), "not found")
+		doguRegsitry.AssertExpectations(t)
+		imageRegistry.AssertExpectations(t)
 	})
 
 	t.Run("error get dogu", func(t *testing.T) {
