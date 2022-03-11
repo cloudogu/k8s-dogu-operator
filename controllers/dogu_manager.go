@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -94,6 +95,13 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return ctrl.SetControllerReference(doguResource, service, m.Scheme)
 	})
 
+	controllerutil.AddFinalizer(doguResource, finalizerName)
+	err = m.Client.Update(ctx, doguResource)
+	if err != nil {
+		logger.Info(fmt.Sprintf("update doguResource: %+v", doguResource))
+		return fmt.Errorf("failed to update dogu: %w", err)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to create dogu service: %w", err)
 	}
@@ -103,7 +111,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 }
 
 // Update TODO
-func (m DoguManager) Update(_ context.Context, _ *k8sv1.Dogu) error {
+func (m DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
 	return nil
 }
 

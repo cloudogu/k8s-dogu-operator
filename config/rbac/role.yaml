@@ -70,6 +70,8 @@ rules:
   resources:
   - dogus/finalizers
   verbs:
+  - create
+  - delete
   - update
 - apiGroups:
   - k8s.cloudogu.com

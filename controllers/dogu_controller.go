@@ -23,11 +23,21 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const cesLabel = "ces"
 const finalizerName = "dogu-finalizer"
+
+type Operation int
+
+const (
+	Install Operation = iota
+	Upgrade
+	Delete
+	Ignore
+)
 
 // DoguReconciler reconciles a Dogu object
 type DoguReconciler struct {
@@ -38,7 +48,7 @@ type DoguReconciler struct {
 
 type Manager interface {
 	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
-	Update(ctx context.Context, doguResource *k8sv1.Dogu) error
+	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
@@ -52,7 +62,7 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 
 //+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/finalizers,verbs=update
+//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/finalizers,verbs=create;update;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=persistentvolumes,verbs=get;list;watch;create;update;patch;delete
@@ -65,21 +75,61 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	var doguResource k8sv1.Dogu
-	err := r.Get(ctx, req.NamespacedName, &doguResource)
+	doguResource := &k8sv1.Dogu{}
+	err := r.Get(ctx, req.NamespacedName, doguResource)
 	if err != nil {
-		logger.Error(err, "failed to get doguResource")
+		logger.Info(fmt.Sprintf("failed to get doguResource: %s", err))
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	logger.Info(fmt.Sprintf("found doguResource in state: %+v", doguResource))
 
-	err = r.doguManager.Install(ctx, &doguResource)
-
+	requiredOperation, err := evaluateRequiredOperation(doguResource)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to evaluate required operation: %w", err)
 	}
 
-	return ctrl.Result{}, nil
+	switch requiredOperation {
+	case Install:
+		err := r.doguManager.Install(ctx, doguResource)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)
+		}
+		return ctrl.Result{}, nil
+	case Upgrade:
+		return ctrl.Result{}, errors.New("not implemented yet")
+	case Delete:
+		logger.Info(fmt.Sprintf("remove finalizer from doguResource: %+v", doguResource))
+		controllerutil.RemoveFinalizer(doguResource, finalizerName)
+		err := r.Update(ctx, doguResource)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update dogu: %w", err)
+		}
+		return ctrl.Result{}, nil
+	case Ignore:
+		logger.Info(fmt.Sprintf("no operation required for dogu: %+v", doguResource))
+		return ctrl.Result{}, nil
+	default:
+		logger.Info(fmt.Sprintf("unknown operation for dogu: %+v", doguResource))
+		return ctrl.Result{}, nil
+	}
+}
+
+func evaluateRequiredOperation(doguResource *k8sv1.Dogu) (Operation, error) {
+	if !isDoguInstalled(doguResource) {
+		return Install, nil
+	}
+
+	if !doguResource.ObjectMeta.DeletionTimestamp.IsZero() {
+		return Delete, nil
+	}
+
+	// TODO: Implement upgrade detection
+
+	return Ignore, nil
+}
+
+func isDoguInstalled(doguResource *k8sv1.Dogu) bool {
+	return controllerutil.ContainsFinalizer(doguResource, finalizerName)
 }
 
 // SetupWithManager sets up the controller with the Manager.
