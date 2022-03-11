@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp/v4/keys"
+	"github.com/cloudogu/cesapp/v4/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -64,6 +66,11 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
 
+	err = m.createKeypair()
+	if err != nil {
+		return fmt.Errorf("failed to create keypair: %w", err)
+	}
+
 	desiredDeployment := m.resourceGenerator.GetDoguDeployment(doguResource, dogu)
 	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: desiredDeployment.Name, Namespace: desiredDeployment.Namespace}}
 
@@ -72,7 +79,6 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		deployment.ObjectMeta.Labels = desiredDeployment.Labels
 		return ctrl.SetControllerReference(doguResource, deployment, m.Scheme)
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to create dogu deployment: %w", err)
 	}
@@ -85,7 +91,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 
 	desiredService, err := m.resourceGenerator.GetDoguService(doguResource, imageConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create dogu service: %w", err)
+		return fmt.Errorf("failed to get dogu service: %w", err)
 	}
 
 	service := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: desiredService.Name, Namespace: desiredService.Namespace}}
@@ -94,6 +100,9 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		service.Spec = desiredService.Spec
 		return ctrl.SetControllerReference(doguResource, service, m.Scheme)
 	})
+	if err != nil {
+		return fmt.Errorf("failed to create dogu service: %w", err)
+	}
 
 	controllerutil.AddFinalizer(doguResource, finalizerName)
 	err = m.Client.Update(ctx, doguResource)
@@ -106,6 +115,28 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to create dogu service: %w", err)
 	}
 	logger.Info(fmt.Sprintf("createOrUpdate service result: %+v", result))
+
+	return nil
+}
+
+func (m DoguManager) createKeypair() error {
+	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: "pkcs1v15"})
+	if err != nil {
+		return fmt.Errorf("failed to create key provider: %w", err)
+	}
+
+	_, err = keyProvider.Generate()
+	if err != nil {
+		return fmt.Errorf("failed to generate key pair: %w", err)
+	}
+
+	_, err = registry.New(core.Registry{
+		Type:      "etcd",
+		Endpoints: []string{"http://etcd.ecosystem.svc.cluster.local:4001"},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get new registry: %w", err)
+	}
 
 	return nil
 }
