@@ -35,6 +35,9 @@ var ImageRegistryMock mocks.ImageRegistry
 // Used in controller integration test
 var DoguRegistryMock mocks.DoguRegistry
 
+// Used in controller integration test
+var DoguRegistratorMock mocks.DoguRegistrator
+
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -70,7 +73,7 @@ var _ = BeforeSuite(func() {
 
 	resourceGenerator := &ResourceGenerator{}
 
-	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock)
+	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, &DoguRegistratorMock)
 
 	err = NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())

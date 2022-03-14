@@ -79,6 +79,8 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 
 func getExpectedDeployment() *appsv1.Deployment {
 	labels := map[string]string{"dogu": "ldap"}
+	fsGroup := int64(101)
+	secretPermission := int32(0744)
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ldap",
@@ -95,6 +97,7 @@ func getExpectedDeployment() *appsv1.Deployment {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					SecurityContext:  &corev1.PodSecurityContext{FSGroup: &fsGroup},
 					ImagePullSecrets: []corev1.LocalObjectReference{{Name: "registry-cloudogu-com"}},
 					Hostname:         "ldap",
 					Volumes: []corev1.Volume{{
@@ -108,7 +111,8 @@ func getExpectedDeployment() *appsv1.Deployment {
 						Name: "ldap-private",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName: "ldap-private",
+								SecretName:  "ldap-private",
+								DefaultMode: &secretPermission,
 							},
 						},
 					}, {

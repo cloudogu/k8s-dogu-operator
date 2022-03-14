@@ -48,6 +48,7 @@ var _ = Describe("Dogu Controller", func() {
 				Image:   "image",
 				Version: "1.0.0",
 			}, nil)
+			DoguRegistratorMock.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 			By("Creating dogu resource")
 			Expect(k8sClient.Create(ctx, newDogu)).Should(Succeed())

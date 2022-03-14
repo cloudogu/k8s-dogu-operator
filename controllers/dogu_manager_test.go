@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -53,6 +54,21 @@ func TestDoguManager_Install(t *testing.T) {
 		Version: "v1",
 		Kind:    "Deployment",
 	}, &v1.Deployment{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Secret",
+	}, &corev1.Secret{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Service",
+	}, &corev1.Service{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "PersistentVolumeClaim",
+	}, &corev1.PersistentVolumeClaim{})
 
 	// fake k8sClient
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
@@ -61,21 +77,42 @@ func TestDoguManager_Install(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 		_ = client.Create(context.TODO(), ldapCr)
 
 		err := doguManager.Install(context.TODO(), ldapCr)
 		require.NoError(t, err)
 	})
 
+	t.Run("failed to register dogu", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegsitry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testError)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+		_ = client.Create(context.TODO(), ldapCr)
+
+		err := doguManager.Install(context.TODO(), ldapCr)
+		require.Error(t, err)
+
+		assert.True(t, errors.Is(err, testError))
+		mock.AssertExpectationsForObjects(t, doguRegistrator, imageRegistry, doguRegsitry)
+	})
+
 	t.Run("dogu resource not found", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 
 		err := doguManager.Install(context.TODO(), ldapCr)
 
@@ -87,8 +124,10 @@ func TestDoguManager_Install(t *testing.T) {
 	t.Run("error get dogu", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(nil, testError)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		err := doguManager.Install(context.TODO(), ldapCr)
 
@@ -99,8 +138,10 @@ func TestDoguManager_Install(t *testing.T) {
 	t.Run("error create deployment", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		doguManager := NewDoguManager(client, runtime.NewScheme(), &resourceGenerator, doguRegsitry, imageRegistry)
+		doguManager := NewDoguManager(client, runtime.NewScheme(), &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		err := doguManager.Install(context.TODO(), ldapCr)
 
@@ -111,9 +152,11 @@ func TestDoguManager_Install(t *testing.T) {
 	t.Run("error pull image config", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, testError)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 
 		err := doguManager.Install(context.TODO(), ldapCr)
 
@@ -124,13 +167,16 @@ func TestDoguManager_Install(t *testing.T) {
 	t.Run("error create service resource", func(t *testing.T) {
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 		exposedPorts := make(map[string]struct{})
 		// wrong port
 		exposedPorts["tcp/80"] = struct{}{}
 		brokenImageConfig := &imagev1.ConfigFile{Config: imagev1.Config{ExposedPorts: exposedPorts}}
 		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(brokenImageConfig, nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 
 		err := doguManager.Install(context.TODO(), ldapCr)
 

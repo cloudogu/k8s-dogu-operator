@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
-	"github.com/cloudogu/cesapp/v4/keys"
-	"github.com/cloudogu/cesapp/v4/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -26,6 +25,7 @@ type DoguManager struct {
 	resourceGenerator DoguResourceGenerator
 	doguRegistry      DoguRegistry
 	imageRegistry     ImageRegistry
+	doguRegistrator   DoguRegistrator
 }
 
 // DoguRegistry is used to fetch the dogu descriptor
@@ -37,6 +37,7 @@ type DoguRegistry interface {
 type DoguResourceGenerator interface {
 	GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) *appsv1.Deployment
 	GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error)
+	GetDoguPVC(doguResource *k8sv1.Dogu) *corev1.PersistentVolumeClaim
 }
 
 // ImageRegistry is used to pull container images
@@ -44,15 +45,21 @@ type ImageRegistry interface {
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
 }
 
+// DoguRegistrator is used to regsiter dogus
+type DoguRegistrator interface {
+	RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
+}
+
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, scheme *runtime.Scheme, resourceGenerator DoguResourceGenerator,
-	doguRegistry DoguRegistry, imageRegistry ImageRegistry) *DoguManager {
+	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator) *DoguManager {
 	return &DoguManager{
 		Client:            client,
 		Scheme:            scheme,
 		resourceGenerator: resourceGenerator,
 		doguRegistry:      doguRegistry,
 		imageRegistry:     imageRegistry,
+		doguRegistrator:   doguRegistrator,
 	}
 }
 
@@ -66,13 +73,27 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
 
-	err = m.createKeypair()
+	desiredPvc := m.resourceGenerator.GetDoguPVC(doguResource)
+	pvc := &corev1.PersistentVolumeClaim{}
+	err = m.Client.Get(ctx, *doguResource.GetObjectKey(), pvc)
 	if err != nil {
-		return fmt.Errorf("failed to create keypair: %w", err)
+		if errors.IsNotFound(err) {
+			err = m.Client.Create(ctx, desiredPvc)
+			if err != nil {
+				return fmt.Errorf("failed to create pvc: %w", err)
+			}
+		} else {
+			return fmt.Errorf("failed to create pvc: %w", err)
+		}
+	}
+
+	err = m.doguRegistrator.RegisterDogu(ctx, doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to register dogu: %w", err)
 	}
 
 	desiredDeployment := m.resourceGenerator.GetDoguDeployment(doguResource, dogu)
-	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: desiredDeployment.Name, Namespace: desiredDeployment.Namespace}}
+	deployment := &appsv1.Deployment{ObjectMeta: *doguResource.GetObjectMeta()}
 
 	result, err := ctrl.CreateOrUpdate(ctx, m.Client, deployment, func() error {
 		deployment.Spec = desiredDeployment.Spec
@@ -111,32 +132,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to update dogu: %w", err)
 	}
 
-	if err != nil {
-		return fmt.Errorf("failed to create dogu service: %w", err)
-	}
 	logger.Info(fmt.Sprintf("createOrUpdate service result: %+v", result))
-
-	return nil
-}
-
-func (m DoguManager) createKeypair() error {
-	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: "pkcs1v15"})
-	if err != nil {
-		return fmt.Errorf("failed to create key provider: %w", err)
-	}
-
-	_, err = keyProvider.Generate()
-	if err != nil {
-		return fmt.Errorf("failed to generate key pair: %w", err)
-	}
-
-	_, err = registry.New(core.Registry{
-		Type:      "etcd",
-		Endpoints: []string{"http://etcd.ecosystem.svc.cluster.local:4001"},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get new registry: %w", err)
-	}
 
 	return nil
 }

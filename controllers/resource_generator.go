@@ -7,6 +7,7 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"strings"
@@ -50,6 +51,14 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 		},
 	}
 
+	if len(dogu.Volumes) > 0 {
+		group, _ := strconv.Atoi(dogu.Volumes[0].Group)
+		gid := int64(group)
+		deployment.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			FSGroup: &gid,
+		}
+	}
+
 	return deployment
 }
 
@@ -62,11 +71,15 @@ func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volum
 			},
 		},
 	}
+
+	mode := int32(0744)
+
 	privateVolume := corev1.Volume{
 		Name: doguResource.GetPrivateVolumeName(),
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: doguResource.GetPrivateVolumeName(),
+				SecretName:  doguResource.GetPrivateVolumeName(),
+				DefaultMode: &mode,
 			},
 		},
 	}
@@ -165,4 +178,27 @@ func splitPortConfig(exposedPort string) (int32, corev1.Protocol, error) {
 	}
 
 	return int32(port), corev1.ProtocolTCP, nil
+}
+
+func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) *corev1.PersistentVolumeClaim {
+	doguPvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      doguResource.Name,
+			Namespace: doguResource.Namespace,
+		},
+	}
+
+	// Heads-up! Dirty hack ahead. Labels and specs will only be used during creation but not during updating
+	// because PVC specs are immutable
+	doguPvc.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
+	doguPvc.Spec = corev1.PersistentVolumeClaimSpec{
+		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("5Gi"),
+			},
+		},
+	}
+
+	return doguPvc
 }

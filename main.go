@@ -83,7 +83,8 @@ func main() {
 	doguRegistry := controllers.NewHTTPDoguRegistry(dockerUsername, dockerPassword, "https://dogu.cloudogu.com/api/v2/dogus")
 	imageRegistry := controllers.NewCraneContainerImageRegistry(dockerUsername, dockerPassword)
 	resourceGenerator := &controllers.ResourceGenerator{}
-	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry, imageRegistry)
+	doguRegistrator := controllers.NewEtcdDoguRegistrator(mgr.GetClient())
+	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
 
 	if err = (controllers.NewDoguReconciler(mgr.GetClient(), mgr.GetScheme(), *doguManager)).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
