@@ -30,28 +30,28 @@ func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry) 
 }
 
 // RegisterDogu registers a dogu in a cluster. It generates key pairs and configures the dogu registry
-func (e *CESDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
-	err := e.doguRegistry.Register(dogu)
+func (c *CESDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+	err := c.doguRegistry.Register(dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu "+dogu.GetSimpleName()+": %w", err)
 	}
 
-	err = e.doguRegistry.Enable(dogu)
+	err = c.doguRegistry.Enable(dogu)
 	if err != nil {
 		return fmt.Errorf("failed to enable dogu: %w", err)
 	}
 
-	keyPair, err := e.createKeypair()
+	keyPair, err := c.createKeypair()
 	if err != nil {
 		return fmt.Errorf("failed to create keypair: %w", err)
 	}
 
-	err = e.writePublicKey(keyPair.Public(), dogu)
+	err = c.writePublicKey(keyPair.Public(), dogu)
 	if err != nil {
 		return fmt.Errorf("failed to write public key: %w", err)
 	}
 
-	err = e.writePrivateKey(keyPair.Private(), doguResource, ctx)
+	err = c.writePrivateKey(keyPair.Private(), doguResource, ctx)
 	if err != nil {
 		return fmt.Errorf("failed to write private key: %w", err)
 	}
@@ -59,7 +59,7 @@ func (e *CESDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8s
 	return nil
 }
 
-func (e *CESDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
+func (c *CESDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
 	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: "pkcs1v15"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key provider: %w", err)
@@ -73,17 +73,17 @@ func (e *CESDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
 	return keyPair, nil
 }
 
-func (e *CESDoguRegistrator) writePrivateKey(privateKey *keys.PrivateKey, doguResource *k8sv1.Dogu, ctx context.Context) error {
+func (c *CESDoguRegistrator) writePrivateKey(privateKey *keys.PrivateKey, doguResource *k8sv1.Dogu, ctx context.Context) error {
 	secretString, err := privateKey.AsString()
 	if err != nil {
 		return fmt.Errorf("failed to get bytes from private key: %w", err)
 	}
 
 	secret := &corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: doguResource.GetPrivateVolumeName(), Namespace: doguResource.Namespace}}
-	_, err = ctrl.CreateOrUpdate(ctx, e.Client, secret, func() error {
+	_, err = ctrl.CreateOrUpdate(ctx, c.Client, secret, func() error {
 		secret.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
 		secret.StringData = map[string]string{"private.pem": secretString}
-		return ctrl.SetControllerReference(doguResource, secret, e.Scheme())
+		return ctrl.SetControllerReference(doguResource, secret, c.Scheme())
 	})
 
 	if err != nil {
@@ -93,12 +93,12 @@ func (e *CESDoguRegistrator) writePrivateKey(privateKey *keys.PrivateKey, doguRe
 	return nil
 }
 
-func (e *CESDoguRegistrator) writePublicKey(publicKey *keys.PublicKey, dogu *core.Dogu) error {
+func (c *CESDoguRegistrator) writePublicKey(publicKey *keys.PublicKey, dogu *core.Dogu) error {
 	public, err := publicKey.AsString()
 	if err != nil {
 		return fmt.Errorf("failed to get public key as string: %w", err)
 	}
-	err = e.registry.DoguConfig(dogu.Name).Set(cesregistry.KeyDoguPublicKey, public)
+	err = c.registry.DoguConfig(dogu.Name).Set(cesregistry.KeyDoguPublicKey, public)
 	if err != nil {
 		return fmt.Errorf("failed to write to registry: %w", err)
 	}
