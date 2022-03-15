@@ -120,7 +120,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
 		require.Error(t, err)
 
-		assert.Contains(t, err.Error(), "failed to create dogu secret")
+		assert.Contains(t, err.Error(), "failed to create secret")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 }
