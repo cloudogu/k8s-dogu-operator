@@ -8,7 +8,6 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -45,7 +44,7 @@ type ImageRegistry interface {
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
 }
 
-// DoguRegistrator is used to regsiter dogus
+// DoguRegistrator is used to register dogus
 type DoguRegistrator interface {
 	RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
 }
@@ -73,23 +72,40 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
 
-	desiredPvc := m.resourceGenerator.GetDoguPVC(doguResource)
-	pvc := &corev1.PersistentVolumeClaim{}
-	err = m.Client.Get(ctx, *doguResource.GetObjectKey(), pvc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = m.Client.Create(ctx, desiredPvc)
-			if err != nil {
-				return fmt.Errorf("failed to create pvc: %w", err)
-			}
-		} else {
-			return fmt.Errorf("failed to create pvc: %w", err)
-		}
-	}
-
 	err = m.doguRegistrator.RegisterDogu(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu: %w", err)
+	}
+
+	imageConfig, err := m.imageRegistry.PullImageConfig(ctx, dogu.Image+":"+dogu.Version)
+	if err != nil {
+		return fmt.Errorf("failed to pull image config: %w", err)
+	}
+
+	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create dogu resources: %w", err)
+	}
+
+	controllerutil.AddFinalizer(doguResource, finalizerName)
+	err = m.Client.Update(ctx, doguResource)
+	if err != nil {
+		logger.Info(fmt.Sprintf("update doguResource: %+v", doguResource))
+		return fmt.Errorf("failed to update dogu: %w", err)
+	}
+
+	return nil
+}
+
+func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) error {
+	logger := log.FromContext(ctx)
+
+	if len(dogu.Volumes) > 0 {
+		desiredPvc := m.resourceGenerator.GetDoguPVC(doguResource)
+		err := m.Client.Create(ctx, desiredPvc)
+		if err != nil {
+			return fmt.Errorf("failed to create pvc: %w", err)
+		}
 	}
 
 	desiredDeployment := m.resourceGenerator.GetDoguDeployment(doguResource, dogu)
@@ -105,11 +121,6 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	}
 	logger.Info(fmt.Sprintf("createOrUpdate deployment result: %+v", result))
 
-	imageConfig, err := m.imageRegistry.PullImageConfig(ctx, dogu.Image+":"+dogu.Version)
-	if err != nil {
-		return fmt.Errorf("failed to create image config: %w", err)
-	}
-
 	desiredService, err := m.resourceGenerator.GetDoguService(doguResource, imageConfig)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu service: %w", err)
@@ -124,25 +135,16 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	if err != nil {
 		return fmt.Errorf("failed to create dogu service: %w", err)
 	}
-
-	controllerutil.AddFinalizer(doguResource, finalizerName)
-	err = m.Client.Update(ctx, doguResource)
-	if err != nil {
-		logger.Info(fmt.Sprintf("update doguResource: %+v", doguResource))
-		return fmt.Errorf("failed to update dogu: %w", err)
-	}
-
 	logger.Info(fmt.Sprintf("createOrUpdate service result: %+v", result))
-
 	return nil
 }
 
-// Update TODO
+// TODO: Implement Upgrade
 func (m DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
 	return nil
 }
 
-// Delete TODO
+// TODO: Implement Delete
 func (m DoguManager) Delete(_ context.Context, _ *k8sv1.Dogu) error {
 	return nil
 }

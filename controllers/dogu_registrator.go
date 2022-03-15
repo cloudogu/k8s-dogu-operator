@@ -51,7 +51,7 @@ func (c *CESDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8s
 		return fmt.Errorf("failed to write public key: %w", err)
 	}
 
-	err = c.writePrivateKey(keyPair.Private(), doguResource, ctx)
+	err = c.writePrivateKey(ctx, keyPair.Private(), doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to write private key: %w", err)
 	}
@@ -73,7 +73,7 @@ func (c *CESDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
 	return keyPair, nil
 }
 
-func (c *CESDoguRegistrator) writePrivateKey(privateKey *keys.PrivateKey, doguResource *k8sv1.Dogu, ctx context.Context) error {
+func (c *CESDoguRegistrator) writePrivateKey(ctx context.Context, privateKey *keys.PrivateKey, doguResource *k8sv1.Dogu) error {
 	secretString, err := privateKey.AsString()
 	if err != nil {
 		return fmt.Errorf("failed to get bytes from private key: %w", err)
