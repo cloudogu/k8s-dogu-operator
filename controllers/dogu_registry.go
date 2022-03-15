@@ -38,6 +38,10 @@ func (h HTTPDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) 
 		return nil, fmt.Errorf("error doing request: %w", err)
 	}
 
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
 	if resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("dogu registry returned status code %d", resp.StatusCode)
 	}

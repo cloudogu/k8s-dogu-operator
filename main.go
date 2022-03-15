@@ -89,6 +89,12 @@ func main() {
 		Type:      "etcd",
 		Endpoints: []string{"http://etcd.ecosystem.svc.cluster.local:4001"},
 	})
+
+	if err != nil {
+		setupLog.Error(err, "unable to create registry")
+		os.Exit(1)
+	}
+
 	doguRegistrator := controllers.NewCESDoguRegistrator(mgr.GetClient(), registry)
 	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
 

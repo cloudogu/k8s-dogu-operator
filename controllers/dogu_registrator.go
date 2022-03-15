@@ -9,8 +9,9 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // CESDoguRegistrator is responsible for register dogus in the cluster
@@ -74,21 +75,22 @@ func (c *CESDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
 }
 
 func (c *CESDoguRegistrator) writePrivateKey(ctx context.Context, privateKey *keys.PrivateKey, doguResource *k8sv1.Dogu) error {
+	logger := log.FromContext(ctx)
 	secretString, err := privateKey.AsString()
 	if err != nil {
-		return fmt.Errorf("failed to get bytes from private key: %w", err)
+		return fmt.Errorf("failed to get private key as string: %w", err)
 	}
 
-	secret := &corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: doguResource.GetPrivateVolumeName(), Namespace: doguResource.Namespace}}
-	_, err = ctrl.CreateOrUpdate(ctx, c.Client, secret, func() error {
-		secret.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
-		secret.StringData = map[string]string{"private.pem": secretString}
-		return ctrl.SetControllerReference(doguResource, secret, c.Scheme())
-	})
-
+	secret := &corev1.Secret{ObjectMeta: v1.ObjectMeta{
+		Name:      doguResource.GetPrivateVolumeName(),
+		Namespace: doguResource.Namespace,
+		Labels:    map[string]string{"app": cesLabel, "dogu": doguResource.Name}},
+		StringData: map[string]string{"private.pem": secretString}}
+	err = c.Client.Create(ctx, secret)
 	if err != nil {
-		return fmt.Errorf("failed to create dogu secret: %w", err)
+		return fmt.Errorf("failed to create secret: %w", err)
 	}
+	logger.Info(fmt.Sprintf("Secret %s/%s has been : %s", secret.Namespace, secret.Name, controllerutil.OperationResultCreated))
 
 	return nil
 }
