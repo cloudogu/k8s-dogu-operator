@@ -73,7 +73,7 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 
 	err := ctrl.SetControllerReference(doguResource, deployment, r.scheme)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set controller reference: %w", err)
+		return nil, wrapControllerReferenceError(err)
 	}
 
 	return deployment, nil
@@ -181,7 +181,7 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 
 	err := ctrl.SetControllerReference(doguResource, service, r.scheme)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set controller reference: %w", err)
+		return nil, wrapControllerReferenceError(err)
 	}
 
 	return service, nil
@@ -223,8 +223,12 @@ func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.Persis
 
 	err := ctrl.SetControllerReference(doguResource, doguPvc, r.scheme)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set controller reference: %w", err)
+		return nil, wrapControllerReferenceError(err)
 	}
 
 	return doguPvc, nil
+}
+
+func wrapControllerReferenceError(err error) error {
+	return fmt.Errorf("failed to set controller reference: %w", err)
 }
