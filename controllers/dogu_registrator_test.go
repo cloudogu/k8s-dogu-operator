@@ -63,6 +63,8 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		require.Error(t, err)
 
 		assert.Contains(t, err.Error(), "failed to register dogu")
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
+
 	})
 
 	t.Run("fail to enable dogu", func(t *testing.T) {
@@ -78,6 +80,8 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		require.Error(t, err)
 
 		assert.Contains(t, err.Error(), "failed to enable dogu")
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
+
 	})
 
 	t.Run("fail to write public key", func(t *testing.T) {
@@ -96,6 +100,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		require.Error(t, err)
 
 		assert.Contains(t, err.Error(), "failed to write")
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 
 	t.Run("fail create secret", func(t *testing.T) {
@@ -116,5 +121,6 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		require.Error(t, err)
 
 		assert.Contains(t, err.Error(), "failed to create dogu secret")
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 }
