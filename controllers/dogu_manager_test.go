@@ -41,9 +41,9 @@ func init() {
 }
 
 func TestDoguManager_Install(t *testing.T) {
-	resourceGenerator := ResourceGenerator{}
 	testError := errors.New("test error")
 	scheme := runtime.NewScheme()
+	resourceGenerator := *NewResourceGenerator(scheme)
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "dogu.cloudogu.com",
 		Version: "v1",
@@ -140,6 +140,7 @@ func TestDoguManager_Install(t *testing.T) {
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		doguManager := NewDoguManager(client, runtime.NewScheme(), &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 

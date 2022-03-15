@@ -71,7 +71,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	resourceGenerator := &ResourceGenerator{}
+	resourceGenerator := NewResourceGenerator(k8sManager.GetScheme())
 
 	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, &DoguRegistratorMock)
 

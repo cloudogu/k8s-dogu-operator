@@ -47,12 +47,14 @@ type DoguReconciler struct {
 	doguManager Manager
 }
 
+// Manager abstracts the simple dogu operations in a k8s ces
 type Manager interface {
 	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
 	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
+// NewDoguReconciler creates a new reconciler instance for the dogu resource
 func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager Manager) *DoguReconciler {
 	return &DoguReconciler{
 		Client:      client,
@@ -83,12 +85,13 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		logger.Info(fmt.Sprintf("failed to get doguResource: %s", err))
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	logger.Info(fmt.Sprintf("found doguResource in state: %+v", doguResource))
+	logger.Info(fmt.Sprintf("Dogu %s/%s has been found: %+v", doguResource.Namespace, doguResource.Name, doguResource))
 
 	requiredOperation, err := evaluateRequiredOperation(doguResource)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to evaluate required operation: %w", err)
 	}
+	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s", doguResource.Namespace, doguResource.Name, operationToString(requiredOperation)))
 
 	switch requiredOperation {
 	case Install:
@@ -100,18 +103,16 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	case Upgrade:
 		return ctrl.Result{}, errors.New("not implemented yet")
 	case Delete:
-		logger.Info(fmt.Sprintf("remove finalizer from doguResource: %+v", doguResource))
 		controllerutil.RemoveFinalizer(doguResource, finalizerName)
 		err := r.Update(ctx, doguResource)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update dogu: %w", err)
 		}
+		logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
 		return ctrl.Result{}, nil
 	case Ignore:
-		logger.Info(fmt.Sprintf("no operation required for dogu: %+v", doguResource))
 		return ctrl.Result{}, nil
 	default:
-		logger.Info(fmt.Sprintf("unknown operation for dogu: %+v", doguResource))
 		return ctrl.Result{}, nil
 	}
 }
@@ -132,6 +133,19 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu) (Operation, error) {
 
 func isDoguInstalled(doguResource *k8sv1.Dogu) bool {
 	return controllerutil.ContainsFinalizer(doguResource, finalizerName)
+}
+
+func operationToString(operation Operation) string {
+	switch operation {
+	case Install:
+		return "Install"
+	case Upgrade:
+		return "Upgrade"
+	case Delete:
+		return "Delete"
+	default:
+		return "Ignore"
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

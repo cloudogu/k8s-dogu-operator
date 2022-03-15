@@ -84,7 +84,7 @@ func main() {
 
 	doguRegistry := controllers.NewHTTPDoguRegistry(dockerUsername, dockerPassword, "https://dogu.cloudogu.com/api/v2/dogus")
 	imageRegistry := controllers.NewCraneContainerImageRegistry(dockerUsername, dockerPassword)
-	resourceGenerator := &controllers.ResourceGenerator{}
+	resourceGenerator := controllers.NewResourceGenerator(mgr.GetScheme())
 	registry, err := cesregistry.New(core.Registry{
 		Type:      "etcd",
 		Endpoints: []string{"http://etcd.ecosystem.svc.cluster.local:4001"},

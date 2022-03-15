@@ -9,15 +9,25 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"strconv"
 	"strings"
 )
 
+// ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
+// as controller
 type ResourceGenerator struct {
+	scheme *runtime.Scheme
+}
+
+// NewResourceGenerator creates a new generator for k8s resources
+func NewResourceGenerator(scheme *runtime.Scheme) *ResourceGenerator {
+	return &ResourceGenerator{scheme: scheme}
 }
 
 // GetDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
-func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) *appsv1.Deployment {
+func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
 	volumes := getVolumesForDogu(doguResource, dogu)
 	volumeMounts := getVolumeMountsForDogu(doguResource, dogu)
 
@@ -59,7 +69,12 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 		}
 	}
 
-	return deployment
+	err := ctrl.SetControllerReference(doguResource, deployment, r.scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set controller reference: %w", err)
+	}
+
+	return deployment, nil
 }
 
 func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
@@ -162,6 +177,11 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 
 	service.Spec.Selector = map[string]string{"dogu": doguResource.Name}
 
+	err := ctrl.SetControllerReference(doguResource, service, r.scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set controller reference: %w", err)
+	}
+
 	return service, nil
 }
 
@@ -180,7 +200,8 @@ func splitPortConfig(exposedPort string) (int32, corev1.Protocol, error) {
 	return int32(port), corev1.ProtocolTCP, nil
 }
 
-func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) *corev1.PersistentVolumeClaim {
+// GetDoguPVC creates a persistentvolumeclaim with a 5Gi storage for the given dogu
+func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	doguPvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      doguResource.Name,
@@ -188,8 +209,6 @@ func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) *corev1.Persist
 		},
 	}
 
-	// Heads-up! Dirty hack ahead. Labels and specs will only be used during creation but not during updating
-	// because PVC specs are immutable
 	doguPvc.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
 	doguPvc.Spec = corev1.PersistentVolumeClaimSpec{
 		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -200,5 +219,10 @@ func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) *corev1.Persist
 		},
 	}
 
-	return doguPvc
+	err := ctrl.SetControllerReference(doguResource, doguPvc, r.scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set controller reference: %w", err)
+	}
+
+	return doguPvc, nil
 }
