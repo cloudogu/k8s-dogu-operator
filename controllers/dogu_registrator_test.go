@@ -1,9 +1,120 @@
 package controllers
 
 import (
+	"context"
+	"errors"
+	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
 )
 
 func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 
+	ctx := context.TODO()
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v1",
+		Kind:    "Dogu",
+	}, &corev1.Dogu{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "app",
+		Version: "v1",
+		Kind:    "Secret",
+	}, &v1.Secret{})
+	// fake k8sClient
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	testErr := errors.New("test")
+
+	t.Run("success", func(t *testing.T) {
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguConfigMock := &cesmocks.ConfigurationContext{}
+		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(nil)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+
+		registrator := NewCESDoguRegistrator(client, registryMock)
+
+		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		require.NoError(t, err)
+
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
+	})
+
+	t.Run("fail to register dogu", func(t *testing.T) {
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguRegistryMock.Mock.On("Register", mock.Anything).Return(testErr)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+
+		registrator := NewCESDoguRegistrator(client, registryMock)
+
+		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to register dogu")
+	})
+
+	t.Run("fail to enable dogu", func(t *testing.T) {
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(testErr)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+
+		registrator := NewCESDoguRegistrator(client, registryMock)
+
+		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to enable dogu")
+	})
+
+	t.Run("fail to write public key", func(t *testing.T) {
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguConfigMock := &cesmocks.ConfigurationContext{}
+		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(testErr)
+		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(nil)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+
+		registrator := NewCESDoguRegistrator(client, registryMock)
+
+		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to write")
+	})
+
+	t.Run("fail create secret", func(t *testing.T) {
+		scheme := runtime.NewScheme()
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguConfigMock := &cesmocks.ConfigurationContext{}
+		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(nil)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+
+		registrator := NewCESDoguRegistrator(client, registryMock)
+
+		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to create dogu secret")
+	})
 }
