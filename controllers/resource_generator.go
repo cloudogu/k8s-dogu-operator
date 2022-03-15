@@ -15,6 +15,8 @@ import (
 	"strings"
 )
 
+const nodeMasterFile = "node-master-file"
+
 // ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type ResourceGenerator struct {
@@ -79,10 +81,10 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 
 func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
 	nodeMasterVolume := corev1.Volume{
-		Name: "node-master-file",
+		Name: nodeMasterFile,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "node-master-file"},
+				LocalObjectReference: corev1.LocalObjectReference{Name: nodeMasterFile},
 			},
 		},
 	}
@@ -122,7 +124,7 @@ func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volum
 func getVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	doguVolumeMounts := []corev1.VolumeMount{
 		{
-			Name:      "node-master-file",
+			Name:      nodeMasterFile,
 			ReadOnly:  true,
 			MountPath: "/etc/ces/node_master",
 			SubPath:   "node_master",
