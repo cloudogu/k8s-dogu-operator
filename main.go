@@ -18,6 +18,8 @@ package main
 
 import (
 	"flag"
+	"github.com/cloudogu/cesapp/v4/core"
+	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -83,7 +85,11 @@ func main() {
 	doguRegistry := controllers.NewHTTPDoguRegistry(dockerUsername, dockerPassword, "https://dogu.cloudogu.com/api/v2/dogus")
 	imageRegistry := controllers.NewCraneContainerImageRegistry(dockerUsername, dockerPassword)
 	resourceGenerator := &controllers.ResourceGenerator{}
-	doguRegistrator := controllers.NewEtcdDoguRegistrator(mgr.GetClient())
+	registry, err := cesregistry.New(core.Registry{
+		Type:      "etcd",
+		Endpoints: []string{"http://etcd.ecosystem.svc.cluster.local:4001"},
+	})
+	doguRegistrator := controllers.NewCESDoguRegistrator(mgr.GetClient(), registry)
 	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
 
 	if err = (controllers.NewDoguReconciler(mgr.GetClient(), mgr.GetScheme(), *doguManager)).SetupWithManager(mgr); err != nil {
