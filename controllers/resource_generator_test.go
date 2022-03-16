@@ -122,6 +122,40 @@ func TestResourceGenerator_GetDoguPVC(t *testing.T) {
 	})
 }
 
+func TestResourceGenerator_GetDoguSecret(t *testing.T) {
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v1",
+		Kind:    "Dogu",
+	}, &k8sv1.Dogu{})
+
+	generator := NewResourceGenerator(scheme)
+	t.Run("Return secret", func(t *testing.T) {
+		expectedSecret := getExpectedSecret()
+		actualSecret, err := generator.GetDoguSecret(doguCr, map[string]string{"key": "value"})
+		require.NoError(t, err)
+		assert.Equal(t, expectedSecret, actualSecret)
+	})
+}
+
+func getExpectedSecret() *corev1.Secret {
+	referenceFlag := true
+	return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name:      "ldap-private",
+		Namespace: "clusterns",
+		OwnerReferences: []metav1.OwnerReference{{
+			APIVersion:         "k8s.cloudogu.com/v1",
+			Kind:               "Dogu",
+			Name:               "ldap",
+			UID:                "",
+			Controller:         &referenceFlag,
+			BlockOwnerDeletion: &referenceFlag,
+		}},
+		Labels: map[string]string{"app": cesLabel, "dogu": "ldap"}},
+		StringData: map[string]string{"key": "value"}}
+}
+
 func getExpectedPVC() *corev1.PersistentVolumeClaim {
 	referenceFlag := true
 	doguPvc := &corev1.PersistentVolumeClaim{

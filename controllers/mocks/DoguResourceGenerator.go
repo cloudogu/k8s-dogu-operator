@@ -22,7 +22,7 @@ type DoguResourceGenerator struct {
 }
 
 // GetDoguDeployment provides a mock function with given fields: doguResource, dogu
-func (_m *DoguResourceGenerator) GetDoguDeployment(doguResource *v1.Dogu, dogu *core.Dogu) *appsv1.Deployment {
+func (_m *DoguResourceGenerator) GetDoguDeployment(doguResource *v1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
 	ret := _m.Called(doguResource, dogu)
 
 	var r0 *appsv1.Deployment
@@ -34,7 +34,60 @@ func (_m *DoguResourceGenerator) GetDoguDeployment(doguResource *v1.Dogu, dogu *
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*v1.Dogu, *core.Dogu) error); ok {
+		r1 = rf(doguResource, dogu)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetDoguPVC provides a mock function with given fields: doguResource
+func (_m *DoguResourceGenerator) GetDoguPVC(doguResource *v1.Dogu) (*corev1.PersistentVolumeClaim, error) {
+	ret := _m.Called(doguResource)
+
+	var r0 *corev1.PersistentVolumeClaim
+	if rf, ok := ret.Get(0).(func(*v1.Dogu) *corev1.PersistentVolumeClaim); ok {
+		r0 = rf(doguResource)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*corev1.PersistentVolumeClaim)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*v1.Dogu) error); ok {
+		r1 = rf(doguResource)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetDoguSecret provides a mock function with given fields: doguResource, stringData
+func (_m *DoguResourceGenerator) GetDoguSecret(doguResource *v1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
+	ret := _m.Called(doguResource, stringData)
+
+	var r0 *corev1.Secret
+	if rf, ok := ret.Get(0).(func(*v1.Dogu, map[string]string) *corev1.Secret); ok {
+		r0 = rf(doguResource, stringData)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*corev1.Secret)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*v1.Dogu, map[string]string) error); ok {
+		r1 = rf(doguResource, stringData)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetDoguService provides a mock function with given fields: doguResource, imageConfig

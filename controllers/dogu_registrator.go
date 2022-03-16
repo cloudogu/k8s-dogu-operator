@@ -7,8 +7,6 @@ import (
 	"github.com/cloudogu/cesapp/v4/keys"
 	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -17,16 +15,18 @@ import (
 // CESDoguRegistrator is responsible for register dogus in the cluster
 type CESDoguRegistrator struct {
 	client.Client
-	registry     cesregistry.Registry
-	doguRegistry cesregistry.DoguRegistry
+	registry        cesregistry.Registry
+	doguRegistry    cesregistry.DoguRegistry
+	secretGenerator DoguResourceGenerator
 }
 
 // NewCESDoguRegistrator creates a new instance
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry) *CESDoguRegistrator {
+func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator DoguResourceGenerator) *CESDoguRegistrator {
 	return &CESDoguRegistrator{
-		Client:       client,
-		registry:     registry,
-		doguRegistry: registry.DoguRegistry(),
+		Client:          client,
+		registry:        registry,
+		doguRegistry:    registry.DoguRegistry(),
+		secretGenerator: secretGenerator,
 	}
 }
 
@@ -81,15 +81,16 @@ func (c *CESDoguRegistrator) writePrivateKey(ctx context.Context, privateKey *ke
 		return fmt.Errorf("failed to get private key as string: %w", err)
 	}
 
-	secret := &corev1.Secret{ObjectMeta: v1.ObjectMeta{
-		Name:      doguResource.GetPrivateVolumeName(),
-		Namespace: doguResource.Namespace,
-		Labels:    map[string]string{"app": cesLabel, "dogu": doguResource.Name}},
-		StringData: map[string]string{"private.pem": secretString}}
+	secret, err := c.secretGenerator.GetDoguSecret(doguResource, map[string]string{"private.pem": secretString})
+	if err != nil {
+		return fmt.Errorf("failed to generate secret: %w", err)
+	}
+
 	err = c.Client.Create(ctx, secret)
 	if err != nil {
 		return fmt.Errorf("failed to create secret: %w", err)
 	}
+
 	logger.Info(fmt.Sprintf("Secret %s/%s has been : %s", secret.Namespace, secret.Name, controllerutil.OperationResultCreated))
 
 	return nil

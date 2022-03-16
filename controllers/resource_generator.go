@@ -229,6 +229,22 @@ func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.Persis
 	return doguPvc, nil
 }
 
+// GetDoguSecret generates a secret with a given data map for the dogu
+func (r *ResourceGenerator) GetDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Name:      doguResource.GetPrivateVolumeName(),
+		Namespace: doguResource.Namespace,
+		Labels:    map[string]string{"app": cesLabel, "dogu": doguResource.Name}},
+		StringData: stringData}
+
+	err := ctrl.SetControllerReference(doguResource, secret, r.scheme)
+	if err != nil {
+		return nil, wrapControllerReferenceError(err)
+	}
+
+	return secret, nil
+}
+
 func wrapControllerReferenceError(err error) error {
 	return fmt.Errorf("failed to set controller reference: %w", err)
 }

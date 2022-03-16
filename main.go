@@ -95,7 +95,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	doguRegistrator := controllers.NewCESDoguRegistrator(mgr.GetClient(), registry)
+	doguRegistrator := controllers.NewCESDoguRegistrator(mgr.GetClient(), registry, resourceGenerator)
 	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
 
 	if err = (controllers.NewDoguReconciler(mgr.GetClient(), mgr.GetScheme(), *doguManager)).SetupWithManager(mgr); err != nil {
