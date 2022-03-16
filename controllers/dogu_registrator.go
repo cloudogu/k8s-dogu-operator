@@ -20,7 +20,8 @@ type CESDoguRegistrator struct {
 	secretGenerator DoguResourceGenerator
 }
 
-// NewCESDoguRegistrator creates a new instance
+// NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
+// generates keypairs
 func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator DoguResourceGenerator) *CESDoguRegistrator {
 	return &CESDoguRegistrator{
 		Client:          client,

@@ -44,7 +44,7 @@ node('docker') {
                                 withCredentials([usernamePassword(credentialsId: 'cesmarvin',
                                         passwordVariable: 'CES_MARVIN_PASSWORD',
                                         usernameVariable: 'CES_MARVIN_USERNAME')]) {
-                                    // .netrc is necessary to access the internetz
+                                    // .netrc is necessary to access private repos
                                     sh "echo \"machine github.com\n" +
                                             "login ${CES_MARVIN_USERNAME}\n" +
                                             "password ${CES_MARVIN_PASSWORD}\" >> ~/.netrc"

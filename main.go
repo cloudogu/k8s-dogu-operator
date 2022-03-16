@@ -39,10 +39,10 @@ import (
 )
 
 var (
-	scheme         = runtime.NewScheme()
-	setupLog       = ctrl.Log.WithName("setup")
-	dockerUsername = os.Getenv("CES_REGISTRY_USER")
-	dockerPassword = os.Getenv("CES_REGISTRY_PASS")
+	scheme           = runtime.NewScheme()
+	setupLog         = ctrl.Log.WithName("setup")
+	registryUsername = os.Getenv("CES_REGISTRY_USER")
+	registryPassword = os.Getenv("CES_REGISTRY_PASS")
 )
 
 func init() {
@@ -82,8 +82,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	doguRegistry := controllers.NewHTTPDoguRegistry(dockerUsername, dockerPassword, "https://dogu.cloudogu.com/api/v2/dogus")
-	imageRegistry := controllers.NewCraneContainerImageRegistry(dockerUsername, dockerPassword)
+	doguRegistry := controllers.NewHTTPDoguRegistry(registryUsername, registryPassword, "https://dogu.cloudogu.com/api/v2/dogus")
+	imageRegistry := controllers.NewCraneContainerImageRegistry(registryUsername, registryPassword)
 	resourceGenerator := controllers.NewResourceGenerator(mgr.GetScheme())
 	registry, err := cesregistry.New(core.Registry{
 		Type:      "etcd",
