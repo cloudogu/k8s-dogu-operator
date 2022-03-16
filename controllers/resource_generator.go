@@ -55,6 +55,8 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 				Hostname:         doguResource.Name,
 				Volumes:          volumes,
 				Containers: []corev1.Container{{
+					Env:             []corev1.EnvVar{{Name: "LOGLEVEL", Value: "256"}},
+					Command:         []string{"sleep", "100000"},
 					Name:            doguResource.Name,
 					Image:           dogu.Image + ":" + dogu.Version,
 					ImagePullPolicy: corev1.PullIfNotPresent,
@@ -63,11 +65,14 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 		},
 	}
 
+	fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
+
 	if len(dogu.Volumes) > 0 {
 		group, _ := strconv.Atoi(dogu.Volumes[0].Group)
 		gid := int64(group)
 		deployment.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-			FSGroup: &gid,
+			FSGroup:             &gid,
+			FSGroupChangePolicy: &fsGroupChangePolicy,
 		}
 	}
 
