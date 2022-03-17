@@ -18,6 +18,7 @@ package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -47,6 +48,32 @@ type Dogu struct {
 
 	Spec   DoguSpec   `json:"spec,omitempty"`
 	Status DoguStatus `json:"status,omitempty"`
+}
+
+// GetDataVolumeName returns the data volume name for the dogu resource
+func (d Dogu) GetDataVolumeName() string {
+	return d.Name + "-data"
+}
+
+// GetPrivateVolumeName returns the private volume name for the dogu resource
+func (d Dogu) GetPrivateVolumeName() string {
+	return d.Name + "-private"
+}
+
+// GetObjectKey returns the object key with the actual name and namespace from the dogu resource
+func (d Dogu) GetObjectKey() *client.ObjectKey {
+	return &client.ObjectKey{
+		Namespace: d.Namespace,
+		Name:      d.Name,
+	}
+}
+
+// GetObjectMeta return the object meta with the actual name and namespace from the dogu resource
+func (d Dogu) GetObjectMeta() *metav1.ObjectMeta {
+	return &metav1.ObjectMeta{
+		Namespace: d.Namespace,
+		Name:      d.Name,
+	}
 }
 
 //+kubebuilder:object:root=true

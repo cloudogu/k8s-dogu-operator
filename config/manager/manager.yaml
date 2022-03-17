@@ -27,10 +27,19 @@ spec:
       securityContext:
         runAsNonRoot: true
       containers:
-      - command:
-        - /manager
-        args:
+      - args:
         - --leader-elect
+        env:
+          - name: CES_REGISTRY_USER
+            valueFrom:
+              secretKeyRef:
+                name: dogu-cloudogu-com
+                key: username
+          - name: CES_REGISTRY_PASS
+            valueFrom:
+              secretKeyRef:
+                name: dogu-cloudogu-com
+                key: password
         image: controller:latest
         name: manager
         securityContext:

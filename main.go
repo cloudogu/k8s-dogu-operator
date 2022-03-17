@@ -18,6 +18,8 @@ package main
 
 import (
 	"flag"
+	"github.com/cloudogu/cesapp/v4/core"
+	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -37,8 +39,10 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme           = runtime.NewScheme()
+	setupLog         = ctrl.Log.WithName("setup")
+	registryUsername = os.Getenv("CES_REGISTRY_USER")
+	registryPassword = os.Getenv("CES_REGISTRY_PASS")
 )
 
 func init() {
@@ -78,10 +82,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.DoguReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	doguRegistry := controllers.NewHTTPDoguRegistry(registryUsername, registryPassword, "https://dogu.cloudogu.com/api/v2/dogus")
+	imageRegistry := controllers.NewCraneContainerImageRegistry(registryUsername, registryPassword)
+	resourceGenerator := controllers.NewResourceGenerator(mgr.GetScheme())
+	registry, err := cesregistry.New(core.Registry{
+		Type:      "etcd",
+		Endpoints: []string{"http://etcd.ecosystem.svc.cluster.local:4001"},
+	})
+
+	if err != nil {
+		setupLog.Error(err, "unable to create registry")
+		os.Exit(1)
+	}
+
+	doguRegistrator := controllers.NewCESDoguRegistrator(mgr.GetClient(), registry, resourceGenerator)
+	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+	if err = (controllers.NewDoguReconciler(mgr.GetClient(), mgr.GetScheme(), *doguManager)).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
 		os.Exit(1)
 	}
