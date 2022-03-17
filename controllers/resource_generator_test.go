@@ -189,6 +189,7 @@ func getExpectedPVC() *corev1.PersistentVolumeClaim {
 func getExpectedDeployment() *appsv1.Deployment {
 	labels := map[string]string{"dogu": "ldap"}
 	fsGroup := int64(101)
+	fsGroupPolicy := corev1.FSGroupChangeOnRootMismatch
 	secretPermission := int32(0744)
 	referenceFlag := true
 	return &appsv1.Deployment{
@@ -215,7 +216,7 @@ func getExpectedDeployment() *appsv1.Deployment {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					SecurityContext:  &corev1.PodSecurityContext{FSGroup: &fsGroup},
+					SecurityContext:  &corev1.PodSecurityContext{FSGroup: &fsGroup, FSGroupChangePolicy: &fsGroupPolicy},
 					ImagePullSecrets: []corev1.LocalObjectReference{{Name: "registry-cloudogu-com"}},
 					Hostname:         "ldap",
 					Volumes: []corev1.Volume{{
