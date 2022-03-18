@@ -1,0 +1,11 @@
+# This yaml is exactly as the default input yaml as no annotation were generated. Only the annotations are compared.
+apiVersion: v1
+kind: Service
+metadata:
+  name: serviceName
+spec:
+  selector:
+    name: serviceName
+  ports:
+    - protocol: TCP
+      port: 80
