@@ -20,3 +20,5 @@ vendor
 *.swo
 .code
 *~
+
+.netrc
