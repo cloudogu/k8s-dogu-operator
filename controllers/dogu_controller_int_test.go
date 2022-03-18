@@ -5,7 +5,6 @@ package controllers
 
 import (
 	"context"
-	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
@@ -13,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"time"
 )
@@ -22,43 +21,37 @@ var _ = Describe("Dogu Controller", func() {
 
 	const timeout = time.Second * 10
 	const interval = time.Second * 1
-	const doguName = "testdogu"
-	const namespace = "default"
+	ldapCr.Namespace = "default"
+	ldapCr.ResourceVersion = ""
+	doguName := ldapCr.Name
+	namespace := ldapCr.Namespace
 	ctx := context.TODO()
 	doguLookupKey := types.NamespacedName{Name: doguName, Namespace: namespace}
 
-	Context("Handle new dogu resource", func() {
-
+	Context("Handle dogu resource", func() {
 		It("Should install dogu in cluster", func() {
-			newDogu := &k8sv1.Dogu{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "Dogu",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      doguName,
-					Namespace: namespace,
-				},
-				Spec: k8sv1.DoguSpec{Name: doguName, Version: "1.0.0"},
-			}
 
 			ImageRegistryMock = mocks.ImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			DoguRegistryMock = mocks.DoguRegistry{}
-			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(&core.Dogu{
-				Image:   "image",
-				Version: "1.0.0",
-			}, nil)
-			DoguRegistratorMock.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 
 			By("Creating dogu resource")
-			Expect(k8sClient.Create(ctx, newDogu)).Should(Succeed())
+			Expect(k8sClient.Create(ctx, ldapCr)).Should(Succeed())
 
 			By("Expect created dogu")
 			createdDogu := &k8sv1.Dogu{}
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, createdDogu)
-				return err == nil
+				if err != nil {
+					return false
+				}
+				finalizers := createdDogu.Finalizers
+				if len(finalizers) == 1 && finalizers[0] == "dogu-finalizer" {
+					return true
+				}
+				return false
 			}, timeout, interval).Should(BeTrue())
 
 			By("Expect created deployment")
@@ -69,7 +62,7 @@ var _ = Describe("Dogu Controller", func() {
 				if err != nil {
 					return false
 				}
-				return true
+				return verifyOwner(createdDogu.Name, deployment.ObjectMeta)
 			}, timeout, interval).Should(BeTrue())
 			Expect(doguName).To(Equal(deployment.Name))
 			Expect(namespace).To(Equal(deployment.Namespace))
@@ -82,10 +75,46 @@ var _ = Describe("Dogu Controller", func() {
 				if err != nil {
 					return false
 				}
-				return true
+				return verifyOwner(createdDogu.Name, service.ObjectMeta)
 			}, timeout, interval).Should(BeTrue())
 			Expect(doguName).To(Equal(service.Name))
 			Expect(namespace).To(Equal(service.Namespace))
+
+			By("Expect created secret")
+			secret := &corev1.Secret{}
+			secretLookupKey := types.NamespacedName{Name: doguName + "-private", Namespace: namespace}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, secretLookupKey, secret)
+				if err != nil {
+					return false
+				}
+				return verifyOwner(createdDogu.Name, secret.ObjectMeta)
+			}, timeout, interval).Should(BeTrue())
+			Expect(doguName + "-private").To(Equal(secret.Name))
+			Expect(namespace).To(Equal(secret.Namespace))
+
+			By("Expect created pvc")
+			pvc := &corev1.PersistentVolumeClaim{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, doguLookupKey, pvc)
+				if err != nil {
+					return false
+				}
+				return verifyOwner(createdDogu.Name, pvc.ObjectMeta)
+			}, timeout, interval).Should(BeTrue())
+			Expect(doguName).To(Equal(pvc.Name))
+			Expect(namespace).To(Equal(pvc.Namespace))
 		})
 	})
 })
+
+func verifyOwner(name string, obj v1.ObjectMeta) bool {
+	ownerRefs := obj.OwnerReferences
+	if len(ownerRefs) == 1 && ownerRefs[0].Name == name {
+		return true
+	}
+
+	return false
+}
