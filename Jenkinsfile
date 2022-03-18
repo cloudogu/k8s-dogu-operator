@@ -143,6 +143,7 @@ void stageStaticAnalysisSonarQube() {
 void stageAutomaticRelease() {
     if (gitflow.isReleaseBranch()) {
         String releaseVersion = git.getSimpleBranchName()
+        String dockerReleaseVersion = releaseVersion.split("v")[1]
 
         stage('Build & Push Image') {
             withCredentials([usernamePassword(credentialsId: 'cesmarvin',
@@ -153,10 +154,10 @@ void stageAutomaticRelease() {
                         "login ${CES_MARVIN_USERNAME}\n" +
                         "password ${CES_MARVIN_PASSWORD}\" >> ~/.netrc"
             }
-            def dockerImage = docker.build("cloudogu/${repositoryName}:${releaseVersion}")
+            def dockerImage = docker.build("cloudogu/${repositoryName}:${dockerReleaseVersion}")
             sh "rm ~/.netrc"
             docker.withRegistry('https://registry.hub.docker.com/', 'dockerHubCredentials') {
-                dockerImage.push("${releaseVersion}")
+                dockerImage.push("${dockerReleaseVersion}")
             }
         }
 
