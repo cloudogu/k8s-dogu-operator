@@ -155,3 +155,38 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 }
+
+func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		scheme := runtime.NewScheme()
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		doguRegistryMock.Mock.On("Unregister", mock.Anything).Return(nil)
+
+		registrator := NewCESDoguRegistrator(client, registryMock, &ResourceGenerator{})
+
+		err := registrator.UnregisterDogu("ldap")
+		require.NoError(t, err)
+
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
+	})
+
+	t.Run("failed to unregister dogu", func(t *testing.T) {
+		scheme := runtime.NewScheme()
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		doguRegistryMock.Mock.On("Unregister", mock.Anything).Return(errors.New("test"))
+
+		registrator := NewCESDoguRegistrator(client, registryMock, &ResourceGenerator{})
+
+		err := registrator.UnregisterDogu("ldap")
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to unregister dogu")
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
+	})
+}

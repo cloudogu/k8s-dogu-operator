@@ -103,12 +103,10 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	case Upgrade:
 		return ctrl.Result{}, errors.New("not implemented yet")
 	case Delete:
-		controllerutil.RemoveFinalizer(doguResource, finalizerName)
-		err := r.Update(ctx, doguResource)
+		err := r.doguManager.Delete(ctx, doguResource)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update dogu: %w", err)
+			return ctrl.Result{}, fmt.Errorf("failed to delete dogu: %w", err)
 		}
-		logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
 		return ctrl.Result{}, nil
 	case Ignore:
 		return ctrl.Result{}, nil

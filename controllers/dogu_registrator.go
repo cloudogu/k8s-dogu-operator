@@ -61,6 +61,16 @@ func (c *CESDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8s
 	return nil
 }
 
+// UnregisterDogu deletes a dogu from the dogu registry
+func (c *CESDoguRegistrator) UnregisterDogu(dogu string) error {
+	err := c.doguRegistry.Unregister(dogu)
+	if err != nil {
+		return fmt.Errorf("failed to unregister dogu "+dogu+": %w", err)
+	}
+
+	return nil
+}
+
 func (c *CESDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
 	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: "pkcs1v15"})
 	if err != nil {

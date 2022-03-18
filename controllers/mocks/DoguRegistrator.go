@@ -30,3 +30,17 @@ func (_m *DoguRegistrator) RegisterDogu(ctx context.Context, doguResource *v1.Do
 
 	return r0
 }
+
+// UnRegisterDogu provides a mock function with given fields: dogu
+func (_m *DoguRegistrator) UnRegisterDogu(dogu string) error {
+	ret := _m.Called(dogu)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(dogu)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
