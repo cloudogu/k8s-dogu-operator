@@ -63,7 +63,12 @@ func (c *CESDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8s
 
 // UnregisterDogu deletes a dogu from the dogu registry
 func (c *CESDoguRegistrator) UnregisterDogu(dogu string) error {
-	err := c.doguRegistry.Unregister(dogu)
+	err := c.registry.DoguConfig(dogu).RemoveAll()
+	if err != nil {
+		return fmt.Errorf("failed to remove dogu config: %w", err)
+	}
+
+	err = c.doguRegistry.Unregister(dogu)
 	if err != nil {
 		return fmt.Errorf("failed to unregister dogu "+dogu+": %w", err)
 	}

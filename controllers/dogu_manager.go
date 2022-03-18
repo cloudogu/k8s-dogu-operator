@@ -46,7 +46,7 @@ type ImageRegistry interface {
 // DoguRegistrator is used to register dogus
 type DoguRegistrator interface {
 	RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
-	UnRegisterDogu(dogu string) error
+	UnregisterDogu(dogu string) error
 }
 
 // NewDoguManager creates a new instance of DoguManager
@@ -145,7 +145,7 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 	logger := log.FromContext(ctx)
 
 	logger.Info("Unregister dogu...")
-	err := m.doguRegistrator.UnRegisterDogu(doguResource.Name)
+	err := m.doguRegistrator.UnregisterDogu(doguResource.Name)
 	if err != nil {
 		return fmt.Errorf("failed to unregister dogu: %w", err)
 	}

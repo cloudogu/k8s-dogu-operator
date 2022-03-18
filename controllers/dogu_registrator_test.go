@@ -157,12 +157,17 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 }
 
 func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
+	testErr := errors.New("test")
+
 	t.Run("success", func(t *testing.T) {
 		scheme := runtime.NewScheme()
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registryMock := &cesmocks.Registry{}
+		doguConfigMock := &cesmocks.ConfigurationContext{}
 		doguRegistryMock := &cesmocks.DoguRegistry{}
+		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		doguConfigMock.Mock.On("RemoveAll").Return(nil)
 		doguRegistryMock.Mock.On("Unregister", mock.Anything).Return(nil)
 
 		registrator := NewCESDoguRegistrator(client, registryMock, &ResourceGenerator{})
@@ -173,13 +178,35 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 
+	t.Run("failed to remove dogu config", func(t *testing.T) {
+		scheme := runtime.NewScheme()
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		registryMock := &cesmocks.Registry{}
+		doguConfigMock := &cesmocks.ConfigurationContext{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		doguConfigMock.Mock.On("RemoveAll").Return(testErr)
+
+		registrator := NewCESDoguRegistrator(client, registryMock, &ResourceGenerator{})
+
+		err := registrator.UnregisterDogu("ldap")
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to remove dogu config")
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
+	})
+
 	t.Run("failed to unregister dogu", func(t *testing.T) {
 		scheme := runtime.NewScheme()
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registryMock := &cesmocks.Registry{}
+		doguConfigMock := &cesmocks.ConfigurationContext{}
 		doguRegistryMock := &cesmocks.DoguRegistry{}
+		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		doguRegistryMock.Mock.On("Unregister", mock.Anything).Return(errors.New("test"))
+		doguConfigMock.Mock.On("RemoveAll").Return(nil)
+		doguRegistryMock.Mock.On("Unregister", mock.Anything).Return(testErr)
 
 		registrator := NewCESDoguRegistrator(client, registryMock, &ResourceGenerator{})
 
@@ -187,6 +214,6 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		require.Error(t, err)
 
 		assert.Contains(t, err.Error(), "failed to unregister dogu")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 }
