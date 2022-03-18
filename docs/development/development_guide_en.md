@@ -5,7 +5,7 @@
 1. Follow the deployment instructions of k8s-ecosystem
 2. Edit your `/etc/hosts` and add a mapping from localhost to etcd
     - `127.0.0.1       localhost etcd etcd.ecosystem.svc.cluster.local`
-3. port-forward to etcd
+3. port-forward to etcd (process blocks and should execute in a new terminal)
 ```bash
  kubectl port-forward -n=ecosystem etcd-0 4001:2379
 ```

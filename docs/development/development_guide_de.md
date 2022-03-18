@@ -5,7 +5,7 @@
 1. Befolgen Sie die Installationsanweisungen von k8s-ecosystem
 2. Bearbeiten Sie Ihre `/etc/hosts` und fügen Sie ein Mapping von localhost zu etcd hinzu
    - `127.0.0.1       localhost etcd etcd.ecosystem.svc.cluster.local`
-3. port-forward zu etcd
+3. port-forward zu etcd (Prozess blockiert und sollte in einem neuen Terminal ausgeführt werden)
     ```bash
     kubectl port-forward -n=ecosystem etcd-0 4001:2379
     ```

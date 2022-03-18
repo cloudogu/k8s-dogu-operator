@@ -1,0 +1,10 @@
+{
+  "metadata": {
+    "name": "ldap",
+    "namespace": "clusterns"
+  },
+  "spec": {
+    "name": "official/ldap",
+    "version": "2.4.48-4"
+  }
+}
