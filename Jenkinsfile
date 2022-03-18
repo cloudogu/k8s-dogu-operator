@@ -145,8 +145,16 @@ void stageAutomaticRelease() {
         String releaseVersion = git.getSimpleBranchName()
 
         stage('Build & Push Image') {
+            withCredentials([usernamePassword(credentialsId: 'cesmarvin',
+                    passwordVariable: 'CES_MARVIN_PASSWORD',
+                    usernameVariable: 'CES_MARVIN_USERNAME')]) {
+                // .netrc is necessary to access private repos
+                sh "echo \"machine github.com\n" +
+                        "login ${CES_MARVIN_USERNAME}\n" +
+                        "password ${CES_MARVIN_PASSWORD}\" >> ~/.netrc"
+            }
             def dockerImage = docker.build("cloudogu/${repositoryName}:${releaseVersion}")
-
+            sh "rm ~/.netrc"
             docker.withRegistry('https://registry.hub.docker.com/', 'dockerHubCredentials') {
                 dockerImage.push("${releaseVersion}")
             }
