@@ -169,7 +169,7 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 	}
 
 	for exposedPort := range imageConfig.Config.ExposedPorts {
-		port, protocol, err := splitPortConfig(exposedPort)
+		port, protocol, err := SplitImagePortConfig(exposedPort)
 		if err != nil {
 			return service, fmt.Errorf("error splitting port config: %w", err)
 		}
@@ -190,7 +190,7 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 	return service, nil
 }
 
-func splitPortConfig(exposedPort string) (int32, corev1.Protocol, error) {
+func SplitImagePortConfig(exposedPort string) (int32, corev1.Protocol, error) {
 	portAndPotentiallyProtocol := strings.Split(exposedPort, "/")
 
 	port, err := strconv.Atoi(portAndPotentiallyProtocol[0])
