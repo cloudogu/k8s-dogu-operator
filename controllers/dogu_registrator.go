@@ -117,7 +117,7 @@ func (c *CESDoguRegistrator) writePublicKey(publicKey *keys.PublicKey, dogu *cor
 	if err != nil {
 		return fmt.Errorf("failed to get public key as string: %w", err)
 	}
-	err = c.registry.DoguConfig(dogu.Name).Set(cesregistry.KeyDoguPublicKey, public)
+	err = c.registry.DoguConfig(dogu.GetSimpleName()).Set(cesregistry.KeyDoguPublicKey, public)
 	if err != nil {
 		return fmt.Errorf("failed to write to registry: %w", err)
 	}
