@@ -1,6 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=0.0.0
+VERSION=0.1.0
 GOTAG?=1.17.7
 # Image URL to use all building/pushing image targets
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}

@@ -5,9 +5,13 @@ WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
+
+# set auth credentials via .netrc for private cesapp repository
+COPY .netrc /root/.netrc
+
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
-RUN go mod download
+RUN GOPRIVATE=github.com/cloudogu/cesapp/v4 go mod download
 
 # Copy the go source
 COPY main.go main.go
@@ -22,7 +26,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -a -o k8s-do
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="0.0.0"
+      VERSION="0.1.0"
 
 WORKDIR /
 COPY --from=builder /workspace/k8s-dogu-operator .
