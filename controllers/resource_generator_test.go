@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,6 +85,9 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 				Name:      "ldap",
 				Namespace: "clusterns",
 				Labels:    map[string]string{"app": cesLabel, "dogu": "ldap"},
+				Annotations: map[string]string{
+					annotation.CesServicesAnnotation: "[{\"name\":\"ldap\",\"port\":80,\"location\":\"/ldap\",\"pass\":\"/ldap\"}]",
+				},
 				OwnerReferences: []metav1.OwnerReference{{
 					APIVersion:         "k8s.cloudogu.com/v1",
 					Kind:               "Dogu",

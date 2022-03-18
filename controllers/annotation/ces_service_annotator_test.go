@@ -23,7 +23,7 @@ func getTestFileMap(t *testing.T) map[string]string {
 
 	testdataDir := "./testdata"
 	err := filepath.Walk(testdataDir, func(path string, info os.FileInfo, err error) error {
-		if strings.Contains(info.Name(), ".json") {
+		if strings.HasPrefix(info.Name(), "test_") && strings.Contains(info.Name(), ".json") {
 			expectedServiceFile := strings.Replace(info.Name(), ".json", "_expected.yaml", 1)
 			testFilePath := fmt.Sprintf("%s/%s", testdataDir, info.Name())
 			expectedServiceFilePath := fmt.Sprintf("%s/%s", testdataDir, expectedServiceFile)
@@ -133,5 +133,23 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "environment variable [SERVICE_TAGS-invalidEnvironmentVariable] needs to be in form NAME=VALUE")
+	})
+
+	t.Run("Annotating fails with invalid json in additional services", func(t *testing.T) {
+		// given
+		config := &imagev1.Config{
+			Env: []string{
+				"SERVICE_ADDITIONAL_SERVICES='\"name\": \"docker-registry\", \"location\": \"v2\", \"pass\": \"nexus/repository/docker-registry/v2/\"}]'",
+			},
+		}
+		service := &corev1.Service{}
+		annotator := annotation.CesServiceAnnotator{}
+
+		// when
+		err := annotator.AnnotateService(service, config)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to unmarshal additional services: invalid character '\\'' looking for beginning of value")
 	})
 }

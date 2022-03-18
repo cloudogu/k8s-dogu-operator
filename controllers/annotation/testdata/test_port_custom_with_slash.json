@@ -6,6 +6,6 @@
     "SERVICE_80_PASS": "/serviceName/api/v2"
   },
   "ExposedPorts": {
-    "80/tcp": {}
+    "80": {}
   }
 }

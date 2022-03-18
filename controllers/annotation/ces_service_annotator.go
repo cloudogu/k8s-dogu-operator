@@ -3,10 +3,10 @@ package annotation
 import (
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/json"
+	"strconv"
 	"strings"
 )
 
@@ -17,11 +17,12 @@ const (
 	// serviceVarsPrefix defines the prefix for all service variables used to customize the service for the ecosystem
 	serviceVarsPrefix = "SERVICE_"
 
-	serviceVarName     = "NAME"
-	serviceVarLocation = "LOCATION"
-	serviceVarPass     = "PASS"
-	serviceVarTags     = "TAGS"
-	serviceTagWebapp   = "webapp"
+	serviceAdditionalServices = "ADDITIONAL_SERVICES"
+	serviceVarName            = "NAME"
+	serviceVarLocation        = "LOCATION"
+	serviceVarPass            = "PASS"
+	serviceVarTags            = "TAGS"
+	serviceTagWebapp          = "webapp"
 )
 
 // CesService describes a reachable service in the ecosystem.
@@ -139,7 +140,7 @@ func createCesServices(service *corev1.Service, config *imagev1.Config, serviceV
 	}
 	cesServices = append(cesServices, webAppServices...)
 
-	additionalServices, err := createAdditionalCesServices(service, serviceVariables)
+	additionalServices, err := createAdditionalCesServices(serviceVariables)
 	if err != nil {
 		return []CesService{}, fmt.Errorf("failed to create additional ces services: %w", err)
 	}
@@ -156,7 +157,7 @@ func createWebAppCesServices(service *corev1.Service, config *imagev1.Config, se
 			webAppServices = []CesService{}
 		}
 
-		port, protocol, err := controllers.SplitImagePortConfig(exposedPort)
+		port, protocol, err := SplitImagePortConfig(exposedPort)
 		if err != nil {
 			return []CesService{}, fmt.Errorf("error splitting port config: %w", err)
 		}
@@ -267,9 +268,45 @@ func getValueFromServiceVariables(serviceVariables map[string]string, port int32
 	return value
 }
 
-func createAdditionalCesServices(service *corev1.Service, serviceVariables map[string]string) ([]CesService, error) {
-	additionalCesService := []CesService{}
+func createAdditionalCesServices(serviceVariables map[string]string) ([]CesService, error) {
+	additionalCesServicesString, hasAdditionalServices := serviceVariables[serviceAdditionalServices]
 
-	return additionalCesService, nil
+	if hasAdditionalServices {
+		var additionalCesServices []CesService
+		err := json.Unmarshal([]byte(additionalCesServicesString), &additionalCesServices)
+		if err != nil {
+			return []CesService{}, fmt.Errorf("failed to unmarshal additional services: %w", err)
+		}
 
+		for i, service := range additionalCesServices {
+			// location should always contain a leading slash
+			if !strings.HasPrefix(service.Location, "/") {
+				additionalCesServices[i].Location = fmt.Sprintf("/%s", service.Location)
+			}
+
+			// pass should always contain a leading slash
+			if !strings.HasPrefix(service.Pass, "/") {
+				additionalCesServices[i].Pass = fmt.Sprintf("/%s", service.Pass)
+			}
+		}
+
+		return additionalCesServices, nil
+	}
+
+	return []CesService{}, nil
+}
+
+func SplitImagePortConfig(exposedPort string) (int32, corev1.Protocol, error) {
+	portAndPotentiallyProtocol := strings.Split(exposedPort, "/")
+
+	port, err := strconv.Atoi(portAndPotentiallyProtocol[0])
+	if err != nil {
+		return 0, "", fmt.Errorf("error parsing int: %w", err)
+	}
+
+	if len(portAndPotentiallyProtocol) == 2 {
+		return int32(port), corev1.Protocol(strings.ToUpper(portAndPotentiallyProtocol[1])), nil
+	}
+
+	return int32(port), corev1.ProtocolTCP, nil
 }
