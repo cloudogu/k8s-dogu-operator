@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -49,8 +48,6 @@ func getImageConfigFromTestFile(t *testing.T, fileName string) *imagev1.Config {
 	data, err := os.ReadFile(fileName)
 	require.NoError(t, err)
 
-	logrus.Printf("%s", string(data))
-
 	var config imagev1.Config
 	err = json.Unmarshal(data, &config)
 	require.NoError(t, err)
@@ -65,8 +62,6 @@ func getExpectedService(t *testing.T, fileName string) *corev1.Service {
 
 	data, err := os.ReadFile(fileName)
 	require.NoError(t, err)
-
-	logrus.Printf("%s", string(data))
 
 	var service corev1.Service
 	err = yaml.Unmarshal(data, &service)

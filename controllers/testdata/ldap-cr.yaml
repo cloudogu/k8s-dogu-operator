@@ -1,4 +1,4 @@
-apiVersion: dogu.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: ldap
