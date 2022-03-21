@@ -63,15 +63,6 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 	}
 }
 
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/finalizers,verbs=create;update;delete
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=persistentvolumes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
-
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
