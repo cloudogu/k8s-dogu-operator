@@ -19,5 +19,4 @@ func Test_getWatchNamespace(t *testing.T) {
 		_, err := getWatchNamespace()
 		require.Error(t, err)
 	})
-
 }
