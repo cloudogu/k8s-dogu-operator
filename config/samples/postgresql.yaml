@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: postgresql
+  annotations:
+    test: dev
+  labels:
+    dogu: postgresql
+    app: ces
+spec:
+  name: official/postgresql
+  version: 12.9-1
