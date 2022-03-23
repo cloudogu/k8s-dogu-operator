@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,7 +41,7 @@ type DoguResourceGenerator interface {
 
 // ImageRegistry is used to pull container images
 type ImageRegistry interface {
-	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
+	PullImage(ctx context.Context, image string) (v1.Image, error)
 }
 
 // DoguRegistrator is used to register dogus
@@ -78,10 +79,16 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to register dogu: %w", err)
 	}
 
-	logger.Info("Pull image config...")
-	imageConfig, err := m.imageRegistry.PullImageConfig(ctx, dogu.Image+":"+dogu.Version)
+	logger.Info("Pull image...")
+	image, err := m.imageRegistry.PullImage(ctx, dogu.Image+":"+dogu.Version)
 	if err != nil {
-		return fmt.Errorf("failed to pull image config: %w", err)
+		return fmt.Errorf("failed to pull image: %w", err)
+	}
+
+	logger.Info("Get image config from image...")
+	imageConfig, err := image.ConfigFile()
+	if err != nil {
+		return fmt.Errorf("failed to get image config: %w", err)
 	}
 
 	logger.Info("Create dogu resources...")
@@ -137,6 +144,7 @@ func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv
 		return fmt.Errorf("failed to create dogu service: %w", err)
 	}
 	logger.Info(fmt.Sprintf("Service %s/%s has been : %s", desiredService.Namespace, desiredService.Name, controllerutil.OperationResultCreated))
+
 	return nil
 }
 
