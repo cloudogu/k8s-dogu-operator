@@ -82,12 +82,16 @@ func main() {
 		exiter.Exit(err)
 	}
 
-	configureReconciler(k8sManager)
+	configureManager(k8sManager, exiter)
+
+	startK8sManager(k8sManager, exiter)
+}
+
+func configureManager(k8sManager manager.Manager, exister applicationExiter) {
+	configureReconciler(k8sManager, exister)
 
 	//+kubebuilder:scaffold:builder
-	addChecks(k8sManager)
-
-	startK8sManager(k8sManager)
+	addChecks(k8sManager, exister)
 }
 
 func getK8sManagerOptions(exiter applicationExiter) manager.Options {
@@ -127,19 +131,19 @@ func configureLogger() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 }
 
-func startK8sManager(k8sManager manager.Manager) {
+func startK8sManager(k8sManager manager.Manager, exiter applicationExiter) {
 	setupLog.Info("starting manager")
 	if err := k8sManager.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 }
 
-func configureReconciler(k8sManager manager.Manager) {
+func configureReconciler(k8sManager manager.Manager, exiter applicationExiter) {
 	doguManager := createDoguManager(k8sManager)
 	if err := (controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager)).SetupWithManager(k8sManager); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 }
 
@@ -161,14 +165,14 @@ func createDoguManager(k8sManager manager.Manager) *controllers.DoguManager {
 	return controllers.NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
 }
 
-func addChecks(mgr manager.Manager) {
+func addChecks(mgr manager.Manager, exiter applicationExiter) {
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 }
 
