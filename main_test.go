@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/mocks"
 	"github.com/go-logr/logr"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
@@ -28,6 +30,7 @@ func (e *mockExiter) Exit(err error) {
 var testErr = errors.New("test")
 
 func Test_getK8sManagerOptions(t *testing.T) {
+
 	t.Run("success", func(t *testing.T) {
 		exiter := &mockExiter{}
 		t.Setenv("WATCH_NAMESPACE", "default")
@@ -38,6 +41,9 @@ func Test_getK8sManagerOptions(t *testing.T) {
 	})
 
 	t.Run("fail to get env var", func(t *testing.T) {
+		// Skip error on redefining flags
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+
 		exiter := &mockExiter{}
 
 		getK8sManagerOptions(exiter)
