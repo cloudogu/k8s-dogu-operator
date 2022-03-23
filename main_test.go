@@ -133,3 +133,23 @@ func Test_addChecks(t *testing.T) {
 		assert.Error(t, exiter.Error)
 	})
 }
+
+func Test_configureLogger(t *testing.T) {
+	t.Run("configure logger with log mode env var", func(t *testing.T) {
+		exiter := &mockExiter{}
+		t.Setenv("LOG_MODE", "true")
+
+		configureLogger(exiter)
+
+		assert.Nil(t, exiter.Error)
+	})
+
+	t.Run("error configure logger with invalid env var", func(t *testing.T) {
+		exiter := &mockExiter{}
+		t.Setenv("LOG_MODE", "invalid")
+
+		configureLogger(exiter)
+
+		assert.Error(t, exiter.Error)
+	})
+}
