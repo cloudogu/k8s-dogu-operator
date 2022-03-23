@@ -1,3 +1,5 @@
+##@ Compiling go software
+
 ADDITIONAL_LDFLAGS?=-extldflags -static
 LDFLAGS?=-ldflags "$(ADDITIONAL_LDFLAGS) -X main.Version=$(VERSION) -X main.CommitID=$(COMMIT_ID)"
 GOIMAGE?=golang
@@ -10,9 +12,9 @@ CUSTOM_GO_MOUNT?=-v /tmp:/tmp
 GO_BUILD_FLAGS?=-mod=vendor -a -tags netgo $(LDFLAGS) -installsuffix cgo -o $(BINARY)
 
 .PHONY: compile
-compile: $(BINARY)
+compile: $(BINARY) ## Compile the go program via Docker
 
-compile-ci:
+compile-ci: ## Compile the go program without Docker
 	@echo "Compiling (CI)..."
 	make compile-generic
 

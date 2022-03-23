@@ -1,7 +1,9 @@
+##@ Digital signatures
+
 CHECKSUM=$(TARGET_DIR)/$(ARTIFACT_ID).sha256sum
 
 .PHONY: checksum
-checksum: $(CHECKSUM)
+checksum: $(CHECKSUM) ## Generate checksums
 # we have to depend on target dir, because we want to rebuild the checksum
 # if one of the artefacts was changed
 $(CHECKSUM): $(TARGET_DIR)
@@ -11,7 +13,7 @@ $(CHECKSUM): $(TARGET_DIR)
 SIGNATURE=$(CHECKSUM).asc
 
 .PHONY: signature
-signature: $(SIGNATURE)
+signature: $(SIGNATURE) ## Generate signature
 $(SIGNATURE): $(CHECKSUM)
 	@echo "Generating Signature"
 	@gpg --batch --yes --detach-sign --armor -o $@ $<
