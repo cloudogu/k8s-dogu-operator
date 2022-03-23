@@ -73,7 +73,7 @@ func TestDoguManager_Install(t *testing.T) {
 	// fake k8sClient
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("successfully install a dogu", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
@@ -198,7 +198,7 @@ func TestDoguManager_Delete(t *testing.T) {
 	testErr := errors.New("test")
 	ldapCr.ResourceVersion = ""
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("successfully delete a dogu", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}

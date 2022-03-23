@@ -23,6 +23,7 @@ import (
 	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -48,6 +49,11 @@ var (
 	metricsAddr          string
 	enableLeaderElection bool
 	probeAddr            string
+	// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
+	// which specifies the Namespace to watch.
+	// An empty value means the operator is running with cluster scope.
+	watchNamespaceEnvVar = "WATCH_NAMESPACE"
+	logModeEnvVar        = "LOG_MODE"
 )
 
 // applicationExiter is responsible for exiting the application correctly.
@@ -101,9 +107,9 @@ func getK8sManagerOptions(exiter applicationExiter) manager.Options {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 
-	configureLogger()
+	configureLogger(exiter)
 
-	watchNamespace, err := getWatchNamespace()
+	watchNamespace, err := getEnvVar(watchNamespaceEnvVar)
 	if err != nil {
 		exiter.Exit(err)
 	}
@@ -121,9 +127,19 @@ func getK8sManagerOptions(exiter applicationExiter) manager.Options {
 	return options
 }
 
-func configureLogger() {
+func configureLogger(exiter applicationExiter) {
+	logMode := false
+	logModeEnv, err := getEnvVar(logModeEnvVar)
+
+	if err == nil {
+		logMode, err = strconv.ParseBool(logModeEnv)
+		if err != nil {
+			exiter.Exit(err)
+		}
+	}
+
 	opts := zap.Options{
-		Development: true,
+		Development: logMode,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -176,16 +192,11 @@ func addChecks(mgr manager.Manager, exiter applicationExiter) {
 	}
 }
 
-// getWatchNamespace returns the namespace the operator should be watching for changes
-func getWatchNamespace() (string, error) {
-	// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
-	// which specifies the Namespace to watch.
-	// An empty value means the operator is running with cluster scope.
-	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
-
-	ns, found := os.LookupEnv(watchNamespaceEnvVar)
+// getEnvVar returns the namespace the operator should be watching for changes
+func getEnvVar(name string) (string, error) {
+	ns, found := os.LookupEnv(name)
 	if !found {
-		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
+		return "", fmt.Errorf("%s must be set", name)
 	}
 	return ns, nil
 }

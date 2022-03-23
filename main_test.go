@@ -31,7 +31,7 @@ var testErr = errors.New("test")
 
 func Test_getK8sManagerOptions(t *testing.T) {
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("successfully get k8s manager options", func(t *testing.T) {
 		exiter := &mockExiter{}
 		t.Setenv("WATCH_NAMESPACE", "default")
 
@@ -53,7 +53,7 @@ func Test_getK8sManagerOptions(t *testing.T) {
 }
 
 func Test_configureManager(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+	t.Run("successfully configure manager", func(t *testing.T) {
 		exiter := &mockExiter{}
 		k8sManager := &mocks.Manager{}
 		scheme := runtime.NewScheme()

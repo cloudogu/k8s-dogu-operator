@@ -120,7 +120,7 @@ var _ = Describe("Dogu Controller", func() {
 	})
 })
 
-// VerifyOwner checks if the objectmetadata has a specific owner. This Method should be used to verify that a dogu is
+// verifyOwner checks if the objectmetadata has a specific owner. This method should be used to verify that a dogu is
 // the owner of every related resource. This replaces an integration test for the deletion of dogu related resources.
 // In a real cluster resources without an owner will be garbage collected. In this environment the resources still exist
 // after dogu deletion
