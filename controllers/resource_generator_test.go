@@ -50,8 +50,8 @@ var expectedServiceBytes []byte
 var expectedService = &corev1.Service{}
 
 //go:embed testdata/ldap_expectedExposedServices.yaml
-var expectedExposedServiceBytes []byte
-var expectedExposedService = &corev1.Service{}
+var expectedExposedServicesBytes []byte
+var expectedExposedServices = &[]corev1.Service{}
 
 func init() {
 	err := json.Unmarshal(ldapBytes, ldapDogu)
@@ -89,7 +89,7 @@ func init() {
 		panic(err)
 	}
 
-	err = yaml.Unmarshal(expectedExposedServiceBytes, expectedExposedService)
+	err = yaml.Unmarshal(expectedExposedServicesBytes, expectedExposedServices)
 	if err != nil {
 		panic(err)
 	}
@@ -170,19 +170,20 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 		}
 
 		// when
-		actualExposedServices, err := generator.GetDoguExposedService(ldapDoguResource, dogu)
+		actualExposedServices, err := generator.GetDoguExposedServices(ldapDoguResource, dogu)
 
-		assert.ErrorIs(t, err, controllers.ErrorExposedServiceNoPorts)
-		assert.Nil(t, actualExposedServices)
+		assert.NoError(t, err)
+		assert.Len(t, actualExposedServices, 0)
 	})
 
 	t.Run("Return all exposed services when given dogu json contains multiple exposed ports", func(t *testing.T) {
 		// when
-		actualExposedServices, err := generator.GetDoguExposedService(ldapDoguResource, ldapDogu)
+		actualExposedServices, err := generator.GetDoguExposedServices(ldapDoguResource, ldapDogu)
 
+		// then
 		assert.NoError(t, err)
-		assert.Len(t, actualExposedServices.Spec.Ports, 2)
-		assert.Equal(t, expectedExposedService, actualExposedServices)
+		assert.Len(t, actualExposedServices, 2)
+		assert.Equal(t, *expectedExposedServices, actualExposedServices)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
@@ -193,7 +194,7 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
 		// when
-		_, err := generator.GetDoguExposedService(ldapDoguResource, ldapDogu)
+		_, err := generator.GetDoguExposedServices(ldapDoguResource, ldapDogu)
 
 		// then
 		require.Error(t, err)

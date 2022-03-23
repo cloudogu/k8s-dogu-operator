@@ -54,7 +54,7 @@
       "Container": 2222
     },
     {
-      "Type": "udp",
+      "Type": "tcp",
       "Host": 8888,
       "Container": 8888
     }

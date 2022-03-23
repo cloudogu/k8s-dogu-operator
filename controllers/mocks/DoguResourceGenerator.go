@@ -44,16 +44,16 @@ func (_m *DoguResourceGenerator) GetDoguDeployment(doguResource *v1.Dogu, dogu *
 	return r0, r1
 }
 
-// GetDoguExposedService provides a mock function with given fields: doguResource, dogu
-func (_m *DoguResourceGenerator) GetDoguExposedService(doguResource *v1.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
+// GetDoguExposedServices provides a mock function with given fields: doguResource, dogu
+func (_m *DoguResourceGenerator) GetDoguExposedServices(doguResource *v1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
 	ret := _m.Called(doguResource, dogu)
 
-	var r0 *corev1.Service
-	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) *corev1.Service); ok {
+	var r0 []corev1.Service
+	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) []corev1.Service); ok {
 		r0 = rf(doguResource, dogu)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*corev1.Service)
+			r0 = ret.Get(0).([]corev1.Service)
 		}
 	}
 

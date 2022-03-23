@@ -38,15 +38,6 @@ var ImageRegistryMock mocks.ImageRegistry
 // Used in controller integration test
 var DoguRegistryMock mocks.DoguRegistry
 
-// Used in controller integration test
-var DoguRegistratorMock mocks.DoguRegistrator
-
-//Used in controller integration test
-var CesRegistryMock cesmocks.Registry
-
-//Used in controller integration test
-var EtcdDoguRegistry cesmocks.DoguRegistry
-
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -80,7 +71,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	resourceGenerator := NewResourceGenerator(k8sManager.GetScheme())
+	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
 	CesRegistryMock := cesmocks.Registry{}
 	EtcdDoguRegistry := &cesmocks.DoguRegistry{}
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
@@ -92,8 +83,8 @@ var _ = BeforeSuite(func() {
 	CesRegistryMock.Mock.On("DoguRegistry").Return(EtcdDoguRegistry)
 	CesRegistryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 
-	doguRegistrator := NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
-	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator)
+	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
+	doguManager := controllers.NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator)
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())

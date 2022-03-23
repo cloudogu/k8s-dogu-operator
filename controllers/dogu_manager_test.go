@@ -190,7 +190,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 func TestDoguManager_Delete(t *testing.T) {
 	scheme := runtime.NewScheme()
-	resourceGenerator := *NewResourceGenerator(scheme)
+	resourceGenerator := *controllers.NewResourceGenerator(scheme)
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "dogu.cloudogu.com",
 		Version: "v1",
@@ -206,7 +206,7 @@ func TestDoguManager_Delete(t *testing.T) {
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything).Return(nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+		doguManager := controllers.NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 		ctx := context.TODO()
 
 		_ = client.Create(ctx, ldapCr)
@@ -223,7 +223,7 @@ func TestDoguManager_Delete(t *testing.T) {
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testErr)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+		doguManager := controllers.NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 		_ = client.Create(context.TODO(), ldapCr)
 
 		err := doguManager.Delete(context.TODO(), ldapCr)
@@ -239,7 +239,7 @@ func TestDoguManager_Delete(t *testing.T) {
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+		doguManager := controllers.NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 
 		err := doguManager.Delete(context.TODO(), ldapCr)
 		require.Error(t, err)
