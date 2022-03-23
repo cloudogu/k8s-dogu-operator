@@ -25,6 +25,8 @@ func (e *mockExiter) Exit(err error) {
 	e.Error = err
 }
 
+var testErr = errors.New("test")
+
 func Test_getK8sManagerOptions(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		exiter := &mockExiter{}
@@ -33,6 +35,14 @@ func Test_getK8sManagerOptions(t *testing.T) {
 		getK8sManagerOptions(exiter)
 
 		assert.Nil(t, exiter.Error)
+	})
+
+	t.Run("fail to get env var", func(t *testing.T) {
+		exiter := &mockExiter{}
+
+		getK8sManagerOptions(exiter)
+
+		assert.Error(t, exiter.Error)
 	})
 }
 
@@ -86,9 +96,33 @@ func Test_startK8sManager(t *testing.T) {
 	t.Run("failed to start", func(t *testing.T) {
 		exiter := &mockExiter{}
 		k8sManager := &mocks.Manager{}
-		k8sManager.Mock.On("Start", mock.Anything).Return(errors.New("test"))
+		k8sManager.Mock.On("Start", mock.Anything).Return(testErr)
 
 		startK8sManager(k8sManager, exiter)
+
+		assert.Error(t, exiter.Error)
+	})
+}
+
+func Test_addChecks(t *testing.T) {
+	t.Run("fail to add health check", func(t *testing.T) {
+		exiter := &mockExiter{}
+		k8sManager := &mocks.Manager{}
+		k8sManager.Mock.On("AddHealthzCheck", mock.Anything, mock.Anything).Return(testErr)
+		k8sManager.Mock.On("AddReadyzCheck", mock.Anything, mock.Anything).Return(nil)
+
+		addChecks(k8sManager, exiter)
+
+		assert.Error(t, exiter.Error)
+	})
+
+	t.Run("fail to add ready check", func(t *testing.T) {
+		exiter := &mockExiter{}
+		k8sManager := &mocks.Manager{}
+		k8sManager.Mock.On("AddHealthzCheck", mock.Anything, mock.Anything).Return(nil)
+		k8sManager.Mock.On("AddReadyzCheck", mock.Anything, mock.Anything).Return(testErr)
+
+		addChecks(k8sManager, exiter)
 
 		assert.Error(t, exiter.Error)
 	})
