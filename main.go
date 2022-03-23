@@ -22,6 +22,7 @@ import (
 	"github.com/cloudogu/cesapp/v4/core"
 	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -40,11 +41,29 @@ import (
 )
 
 var (
-	scheme           = runtime.NewScheme()
-	setupLog         = ctrl.Log.WithName("setup")
-	registryUsername = os.Getenv("CES_REGISTRY_USER")
-	registryPassword = os.Getenv("CES_REGISTRY_PASS")
+	scheme               = runtime.NewScheme()
+	setupLog             = ctrl.Log.WithName("setup")
+	registryUsername     = os.Getenv("CES_REGISTRY_USER")
+	registryPassword     = os.Getenv("CES_REGISTRY_PASS")
+	metricsAddr          string
+	enableLeaderElection bool
+	probeAddr            string
 )
+
+// applicationExiter is responsible for exiting the application correctly.
+type applicationExiter interface {
+	// Exit exits the application and prints the actuator error to the console.
+	Exit(err error)
+}
+
+type osExiter struct {
+}
+
+// Exit prints the actual error to stout and exits the application properly.
+func (e *osExiter) Exit(err error) {
+	setupLog.Error(err, "exiting dogu operator because of error")
+	os.Exit(1)
+}
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -54,29 +73,38 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
+	exiter := &osExiter{}
+	options := getK8sManagerOptions(exiter)
+
+	k8sManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		exiter.Exit(err)
+	}
+
+	configureReconciler(k8sManager)
+
+	//+kubebuilder:scaffold:builder
+	addChecks(k8sManager)
+
+	startK8sManager(k8sManager)
+}
+
+func getK8sManagerOptions(exiter applicationExiter) manager.Options {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	opts := zap.Options{
-		Development: true,
-	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	configureLogger()
 
 	watchNamespace, err := getWatchNamespace()
 	if err != nil {
-		setupLog.Error(err, "env var WATCH_NAMESPACE is not set")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	options := ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
@@ -84,15 +112,41 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "951e217a.cloudogu.com",
-	})
-	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
 	}
 
+	return options
+}
+
+func configureLogger() {
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+}
+
+func startK8sManager(k8sManager manager.Manager) {
+	setupLog.Info("starting manager")
+	if err := k8sManager.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+func configureReconciler(k8sManager manager.Manager) {
+	doguManager := createDoguManager(k8sManager)
+	if err := (controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager)).SetupWithManager(k8sManager); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
+		os.Exit(1)
+	}
+}
+
+func createDoguManager(k8sManager manager.Manager) *controllers.DoguManager {
 	doguRegistry := controllers.NewHTTPDoguRegistry(registryUsername, registryPassword, "https://dogu.cloudogu.com/api/v2/dogus")
 	imageRegistry := controllers.NewCraneContainerImageRegistry(registryUsername, registryPassword)
-	resourceGenerator := controllers.NewResourceGenerator(mgr.GetScheme())
+	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
 	registry, err := cesregistry.New(core.Registry{
 		Type:      "etcd",
 		Endpoints: []string{"http://etcd.ecosystem.svc.cluster.local:4001"},
@@ -103,15 +157,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	doguRegistrator := controllers.NewCESDoguRegistrator(mgr.GetClient(), registry, resourceGenerator)
-	doguManager := controllers.NewDoguManager(mgr.GetClient(), mgr.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), registry, resourceGenerator)
+	return controllers.NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+}
 
-	if err = (controllers.NewDoguReconciler(mgr.GetClient(), mgr.GetScheme(), *doguManager)).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
-		os.Exit(1)
-	}
-	//+kubebuilder:scaffold:builder
-
+func addChecks(mgr manager.Manager) {
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
@@ -120,13 +170,6 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
-
 }
 
 // getWatchNamespace returns the namespace the operator should be watching for changes
