@@ -1,0 +1,27 @@
+metadata:
+  annotations:
+    k8s-dogu-operator.cloudogu.com/ces-services: '[{"name":"ldap","port":80,"location":"/ldap","pass":"/ldap"}]'
+  creationTimestamp: null
+  labels:
+    app: ces
+    dogu: ldap
+  name: ldap
+  namespace: clusterns
+  ownerReferences:
+  - apiVersion: k8s.cloudogu.com/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Dogu
+    name: ldap
+    uid: ""
+spec:
+  ports:
+  - name: "80"
+    port: 80
+    protocol: TCP
+    targetPort: 0
+  selector:
+    dogu: ldap
+  type: ClusterIP
+status:
+  loadBalancer: {}

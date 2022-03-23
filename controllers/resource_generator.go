@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -18,6 +19,10 @@ import (
 )
 
 const nodeMasterFile = "node-master-file"
+
+// ErrorExposedServiceNoPorts defines the state that a dogu does not contain any exposed ports, and, thus, makes
+// the resource generator incapable of generating an exposed service.
+var ErrorExposedServiceNoPorts = errors.New("failed to create exposed ports as dogu does not contain any exposed ports")
 
 // ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
@@ -196,50 +201,47 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 	return service, nil
 }
 
-// GetDoguExposedServices creates a new instance of a NodePort service for a dogu.
-func (r *ResourceGenerator) GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*[]corev1.Service, error) {
-	var exposedServices []corev1.Service
-
-	for _, exposedPort := range dogu.ExposedPorts {
-		if exposedServices == nil {
-			exposedServices = []corev1.Service{}
-		}
-
-		ipSingleStackPolicy := corev1.IPFamilyPolicySingleStack
-		service := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-exposed-%d", doguResource.Name, exposedPort.Host),
-				Namespace: doguResource.Namespace,
-				Labels:    map[string]string{"app": cesLabel, "dogu": doguResource.Name},
-			},
-			Spec: corev1.ServiceSpec{
-				Type:           corev1.ServiceTypeLoadBalancer,
-				IPFamilyPolicy: &ipSingleStackPolicy,
-				IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol},
-				Selector:       map[string]string{"dogu": doguResource.Name},
-
-				Ports: []corev1.ServicePort{
-					{
-						Protocol:   corev1.Protocol(strings.ToUpper(exposedPort.Type)),
-						Port:       int32(exposedPort.Host),
-						TargetPort: intstr.FromInt(exposedPort.Container),
-					},
-				},
-			},
-		}
-
-		err := ctrl.SetControllerReference(doguResource, service, r.scheme)
-		if err != nil {
-			return nil, wrapControllerReferenceError(err)
-		}
-
-		exposedServices = append(exposedServices, *service)
+// GetDoguExposedService creates a new instance of a LoadBalancer service containing all exposed services.
+func (r *ResourceGenerator) GetDoguExposedService(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
+	if len(dogu.ExposedPorts) < 1 {
+		return nil, ErrorExposedServiceNoPorts
 	}
 
-	return &exposedServices, nil
+	ipSingleStackPolicy := corev1.IPFamilyPolicySingleStack
+	exposedService := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-exposed", doguResource.Name),
+			Namespace: doguResource.Namespace,
+			Labels:    map[string]string{"app": cesLabel, "dogu": doguResource.Name},
+		},
+		Spec: corev1.ServiceSpec{
+			Type:           corev1.ServiceTypeLoadBalancer,
+			IPFamilyPolicy: &ipSingleStackPolicy,
+			IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol},
+			Selector:       map[string]string{"dogu": doguResource.Name},
+			Ports:          []corev1.ServicePort{},
+		},
+	}
+
+	for _, exposedPort := range dogu.ExposedPorts {
+		servicePort := corev1.ServicePort{
+			Protocol:   corev1.Protocol(strings.ToUpper(exposedPort.Type)),
+			Port:       int32(exposedPort.Host),
+			TargetPort: intstr.FromInt(exposedPort.Container),
+		}
+
+		exposedService.Spec.Ports = append(exposedService.Spec.Ports, servicePort)
+	}
+
+	err := ctrl.SetControllerReference(doguResource, exposedService, r.scheme)
+	if err != nil {
+		return nil, wrapControllerReferenceError(err)
+	}
+
+	return exposedService, nil
 }
 
-// GetDoguPVC creates a persistentvolumeclaim with a 5Gi storage for the given dogu
+// GetDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu
 func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	doguPvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{

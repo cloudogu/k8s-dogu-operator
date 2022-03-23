@@ -1,10 +1,11 @@
 //go:build k8s_integration
 // +build k8s_integration
 
-package controllers
+package controllers_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
@@ -44,10 +45,16 @@ var _ = Describe("Dogu Controller", func() {
 			ImageRegistryMock = mocks.ImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			DoguRegistryMock = mocks.DoguRegistry{}
-			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(&core.Dogu{
+			doguJson := &core.Dogu{
 				Image:   "image",
 				Version: "1.0.0",
-			}, nil)
+				ExposedPorts: []core.ExposedPort{{
+					Type:      "tcp",
+					Container: 2222,
+					Host:      4444,
+				}},
+			}
+			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(doguJson, nil)
 			DoguRegistratorMock.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 			By("Creating dogu resource")
@@ -84,8 +91,21 @@ var _ = Describe("Dogu Controller", func() {
 				}
 				return true
 			}, timeout, interval).Should(BeTrue())
-			Expect(doguName).To(Equal(service.Name))
-			Expect(namespace).To(Equal(service.Namespace))
+
+			By("Expect exposed service")
+			exposedService := &corev1.Service{}
+			exposedServiceName := fmt.Sprintf("%s-exposed", doguName)
+			exposedServiceLookupKey := types.NamespacedName{Name: exposedServiceName, Namespace: namespace}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, exposedServiceLookupKey, exposedService)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(exposedService.Name).To(Equal(exposedServiceName))
 		})
 	})
 })

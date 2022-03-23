@@ -1,10 +1,11 @@
-package controllers
+package controllers_test
 
 import (
 	"context"
 	"errors"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -47,7 +48,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		doguResourceGenerator.Mock.On("GetDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
 
-		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
 		require.NoError(t, err)
@@ -62,7 +63,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		doguRegistryMock.Mock.On("Register", mock.Anything).Return(testErr)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 
-		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
 		require.Error(t, err)
@@ -80,7 +81,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(testErr)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 
-		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
 		require.Error(t, err)
@@ -101,7 +102,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 
-		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
 		require.Error(t, err)
@@ -123,7 +124,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		doguResourceGenerator.Mock.On("GetDoguSecret", mock.Anything, mock.Anything).Return(nil, testErr)
 
-		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
 		require.Error(t, err)
@@ -146,7 +147,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		doguResourceGenerator.Mock.On("GetDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
 
-		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
 		require.Error(t, err)

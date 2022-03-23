@@ -2,6 +2,7 @@ apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: ldap
+  namespace: clusterns
   annotations:
     test: dev
   labels:
@@ -9,4 +10,4 @@ metadata:
     app: ces
 spec:
   name: official/ldap
-  version: 2.4.48-3
+  version: 2.4.48-4

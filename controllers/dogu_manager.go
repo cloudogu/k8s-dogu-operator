@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -36,7 +37,7 @@ type DoguResourceGenerator interface {
 	GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error)
 	GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error)
 	GetDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error)
-	GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*[]corev1.Service, error)
+	GetDoguExposedService(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Service, error)
 }
 
 // ImageRegistry is used to pull container images
@@ -183,25 +184,23 @@ func (m DoguManager) createService(ctx context.Context, doguResource *k8sv1.Dogu
 func (m DoguManager) createExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
-	logger.Info(fmt.Sprintf("%+v", dogu))
-
 	if len(dogu.ExposedPorts) < 1 {
 		return nil
 	}
 
-	desiredServices, err := m.resourceGenerator.GetDoguExposedServices(doguResource, dogu)
+	exposedService, err := m.resourceGenerator.GetDoguExposedService(doguResource, dogu)
+	if errors.Is(err, ErrorExposedServiceNoPorts) {
+		logger.Info("Skipping the creation of an exposed service as dogu [%s] does not contain any exposed ports", dogu.Name)
+	} else if err != nil {
+		return fmt.Errorf("failed to generate exposed service: %w", err)
+	}
+
+	err = m.Client.Create(ctx, exposedService)
 	if err != nil {
-		return fmt.Errorf("failed to generate dogu service: %w", err)
+		return fmt.Errorf("failed to create exposed service: %w", err)
 	}
 
-	for _, service := range *desiredServices {
-		err = m.Client.Create(ctx, &service)
-		if err != nil {
-			return fmt.Errorf("failed to create exposed service: %w", err)
-		}
-
-		logger.Info(fmt.Sprintf("Exposed Service %s/%s have been : %s", service.Namespace, service.Name, controllerutil.OperationResultCreated))
-	}
+	logger.Info(fmt.Sprintf("Exposed Service %s/%s have been : %s", exposedService.Namespace, exposedService.Name, controllerutil.OperationResultCreated))
 
 	return nil
 }

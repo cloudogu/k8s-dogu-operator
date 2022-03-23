@@ -47,6 +47,18 @@
       "NeedsBackup": true
     }
   ],
+  "ExposedPorts": [
+    {
+      "Type": "tcp",
+      "Host": 2222,
+      "Container": 2222
+    },
+    {
+      "Type": "udp",
+      "Host": 8888,
+      "Container": 8888
+    }
+  ],
   "ExposedCommands": [
     {
       "Name": "service-account-create",
