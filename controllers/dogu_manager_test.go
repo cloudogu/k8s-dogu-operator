@@ -187,3 +187,64 @@ func TestDoguManager_Install(t *testing.T) {
 		doguRegsitry.AssertExpectations(t)
 	})
 }
+
+func TestDoguManager_Delete(t *testing.T) {
+	scheme := runtime.NewScheme()
+	resourceGenerator := *NewResourceGenerator(scheme)
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "dogu.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogu",
+	}, ldapCr)
+
+	testErr := errors.New("test")
+	ldapCr.ResourceVersion = ""
+
+	t.Run("success", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegsitry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+		ctx := context.TODO()
+
+		_ = client.Create(ctx, ldapCr)
+
+		err := doguManager.Delete(ctx, ldapCr)
+		require.NoError(t, err)
+
+		mock.AssertExpectationsForObjects(t, doguRegistrator)
+	})
+
+	t.Run("failed to unregister dogu", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegsitry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testErr)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+		_ = client.Create(context.TODO(), ldapCr)
+
+		err := doguManager.Delete(context.TODO(), ldapCr)
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to unregister dogu")
+		mock.AssertExpectationsForObjects(t, doguRegistrator)
+	})
+
+	t.Run("failed to update dogu resource", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegsitry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+
+		err := doguManager.Delete(context.TODO(), ldapCr)
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to update dogu")
+		mock.AssertExpectationsForObjects(t, doguRegistrator)
+	})
+}

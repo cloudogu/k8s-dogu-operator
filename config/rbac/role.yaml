@@ -1,6 +1,6 @@
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   creationTimestamp: null
   name: manager-role
@@ -16,7 +16,6 @@ rules:
   - list
   - patch
   - update
-  - watch
 - apiGroups:
   - ""
   resources:
@@ -28,7 +27,6 @@ rules:
   - list
   - patch
   - update
-  - watch
 - apiGroups:
   - ""
   resources:
@@ -40,7 +38,6 @@ rules:
   - list
   - patch
   - update
-  - watch
 - apiGroups:
   - ""
   resources:
@@ -52,7 +49,6 @@ rules:
   - list
   - patch
   - update
-  - watch
 - apiGroups:
   - apps
   resources:
@@ -64,7 +60,6 @@ rules:
   - list
   - patch
   - update
-  - watch
 - apiGroups:
   - k8s.cloudogu.com
   resources:

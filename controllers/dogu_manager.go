@@ -48,6 +48,7 @@ type ImageRegistry interface {
 // DoguRegistrator is used to register dogus
 type DoguRegistrator interface {
 	RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
+	UnregisterDogu(dogu string) error
 }
 
 // NewDoguManager creates a new instance of DoguManager
@@ -205,12 +206,27 @@ func (m DoguManager) createExposedServices(ctx context.Context, doguResource *k8
 	return nil
 }
 
-// TODO: Implement Upgrade
-func (m DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
+func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	logger := log.FromContext(ctx)
+
+	logger.Info("Unregister dogu...")
+	err := m.doguRegistrator.UnregisterDogu(doguResource.Name)
+	if err != nil {
+		return fmt.Errorf("failed to unregister dogu: %w", err)
+	}
+
+	logger.Info("Remove finalizer...")
+	controllerutil.RemoveFinalizer(doguResource, finalizerName)
+	err = m.Client.Update(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to update dogu: %w", err)
+	}
+	logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
+
 	return nil
 }
 
-// TODO: Implement Delete
-func (m DoguManager) Delete(_ context.Context, _ *k8sv1.Dogu) error {
+// TODO: Implement Upgrade
+func (m DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
 	return nil
 }

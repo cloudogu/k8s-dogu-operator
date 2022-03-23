@@ -6,10 +6,12 @@ package controllers_test
 import (
 	"context"
 	_ "embed"
+	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/kubernetes/scheme"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,6 +40,12 @@ var DoguRegistryMock mocks.DoguRegistry
 
 // Used in controller integration test
 var DoguRegistratorMock mocks.DoguRegistrator
+
+//Used in controller integration test
+var CesRegistryMock cesmocks.Registry
+
+//Used in controller integration test
+var EtcdDoguRegistry cesmocks.DoguRegistry
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -72,9 +80,20 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
+	resourceGenerator := NewResourceGenerator(k8sManager.GetScheme())
+	CesRegistryMock := cesmocks.Registry{}
+	EtcdDoguRegistry := &cesmocks.DoguRegistry{}
+	doguConfigurationContext := &cesmocks.ConfigurationContext{}
+	doguConfigurationContext.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
+	doguConfigurationContext.Mock.On("RemoveAll", mock.Anything).Return(nil)
+	EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
+	EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
+	EtcdDoguRegistry.Mock.On("Enable", mock.Anything).Return(nil)
+	CesRegistryMock.Mock.On("DoguRegistry").Return(EtcdDoguRegistry)
+	CesRegistryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 
-	doguManager := controllers.NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, &DoguRegistratorMock)
+	doguRegistrator := NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
+	doguManager := NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator)
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
