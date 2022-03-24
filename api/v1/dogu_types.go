@@ -68,6 +68,14 @@ func (d Dogu) GetObjectKey() *client.ObjectKey {
 	}
 }
 
+// GetDescriptorObjectKey returns the object key for the custom dogu descriptor with the actual name and namespace from the dogu resource
+func (d Dogu) GetDescriptorObjectKey() client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: d.Namespace,
+		Name:      d.Name + "-descriptor",
+	}
+}
+
 // GetObjectMeta return the object meta with the actual name and namespace from the dogu resource
 func (d Dogu) GetObjectMeta() *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
