@@ -2,7 +2,7 @@
 ARTIFACT_ID=k8s-dogu-operator
 VERSION=0.1.0
 
-GOTAG?=1.17.0
+GOTAG?=1.17.7
 MAKEFILES_VERSION=5.0.0
 
 # Image URL to use all building/pushing image targets
@@ -97,7 +97,7 @@ controller-release: ## Interactively starts the release workflow.
 .PHONY: docker-build
 docker-build: ${SRC} ## Builds the docker image of the k8s-ces-setup `cloudogu/k8s-ces-setup:version`.
 	@echo "Building docker image of dogu..."
-	docker build . -t ${IMAGE}
+	DOCKER_BUILDKIT=1 docker build . -t ${IMAGE}
 
 ${K8S_CLUSTER_ROOT}/image.tar: check-k8s-cluster-root-env-var
 	# Saves the `cloudogu/k8s-ces-setup:version` image into a file into the K8s root path to be available on all nodes.

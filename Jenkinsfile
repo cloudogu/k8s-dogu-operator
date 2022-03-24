@@ -1,6 +1,6 @@
 #!groovy
 
-@Library(['github.com/cloudogu/dogu-build-lib@v1.4.1', 'github.com/cloudogu/ces-build-lib@v1.48.0'])
+@Library(['github.com/cloudogu/dogu-build-lib@v1.6.0', 'github.com/cloudogu/ces-build-lib@1.51.0'])
 import com.cloudogu.ces.cesbuildlib.*
 import com.cloudogu.ces.dogubuildlib.*
 
@@ -49,7 +49,7 @@ node('docker') {
                                             "login ${CES_MARVIN_USERNAME}\n" +
                                             "password ${CES_MARVIN_PASSWORD}\" >> ~/.netrc"
                                 }
-                                make 'build'
+                                make 'build-controller'
                             }
 
                             stage('k8s-Integration-Test') {
@@ -74,7 +74,44 @@ node('docker') {
             stageStaticAnalysisSonarQube()
         }
 
-        stageAutomaticRelease()
+        K3d k3d = new K3d(this, "${WORKSPACE}/k3d", env.PATH)
+
+        try {
+            Makefile makefile = new Makefile(this)
+            String controllerVersion = makefile.getVersion()
+
+            stage('Set up k3d cluster') {
+                k3d.startK3d()
+            }
+
+            def imageName
+            stage('Build & Push Image') {
+                imageName=k3d.buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion)
+            }
+
+            GString sourceDeploymentYaml="target/${repositoryName}_${controllerVersion}.yaml"
+            stage('Update development resources') {
+                docker.image('mikefarah/yq:4.22.1')
+                        .mountJenkinsUser()
+                        .inside("--volume ${WORKSPACE}:/workdir -w /workdir") {
+                            sh "yq -i '(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.name == \"manager\")).image=\"${imageName}\"' ${sourceDeploymentYaml}"
+                        }
+            }
+
+            stage('Deploy Manager') {
+                k3d.kubectl("apply -f ${sourceDeploymentYaml}")
+            }
+
+            stage('Wait for Ready Rollout') {
+                k3d.kubectl("--namespace default wait --for=condition=Ready pods --all")
+            }
+
+            stageAutomaticRelease()
+        } finally {
+            stage('Remove k3d cluster') {
+                k3d.deleteK3d()
+            }
+        }
     }
 }
 
@@ -89,7 +126,8 @@ void gitWithCredentials(String command) {
 
 void stageLintK8SResources() {
     String kubevalImage = "cytopia/kubeval:0.13"
-    String controllerVersion = getCurrentControllerVersion()
+    Makefile makefile = new Makefile(this)
+    String controllerVersion = makefile.getVersion()
 
     docker
             .image(kubevalImage)
@@ -103,7 +141,7 @@ void stageStaticAnalysisReviewDog() {
     def commitSha = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
 
     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'sonarqube-gh', usernameVariable: 'USERNAME', passwordVariable: 'REVIEWDOG_GITHUB_API_TOKEN']]) {
-        withEnv(["CI_PULL_REQUEST=${env.CHANGE_ID}", "CI_COMMIT=${commitSha}", "CI_REPO_OWNER=cloudogu", "CI_REPO_NAME=${repositoryName}"]) {
+        withEnv(["CI_PULL_REQUEST=${env.CHANGE_ID}", "CI_COMMIT=${commitSha}", "CI_REPO_OWNER=${repositoryOwner}", "CI_REPO_NAME=${repositoryName}"]) {
             make 'static-analysis-ci'
         }
     }
@@ -170,8 +208,9 @@ void stageAutomaticRelease() {
         }
 
         stage('Add Github-Release') {
-            String controllerVersion = getCurrentControllerVersion()
-            def targetOperatorResourceYaml = "target/${repositoryName}_${controllerVersion}.yaml"
+            Makefile makefile = new Makefile(this)
+            String controllerVersion = makefile.getVersion()
+            GString targetOperatorResourceYaml = "target/${repositoryName}_${controllerVersion}.yaml"
             releaseId = github.createReleaseWithChangelog(releaseVersion, changelog, productionReleaseBranch)
             github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}")
             github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}.sha256sum")
@@ -182,8 +221,4 @@ void stageAutomaticRelease() {
 
 void make(String makeArgs) {
     sh "make ${makeArgs}"
-}
-
-String getCurrentControllerVersion() {
-    return sh(returnStdout: true, script: 'cat Makefile | grep -e "^VERSION=" | sed "s/VERSION=//g"').trim()
 }

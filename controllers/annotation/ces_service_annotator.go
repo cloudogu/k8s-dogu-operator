@@ -1,7 +1,6 @@
 package annotation
 
 import (
-	"errors"
 	"fmt"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -125,7 +124,7 @@ func splitEnvVariable(variable string) (string, string, error) {
 	variableParts := strings.Split(variable, "=")
 
 	if len(variableParts) != 2 {
-		return "", "", errors.New(fmt.Sprintf("environment variable [%s] needs to be in form NAME=VALUE", variable))
+		return "", "", fmt.Errorf("environment variable [%s] needs to be in form NAME=VALUE", variable)
 	}
 
 	return variableParts[0], variableParts[1], nil
