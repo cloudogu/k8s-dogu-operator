@@ -138,6 +138,7 @@ func Test_configureLogger(t *testing.T) {
 	t.Run("configure logger with log mode env var", func(t *testing.T) {
 		exiter := &mockExiter{}
 		t.Setenv("LOG_MODE", "true")
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
 		configureLogger(exiter)
 
@@ -147,6 +148,7 @@ func Test_configureLogger(t *testing.T) {
 	t.Run("error configure logger with invalid env var", func(t *testing.T) {
 		exiter := &mockExiter{}
 		t.Setenv("LOG_MODE", "invalid")
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
 		configureLogger(exiter)
 
