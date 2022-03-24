@@ -5,6 +5,7 @@ package controllers
 
 import (
 	"context"
+	_ "embed"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
@@ -15,28 +16,57 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 	"time"
 )
+
+//go:embed testdata/ldap-descriptor-cm.yaml
+var ldapDescriptorCmBytes []byte
+var ldapDescriptorCm = &corev1.ConfigMap{}
+
+func init() {
+	err := yaml.Unmarshal(ldapDescriptorCmBytes, ldapDescriptorCm)
+	if err != nil {
+		panic(err)
+	}
+}
 
 var _ = Describe("Dogu Controller", func() {
 
 	const interval = time.Second * 10
 	const timeout = time.Second * 1
+	ldapDescriptorCm.Namespace = "default"
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""
 	doguName := ldapCr.Name
 	namespace := ldapCr.Namespace
 	ctx := context.TODO()
 	doguLookupKey := types.NamespacedName{Name: doguName, Namespace: namespace}
+	ImageRegistryMock = mocks.ImageRegistry{}
+	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+	DoguRegistryMock = mocks.DoguRegistry{}
+	DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+
+	var createdResources []client.Object
+
+	deleteResourceAfterTest := func(o client.Object) {
+		createdResources = append(createdResources, o)
+	}
+
+	BeforeEach(func() {
+		createdResources = nil
+	})
+
+	AfterEach(func() {
+		for _, resource := range createdResources {
+			err := k8sClient.Delete(ctx, resource)
+			Expect(err).To(Succeed())
+		}
+	})
 
 	Context("Handle dogu resource", func() {
 		It("Should install dogu in cluster", func() {
-
-			ImageRegistryMock = mocks.ImageRegistry{}
-			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-			DoguRegistryMock = mocks.DoguRegistry{}
-			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-
 			By("Creating dogu resource")
 			Expect(k8sClient.Create(ctx, ldapCr)).Should(Succeed())
 
@@ -57,6 +87,7 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect created deployment")
 			deployment := &appsv1.Deployment{}
+			deleteResourceAfterTest(deployment)
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, deployment)
@@ -70,6 +101,7 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect created service")
 			service := &corev1.Service{}
+			deleteResourceAfterTest(service)
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, service)
@@ -83,6 +115,7 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect created secret")
 			secret := &corev1.Secret{}
+			deleteResourceAfterTest(secret)
 			secretLookupKey := types.NamespacedName{Name: doguName + "-private", Namespace: namespace}
 
 			Eventually(func() bool {
@@ -97,6 +130,7 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect created pvc")
 			pvc := &corev1.PersistentVolumeClaim{}
+			deleteResourceAfterTest(pvc)
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, pvc)
@@ -116,6 +150,40 @@ var _ = Describe("Dogu Controller", func() {
 				err := k8sClient.Get(ctx, doguLookupKey, dogu)
 				return apierrors.IsNotFound(err)
 			}, interval, timeout).Should(BeTrue())
+		})
+
+		It("Handle dogu resource with custom descriptor", func() {
+			By("Creating custom dogu descriptor")
+			Expect(k8sClient.Create(ctx, ldapDescriptorCm)).Should(Succeed())
+			deleteResourceAfterTest(ldapDescriptorCm)
+
+			By("Creating dogu resource")
+			ldapCr.ResourceVersion = ""
+			Expect(k8sClient.Create(ctx, ldapCr)).Should(Succeed())
+
+			By("Expect created dogu")
+			createdDogu := &k8sv1.Dogu{}
+			deleteResourceAfterTest(createdDogu)
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, doguLookupKey, createdDogu)
+				if err != nil {
+					return false
+				}
+				return true
+			}, interval, timeout).Should(BeTrue())
+
+			By("Expect owner reference on configmap")
+			cm := &corev1.ConfigMap{}
+			cmLookupKey := types.NamespacedName{Name: ldapDescriptorCm.Name, Namespace: ldapDescriptorCm.Namespace}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, cmLookupKey, cm)
+				if err != nil {
+					return false
+				}
+
+				return verifyOwner(createdDogu.Name, cm.ObjectMeta)
+			})
 		})
 	})
 })
