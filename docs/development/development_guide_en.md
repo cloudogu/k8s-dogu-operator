@@ -18,3 +18,14 @@
 ## Makefile-Targets
 
 The command `make help` prints all available targets and their descriptions in the command line.
+
+## Using custom dogu descriptors
+
+The `dogu-operator` is able to use a custom `dogu.json` for a dogu during installation.
+This file must be in the form of a configmap in the same namespace. The name of the configmap must be `<dogu>-descriptor`
+and the user data must be available in the data map under the entry `dogu.json`.
+There is a make target to automatically generate the configmap - `make generate-dogu-descriptor`.
+Note that the file path must be exported under the variable `CUSTOM_DOGU_DESCRIPTOR`.
+
+After a Dogu installation the Dogu is entered as owner in the ConfigMap. If you uninstall the Dogu afterwards
+the ConfigMap is also removed from the cluster.
