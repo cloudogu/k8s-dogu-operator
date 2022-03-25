@@ -160,14 +160,14 @@ func startK8sManager(k8sManager manager.Manager, exiter applicationExiter) {
 }
 
 func configureReconciler(k8sManager manager.Manager, exiter applicationExiter) {
-	doguManager := createDoguManager(k8sManager)
+	doguManager := createDoguManager(k8sManager, exiter)
 	if err := (controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager)).SetupWithManager(k8sManager); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
 		exiter.Exit(err)
 	}
 }
 
-func createDoguManager(k8sManager manager.Manager) *controllers.DoguManager {
+func createDoguManager(k8sManager manager.Manager, exiter applicationExiter) *controllers.DoguManager {
 	doguRegistry := controllers.NewHTTPDoguRegistry(registryUsername, registryPassword, "https://dogu.cloudogu.com/api/v2/dogus")
 	imageRegistry := controllers.NewCraneContainerImageRegistry(registryUsername, registryPassword)
 	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
@@ -178,7 +178,7 @@ func createDoguManager(k8sManager manager.Manager) *controllers.DoguManager {
 
 	if err != nil {
 		setupLog.Error(err, "unable to create registry")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), registry, resourceGenerator)
