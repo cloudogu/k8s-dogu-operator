@@ -22,7 +22,7 @@ spec:
       - args:
         - --leader-elect
         env:
-          - name: WATCH_NAMESPACE
+          - name: NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
