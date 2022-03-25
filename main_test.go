@@ -33,7 +33,7 @@ func Test_getK8sManagerOptions(t *testing.T) {
 
 	t.Run("successfully get k8s manager options", func(t *testing.T) {
 		exiter := &mockExiter{}
-		t.Setenv("WATCH_NAMESPACE", "default")
+		t.Setenv("NAMESPACE", "default")
 
 		getK8sManagerOptions(exiter)
 
@@ -137,7 +137,7 @@ func Test_addChecks(t *testing.T) {
 func Test_configureLogger(t *testing.T) {
 	t.Run("configure logger with log mode env var", func(t *testing.T) {
 		exiter := &mockExiter{}
-		t.Setenv("LOG_MODE", "true")
+		t.Setenv("ZAP_DEVELOPMENT_MODE", "true")
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
 		configureLogger(exiter)
@@ -147,7 +147,7 @@ func Test_configureLogger(t *testing.T) {
 
 	t.Run("error configure logger with invalid env var", func(t *testing.T) {
 		exiter := &mockExiter{}
-		t.Setenv("LOG_MODE", "invalid")
+		t.Setenv("ZAP_DEVELOPMENT_MODE", "invalid")
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
 		configureLogger(exiter)
