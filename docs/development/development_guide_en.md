@@ -13,7 +13,9 @@
 5. Run `make install`
 6. export your CES instance credentials for the operator to use
     - `export CES_REGISTRY_USER=instanceId && export CES_REGISTRY_PASS='instanceSecret'`
-7. Run `make run` to run the dogu operator locally
+7. export your CES instance namespace
+   - `export NAMESPACE=ecosystem`
+8. Run `make run` to run the dogu operator locally
 
 ## Makefile-Targets
 

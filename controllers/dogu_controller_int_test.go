@@ -34,8 +34,8 @@ func init() {
 
 var _ = Describe("Dogu Controller", func() {
 
-	const interval = time.Second * 10
-	const timeout = time.Second * 1
+	const timoutInterval = time.Second * 10
+	const pollingInterval = time.Second * 1
 	ldapDescriptorCm.Namespace = "default"
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""
@@ -83,7 +83,7 @@ var _ = Describe("Dogu Controller", func() {
 					return true
 				}
 				return false
-			}, interval, timeout).Should(BeTrue())
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 
 			By("Expect created deployment")
 			deployment := &appsv1.Deployment{}
@@ -95,7 +95,7 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, deployment.ObjectMeta)
-			}, interval, timeout).Should(BeTrue())
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(deployment.Name))
 			Expect(namespace).To(Equal(deployment.Namespace))
 
@@ -109,7 +109,7 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, service.ObjectMeta)
-			}, interval, timeout).Should(BeTrue())
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(service.Name))
 			Expect(namespace).To(Equal(service.Namespace))
 
@@ -124,7 +124,7 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, secret.ObjectMeta)
-			}, interval, timeout).Should(BeTrue())
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName + "-private").To(Equal(secret.Name))
 			Expect(namespace).To(Equal(secret.Namespace))
 
@@ -138,10 +138,12 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, pvc.ObjectMeta)
-			}, interval, timeout).Should(BeTrue())
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(pvc.Name))
 			Expect(namespace).To(Equal(pvc.Namespace))
+		})
 
+		It("Should delete dogu", func() {
 			By("Delete Dogu")
 			Expect(k8sClient.Delete(ctx, ldapCr)).Should(Succeed())
 
@@ -149,7 +151,7 @@ var _ = Describe("Dogu Controller", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, dogu)
 				return apierrors.IsNotFound(err)
-			}, interval, timeout).Should(BeTrue())
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 		})
 
 		It("Handle dogu resource with custom descriptor", func() {
