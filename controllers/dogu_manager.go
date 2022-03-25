@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -71,7 +70,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	logger := log.FromContext(ctx)
 
 	logger.Info("Fetching dogu...")
-	dogu, err := m.getDoguDescriptor(ctx, doguResource)
+	dogu, customConfigMap, err := m.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
@@ -102,45 +101,48 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to update dogu: %w", err)
 	}
 
+	if customConfigMap != nil {
+		err = m.Client.Delete(ctx, customConfigMap)
+		if err != nil {
+			return fmt.Errorf("failed to delete custom dogu descriptor: %w", err)
+		}
+	}
+
 	return nil
 }
 
-func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *corev1.ConfigMap, error) {
 	logger := log.FromContext(ctx)
 	var dogu = &core.Dogu{}
 	configMap := &corev1.ConfigMap{}
 	err := m.Client.Get(ctx, doguResource.GetDescriptorObjectKey(), configMap)
 
 	if err != nil {
+		configMap = nil
 		if apierrors.IsNotFound(err) {
 			logger.Info("Fetching dogu from dogu registry...")
 			dogu, err = m.doguRegistry.GetDogu(doguResource)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
+				return nil, nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
 			}
 		} else {
-			return nil, fmt.Errorf("failed to get custom dogu descriptor: %w", err)
+			return nil, nil, fmt.Errorf("failed to get custom dogu descriptor: %w", err)
 		}
 	} else {
 		logger.Info("Fetching dogu from custom configmap...")
 		jsonStr := configMap.Data["dogu.json"]
 		err = json.Unmarshal([]byte(jsonStr), dogu)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarschal custom dogu descriptor: %w", err)
-		}
-
-		err = ctrl.SetControllerReference(doguResource, configMap, m.Scheme)
-		if err != nil {
-			return nil, fmt.Errorf("failed to set owner reference on custom dogu descriptor: %w", err)
+			return nil, nil, fmt.Errorf("failed to unmarschal custom dogu descriptor: %w", err)
 		}
 
 		err = m.Client.Update(ctx, configMap)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update custom dogu descriptor: %w", err)
+			return nil, nil, fmt.Errorf("failed to update custom dogu descriptor: %w", err)
 		}
 	}
 
-	return dogu, nil
+	return dogu, configMap, nil
 }
 
 func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) error {
