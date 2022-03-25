@@ -12,8 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// CESDoguRegistrator is responsible for register dogus in the cluster
-type CESDoguRegistrator struct {
+// CesDoguRegistrator is responsible for register dogus in the cluster
+type CesDoguRegistrator struct {
 	client.Client
 	registry        cesregistry.Registry
 	doguRegistry    cesregistry.DoguRegistry
@@ -22,8 +22,8 @@ type CESDoguRegistrator struct {
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator DoguResourceGenerator) *CESDoguRegistrator {
-	return &CESDoguRegistrator{
+func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator DoguResourceGenerator) *CesDoguRegistrator {
+	return &CesDoguRegistrator{
 		Client:          client,
 		registry:        registry,
 		doguRegistry:    registry.DoguRegistry(),
@@ -32,10 +32,10 @@ func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, 
 }
 
 // RegisterDogu registers a dogu in a cluster. It generates key pairs and configures the dogu registry
-func (c *CESDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+func (c *CesDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	err := c.doguRegistry.Register(dogu)
 	if err != nil {
-		return fmt.Errorf("failed to register dogu "+dogu.GetSimpleName()+": %w", err)
+		return fmt.Errorf("failed to register dogu %s: %w", dogu.GetSimpleName(), err)
 	}
 
 	err = c.doguRegistry.Enable(dogu)
@@ -61,7 +61,22 @@ func (c *CESDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8s
 	return nil
 }
 
-func (c *CESDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
+// UnregisterDogu deletes a dogu from the dogu registry
+func (c *CesDoguRegistrator) UnregisterDogu(dogu string) error {
+	err := c.registry.DoguConfig(dogu).RemoveAll()
+	if err != nil {
+		return fmt.Errorf("failed to remove dogu config: %w", err)
+	}
+
+	err = c.doguRegistry.Unregister(dogu)
+	if err != nil {
+		return fmt.Errorf("failed to unregister dogu %s: %w", dogu, err)
+	}
+
+	return nil
+}
+
+func (c *CesDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
 	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: "pkcs1v15"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key provider: %w", err)
@@ -75,7 +90,7 @@ func (c *CESDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
 	return keyPair, nil
 }
 
-func (c *CESDoguRegistrator) writePrivateKey(ctx context.Context, privateKey *keys.PrivateKey, doguResource *k8sv1.Dogu) error {
+func (c *CesDoguRegistrator) writePrivateKey(ctx context.Context, privateKey *keys.PrivateKey, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 	secretString, err := privateKey.AsString()
 	if err != nil {
@@ -97,12 +112,12 @@ func (c *CESDoguRegistrator) writePrivateKey(ctx context.Context, privateKey *ke
 	return nil
 }
 
-func (c *CESDoguRegistrator) writePublicKey(publicKey *keys.PublicKey, dogu *core.Dogu) error {
+func (c *CesDoguRegistrator) writePublicKey(publicKey *keys.PublicKey, dogu *core.Dogu) error {
 	public, err := publicKey.AsString()
 	if err != nil {
 		return fmt.Errorf("failed to get public key as string: %w", err)
 	}
-	err = c.registry.DoguConfig(dogu.Name).Set(cesregistry.KeyDoguPublicKey, public)
+	err = c.registry.DoguConfig(dogu.GetSimpleName()).Set(cesregistry.KeyDoguPublicKey, public)
 	if err != nil {
 		return fmt.Errorf("failed to write to registry: %w", err)
 	}

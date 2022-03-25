@@ -63,15 +63,6 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 	}
 }
 
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogus/finalizers,verbs=create;update;delete
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=persistentvolumes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
-
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
@@ -103,12 +94,10 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	case Upgrade:
 		return ctrl.Result{}, errors.New("not implemented yet")
 	case Delete:
-		controllerutil.RemoveFinalizer(doguResource, finalizerName)
-		err := r.Update(ctx, doguResource)
+		err := r.doguManager.Delete(ctx, doguResource)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update dogu: %w", err)
+			return ctrl.Result{}, fmt.Errorf("failed to delete dogu: %w", err)
 		}
-		logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
 		return ctrl.Result{}, nil
 	case Ignore:
 		return ctrl.Result{}, nil

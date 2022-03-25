@@ -5,7 +5,6 @@ package controllers
 
 import (
 	"context"
-	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
@@ -13,53 +12,48 @@ import (
 	"github.com/stretchr/testify/mock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"time"
 )
 
 var _ = Describe("Dogu Controller", func() {
 
-	const timeout = time.Second * 10
-	const interval = time.Second * 1
-	const doguName = "testdogu"
-	const namespace = "default"
+	const timoutInterval = time.Second * 10
+	const pollingInterval = time.Second * 1
+	ldapCr.Namespace = "default"
+	ldapCr.ResourceVersion = ""
+	doguName := ldapCr.Name
+	namespace := ldapCr.Namespace
 	ctx := context.TODO()
 	doguLookupKey := types.NamespacedName{Name: doguName, Namespace: namespace}
 
-	Context("Handle new dogu resource", func() {
-
+	Context("Handle dogu resource", func() {
 		It("Should install dogu in cluster", func() {
-			newDogu := &k8sv1.Dogu{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "Dogu",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      doguName,
-					Namespace: namespace,
-				},
-				Spec: k8sv1.DoguSpec{Name: doguName, Version: "1.0.0"},
-			}
 
 			ImageRegistryMock = mocks.ImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			DoguRegistryMock = mocks.DoguRegistry{}
-			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(&core.Dogu{
-				Image:   "image",
-				Version: "1.0.0",
-			}, nil)
-			DoguRegistratorMock.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 
 			By("Creating dogu resource")
-			Expect(k8sClient.Create(ctx, newDogu)).Should(Succeed())
+			Expect(k8sClient.Create(ctx, ldapCr)).Should(Succeed())
 
 			By("Expect created dogu")
 			createdDogu := &k8sv1.Dogu{}
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, createdDogu)
-				return err == nil
-			}, timeout, interval).Should(BeTrue())
+				if err != nil {
+					return false
+				}
+				finalizers := createdDogu.Finalizers
+				if len(finalizers) == 1 && finalizers[0] == "dogu-finalizer" {
+					return true
+				}
+				return false
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 
 			By("Expect created deployment")
 			deployment := &appsv1.Deployment{}
@@ -69,8 +63,8 @@ var _ = Describe("Dogu Controller", func() {
 				if err != nil {
 					return false
 				}
-				return true
-			}, timeout, interval).Should(BeTrue())
+				return verifyOwner(createdDogu.Name, deployment.ObjectMeta)
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(deployment.Name))
 			Expect(namespace).To(Equal(deployment.Namespace))
 
@@ -82,10 +76,61 @@ var _ = Describe("Dogu Controller", func() {
 				if err != nil {
 					return false
 				}
-				return true
-			}, timeout, interval).Should(BeTrue())
+				return verifyOwner(createdDogu.Name, service.ObjectMeta)
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(service.Name))
 			Expect(namespace).To(Equal(service.Namespace))
+
+			By("Expect created secret")
+			secret := &corev1.Secret{}
+			secretLookupKey := types.NamespacedName{Name: doguName + "-private", Namespace: namespace}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, secretLookupKey, secret)
+				if err != nil {
+					return false
+				}
+				return verifyOwner(createdDogu.Name, secret.ObjectMeta)
+			}, timoutInterval, pollingInterval).Should(BeTrue())
+			Expect(doguName + "-private").To(Equal(secret.Name))
+			Expect(namespace).To(Equal(secret.Namespace))
+
+			By("Expect created pvc")
+			pvc := &corev1.PersistentVolumeClaim{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, doguLookupKey, pvc)
+				if err != nil {
+					return false
+				}
+				return verifyOwner(createdDogu.Name, pvc.ObjectMeta)
+			}, timoutInterval, pollingInterval).Should(BeTrue())
+			Expect(doguName).To(Equal(pvc.Name))
+			Expect(namespace).To(Equal(pvc.Namespace))
+		})
+
+		It("Should delete dogu", func() {
+			By("Delete Dogu")
+			Expect(k8sClient.Delete(ctx, ldapCr)).Should(Succeed())
+
+			dogu := &k8sv1.Dogu{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, doguLookupKey, dogu)
+				return apierrors.IsNotFound(err)
+			}, timoutInterval, pollingInterval).Should(BeTrue())
 		})
 	})
 })
+
+// verifyOwner checks if the objectmetadata has a specific owner. This method should be used to verify that a dogu is
+// the owner of every related resource. This replaces an integration test for the deletion of dogu related resources.
+// In a real cluster resources without an owner will be garbage collected. In this environment the resources still exist
+// after dogu deletion
+func verifyOwner(name string, obj v1.ObjectMeta) bool {
+	ownerRefs := obj.OwnerReferences
+	if len(ownerRefs) == 1 && ownerRefs[0].Name == name {
+		return true
+	}
+
+	return false
+}
