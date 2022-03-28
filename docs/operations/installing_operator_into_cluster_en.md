@@ -20,6 +20,5 @@ The dogu operator can be built locally and installed in the cluster using the fo
 - export OPERATOR_NAMESPACE=ecosystem
 - make docker-build
 - make image-import
-- make k8s-generate
-- make k8s-deploy
+- make k8s-apply
 ```
