@@ -36,7 +36,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 	testErr := errors.New("test")
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("successfully register a dogu", func(t *testing.T) {
 		registryMock := &cesmocks.Registry{}
 		doguRegistryMock := &cesmocks.DoguRegistry{}
 		doguConfigMock := &cesmocks.ConfigurationContext{}
@@ -160,7 +160,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 	testErr := errors.New("test")
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("successfully unregister a dogu", func(t *testing.T) {
 		scheme := runtime.NewScheme()
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registryMock := &cesmocks.Registry{}

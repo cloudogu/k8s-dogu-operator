@@ -23,6 +23,7 @@ import (
 	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -48,6 +49,15 @@ var (
 	metricsAddr          string
 	enableLeaderElection bool
 	probeAddr            string
+	// namespaceEnvVar is the constant for env variable NAMESPACE
+	// which specifies the Namespace to the dogu operator operates in.
+	// An empty value means the operator is running with cluster scope.
+	namespaceEnvVar = "NAMESPACE"
+	// logModeEnvVar is the constant for env variable ZAP_DEVELOPMENT_MODE
+	// which specifies the development mode for zap options. Valid values are
+	// true or false. In development mode the logger produces stacktraces on warnings and no smapling.
+	// In regular mode (default) the logger produces stacktraces on errors and sampling
+	logModeEnvVar = "ZAP_DEVELOPMENT_MODE"
 )
 
 // applicationExiter is responsible for exiting the application correctly.
@@ -81,12 +91,16 @@ func main() {
 		exiter.Exit(err)
 	}
 
-	configureReconciler(k8sManager)
+	configureManager(k8sManager, exiter)
+
+	startK8sManager(k8sManager, exiter)
+}
+
+func configureManager(k8sManager manager.Manager, exister applicationExiter) {
+	configureReconciler(k8sManager, exister)
 
 	//+kubebuilder:scaffold:builder
-	addChecks(k8sManager)
-
-	startK8sManager(k8sManager)
+	addChecks(k8sManager, exister)
 }
 
 func getK8sManagerOptions(exiter applicationExiter) manager.Options {
@@ -96,9 +110,9 @@ func getK8sManagerOptions(exiter applicationExiter) manager.Options {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 
-	configureLogger()
+	configureLogger(exiter)
 
-	watchNamespace, err := getWatchNamespace()
+	watchNamespace, err := getEnvVar(namespaceEnvVar)
 	if err != nil {
 		exiter.Exit(err)
 	}
@@ -116,9 +130,19 @@ func getK8sManagerOptions(exiter applicationExiter) manager.Options {
 	return options
 }
 
-func configureLogger() {
+func configureLogger(exiter applicationExiter) {
+	logMode := false
+	logModeEnv, err := getEnvVar(logModeEnvVar)
+
+	if err == nil {
+		logMode, err = strconv.ParseBool(logModeEnv)
+		if err != nil {
+			exiter.Exit(fmt.Errorf("failed to parse %s; valid values are true or false: %w", logModeEnv, err))
+		}
+	}
+
 	opts := zap.Options{
-		Development: true,
+		Development: logMode,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -126,23 +150,23 @@ func configureLogger() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 }
 
-func startK8sManager(k8sManager manager.Manager) {
+func startK8sManager(k8sManager manager.Manager, exiter applicationExiter) {
 	setupLog.Info("starting manager")
 	if err := k8sManager.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 }
 
-func configureReconciler(k8sManager manager.Manager) {
-	doguManager := createDoguManager(k8sManager)
+func configureReconciler(k8sManager manager.Manager, exiter applicationExiter) {
+	doguManager := createDoguManager(k8sManager, exiter)
 	if err := (controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager)).SetupWithManager(k8sManager); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 }
 
-func createDoguManager(k8sManager manager.Manager) *controllers.DoguManager {
+func createDoguManager(k8sManager manager.Manager, exiter applicationExiter) *controllers.DoguManager {
 	doguRegistry := controllers.NewHTTPDoguRegistry(registryUsername, registryPassword, "https://dogu.cloudogu.com/api/v2/dogus")
 	imageRegistry := controllers.NewCraneContainerImageRegistry(registryUsername, registryPassword)
 	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
@@ -153,34 +177,29 @@ func createDoguManager(k8sManager manager.Manager) *controllers.DoguManager {
 
 	if err != nil {
 		setupLog.Error(err, "unable to create registry")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), registry, resourceGenerator)
 	return controllers.NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
 }
 
-func addChecks(mgr manager.Manager) {
+func addChecks(mgr manager.Manager, exiter applicationExiter) {
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
+		exiter.Exit(err)
 	}
 }
 
-// getWatchNamespace returns the namespace the operator should be watching for changes
-func getWatchNamespace() (string, error) {
-	// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
-	// which specifies the Namespace to watch.
-	// An empty value means the operator is running with cluster scope.
-	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
-
-	ns, found := os.LookupEnv(watchNamespaceEnvVar)
+// getEnvVar returns the namespace the operator should be watching for changes
+func getEnvVar(name string) (string, error) {
+	ns, found := os.LookupEnv(name)
 	if !found {
-		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
+		return "", fmt.Errorf("%s must be set", name)
 	}
 	return ns, nil
 }

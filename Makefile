@@ -12,6 +12,7 @@ IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 ENVTEST_K8S_VERSION = 1.23
 K8S_INTEGRATION_TEST_DIR=${TARGET_DIR}/k8s-integration-test
 K8S_RESOURCE_YAML=${TARGET_DIR}/${ARTIFACT_ID}_${VERSION}.yaml
+OPERATOR_NAMESPACE?=ecosystem
 
 # make sure to create a statically linked binary otherwise it may quit with
 # "exec user process caused: no such file or directory"
@@ -35,7 +36,6 @@ include build/make/test-unit.mk
 include build/make/static-analysis.mk
 include build/make/clean.mk
 include build/make/digital-signature.mk
-
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -146,11 +146,11 @@ k8s-generate: ${K8S_RESOURCE_YAML} ## Create required k8s resources in ./dist/..
 
 .PHONY: k8s-apply
 k8s-apply: k8s-generate ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cat ${K8S_RESOURCE_YAML} | kubectl apply -f -
+	cat ${K8S_RESOURCE_YAML} | kubectl apply --namespace ${OPERATOR_NAMESPACE} -f -
 
 .PHONY: k8s-delete
 k8s-delete: k8s-generate ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	cat ${K8S_RESOURCE_YAML} | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	cat ${K8S_RESOURCE_YAML} | kubectl delete --namespace ${OPERATOR_NAMESPACE} --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Download Kubernetes Utility Tools
 

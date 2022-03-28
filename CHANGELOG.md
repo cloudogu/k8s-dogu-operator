@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Add functionality to remove dogus #4
+- Restrict the dogu-operator with rbac resources to operate only in the configured namespace #4
 - [#2] Annotation `k8s-dogu-operator.cloudogu.com/ces-services` to Dogu-`Services` containing information of
 related ces services. For more information see [Annotations](/docs/operations/annotations_en.md).
   
@@ -13,5 +15,5 @@ related ces services. For more information see [Annotations](/docs/operations/an
 - [#2] Update makefiles to version 5.0.0
 
 ## [v0.1.0] - 2022-03-18
-
-initial release.
+### Added
+- initial release #1
