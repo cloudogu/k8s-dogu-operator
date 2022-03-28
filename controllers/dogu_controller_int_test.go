@@ -16,7 +16,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
 )
 
@@ -34,23 +33,6 @@ var _ = Describe("Dogu Controller", func() {
 	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 	DoguRegistryMock = mocks.DoguRegistry{}
 	DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-
-	var createdResources []client.Object
-
-	deleteResourceAfterTest := func(o client.Object) {
-		createdResources = append(createdResources, o)
-	}
-
-	BeforeEach(func() {
-		createdResources = nil
-	})
-
-	AfterEach(func() {
-		for _, resource := range createdResources {
-			err := k8sClient.Delete(ctx, resource)
-			Expect(err).To(Succeed())
-		}
-	})
 
 	Context("Handle dogu resource", func() {
 		It("Should install dogu in cluster", func() {
@@ -74,7 +56,6 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect created deployment")
 			deployment := &appsv1.Deployment{}
-			deleteResourceAfterTest(deployment)
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, deployment)
@@ -88,7 +69,6 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect created service")
 			service := &corev1.Service{}
-			deleteResourceAfterTest(service)
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, service)
@@ -102,7 +82,6 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect created secret")
 			secret := &corev1.Secret{}
-			deleteResourceAfterTest(secret)
 			secretLookupKey := types.NamespacedName{Name: doguName + "-private", Namespace: namespace}
 
 			Eventually(func() bool {
@@ -117,7 +96,6 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect created pvc")
 			pvc := &corev1.PersistentVolumeClaim{}
-			deleteResourceAfterTest(pvc)
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, pvc)
