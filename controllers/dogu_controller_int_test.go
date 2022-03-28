@@ -153,40 +153,6 @@ var _ = Describe("Dogu Controller", func() {
 				return apierrors.IsNotFound(err)
 			}, timoutInterval, pollingInterval).Should(BeTrue())
 		})
-
-		It("Handle dogu resource with custom descriptor", func() {
-			By("Creating custom dogu descriptor")
-			Expect(k8sClient.Create(ctx, ldapDescriptorCm)).Should(Succeed())
-			deleteResourceAfterTest(ldapDescriptorCm)
-
-			By("Creating dogu resource")
-			ldapCr.ResourceVersion = ""
-			Expect(k8sClient.Create(ctx, ldapCr)).Should(Succeed())
-
-			By("Expect created dogu")
-			createdDogu := &k8sv1.Dogu{}
-			deleteResourceAfterTest(createdDogu)
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, doguLookupKey, createdDogu)
-				if err != nil {
-					return false
-				}
-				return true
-			}, interval, timeout).Should(BeTrue())
-
-			By("Expect owner reference on configmap")
-			cm := &corev1.ConfigMap{}
-			cmLookupKey := types.NamespacedName{Name: ldapDescriptorCm.Name, Namespace: ldapDescriptorCm.Namespace}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, cmLookupKey, cm)
-				if err != nil {
-					return false
-				}
-
-				return verifyOwner(createdDogu.Name, cm.ObjectMeta)
-			})
-		})
 	})
 })
 
