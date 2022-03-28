@@ -135,11 +135,6 @@ func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarschal custom dogu descriptor: %w", err)
 		}
-
-		err = m.Client.Update(ctx, configMap)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to update custom dogu descriptor: %w", err)
-		}
 	}
 
 	return dogu, configMap, nil

@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 	"testing"
@@ -87,29 +86,6 @@ func TestDoguManager_Install(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.AssertExpectationsForObjects(t, doguRegsitry, imageRegistry, doguRegistrator)
-	})
-
-	t.Run("failed install dogu set controller reference custom descriptor", func(t *testing.T) {
-		oldAlias := ctrl.SetControllerReference
-		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return testError
-		}
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		//Reset resource version otherwise the resource can't be created
-		ldapCr.ResourceVersion = ""
-		_ = client.Create(ctx, getCustomDoguDescriptorCm(string(ldapBytes)))
-		_ = client.Create(ctx, ldapCr)
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-
-		err := doguManager.Install(ctx, ldapCr)
-		require.Error(t, err)
-
-		assert.Contains(t, err.Error(), "failed to set owner reference on custom dogu descriptor")
-		mock.AssertExpectationsForObjects(t, doguRegsitry, imageRegistry, doguRegistrator)
-		ctrl.SetControllerReference = oldAlias
 	})
 
 	t.Run("failed to install dogu with invalid custom descriptor", func(t *testing.T) {
