@@ -17,26 +17,13 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 	"time"
 )
-
-//go:embed testdata/ldap-descriptor-cm.yaml
-var ldapDescriptorCmBytes []byte
-var ldapDescriptorCm = &corev1.ConfigMap{}
-
-func init() {
-	err := yaml.Unmarshal(ldapDescriptorCmBytes, ldapDescriptorCm)
-	if err != nil {
-		panic(err)
-	}
-}
 
 var _ = Describe("Dogu Controller", func() {
 
 	const timoutInterval = time.Second * 10
 	const pollingInterval = time.Second * 1
-	ldapDescriptorCm.Namespace = "default"
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""
 	doguName := ldapCr.Name

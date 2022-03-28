@@ -29,6 +29,10 @@ var ldapCr = &k8sv1.Dogu{}
 var imageConfigBytes []byte
 var imageConfig = &imagev1.ConfigFile{}
 
+//go:embed testdata/ldap-descriptor-cm.yaml
+var ldapDescriptorCmBytes []byte
+var ldapDescriptorCm = &corev1.ConfigMap{}
+
 func init() {
 	err := yaml.Unmarshal(ldapCrBytes, ldapCr)
 	if err != nil {
@@ -36,6 +40,11 @@ func init() {
 	}
 
 	err = json.Unmarshal(imageConfigBytes, imageConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(ldapDescriptorCmBytes, ldapDescriptorCm)
 	if err != nil {
 		panic(err)
 	}
@@ -72,8 +81,7 @@ func TestDoguManager_Install(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		//Reset resource version otherwise the resource can't be created
 		ldapCr.ResourceVersion = ""
-		cm := getCustomDoguDescriptorCm(string(ldapBytes))
-		_ = client.Create(ctx, cm)
+		_ = client.Create(ctx, ldapDescriptorCm)
 		_ = client.Create(ctx, ldapCr)
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}

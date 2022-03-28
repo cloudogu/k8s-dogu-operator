@@ -29,5 +29,4 @@ and the user data must be available in the data map under the entry `dogu.json`.
 There is a make target to automatically generate the configmap - `make generate-dogu-descriptor`.
 Note that the file path must be exported under the variable `CUSTOM_DOGU_DESCRIPTOR`.
 
-After a Dogu installation the Dogu is entered as owner in the ConfigMap. If you uninstall the Dogu afterwards
-the ConfigMap is also removed from the cluster.
+After a Dogu installation will be deleted from cluster.
