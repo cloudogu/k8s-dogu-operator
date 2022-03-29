@@ -21,6 +21,18 @@
 
 Der Befehl `make help` gibt alle verfügbaren Targets und deren Beschreibungen in der Kommandozeile aus.
 
+## Lokaler Image-Build
+
+Um lokal das Image des `dogu-operator` zu bauen wird im Projektverzeichnis ein `.netrc`-File benötigt.
+
+```
+machine github.com
+login <username>
+password <token>
+```
+
+Der Token benötigt Berechtigungen, um private Repositorys zu lesen.
+
 ## Verwendung von benutzerdefinierten Dogu-Deskriptoren
 
 Der `dogu-operator` ist in der Lage für ein Dogu eine benutzerdefinierte `dogu.json` bei der Installation zu verwenden.

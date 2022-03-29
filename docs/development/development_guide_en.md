@@ -21,6 +21,18 @@
 
 The command `make help` prints all available targets and their descriptions in the command line.
 
+## Local image build
+
+To build the image of the `dogu-operator` locally a `.netrc` file is needed in the project directory.
+
+```
+machine github.com
+login <username>
+password <token>
+```
+
+The token needs permissions to read private repositories.
+
 ## Using custom dogu descriptors
 
 The `dogu-operator` is able to use a custom `dogu.json` for a dogu during installation.
