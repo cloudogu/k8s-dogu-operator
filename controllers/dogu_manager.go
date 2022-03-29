@@ -68,6 +68,23 @@ func NewDoguManager(client client.Client, scheme *runtime.Scheme, resourceGenera
 // information Install creates a Deployment and a Service
 func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
+	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling}
+	err := m.Client.Status().Update(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to update dogu status: %w", err)
+	}
+
+	// Set the finalizer at the beginning of the install procedure.
+	// This is required because an error during installation would leave a dogu cr with its
+	// k8s resources in the cluster. A delete would tidy up those resources but would not start the
+	// delete procedure from the controller.
+	logger.Info("Add dogu finalizer...")
+	controllerutil.AddFinalizer(doguResource, finalizerName)
+	err = m.Client.Update(ctx, doguResource)
+	if err != nil {
+		logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
+		return fmt.Errorf("failed to update dogu: %w", err)
+	}
 
 	logger.Info("Fetching dogu...")
 	dogu, customConfigMap, err := m.getDoguDescriptor(ctx, doguResource)
@@ -93,12 +110,10 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
 
-	logger.Info("Add dogu finalizer...")
-	controllerutil.AddFinalizer(doguResource, finalizerName)
-	err = m.Client.Update(ctx, doguResource)
+	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
+	err = m.Client.Status().Update(ctx, doguResource)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
-		return fmt.Errorf("failed to update dogu: %w", err)
+		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
 
 	if customConfigMap != nil {
@@ -181,9 +196,14 @@ func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv
 
 func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
+	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting}
+	err := m.Client.Status().Update(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to update dogu status: %w", err)
+	}
 
 	logger.Info("Unregister dogu...")
-	err := m.doguRegistrator.UnregisterDogu(doguResource.Name)
+	err = m.doguRegistrator.UnregisterDogu(doguResource.Name)
 	if err != nil {
 		return fmt.Errorf("failed to unregister dogu: %w", err)
 	}

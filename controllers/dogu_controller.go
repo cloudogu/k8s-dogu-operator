@@ -18,14 +18,14 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const cesLabel = "ces"
@@ -49,8 +49,11 @@ type DoguReconciler struct {
 
 // Manager abstracts the simple dogu operations in a k8s ces
 type Manager interface {
+	// Install installs a dogu resource
 	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
+	// Upgrade upgrades a dogu resource
 	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
+	// Delete deletes a dogu resource
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
@@ -77,8 +80,9 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found: %+v", doguResource.Namespace, doguResource.Name, doguResource))
+	logger.Info(fmt.Sprintf("Current dogu version is --------------: \n%s\n", doguResource.ResourceVersion))
 
-	requiredOperation, err := evaluateRequiredOperation(doguResource)
+	requiredOperation, err := evaluateRequiredOperation(doguResource, logger)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to evaluate required operation: %w", err)
 	}
@@ -92,7 +96,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 		return ctrl.Result{}, nil
 	case Upgrade:
-		return ctrl.Result{}, errors.New("not implemented yet")
+		return ctrl.Result{}, nil
 	case Delete:
 		err := r.doguManager.Delete(ctx, doguResource)
 		if err != nil {
@@ -106,22 +110,28 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 }
 
-func evaluateRequiredOperation(doguResource *k8sv1.Dogu) (Operation, error) {
-	if !isDoguInstalled(doguResource) {
-		return Install, nil
-	}
-
-	if !doguResource.ObjectMeta.DeletionTimestamp.IsZero() {
+func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Operation, error) {
+	if !doguResource.DeletionTimestamp.IsZero() {
 		return Delete, nil
 	}
 
-	// TODO: Implement upgrade detection
-
-	return Ignore, nil
-}
-
-func isDoguInstalled(doguResource *k8sv1.Dogu) bool {
-	return controllerutil.ContainsFinalizer(doguResource, finalizerName)
+	switch doguResource.Status.Status {
+	case "":
+		return Install, nil
+	case k8sv1.DoguStatusInstalled:
+		// Checking if the resource spec field has changed is unnecessary because we
+		// use a predicate to filter update events where specs don't change
+		return Upgrade, nil
+	case k8sv1.DoguStatusInstalling:
+		return Ignore, nil
+	case k8sv1.DoguStatusUpgrading:
+		return Ignore, nil
+	case k8sv1.DoguStatusDeleting:
+		return Ignore, nil
+	default:
+		logger.Info(fmt.Sprintf("Found unknown operation for dogu status: %s", doguResource.Status.Status))
+		return Ignore, nil
+	}
 }
 
 func operationToString(operation Operation) string {
@@ -141,5 +151,12 @@ func operationToString(operation Operation) string {
 func (r *DoguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&k8sv1.Dogu{}).
+		// Since we don't want to process dogus with same spec we use a generation change predicate
+		// as a filter to reduce the reconcile calls.
+		// The predicate implements a function that will be invoked of every update event that
+		// the k8s api will fire. On writing the objects spec field the k8s api
+		// increments the generation field. The function compares this field from the old
+		// and new dogu resource. If they are equal the reconcile loop will not be called.
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }

@@ -38,7 +38,14 @@ The token needs permissions to read private repositories.
 The `dogu-operator` is able to use a custom `dogu.json` for a dogu during installation.
 This file must be in the form of a configmap in the same namespace. The name of the configmap must be `<dogu>-descriptor`
 and the user data must be available in the data map under the entry `dogu.json`.
-There is a make target to automatically generate the configmap - `make generate-dogu-descriptor`.
+There is a make target to automatically generate the configmap - `make install-dogu-descriptor`.
 Note that the file path must be exported under the variable `CUSTOM_DOGU_DESCRIPTOR`.
 
-After a Dogu installation will be deleted from cluster.
+After a successful Dogu installation, the ConfigMap is removed from the cluster.
+
+## Filtering the Reconcile function
+
+So that the reconcile function is not called unnecessarily, if the specification of a dogu does not change,
+the `dogu-operator` is started with an update filter. This filter looks at the field `generation` of the old
+and new dogu resource. If a field of the specification of the dogu resource is changed the K8s api increments
+`generation`. If the field of the old and new dogu is the same, the update is not considered.

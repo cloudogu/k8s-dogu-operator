@@ -34,9 +34,16 @@ type DoguSpec struct {
 
 // DoguStatus defines the observed state of Dogu
 type DoguStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Status represents the state of the Dogu
+	Status string `json:"status"`
 }
+
+const (
+	DoguStatusInstalling = "installing"
+	DoguStatusUpgrading  = "upgrading"
+	DoguStatusDeleting   = "deleting"
+	DoguStatusInstalled  = "installed"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

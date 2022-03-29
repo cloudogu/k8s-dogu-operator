@@ -194,7 +194,7 @@ check-k8s-cluster-root-env-var:
 
 DESCRIPTOR_CM_SUFFIX="-descriptor"
 
-###@  Dogu descriptor
+##@ Local development
 
 .PHONY: check-dogu-descriptor-env-var
 check-dogu-descriptor-env-var:
@@ -202,9 +202,10 @@ check-dogu-descriptor-env-var:
 	@bash -c export -p | grep CUSTOM_DOGU_DESCRIPTOR
 	@echo "Done."
 
-.PHONY: generate-dogu-descriptor
-generate-dogu-descriptor: check-dogu-descriptor-env-var
+.PHONY: install-dogu-descriptor
+install-dogu-descriptor: check-dogu-descriptor-env-var ## Installs a configmap from dogu.json
 	@echo "Generate configmap from dogu.json"
 	@NAMESPACENAME=$$(jq .Name ${CUSTOM_DOGU_DESCRIPTOR} | sed 's/"//g') && \
-	IFS="/" read -r NAMESPACE NAME <<< "$${NAMESPACENAME}" && \
-	kubectl create configmap "$${NAME}${DESCRIPTOR_CM_SUFFIX}" --from-file="$${CUSTOM_DOGU_DESCRIPTOR}"
+		IFS="/" read -r NAMESPACE NAME <<< "$${NAMESPACENAME}" && \
+		kubectl create configmap "$${NAME}${DESCRIPTOR_CM_SUFFIX}" --from-file="$${CUSTOM_DOGU_DESCRIPTOR}" \
+		--dry-run=client -o yaml | kubectl apply -f -
