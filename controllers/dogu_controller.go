@@ -80,7 +80,6 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found: %+v", doguResource.Namespace, doguResource.Name, doguResource))
-	logger.Info(fmt.Sprintf("Current dogu version is --------------: \n%s\n", doguResource.ResourceVersion))
 
 	requiredOperation, err := evaluateRequiredOperation(doguResource, logger)
 	if err != nil {
