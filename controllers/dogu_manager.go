@@ -82,7 +82,6 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	controllerutil.AddFinalizer(doguResource, finalizerName)
 	err = m.Client.Update(ctx, doguResource)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
 		return fmt.Errorf("failed to update dogu: %w", err)
 	}
 

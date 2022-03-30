@@ -124,8 +124,6 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Op
 		return Upgrade, nil
 	case k8sv1.DoguStatusInstalling:
 		return Ignore, nil
-	case k8sv1.DoguStatusUpgrading:
-		return Ignore, nil
 	case k8sv1.DoguStatusDeleting:
 		return Ignore, nil
 	default:

@@ -260,6 +260,19 @@ func TestDoguManager_Delete(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, doguRegistrator)
 	})
 
+	t.Run("failed to update dogu status", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegsitry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
+
+		err := doguManager.Delete(ctx, ldapCr)
+		require.Error(t, err)
+
+		assert.Contains(t, err.Error(), "failed to update dogu status")
+	})
+
 	t.Run("failed to unregister dogu", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		ldapCr.ResourceVersion = ""

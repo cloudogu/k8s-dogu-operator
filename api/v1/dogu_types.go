@@ -40,7 +40,6 @@ type DoguStatus struct {
 
 const (
 	DoguStatusInstalling = "installing"
-	DoguStatusUpgrading  = "upgrading"
 	DoguStatusDeleting   = "deleting"
 	DoguStatusInstalled  = "installed"
 )
