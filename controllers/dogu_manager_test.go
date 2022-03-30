@@ -57,9 +57,6 @@ func TestDoguManager_Install(t *testing.T) {
 	scheme := getInstallScheme()
 	resourceGenerator := *NewResourceGenerator(scheme)
 
-	// fake k8sClient
-	client := fake.NewClientBuilder().WithScheme(scheme).Build()
-
 	t.Run("successfully install a dogu", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		doguRegsitry := &mocks.DoguRegistry{}
@@ -97,7 +94,9 @@ func TestDoguManager_Install(t *testing.T) {
 	})
 
 	t.Run("failed to install dogu with invalid custom descriptor", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		client := fake.NewClientBuilder().WithScheme(getDoguOnlyScheme()).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
@@ -130,13 +129,14 @@ func TestDoguManager_Install(t *testing.T) {
 
 	t.Run("failed to register dogu", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
 		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testError)
 		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-		_ = client.Create(ctx, ldapCr)
 
 		err := doguManager.Install(ctx, ldapCr)
 		require.Error(t, err)
@@ -146,15 +146,14 @@ func TestDoguManager_Install(t *testing.T) {
 	})
 
 	t.Run("dogu resource not found", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
 
 		err := doguManager.Install(ctx, ldapCr)
+		require.Error(t, err)
 
 		assert.Contains(t, err.Error(), "not found")
 		doguRegsitry.AssertExpectations(t)
@@ -162,6 +161,9 @@ func TestDoguManager_Install(t *testing.T) {
 	})
 
 	t.Run("error get dogu", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
@@ -176,6 +178,9 @@ func TestDoguManager_Install(t *testing.T) {
 	})
 
 	t.Run("error create deployment", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(getDoguWithCmOnlyScheme()).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
@@ -191,6 +196,9 @@ func TestDoguManager_Install(t *testing.T) {
 	})
 
 	t.Run("error pull image config", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
@@ -206,6 +214,9 @@ func TestDoguManager_Install(t *testing.T) {
 	})
 
 	t.Run("error create service resource", func(t *testing.T) {
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
@@ -227,7 +238,7 @@ func TestDoguManager_Install(t *testing.T) {
 }
 
 func TestDoguManager_Delete(t *testing.T) {
-	scheme := getDeleteScheme()
+	scheme := getDoguOnlyScheme()
 	ctx := context.TODO()
 	resourceGenerator := *NewResourceGenerator(scheme)
 	testErr := errors.New("test")
@@ -251,6 +262,8 @@ func TestDoguManager_Delete(t *testing.T) {
 
 	t.Run("failed to unregister dogu", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
 		doguRegsitry := &mocks.DoguRegistry{}
 		imageRegistry := &mocks.ImageRegistry{}
 		doguRegistrator := &mocks.DoguRegistrator{}
@@ -263,24 +276,9 @@ func TestDoguManager_Delete(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to unregister dogu")
 		mock.AssertExpectationsForObjects(t, doguRegistrator)
 	})
-
-	t.Run("failed to update dogu resource", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-
-		err := doguManager.Delete(ctx, ldapCr)
-		require.Error(t, err)
-
-		assert.Contains(t, err.Error(), "failed to update dogu")
-		mock.AssertExpectationsForObjects(t, doguRegistrator)
-	})
 }
 
-func getDeleteScheme() *runtime.Scheme {
+func getDoguOnlyScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
@@ -289,6 +287,21 @@ func getDeleteScheme() *runtime.Scheme {
 		Kind:    "dogu",
 	}, ldapCr)
 
+	return scheme
+}
+
+func getDoguWithCmOnlyScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "dogu.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogu",
+	}, ldapCr)
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "ConfigMap",
+	}, &corev1.ConfigMap{})
 	return scheme
 }
 
