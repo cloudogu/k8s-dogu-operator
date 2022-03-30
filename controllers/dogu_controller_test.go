@@ -32,6 +32,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, Delete, operation)
+		ldapCr.DeletionTimestamp = nil
 	})
 
 	t.Run("installing should return ignore", func(t *testing.T) {
