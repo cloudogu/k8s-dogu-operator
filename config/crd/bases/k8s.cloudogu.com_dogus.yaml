@@ -46,7 +46,7 @@ spec:
             description: DoguStatus defines the observed state of Dogu
             properties:
               status:
-                description: Status represents the state of the Dogu
+                description: Status represents the installation status of the Dogu
                 type: string
             required:
             - status

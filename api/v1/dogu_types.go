@@ -34,14 +34,15 @@ type DoguSpec struct {
 
 // DoguStatus defines the observed state of Dogu
 type DoguStatus struct {
-	// Status represents the state of the Dogu
+	// Status represents the installation status of the Dogu
 	Status string `json:"status"`
 }
 
 const (
-	DoguStatusInstalling = "installing"
-	DoguStatusDeleting   = "deleting"
-	DoguStatusInstalled  = "installed"
+	DoguStatusNotInstalled = ""
+	DoguStatusInstalling   = "installing"
+	DoguStatusDeleting     = "deleting"
+	DoguStatusInstalled    = "installed"
 )
 
 //+kubebuilder:object:root=true

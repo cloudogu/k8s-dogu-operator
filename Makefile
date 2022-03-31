@@ -5,6 +5,8 @@ GOTAG?=1.17.7
 # Image URL to use all building/pushing image targets
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
 MAKEFILES_VERSION=4.8.0
+# Suffix used for custom dogu.json configmap
+DESCRIPTOR_CM_SUFFIX="-descriptor"
 
 .DEFAULT_GOAL:=help
 
@@ -191,8 +193,6 @@ check-k8s-cluster-root-env-var:
 	@echo "Checking if env var K8S_CLUSTER_ROOT is set..."
 	@bash -c export -p | grep K8S_CLUSTER_ROOT
 	@echo "Done."
-
-DESCRIPTOR_CM_SUFFIX="-descriptor"
 
 ##@ Local development
 

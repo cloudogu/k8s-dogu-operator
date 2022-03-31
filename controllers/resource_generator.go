@@ -15,7 +15,10 @@ import (
 	"strings"
 )
 
-const nodeMasterFile = "node-master-file"
+const (
+	cesLabel       = "ces"
+	nodeMasterFile = "node-master-file"
+)
 
 // ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller

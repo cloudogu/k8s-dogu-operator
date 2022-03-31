@@ -92,13 +92,13 @@ func main() {
 		exiter.Exit(err)
 	}
 
-	configureManager(k8sManager, exiter)
+	configureManager(k8sManager, exiter, options)
 
 	startK8sManager(k8sManager, exiter)
 }
 
-func configureManager(k8sManager manager.Manager, exister applicationExiter) {
-	configureReconciler(k8sManager, exister)
+func configureManager(k8sManager manager.Manager, exister applicationExiter, options manager.Options) {
+	configureReconciler(k8sManager, exister, options)
 
 	//+kubebuilder:scaffold:builder
 	addChecks(k8sManager, exister)
@@ -159,21 +159,21 @@ func startK8sManager(k8sManager manager.Manager, exiter applicationExiter) {
 	}
 }
 
-func configureReconciler(k8sManager manager.Manager, exiter applicationExiter) {
-	doguManager := createDoguManager(k8sManager, exiter)
+func configureReconciler(k8sManager manager.Manager, exiter applicationExiter, options manager.Options) {
+	doguManager := createDoguManager(k8sManager, exiter, options)
 	if err := (controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager)).SetupWithManager(k8sManager); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
 		exiter.Exit(err)
 	}
 }
 
-func createDoguManager(k8sManager manager.Manager, exiter applicationExiter) *controllers.DoguManager {
+func createDoguManager(k8sManager manager.Manager, exiter applicationExiter, options manager.Options) *controllers.DoguManager {
 	doguRegistry := controllers.NewHTTPDoguRegistry(registryUsername, registryPassword, "https://dogu.cloudogu.com/api/v2/dogus")
 	imageRegistry := controllers.NewCraneContainerImageRegistry(registryUsername, registryPassword)
 	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
 	registry, err := cesregistry.New(core.Registry{
 		Type:      "etcd",
-		Endpoints: []string{"http://etcd.ecosystem.svc.cluster.local:4001"},
+		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", options.Namespace)},
 	})
 
 	if err != nil {

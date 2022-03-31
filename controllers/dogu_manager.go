@@ -16,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const finalizerName = "dogu-finalizer"
+
 // DoguManager is a central unit in the process of handling dogu custom resources
 // The DoguManager creates, updates and deletes dogus
 type DoguManager struct {
@@ -75,7 +77,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	}
 
 	// Set the finalizer at the beginning of the install procedure.
-	// This is required because an error during installation would leave a dogu cr with its
+	// This is required because an error during installation would leave a dogu resource with its
 	// k8s resources in the cluster. A delete would tidy up those resources but would not start the
 	// delete procedure from the controller.
 	logger.Info("Add dogu finalizer...")
@@ -85,8 +87,13 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to update dogu: %w", err)
 	}
 
+	doguConfigMap, err := m.getDoguConfigMap(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to get dogu config map: %w", err)
+	}
+
 	logger.Info("Fetching dogu...")
-	dogu, customConfigMap, err := m.getDoguDescriptor(ctx, doguResource)
+	dogu, err := m.getDoguDescriptor(ctx, doguResource, doguConfigMap)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
@@ -115,8 +122,8 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
 
-	if customConfigMap != nil {
-		err = m.Client.Delete(ctx, customConfigMap)
+	if doguConfigMap != nil {
+		err = m.Client.Delete(ctx, doguConfigMap)
 		if err != nil {
 			return fmt.Errorf("failed to delete custom dogu descriptor: %w", err)
 		}
@@ -125,33 +132,50 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	return nil
 }
 
-func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *corev1.ConfigMap, error) {
-	logger := log.FromContext(ctx)
-	var dogu = &core.Dogu{}
-	configMap := &corev1.ConfigMap{}
-	err := m.Client.Get(ctx, doguResource.GetDescriptorObjectKey(), configMap)
-
+func (m DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
+	jsonStr := doguConfigMap.Data["dogu.json"]
+	dogu := &core.Dogu{}
+	err := json.Unmarshal([]byte(jsonStr), dogu)
 	if err != nil {
-		configMap = nil
-		if apierrors.IsNotFound(err) {
-			logger.Info("Fetching dogu from dogu registry...")
-			dogu, err = m.doguRegistry.GetDogu(doguResource)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
-			}
-		} else {
-			return nil, nil, fmt.Errorf("failed to get custom dogu descriptor: %w", err)
-		}
-	} else {
-		logger.Info("Fetching dogu from custom configmap...")
-		jsonStr := configMap.Data["dogu.json"]
-		err = json.Unmarshal([]byte(jsonStr), dogu)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to unmarschal custom dogu descriptor: %w", err)
-		}
+		return nil, fmt.Errorf("failed to unmarschal custom dogu descriptor: %w", err)
 	}
 
-	return dogu, configMap, nil
+	return dogu, nil
+}
+
+func (m DoguManager) getDoguDescriptorFromRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+	dogu, err := m.doguRegistry.GetDogu(doguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
+	}
+
+	return dogu, nil
+}
+
+func (m DoguManager) getDoguConfigMap(ctx context.Context, doguResource *k8sv1.Dogu) (*corev1.ConfigMap, error) {
+	configMap := &corev1.ConfigMap{}
+	err := m.Client.Get(ctx, doguResource.GetDescriptorObjectKey(), configMap)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		} else {
+			return nil, fmt.Errorf("failed to get custom dogu descriptor: %w", err)
+		}
+	} else {
+		return configMap, nil
+	}
+}
+
+func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu, doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
+	logger := log.FromContext(ctx)
+
+	if doguConfigMap != nil {
+		logger.Info("Fetching dogu from custom configmap...")
+		return m.getDoguDescriptorFromConfigMap(doguConfigMap)
+	} else {
+		logger.Info("Fetching dogu from dogu registry...")
+		return m.getDoguDescriptorFromRegistry(doguResource)
+	}
 }
 
 func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) error {

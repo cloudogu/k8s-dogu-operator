@@ -28,9 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const cesLabel = "ces"
-const finalizerName = "dogu-finalizer"
-
 type Operation int
 
 const (
@@ -47,7 +44,7 @@ type DoguReconciler struct {
 	doguManager Manager
 }
 
-// Manager abstracts the simple dogu operations in a k8s ces
+// Manager abstracts the simple dogu operations in a k8s CES
 type Manager interface {
 	// Install installs a dogu resource
 	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
@@ -115,7 +112,7 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Op
 	}
 
 	switch doguResource.Status.Status {
-	case "":
+	case k8sv1.DoguStatusNotInstalled:
 		return Install, nil
 	case k8sv1.DoguStatusInstalled:
 		// Checking if the resource spec field has changed is unnecessary because we

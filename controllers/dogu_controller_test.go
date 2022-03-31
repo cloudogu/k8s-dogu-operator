@@ -19,8 +19,8 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		ldapCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
 
 		operation, err := evaluateRequiredOperation(ldapCr, logger)
-		require.NoError(t, err)
 
+		require.NoError(t, err)
 		assert.Equal(t, Upgrade, operation)
 	})
 
@@ -29,8 +29,8 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		ldapCr.DeletionTimestamp = &now
 
 		operation, err := evaluateRequiredOperation(ldapCr, logger)
-		require.NoError(t, err)
 
+		require.NoError(t, err)
 		assert.Equal(t, Delete, operation)
 		ldapCr.DeletionTimestamp = nil
 	})
@@ -39,8 +39,8 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		ldapCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling}
 
 		operation, err := evaluateRequiredOperation(ldapCr, logger)
-		require.NoError(t, err)
 
+		require.NoError(t, err)
 		assert.Equal(t, Ignore, operation)
 	})
 
@@ -48,8 +48,8 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		ldapCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting}
 
 		operation, err := evaluateRequiredOperation(ldapCr, logger)
-		require.NoError(t, err)
 
+		require.NoError(t, err)
 		assert.Equal(t, Ignore, operation)
 	})
 
@@ -57,8 +57,8 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		ldapCr.Status = k8sv1.DoguStatus{Status: "youaresomethingelse"}
 
 		operation, err := evaluateRequiredOperation(ldapCr, logger)
-		require.NoError(t, err)
 
+		require.NoError(t, err)
 		assert.Equal(t, Ignore, operation)
 	})
 }
