@@ -34,9 +34,16 @@ type DoguSpec struct {
 
 // DoguStatus defines the observed state of Dogu
 type DoguStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Status represents the installation status of the Dogu
+	Status string `json:"status"`
 }
+
+const (
+	DoguStatusNotInstalled = ""
+	DoguStatusInstalling   = "installing"
+	DoguStatusDeleting     = "deleting"
+	DoguStatusInstalled    = "installed"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -65,6 +72,14 @@ func (d Dogu) GetObjectKey() *client.ObjectKey {
 	return &client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name,
+	}
+}
+
+// GetDescriptorObjectKey returns the object key for the custom dogu descriptor with the actual name and namespace from the dogu resource
+func (d Dogu) GetDescriptorObjectKey() client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: d.Namespace,
+		Name:      d.Name + "-descriptor",
 	}
 }
 

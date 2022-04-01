@@ -5,6 +5,8 @@ GOTAG?=1.17.7
 # Image URL to use all building/pushing image targets
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
 MAKEFILES_VERSION=4.8.0
+# Suffix used for custom dogu.json configmap
+DESCRIPTOR_CM_SUFFIX="-descriptor"
 
 .DEFAULT_GOAL:=help
 
@@ -192,3 +194,19 @@ check-k8s-cluster-root-env-var:
 	@echo "Checking if env var K8S_CLUSTER_ROOT is set..."
 	@bash -c export -p | grep K8S_CLUSTER_ROOT
 	@echo "Done."
+
+##@ Local development
+
+.PHONY: check-dogu-descriptor-env-var
+check-dogu-descriptor-env-var:
+	@echo "Checking if env var CUSTOM_DOGU_DESCRIPTOR is set..."
+	@bash -c export -p | grep CUSTOM_DOGU_DESCRIPTOR
+	@echo "Done."
+
+.PHONY: install-dogu-descriptor
+install-dogu-descriptor: check-dogu-descriptor-env-var ## Installs a configmap from dogu.json
+	@echo "Generate configmap from dogu.json"
+	@NAMESPACENAME=$$(jq .Name ${CUSTOM_DOGU_DESCRIPTOR} | sed 's/"//g') && \
+		IFS="/" read -r NAMESPACE NAME <<< "$${NAMESPACENAME}" && \
+		kubectl create configmap "$${NAME}${DESCRIPTOR_CM_SUFFIX}" --from-file="$${CUSTOM_DOGU_DESCRIPTOR}" \
+		--dry-run=client -o yaml | kubectl apply -f -

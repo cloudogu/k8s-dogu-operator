@@ -5,6 +5,7 @@ package controllers
 
 import (
 	"context"
+	_ "embed"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
@@ -28,15 +29,13 @@ var _ = Describe("Dogu Controller", func() {
 	namespace := ldapCr.Namespace
 	ctx := context.TODO()
 	doguLookupKey := types.NamespacedName{Name: doguName, Namespace: namespace}
+	ImageRegistryMock = mocks.ImageRegistry{}
+	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+	DoguRegistryMock = mocks.DoguRegistry{}
+	DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 
 	Context("Handle dogu resource", func() {
 		It("Should install dogu in cluster", func() {
-
-			ImageRegistryMock = mocks.ImageRegistry{}
-			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-			DoguRegistryMock = mocks.DoguRegistry{}
-			DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-
 			By("Creating dogu resource")
 			Expect(k8sClient.Create(ctx, ldapCr)).Should(Succeed())
 

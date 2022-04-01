@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"testing"
 )
 
@@ -73,7 +74,7 @@ func Test_configureManager(t *testing.T) {
 		k8sManager.Mock.On("SetFields", mock.Anything).Return(nil)
 		k8sManager.Mock.On("Add", mock.Anything).Return(nil)
 
-		configureManager(k8sManager, exiter)
+		configureManager(k8sManager, exiter, manager.Options{})
 
 		assert.Nil(t, exiter.Error)
 		mock.AssertExpectationsForObjects(t, k8sManager)
