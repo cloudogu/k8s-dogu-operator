@@ -1,10 +1,12 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=0.1.0
+VERSION=0.2.0
 GOTAG?=1.17.7
 # Image URL to use all building/pushing image targets
 IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
 MAKEFILES_VERSION=4.8.0
+# Suffix used for custom dogu.json configmap
+DESCRIPTOR_CM_SUFFIX="-descriptor"
 
 .DEFAULT_GOAL:=help
 
@@ -29,6 +31,7 @@ ENVTEST_K8S_VERSION = 1.23
 K8S_INTEGRATION_TEST_DIR=${TARGET_DIR}/k8s-integration-test
 K8S_UTILITY_BIN_PATH=$(WORKDIR)/.bin
 K8S_RESOURCE_YAML=$(TARGET_DIR)/${ARTIFACT_ID}_${VERSION}.yaml
+OPERATOR_NAMESPACE?=ecosystem
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -122,11 +125,11 @@ k8s-generate: ${K8S_RESOURCE_YAML} ## Create required k8s resources in ./dist/..
 
 .PHONY: k8s-deploy
 k8s-deploy: k8s-generate ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cat ${K8S_RESOURCE_YAML} | kubectl apply -f -
+	cat ${K8S_RESOURCE_YAML} | kubectl apply --namespace ${OPERATOR_NAMESPACE} -f -
 
 .PHONY: k8s-undeploy
 k8s-undeploy: k8s-generate ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	cat ${K8S_RESOURCE_YAML} | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	cat ${K8S_RESOURCE_YAML} | kubectl delete --namespace ${OPERATOR_NAMESPACE} --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Download Kubernetes Utility Tools
 
@@ -161,3 +164,49 @@ endef
 .PHONY: clean-vendor
 clean-vendor:
 	rm -rf vendor
+
+##@ Docker
+
+.PHONY: docker-build
+docker-build: ${SRC} compile ## Builds the docker image of the k8s-dogu-operator `cloudogu/k8s-dogu-operator:version`.
+	@echo "Building docker image of dogu operator..."
+	docker build . -t ${IMG}
+
+${K8S_CLUSTER_ROOT}/image.tar: check-k8s-cluster-root-env-var
+	# Saves the `cloudogu/k8s-ces-setup:version` image into a file into the K8s root path to be available on all nodes.
+	docker save ${IMG} -o ${K8S_CLUSTER_ROOT}/image.tar
+
+.PHONY: image-import
+image-import: ${K8S_CLUSTER_ROOT}/image.tar
+    # Imports the currently available image `cloudogu/k8s-dogu-operator:version` into the K8s cluster for all nodes.
+	@echo "Import docker image of dogu into all K8s nodes..."
+	@cd ${K8S_CLUSTER_ROOT} && \
+		for node in $$(vagrant status --machine-readable | grep "state,running" | awk -F',' '{print $$2}'); \
+		do  \
+			echo "...$${node}"; \
+			vagrant ssh $${node} -- -t "sudo k3s ctr images import /vagrant/image.tar"; \
+		done;
+	@echo "Done."
+	rm ${K8S_CLUSTER_ROOT}/image.tar
+
+.PHONY: check-k8s-cluster-root-env-var
+check-k8s-cluster-root-env-var:
+	@echo "Checking if env var K8S_CLUSTER_ROOT is set..."
+	@bash -c export -p | grep K8S_CLUSTER_ROOT
+	@echo "Done."
+
+##@ Local development
+
+.PHONY: check-dogu-descriptor-env-var
+check-dogu-descriptor-env-var:
+	@echo "Checking if env var CUSTOM_DOGU_DESCRIPTOR is set..."
+	@bash -c export -p | grep CUSTOM_DOGU_DESCRIPTOR
+	@echo "Done."
+
+.PHONY: install-dogu-descriptor
+install-dogu-descriptor: check-dogu-descriptor-env-var ## Installs a configmap from dogu.json
+	@echo "Generate configmap from dogu.json"
+	@NAMESPACENAME=$$(jq .Name ${CUSTOM_DOGU_DESCRIPTOR} | sed 's/"//g') && \
+		IFS="/" read -r NAMESPACE NAME <<< "$${NAMESPACENAME}" && \
+		kubectl create configmap "$${NAME}${DESCRIPTOR_CM_SUFFIX}" --from-file="$${CUSTOM_DOGU_DESCRIPTOR}" \
+		--dry-run=client -o yaml | kubectl apply -f -

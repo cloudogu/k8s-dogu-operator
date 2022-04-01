@@ -58,7 +58,9 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 	generator := NewResourceGenerator(scheme)
 	t.Run("Return simple deployment", func(t *testing.T) {
 		expectedDeployment := getExpectedDeployment()
+
 		actualDeployment, err := generator.GetDoguDeployment(doguCr, ldapDogu)
+
 		require.NoError(t, err)
 		assert.Equal(t, expectedDeployment, actualDeployment)
 	})
@@ -75,7 +77,6 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 	generator := NewResourceGenerator(scheme)
 	t.Run("Return simple service", func(t *testing.T) {
 		actualService, err := generator.GetDoguService(doguCr, imageConf)
-
 		assert.NoError(t, err)
 
 		referenceFlag := true

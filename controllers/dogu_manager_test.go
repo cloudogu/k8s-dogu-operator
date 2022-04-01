@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -28,6 +29,10 @@ var ldapCr = &k8sv1.Dogu{}
 var imageConfigBytes []byte
 var imageConfig = &imagev1.ConfigFile{}
 
+//go:embed testdata/ldap-descriptor-cm.yaml
+var ldapDescriptorCmBytes []byte
+var ldapDescriptorCm = &corev1.ConfigMap{}
+
 func init() {
 	err := yaml.Unmarshal(ldapCrBytes, ldapCr)
 	if err != nil {
@@ -38,12 +43,323 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	err = yaml.Unmarshal(ldapDescriptorCmBytes, ldapDescriptorCm)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestDoguManager_Install(t *testing.T) {
 	testError := errors.New("test error")
-	scheme := runtime.NewScheme()
+	ctx := context.TODO()
+
+	scheme := getInstallScheme()
 	resourceGenerator := *NewResourceGenerator(scheme)
+
+	t.Run("successfully install a dogu", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+		_ = client.Create(ctx, ldapCr)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		mock.AssertExpectationsForObjects(t, doguRegistry, imageRegistry, doguRegistrator)
+	})
+
+	t.Run("successfully install dogu with custom descriptor", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		//Reset resource version otherwise the resource can't be created
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapDescriptorCm)
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		mock.AssertExpectationsForObjects(t, doguRegistry, imageRegistry, doguRegistrator)
+	})
+
+	t.Run("failed to install dogu with invalid custom descriptor", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(getDoguOnlyScheme()).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get custom dogu descriptor")
+		mock.AssertExpectationsForObjects(t, doguRegistry, imageRegistry, doguRegistrator)
+	})
+
+	t.Run("failed to install dogu with error query descriptor configmap", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		//Reset resource version otherwise the resource can't be created
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, getCustomDoguDescriptorCm("invalid"))
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to unmarschal custom dogu descriptor")
+		mock.AssertExpectationsForObjects(t, doguRegistry, imageRegistry, doguRegistrator)
+	})
+
+	t.Run("failed to register dogu", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testError)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, testError))
+		mock.AssertExpectationsForObjects(t, doguRegistrator, imageRegistry, doguRegistry)
+	})
+
+	t.Run("dogu resource not found", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+		doguRegistry.AssertExpectations(t)
+		imageRegistry.AssertExpectations(t)
+	})
+
+	t.Run("error get dogu", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistry.Mock.On("GetDogu", mock.Anything).Return(nil, testError)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, testError))
+		doguRegistry.AssertExpectations(t)
+	})
+
+	t.Run("error create deployment", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(getDoguWithCmOnlyScheme()).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+		doguManager := NewDoguManager(client, runtime.NewScheme(), &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		doguRegistry.AssertExpectations(t)
+	})
+
+	t.Run("error pull image config", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, testError)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, testError))
+		doguRegistry.AssertExpectations(t)
+	})
+
+	t.Run("error create service resource", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		exposedPorts := make(map[string]struct{})
+		// wrong port
+		exposedPorts["tcp/80"] = struct{}{}
+		brokenImageConfig := &imagev1.ConfigFile{Config: imagev1.Config{ExposedPorts: exposedPorts}}
+		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(brokenImageConfig, nil)
+		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		doguRegistry.AssertExpectations(t)
+	})
+}
+
+func TestDoguManager_Delete(t *testing.T) {
+	scheme := getDoguOnlyScheme()
+	ctx := context.TODO()
+	resourceGenerator := *NewResourceGenerator(scheme)
+	testErr := errors.New("test")
+
+	t.Run("successfully delete a dogu", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything).Return(nil)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+		_ = client.Create(ctx, ldapCr)
+
+		// when
+		err := doguManager.Delete(ctx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		mock.AssertExpectationsForObjects(t, doguRegistrator)
+	})
+
+	t.Run("failed to update dogu status", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Delete(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to update dogu status")
+	})
+
+	t.Run("failed to unregister dogu", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		ldapCr.ResourceVersion = ""
+		_ = client.Create(ctx, ldapCr)
+		doguRegistry := &mocks.DoguRegistry{}
+		imageRegistry := &mocks.ImageRegistry{}
+		doguRegistrator := &mocks.DoguRegistrator{}
+		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testErr)
+		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+
+		// when
+		err := doguManager.Delete(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to unregister dogu")
+		mock.AssertExpectationsForObjects(t, doguRegistrator)
+	})
+}
+
+func getDoguOnlyScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "dogu.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogu",
+	}, ldapCr)
+
+	return scheme
+}
+
+func getDoguWithCmOnlyScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "dogu.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogu",
+	}, ldapCr)
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "ConfigMap",
+	}, &corev1.ConfigMap{})
+	return scheme
+}
+
+func getInstallScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "dogu.cloudogu.com",
 		Version: "v1",
@@ -69,119 +385,20 @@ func TestDoguManager_Install(t *testing.T) {
 		Version: "v1",
 		Kind:    "PersistentVolumeClaim",
 	}, &corev1.PersistentVolumeClaim{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "ConfigMap",
+	}, &corev1.ConfigMap{})
 
-	// fake k8sClient
-	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	return scheme
+}
 
-	t.Run("success", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-		_ = client.Create(context.TODO(), ldapCr)
-
-		err := doguManager.Install(context.TODO(), ldapCr)
-		require.NoError(t, err)
-	})
-
-	t.Run("failed to register dogu", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testError)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-		_ = client.Create(context.TODO(), ldapCr)
-
-		err := doguManager.Install(context.TODO(), ldapCr)
-		require.Error(t, err)
-
-		assert.True(t, errors.Is(err, testError))
-		mock.AssertExpectationsForObjects(t, doguRegistrator, imageRegistry, doguRegsitry)
-	})
-
-	t.Run("dogu resource not found", func(t *testing.T) {
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-
-		err := doguManager.Install(context.TODO(), ldapCr)
-
-		assert.Contains(t, err.Error(), "not found")
-		doguRegsitry.AssertExpectations(t)
-		imageRegistry.AssertExpectations(t)
-	})
-
-	t.Run("error get dogu", func(t *testing.T) {
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(nil, testError)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
-		err := doguManager.Install(context.TODO(), ldapCr)
-
-		assert.True(t, errors.Is(err, testError))
-		doguRegsitry.AssertExpectations(t)
-	})
-
-	t.Run("error create deployment", func(t *testing.T) {
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-		doguManager := NewDoguManager(client, runtime.NewScheme(), &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
-		err := doguManager.Install(context.TODO(), ldapCr)
-
-		assert.Error(t, err)
-		doguRegsitry.AssertExpectations(t)
-	})
-
-	t.Run("error pull image config", func(t *testing.T) {
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, testError)
-		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-
-		err := doguManager.Install(context.TODO(), ldapCr)
-
-		assert.True(t, errors.Is(err, testError))
-		doguRegsitry.AssertExpectations(t)
-	})
-
-	t.Run("error create service resource", func(t *testing.T) {
-		doguRegsitry := &mocks.DoguRegistry{}
-		imageRegistry := &mocks.ImageRegistry{}
-		doguRegistrator := &mocks.DoguRegistrator{}
-		doguRegsitry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		exposedPorts := make(map[string]struct{})
-		// wrong port
-		exposedPorts["tcp/80"] = struct{}{}
-		brokenImageConfig := &imagev1.ConfigFile{Config: imagev1.Config{ExposedPorts: exposedPorts}}
-		imageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(brokenImageConfig, nil)
-		doguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
-		doguManager := NewDoguManager(client, scheme, &resourceGenerator, doguRegsitry, imageRegistry, doguRegistrator)
-
-		err := doguManager.Install(context.TODO(), ldapCr)
-
-		assert.Error(t, err)
-		doguRegsitry.AssertExpectations(t)
-	})
+func getCustomDoguDescriptorCm(value string) *corev1.ConfigMap {
+	data := make(map[string]string)
+	data["dogu.json"] = value
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: ldapDogu.GetSimpleName() + "-descriptor", Namespace: ldapCr.Namespace},
+		Data:       data,
+	}
 }
