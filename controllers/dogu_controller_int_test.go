@@ -107,9 +107,7 @@ var _ = Describe("Dogu Controller", func() {
 			}, timeoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(pvc.Name))
 			Expect(namespace).To(Equal(pvc.Namespace))
-		})
 
-		It("Should delete dogu", func() {
 			By("Expect exposed service for service port 2222")
 			exposedService2222 := &corev1.Service{}
 			exposedService2222Name := fmt.Sprintf("%s-exposed-2222", doguName)
@@ -137,7 +135,9 @@ var _ = Describe("Dogu Controller", func() {
 			}, pollingInterval, timeoutInterval).Should(BeTrue())
 
 			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
+		})
 
+		It("Should delete dogu", func() {
 			By("Delete Dogu")
 			Expect(k8sClient.Delete(ctx, ldapCr)).Should(Succeed())
 

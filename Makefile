@@ -46,7 +46,7 @@ SHELL = /usr/bin/env bash -o pipefail
 ##@ EcoSystem
 
 .PHONY: build
-build: docker-build image-import k8s-apply ## Builds a new version of the setup and deploys it into the K8s-EcoSystem.
+build: docker-build image-import k8s-apply ## Builds a new version of the dogu-operator and deploys it into the K8s-EcoSystem.
 
 ##@ Development (without go container)
 
@@ -95,17 +95,17 @@ controller-release: ## Interactively starts the release workflow.
 ##@ Docker
 
 .PHONY: docker-build
-docker-build: ${SRC} ## Builds the docker image of the k8s-ces-setup `cloudogu/k8s-ces-setup:version`.
+docker-build: ${SRC} ## Builds the docker image of the k8s-dogu-operator `cloudogu/k8s-dogu-operator:version`.
 	@echo "Building docker image of dogu..."
 	DOCKER_BUILDKIT=1 docker build . -t ${IMAGE}
 
 ${K8S_CLUSTER_ROOT}/image.tar: check-k8s-cluster-root-env-var
-	# Saves the `cloudogu/k8s-ces-setup:version` image into a file into the K8s root path to be available on all nodes.
+	# Saves the `cloudogu/k8s-dogu-operator:version` image into a file into the K8s root path to be available on all nodes.
 	docker save ${IMAGE} -o ${K8S_CLUSTER_ROOT}/image.tar
 
 .PHONY: image-import
 image-import: ${K8S_CLUSTER_ROOT}/image.tar
-    # Imports the currently available image `cloudogu/k8s-ces-setup:version` into the K8s cluster for all nodes.
+    # Imports the currently available image `cloudogu/k8s-dogu-operator:version` into the K8s cluster for all nodes.
 	@echo "Import docker image of dogu into all K8s nodes..."
 	@cd ${K8S_CLUSTER_ROOT} && \
 		for node in $$(vagrant status --machine-readable | grep "state,running" | awk -F',' '{print $$2}'); \
