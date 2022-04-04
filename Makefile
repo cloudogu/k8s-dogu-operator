@@ -4,6 +4,9 @@ VERSION=0.2.0
 GOTAG?=1.17.7
 MAKEFILES_VERSION=5.0.0
 
+# Image URL to use all building/pushing image targets
+IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
+
 MAKEFILES_VERSION=4.8.0
 # Suffix used for custom dogu.json configmap
 DESCRIPTOR_CM_SUFFIX="-descriptor"
