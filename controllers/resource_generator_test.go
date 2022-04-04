@@ -109,9 +109,6 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 	generator := getResourceGenerator()
 
 	t.Run("Return simple deployment", func(t *testing.T) {
-		// given
-		expectedDeployment := getExpectedDeployment()
-
 		// when
 		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu)
 

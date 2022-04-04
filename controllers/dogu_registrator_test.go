@@ -183,7 +183,7 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		doguConfigMock.Mock.On("RemoveAll").Return(nil)
 		doguRegistryMock.Mock.On("Unregister", mock.Anything).Return(nil)
-		registrator := controllers.NewCESDoguRegistrator(client, registryMock, &ResourceGenerator{})
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, &controllers.ResourceGenerator{})
 
 		// when
 		err := registrator.UnregisterDogu("ldap")
@@ -203,7 +203,7 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		doguConfigMock.Mock.On("RemoveAll").Return(testErr)
-		registrator := controllers.NewCESDoguRegistrator(client, registryMock, &ResourceGenerator{})
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, &controllers.ResourceGenerator{})
 
 		// when
 		err := registrator.UnregisterDogu("ldap")
@@ -225,7 +225,7 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		doguConfigMock.Mock.On("RemoveAll").Return(nil)
 		doguRegistryMock.Mock.On("Unregister", mock.Anything).Return(testErr)
-		registrator := controllers.NewCESDoguRegistrator(client, registryMock, &ResourceGenerator{})
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, &controllers.ResourceGenerator{})
 
 		// when
 		err := registrator.UnregisterDogu("ldap")

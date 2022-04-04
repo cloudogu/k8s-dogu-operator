@@ -139,13 +139,23 @@ func createCesServices(service *corev1.Service, config *imagev1.Config, serviceV
 	}
 	cesServices = append(cesServices, webAppServices...)
 
-	additionalServices, err := createAdditionalCesServices(serviceVariables)
+	defaultPort := getDefaultPortFromService(service)
+
+	additionalServices, err := createAdditionalCesServices(serviceVariables, defaultPort)
 	if err != nil {
 		return []CesService{}, fmt.Errorf("failed to create additional ces services: %w", err)
 	}
 	cesServices = append(cesServices, additionalServices...)
 
 	return cesServices, nil
+}
+
+func getDefaultPortFromService(service *corev1.Service) int32 {
+	if len(service.Spec.Ports) == 0 {
+		return 0
+	}
+
+	return service.Spec.Ports[0].Port
 }
 
 func createWebAppCesServices(service *corev1.Service, config *imagev1.Config, serviceVariables map[string]string) ([]CesService, error) {
@@ -267,7 +277,7 @@ func getValueFromServiceVariables(serviceVariables map[string]string, port int32
 	return value
 }
 
-func createAdditionalCesServices(serviceVariables map[string]string) ([]CesService, error) {
+func createAdditionalCesServices(serviceVariables map[string]string, defaultPort int32) ([]CesService, error) {
 	additionalCesServicesString, hasAdditionalServices := serviceVariables[serviceAdditionalServices]
 
 	if hasAdditionalServices {
@@ -286,6 +296,11 @@ func createAdditionalCesServices(serviceVariables map[string]string) ([]CesServi
 			// pass should always contain a leading slash
 			if !strings.HasPrefix(service.Pass, "/") {
 				additionalCesServices[i].Pass = fmt.Sprintf("/%s", service.Pass)
+			}
+
+			// port should by default be set to the default port
+			if service.Port == 0 {
+				additionalCesServices[i].Port = defaultPort
 			}
 		}
 
