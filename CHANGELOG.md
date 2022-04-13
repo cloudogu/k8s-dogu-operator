@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+### Changed
+- [#11] **Breaking Change ahead!** The secret containing the dogu registry data was renamed from `dogu-registry-com` to `k8s-dogu-operator-dogu-registry`.
+  It also received the registry endpoint as an additional literal besides username and password. Existing user
+  need to delete their old secret and create a new one. The creation process is described [here](docs/operations/configuring_the_dogu_registry_en.md). 
+
 ## [v0.2.0] - 2022-04-01
 ### Added
 - Add the opportunity to process custom dogu descriptors with configmaps #8

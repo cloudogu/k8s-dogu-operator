@@ -26,15 +26,20 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          - name: CES_REGISTRY_USER
+          - name: DOGU_REGISTRY_ENDPOINT
             valueFrom:
               secretKeyRef:
-                name: dogu-cloudogu-com
+                name: k8s-dogu-operator-dogu-registry
+                key: endpoint
+          - name: DOGU_REGISTRY_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: k8s-dogu-operator-dogu-registry
                 key: username
-          - name: CES_REGISTRY_PASS
+          - name: DOGU_REGISTRY_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: dogu-cloudogu-com
+                name: k8s-dogu-operator-dogu-registry
                 key: password
         image: controller:latest
         name: manager

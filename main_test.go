@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/mocks"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -33,23 +34,9 @@ var testErr = errors.New("test")
 func Test_getK8sManagerOptions(t *testing.T) {
 
 	t.Run("successfully get k8s manager options", func(t *testing.T) {
-		exiter := &mockExiter{}
 		t.Setenv("NAMESPACE", "default")
 
-		getK8sManagerOptions(exiter)
-
-		assert.Nil(t, exiter.Error)
-	})
-
-	t.Run("fail to get env var", func(t *testing.T) {
-		// Skip error on redefining flags
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-
-		exiter := &mockExiter{}
-
-		getK8sManagerOptions(exiter)
-
-		assert.Error(t, exiter.Error)
+		getK8sManagerOptions(&config.OperatorConfig{DevelopmentLogMode: false})
 	})
 }
 
@@ -74,7 +61,16 @@ func Test_configureManager(t *testing.T) {
 		k8sManager.Mock.On("SetFields", mock.Anything).Return(nil)
 		k8sManager.Mock.On("Add", mock.Anything).Return(nil)
 
-		configureManager(k8sManager, exiter, manager.Options{})
+		operatorConfig := &config.OperatorConfig{
+			Namespace: "myNamespace",
+			DoguRegistry: config.DoguRegistryData{
+				Endpoint: "myEndpoint",
+				Username: "myUsername",
+				Password: "myPassword",
+			},
+		}
+
+		configureManager(k8sManager, operatorConfig, exiter, manager.Options{})
 
 		assert.Nil(t, exiter.Error)
 		mock.AssertExpectationsForObjects(t, k8sManager)
@@ -137,22 +133,10 @@ func Test_addChecks(t *testing.T) {
 
 func Test_configureLogger(t *testing.T) {
 	t.Run("configure logger with log mode env var", func(t *testing.T) {
-		exiter := &mockExiter{}
 		t.Setenv("ZAP_DEVELOPMENT_MODE", "true")
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
-		configureLogger(exiter)
-
-		assert.Nil(t, exiter.Error)
-	})
-
-	t.Run("error configure logger with invalid env var", func(t *testing.T) {
-		exiter := &mockExiter{}
-		t.Setenv("ZAP_DEVELOPMENT_MODE", "invalid")
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-
-		configureLogger(exiter)
-
-		assert.Error(t, exiter.Error)
+		operatorConfig := &config.OperatorConfig{DevelopmentLogMode: true}
+		configureLogger(operatorConfig)
 	})
 }
