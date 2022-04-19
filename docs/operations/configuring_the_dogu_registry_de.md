@@ -35,9 +35,3 @@ kubectl --namespace <cesNamespace> create secret generic k8s-dogu-operator-dogu-
 ```
 
 Im Anschluss kann der `k8s-dogu-operator` wie gewohnt [installiert werden](installing_operator_into_cluster_de.md).
-
-## Benutzerdefinierte Dogu Registry überprüfen
-
-Wenn das Secret korrekt angelegt wurde, dann sollte nach dem Start des `k8s-dogu-operators` dieser eine Log-Ausgabe der
-Form: 
-`using custom dogu registry <endpoint>` ausgeben.

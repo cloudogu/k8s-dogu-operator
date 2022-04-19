@@ -11,10 +11,9 @@
     ```
 4. Führen Sie `make manifests` aus
 5. Führen Sie `make install` aus
-6. Exportieren Sie Ihre CES-Instanz-Zugangsdaten, damit der Operator sie verwenden kann
-    - `export DOGU_REGISTRY_USERNAME="https://my-dogu-registry/api/v2/dogus" && export DOGU_REGISTRY_USERNAME=instanceId && export DOGU_REGISTRY_PASSWORD='instanceSecret'`
-7. Exportieren Sie Ihren CES-Instanz-Namespace
-   - `export NAMESPACE=ecosystem`
+6. Öffnen Sie die Datei `.myenv.template` und folgen Sie den Anweisungen um eine 
+   Umgebungsvariablendatei mit persönlichen Informationen anzulegen
+7. Run `make run` to run the dogu operator locally
 8. Führen Sie `make run` aus, um den dogu-Operator lokal auszuführen
 
 ## Makefile-Targets

@@ -81,7 +81,6 @@ func main() {
 	}
 
 	options := getK8sManagerOptions(operatorConfig)
-	setupLog.Info(fmt.Sprintf("using config: %+v", operatorConfig))
 
 	k8sManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
@@ -151,7 +150,7 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 
 func createDoguManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig, exiter applicationExiter, options manager.Options) *controllers.DoguManager {
 	doguRegistry := controllers.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Endpoint)
-	imageRegistry := controllers.NewCraneContainerImageRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Username)
+	imageRegistry := controllers.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Username)
 	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
 	registry, err := cesregistry.New(core.Registry{
 		Type:      "etcd",

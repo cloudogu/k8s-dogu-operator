@@ -14,6 +14,10 @@ func TestNewOperatorConfig(t *testing.T) {
 		Username: "myUsername",
 		Password: "myPassword",
 	}
+	expectedDockerRegistryData := config.DockerRegistryData{
+		Username: "myDockerUsername",
+		Password: "myDockerPassword",
+	}
 
 	t.Run("Error on missing namespace env var", func(t *testing.T) {
 		// when
@@ -59,6 +63,28 @@ func TestNewOperatorConfig(t *testing.T) {
 	})
 
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
+	t.Run("Error on missing docker registry username var", func(t *testing.T) {
+		// when
+		operatorConfig, err := config.NewOperatorConfig()
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get env var [DOCKER_REGISTRY_USERNAME]: environment variable DOCKER_REGISTRY_USERNAME must be set")
+		assert.Nil(t, operatorConfig)
+	})
+
+	t.Setenv("DOCKER_REGISTRY_USERNAME", expectedDockerRegistryData.Username)
+	t.Run("Error on missing docker registry password var", func(t *testing.T) {
+		// when
+		operatorConfig, err := config.NewOperatorConfig()
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get env var [DOCKER_REGISTRY_PASSWORD]: environment variable DOCKER_REGISTRY_PASSWORD must be set")
+		assert.Nil(t, operatorConfig)
+	})
+
+	t.Setenv("DOCKER_REGISTRY_PASSWORD", expectedDockerRegistryData.Password)
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
 		operatorConfig, err := config.NewOperatorConfig()

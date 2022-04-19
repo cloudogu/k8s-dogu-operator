@@ -41,6 +41,16 @@ spec:
               secretKeyRef:
                 name: k8s-dogu-operator-dogu-registry
                 key: password
+          - name: DOCKER_REGISTRY_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: k8s-dogu-operator-docker-registry
+                key: username
+          - name: DOCKER_REGISTRY_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: k8s-dogu-operator-docker-registry
+                key: password
         image: controller:latest
         name: manager
         securityContext:

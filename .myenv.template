@@ -1,0 +1,17 @@
+# Usage:
+# 1. Copy this file as `.myenv` into your project
+# 2. Adapt the information below with the your personal data.
+#
+# The file `.myenv` is ignored by git. Note: DO NOT COMMIT your personal data.
+
+# namespace for the dogu operator
+export NAMESPACE=<namespace>
+
+# credentials for the dogu registry
+export DOGU_REGISTRY_ENDPOINT="https://my-dogu-registry/api/v2/dogus"
+export DOGU_REGISTRY_USERNAME=<doguRegistryUsername>
+export DOGU_REGISTRY_PASSWORD=<doguRegistryPassword>
+
+# credentials for the docker registry
+export DOCKER_REGISTRY_USERNAME=<dockerRegistryUsername>
+export DOCKER_REGISTRY_PASSWORD=<dockerRegistryPassword>

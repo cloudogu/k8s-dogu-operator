@@ -11,11 +11,8 @@
 ```
 4. Run `make manifests`
 5. Run `make install`
-6. export your CES instance credentials for the operator to use
-    - `export DOGU_REGISTRY_USERNAME="https://my-dogu-registry/api/v2/dogus" && export DOGU_REGISTRY_USERNAME=instanceId && export DOGU_REGISTRY_PASSWORD='instanceSecret'`
-7. export your CES instance namespace
-   - `export NAMESPACE=ecosystem`
-8. Run `make run` to run the dogu operator locally
+6. open the file `.myenv.template` and follow the instructions to create an env file with your personal data
+7. Run `make run` to run the dogu operator locally
 
 ## Makefile-Targets
 

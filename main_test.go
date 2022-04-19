@@ -10,6 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"os"
@@ -34,9 +35,10 @@ var testErr = errors.New("test")
 func Test_getK8sManagerOptions(t *testing.T) {
 
 	t.Run("successfully get k8s manager options", func(t *testing.T) {
-		t.Setenv("NAMESPACE", "default")
+		options := getK8sManagerOptions(&config.OperatorConfig{DevelopmentLogMode: false, Namespace: "mynamespace"})
+		require.NotNil(t, options)
 
-		getK8sManagerOptions(&config.OperatorConfig{DevelopmentLogMode: false})
+		assert.Equal(t, "mynamespace", options.Namespace)
 	})
 }
 
