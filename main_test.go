@@ -40,17 +40,6 @@ func Test_getK8sManagerOptions(t *testing.T) {
 
 		assert.Nil(t, exiter.Error)
 	})
-
-	t.Run("fail to get env var", func(t *testing.T) {
-		// Skip error on redefining flags
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-
-		exiter := &mockExiter{}
-
-		getK8sManagerOptions(exiter)
-
-		assert.Error(t, exiter.Error)
-	})
 }
 
 func Test_configureManager(t *testing.T) {

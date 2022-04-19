@@ -16,7 +16,7 @@ benutzerdefinierte URL angeben wird, über die der Dienst erreichbar ist.
 **Wie kennzeichne ich mein Dogu als Webapp?**
 
 Die Voraussetzung für Ihr Dogu ist, dass das `Dockerfile` mindestens einen Port zur Verfügung stellt. Das Dogu wird als Webapp über
-eine Umgebungsvariable. Wenn das `Dockerfile` nur einen Port zur Verfügung stellt, müssen Sie die Umgebungsvariable
+eine Umgebungsvariable gekennzeichnet. Wenn das `Dockerfile` nur einen Port zur Verfügung stellt, müssen Sie die Umgebungsvariable
 `SERVICE_TAGS=webapp` setzen. Wenn das `Dockerfile` mehrere Ports enthält, ist es erforderlich, den Zielport der Webapp
 in der Umgebungsvariable anzugeben. Zum Beispiel, wir betrachten die exponierten Ports `8080,8081` und wollen den Port `8081` als
 Webapp markieren. Dann müssen wir die Umgebungsvariable `SERVICE_8081_TAGS=webapp` anstelle von `SERVICE_TAGS=webapp` setzen.
@@ -52,9 +52,13 @@ Jeder `k8s-dogu-operator.cloudogu.com/ces-services`-Eintrag enthält ein Array v
 `ces-service`-Objekt enthält die folgenden Informationen:
 * name: Der Name des CES-Service. Wird verwendet, um den resultierenden Ingress im Cluster zu identifizieren.
 * port: Der Zielport des Zieldienstes. In unserem Fall ist der Zieldienst der generierte Dogu-Dienst.
-* Standort: Die URL, unter der der CES-Dienst erreichbar ist. Unser CES-Dienst wäre im Browser verfügbar als
+* location: Die URL, unter der der CES-Dienst erreichbar ist. Unser CES-Dienst wäre im Browser verfügbar als
   `http(s)://<fqdn>/mein-dogu-name`.
-* pass: Die URL, die im Zielserver anvisiert werden soll.
+* pass: Die URL, die im Zielserver anvisiert werden soll. 
+  Der Pass wird verwendet, wenn die Anfrage an den Zielserver weitergeleitet wird. 
+  Manchmal ist es notwendig, den Kontextpfad einer Anfrage zu ändern, bevor sie an den eigentlichen Endpunkt gesendet 
+  wird, z. B. wenn die Dogus so konfiguriert sind, dass sie auf localhost:<port>\context-path anstelle von localhost:<port> 
+  hören.
 
 **Beispiel für eine Webapp mit zusätzlichen Diensten**
 

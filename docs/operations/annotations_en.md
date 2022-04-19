@@ -10,13 +10,13 @@ This section contains all annotations attached to K8s services, if needed.
 
 The `k8s-dogu-operator.cloudogu.com/ces-services` annotation contains information about one or more CES services.
 Each CES service defines an external service of the system that is accessible through the web server. The annotation is automatically
-generated for each dogu that is marked as a webapp. It is also possible to customize the behavior of the services by specifying a
+generated for each dogu that is marked as a webapp. It is also possible to customize the behavior of the services by
 specifying a custom URL through which the service can be reached.
 
 **How do I mark my dogu as a webapp?**
 
 The requirement for your Dogu is that the `Dockerfile` provides at least one port. The dogu is marked as a webapp via
-an environment variable. If the `Dockerfile` provides only one port, you have to set the environment variable
+an environment variable. If the `Dockerfile` provides only one port, you have to set the
 `SERVICE_TAGS=webapp` environment variable. If the `Dockerfile` contains multiple ports, it is necessary to specify the destination port of the webapp
 in the environment variable. For example, we consider the exposed ports `8080,8081` and want to mark port `8081` as a
 webapp. Then we need to set the environment variable `SERVICE_8081_TAGS=webapp` instead of `SERVICE_TAGS=webapp`.
@@ -54,7 +54,10 @@ Each `k8s-dogu-operator.cloudogu.com/ces-services` entry contains an array of `c
 * port: The destination port of the target service. In our case, the target service is the generated Dogu service.
 * location: the URL where the CES service is accessible. Our CES service would be available in the browser as.
   `http(s)://<fqdn>/my-dogu-name`.
-* pass: the URL to target in the destination server.
+* pass: the URL to target in the destination server. The location is exposed. The pass is used when the request is 
+  redirected to the target server. Sometimes it is necessary to change the context path of a request prior to sending 
+  it to the actual endpoint, e.g., the dogus are configured to listen to localhost:<port>\context-path instead of 
+  localhost:<port>
 
 **Example for a webapp with additional services**.
 
