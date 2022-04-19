@@ -13,7 +13,7 @@ Die Docker Registry ist ein Speichersystem für die Images des Dogus. Diese Regi
 über alle veröffentlichten Dogus und dient somit als Startpunkt für den Dogu-Operator.
 
 Damit eine Docker Registry angehängt werden kann, muss im K8s-Cluster ein Geheimnis erstellt werden.
-erstellt werden. Dieses Geheimnis enthält die Anmeldeinformationen, die für den `k8s-dogu-operator` benötigt werden:
+Dieses Geheimnis enthält die Anmeldeinformationen, die für den `k8s-dogu-operator` benötigt werden:
 
 1. Docker-Server
 2. E-Mail
