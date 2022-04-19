@@ -82,7 +82,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to evaluate required operation: %w", err)
 	}
-	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s", doguResource.Namespace, doguResource.Name, operationToString(requiredOperation)))
+	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s", doguResource.Namespace, doguResource.Name, requiredOperation.toString()))
 
 	switch requiredOperation {
 	case Install:
@@ -128,8 +128,8 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Op
 	}
 }
 
-func operationToString(operation Operation) string {
-	switch operation {
+func (o Operation) toString() string {
+	switch o {
 	case Install:
 		return "Install"
 	case Upgrade:
