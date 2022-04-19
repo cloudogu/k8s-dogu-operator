@@ -48,6 +48,7 @@ type OperatorConfig struct {
 	DevelopmentLogMode bool `json:"development_log_mode"`
 }
 
+// NewOperatorConfig creates a new operator config by reading values from the environment variables
 func NewOperatorConfig() (*OperatorConfig, error) {
 	namespace, err := readNamespace()
 	if err != nil {
