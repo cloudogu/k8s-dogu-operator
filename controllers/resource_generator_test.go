@@ -218,7 +218,7 @@ func getExpectedDeployment() *appsv1.Deployment {
 				},
 				Spec: corev1.PodSpec{
 					SecurityContext:  &corev1.PodSecurityContext{FSGroup: &fsGroup, FSGroupChangePolicy: &fsGroupPolicy},
-					ImagePullSecrets: []corev1.LocalObjectReference{{Name: "registry-cloudogu-com"}},
+					ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
 					Hostname:         "ldap",
 					Volumes: []corev1.Volume{{
 						Name: "node-master-file",
