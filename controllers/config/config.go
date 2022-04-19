@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -9,12 +10,11 @@ import (
 )
 
 var (
-	envVarNamespace              = "NAMESPACE"
-	envVarDoguRegistryEndpoint   = "DOGU_REGISTRY_ENDPOINT"
-	envVarDoguRegistryUsername   = "DOGU_REGISTRY_USERNAME"
-	envVarDoguRegistryPassword   = "DOGU_REGISTRY_PASSWORD"
-	envVarDockerRegistryUsername = "DOCKER_REGISTRY_USERNAME"
-	envVarDockerRegistryPassword = "DOCKER_REGISTRY_PASSWORD"
+	envVarNamespace            = "NAMESPACE"
+	envVarDoguRegistryEndpoint = "DOGU_REGISTRY_ENDPOINT"
+	envVarDoguRegistryUsername = "DOGU_REGISTRY_USERNAME"
+	envVarDoguRegistryPassword = "DOGU_REGISTRY_PASSWORD"
+	envVarDockerRegistry       = "DOCKER_REGISTRY"
 	// logModeEnvVar is the constant for env variable ZAP_DEVELOPMENT_MODE
 	// which specifies the development mode for zap options. Valid values are
 	// true or false. In development mode the logger produces stacktraces on warnings and no smapling.
@@ -30,10 +30,17 @@ type DoguRegistryData struct {
 	Password string `json:"password"`
 }
 
+// DockerRegistrySecretData contains all registry login information from a Docker-JSON-config file.
+type DockerRegistrySecretData struct {
+	Auths map[string]DockerRegistryData `json:"auths"`
+}
+
 // DockerRegistryData contains all necessary data for the Docker registry.
 type DockerRegistryData struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Email    string `json:"email"`
+	Auth     string `json:"auth"`
 }
 
 // OperatorConfig contains all configurable values for the dogu operator.
@@ -130,20 +137,21 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 }
 
 func readDockerRegistryData() (DockerRegistryData, error) {
-	username, err := getEnvVar(envVarDockerRegistryUsername)
+	dockerRegistryData, err := getEnvVar(envVarDockerRegistry)
 	if err != nil {
-		return DockerRegistryData{}, fmt.Errorf("failed to get env var [%s]: %w", envVarDockerRegistryUsername, err)
+		return DockerRegistryData{}, fmt.Errorf("failed to get env var [%s]: %w", envVarDockerRegistry, err)
 	}
 
-	password, err := getEnvVar(envVarDockerRegistryPassword)
+	var secretData DockerRegistrySecretData
+	err = json.Unmarshal([]byte(dockerRegistryData), &secretData)
 	if err != nil {
-		return DockerRegistryData{}, fmt.Errorf("failed to get env var [%s]: %w", envVarDockerRegistryPassword, err)
+		return DockerRegistryData{}, fmt.Errorf("failed to unmarshal docker secret data: %w", err)
 	}
 
-	return DockerRegistryData{
-		Username: username,
-		Password: password,
-	}, nil
+	for _, data := range secretData.Auths {
+		return data, nil
+	}
+	return DockerRegistryData{}, fmt.Errorf("no docker regsitry data provided")
 }
 
 func getEnvVar(name string) (string, error) {

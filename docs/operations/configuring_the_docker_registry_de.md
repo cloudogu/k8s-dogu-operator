@@ -1,35 +1,37 @@
-# Konfiguration der Docker Registry
+# Konfigurieren der Docker-Registry
 
-In diesem Dokument wird beschrieben, wie die benötigte Docker Registry an dem `k8s-dogu-operator` angeschlossen
-werden kann.
+Dieses Dokument beschreibt, wie die erforderliche Docker-Registry an den `k8s-dogu-operator` angeschlossen werden kann.
+angeschlossen werden kann.
 
 ## Voraussetzungen
 
-* Es muss ein K8s-Cluster vorhanden sein. Dies sollte via `kubectl` angesteuert werden können.
+* Ein K8s-Cluster muss vorhanden sein. Auf diesen sollte über `kubectl` zugegriffen werden können.
 
-## Dogu Registry
+## Docker Registry
 
-Bei der Docker Registry handelt es sich um ein Ablagesystem für die Images der Dogus. Diese Registry enthält die Images 
-über alle veröffentlichten Dogus und dient somit als Anlaufstelle für den Dogu Operator.
+Die Docker Registry ist ein Speichersystem für die Images des Dogus. Diese Registry enthält die Images
+über alle veröffentlichten Dogus und dient somit als Startpunkt für den Dogu-Operator.
 
-Damit eine Docker Registry angebunden werden kann, muss ein Secret im K8s-Cluster angelegt
-werden. Dieses Secret enthält die für den `k8s-dogu-operator` benötigten Login-Daten:
+Damit eine Docker Registry angehängt werden kann, muss im K8s-Cluster ein Geheimnis erstellt werden.
+erstellt werden. Dieses Geheimnis enthält die Anmeldeinformationen, die für den `k8s-dogu-operator` benötigt werden:
 
-**Beispiel**
+1. Docker-Server
+2. E-Mail
+3. Benutzername
+3. Kennwort
 
-Benutzername: mydockerlogin
-Passwort: mydockerpassword
+## Docker Registry Secret erstellen
 
-## Docker Registry Secret anlegen
-
-Das Secret mit den Docker-Registry Daten muss unter dem Namen `k8s-dogu-operator-docker-registry` angelegt werden. Die 
-Registry Daten werden als Literale verschlüsselt im Secret hinterlegt. Ein korrektes Secret kann mit `kubectl` 
-folgendermaßen angelegt werden:
+Das Geheimnis, das die Docker-Registry-Daten enthält, muss unter dem Namen "k8s-dogu-operator-docker-registry" erstellt werden. Die
+Registry-Daten werden im Secret als Docker-JSON-config-Format verschlüsselt. Ein korrektes Geheimnis kann mit `kubectl` erstellt werden.
+wie folgt erstellt werden:
 
 ```bash
-kubectl --namespace <cesNamespace> create secret generic k8s-dogu-operator-docker-registry \
---from-literal=username="myusername" \
---from-literal=password="mypassword"
+kubectl --namespace <cesNamespace> create secret docker-registry k8s-dogu-operator-docker-registry \
+--docker-server="myregistry.mydomain.com" \
+--docker-benutzername="meinbenutzername" \
+--docker-email="myemail@test.com" \
+--docker-password="meinpassword"
 ```
 
-Im Anschluss kann der `k8s-dogu-operator` wie gewohnt [installiert werden](installing_operator_into_cluster_de.md).
+Danach kann der "k8s-dogu-operator" wie gewohnt [installiert] werden (installing_operator_into_cluster_de.md).

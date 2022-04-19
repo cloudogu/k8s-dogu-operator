@@ -14,9 +14,12 @@ func TestNewOperatorConfig(t *testing.T) {
 		Username: "myUsername",
 		Password: "myPassword",
 	}
+	inputDockerRegistrySecretData := "{\"auths\":{\"your.private.registry.example.com\":{\"username\":\"myDockerUsername\",\"password\":\"myDockerPassword\",\"email\":\"jdoe@example.com\",\"auth\":\"c3R...zE2\"}}}"
 	expectedDockerRegistryData := config.DockerRegistryData{
 		Username: "myDockerUsername",
 		Password: "myDockerPassword",
+		Email:    "jdoe@example.com",
+		Auth:     "c3R...zE2",
 	}
 
 	t.Run("Error on missing namespace env var", func(t *testing.T) {
@@ -63,28 +66,17 @@ func TestNewOperatorConfig(t *testing.T) {
 	})
 
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
-	t.Run("Error on missing docker registry username var", func(t *testing.T) {
+	t.Run("Error on missing docker registry data var", func(t *testing.T) {
 		// when
 		operatorConfig, err := config.NewOperatorConfig()
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get env var [DOCKER_REGISTRY_USERNAME]: environment variable DOCKER_REGISTRY_USERNAME must be set")
+		assert.Contains(t, err.Error(), "failed to get env var [DOCKER_REGISTRY]: environment variable DOCKER_REGISTRY must be set")
 		assert.Nil(t, operatorConfig)
 	})
 
-	t.Setenv("DOCKER_REGISTRY_USERNAME", expectedDockerRegistryData.Username)
-	t.Run("Error on missing docker registry password var", func(t *testing.T) {
-		// when
-		operatorConfig, err := config.NewOperatorConfig()
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get env var [DOCKER_REGISTRY_PASSWORD]: environment variable DOCKER_REGISTRY_PASSWORD must be set")
-		assert.Nil(t, operatorConfig)
-	})
-
-	t.Setenv("DOCKER_REGISTRY_PASSWORD", expectedDockerRegistryData.Password)
+	t.Setenv("DOCKER_REGISTRY", inputDockerRegistrySecretData)
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
 		operatorConfig, err := config.NewOperatorConfig()
@@ -94,6 +86,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		require.NotNil(t, operatorConfig)
 		assert.Equal(t, expectedNamespace, operatorConfig.Namespace)
 		assert.Equal(t, expectedDoguRegistryData, operatorConfig.DoguRegistry)
+		assert.Equal(t, expectedDockerRegistryData, operatorConfig.DockerRegistry)
 		assert.False(t, operatorConfig.DevelopmentLogMode)
 	})
 
