@@ -87,7 +87,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.Equal(t, expectedNamespace, operatorConfig.Namespace)
 		assert.Equal(t, expectedDoguRegistryData, operatorConfig.DoguRegistry)
 		assert.Equal(t, expectedDockerRegistryData, operatorConfig.DockerRegistry)
-		assert.Equal(t, "0.1.0", operatorConfig.Version)
+		assert.Equal(t, "0.1.0", operatorConfig.Version.Raw)
 		assert.False(t, operatorConfig.DevelopmentLogMode)
 	})
 

@@ -46,10 +46,15 @@ spec:
             description: DoguStatus defines the observed state of Dogu
             properties:
               status:
-                description: Status represents the installation status of the Dogu
+                description: Status represents the state of the Dogu in the ecosystem
+                type: string
+              statusMessage:
+                description: StatusMessage contains a description of the current dogu
+                  state
                 type: string
             required:
             - status
+            - statusMessage
             type: object
         type: object
     served: true

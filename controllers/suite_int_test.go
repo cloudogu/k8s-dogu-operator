@@ -6,6 +6,7 @@ package controllers_test
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/cesapp/v4/core"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
@@ -73,6 +74,7 @@ var _ = BeforeSuite(func() {
 
 	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
 	CesRegistryMock := cesmocks.Registry{}
+	registry := &cesmocks.DoguRegistry{}
 	EtcdDoguRegistry := &cesmocks.DoguRegistry{}
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
@@ -83,8 +85,11 @@ var _ = BeforeSuite(func() {
 	CesRegistryMock.Mock.On("DoguRegistry").Return(EtcdDoguRegistry)
 	CesRegistryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 
+	version, err := core.ParseVersion("0.0.0")
+	Expect(err).ToNot(HaveOccurred())
+
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
-	doguManager := controllers.NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator)
+	doguManager := controllers.NewDoguManager(&version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator, registry)
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
