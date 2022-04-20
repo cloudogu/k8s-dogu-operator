@@ -35,7 +35,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		cesRegistryMock := &cesmocks.DoguRegistry{}
 		cesRegistryMock.Mock.On("Get", "redmine").Return(redmineDogu, nil)
 		cesRegistryMock.Mock.On("Get", "cockpit").Return(cockpitDogu, nil)
-		dependencyChecker := dependencies.NewDependencyChecker(&version, cesRegistryMock)
+		dependencyChecker := dependencies.NewDependencyValidator(&version, cesRegistryMock)
 		dep := []core.Dependency{{
 			Type:    "dogu",
 			Name:    "redmine",
@@ -68,7 +68,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		version, _ := core.ParseVersion("0.0.0")
 		cesRegistryMock := &cesmocks.DoguRegistry{}
 		cesRegistryMock.Mock.On("Get", "redmine").Return(redmineDogu, nil)
-		dependencyChecker := dependencies.NewDependencyChecker(&version, cesRegistryMock)
+		dependencyChecker := dependencies.NewDependencyValidator(&version, cesRegistryMock)
 		dep := []core.Dependency{{
 			Type:    "dogu",
 			Name:    "redmine",
@@ -88,7 +88,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		// given
 		version, _ := core.ParseVersion("0.0.0")
 		cesRegistryMock := &cesmocks.DoguRegistry{}
-		dependencyChecker := dependencies.NewDependencyChecker(&version, cesRegistryMock)
+		dependencyChecker := dependencies.NewDependencyValidator(&version, cesRegistryMock)
 		dep := []core.Dependency{{
 			Type:    "client",
 			Name:    "k8s-dogu-operator",
@@ -108,7 +108,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		// given
 		version, _ := core.ParseVersion("1.0.0")
 		cesRegistryMock := &cesmocks.DoguRegistry{}
-		dependencyChecker := dependencies.NewDependencyChecker(&version, cesRegistryMock)
+		dependencyChecker := dependencies.NewDependencyValidator(&version, cesRegistryMock)
 		optionalDeps := []core.Dependency{{
 			Type:    "client",
 			Name:    "k8s-dogu-operator",
@@ -127,7 +127,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		// given
 		version, _ := core.ParseVersion("1.0.0")
 		cesRegistryMock := &cesmocks.DoguRegistry{}
-		dependencyChecker := dependencies.NewDependencyChecker(&version, cesRegistryMock)
+		dependencyChecker := dependencies.NewDependencyValidator(&version, cesRegistryMock)
 		deps := []core.Dependency{{
 			Type:    "client",
 			Name:    "k8s-dogu-operator",
@@ -154,7 +154,7 @@ func TestNewDependencyChecker(t *testing.T) {
 		doguDependencyValidator := cesdependencies.NewDoguDependencyChecker(cesRegistryMock)
 
 		// when
-		dependencyChecker := dependencies.NewDependencyChecker(&version, cesRegistryMock)
+		dependencyChecker := dependencies.NewDependencyValidator(&version, cesRegistryMock)
 
 		// then
 		assert.NotNil(t, dependencyChecker)

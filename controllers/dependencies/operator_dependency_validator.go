@@ -16,13 +16,13 @@ func newOperatorDependencyValidator(version *core.Version) *operatorDependencyVa
 	}
 }
 
-// CheckAllDependencies looks into all client dependencies (mandatory- and optional ones) and checks weather they're
+// ValidateAllDependencies looks into all client dependencies (mandatory- and optional ones) and checks weather they're
 // all installed an that in the correct version
-func (cc *operatorDependencyValidator) CheckAllDependencies(dogu core.Dogu) error {
+func (cc *operatorDependencyValidator) ValidateAllDependencies(dogu core.Dogu) error {
 	var allProblems error
 
-	errMandatoryDependencies := cc.CheckMandatoryDependencies(dogu)
-	errOptionalDependencies := cc.CheckOptionalDependencies(dogu)
+	errMandatoryDependencies := cc.validateMandatoryDependencies(dogu)
+	errOptionalDependencies := cc.validateOptionalDependencies(dogu)
 
 	if errMandatoryDependencies != nil || errOptionalDependencies != nil {
 		allProblems = multierror.Append(errMandatoryDependencies, errOptionalDependencies)
@@ -30,7 +30,20 @@ func (cc *operatorDependencyValidator) CheckAllDependencies(dogu core.Dogu) erro
 	return allProblems
 }
 
-func (cc *operatorDependencyValidator) CheckMandatoryDependencies(dogu core.Dogu) error {
+func (cc *operatorDependencyValidator) checkVersion(dependency core.Dependency) (bool, error) {
+	comparator, err := core.ParseVersionComparator(dependency.Version)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse dependency version: %w", err)
+	}
+
+	allows, err := comparator.Allows(*cc.Version)
+	if err != nil {
+		return false, fmt.Errorf("failed to compare dependency version with operator version: %w", err)
+	}
+	return allows, nil
+}
+
+func (cc *operatorDependencyValidator) validateMandatoryDependencies(dogu core.Dogu) error {
 	dependencies := dogu.GetDependenciesOfType(core.DependencyTypeClient)
 
 	for _, dependency := range dependencies {
@@ -50,20 +63,7 @@ func (cc *operatorDependencyValidator) CheckMandatoryDependencies(dogu core.Dogu
 	return nil
 }
 
-func (cc *operatorDependencyValidator) checkVersion(dependency core.Dependency) (bool, error) {
-	comparator, err := core.ParseVersionComparator(dependency.Version)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse dependency version: %w", err)
-	}
-
-	allows, err := comparator.Allows(*cc.Version)
-	if err != nil {
-		return false, fmt.Errorf("failed to compare dependency version with operator version: %w", err)
-	}
-	return allows, nil
-}
-
-func (cc *operatorDependencyValidator) CheckOptionalDependencies(dogu core.Dogu) error {
+func (cc *operatorDependencyValidator) validateOptionalDependencies(dogu core.Dogu) error {
 	dependencies := dogu.GetOptionalDependenciesOfType(core.DependencyTypeClient)
 
 	for _, dependency := range dependencies {

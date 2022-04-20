@@ -6,3 +6,7 @@
 !api/**/*
 !controllers/
 !vendor/**/*
+!build/**/*
+!hack/**/*.go
+!Makefile
+!.git/**/*

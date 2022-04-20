@@ -9,29 +9,33 @@ import (
 
 const K8sDoguOperatorClientDependencyName = "k8s-dogu-operator"
 
-type DependencyChecker struct {
+// DependencyValidator is a composite validator responsible to validate the dogu and client dependencies of dogus.
+type DependencyValidator struct {
 	DoguDependencyValidator     *dependencies.DoguDependencyChecker `json:"dogu_dependency_validator"`
 	OperatorDependencyValidator *operatorDependencyValidator        `json:"operator_dependency_validator"`
 }
 
-func NewDependencyChecker(version *core.Version, doguRegistry registry.DoguRegistry) *DependencyChecker {
+// NewDependencyValidator create a new composite validator checking the dogu and client dependencies
+func NewDependencyValidator(version *core.Version, doguRegistry registry.DoguRegistry) *DependencyValidator {
 	operatorDependencyValidator := newOperatorDependencyValidator(version)
 	doguDependencyValidator := dependencies.NewDoguDependencyChecker(doguRegistry)
 
-	return &DependencyChecker{
+	return &DependencyValidator{
 		DoguDependencyValidator:     doguDependencyValidator,
 		OperatorDependencyValidator: operatorDependencyValidator,
 	}
 }
 
-func (dc *DependencyChecker) ValidateDependencies(dogu *core.Dogu) error {
+// ValidateDependencies validates all kinds of dependencies for dogus. An error is returned when any invalid
+// dependencies were detected.
+func (dc *DependencyValidator) ValidateDependencies(dogu *core.Dogu) error {
 	var result error
 	err := dc.DoguDependencyValidator.CheckAllDependencies(*dogu)
 	if err != nil {
 		result = multierror.Append(result, err)
 	}
 
-	err = dc.OperatorDependencyValidator.CheckAllDependencies(*dogu)
+	err = dc.OperatorDependencyValidator.ValidateAllDependencies(*dogu)
 	if err != nil {
 		result = multierror.Append(result, err)
 	}

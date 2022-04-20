@@ -1,0 +1,54 @@
+- metadata:
+    creationTimestamp: null
+    labels:
+      app: ces
+      dogu: ldap
+    name: ldap-exposed-2222
+    ownerReferences:
+    - apiVersion: k8s.cloudogu.com/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Dogu
+      name: ldap
+      uid: ""
+  spec:
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: "2222"
+      port: 2222
+      protocol: TCP
+      targetPort: 2222
+    selector:
+      dogu: ldap
+    type: LoadBalancer
+  status:
+    loadBalancer: {}
+- metadata:
+    creationTimestamp: null
+    labels:
+      app: ces
+      dogu: ldap
+    name: ldap-exposed-8888
+    ownerReferences:
+    - apiVersion: k8s.cloudogu.com/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Dogu
+      name: ldap
+      uid: ""
+  spec:
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: "8888"
+      port: 8888
+      protocol: TCP
+      targetPort: 8888
+    selector:
+      dogu: ldap
+    type: LoadBalancer
+  status:
+    loadBalancer: {}

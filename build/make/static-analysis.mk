@@ -1,3 +1,5 @@
+##@ Static analysis
+
 STATIC_ANALYSIS_DIR=$(TARGET_DIR)/static-analysis
 GOIMAGE?=golang
 GOTAG?=1.14.13
@@ -9,7 +11,7 @@ LINT=$(TMP_DIR)/bin/golangci-lint
 LINTFLAGS=--tests=false --skip-files="^.*_mock.go$$" --skip-files="^.*/mock.*.go$$"
 
 .PHONY: static-analysis
-static-analysis: static-analysis-$(ENVIRONMENT)
+static-analysis: static-analysis-$(ENVIRONMENT) ## Start a static analysis of the code
 
 .PHONY: static-analysis-ci
 static-analysis-ci:

@@ -1,0 +1,8 @@
+{
+  "Env": [
+    "SERVICE_80_TAGS=webapp"
+  ],
+  "ExposedPorts": {
+    "80/tcp": {}
+  }
+}
