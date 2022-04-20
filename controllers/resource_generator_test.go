@@ -257,3 +257,77 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to set controller reference: cannot set owner reference")
 	})
 }
+
+
+func getExpectedDeployment() *appsv1.Deployment {
+	labels := map[string]string{"dogu": "ldap"}
+	fsGroup := int64(101)
+	fsGroupPolicy := corev1.FSGroupChangeOnRootMismatch
+	secretPermission := int32(0744)
+	referenceFlag := true
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "clusterns",
+			Labels:    labels,
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "k8s.cloudogu.com/v1",
+				Kind:               "Dogu",
+				Name:               "ldap",
+				UID:                "",
+				Controller:         &referenceFlag,
+				BlockOwnerDeletion: &referenceFlag,
+			}},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: labels},
+			Strategy: appsv1.DeploymentStrategy{
+				Type: "Recreate",
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					SecurityContext:  &corev1.PodSecurityContext{FSGroup: &fsGroup, FSGroupChangePolicy: &fsGroupPolicy},
+					ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
+					Hostname:         "ldap",
+					Volumes: []corev1.Volume{{
+						Name: "node-master-file",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "node-master-file"},
+							},
+						},
+					}, {
+						Name: "ldap-private",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  "ldap-private",
+								DefaultMode: &secretPermission,
+							},
+						},
+					}, {
+						Name: "ldap-data",
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "ldap",
+							},
+						},
+					}},
+					Containers: []corev1.Container{{
+						Name:            "ldap",
+						Image:           "registry.cloudogu.com/official/ldap:2.4.48-4",
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "node-master-file", ReadOnly: true, MountPath: "/etc/ces/node_master", SubPath: "node_master"},
+							{Name: "ldap-private", ReadOnly: true, MountPath: "/private", SubPath: ""},
+							{Name: "ldap-data", ReadOnly: false, MountPath: "/var/lib/openldap", SubPath: "db"},
+							{Name: "ldap-data", ReadOnly: false, MountPath: "/etc/openldap/slapd.d", SubPath: "config"}},
+					}},
+				},
+			},
+		},
+		Status: appsv1.DeploymentStatus{},
+	}
+}

@@ -84,8 +84,8 @@ k8s-integration-test: $(K8S_INTEGRATION_TEST_DIR) manifests generate vet envtest
 build-controller: ${SRC} compile ## Builds the controller Go binary.
 
 .PHONY: run
-run: manifests generate vet ## Run a controller from your host.
-	go run ./main.go
+run: manifests install generate vet ## Run a controller from your host.
+	source .myenv && go run ./main.go
 
 ##@ Release
 
