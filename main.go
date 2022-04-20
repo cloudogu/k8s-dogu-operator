@@ -65,7 +65,6 @@ func (e *osExiter) Exit(err error) {
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(k8sv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }

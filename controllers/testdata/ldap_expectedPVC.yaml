@@ -1,0 +1,20 @@
+metadata:
+  creationTimestamp: null
+  labels:
+    app: ces
+    dogu: ldap
+  name: ldap
+  ownerReferences:
+  - apiVersion: k8s.cloudogu.com/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Dogu
+    name: ldap
+    uid: ""
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+status: {}

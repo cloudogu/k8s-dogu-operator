@@ -1,7 +1,9 @@
+##@ Yarn dependency management
+
 YARN_LOCK=$(WORKDIR)/yarn.lock
 
 .PHONY: yarn-install
-yarn-install: $(YARN_TARGET)
+yarn-install: $(YARN_TARGET) ## Execute yarn install
 
 ifeq ($(ENVIRONMENT), ci)
 

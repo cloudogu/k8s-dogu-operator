@@ -12,7 +12,7 @@ import (
 )
 
 func Test_evaluateRequiredOperation(t *testing.T) {
-
+	ldapCr := &k8sv1.Dogu{}
 	logger := log.FromContext(context.TODO())
 
 	t.Run("installed should return upgrade", func(t *testing.T) {

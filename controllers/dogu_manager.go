@@ -41,6 +41,7 @@ type DoguResourceGenerator interface {
 	GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error)
 	GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error)
 	GetDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error)
+	GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error)
 }
 
 // ImageRegistry is used to pull container images
@@ -186,6 +187,30 @@ func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.
 }
 
 func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) error {
+	err := m.createVolumes(ctx, doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to create volumes for dogu %s: %w", dogu.Name, err)
+	}
+
+	err = m.createDeployment(ctx, doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to create deployment for dogu %s: %w", dogu.Name, err)
+	}
+
+	err = m.createService(ctx, doguResource, imageConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create service for dogu %s: %w", dogu.Name, err)
+	}
+
+	err = m.createExposedServices(ctx, doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to create exposed services for dogu %s: %w", dogu.Name, err)
+	}
+
+	return nil
+}
+
+func (m DoguManager) createVolumes(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	if len(dogu.Volumes) > 0 {
@@ -193,12 +218,20 @@ func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv
 		if err != nil {
 			return fmt.Errorf("failed to generate pvc: %w", err)
 		}
+
 		err = m.Client.Create(ctx, desiredPvc)
 		if err != nil {
 			return fmt.Errorf("failed to create pvc: %w", err)
 		}
+
 		logger.Info(fmt.Sprintf("PersistentVolumeClaim %s/%s has been : %s", desiredPvc.Namespace, desiredPvc.Name, controllerutil.OperationResultCreated))
 	}
+
+	return nil
+}
+
+func (m DoguManager) createDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+	logger := log.FromContext(ctx)
 
 	desiredDeployment, err := m.resourceGenerator.GetDoguDeployment(doguResource, dogu)
 	if err != nil {
@@ -209,7 +242,13 @@ func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv
 	if err != nil {
 		return fmt.Errorf("failed to create dogu deployment: %w", err)
 	}
+
 	logger.Info(fmt.Sprintf("Deployment %s/%s has been : %s", desiredDeployment.Namespace, desiredDeployment.Name, controllerutil.OperationResultCreated))
+	return nil
+}
+
+func (m DoguManager) createService(ctx context.Context, doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) error {
+	logger := log.FromContext(ctx)
 
 	desiredService, err := m.resourceGenerator.GetDoguService(doguResource, imageConfig)
 	if err != nil {
@@ -220,8 +259,28 @@ func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv
 	if err != nil {
 		return fmt.Errorf("failed to create dogu service: %w", err)
 	}
+
 	logger.Info(fmt.Sprintf("Service %s/%s has been : %s", desiredService.Namespace, desiredService.Name, controllerutil.OperationResultCreated))
 
+	return nil
+}
+
+func (m DoguManager) createExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+	logger := log.FromContext(ctx)
+
+	exposedServices, err := m.resourceGenerator.GetDoguExposedServices(doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to generate exposed services: %w", err)
+	}
+
+	for _, service := range exposedServices {
+		err = m.Client.Create(ctx, &service)
+		if err != nil {
+			return fmt.Errorf("failed to create exposed service: %w", err)
+		}
+
+		logger.Info(fmt.Sprintf("Exposed Service %s/%s have been : %s", service.Namespace, service.Name, controllerutil.OperationResultCreated))
+	}
 	return nil
 }
 
