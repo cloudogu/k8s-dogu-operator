@@ -91,8 +91,8 @@ build: ## Build controller binary.
 	@make compile
 
 .PHONY: run
-run: manifests generate vet ## Run a controller from your host.
-	go run ./main.go
+run: manifests install generate vet ## Run a controller from your host.
+	source .myenv && go run ./main.go
 
 ##@ Release
 

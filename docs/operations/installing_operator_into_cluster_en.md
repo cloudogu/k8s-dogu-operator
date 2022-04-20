@@ -1,5 +1,11 @@
 # Installation instruction for the k8s-dogu-operator
 
+## Prerequisites
+
+Before installing the operator, the login data for the Dogu and Docker registry must be stored be stored:
+1. [Docker registry](configuring_the_docker_registry_en.md)
+2. [Dogu registry](configuring_the_dogu_registry_en.md)
+
 ## Installation from GitHub
 
 The installation from GitHub requires the installation YAML which contains all required K8s resources. 
