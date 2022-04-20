@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/cesapp/v4 v4.2.2
-	github.com/coreos/go-semver v0.3.0
 	github.com/go-logr/logr v1.2.0
 	github.com/google/go-containerregistry v0.8.0
 	github.com/hashicorp/go-multierror v1.1.0
@@ -32,6 +31,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.10.1 // indirect
 	github.com/coreos/etcd v3.3.13+incompatible // indirect
+	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v20.10.12+incompatible // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
