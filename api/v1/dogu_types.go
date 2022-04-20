@@ -34,8 +34,10 @@ type DoguSpec struct {
 
 // DoguStatus defines the observed state of Dogu
 type DoguStatus struct {
-	// Status represents the installation status of the Dogu
+	// Status represents the state of the Dogu in the ecosystem
 	Status string `json:"status"`
+	// StatusMessage contains a description of the current dogu state
+	StatusMessage string `json:"statusMessage"`
 }
 
 const (

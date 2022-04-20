@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/go-logr/logr"
@@ -26,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"time"
 )
 
 type Operation int
@@ -89,7 +91,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		logger.Info(fmt.Sprintf("failed to get doguResource: %s", err))
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	logger.Info(fmt.Sprintf("Dogu %s/%s has been found: %+v", doguResource.Namespace, doguResource.Name, doguResource))
+	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
 
 	requiredOperation, err := evaluateRequiredOperation(doguResource, logger)
 	if err != nil {
@@ -100,10 +102,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	switch requiredOperation {
 	case Install:
 		err := r.doguManager.Install(ctx, doguResource)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)
-		}
-		return ctrl.Result{}, nil
+		return r.handleInstallError(ctx, err, doguResource)
 	case Upgrade:
 		return ctrl.Result{}, nil
 	case Delete:
@@ -117,6 +116,27 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	default:
 		return ctrl.Result{}, nil
 	}
+}
+
+func (r *DoguReconciler) handleInstallError(ctx context.Context, err error, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	if err == nil {
+		return ctrl.Result{}, nil
+	}
+
+	if errors.Is(err, ErrorMissingDoguDependency) {
+		doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
+		errorOnUpdate := r.Client.Status().Update(ctx, doguResource)
+		if errorOnUpdate != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", err)
+		}
+
+		logger.Error(err, fmt.Sprintf("Failed to install dogu %s -> retry dogu installation in 60 seconds", doguResource.Spec.Name))
+		return ctrl.Result{RequeueAfter: time.Second * 60}, nil
+	}
+
+	return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)
 }
 
 func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Operation, error) {
