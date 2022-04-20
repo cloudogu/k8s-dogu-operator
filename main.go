@@ -19,24 +19,24 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp/v4/core"
 	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/sirupsen/logrus"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -72,7 +72,7 @@ func init() {
 
 func main() {
 	exiter := &osExiter{}
-	ctrl.SetLogger(zap.New())
+	configureLogger()
 
 	operatorConfig, err := config.NewOperatorConfig()
 	if err != nil {
@@ -107,8 +107,6 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 
-	configureLogger(operatorConfig)
-
 	options := ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -122,14 +120,12 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 	return options
 }
 
-func configureLogger(operatorConfig *config.OperatorConfig) {
-	opts := zap.Options{
-		Development: operatorConfig.DevelopmentLogMode,
-	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+func configureLogger() {
+	logrusLog := logrus.New()
+	logrusLog.SetFormatter(&logrus.TextFormatter{})
+	logrusLog.SetLevel(logrus.DebugLevel)
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	ctrl.SetLogger(logrusr.New(logrusLog))
 }
 
 func startK8sManager(k8sManager manager.Manager, exiter applicationExiter) {

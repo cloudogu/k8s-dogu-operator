@@ -3,11 +3,13 @@ module github.com/cloudogu/k8s-dogu-operator
 go 1.17
 
 require (
+	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/cesapp/v4 v4.2.2
 	github.com/go-logr/logr v1.2.0
 	github.com/google/go-containerregistry v0.8.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
 	k8s.io/api v0.23.0
 	k8s.io/apimachinery v0.23.0
@@ -69,7 +71,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.28.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.2.1-0.20190415111823-35313a95ee26 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect

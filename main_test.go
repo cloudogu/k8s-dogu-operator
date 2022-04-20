@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/mocks"
@@ -13,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
@@ -135,10 +133,7 @@ func Test_addChecks(t *testing.T) {
 
 func Test_configureLogger(t *testing.T) {
 	t.Run("configure logger with log mode env var", func(t *testing.T) {
-		t.Setenv("ZAP_DEVELOPMENT_MODE", "true")
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-
-		operatorConfig := &config.OperatorConfig{DevelopmentLogMode: true}
-		configureLogger(operatorConfig)
+		// when
+		configureLogger()
 	})
 }

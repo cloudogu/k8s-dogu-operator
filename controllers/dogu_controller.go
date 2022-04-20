@@ -37,6 +37,19 @@ const (
 	Ignore
 )
 
+func (o Operation) toString() string {
+	switch o {
+	case Install:
+		return "Install"
+	case Upgrade:
+		return "Upgrade"
+	case Delete:
+		return "Delete"
+	default:
+		return "Ignore"
+	}
+}
+
 // DoguReconciler reconciles a Dogu object
 type DoguReconciler struct {
 	client.Client
@@ -125,19 +138,6 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Op
 	default:
 		logger.Info(fmt.Sprintf("Found unknown operation for dogu status: %s", doguResource.Status.Status))
 		return Ignore, nil
-	}
-}
-
-func (o Operation) toString() string {
-	switch o {
-	case Install:
-		return "Install"
-	case Upgrade:
-		return "Upgrade"
-	case Delete:
-		return "Delete"
-	default:
-		return "Ignore"
 	}
 }
 
