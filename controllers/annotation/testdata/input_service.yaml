@@ -1,0 +1,11 @@
+# This service is used as input service for all tests
+apiVersion: v1
+kind: Service
+metadata:
+  name: serviceName
+spec:
+  selector:
+    name: serviceName
+  ports:
+    - protocol: TCP
+      port: 80

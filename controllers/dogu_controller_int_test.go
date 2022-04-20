@@ -1,10 +1,11 @@
 //go:build k8s_integration
 // +build k8s_integration
 
-package controllers
+package controllers_test
 
 import (
 	"context"
+	"fmt"
 	_ "embed"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
@@ -20,8 +21,7 @@ import (
 )
 
 var _ = Describe("Dogu Controller", func() {
-
-	const timoutInterval = time.Second * 10
+	const timeoutInterval = time.Second * 10
 	const pollingInterval = time.Second * 1
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""
@@ -52,7 +52,7 @@ var _ = Describe("Dogu Controller", func() {
 					return true
 				}
 				return false
-			}, timoutInterval, pollingInterval).Should(BeTrue())
+			}, timeoutInterval, pollingInterval).Should(BeTrue())
 
 			By("Expect created deployment")
 			deployment := &appsv1.Deployment{}
@@ -63,7 +63,7 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, deployment.ObjectMeta)
-			}, timoutInterval, pollingInterval).Should(BeTrue())
+			}, timeoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(deployment.Name))
 			Expect(namespace).To(Equal(deployment.Namespace))
 
@@ -76,7 +76,7 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, service.ObjectMeta)
-			}, timoutInterval, pollingInterval).Should(BeTrue())
+			}, timeoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(service.Name))
 			Expect(namespace).To(Equal(service.Namespace))
 
@@ -90,7 +90,7 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, secret.ObjectMeta)
-			}, timoutInterval, pollingInterval).Should(BeTrue())
+			}, timeoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName + "-private").To(Equal(secret.Name))
 			Expect(namespace).To(Equal(secret.Namespace))
 
@@ -103,9 +103,37 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, pvc.ObjectMeta)
-			}, timoutInterval, pollingInterval).Should(BeTrue())
+			}, timeoutInterval, pollingInterval).Should(BeTrue())
 			Expect(doguName).To(Equal(pvc.Name))
 			Expect(namespace).To(Equal(pvc.Namespace))
+
+			By("Expect exposed service for service port 2222")
+			exposedService2222 := &corev1.Service{}
+			exposedService2222Name := fmt.Sprintf("%s-exposed-2222", doguName)
+			exposedService2222LookupKey := types.NamespacedName{Name: exposedService2222Name, Namespace: namespace}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, exposedService2222LookupKey, exposedService2222)
+				if err != nil {
+					return false
+				}
+				return true
+			}, pollingInterval, timeoutInterval).Should(BeTrue())
+
+			By("Expect exposed service for service port 8888")
+			exposedService8888 := &corev1.Service{}
+			exposedService8888Name := fmt.Sprintf("%s-exposed-2222", doguName)
+			exposedService8888LookupKey := types.NamespacedName{Name: exposedService8888Name, Namespace: namespace}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, exposedService8888LookupKey, exposedService8888)
+				if err != nil {
+					return false
+				}
+				return true
+			}, pollingInterval, timeoutInterval).Should(BeTrue())
+
+			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
 		})
 
 		It("Should delete dogu", func() {
@@ -116,7 +144,7 @@ var _ = Describe("Dogu Controller", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, doguLookupKey, dogu)
 				return apierrors.IsNotFound(err)
-			}, timoutInterval, pollingInterval).Should(BeTrue())
+			}, timeoutInterval, pollingInterval).Should(BeTrue())
 		})
 	})
 })

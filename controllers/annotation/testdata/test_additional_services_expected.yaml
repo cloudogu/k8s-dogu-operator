@@ -1,0 +1,13 @@
+# This yaml contains a ces service annotation for the web app. Only the annotations are compared.
+apiVersion: v1
+kind: Service
+metadata:
+  name: serviceName
+  annotations:
+    k8s-dogu-operator.cloudogu.com/ces-services: '[{"name":"admin","port":80,"location":"/admin","pass":"/admin"},{"name":"admin-api","port":80,"location":"/api","pass":"/admin/api/v2/"}]'
+spec:
+  selector:
+    name: serviceName
+  ports:
+    - protocol: TCP
+      port: 80

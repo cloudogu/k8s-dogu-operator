@@ -1,6 +1,7 @@
-package controllers
+package controllers_test
 
 import (
+	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -25,26 +26,27 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 	}))
 
 	t.Run("Successful get dogu", func(t *testing.T) {
-		doguRegistry := NewHTTPDoguRegistry(validUser, validPw, testServer.URL)
+		doguRegistry := controllers.NewHTTPDoguRegistry(validUser, validPw, testServer.URL)
 
-		result, err := doguRegistry.GetDogu(doguCr)
+		result, err := doguRegistry.GetDogu(ldapDoguResource)
 		require.NoError(t, err)
 
 		assert.Equal(t, ldapDogu, result)
 	})
 
 	t.Run("Error while doing request", func(t *testing.T) {
-		doguRegistry := NewHTTPDoguRegistry(validUser, validPw, "wrongurl")
+		doguRegistry := controllers.NewHTTPDoguRegistry(validUser, validPw, "wrongurl")
 
-		_, err := doguRegistry.GetDogu(doguCr)
+		_, err := doguRegistry.GetDogu(ldapDoguResource)
 
 		assert.Error(t, err)
 	})
 
 	t.Run("Error with status code 401", func(t *testing.T) {
-		doguRegistry := NewHTTPDoguRegistry(validUser, "invalid", testServer.URL)
+		doguRegistry := controllers.NewHTTPDoguRegistry(validUser, "invalid", testServer.URL)
 
-		_, err := doguRegistry.GetDogu(doguCr)
+		_, err := doguRegistry.GetDogu(ldapDoguResource)
+		require.Error(t, err)
 
 		assert.Contains(t, err.Error(), "status code 401")
 	})
@@ -57,9 +59,10 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 				panic(err)
 			}
 		}))
-		doguRegistry := NewHTTPDoguRegistry(validUser, validPw, testServer2.URL)
+		doguRegistry := controllers.NewHTTPDoguRegistry(validUser, validPw, testServer2.URL)
 
-		_, err := doguRegistry.GetDogu(doguCr)
+		_, err := doguRegistry.GetDogu(ldapDoguResource)
+		require.Error(t, err)
 
 		assert.Contains(t, err.Error(), "unmarshal")
 	})
