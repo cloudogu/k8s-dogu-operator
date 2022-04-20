@@ -92,7 +92,7 @@ build: ## Build controller binary.
 
 .PHONY: run
 run: manifests install generate vet ## Run a controller from your host.
-	source .myenv && go run ./main.go
+	source .myenv && go run -ldflags "-X main.Version=$(VERSION)" ./main.go
 
 ##@ Release
 

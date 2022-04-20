@@ -48,6 +48,11 @@ var (
 	probeAddr            string
 )
 
+var (
+	// Version of the application
+	Version = "0.0.0"
+)
+
 // applicationExiter is responsible for exiting the application correctly.
 type applicationExiter interface {
 	// Exit exits the application and prints the actuator error to the console.
@@ -74,7 +79,7 @@ func main() {
 	exiter := &osExiter{}
 	configureLogger()
 
-	operatorConfig, err := config.NewOperatorConfig()
+	operatorConfig, err := config.NewOperatorConfig(Version)
 	if err != nil {
 		setupLog.Error(err, "unable to create the operator configuration")
 		exiter.Exit(err)

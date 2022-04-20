@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp/v4/dependencies"
+	"github.com/cloudogu/cesapp/v4/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/hashicorp/go-multierror"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -245,4 +248,22 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 // TODO: Implement Upgrade
 func (m DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
 	return nil
+}
+
+func validateDependencies(doguRegistry *registry.DoguRegistry, dogu *core.Dogu) error {
+	var result error
+
+	doguChecker := dependencies.NewDoguDependencyChecker(*doguRegistry)
+	err := doguChecker.CheckAllDependencies(*dogu)
+	if err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	//clientChecker := dependencies.NewClientDependencyChecker(facade.packageManager)
+	//err = clientChecker.CheckAllDependencies(*dogu)
+	//if err != nil {
+	//	result = multierror.Append(result, err)
+	//}
+
+	return result // contains all errors that occurred when checking the dependencies.
 }

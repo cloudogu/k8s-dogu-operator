@@ -53,10 +53,14 @@ type OperatorConfig struct {
 	DockerRegistry DockerRegistryData `json:"docker_registry"`
 	// DevelopmentLogMode determines whether the development mode should be used when logging
 	DevelopmentLogMode bool `json:"development_log_mode"`
+	// Version contains the current version of the operator
+	Version string `json:"version"`
 }
 
 // NewOperatorConfig creates a new operator config by reading values from the environment variables
-func NewOperatorConfig() (*OperatorConfig, error) {
+func NewOperatorConfig(version string) (*OperatorConfig, error) {
+	log.Info(fmt.Sprintf("Version: [%s]", version))
+
 	namespace, err := readNamespace()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read namespace: %w", err)
@@ -85,6 +89,7 @@ func NewOperatorConfig() (*OperatorConfig, error) {
 		DoguRegistry:       doguRegistryData,
 		DockerRegistry:     dockerRegistryData,
 		DevelopmentLogMode: logLevel,
+		Version:            version,
 	}, nil
 }
 
