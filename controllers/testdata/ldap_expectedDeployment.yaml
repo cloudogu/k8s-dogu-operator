@@ -43,7 +43,7 @@ spec:
           subPath: config
       hostname: ldap
       imagePullSecrets:
-      - name: registry-cloudogu-com
+      - name: k8s-dogu-operator-docker-registry
       securityContext:
         fsGroup: 101
         fsGroupChangePolicy: OnRootMismatch
