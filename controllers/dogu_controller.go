@@ -18,10 +18,12 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/cloudogu/cesapp/v4/dependencies"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/go-logr/logr"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -125,15 +127,31 @@ func (r *DoguReconciler) handleInstallError(ctx context.Context, err error, dogu
 		return ctrl.Result{}, nil
 	}
 
-	if errors.Is(err, ErrorMissingDoguDependency) {
-		doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
-		errorOnUpdate := r.Client.Status().Update(ctx, doguResource)
-		if errorOnUpdate != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", err)
+	depError := &dependencies.ErrorDependencyValidation{}
+	// check if err contains a dependency error
+	if errors.As(err, &depError) {
+		errorChain := err.(*multierror.Error)
+		dependencyErrorOccured := false
+
+		for _, o := range errorChain.Errors {
+			if errors.As(o, &depError) {
+				dependencyErrorOccured = true
+				doguResource.Status.StatusMessages = append(doguResource.Status.StatusMessages,
+					fmt.Sprintf("missing dependency: %v", depError.Dependency.Name))
+			}
 		}
 
-		logger.Error(err, fmt.Sprintf("Failed to install dogu %s -> retry dogu installation in 60 seconds", doguResource.Spec.Name))
-		return ctrl.Result{RequeueAfter: time.Second * 60}, nil
+		if dependencyErrorOccured {
+			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
+			errorOnUpdate := r.Client.Status().Update(ctx, doguResource)
+			if errorOnUpdate != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", err)
+			}
+
+			logger.Error(err, fmt.Sprintf("Failed to install dogu %s -> retry dogu installation in 60 seconds",
+				doguResource.Spec.Name))
+			return ctrl.Result{RequeueAfter: time.Second * 60}, nil
+		}
 	}
 
 	return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)

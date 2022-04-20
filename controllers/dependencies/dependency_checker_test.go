@@ -2,6 +2,7 @@ package dependencies_test
 
 import (
 	"github.com/cloudogu/cesapp/v4/core"
+	cesdependencies "github.com/cloudogu/cesapp/v4/dependencies"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependencies"
 	"github.com/stretchr/testify/assert"
@@ -150,6 +151,7 @@ func TestNewDependencyChecker(t *testing.T) {
 		require.NoError(t, err)
 
 		cesRegistryMock := &cesmocks.DoguRegistry{}
+		doguDependencyValidator := cesdependencies.NewDoguDependencyChecker(cesRegistryMock)
 
 		// when
 		dependencyChecker := dependencies.NewDependencyChecker(&version, cesRegistryMock)
@@ -158,6 +160,6 @@ func TestNewDependencyChecker(t *testing.T) {
 		assert.NotNil(t, dependencyChecker)
 		assert.NotNil(t, dependencyChecker.OperatorDependencyValidator)
 		assert.Equal(t, &version, dependencyChecker.OperatorDependencyValidator.Version)
-		assert.Equal(t, cesRegistryMock, dependencyChecker.DoguRegistry)
+		assert.Equal(t, doguDependencyValidator, dependencyChecker.DoguDependencyValidator)
 	})
 }

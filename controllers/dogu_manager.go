@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	"github.com/cloudogu/cesapp/v4/registry"
@@ -17,11 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-)
-
-var (
-	// ErrorMissingDoguDependency is returned for missing dependencies when performing a dogu operation
-	ErrorMissingDoguDependency = errors.New("missing dependencies for dogu")
 )
 
 const finalizerName = "dogu-finalizer"
@@ -87,7 +81,7 @@ func NewDoguManager(version *core.Version, client client.Client, scheme *runtime
 // information Install creates a Deployment and a Service
 func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
-	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling}
+	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling, StatusMessages: []string{}}
 	err := m.Client.Status().Update(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
@@ -118,7 +112,8 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	logger.Info("Check dogu dependencies...")
 	err = m.dependencyValidator.ValidateDependencies(dogu)
 	if err != nil {
-		return fmt.Errorf("failed to validate dependencies: %w: %s", ErrorMissingDoguDependency, err.Error())
+		// No wrap needed because err is a multierror
+		return err
 	}
 
 	logger.Info("Register dogu...")
@@ -139,7 +134,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
 
-	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
+	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled, StatusMessages: []string{}}
 	err = m.Client.Status().Update(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
@@ -242,7 +237,7 @@ func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv
 
 func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
-	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting}
+	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting, StatusMessages: []string{}}
 	err := m.Client.Status().Update(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)

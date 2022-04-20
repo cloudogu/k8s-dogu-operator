@@ -10,24 +10,23 @@ import (
 const K8sDoguOperatorClientDependencyName = "k8s-dogu-operator"
 
 type DependencyChecker struct {
-	DoguRegistry                registry.DoguRegistry        `json:"dogu_registry"`
-	OperatorDependencyValidator *operatorDependencyValidator `json:"operator_dependency_validator"`
+	DoguDependencyValidator     *dependencies.DoguDependencyChecker `json:"dogu_dependency_validator"`
+	OperatorDependencyValidator *operatorDependencyValidator        `json:"operator_dependency_validator"`
 }
 
 func NewDependencyChecker(version *core.Version, doguRegistry registry.DoguRegistry) *DependencyChecker {
 	operatorDependencyValidator := newOperatorDependencyValidator(version)
+	doguDependencyValidator := dependencies.NewDoguDependencyChecker(doguRegistry)
 
 	return &DependencyChecker{
-		DoguRegistry:                doguRegistry,
+		DoguDependencyValidator:     doguDependencyValidator,
 		OperatorDependencyValidator: operatorDependencyValidator,
 	}
 }
 
 func (dc *DependencyChecker) ValidateDependencies(dogu *core.Dogu) error {
 	var result error
-
-	doguChecker := dependencies.NewDoguDependencyChecker(dc.DoguRegistry)
-	err := doguChecker.CheckAllDependencies(*dogu)
+	err := dc.DoguDependencyValidator.CheckAllDependencies(*dogu)
 	if err != nil {
 		result = multierror.Append(result, err)
 	}
