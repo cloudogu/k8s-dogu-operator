@@ -25,8 +25,5 @@ Der Dogu-Operator kann mit folgenden Befehlen lokal gebaut und in den Cluster in
 ```bash
 - export K8S_CLUSTER_ROOT=/home/user/k8scluster
 - export OPERATOR_NAMESPACE=ecosystem
-- make docker-build
-- make image-import
-- make k8s-generate
-- make k8s-deploy
+- make build
 ```

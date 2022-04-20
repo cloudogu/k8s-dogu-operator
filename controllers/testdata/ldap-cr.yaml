@@ -1,4 +1,4 @@
-apiVersion: dogu.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: ldap
@@ -9,4 +9,4 @@ metadata:
     app: ces
 spec:
   name: official/ldap
-  version: 2.4.48-3
+  version: 2.4.48-4

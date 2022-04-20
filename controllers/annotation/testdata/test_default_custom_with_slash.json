@@ -1,0 +1,14 @@
+{
+  "Labels": {
+    "SERVICE_TAGS": "webapp",
+    "SERVICE_NAME": "superapi"
+  },
+  "Env": [
+    "SERVICE_LOCATION=api",
+    "SERVICE_PASS=serviceName/api/v2"
+  ],
+  "ExposedPorts": {
+    "80/tcp": {},
+    "12345/udp": {}
+  }
+}

@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"strconv"
 	"strings"
@@ -172,7 +174,7 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 	}
 
 	for exposedPort := range imageConfig.Config.ExposedPorts {
-		port, protocol, err := splitPortConfig(exposedPort)
+		port, protocol, err := annotation.SplitImagePortConfig(exposedPort)
 		if err != nil {
 			return service, fmt.Errorf("error splitting port config: %w", err)
 		}
@@ -183,9 +185,13 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 		})
 	}
 
-	service.Spec.Selector = map[string]string{"dogu": doguResource.Name}
+	cesServiceAnnotationCreator := annotation.CesServiceAnnotator{}
+	err := cesServiceAnnotationCreator.AnnotateService(service, &imageConfig.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to annotate service: %w", err)
+	}
 
-	err := ctrl.SetControllerReference(doguResource, service, r.scheme)
+	err = ctrl.SetControllerReference(doguResource, service, r.scheme)
 	if err != nil {
 		return nil, wrapControllerReferenceError(err)
 	}
@@ -193,22 +199,44 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 	return service, nil
 }
 
-func splitPortConfig(exposedPort string) (int32, corev1.Protocol, error) {
-	portAndPotentiallyProtocol := strings.Split(exposedPort, "/")
+// GetDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
+func (r *ResourceGenerator) GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
+	exposedServices := []corev1.Service{}
 
-	port, err := strconv.Atoi(portAndPotentiallyProtocol[0])
-	if err != nil {
-		return 0, "", fmt.Errorf("error parsing int: %w", err)
+	for _, exposedPort := range dogu.ExposedPorts {
+		ipSingleStackPolicy := corev1.IPFamilyPolicySingleStack
+		exposedService := corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-exposed-%d", doguResource.Name, exposedPort.Host),
+				Namespace: doguResource.Namespace,
+				Labels:    map[string]string{"app": cesLabel, "dogu": doguResource.Name},
+			},
+			Spec: corev1.ServiceSpec{
+				Type:           corev1.ServiceTypeLoadBalancer,
+				IPFamilyPolicy: &ipSingleStackPolicy,
+				IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol},
+				Selector:       map[string]string{"dogu": doguResource.Name},
+				Ports: []corev1.ServicePort{{
+					Name:       strconv.Itoa(exposedPort.Host),
+					Protocol:   corev1.Protocol(strings.ToUpper(exposedPort.Type)),
+					Port:       int32(exposedPort.Host),
+					TargetPort: intstr.FromInt(exposedPort.Container),
+				}},
+			},
+		}
+
+		err := ctrl.SetControllerReference(doguResource, &exposedService, r.scheme)
+		if err != nil {
+			return nil, wrapControllerReferenceError(err)
+		}
+
+		exposedServices = append(exposedServices, exposedService)
 	}
 
-	if len(portAndPotentiallyProtocol) == 2 {
-		return int32(port), corev1.Protocol(strings.ToUpper(portAndPotentiallyProtocol[1])), nil
-	}
-
-	return int32(port), corev1.ProtocolTCP, nil
+	return exposedServices, nil
 }
 
-// GetDoguPVC creates a persistentvolumeclaim with a 5Gi storage for the given dogu
+// GetDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu
 func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	doguPvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{

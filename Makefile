@@ -2,36 +2,42 @@
 ARTIFACT_ID=k8s-dogu-operator
 VERSION=0.2.0
 GOTAG?=1.17.7
+MAKEFILES_VERSION=5.0.0
+
 # Image URL to use all building/pushing image targets
-IMG ?= cloudogu/${ARTIFACT_ID}:${VERSION}
+IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
+
 MAKEFILES_VERSION=4.8.0
 # Suffix used for custom dogu.json configmap
 DESCRIPTOR_CM_SUFFIX="-descriptor"
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.23
+K8S_INTEGRATION_TEST_DIR=${TARGET_DIR}/k8s-integration-test
+K8S_RESOURCE_YAML=${TARGET_DIR}/${ARTIFACT_ID}_${VERSION}.yaml
+OPERATOR_NAMESPACE?=ecosystem
+
+# make sure to create a statically linked binary otherwise it may quit with
+# "exec user process caused: no such file or directory"
+GO_BUILD_FLAGS=-mod=vendor -a -tags netgo,osusergo $(LDFLAGS) -o $(BINARY)
+# remove DWARF symbol table and strip other symbols to shave ~13 MB from binary
+ADDITIONAL_LDFLAGS=-extldflags -static -w -s
 
 .DEFAULT_GOAL:=help
 
 include build/make/variables.mk
 
-ADDITIONAL_CLEAN=clean-vendor
+ADDITIONAL_CLEAN=dist-clean
 PRE_COMPILE=generate vet
 
 include build/make/self-update.mk
-include build/make/info.mk
 include build/make/dependencies-gomod.mk
 include build/make/build.mk
 include build/make/test-common.mk
-include build/make/test-integration.mk
 include build/make/test-unit.mk
 include build/make/static-analysis.mk
 include build/make/clean.mk
 include build/make/digital-signature.mk
-
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.23
-K8S_INTEGRATION_TEST_DIR=${TARGET_DIR}/k8s-integration-test
-K8S_UTILITY_BIN_PATH=$(WORKDIR)/.bin
-K8S_RESOURCE_YAML=$(TARGET_DIR)/${ARTIFACT_ID}_${VERSION}.yaml
-OPERATOR_NAMESPACE?=ecosystem
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -39,27 +45,20 @@ OPERATOR_NAMESPACE?=ecosystem
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
-.PHONY: all
-all: build
+##@ EcoSystem
 
-##@ General
-
-# The help target prints out all targets with their descriptions organized
-# beneath their categories. The categories are represented by '##@' and the
-# target descriptions by '##'. The awk commands is responsible for reading the
-# entire set of makefiles included in this invocation, looking for lines of the
-# file as xyz: ## something, and then pretty-format the target and help. Then,
-# if there's a line with ##@ something, that gets pretty-printed as a category.
-# More info on the usage of ANSI control characters for terminal formatting:
-# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
-# More info on the awk command:
-# http://linuxcommand.org/lc3_adv_awk.php
-
-.PHONY: help
-help: ## Display this help.
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+.PHONY: build
+build: docker-build image-import k8s-apply ## Builds a new version of the dogu-operator and deploys it into the K8s-EcoSystem.
 
 ##@ Development (without go container)
+
+${STATIC_ANALYSIS_DIR}/report-govet.out: ${SRC} $(STATIC_ANALYSIS_DIR)
+	@go vet ./... | tee $@
+
+.PHONY: vet
+vet: ${STATIC_ANALYSIS_DIR}/report-govet.out ## Run go vet against code.
+
+##@ Kubernetes Controller
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -71,10 +70,6 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 	@echo "Auto-generate deepcopy functions..."
 	@$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: vet
-vet: $(STATIC_ANALYSIS_DIR) ## Run go vet against code.
-	@go vet ./... | tee ${STATIC_ANALYSIS_DIR}/report-govet.out
-
 $(K8S_INTEGRATION_TEST_DIR):
 	@mkdir -p $@
 
@@ -85,10 +80,8 @@ k8s-integration-test: $(K8S_INTEGRATION_TEST_DIR) manifests generate vet envtest
 
 ##@ Build
 
-.PHONY: build
-build: ## Build controller binary.
-# pseudo target to support make help for compile target
-	@make compile
+.PHONY: build-controller
+build-controller: ${SRC} compile ## Builds the controller Go binary.
 
 .PHONY: run
 run: manifests install generate vet ## Run a controller from your host.
@@ -101,80 +94,16 @@ controller-release: ## Interactively starts the release workflow.
 	@echo "Starting git flow release..."
 	@build/make/release.sh controller-tool
 
-##@ Deployment
-
-ifndef ignore-not-found
-  ignore-not-found = false
-endif
-
-.PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-
-.PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
-
-${K8S_RESOURCE_YAML}: ${TARGET_DIR} manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default > ${K8S_RESOURCE_YAML}
-
-.PHONY: k8s-generate
-k8s-generate: ${K8S_RESOURCE_YAML} ## Create required k8s resources in ./dist/...
-	@echo "Generating new kubernetes resources..."
-
-.PHONY: k8s-deploy
-k8s-deploy: k8s-generate ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cat ${K8S_RESOURCE_YAML} | kubectl apply --namespace ${OPERATOR_NAMESPACE} -f -
-
-.PHONY: k8s-undeploy
-k8s-undeploy: k8s-generate ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	cat ${K8S_RESOURCE_YAML} | kubectl delete --namespace ${OPERATOR_NAMESPACE} --ignore-not-found=$(ignore-not-found) -f -
-
-##@ Download Kubernetes Utility Tools
-
-CONTROLLER_GEN = $(K8S_UTILITY_BIN_PATH)/controller-gen
-.PHONY: controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
-
-KUSTOMIZE = $(K8S_UTILITY_BIN_PATH)/kustomize
-.PHONY: kustomize
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
-
-ENVTEST = $(K8S_UTILITY_BIN_PATH)/setup-envtest
-.PHONY: envtest
-envtest: ## Download envtest-setup locally if necessary.
-	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
-
-# go-get-tool will 'go get' any package $2 and install it to $1.
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(K8S_UTILITY_BIN_PATH) go get $(2) ;\
-rm -rf $$TMP_DIR ;\
-}
-endef
-
-.PHONY: clean-vendor
-clean-vendor:
-	rm -rf vendor
-
 ##@ Docker
 
 .PHONY: docker-build
-docker-build: ${SRC} compile ## Builds the docker image of the k8s-dogu-operator `cloudogu/k8s-dogu-operator:version`.
-	@echo "Building docker image of dogu operator..."
-	docker build . -t ${IMG}
+docker-build: ${SRC} ## Builds the docker image of the k8s-dogu-operator `cloudogu/k8s-dogu-operator:version`.
+	@echo "Building docker image of dogu..."
+	DOCKER_BUILDKIT=1 docker build . -t ${IMAGE}
 
 ${K8S_CLUSTER_ROOT}/image.tar: check-k8s-cluster-root-env-var
-	# Saves the `cloudogu/k8s-ces-setup:version` image into a file into the K8s root path to be available on all nodes.
-	docker save ${IMG} -o ${K8S_CLUSTER_ROOT}/image.tar
+	# Saves the `cloudogu/k8s-dogu-operator:version` image into a file into the K8s root path to be available on all nodes.
+	docker save ${IMAGE} -o ${K8S_CLUSTER_ROOT}/image.tar
 
 .PHONY: image-import
 image-import: ${K8S_CLUSTER_ROOT}/image.tar
@@ -195,18 +124,49 @@ check-k8s-cluster-root-env-var:
 	@bash -c export -p | grep K8S_CLUSTER_ROOT
 	@echo "Done."
 
-##@ Local development
+##@ Deployment
 
-.PHONY: check-dogu-descriptor-env-var
-check-dogu-descriptor-env-var:
-	@echo "Checking if env var CUSTOM_DOGU_DESCRIPTOR is set..."
-	@bash -c export -p | grep CUSTOM_DOGU_DESCRIPTOR
-	@echo "Done."
+ifndef ignore-not-found
+  ignore-not-found = false
+endif
 
-.PHONY: install-dogu-descriptor
-install-dogu-descriptor: check-dogu-descriptor-env-var ## Installs a configmap from dogu.json
-	@echo "Generate configmap from dogu.json"
-	@NAMESPACENAME=$$(jq .Name ${CUSTOM_DOGU_DESCRIPTOR} | sed 's/"//g') && \
-		IFS="/" read -r NAMESPACE NAME <<< "$${NAMESPACENAME}" && \
-		kubectl create configmap "$${NAME}${DESCRIPTOR_CM_SUFFIX}" --from-file="$${CUSTOM_DOGU_DESCRIPTOR}" \
-		--dry-run=client -o yaml | kubectl apply -f -
+.PHONY: install
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+
+.PHONY: uninstall
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+${K8S_RESOURCE_YAML}: ${TARGET_DIR} manifests kustomize
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE}
+	$(KUSTOMIZE) build config/default > ${K8S_RESOURCE_YAML}
+
+.PHONY: k8s-generate
+k8s-generate: ${K8S_RESOURCE_YAML} ## Create required k8s resources in ./dist/...
+	@echo "Generating new kubernetes resources..."
+
+.PHONY: k8s-apply
+k8s-apply: k8s-generate ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cat ${K8S_RESOURCE_YAML} | kubectl apply --namespace ${OPERATOR_NAMESPACE} -f -
+
+.PHONY: k8s-delete
+k8s-delete: k8s-generate ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	cat ${K8S_RESOURCE_YAML} | kubectl delete --namespace ${OPERATOR_NAMESPACE} --ignore-not-found=$(ignore-not-found) -f -
+
+##@ Download Kubernetes Utility Tools
+
+CONTROLLER_GEN = $(UTILITY_BIN_PATH)/controller-gen
+.PHONY: controller-gen
+controller-gen: ## Download controller-gen locally if necessary.
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
+
+KUSTOMIZE = $(UTILITY_BIN_PATH)/kustomize
+.PHONY: kustomize
+kustomize: ## Download kustomize locally if necessary.
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.2)
+
+ENVTEST = $(UTILITY_BIN_PATH)/setup-envtest
+.PHONY: envtest
+envtest: ## Download envtest-setup locally if necessary.
+	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
