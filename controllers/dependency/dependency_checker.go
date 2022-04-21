@@ -1,4 +1,4 @@
-package dependencies
+package dependency
 
 import (
 	"github.com/cloudogu/cesapp/v4/core"
@@ -12,7 +12,7 @@ const K8sDoguOperatorClientDependencyName = "k8s-dogu-operator"
 // DependencyValidator is a composite validator responsible to validate the dogu and client dependencies of dogus.
 type DependencyValidator struct {
 	DoguDependencyValidator     *dependencies.DoguDependencyChecker `json:"dogu_dependency_validator"`
-	OperatorDependencyValidator *OperatorDependencyValidator        `json:"operator_dependency_validator"`
+	OperatorDependencyValidator *operatorDependencyValidator        `json:"operator_dependency_validator"`
 }
 
 // NewDependencyValidator create a new composite validator checking the dogu and client dependencies

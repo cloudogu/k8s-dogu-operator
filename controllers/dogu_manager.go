@@ -7,7 +7,7 @@ import (
 	"github.com/cloudogu/cesapp/v4/core"
 	"github.com/cloudogu/cesapp/v4/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependencies"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -65,7 +65,7 @@ type DependencyValidator interface {
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(version *core.Version, client client.Client, scheme *runtime.Scheme, resourceGenerator DoguResourceGenerator,
 	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator, registry registry.DoguRegistry) *DoguManager {
-	dependencyValidator := dependencies.NewDependencyValidator(version, registry)
+	dependencyValidator := dependency.NewDependencyValidator(version, registry)
 
 	return &DoguManager{
 		Client:              client,
