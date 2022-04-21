@@ -30,6 +30,7 @@ func NewDependencyValidator(version *core.Version, doguRegistry registry.DoguReg
 // dependencies were detected.
 func (dv *DependencyValidator) ValidateDependencies(dogu *core.Dogu) error {
 	var result error
+
 	err := dv.DoguDependencyValidator.CheckAllDependencies(*dogu)
 	if err != nil {
 		result = multierror.Append(result, err)

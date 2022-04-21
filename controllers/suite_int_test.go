@@ -6,12 +6,14 @@ package controllers_test
 import (
 	"context"
 	_ "embed"
+	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp/v4/core"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/kubernetes/scheme"
 	"path/filepath"
@@ -20,8 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"testing"
+	"time"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	//+kubebuilder:scaffold:imports
@@ -33,11 +35,17 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 var cancel context.CancelFunc
 
-// Used in controller integration test
+// Used in other integration tests
 var ImageRegistryMock mocks.ImageRegistry
 
-// Used in controller integration test
+// Used in other integration tests
 var DoguRegistryMock mocks.DoguRegistry
+
+// Used in other integration tests
+var EtcdDoguRegistry cesmocks.DoguRegistry
+
+const TimeoutInterval = time.Second * 10
+const PollingInterval = time.Second * 1
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -48,7 +56,7 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	logf.SetLogger(logrusr.New(logrus.New()))
 
 	var ctx context.Context
 	ctx, cancel = context.WithCancel(context.TODO())
@@ -73,23 +81,20 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
-	CesRegistryMock := cesmocks.Registry{}
-	registry := &cesmocks.DoguRegistry{}
-	EtcdDoguRegistry := &cesmocks.DoguRegistry{}
+
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
 	doguConfigurationContext.Mock.On("RemoveAll", mock.Anything).Return(nil)
-	EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
-	EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
-	EtcdDoguRegistry.Mock.On("Enable", mock.Anything).Return(nil)
-	CesRegistryMock.Mock.On("DoguRegistry").Return(EtcdDoguRegistry)
+
+	CesRegistryMock := cesmocks.Registry{}
+	CesRegistryMock.Mock.On("DoguRegistry").Return(&EtcdDoguRegistry)
 	CesRegistryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 
 	version, err := core.ParseVersion("0.0.0")
 	Expect(err).ToNot(HaveOccurred())
 
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
-	doguManager := controllers.NewDoguManager(&version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator, registry)
+	doguManager := controllers.NewDoguManager(&version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator, &EtcdDoguRegistry)
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
