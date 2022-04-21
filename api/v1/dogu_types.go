@@ -19,10 +19,20 @@ package v1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+const (
+	// RequeueTimeMultiplerForEachRequeue defines the factor to multiple the requeue time of a failed dogu crd operation
+	RequeueTimeMultiplerForEachRequeue = 2
+	// RequeueTimeInitialRequeueTime defines the initial value of the requeue time
+	RequeueTimeInitialRequeueTime = time.Second * 5
+	// RequeueTimeMaxRequeueTime defines the maximum amount of time to wait for a requeue of a dogu resource
+	RequeueTimeMaxRequeueTime = time.Hour * 6
+)
 
 // DoguSpec defines the desired state of Dogu
 type DoguSpec struct {
@@ -38,6 +48,42 @@ type DoguStatus struct {
 	Status string `json:"status"`
 	// StatusMessages contains a list of status messages
 	StatusMessages []string `json:"statusMessages"`
+	// RequeueTime contains time necessary to perform the next requeue
+	RequeueTime time.Duration `json:"requeueTime"`
+}
+
+// NextRequeue increases the requeue time of the dogu status and returns the new requeue time
+func (ds *DoguStatus) NextRequeue() time.Duration {
+	if ds.RequeueTime == 0 {
+		ds.ResetRequeueTime()
+	}
+
+	newRequeueTime := ds.RequeueTime * RequeueTimeMultiplerForEachRequeue
+	if newRequeueTime >= RequeueTimeMaxRequeueTime {
+		ds.RequeueTime = RequeueTimeMaxRequeueTime
+	} else {
+		ds.RequeueTime = newRequeueTime
+	}
+	return ds.RequeueTime
+}
+
+// ResetRequeueTime resets the requeue timer to the initial value
+func (ds *DoguStatus) ResetRequeueTime() {
+	ds.RequeueTime = RequeueTimeInitialRequeueTime
+}
+
+// AddMessage adds a new entry to the message slice
+func (ds *DoguStatus) AddMessage(message string) {
+	if ds.StatusMessages == nil {
+		ds.StatusMessages = []string{}
+	}
+
+	ds.StatusMessages = append(ds.StatusMessages, message)
+}
+
+// ClearMessages removes all messages from the message log
+func (ds *DoguStatus) ClearMessages() {
+	ds.StatusMessages = []string{}
 }
 
 const (

@@ -65,7 +65,7 @@ type DependencyValidator interface {
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(version *core.Version, client client.Client, scheme *runtime.Scheme, resourceGenerator DoguResourceGenerator,
 	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator, registry registry.DoguRegistry) *DoguManager {
-	dependencyValidator := dependency.NewDependencyValidator(version, registry)
+	dependencyValidator := dependency.NewCompositeDependencyValidator(version, registry)
 
 	return &DoguManager{
 		Client:              client,

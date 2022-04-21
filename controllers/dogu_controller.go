@@ -19,17 +19,16 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/cesapp/v4/dependencies"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/wip"
 	"github.com/go-logr/logr"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"time"
 )
 
 type Operation int
@@ -57,8 +56,9 @@ func (o Operation) toString() string {
 // DoguReconciler reconciles a Dogu object
 type DoguReconciler struct {
 	client.Client
-	scheme      *runtime.Scheme
-	doguManager Manager
+	scheme             *runtime.Scheme
+	doguManager        Manager
+	DoguStatusReporter StatusReporter
 }
 
 // Manager abstracts the simple dogu operations in a k8s CES
@@ -71,12 +71,21 @@ type Manager interface {
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
+// StatusReporter is responsible to save information in the dogu status via messages
+type StatusReporter interface {
+	ReportMessage(ctx context.Context, doguResource *k8sv1.Dogu, message string) error
+	ReportError(ctx context.Context, doguResource *k8sv1.Dogu, error error) error
+}
+
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
 func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager Manager) *DoguReconciler {
+	doguStatusReporter := wip.NewDoguStatusReporter(client)
+
 	return &DoguReconciler{
-		Client:      client,
-		scheme:      scheme,
-		doguManager: doguManager,
+		Client:             client,
+		scheme:             scheme,
+		doguManager:        doguManager,
+		DoguStatusReporter: doguStatusReporter,
 	}
 }
 
@@ -127,31 +136,18 @@ func (r *DoguReconciler) handleInstallError(ctx context.Context, err error, dogu
 		return ctrl.Result{}, nil
 	}
 
-	depError := &dependencies.ErrorDependencyValidation{}
+	depError := &dependency.ErrorDependencyValidation{}
 	// check if err contains a dependency error
 	if errors.As(err, &depError) {
-		errorChain := err.(*multierror.Error)
-		dependencyErrorOccured := false
-
-		for _, o := range errorChain.Errors {
-			if errors.As(o, &depError) {
-				dependencyErrorOccured = true
-				doguResource.Status.StatusMessages = append(doguResource.Status.StatusMessages,
-					fmt.Sprintf("missing dependency: %v", depError.Dependency.Name))
-			}
+		reportError := r.DoguStatusReporter.ReportError(ctx, doguResource, err)
+		if reportError != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to report error: %w", reportError)
 		}
 
-		if dependencyErrorOccured {
-			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
-			errorOnUpdate := r.Client.Status().Update(ctx, doguResource)
-			if errorOnUpdate != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", err)
-			}
-
-			logger.Error(err, fmt.Sprintf("Failed to install dogu %s -> retry dogu installation in 60 seconds",
-				doguResource.Spec.Name))
-			return ctrl.Result{RequeueAfter: time.Second * 60}, nil
-		}
+		requeueTime := doguResource.Status.NextRequeue()
+		logger.Error(err, fmt.Sprintf("Failed to install dogu %s -> retry dogu installation in %s seconds",
+			doguResource.Spec.Name, requeueTime))
+		return ctrl.Result{RequeueAfter: requeueTime}, nil
 	}
 
 	return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)

@@ -4,22 +4,25 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 )
 
-// operatorDependencyValidator is responsible to validate the `k8s-dogu-operator` client dependency for dogus
-type operatorDependencyValidator struct {
+const K8sDoguOperatorClientDependencyName = "k8s-dogu-operator"
+
+// OperatorDependencyValidator is responsible to validate the `k8s-dogu-operator` client dependency for dogus
+type OperatorDependencyValidator struct {
 	Version *core.Version
 }
 
-func newOperatorDependencyValidator(version *core.Version) *operatorDependencyValidator {
-	return &operatorDependencyValidator{
+func NewOperatorDependencyValidator(version *core.Version) *OperatorDependencyValidator {
+	return &OperatorDependencyValidator{
 		Version: version,
 	}
 }
 
 // ValidateAllDependencies looks into all client dependencies (mandatory- and optional ones) and checks weather they're
 // all installed an that in the correct version
-func (odv *operatorDependencyValidator) ValidateAllDependencies(dogu core.Dogu) error {
+func (odv *OperatorDependencyValidator) ValidateAllDependencies(dogu *core.Dogu) error {
 	var allProblems error
 
 	errMandatoryDependencies := odv.validateMandatoryDependencies(dogu)
@@ -31,7 +34,7 @@ func (odv *operatorDependencyValidator) ValidateAllDependencies(dogu core.Dogu) 
 	return allProblems
 }
 
-func (odv *operatorDependencyValidator) checkVersion(dependency core.Dependency) (bool, error) {
+func (odv *OperatorDependencyValidator) checkVersion(dependency core.Dependency) (bool, error) {
 	comparator, err := core.ParseVersionComparator(dependency.Version)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse dependency version: %w", err)
@@ -44,7 +47,7 @@ func (odv *operatorDependencyValidator) checkVersion(dependency core.Dependency)
 	return allows, nil
 }
 
-func (odv *operatorDependencyValidator) validateMandatoryDependencies(dogu core.Dogu) error {
+func (odv *OperatorDependencyValidator) validateMandatoryDependencies(dogu *core.Dogu) error {
 	dependencies := dogu.GetDependenciesOfType(core.DependencyTypeClient)
 
 	for _, dependency := range dependencies {
@@ -55,8 +58,11 @@ func (odv *operatorDependencyValidator) validateMandatoryDependencies(dogu core.
 			}
 
 			if !allows {
-				return fmt.Errorf("%s parsed Version does not fulfill version requirement of %s for %s %s",
-					odv.Version.Raw, dependency.Version, dependency.Type, dependency.Name)
+				dependencyError := ErrorDependencyValidation{
+					SourceError: errors.Errorf("%s parsed Version does not fulfill version requirement of %s dogu %s", dependency.Version, odv.Version.Raw, dependency.Name),
+					Dependency:  dependency,
+				}
+				return &dependencyError
 			}
 		}
 	}
@@ -64,7 +70,7 @@ func (odv *operatorDependencyValidator) validateMandatoryDependencies(dogu core.
 	return nil
 }
 
-func (odv *operatorDependencyValidator) validateOptionalDependencies(dogu core.Dogu) error {
+func (odv *OperatorDependencyValidator) validateOptionalDependencies(dogu *core.Dogu) error {
 	dependencies := dogu.GetOptionalDependenciesOfType(core.DependencyTypeClient)
 
 	for _, dependency := range dependencies {
