@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -120,7 +121,9 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	redmineCr.Namespace = "test"
 	t.Run("success", func(t *testing.T) {
 		// given
+		fmt.Println("Debug1")
 		ctx := context.TODO()
+		fmt.Println("Debug2")
 		globalConfig := &cesmocks.ConfigurationContext{}
 		globalConfig.Mock.On("Get", "key_provider").Return("pkcs1v15", nil)
 		doguConfig := &cesmocks.ConfigurationContext{}
@@ -136,16 +139,23 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
+		fmt.Println("Debug3")
 		labels := map[string]string{}
 		labels["dogu"] = "postgresql"
+		fmt.Println("Debug4")
 		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
+		fmt.Println("Debug5")
 		client := testclient.NewSimpleClientset(&pod)
+		fmt.Println("Debug6")
 
 		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		fmt.Println("Debug7")
 		serviceAccountCreator.CommandExecutorCreator = fakeNewSPDYExecutor
+		fmt.Println("Debug8")
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		fmt.Println("Debug9")
 
 		// then
 		require.NoError(t, err)
