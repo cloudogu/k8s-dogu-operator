@@ -163,7 +163,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, globalConfig, doguConfig, doguRegistry, registry)
 	})
 
-	t.Run("failed to check if service account exists", func(t *testing.T) {
+	t.Run("fail to check if service account exists", func(t *testing.T) {
 		// given
 		ctx := context.TODO()
 		doguConfig := &cesmocks.ConfigurationContext{}
@@ -222,7 +222,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
 
-	t.Run("failed to get dogu.json from service account dogu", func(t *testing.T) {
+	t.Run("fail to get dogu.json from service account dogu", func(t *testing.T) {
 		// given
 		ctx := context.TODO()
 		doguRegistry := &cesmocks.DoguRegistry{}
