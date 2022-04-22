@@ -16,12 +16,12 @@ type ErrorDependencyValidation struct {
 
 // Report returns the error in string representation
 func (e *ErrorDependencyValidation) Error() string {
-	return fmt.Sprintf("failed to resolve to depdencies: %v, source error: %s", e.Dependency, e.SourceError.Error())
+	return fmt.Sprintf("failed to resolve dependency: %v, source error: %s", e.Dependency, e.SourceError.Error())
 }
 
 // Report constructs a simple human readable message
 func (e *ErrorDependencyValidation) Report() string {
-	return fmt.Sprintf("failed to resolve to depdencies: %v", e.Dependency)
+	return fmt.Sprintf("failed to resolve dependency: %v", e.Dependency)
 }
 
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure

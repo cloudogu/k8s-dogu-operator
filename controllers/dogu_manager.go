@@ -91,10 +91,12 @@ func NewDoguManager(version *core.Version, client client.Client, operatorConfig 
 	doguRegistrator := NewCESDoguRegistrator(client, cesRegistry, resourceGenerator)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(version, cesRegistry.DoguRegistry())
 
-	clientSet, _ := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
-	//TODO Error handling
+	clientSet, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create clientSet: %w", err)
+	}
 
-	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(clientSet, clientSet.CoreV1().RESTClient(), registry)
+	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(clientSet, clientSet.CoreV1().RESTClient(), cesRegistry)
 
 	return &DoguManager{
 		Client:                client,

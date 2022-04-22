@@ -172,22 +172,26 @@ var _ = Describe("Dogu Controller", func() {
 				if createdDogu.Status.Status != k8sv1.DoguStatusNotInstalled {
 					return false
 				}
-				if len(createdDogu.Status.StatusMessages) != 4 {
+				statusMessages := createdDogu.Status.StatusMessages
+				if len(statusMessages) != 4 {
 					return false
 				}
-				// todo
-				//if createdDogu.Status.StatusMessages[0] != "failed to resolve to dependencies: {dogu postgresql }" {
-				//	return false
-				//}
-				//if createdDogu.Status.StatusMessages[1] != "failed to resolve to dependencies: {dogu cas }" {
-				//	return false
-				//}
-				//if createdDogu.Status.StatusMessages[2] != "failed to resolve to dependencies: {dogu nginx }" {
-				//	return false
-				//}
-				//if createdDogu.Status.StatusMessages[3] != "failed to resolve to dependencies: {dogu postfix }" {
-				//	return false
-				//}
+				statusMessage := "failed to resolve dependency: {dogu postgresql }"
+				if !containsStatusMessage(statusMessages, statusMessage) {
+					return false
+				}
+				statusMessage = "failed to resolve dependency: {dogu nginx }"
+				if !containsStatusMessage(statusMessages, statusMessage) {
+					return false
+				}
+				statusMessage = "failed to resolve dependency: {dogu cas }"
+				if !containsStatusMessage(statusMessages, statusMessage) {
+					return false
+				}
+				statusMessage = "failed to resolve dependency: {dogu postfix }"
+				if !containsStatusMessage(statusMessages, statusMessage) {
+					return false
+				}
 				return true
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
@@ -196,6 +200,18 @@ var _ = Describe("Dogu Controller", func() {
 		})
 	})
 })
+
+func containsStatusMessage(messages []string, statusMessage string) bool {
+	for _, msg := range messages {
+		fmt.Println(msg)
+		if msg == statusMessage {
+			fmt.Println("TRUE")
+			return true
+		}
+	}
+
+	return false
+}
 
 func installDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu) {
 	Expect(k8sClient.Create(ctx, doguCr)).Should(Succeed())

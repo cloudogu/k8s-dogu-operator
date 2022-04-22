@@ -26,15 +26,16 @@ import (
 )
 
 type doguManagerWithMocks struct {
-	DoguManager         controllers.DoguManager
-	DoguRegistry        *mocks.DoguRegistry
-	ImageRegistry       *mocks.ImageRegistry
-	DoguRegistrator     *mocks.DoguRegistrator
-	DependencyValidator *mocks.DependencyValidator
+	DoguManager           controllers.DoguManager
+	DoguRegistry          *mocks.DoguRegistry
+	ImageRegistry         *mocks.ImageRegistry
+	DoguRegistrator       *mocks.DoguRegistrator
+	DependencyValidator   *mocks.DependencyValidator
+	ServiceAccountCreator *mocks.ServiceAccountCreator
 }
 
 func (d *doguManagerWithMocks) AssertMocks(t *testing.T) {
-	mock.AssertExpectationsForObjects(t, d.DoguRegistry, d.ImageRegistry, d.DoguRegistrator, d.DependencyValidator)
+	mock.AssertExpectationsForObjects(t, d.DoguRegistry, d.ImageRegistry, d.DoguRegistrator, d.DependencyValidator, d.ServiceAccountCreator)
 }
 
 func getDoguManagerWithMocks() doguManagerWithMocks {
@@ -48,23 +49,26 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 	imageRegistry := &mocks.ImageRegistry{}
 	doguRegistrator := &mocks.DoguRegistrator{}
 	dependencyValidator := &mocks.DependencyValidator{}
+	serviceAccountCreator := &mocks.ServiceAccountCreator{}
 
 	doguManager := controllers.DoguManager{
-		Client:              k8sClient,
-		Scheme:              scheme,
-		ResourceGenerator:   resourceGenerator,
-		DoguRegistry:        doguRegistry,
-		ImageRegistry:       imageRegistry,
-		DoguRegistrator:     doguRegistrator,
-		DependencyValidator: dependencyValidator,
+		Client:                k8sClient,
+		Scheme:                scheme,
+		ResourceGenerator:     resourceGenerator,
+		DoguRegistry:          doguRegistry,
+		ImageRegistry:         imageRegistry,
+		DoguRegistrator:       doguRegistrator,
+		DependencyValidator:   dependencyValidator,
+		ServiceAccountCreator: serviceAccountCreator,
 	}
 
 	return doguManagerWithMocks{
-		DoguManager:         doguManager,
-		DoguRegistry:        doguRegistry,
-		ImageRegistry:       imageRegistry,
-		DoguRegistrator:     doguRegistrator,
-		DependencyValidator: dependencyValidator,
+		DoguManager:           doguManager,
+		DoguRegistry:          doguRegistry,
+		ImageRegistry:         imageRegistry,
+		DoguRegistrator:       doguRegistrator,
+		DependencyValidator:   dependencyValidator,
+		ServiceAccountCreator: serviceAccountCreator,
 	}
 }
 
@@ -135,6 +139,7 @@ func TestDoguManager_Install(t *testing.T) {
 		managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
 		// when
@@ -142,7 +147,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		mock.AssertExpectationsForObjects(t, managerWithMocks.DoguRegistry, managerWithMocks.ImageRegistry, managerWithMocks.DoguRegistrator, managerWithMocks.DependencyValidator)
+		managerWithMocks.AssertMocks(t)
 	})
 
 	t.Run("successfully install dogu with custom descriptor", func(t *testing.T) {
@@ -151,6 +156,7 @@ func TestDoguManager_Install(t *testing.T) {
 		managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapDescriptorCm)
 
@@ -224,6 +230,24 @@ func TestDoguManager_Install(t *testing.T) {
 		managerWithMocks.AssertMocks(t)
 	})
 
+	t.Run("failed to create service accounts", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguManagerWithMocks()
+		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(testError)
+		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
+
+		// when
+		err := managerWithMocks.DoguManager.Install(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create service accounts")
+		managerWithMocks.AssertMocks(t)
+	})
+
 	t.Run("dogu resource not found", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguManagerWithMocks()
@@ -260,6 +284,7 @@ func TestDoguManager_Install(t *testing.T) {
 		managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, testError)
 		managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
 		// when
@@ -279,6 +304,7 @@ func TestDoguManager_Install(t *testing.T) {
 			managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -303,6 +329,7 @@ func TestDoguManager_Install(t *testing.T) {
 			managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -327,6 +354,7 @@ func TestDoguManager_Install(t *testing.T) {
 			managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -353,6 +381,7 @@ func TestDoguManager_Install(t *testing.T) {
 			managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -378,6 +407,7 @@ func TestDoguManager_Install(t *testing.T) {
 			managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -405,6 +435,7 @@ func TestDoguManager_Install(t *testing.T) {
 			managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -431,6 +462,7 @@ func TestDoguManager_Install(t *testing.T) {
 			managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -454,12 +486,12 @@ func TestDoguManager_Install(t *testing.T) {
 
 		t.Run("exposed services - fail on kubernetes update", func(t *testing.T) {
 			// given
-
 			managerWithMocks := getDoguManagerWithMocks()
 			managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -482,74 +514,56 @@ func TestDoguManager_Install(t *testing.T) {
 	})
 }
 
-// todo[jsprey] refactor
-//func TestDoguManager_Delete(t *testing.T) {
-//	scheme := getDoguOnlyScheme()
-//	ctx := context.TODO()
-//	resourceGenerator := *resource.NewResourceGenerator(scheme)
-//
-//	version, err := core.ParseVersion("0.0.0")
-//	require.NoError(t, err)
-//
-//	testErr := errors.New("test")
-//
-//	registry := &cesmocks.DoguRegistry{}
-//
-//	t.Run("successfully delete a dogu", func(t *testing.T) {
-//		// given
-//		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-//		ldapCr.ResourceVersion = ""
-//		doguRegistry := &mocks.DoguRegistry{}
-//		imageRegistry := &mocks.ImageRegistry{}
-//		doguRegistrator := &mocks.DoguRegistrator{}
-//		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything).Return(nil)
-//		doguManager := controllers.NewDoguManager(&version, client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator, registry)
-//		_ = client.Create(ctx, ldapCr)
-//
-//		// when
-//		err := doguManager.Delete(ctx, ldapCr)
-//
-//		// then
-//		require.NoError(t, err)
-//		mock.AssertExpectationsForObjects(t, doguRegistrator)
-//	})
-//
-//	t.Run("failed to update dogu status", func(t *testing.T) {
-//		// given
-//		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-//		doguRegistry := &mocks.DoguRegistry{}
-//		imageRegistry := &mocks.ImageRegistry{}
-//		doguRegistrator := &mocks.DoguRegistrator{}
-//		doguManager := controllers.NewDoguManager(&version, client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator, registry)
-//
-//		// when
-//		err := doguManager.Delete(ctx, ldapCr)
-//
-//		// then
-//		require.Error(t, err)
-//		assert.Contains(t, err.Error(), "failed to update dogu status")
-//	})
-//
-//	t.Run("failed to unregister dogu", func(t *testing.T) {
-//		// given
-//		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-//		ldapCr.ResourceVersion = ""
-//		_ = client.Create(ctx, ldapCr)
-//		doguRegistry := &mocks.DoguRegistry{}
-//		imageRegistry := &mocks.ImageRegistry{}
-//		doguRegistrator := &mocks.DoguRegistrator{}
-//		doguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testErr)
-//		doguManager := controllers.NewDoguManager(&version, client, scheme, &resourceGenerator, doguRegistry, imageRegistry, doguRegistrator, registry)
-//
-//		// when
-//		err := doguManager.Delete(ctx, ldapCr)
-//
-//		// then
-//		require.Error(t, err)
-//		assert.Contains(t, err.Error(), "failed to unregister dogu")
-//		mock.AssertExpectationsForObjects(t, doguRegistrator)
-//	})
-//}
+func TestDoguManager_Delete(t *testing.T) {
+	scheme := getDoguOnlyScheme()
+	ctx := context.TODO()
+	testErr := errors.New("test")
+
+	t.Run("successfully delete a dogu", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		managerWithMocks := getDoguManagerWithMocks()
+		managerWithMocks.DoguRegistrator.Mock.On("UnregisterDogu", mock.Anything).Return(nil)
+		managerWithMocks.DoguManager.Client = client
+		_ = client.Create(ctx, ldapCr)
+
+		// when
+		err := managerWithMocks.DoguManager.Delete(ctx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		managerWithMocks.AssertMocks(t)
+	})
+
+	t.Run("failed to update dogu status", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguManagerWithMocks()
+
+		// when
+		err := managerWithMocks.DoguManager.Delete(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to update dogu status")
+	})
+
+	t.Run("failed to unregister dogu", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		managerWithMocks := getDoguManagerWithMocks()
+		managerWithMocks.DoguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testErr)
+		managerWithMocks.DoguManager.Client = client
+		_ = client.Create(ctx, ldapCr)
+
+		// when
+		err := managerWithMocks.DoguManager.Delete(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to unregister dogu")
+		managerWithMocks.AssertMocks(t)
+	})
+}
 
 func getDoguOnlyScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()

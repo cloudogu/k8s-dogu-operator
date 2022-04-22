@@ -59,7 +59,7 @@ func init() {
 func main() {
 	err := startDoguOperator()
 	if err != nil {
-		//TODO panic
+		panic(err)
 	}
 }
 

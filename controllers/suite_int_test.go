@@ -13,11 +13,14 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest/fake"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -100,16 +103,18 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, &EtcdDoguRegistry)
+	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(testclient.NewSimpleClientset(), &fake.RESTClient{}, &CesRegistryMock)
 
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
 	doguManager := controllers.DoguManager{
-		Client:              k8sManager.GetClient(),
-		Scheme:              k8sManager.GetScheme(),
-		ResourceGenerator:   resourceGenerator,
-		DoguRegistry:        &DoguRegistryMock,
-		ImageRegistry:       &ImageRegistryMock,
-		DoguRegistrator:     doguRegistrator,
-		DependencyValidator: dependencyValidator,
+		Client:                k8sManager.GetClient(),
+		Scheme:                k8sManager.GetScheme(),
+		ResourceGenerator:     resourceGenerator,
+		DoguRegistry:          &DoguRegistryMock,
+		ImageRegistry:         &ImageRegistryMock,
+		DoguRegistrator:       doguRegistrator,
+		DependencyValidator:   dependencyValidator,
+		ServiceAccountCreator: serviceAccountCreator,
 	}
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
