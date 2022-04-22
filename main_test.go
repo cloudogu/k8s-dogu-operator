@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	k8sconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,6 +33,14 @@ func Test_getK8sManagerOptions(t *testing.T) {
 }
 
 func Test_configureManager(t *testing.T) {
+	oldConfigFunc := k8sconfig.GetConfigOrDie
+	ctrl.GetConfigOrDie = func() *rest.Config {
+		return &rest.Config{}
+	}
+	defer func() {
+		ctrl.GetConfigOrDie = oldConfigFunc
+	}()
+
 	t.Run("successfully configure manager", func(t *testing.T) {
 		// given
 		k8sManager := &mocks.Manager{}
