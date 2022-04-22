@@ -23,6 +23,8 @@ import (
 	"github.com/cloudogu/cesapp/v4/core"
 	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/sirupsen/logrus"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -149,21 +151,21 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 }
 
 func createDoguManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig, exiter applicationExiter, options manager.Options) *controllers.DoguManager {
-	doguRegistry := controllers.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
-	imageRegistry := controllers.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
-	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
-	registry, err := cesregistry.New(core.Registry{
+	doguRegistry := registry.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
+	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme())
+	cesRegistry, err := cesregistry.New(core.Registry{
 		Type:      "etcd",
 		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", options.Namespace)},
 	})
 
 	if err != nil {
-		setupLog.Error(err, "unable to create registry")
+		setupLog.Error(err, "unable to create cesRegistry")
 		exiter.Exit(err)
 	}
 
-	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), registry, resourceGenerator)
-	return controllers.NewDoguManager(operatorConfig.Version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator, registry)
+	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), cesRegistry, resourceGenerator)
+	return controllers.NewDoguManager(operatorConfig.Version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator, cesRegistry.DoguRegistry())
 }
 
 func addChecks(mgr manager.Manager, exiter applicationExiter) {

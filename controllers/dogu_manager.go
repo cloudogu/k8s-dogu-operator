@@ -72,13 +72,14 @@ type ServiceAccountCreator interface {
 
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(version *core.Version, client client.Client, scheme *runtime.Scheme, resourceGenerator DoguResourceGenerator,
-	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator, registry registry.Registry) *DoguManager {
-	dependencyValidator := dependency.NewDependencyValidator(version, registry.DoguRegistry())
+	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator, registry registry.DoguRegistry) *DoguManager {
+	dependencyValidator := dependency.NewCompositeDependencyValidator(version, registry)
 	// create kubernetes.clientSet because you can't do exec in pods with the client.Client
 	clientSet, _ := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
 	//TODO Error handling
 
 	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(clientSet, clientSet.CoreV1().RESTClient(), registry)
+
 
 	return &DoguManager{
 		Client:                client,
@@ -96,7 +97,7 @@ func NewDoguManager(version *core.Version, client client.Client, scheme *runtime
 // information Install creates a Deployment and a Service
 func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
-	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling, StatusMessages: []string{}}
+	doguResource.Status = k8sv1.DoguStatus{RequeueTime: doguResource.Status.RequeueTime, Status: k8sv1.DoguStatusInstalling, StatusMessages: []string{}}
 	err := m.Client.Status().Update(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)

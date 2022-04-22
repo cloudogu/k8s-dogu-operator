@@ -1,11 +1,11 @@
-package controllers_test
+package registry_test
 
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/google/go-containerregistry/pkg/crane"
-	"github.com/google/go-containerregistry/pkg/registry"
+	craneRegistry "github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 )
 
 func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
-	imageRegistry := controllers.NewCraneContainerImageRegistry("user", "password")
+	imageRegistry := registry.NewCraneContainerImageRegistry("user", "password")
 
 	t.Run("successful pulling image", func(t *testing.T) {
 		server, src := setupCraneRegistry(t)
@@ -37,7 +37,7 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 
 func setupCraneRegistry(t *testing.T) (*httptest.Server, string) {
 	// Create local registry
-	s := httptest.NewServer(registry.New())
+	s := httptest.NewServer(craneRegistry.New())
 	u, err := url.Parse(s.URL)
 	if err != nil {
 		t.Fatal(err)

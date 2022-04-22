@@ -7,20 +7,20 @@ metadata:
     dogu: ldap
   name: ldap
   ownerReferences:
-  - apiVersion: k8s.cloudogu.com/v1
-    blockOwnerDeletion: true
-    controller: true
-    kind: Dogu
-    name: ldap
-    uid: ""
+    - apiVersion: k8s.cloudogu.com/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Dogu
+      name: ldap
+      uid: ""
 spec:
   ports:
-  - name: "80"
-    port: 80
-    protocol: TCP
-    targetPort: 0
+    - name: "80"
+      port: 80
+      protocol: TCP
+      targetPort: 0
   selector:
     dogu: ldap
   type: ClusterIP
 status:
-  loadBalancer: {}
+  loadBalancer: { }
