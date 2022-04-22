@@ -5,7 +5,6 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -22,6 +21,8 @@ import (
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/client-go/tools/remotecommand"
 	"net/url"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"testing"
 )
 
@@ -119,6 +120,15 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	}
 	validPubKey := "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApbhnnaIIXCADt0V7UCM7\nZfBEhpEeB5LTlvISkPQ91g+l06/soWFD65ba0PcZbIeKFqr7vkMB0nDNxX1p8PGv\nVJdUmwdB7U/bQlnO6c1DoY10g29O7itDfk92RCKeU5Vks9uRQ5ayZMjxEuahg2BW\nua72wi3GCiwLa9FZxGIP3hcYB21O6PfpxXsQYR8o3HULgL1ppDpuLv4fk/+jD31Z\n9ACoWOg6upyyNUsiA3hS9Kn1p3scVgsIN2jSSpxW42NvMo6KQY1Zo0N4Aw/mqySd\n+zdKytLqFto1t0gCbTCFPNMIObhWYXmAe26+h1b1xUI8ymsrXklwJVn0I77j9MM1\nHQIDAQAB\n-----END PUBLIC KEY-----"
 	redmineCr.Namespace = "test"
+
+	oldConfigFunc := config.GetConfigOrDie
+	ctrl.GetConfigOrDie = func() *rest.Config {
+		return nil
+	}
+	defer func() {
+		ctrl.GetConfigOrDie = oldConfigFunc
+	}()
+
 	t.Run("success", func(t *testing.T) {
 		// given
 		ctx := context.TODO()
@@ -147,7 +157,6 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
-		fmt.Println("Debug9")
 
 		// then
 		require.NoError(t, err)
