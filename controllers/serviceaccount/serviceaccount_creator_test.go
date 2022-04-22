@@ -34,6 +34,10 @@ var redmineCr = &k8sv1.Dogu{}
 var redmineDescriptorBytes []byte
 var redmineDescriptor = &core.Dogu{}
 
+//go:embed testdata/redmine-dogu-optional.json
+var redmineDescriptorOptionalBytes []byte
+var redmineDescriptorOptional = &core.Dogu{}
+
 //go:embed testdata/postgresql-dogu.json
 var postgresqlDescriptorBytes []byte
 var postgresqlDescriptor = &core.Dogu{}
@@ -49,6 +53,11 @@ func init() {
 	}
 
 	err = json.Unmarshal(redmineDescriptorBytes, redmineDescriptor)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(redmineDescriptorOptionalBytes, redmineDescriptorOptional)
 	if err != nil {
 		panic(err)
 	}
@@ -119,6 +128,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		return &fakeInvalidOutputExecutor{method: method, url: url}, nil
 	}
 	validPubKey := "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApbhnnaIIXCADt0V7UCM7\nZfBEhpEeB5LTlvISkPQ91g+l06/soWFD65ba0PcZbIeKFqr7vkMB0nDNxX1p8PGv\nVJdUmwdB7U/bQlnO6c1DoY10g29O7itDfk92RCKeU5Vks9uRQ5ayZMjxEuahg2BW\nua72wi3GCiwLa9FZxGIP3hcYB21O6PfpxXsQYR8o3HULgL1ppDpuLv4fk/+jD31Z\n9ACoWOg6upyyNUsiA3hS9Kn1p3scVgsIN2jSSpxW42NvMo6KQY1Zo0N4Aw/mqySd\n+zdKytLqFto1t0gCbTCFPNMIObhWYXmAe26+h1b1xUI8ymsrXklwJVn0I77j9MM1\nHQIDAQAB\n-----END PUBLIC KEY-----"
+	invalidPubKey := "-----BEGIN PUBLIC KEY-----\nHQIDAQAB\n-----END PUBLIC KEY-----"
 	redmineCr.Namespace = "test"
 
 	oldConfigFunc := config.GetConfigOrDie
@@ -219,6 +229,49 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to check if dogu postgresql is enabled")
+		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
+	})
+
+	t.Run("service account is optional", func(t *testing.T) {
+		// given
+		ctx := context.TODO()
+		doguRegistry := &cesmocks.DoguRegistry{}
+		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, nil)
+		doguConfig := &cesmocks.ConfigurationContext{}
+		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
+		registry := &cesmocks.Registry{}
+		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
+		registry.Mock.On("DoguRegistry").Return(doguRegistry)
+		client := testclient.NewSimpleClientset()
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+
+		// when
+		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptorOptional)
+
+		// then
+		require.NoError(t, err)
+		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
+	})
+
+	t.Run("service account is not optional and service account dogu is not enabled", func(t *testing.T) {
+		// given
+		ctx := context.TODO()
+		doguRegistry := &cesmocks.DoguRegistry{}
+		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, nil)
+		doguConfig := &cesmocks.ConfigurationContext{}
+		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
+		registry := &cesmocks.Registry{}
+		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
+		registry.Mock.On("DoguRegistry").Return(doguRegistry)
+		client := testclient.NewSimpleClientset()
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+
+		// when
+		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "service account dogu is not enabled and not optional")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
 
@@ -473,7 +526,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
-		doguConfig.Mock.On("Get", "public.pem").Return("invalid", testErr)
+		doguConfig.Mock.On("Get", "public.pem").Return(invalidPubKey, nil)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
