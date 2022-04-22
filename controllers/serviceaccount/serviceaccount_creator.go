@@ -85,26 +85,37 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("failed to get service account dogu.json: %w", err)
 		}
 
+		fmt.Println("Debug1")
+
 		//get the create command
 		createCommand := c.getCreateCommand(targetDescriptor)
 		if createCommand == nil {
 			return fmt.Errorf("service account dogu does not expose create command")
 		}
 
+		fmt.Println("Debug2")
+
 		pod, err := c.getPodForServiceAccount(ctx, doguResource, serviceAccount)
 		if err != nil {
 			return fmt.Errorf("failed to get pod for sa dogu %s: %w", serviceAccount.Type, err)
 		}
 
+		fmt.Println("Debug3")
+
 		// create request
 		saParams := append(serviceAccount.Params, dogu.GetSimpleName())
 		req := c.getCreateExecRequest(pod, doguResource, createCommand, saParams)
+
+		fmt.Println("Debug3")
 
 		// execute request
 		exec, err := c.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 		if err != nil {
 			return fmt.Errorf("failed to create new spdy executor: %w", err)
 		}
+
+		fmt.Println("Debug4")
+
 		buffer := bytes.NewBuffer([]byte{})
 		err = exec.Stream(remotecommand.StreamOptions{
 			Stdin:  os.Stdin,
@@ -112,6 +123,9 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			Stderr: os.Stderr,
 			Tty:    true,
 		})
+
+		fmt.Println("Debug5")
+
 		if err != nil {
 			return fmt.Errorf("failed to exec stream: %w", err)
 		}
@@ -122,17 +136,23 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("failed to parse service account: %w", err)
 		}
 
+		fmt.Println("Debug6")
+
 		// get dogu public key
 		publicKey, err := c.getPublicKey(doguConfig)
 		if err != nil {
 			return fmt.Errorf("failed to read public key from string: %w", err)
 		}
 
+		fmt.Println("Debug7")
+
 		// write credentials
 		err = c.writeServiceAccounts(doguConfig, serviceAccount, saCreds, publicKey)
 		if err != nil {
 			return fmt.Errorf("failed to write service account: %w", err)
 		}
+
+		fmt.Println("Debug8")
 	}
 
 	return nil
