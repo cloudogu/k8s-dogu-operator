@@ -10,6 +10,7 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -24,6 +25,14 @@ import (
 	"testing"
 )
 
+//go:embed testdata/redmine-cr.yaml
+var redmineCrBytes []byte
+var redmineCr = &k8sv1.Dogu{}
+
+//go:embed testdata/redmine-dogu.json
+var redmineBytes []byte
+var redmineDogu = &core.Dogu{}
+
 //go:embed testdata/ldap-cr.yaml
 var ldapCrBytes []byte
 var ldapCr = &k8sv1.Dogu{}
@@ -36,8 +45,17 @@ var imageConfig = &imagev1.ConfigFile{}
 var ldapDescriptorCmBytes []byte
 var ldapDescriptorCm = &corev1.ConfigMap{}
 
+//go:embed testdata/ldap-dogu.json
+var ldapBytes []byte
+var ldapDogu = &core.Dogu{}
+
 func init() {
-	err := yaml.Unmarshal(ldapCrBytes, ldapCr)
+	err := json.Unmarshal(ldapBytes, ldapDogu)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(ldapCrBytes, ldapCr)
 	if err != nil {
 		panic(err)
 	}
@@ -51,6 +69,16 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	err = yaml.Unmarshal(redmineCrBytes, redmineCr)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(redmineBytes, redmineDogu)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestDoguManager_Install(t *testing.T) {
@@ -58,7 +86,7 @@ func TestDoguManager_Install(t *testing.T) {
 	ctx := context.TODO()
 
 	scheme := getInstallScheme()
-	resourceGenerator := *controllers.NewResourceGenerator(scheme)
+	resourceGenerator := *resource.NewResourceGenerator(scheme)
 	version, err := core.ParseVersion("0.0.0")
 	require.NoError(t, err)
 	registry := &cesmocks.DoguRegistry{}
@@ -277,7 +305,7 @@ func TestDoguManager_Install(t *testing.T) {
 func TestDoguManager_Delete(t *testing.T) {
 	scheme := getDoguOnlyScheme()
 	ctx := context.TODO()
-	resourceGenerator := *controllers.NewResourceGenerator(scheme)
+	resourceGenerator := *resource.NewResourceGenerator(scheme)
 
 	version, err := core.ParseVersion("0.0.0")
 	require.NoError(t, err)

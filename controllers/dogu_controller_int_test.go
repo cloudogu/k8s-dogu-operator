@@ -6,9 +6,7 @@ package controllers_test
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"fmt"
-	"github.com/cloudogu/cesapp/v4/core"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
@@ -20,28 +18,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/yaml"
 )
-
-//go:embed testdata/redmine-cr.yaml
-var redmineCrBytes []byte
-var redmineCr = &k8sv1.Dogu{}
-
-//go:embed testdata/redmine-dogu.json
-var redmineBytes []byte
-var redmineDogu = &core.Dogu{}
-
-func init() {
-	err := yaml.Unmarshal(redmineCrBytes, redmineCr)
-	if err != nil {
-		panic(err)
-	}
-
-	err = json.Unmarshal(redmineBytes, redmineDogu)
-	if err != nil {
-		panic(err)
-	}
-}
 
 var _ = Describe("Dogu Controller", func() {
 
@@ -198,16 +175,16 @@ var _ = Describe("Dogu Controller", func() {
 				if len(createdDogu.Status.StatusMessages) != 4 {
 					return false
 				}
-				if createdDogu.Status.StatusMessages[0] != "missing dependency: postgresql" {
+				if createdDogu.Status.StatusMessages[0] != "failed to resolve to dependencies: {dogu postgresql }" {
 					return false
 				}
-				if createdDogu.Status.StatusMessages[1] != "missing dependency: cas" {
+				if createdDogu.Status.StatusMessages[1] != "failed to resolve to dependencies: {dogu cas }" {
 					return false
 				}
-				if createdDogu.Status.StatusMessages[2] != "missing dependency: nginx" {
+				if createdDogu.Status.StatusMessages[2] != "failed to resolve to dependencies: {dogu nginx }" {
 					return false
 				}
-				if createdDogu.Status.StatusMessages[3] != "missing dependency: postfix" {
+				if createdDogu.Status.StatusMessages[3] != "failed to resolve to dependencies: {dogu postfix }" {
 					return false
 				}
 				return true

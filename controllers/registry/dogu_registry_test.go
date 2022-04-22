@@ -1,15 +1,26 @@
-package controllers_test
+package registry_test
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
+	"encoding/json"
+	"github.com/cloudogu/cesapp/v4/core"
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
+	ldapDogu := &core.Dogu{Name: "ldap"}
+	ldapDoguResource := &v1.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
+	}
+	ldapBytes, err := json.Marshal(ldapDogu)
+	require.NoError(t, err)
+
 	validUser := "user"
 	validPw := "pw"
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +37,7 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 	}))
 
 	t.Run("Successful get dogu", func(t *testing.T) {
-		doguRegistry := controllers.NewHTTPDoguRegistry(validUser, validPw, testServer.URL)
+		doguRegistry := registry.NewHTTPDoguRegistry(validUser, validPw, testServer.URL)
 
 		result, err := doguRegistry.GetDogu(ldapDoguResource)
 		require.NoError(t, err)
@@ -35,7 +46,7 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 	})
 
 	t.Run("Error while doing request", func(t *testing.T) {
-		doguRegistry := controllers.NewHTTPDoguRegistry(validUser, validPw, "wrongurl")
+		doguRegistry := registry.NewHTTPDoguRegistry(validUser, validPw, "wrongurl")
 
 		_, err := doguRegistry.GetDogu(ldapDoguResource)
 
@@ -43,7 +54,7 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 	})
 
 	t.Run("Error with status code 401", func(t *testing.T) {
-		doguRegistry := controllers.NewHTTPDoguRegistry(validUser, "invalid", testServer.URL)
+		doguRegistry := registry.NewHTTPDoguRegistry(validUser, "invalid", testServer.URL)
 
 		_, err := doguRegistry.GetDogu(ldapDoguResource)
 		require.Error(t, err)
@@ -59,7 +70,7 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 				panic(err)
 			}
 		}))
-		doguRegistry := controllers.NewHTTPDoguRegistry(validUser, validPw, testServer2.URL)
+		doguRegistry := registry.NewHTTPDoguRegistry(validUser, validPw, testServer2.URL)
 
 		_, err := doguRegistry.GetDogu(ldapDoguResource)
 		require.Error(t, err)

@@ -24,6 +24,11 @@ func (e *ErrorDependencyValidation) Report() string {
 	return fmt.Sprintf("failed to resolve to depdencies: %v", e.Dependency)
 }
 
+// Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
+func (e *ErrorDependencyValidation) Requeue() bool {
+	return true
+}
+
 // DoguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type DoguDependencyValidator struct {
 	DoguDependencyChecker *dependencies.DoguDependencyChecker

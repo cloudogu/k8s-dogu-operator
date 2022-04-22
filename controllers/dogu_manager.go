@@ -82,7 +82,7 @@ func NewDoguManager(version *core.Version, client client.Client, scheme *runtime
 // information Install creates a Deployment and a Service
 func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
-	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling, StatusMessages: []string{}}
+	doguResource.Status = k8sv1.DoguStatus{RequeueTime: doguResource.Status.RequeueTime, Status: k8sv1.DoguStatusInstalling, StatusMessages: []string{}}
 	err := m.Client.Status().Update(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)

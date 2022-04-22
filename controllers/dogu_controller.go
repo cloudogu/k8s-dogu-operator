@@ -20,10 +20,8 @@ import (
 	"context"
 	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/wip"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,34 +56,35 @@ type DoguReconciler struct {
 	client.Client
 	scheme             *runtime.Scheme
 	doguManager        Manager
-	DoguStatusReporter StatusReporter
+	DoguRequeueHandler RequeueHandler
 }
 
-// Manager abstracts the simple dogu operations in a k8s CES
+// Manager abstracts the simple dogu operations in a k8s CES.
 type Manager interface {
-	// Install installs a dogu resource
+	// Install installs a dogu resource.
 	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
-	// Upgrade upgrades a dogu resource
+	// Upgrade upgrades a dogu resource.
 	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
-	// Delete deletes a dogu resource
+	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
-// StatusReporter is responsible to save information in the dogu status via messages
-type StatusReporter interface {
-	ReportMessage(ctx context.Context, doguResource *k8sv1.Dogu, message string) error
-	ReportError(ctx context.Context, doguResource *k8sv1.Dogu, error error) error
+// RequeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
+type RequeueHandler interface {
+	// Handle takes an error and handles the requeue process for the current dogu operation.
+	Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error)
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
 func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager Manager) *DoguReconciler {
-	doguStatusReporter := wip.NewDoguStatusReporter(client)
+	doguStatusReporter := resource.NewDoguStatusReporter(client)
+	doguRequeueHandler := NewDoguRequeueHandler(client, doguStatusReporter)
 
 	return &DoguReconciler{
 		Client:             client,
 		scheme:             scheme,
 		doguManager:        doguManager,
-		DoguStatusReporter: doguStatusReporter,
+		DoguRequeueHandler: doguRequeueHandler,
 	}
 }
 
@@ -112,8 +111,12 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	switch requiredOperation {
 	case Install:
-		err := r.doguManager.Install(ctx, doguResource)
-		return r.handleInstallError(ctx, err, doguResource)
+		installError := r.doguManager.Install(ctx, doguResource)
+		if installError != nil {
+			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
+		}
+		contextMessageOnError := fmt.Sprintf("failed to install dogu %s", doguResource.Name)
+		return r.DoguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError)
 	case Upgrade:
 		return ctrl.Result{}, nil
 	case Delete:
@@ -127,30 +130,6 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	default:
 		return ctrl.Result{}, nil
 	}
-}
-
-func (r *DoguReconciler) handleInstallError(ctx context.Context, err error, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
-	if err == nil {
-		return ctrl.Result{}, nil
-	}
-
-	depError := &dependency.ErrorDependencyValidation{}
-	// check if err contains a dependency error
-	if errors.As(err, &depError) {
-		reportError := r.DoguStatusReporter.ReportError(ctx, doguResource, err)
-		if reportError != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to report error: %w", reportError)
-		}
-
-		requeueTime := doguResource.Status.NextRequeue()
-		logger.Error(err, fmt.Sprintf("Failed to install dogu %s -> retry dogu installation in %s seconds",
-			doguResource.Spec.Name, requeueTime))
-		return ctrl.Result{RequeueAfter: requeueTime}, nil
-	}
-
-	return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)
 }
 
 func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Operation, error) {

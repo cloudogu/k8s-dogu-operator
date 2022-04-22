@@ -1,4 +1,4 @@
-package wip
+package resource
 
 import (
 	"context"
@@ -33,7 +33,7 @@ func (der DoguStatusReporter) ReportMessage(ctx context.Context, doguResource *k
 
 // ReportError adds the or all errors from a multi error to the status of the dogu resource.
 func (der DoguStatusReporter) ReportError(ctx context.Context, doguResource *k8sv1.Dogu, reportError error) error {
-	errorList := getAllErrorsFromChain(reportError)
+	errorList := GetAllErrorsFromChain(reportError)
 
 	for _, err := range errorList {
 		var reportableError ReportableError
@@ -54,7 +54,7 @@ func (der DoguStatusReporter) updateDoguState(ctx context.Context, doguResource 
 	return nil
 }
 
-func getAllErrorsFromChain(err error) []error {
+func GetAllErrorsFromChain(err error) []error {
 	multiError, ok := err.(*multierror.Error)
 	if !ok {
 		return []error{err}

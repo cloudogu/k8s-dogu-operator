@@ -11,6 +11,7 @@ import (
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -80,7 +81,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme())
 
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)

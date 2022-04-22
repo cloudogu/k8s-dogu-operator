@@ -1,10 +1,10 @@
-package controllers_test
+package resource_test
 
 import (
 	"errors"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -95,14 +95,14 @@ func init() {
 	}
 }
 
-func getResourceGenerator() *controllers.ResourceGenerator {
+func getResourceGenerator() *resource.ResourceGenerator {
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
 		Version: "v1",
 		Kind:    "Dogu",
 	}, &k8sv1.Dogu{})
-	return controllers.NewResourceGenerator(scheme)
+	return resource.NewResourceGenerator(scheme)
 }
 
 func TestResourceGenerator_GetDoguDeployment(t *testing.T) {

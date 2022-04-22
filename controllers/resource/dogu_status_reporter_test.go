@@ -1,10 +1,10 @@
-package wip_test
+package resource_test
 
 import (
 	"context"
 	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/wip"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ func TestNewDoguErrorReporter(t *testing.T) {
 	fakeClient := fake.NewClientBuilder().Build()
 
 	// when
-	reporter := wip.NewDoguStatusReporter(fakeClient)
+	reporter := resource.NewDoguStatusReporter(fakeClient)
 
 	// then
 	require.NotNil(t, reporter)
@@ -53,7 +53,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
-		reporter := wip.NewDoguStatusReporter(fakeClient)
+		reporter := resource.NewDoguStatusReporter(fakeClient)
 
 		// when
 		err := reporter.ReportError(context.Background(), doguResource, fmt.Errorf("my error"))
@@ -74,7 +74,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
-		reporter := wip.NewDoguStatusReporter(fakeClient)
+		reporter := resource.NewDoguStatusReporter(fakeClient)
 
 		// when
 		myError := reportableFakeError{taste: "testing"}
@@ -97,7 +97,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
-		reporter := wip.NewDoguStatusReporter(fakeClient)
+		reporter := resource.NewDoguStatusReporter(fakeClient)
 
 		// when
 		myReportableError := &reportableFakeError{taste: "water"}
@@ -121,7 +121,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
-		reporter := wip.NewDoguStatusReporter(fakeClient)
+		reporter := resource.NewDoguStatusReporter(fakeClient)
 
 		// when
 		var resultError error
@@ -151,7 +151,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-		reporter := wip.NewDoguStatusReporter(fakeClient)
+		reporter := resource.NewDoguStatusReporter(fakeClient)
 
 		// when
 		err := reporter.ReportError(context.Background(), doguResource, fmt.Errorf("error"))
@@ -176,7 +176,7 @@ func TestDoguErrorReporter_ReportMessage(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
-		reporter := wip.NewDoguStatusReporter(fakeClient)
+		reporter := resource.NewDoguStatusReporter(fakeClient)
 
 		// when
 		err := reporter.ReportMessage(context.Background(), doguResource, "this is my message")
@@ -197,7 +197,7 @@ func TestDoguErrorReporter_ReportMessage(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
-		reporter := wip.NewDoguStatusReporter(fakeClient)
+		reporter := resource.NewDoguStatusReporter(fakeClient)
 
 		// when
 		err := reporter.ReportMessage(context.Background(), doguResource, "this is my message")
@@ -222,7 +222,7 @@ func TestDoguErrorReporter_ReportMessage(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-		reporter := wip.NewDoguStatusReporter(fakeClient)
+		reporter := resource.NewDoguStatusReporter(fakeClient)
 
 		// when
 		err := reporter.ReportMessage(context.Background(), doguResource, "this is my message")
