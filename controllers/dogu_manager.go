@@ -66,20 +66,20 @@ type DependencyValidator interface {
 	ValidateDependencies(dogu *core.Dogu) error
 }
 
+// ServiceAccountCreator is used to create service accounts for a given dogu
 type ServiceAccountCreator interface {
 	CreateServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
 }
 
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(version *core.Version, client client.Client, scheme *runtime.Scheme, resourceGenerator DoguResourceGenerator,
-	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator, registry registry.DoguRegistry) *DoguManager {
-	dependencyValidator := dependency.NewCompositeDependencyValidator(version, registry)
+	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator, registry registry.Registry) *DoguManager {
+	dependencyValidator := dependency.NewCompositeDependencyValidator(version, registry.DoguRegistry())
 	// create kubernetes.clientSet because you can't do exec in pods with the client.Client
 	clientSet, _ := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
 	//TODO Error handling
 
 	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(clientSet, clientSet.CoreV1().RESTClient(), registry)
-
 
 	return &DoguManager{
 		Client:                client,
