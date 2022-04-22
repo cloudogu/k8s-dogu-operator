@@ -77,9 +77,14 @@ func (c *CesDoguRegistrator) UnregisterDogu(dogu string) error {
 }
 
 func (c *CesDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
-	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: "pkcs1v15"})
+	keyProviderStr, err := c.registry.GlobalConfig().Get("key_provider")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create key provider: %w", err)
+		return nil, fmt.Errorf("failed to get key provider: %w", err)
+	}
+
+	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: keyProviderStr})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create keyprovider: %w", err)
 	}
 
 	keyPair, err := keyProvider.Generate()

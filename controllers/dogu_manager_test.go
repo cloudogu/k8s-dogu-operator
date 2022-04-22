@@ -61,7 +61,9 @@ func TestDoguManager_Install(t *testing.T) {
 	resourceGenerator := *controllers.NewResourceGenerator(scheme)
 	version, err := core.ParseVersion("0.0.0")
 	require.NoError(t, err)
-	registry := &cesmocks.DoguRegistry{}
+	doguRegistry := &cesmocks.DoguRegistry{}
+	registry := &cesmocks.Registry{}
+	registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 	t.Run("successfully install a dogu", func(t *testing.T) {
 		// given
@@ -284,7 +286,9 @@ func TestDoguManager_Delete(t *testing.T) {
 
 	testErr := errors.New("test")
 
-	registry := &cesmocks.DoguRegistry{}
+	doguRegistry := &cesmocks.DoguRegistry{}
+	registry := &cesmocks.Registry{}
+	registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 	t.Run("successfully delete a dogu", func(t *testing.T) {
 		// given

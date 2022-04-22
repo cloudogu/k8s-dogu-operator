@@ -8,11 +8,14 @@ import (
 	"github.com/cloudogu/cesapp/v4/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -24,12 +27,13 @@ const finalizerName = "dogu-finalizer"
 // The DoguManager creates, updates and deletes dogus
 type DoguManager struct {
 	client.Client
-	Scheme              *runtime.Scheme
-	resourceGenerator   DoguResourceGenerator
-	doguRegistry        DoguRegistry
-	imageRegistry       ImageRegistry
-	doguRegistrator     DoguRegistrator
-	dependencyValidator DependencyValidator
+	Scheme                *runtime.Scheme
+	resourceGenerator     DoguResourceGenerator
+	doguRegistry          DoguRegistry
+	imageRegistry         ImageRegistry
+	doguRegistrator       DoguRegistrator
+	dependencyValidator   DependencyValidator
+	serviceAccountCreator ServiceAccountCreator
 }
 
 // DoguRegistry is used to fetch the dogu descriptor
@@ -62,19 +66,29 @@ type DependencyValidator interface {
 	ValidateDependencies(dogu *core.Dogu) error
 }
 
+type ServiceAccountCreator interface {
+	CreateServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
+}
+
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(version *core.Version, client client.Client, scheme *runtime.Scheme, resourceGenerator DoguResourceGenerator,
-	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator, registry registry.DoguRegistry) *DoguManager {
-	dependencyValidator := dependency.NewDependencyValidator(version, registry)
+	doguRegistry DoguRegistry, imageRegistry ImageRegistry, doguRegistrator DoguRegistrator, registry registry.Registry) *DoguManager {
+	dependencyValidator := dependency.NewDependencyValidator(version, registry.DoguRegistry())
+	// create kubernetes.clientSet because you can't do exec in pods with the client.Client
+	clientSet, _ := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	//TODO Error handling
+
+	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(clientSet, clientSet.CoreV1().RESTClient(), registry)
 
 	return &DoguManager{
-		Client:              client,
-		Scheme:              scheme,
-		resourceGenerator:   resourceGenerator,
-		doguRegistry:        doguRegistry,
-		imageRegistry:       imageRegistry,
-		doguRegistrator:     doguRegistrator,
-		dependencyValidator: dependencyValidator,
+		Client:                client,
+		Scheme:                scheme,
+		resourceGenerator:     resourceGenerator,
+		doguRegistry:          doguRegistry,
+		imageRegistry:         imageRegistry,
+		doguRegistrator:       doguRegistrator,
+		dependencyValidator:   dependencyValidator,
+		serviceAccountCreator: serviceAccountCreator,
 	}
 }
 
@@ -121,6 +135,12 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	err = m.doguRegistrator.RegisterDogu(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu: %w", err)
+	}
+
+	logger.Info("Create service accounts...")
+	err = m.serviceAccountCreator.CreateServiceAccounts(ctx, doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to create service accounts: %w", err)
 	}
 
 	logger.Info("Pull image config...")

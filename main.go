@@ -163,7 +163,7 @@ func createDoguManager(k8sManager manager.Manager, operatorConfig *config.Operat
 	}
 
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), registry, resourceGenerator)
-	return controllers.NewDoguManager(operatorConfig.Version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator, registry.DoguRegistry())
+	return controllers.NewDoguManager(operatorConfig.Version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator, registry)
 }
 
 func addChecks(mgr manager.Manager, exiter applicationExiter) {

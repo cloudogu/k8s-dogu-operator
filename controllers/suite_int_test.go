@@ -86,15 +86,19 @@ var _ = BeforeSuite(func() {
 	doguConfigurationContext.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
 	doguConfigurationContext.Mock.On("RemoveAll", mock.Anything).Return(nil)
 
+	globalConfigurationContext := &cesmocks.ConfigurationContext{}
+	globalConfigurationContext.Mock.On("Get", "key_provider").Return("", nil)
+
 	CesRegistryMock := cesmocks.Registry{}
 	CesRegistryMock.Mock.On("DoguRegistry").Return(&EtcdDoguRegistry)
 	CesRegistryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
+	CesRegistryMock.Mock.On("GlobalConfig").Return(globalConfigurationContext)
 
 	version, err := core.ParseVersion("0.0.0")
 	Expect(err).ToNot(HaveOccurred())
 
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
-	doguManager := controllers.NewDoguManager(&version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator, &EtcdDoguRegistry)
+	doguManager := controllers.NewDoguManager(&version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator, &CesRegistryMock)
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
