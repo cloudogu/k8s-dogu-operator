@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/cesapp/v4/core"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	. "github.com/onsi/ginkgo"
@@ -94,8 +95,18 @@ var _ = BeforeSuite(func() {
 	version, err := core.ParseVersion("0.0.0")
 	Expect(err).ToNot(HaveOccurred())
 
+	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, &EtcdDoguRegistry)
+
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
-	doguManager := controllers.NewDoguManager(&version, k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, &DoguRegistryMock, &ImageRegistryMock, doguRegistrator, &EtcdDoguRegistry)
+	doguManager := controllers.DoguManager{
+		Client:              k8sManager.GetClient(),
+		Scheme:              k8sManager.GetScheme(),
+		ResourceGenerator:   resourceGenerator,
+		DoguRegistry:        &DoguRegistryMock,
+		ImageRegistry:       &ImageRegistryMock,
+		DoguRegistrator:     doguRegistrator,
+		DependencyValidator: dependencyValidator,
+	}
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
