@@ -494,7 +494,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 		doguConfig.Mock.On("Get", "public.pem").Return(validPubKey, nil)
-		doguConfig.Mock.On("Set", "/sa-postgresql/username", mock.Anything).Return(testErr)
+		doguConfig.Mock.On("Set", mock.Anything, mock.Anything).Return(testErr)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
