@@ -22,6 +22,7 @@ import (
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/sirupsen/logrus"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -59,7 +60,8 @@ func init() {
 func main() {
 	err := startDoguOperator()
 	if err != nil {
-		panic(err)
+		setupLog.Error(err, "failed to operate dogu operator")
+		os.Exit(1)
 	}
 }
 
