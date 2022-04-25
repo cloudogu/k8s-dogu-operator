@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: smeagol
+  annotations:
+    test: dev
+  labels:
+    dogu: smeagol
+    app: ces
+spec:
+  name: official/smeagol
+  version: 1.6.2-2

@@ -1,0 +1,1 @@
+etcdctl set config/postfix/relayhost mail.mydomain.com

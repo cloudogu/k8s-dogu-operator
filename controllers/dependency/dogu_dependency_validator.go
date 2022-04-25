@@ -65,6 +65,10 @@ func (dc *DoguDependencyValidator) validateDoguDependencies(dependencies []core.
 	var problems error
 
 	for _, doguDependency := range dependencies {
+		name := doguDependency.Name
+		if name == "nginx" || name == "registrator" {
+			continue
+		}
 		err := dc.DoguDependencyChecker.CheckDoguDependency(doguDependency, optional)
 		if err != nil {
 			dependencyError := ErrorDependencyValidation{

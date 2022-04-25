@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: plantuml
+  annotations:
+    test: dev
+  labels:
+    dogu: plantuml
+    app: ces
+spec:
+  name: official/plantuml
+  version: 2020.4-4

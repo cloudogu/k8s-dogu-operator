@@ -1,12 +1,12 @@
 apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
-  name: ldap
+  name: cockpit
   annotations:
     test: dev
   labels:
-    dogu: ldap
+    dogu: cockpit
     app: ces
 spec:
-  name: official/ldap
-  version: 2.4.48-4
+  name: official/cockpit
+  version: 2.0.2-3

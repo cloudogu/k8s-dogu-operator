@@ -1,0 +1,9 @@
+etcdctl set config/cas/ldap/ds_type embedded \
+&& etcdctl set /config/cas/ldap/attribute_id uid \
+&& etcdctl set /config/cas/ldap/attribute_group memberof \
+&& etcdctl set /config/cas/ldap/attribute_mail mail \
+&& etcdctl set /config/cas/ldap/search_filter "(objectClass=person)" \
+&& etcdctl set /config/cas/ldap/attribute_fullname cn \
+&& etcdctl set /config/cas/ldap/encryption none \
+&& etcdctl set /config/cas/ldap/host ldap \
+&& etcdctl set /config/cas/ldap/port 389

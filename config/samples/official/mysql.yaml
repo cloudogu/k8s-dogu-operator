@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: mysql
+  annotations:
+    test: dev
+  labels:
+    dogu: mysql
+    app: ces
+spec:
+  name: official/mysql
+  version: 5.7.37-2

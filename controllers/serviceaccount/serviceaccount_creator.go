@@ -52,6 +52,7 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 	logger := log.FromContext(ctx)
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
+		logger.Info("1")
 		parentPath := "sa-" + serviceAccount.Type
 		doguConfig := c.Registry.DoguConfig(dogu.GetSimpleName())
 
@@ -61,10 +62,14 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("failed to check existence of service account: %w", err)
 		}
 
+		logger.Info("2")
+
 		if exists {
 			logger.Info("skipping creation of service account because it already exists")
 			continue
 		}
+
+		logger.Info("3")
 
 		// check if the dogu is enabled
 		doguRegistry := c.Registry.DoguRegistry()
@@ -73,16 +78,22 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 		}
 
+		logger.Info("4")
+
 		// check if the service account is optional
 		if !enabled && c.isOptionalServiceAccount(dogu, serviceAccount.Type) {
 			logger.Info("skipping optional service account creation for %s, because the dogu is not installed", serviceAccount.Type)
 			continue
 		}
 
+		logger.Info("5")
+
 		// check if the service account dogu is enabled and mandatory
 		if !enabled && !c.isOptionalServiceAccount(dogu, serviceAccount.Type) {
 			return fmt.Errorf("service account dogu is not enabled and not optional")
 		}
+
+		logger.Info("6")
 
 		// get the service account dogu.json
 		targetDescriptor, err := doguRegistry.Get(serviceAccount.Type)
@@ -90,20 +101,28 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("failed to get service account dogu.json: %w", err)
 		}
 
+		logger.Info("7")
+
 		//get the create command
 		createCommand := c.getCreateCommand(targetDescriptor)
 		if createCommand == nil {
 			return fmt.Errorf("service account dogu does not expose create command")
 		}
 
+		logger.Info("8")
+
 		pod, err := c.getPodForServiceAccount(ctx, doguResource, serviceAccount)
 		if err != nil {
 			return fmt.Errorf("failed to get pod for sa dogu %s: %w", serviceAccount.Type, err)
 		}
 
+		logger.Info("9")
+
 		// create request
 		saParams := append(serviceAccount.Params, dogu.GetSimpleName())
 		req := c.getCreateExecRequest(pod, doguResource, createCommand, saParams)
+
+		logger.Info("10")
 
 		// execute request
 		exec, err := c.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
@@ -111,6 +130,8 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("failed to create new spdy executor: %w", err)
 		}
 
+		logger.Info("11")
+		//TODO does not work if the controller runs in the cluster -> empty buffer
 		buffer := bytes.NewBuffer([]byte{})
 		err = exec.Stream(remotecommand.StreamOptions{
 			Stdin:  os.Stdin,
@@ -119,9 +140,13 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			Tty:    true,
 		})
 
+		logger.Info("12")
+
 		if err != nil {
 			return fmt.Errorf("failed to exec stream: %w", err)
 		}
+
+		logger.Info("13")
 
 		// parse service accounts
 		saCreds, err := c.parseServiceCommandOutput(buffer)
@@ -129,17 +154,24 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("failed to parse service account: %w", err)
 		}
 
+		logger.Info("14")
+
 		// get dogu public key
 		publicKey, err := c.getPublicKey(doguConfig)
 		if err != nil {
 			return fmt.Errorf("failed to read public key from string: %w", err)
 		}
 
+		logger.Info("15")
+		logger.Info(fmt.Sprintf("%v", saCreds))
+
 		// write credentials
 		err = c.writeServiceAccounts(doguConfig, serviceAccount, saCreds, publicKey)
 		if err != nil {
 			return fmt.Errorf("failed to write service account: %w", err)
 		}
+
+		logger.Info("16")
 	}
 
 	return nil
@@ -167,6 +199,7 @@ func (c *Creator) getPublicKey(doguConfig registry.ConfigurationContext) (*keys.
 }
 
 func (c *Creator) writeServiceAccounts(doguConfig registry.ConfigurationContext, serviceAccount core.ServiceAccount, saCreds map[string]string, publicKey *keys.PublicKey) error {
+
 	for key, value := range saCreds {
 		path := "/sa-" + serviceAccount.Type + "/" + key
 

@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: redis
+  annotations:
+    test: dev
+  labels:
+    dogu: redis
+    app: ces
+spec:
+  name: official/redis
+  version: 6.2.6-2
