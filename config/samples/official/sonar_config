@@ -1,3 +1,0 @@
-etcdctl set config/sonar/container_config/java_sonar_main_max_ram_percentage 90 \
-&& etcdctl set config/sonar/container_config/java_sonar_main_min_ram_percentage 90 \
-&& etcdctl set config/sonar/container_config/memory_limit 1g

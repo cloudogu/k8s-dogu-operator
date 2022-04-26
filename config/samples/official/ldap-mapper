@@ -1,3 +1,0 @@
-etcdctl set /config/ldap-mapper/backend/type embedded \
-&& etcdctl set /config/ldap-mapper/backend/host ldap \
-&& etcdctl set /config/ldap-mapper/backend/port 389

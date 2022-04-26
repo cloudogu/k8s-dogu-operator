@@ -112,11 +112,20 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	switch requiredOperation {
 	case Install:
 		installError := r.doguManager.Install(ctx, doguResource)
-		if installError != nil {
-			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
-		}
 		contextMessageOnError := fmt.Sprintf("failed to install dogu %s", doguResource.Name)
-		return r.DoguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError)
+		result, err := r.DoguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
+		}
+
+		if result.Requeue || result.RequeueAfter != 0 {
+			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
+			err := doguResource.Update(ctx, r.Client)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", err)
+			}
+		}
+		return result, nil
 	case Upgrade:
 		return ctrl.Result{}, nil
 	case Delete:

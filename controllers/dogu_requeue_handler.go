@@ -39,9 +39,11 @@ func NewDoguRequeueHandler(client client.Client, reporter StatusReporter) *DoguR
 
 // Handle takes an error and handles the requeue process for the current dogu operation.
 func (d *DoguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error) {
-	reportError := d.DoguStatusReporter.ReportError(ctx, doguResource, err)
-	if reportError != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to report error: %w", reportError)
+	if err != nil {
+		reportError := d.DoguStatusReporter.ReportError(ctx, doguResource, err)
+		if reportError != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to report error: %w", reportError)
+		}
 	}
 
 	return d.handleRequeue(ctx, contextMessage, doguResource, err)
@@ -50,7 +52,7 @@ func (d *DoguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 func (d *DoguRequeueHandler) handleRequeue(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error) {
 	if shouldRequeue(err) {
 		requeueTime := doguResource.Status.NextRequeue()
-		updateError := d.KubernetesClient.Status().Update(ctx, doguResource)
+		updateError := doguResource.Update(ctx, d.KubernetesClient)
 		if updateError != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
 		}

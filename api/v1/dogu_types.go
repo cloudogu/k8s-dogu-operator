@@ -17,6 +17,8 @@ limitations under the License.
 package v1
 
 import (
+	"context"
+	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
@@ -137,6 +139,16 @@ func (d Dogu) GetObjectMeta() *metav1.ObjectMeta {
 		Namespace: d.Namespace,
 		Name:      d.Name,
 	}
+}
+
+// Update removes all messages from the message log
+func (d *Dogu) Update(ctx context.Context, client client.Client) error {
+	updateError := client.Status().Update(ctx, d)
+	if updateError != nil {
+		return fmt.Errorf("failed to update dogu status: %w", updateError)
+	}
+
+	return nil
 }
 
 //+kubebuilder:object:root=true

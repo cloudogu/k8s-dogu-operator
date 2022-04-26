@@ -3,7 +3,6 @@ package resource
 import (
 	"context"
 	"errors"
-	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/hashicorp/go-multierror"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,11 +27,15 @@ func NewDoguStatusReporter(client client.Client) *DoguStatusReporter {
 // ReportMessage adds the given message to the status of the dogu resource.
 func (der DoguStatusReporter) ReportMessage(ctx context.Context, doguResource *k8sv1.Dogu, message string) error {
 	doguResource.Status.AddMessage(message)
-	return der.updateDoguState(ctx, doguResource)
+	return doguResource.Update(ctx, der.KubernetesClient)
 }
 
 // ReportError adds the or all errors from a multi error to the status of the dogu resource.
 func (der DoguStatusReporter) ReportError(ctx context.Context, doguResource *k8sv1.Dogu, reportError error) error {
+	if reportError == nil {
+		return nil
+	}
+
 	errorList := GetAllErrorsFromChain(reportError)
 
 	for _, err := range errorList {
@@ -42,16 +45,8 @@ func (der DoguStatusReporter) ReportError(ctx context.Context, doguResource *k8s
 		}
 	}
 
-	return der.updateDoguState(ctx, doguResource)
-}
-
-func (der DoguStatusReporter) updateDoguState(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	err := der.KubernetesClient.Status().Update(ctx, doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to update dogu status: %w", err)
-	}
-
-	return nil
+	doguResource.Status.AddMessage(reportError.Error())
+	return doguResource.Update(ctx, der.KubernetesClient)
 }
 
 func GetAllErrorsFromChain(err error) []error {
