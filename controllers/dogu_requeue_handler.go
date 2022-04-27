@@ -14,7 +14,7 @@ import (
 // StatusReporter is responsible to save information in the dogu status via messages.
 type StatusReporter interface {
 	ReportMessage(ctx context.Context, doguResource *k8sv1.Dogu, message string) error
-	ReportError(ctx context.Context, doguResource *k8sv1.Dogu, error error) error
+	ReportError(ctx context.Context, doguResource *k8sv1.Dogu, err error) error
 }
 
 // RequeueableError indicates that the current error requires the operator to requeue the dogu.

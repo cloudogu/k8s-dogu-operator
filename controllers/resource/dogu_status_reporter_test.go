@@ -65,7 +65,8 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "testdogu", Namespace: "testnamespace"}, &savedDogu)
 		require.NoError(t, err)
 
-		assert.Len(t, savedDogu.Status.StatusMessages, 0)
+		assert.Len(t, savedDogu.Status.StatusMessages, 1)
+		assert.Equal(t, "my error", savedDogu.Status.StatusMessages[0])
 	})
 
 	t.Run("report with an error with reportable error interface", func(t *testing.T) {
@@ -87,8 +88,9 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "testdogu", Namespace: "testnamespace"}, &savedDogu)
 		require.NoError(t, err)
 
-		assert.Len(t, savedDogu.Status.StatusMessages, 1)
+		assert.Len(t, savedDogu.Status.StatusMessages, 2)
 		assert.Equal(t, "it tastes like: testing", savedDogu.Status.StatusMessages[0])
+		assert.Equal(t, "my test error", savedDogu.Status.StatusMessages[1])
 	})
 
 	t.Run("report with an error with multiple wrapped reportable errors", func(t *testing.T) {
@@ -111,8 +113,9 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "testdogu", Namespace: "testnamespace"}, &savedDogu)
 		require.NoError(t, err)
 
-		assert.Len(t, savedDogu.Status.StatusMessages, 1)
+		assert.Len(t, savedDogu.Status.StatusMessages, 2)
 		assert.Equal(t, "it tastes like: water", savedDogu.Status.StatusMessages[0])
+		assert.Equal(t, myError.Error(), savedDogu.Status.StatusMessages[1])
 	})
 
 	t.Run("report with a multierror containing multiple reportable errors", func(t *testing.T) {
@@ -138,11 +141,12 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "testdogu", Namespace: "testnamespace"}, &savedDogu)
 		require.NoError(t, err)
 
-		assert.Len(t, savedDogu.Status.StatusMessages, 4)
+		assert.Len(t, savedDogu.Status.StatusMessages, 5)
 		assert.Equal(t, "it tastes like: water", savedDogu.Status.StatusMessages[0])
 		assert.Equal(t, "it tastes like: earth", savedDogu.Status.StatusMessages[1])
 		assert.Equal(t, "it tastes like: fire", savedDogu.Status.StatusMessages[2])
 		assert.Equal(t, "it tastes like: air", savedDogu.Status.StatusMessages[3])
+		assert.Equal(t, resultError.Error(), savedDogu.Status.StatusMessages[4])
 	})
 
 	t.Run("fail report on updating the status", func(t *testing.T) {
