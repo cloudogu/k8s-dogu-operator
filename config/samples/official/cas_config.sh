@@ -6,4 +6,5 @@ kubectl exec --namespace ecosystem -it etcd-client -- etcdctl set "config/cas/ld
 && kubectl exec --namespace ecosystem -it etcd-client -- etcdctl set "/config/cas/ldap/attribute_fullname" "cn" \
 && kubectl exec --namespace ecosystem -it etcd-client -- etcdctl set "/config/cas/ldap/encryption" "none" \
 && kubectl exec --namespace ecosystem -it etcd-client -- etcdctl set "/config/cas/ldap/host" "ldap" \
-&& kubectl exec --namespace ecosystem -it etcd-client -- etcdctl set "/config/cas/ldap/port" "389"
+&& kubectl exec --namespace ecosystem -it etcd-client -- etcdctl set "/config/cas/ldap/port" "389" \
+&& kubectl exec --namespace ecosystem -it etcd-client -- etcdctl set "/config/cas/logging/root" "DEBUG"

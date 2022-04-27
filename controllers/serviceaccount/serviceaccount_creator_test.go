@@ -9,20 +9,12 @@ import (
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	testclient "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/rest/fake"
-	"k8s.io/client-go/tools/remotecommand"
-	"net/url"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"testing"
 )
 
@@ -73,71 +65,13 @@ func init() {
 	}
 }
 
-type fakeExecutor struct {
-	method string
-	url    *url.URL
-}
-
-type fakeFailExecutor struct {
-	method string
-	url    *url.URL
-}
-
-type fakeInvalidOutputExecutor struct {
-	method string
-	url    *url.URL
-}
-
-func (f *fakeExecutor) Stream(options remotecommand.StreamOptions) error {
-	if options.Stdout != nil {
-		buf := new(bytes.Buffer)
-		buf.WriteString("username:user\npassword:password\ndatabase:dbname")
-		if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (f *fakeFailExecutor) Stream(_ remotecommand.StreamOptions) error {
-	return errors.New("test")
-}
-func (f *fakeInvalidOutputExecutor) Stream(options remotecommand.StreamOptions) error {
-	if options.Stdout != nil {
-		buf := new(bytes.Buffer)
-		buf.WriteString("username:user:invalid\npassword:password\ndatabase:dbname")
-		if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	testErr := errors.New("test")
-	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return &fakeExecutor{method: method, url: url}, nil
-	}
-	fakeErrorInitNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return nil, testErr
-	}
-	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return &fakeFailExecutor{method: method, url: url}, nil
-	}
-	fakeErrorInvalidOutputNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return &fakeInvalidOutputExecutor{method: method, url: url}, nil
-	}
 	validPubKey := "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApbhnnaIIXCADt0V7UCM7\nZfBEhpEeB5LTlvISkPQ91g+l06/soWFD65ba0PcZbIeKFqr7vkMB0nDNxX1p8PGv\nVJdUmwdB7U/bQlnO6c1DoY10g29O7itDfk92RCKeU5Vks9uRQ5ayZMjxEuahg2BW\nua72wi3GCiwLa9FZxGIP3hcYB21O6PfpxXsQYR8o3HULgL1ppDpuLv4fk/+jD31Z\n9ACoWOg6upyyNUsiA3hS9Kn1p3scVgsIN2jSSpxW42NvMo6KQY1Zo0N4Aw/mqySd\n+zdKytLqFto1t0gCbTCFPNMIObhWYXmAe26+h1b1xUI8ymsrXklwJVn0I77j9MM1\nHQIDAQAB\n-----END PUBLIC KEY-----"
 	invalidPubKey := "-----BEGIN PUBLIC KEY-----\nHQIDAQAB\n-----END PUBLIC KEY-----"
 	redmineCr.Namespace = "test"
-
-	oldConfigFunc := config.GetConfigOrDie
-	ctrl.GetConfigOrDie = func() *rest.Config {
-		return nil
-	}
-	defer func() {
-		ctrl.GetConfigOrDie = oldConfigFunc
-	}()
+	buf := new(bytes.Buffer)
+	buf.WriteString("username:user\npassword:password\ndatabase:dbname")
 
 	t.Run("success", func(t *testing.T) {
 		// given
@@ -157,13 +91,9 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutorMock := &mocks.CommandExecutor{}
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -180,8 +110,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, testErr)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		client := testclient.NewSimpleClientset()
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -199,8 +128,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		client := testclient.NewSimpleClientset()
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -220,8 +148,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		client := testclient.NewSimpleClientset()
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -242,8 +169,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		client := testclient.NewSimpleClientset()
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptorOptional)
@@ -263,8 +189,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		client := testclient.NewSimpleClientset()
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -286,8 +211,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		client := testclient.NewSimpleClientset()
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -309,8 +233,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		client := testclient.NewSimpleClientset()
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -321,7 +244,54 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
 
-	t.Run("found no pods for service account dogu", func(t *testing.T) {
+	//t.Run("found no pods for service account dogu", func(t *testing.T) {
+	//	// given
+	//	ctx := context.TODO()
+	//	doguRegistry := &cesmocks.DoguRegistry{}
+	//	doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+	//	doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
+	//	doguConfig := &cesmocks.ConfigurationContext{}
+	//	doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
+	//	registry := &cesmocks.Registry{}
+	//	registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
+	//	registry.Mock.On("DoguRegistry").Return(doguRegistry)
+	//	client := testclient.NewSimpleClientset()
+	//	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+	//
+	//	// when
+	//	err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+	//
+	//	// then
+	//	require.Error(t, err)
+	//	assert.Contains(t, err.Error(), "found no pods for name postgresql")
+	//	mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
+	//})
+
+	//t.Run("fail to create command executor", func(t *testing.T) {
+	//	// given
+	//	ctx := context.TODO()
+	//	doguRegistry := &cesmocks.DoguRegistry{}
+	//	doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+	//	doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
+	//	doguConfig := &cesmocks.ConfigurationContext{}
+	//	doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
+	//	registry := &cesmocks.Registry{}
+	//	registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
+	//	registry.Mock.On("DoguRegistry").Return(doguRegistry)
+	//	commandExecutorMock := &mocks.CommandExecutor{}
+	//	commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "")
+	//	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+	//
+	//	// when
+	//	err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+	//
+	//	// then
+	//	require.Error(t, err)
+	//	assert.Contains(t, err.Error(), "failed to create new spdy executor")
+	//	mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
+	//})
+
+	t.Run("fail to exec command", func(t *testing.T) {
 		// given
 		ctx := context.TODO()
 		doguRegistry := &cesmocks.DoguRegistry{}
@@ -332,69 +302,16 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		client := testclient.NewSimpleClientset()
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
+		commandExecutorMock := &mocks.CommandExecutor{}
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(nil, testErr)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "found no pods for name postgresql")
-		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
-	})
-
-	t.Run("fail to create command executor", func(t *testing.T) {
-		// given
-		ctx := context.TODO()
-		doguRegistry := &cesmocks.DoguRegistry{}
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
-		doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
-		doguConfig := &cesmocks.ConfigurationContext{}
-		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
-		registry := &cesmocks.Registry{}
-		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
-
-		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create new spdy executor")
-		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
-	})
-
-	t.Run("fail to exec command executor stream", func(t *testing.T) {
-		// given
-		ctx := context.TODO()
-		doguRegistry := &cesmocks.DoguRegistry{}
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
-		doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
-		doguConfig := &cesmocks.ConfigurationContext{}
-		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
-		registry := &cesmocks.Registry{}
-		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
-
-		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to exec stream")
+		assert.Contains(t, err.Error(), "failed to execute command")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
 
@@ -409,12 +326,11 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeErrorInvalidOutputNewSPDYExecutor
+		commandExecutorMock := &mocks.CommandExecutor{}
+		buf := new(bytes.Buffer)
+		buf.WriteString("username:user:invalid\npassword:password\ndatabase:dbname")
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -439,12 +355,9 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutorMock := &mocks.CommandExecutor{}
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -469,12 +382,9 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutorMock := &mocks.CommandExecutor{}
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -500,12 +410,9 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutorMock := &mocks.CommandExecutor{}
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -531,12 +438,9 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutorMock := &mocks.CommandExecutor{}
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
@@ -563,12 +467,11 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		labels := map[string]string{}
-		labels["dogu"] = "postgresql"
-		pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-		client := testclient.NewSimpleClientset(&pod)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-		serviceAccountCreator.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutorMock := &mocks.CommandExecutor{}
+		buf := new(bytes.Buffer)
+		buf.WriteString("username:user\npassword:password\ndatabase:dbname")
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
+		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
 		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)

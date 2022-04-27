@@ -180,10 +180,6 @@ var _ = Describe("Dogu Controller", func() {
 				if !containsStatusMessage(statusMessages, statusMessage) {
 					return false
 				}
-				statusMessage = "failed to resolve dependency: {dogu nginx }"
-				if !containsStatusMessage(statusMessages, statusMessage) {
-					return false
-				}
 				statusMessage = "failed to resolve dependency: {dogu cas }"
 				if !containsStatusMessage(statusMessages, statusMessage) {
 					return false
@@ -205,7 +201,6 @@ func containsStatusMessage(messages []string, statusMessage string) bool {
 	for _, msg := range messages {
 		fmt.Println(msg)
 		if msg == statusMessage {
-			fmt.Println("TRUE")
 			return true
 		}
 	}

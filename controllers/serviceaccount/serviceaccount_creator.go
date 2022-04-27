@@ -11,15 +11,6 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/pkg/errors"
 	"io"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/remotecommand"
-	"net/url"
-	"os"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
 )
@@ -29,21 +20,22 @@ type DoguRegistry interface {
 	GetDogu(*k8sv1.Dogu) (*core.Dogu, error)
 }
 
+// CommandExecutor is used to execute command in a dogu
+type CommandExecutor interface {
+	ExecCommand(ctx context.Context, targetDogu string, namespace string, command *core.ExposedCommand, params []string) (*bytes.Buffer, error)
+}
+
 // Creator is the unit to handle the creation of service accounts
 type Creator struct {
-	Client                 kubernetes.Interface `json:"client"`
-	CoreV1RestClient       rest.Interface       `json:"coreV1RestClient"`
-	Registry               registry.Registry    `json:"registry"`
-	CommandExecutorCreator func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error)
+	Registry registry.Registry `json:"registry"`
+	Executor CommandExecutor   `json:"executor"`
 }
 
 // NewServiceAccountCreator creates a new instance of ServiceAccountCreator
-func NewServiceAccountCreator(client kubernetes.Interface, coreV1RestClient rest.Interface, registry registry.Registry) *Creator {
+func NewServiceAccountCreator(registry registry.Registry, commandExecutor CommandExecutor) *Creator {
 	return &Creator{
-		Client:                 client,
-		CoreV1RestClient:       coreV1RestClient,
-		Registry:               registry,
-		CommandExecutorCreator: remotecommand.NewSPDYExecutor,
+		Registry: registry,
+		Executor: commandExecutor,
 	}
 }
 
@@ -96,30 +88,11 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("service account dogu does not expose create command")
 		}
 
-		pod, err := c.getPodForServiceAccount(ctx, doguResource, serviceAccount)
-		if err != nil {
-			return fmt.Errorf("failed to get pod for sa dogu %s: %w", serviceAccount.Type, err)
-		}
-
-		// create request
+		// exec command
 		saParams := append(serviceAccount.Params, dogu.GetSimpleName())
-		req := c.getCreateExecRequest(pod, doguResource, createCommand, saParams)
-
-		// execute request
-		exec, err := c.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
+		buffer, err := c.Executor.ExecCommand(ctx, targetDescriptor.GetSimpleName(), doguResource.Namespace, createCommand, saParams)
 		if err != nil {
-			return fmt.Errorf("failed to create new spdy executor: %w", err)
-		}
-
-		buffer := bytes.NewBuffer([]byte{})
-		err = exec.Stream(remotecommand.StreamOptions{
-			Stdout: buffer,
-			Stderr: os.Stderr,
-			Tty:    true,
-		})
-
-		if err != nil {
-			return fmt.Errorf("failed to exec stream: %w", err)
+			return fmt.Errorf("failed to execute command: %w", err)
 		}
 
 		// parse service accounts
@@ -182,37 +155,6 @@ func (c *Creator) writeServiceAccounts(doguConfig registry.ConfigurationContext,
 	}
 
 	return nil
-}
-
-func (c *Creator) getCreateExecRequest(pod *corev1.Pod, doguResource *k8sv1.Dogu,
-	createCommand *core.ExposedCommand, params []string) *rest.Request {
-	return c.CoreV1RestClient.Post().
-		Resource("pods").
-		Name(pod.Name).
-		Namespace(doguResource.Namespace).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Command: append([]string{createCommand.Command}, params...),
-			Stdin:   false,
-			Stdout:  true,
-			Stderr:  true,
-			TTY:     true,
-		}, scheme.ParameterCodec)
-}
-
-func (c *Creator) getPodForServiceAccount(ctx context.Context, doguResource *k8sv1.Dogu,
-	serviceAccount core.ServiceAccount) (*corev1.Pod, error) {
-	listOptions := metav1.ListOptions{LabelSelector: "dogu=" + serviceAccount.Type}
-	pods, err := c.Client.CoreV1().Pods(doguResource.Namespace).List(ctx, listOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pods: %w", err)
-	}
-
-	if len(pods.Items) == 0 {
-		return nil, fmt.Errorf("found no pods for name %s", serviceAccount.Type)
-	}
-
-	return &pods.Items[0], nil
 }
 
 func (c *Creator) getCreateCommand(dogu *core.Dogu) *core.ExposedCommand {
