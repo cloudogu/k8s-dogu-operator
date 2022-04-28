@@ -49,7 +49,8 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 	ctx := context.TODO()
 	labels := map[string]string{}
 	labels["dogu"] = "postgresql"
-	pod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
+	readyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}, Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady}}}}
+	unreadyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
 	command := &core.ExposedCommand{
 		Name:        "create-sa-command",
 		Description: "desc",
@@ -78,7 +79,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		// given
-		client := testclient.NewSimpleClientset(&pod)
+		client := testclient.NewSimpleClientset(&readyPod)
 		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := new(bytes.Buffer)
@@ -107,9 +108,23 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		assert.Contains(t, err.Error(), "found no pods for dogu postgresql")
 	})
 
+	t.Run("pod is not ready", func(t *testing.T) {
+		// given
+		client := testclient.NewSimpleClientset(&unreadyPod)
+		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
+		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+
+		// when
+		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil, nil)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "can't execute command in pod with status")
+	})
+
 	t.Run("failed to create spdy", func(t *testing.T) {
 		// given
-		client := testclient.NewSimpleClientset(&pod)
+		client := testclient.NewSimpleClientset(&readyPod)
 		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
@@ -123,7 +138,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 
 	t.Run("failed to exec stream", func(t *testing.T) {
 		// given
-		client := testclient.NewSimpleClientset(&pod)
+		client := testclient.NewSimpleClientset(&readyPod)
 		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 

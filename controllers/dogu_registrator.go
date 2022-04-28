@@ -44,29 +44,14 @@ func (c *CesDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8s
 		return nil
 	}
 
-	err = c.doguRegistry.Register(dogu)
+	err = c.addDoguToRegistry(dogu)
 	if err != nil {
-		return fmt.Errorf("failed to register dogu %s: %w", dogu.GetSimpleName(), err)
+		return fmt.Errorf("failed to add dogu to registry: %w", err)
 	}
 
-	err = c.doguRegistry.Enable(dogu)
+	err = c.registerKeys(ctx, dogu, doguResource)
 	if err != nil {
-		return fmt.Errorf("failed to enable dogu: %w", err)
-	}
-
-	keyPair, err := c.createKeypair()
-	if err != nil {
-		return fmt.Errorf("failed to create keypair: %w", err)
-	}
-
-	err = c.writePublicKey(keyPair.Public(), dogu)
-	if err != nil {
-		return fmt.Errorf("failed to write public key: %w", err)
-	}
-
-	err = c.writePrivateKey(ctx, keyPair.Private(), doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to write private key: %w", err)
+		return fmt.Errorf("failed to register keys: %w", err)
 	}
 
 	return nil
@@ -82,6 +67,39 @@ func (c *CesDoguRegistrator) UnregisterDogu(dogu string) error {
 	err = c.doguRegistry.Unregister(dogu)
 	if err != nil && !cesregistry.IsKeyNotFoundError(err) {
 		return fmt.Errorf("failed to unregister dogu %s: %w", dogu, err)
+	}
+
+	return nil
+}
+
+func (c *CesDoguRegistrator) addDoguToRegistry(dogu *core.Dogu) error {
+	err := c.doguRegistry.Register(dogu)
+	if err != nil {
+		return fmt.Errorf("failed to register dogu %s: %w", dogu.GetSimpleName(), err)
+	}
+
+	err = c.doguRegistry.Enable(dogu)
+	if err != nil {
+		return fmt.Errorf("failed to enable dogu: %w", err)
+	}
+
+	return nil
+}
+
+func (c *CesDoguRegistrator) registerKeys(ctx context.Context, dogu *core.Dogu, doguResource *k8sv1.Dogu) error {
+	keyPair, err := c.createKeypair()
+	if err != nil {
+		return fmt.Errorf("failed to create keypair: %w", err)
+	}
+
+	err = c.writePublicKey(keyPair.Public(), dogu)
+	if err != nil {
+		return fmt.Errorf("failed to write public key: %w", err)
+	}
+
+	err = c.writePrivateKey(ctx, keyPair.Private(), doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to write private key: %w", err)
 	}
 
 	return nil

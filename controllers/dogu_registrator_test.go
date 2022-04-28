@@ -47,6 +47,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
 		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
 		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
@@ -62,12 +63,48 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
 	})
 
+	t.Run("fail to check if dogu is already registered", func(t *testing.T) {
+		// given
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguResourceGenerator := &mocks.DoguResourceGenerator{}
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(false, testErr)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
+
+		// when
+		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to check if dogu is already installed and enabled")
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
+	})
+
+	t.Run("fail to check if dogu is already registered", func(t *testing.T) {
+		// given
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguResourceGenerator := &mocks.DoguResourceGenerator{}
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(true, nil)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
+
+		// when
+		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+
+		// then
+		require.NoError(t, err)
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
+	})
+
 	t.Run("fail to register dogu", func(t *testing.T) {
 		// given
 		registryMock := &cesmocks.Registry{}
 		doguRegistryMock := &cesmocks.DoguRegistry{}
 		doguResourceGenerator := &mocks.DoguResourceGenerator{}
 		doguRegistryMock.Mock.On("Register", mock.Anything).Return(testErr)
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
@@ -78,7 +115,6 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to register dogu")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
-
 	})
 
 	t.Run("fail to enable dogu", func(t *testing.T) {
@@ -87,6 +123,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		doguRegistryMock := &cesmocks.DoguRegistry{}
 		doguResourceGenerator := &mocks.DoguResourceGenerator{}
 		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(testErr)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registrator := controllers.NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
@@ -98,7 +135,6 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to enable dogu")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
-
 	})
 
 	t.Run("fail get key_provider", func(t *testing.T) {
@@ -109,6 +145,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		doguResourceGenerator := &mocks.DoguResourceGenerator{}
 		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
 		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
 		globalConfigMock.Mock.On("Get", "key_provider").Return("", testErr)
@@ -133,6 +170,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(testErr)
 		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
 		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
@@ -160,6 +198,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
 		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
 		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
@@ -188,6 +227,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
 		doguRegistryMock.Mock.On("Register", mock.Anything).Return(nil)
 		doguRegistryMock.Mock.On("Enable", mock.Anything).Return(nil)
+		doguRegistryMock.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)

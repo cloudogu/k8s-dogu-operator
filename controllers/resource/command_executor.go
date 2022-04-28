@@ -73,7 +73,7 @@ func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 
 	if !ce.allContainersReady(pod) {
 		return nil, &ErrorResourceState{
-			SourceError: fmt.Errorf("can't exectue command in pod with status %v", pod.Status),
+			SourceError: fmt.Errorf("can't execute command in pod with status %v", pod.Status),
 			Resource:    pod,
 		}
 	}

@@ -49,6 +49,7 @@ var _ = Describe("Dogu Controller", func() {
 	EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
 	EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
 	EtcdDoguRegistry.Mock.On("Enable", mock.Anything).Return(nil)
+	EtcdDoguRegistry.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 
 	Context("Handle dogu resource", func() {
 		It("Should install dogu in cluster", func() {
