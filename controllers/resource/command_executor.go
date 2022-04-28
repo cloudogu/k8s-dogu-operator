@@ -1,4 +1,4 @@
-package serviceaccount
+package resource
 
 import (
 	"bytes"
@@ -14,7 +14,29 @@ import (
 	"net/url"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"strings"
 )
+
+// ErrorResourceState is returned when a given dependency cloud not be validated.
+type ErrorResourceState struct {
+	SourceError error
+	Resource    metav1.Object
+}
+
+// Report returns the error in string representation
+func (e *ErrorResourceState) Error() string {
+	return fmt.Sprintf("resource is not ready: %v, source error: %s", e.Resource.GetName(), e.SourceError.Error())
+}
+
+// Report constructs a simple human readable message
+func (e *ErrorResourceState) Report() string {
+	return fmt.Sprintf("rsource is not ready: %v", e.Resource.GetName())
+}
+
+// Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
+func (e *ErrorResourceState) Requeue() bool {
+	return true
+}
 
 // ExposedCommandExecutor is the unit to execute exposed commands in a dogu
 type ExposedCommandExecutor struct {
@@ -32,12 +54,28 @@ func NewCommandExecutor(client kubernetes.Interface, coreV1RestClient rest.Inter
 	}
 }
 
+func (ce *ExposedCommandExecutor) allContainersReady(pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.ContainersReady {
+			return true
+		}
+	}
+	return false
+}
+
 // ExecCommand execs an exposed command in the first found pod of a dogu
 func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu string, namespace string,
 	command *core.ExposedCommand, params []string) (*bytes.Buffer, error) {
 	pod, err := ce.getTargetDoguPod(ctx, targetDogu, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", targetDogu, err)
+	}
+
+	if !ce.allContainersReady(pod) {
+		return nil, &ErrorResourceState{
+			SourceError: fmt.Errorf("can't exectue command in pod with status %v", pod.Status),
+			Resource:    pod,
+		}
 	}
 
 	req := ce.getCreateExecRequest(pod, namespace, command, params)
@@ -54,6 +92,13 @@ func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 	})
 
 	if err != nil {
+		// TODO Remove this condition if probes are implemented
+		if strings.Contains(err.Error(), "container not found") {
+			return nil, &ErrorResourceState{
+				SourceError: fmt.Errorf("container not found"),
+				Resource:    pod,
+			}
+		}
 		return nil, fmt.Errorf("failed to exec stream: %w", err)
 	}
 

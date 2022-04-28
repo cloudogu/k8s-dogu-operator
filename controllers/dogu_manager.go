@@ -96,7 +96,7 @@ func NewDoguManager(version *core.Version, client client.Client, operatorConfig 
 		return nil, fmt.Errorf("failed to create clientSet: %w", err)
 	}
 
-	executor := serviceaccount.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
+	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(cesRegistry, executor)
 
 	return &DoguManager{

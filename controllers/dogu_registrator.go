@@ -33,7 +33,18 @@ func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, 
 
 // RegisterDogu registers a dogu in a cluster. It generates key pairs and configures the dogu registry
 func (c *CesDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
-	err := c.doguRegistry.Register(dogu)
+	logger := log.FromContext(ctx)
+	enabled, err := c.doguRegistry.IsEnabled(dogu.GetSimpleName())
+	if err != nil {
+		return fmt.Errorf("failed to check if dogu is already installed and enabled: %w", err)
+	}
+
+	if enabled {
+		logger.Info("Skipping dogu registration because it is already installed and enabled in the dogu registry")
+		return nil
+	}
+
+	err = c.doguRegistry.Register(dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu %s: %w", dogu.GetSimpleName(), err)
 	}

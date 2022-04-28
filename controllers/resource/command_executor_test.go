@@ -1,4 +1,4 @@
-package serviceaccount
+package resource
 
 import (
 	"bytes"
