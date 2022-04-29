@@ -72,7 +72,7 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 		}
 
 		// check if the service account dogu is enabled and mandatory
-		if !enabled && !c.isOptionalServiceAccount(dogu, serviceAccount.Type) {
+		if !enabled && c.containsDependency(dogu.Dependencies, serviceAccount.Type) {
 			return fmt.Errorf("service account dogu is not enabled and not optional")
 		}
 
