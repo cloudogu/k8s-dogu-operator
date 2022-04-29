@@ -45,7 +45,6 @@ func (f *fakeFailExecutor) Stream(_ remotecommand.StreamOptions) error {
 }
 
 func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
-
 	ctx := context.TODO()
 	labels := map[string]string{}
 	labels["dogu"] = "postgresql"

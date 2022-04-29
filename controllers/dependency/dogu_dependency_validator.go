@@ -43,6 +43,7 @@ func NewDoguDependencyValidator(doguRegistry registry.DoguRegistry) *DoguDepende
 	}
 }
 
+// ValidateAllDependencies validates mandatory and optional dogu dependencies
 func (dc *DoguDependencyValidator) ValidateAllDependencies(dogu *core.Dogu) error {
 	var allProblems error
 

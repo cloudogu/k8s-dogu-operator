@@ -244,53 +244,6 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
 
-	//t.Run("found no pods for service account dogu", func(t *testing.T) {
-	//	// given
-	//	ctx := context.TODO()
-	//	doguRegistry := &cesmocks.DoguRegistry{}
-	//	doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
-	//	doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
-	//	doguConfig := &cesmocks.ConfigurationContext{}
-	//	doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
-	//	registry := &cesmocks.Registry{}
-	//	registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-	//	registry.Mock.On("DoguRegistry").Return(doguRegistry)
-	//	client := testclient.NewSimpleClientset()
-	//	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(client, &fake.RESTClient{}, registry)
-	//
-	//	// when
-	//	err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
-	//
-	//	// then
-	//	require.Error(t, err)
-	//	assert.Contains(t, err.Error(), "found no pods for name postgresql")
-	//	mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
-	//})
-
-	//t.Run("fail to create command executor", func(t *testing.T) {
-	//	// given
-	//	ctx := context.TODO()
-	//	doguRegistry := &cesmocks.DoguRegistry{}
-	//	doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
-	//	doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
-	//	doguConfig := &cesmocks.ConfigurationContext{}
-	//	doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
-	//	registry := &cesmocks.Registry{}
-	//	registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-	//	registry.Mock.On("DoguRegistry").Return(doguRegistry)
-	//	commandExecutorMock := &mocks.CommandExecutor{}
-	//	commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "")
-	//	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
-	//
-	//	// when
-	//	err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
-	//
-	//	// then
-	//	require.Error(t, err)
-	//	assert.Contains(t, err.Error(), "failed to create new spdy executor")
-	//	mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
-	//})
-
 	t.Run("fail to exec command", func(t *testing.T) {
 		// given
 		ctx := context.TODO()

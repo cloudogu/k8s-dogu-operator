@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-// DependencyValidator is responsible to validate a dogu dependencies
+// DependencyValidator is responsible to validate the dependencies of a dogu
 type DependencyValidator interface {
 	ValidateAllDependencies(dogu *core.Dogu) error
 }

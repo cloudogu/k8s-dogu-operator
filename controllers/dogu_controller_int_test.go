@@ -131,10 +131,7 @@ var _ = Describe("Dogu Controller", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, exposedService2222LookupKey, exposedService2222)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, PollingInterval, TimeoutInterval).Should(BeTrue())
 
 			By("Expect exposed service for service port 8888")
@@ -144,10 +141,7 @@ var _ = Describe("Dogu Controller", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, exposedService8888LookupKey, exposedService8888)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, PollingInterval, TimeoutInterval).Should(BeTrue())
 
 			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
@@ -200,7 +194,6 @@ var _ = Describe("Dogu Controller", func() {
 
 func containsStatusMessage(messages []string, statusMessage string) bool {
 	for _, msg := range messages {
-		fmt.Println(msg)
 		if msg == statusMessage {
 			return true
 		}

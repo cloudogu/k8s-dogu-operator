@@ -147,7 +147,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	logger.Info("Check dogu dependencies...")
 	err = m.DependencyValidator.ValidateDependencies(dogu)
 	if err != nil {
-		return fmt.Errorf("failed to validate dependencies: %w", err)
+		return err
 	}
 
 	logger.Info("Register dogu...")
