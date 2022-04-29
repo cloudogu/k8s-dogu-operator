@@ -61,3 +61,11 @@ $(LINT): $(TMP_DIR)
 
 $(REVIEW_DOG): $(TMP_DIR)
 	@curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s -- -b $(TMP_DIR)/bin
+
+##@ Go Static Analysis
+
+${STATIC_ANALYSIS_DIR}/report-govet.out: ${SRC} $(STATIC_ANALYSIS_DIR)
+	@go vet ./... | tee $@
+
+.PHONY: vet
+vet: ${STATIC_ANALYSIS_DIR}/report-govet.out ## Run go vet against code.

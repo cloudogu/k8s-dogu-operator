@@ -4,10 +4,17 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 )
 
 func TestNewOperatorConfig(t *testing.T) {
+	_ = os.Unsetenv("NAMESPACE")
+	_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
+	_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
+	_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
+	_ = os.Unsetenv("DOCKER_REGISTRY")
+
 	expectedNamespace := "myNamepsace"
 	expectedDoguRegistryData := config.DoguRegistryData{
 		Endpoint: "myEndpoint",

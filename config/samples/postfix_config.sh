@@ -1,0 +1,1 @@
+kubectl exec -it etcd-client -- etcdctl set "config/postfix/relayhost" "mail.mydomain.com"

@@ -98,6 +98,7 @@ func Test_startDoguOperator(t *testing.T) {
 
 	t.Run("Error on missing namespace environment variable", func(t *testing.T) {
 		// given
+		_ = os.Unsetenv("NAMESPACE")
 		getNewMockManager(nil, defaultMockDefinitions)
 
 		// when
