@@ -82,39 +82,59 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			return fmt.Errorf("failed to get service account dogu.json: %w", err)
 		}
 
-		//get the create command
-		createCommand := c.getCreateCommand(targetDescriptor)
-		if createCommand == nil {
-			return fmt.Errorf("service account dogu does not expose create command")
+		// execute create service account command
+		saCreds, err := c.executeServiceAccountCreateCommand(ctx, targetDescriptor, doguResource.Namespace, serviceAccount)
+		if err != nil {
+			return fmt.Errorf("failed to execute service account create command: %w", err)
 		}
 
-		// exec command
-		saParams := append(serviceAccount.Params, dogu.GetSimpleName())
-		buffer, err := c.Executor.ExecCommand(ctx, targetDescriptor.GetSimpleName(), doguResource.Namespace, createCommand, saParams)
+		// save credentials
+		err = c.saveServiceAccount(serviceAccount, doguConfig, saCreds)
 		if err != nil {
-			return fmt.Errorf("failed to execute command: %w", err)
-		}
-
-		// parse service accounts
-		saCreds, err := c.parseServiceCommandOutput(buffer)
-		if err != nil {
-			return fmt.Errorf("failed to parse service account: %w", err)
-		}
-
-		// get dogu public key
-		publicKey, err := c.getPublicKey(doguConfig)
-		if err != nil {
-			return fmt.Errorf("failed to read public key from string: %w", err)
-		}
-
-		// write credentials
-		err = c.writeServiceAccounts(doguConfig, serviceAccount, saCreds, publicKey)
-		if err != nil {
-			return fmt.Errorf("failed to write service account: %w", err)
+			return fmt.Errorf("failed to save the service account credentials: %w", err)
 		}
 	}
 
 	return nil
+}
+
+func (c *Creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguConfig registry.ConfigurationContext, credentials map[string]string) error {
+	// get dogu public key
+	publicKey, err := c.getPublicKey(doguConfig)
+	if err != nil {
+		return fmt.Errorf("failed to read public key from string: %w", err)
+	}
+
+	// write credentials
+	err = c.writeServiceAccounts(doguConfig, serviceAccount, credentials, publicKey)
+	if err != nil {
+		return fmt.Errorf("failed to write service account: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Creator) executeServiceAccountCreateCommand(ctx context.Context, dogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
+	// get the create command
+	createCommand := c.getCreateCommand(dogu)
+	if createCommand == nil {
+		return nil, fmt.Errorf("service account dogu does not expose create command")
+	}
+
+	// exec command
+	saParams := append(serviceAccount.Params, dogu.GetSimpleName())
+	buffer, err := c.Executor.ExecCommand(ctx, dogu.GetSimpleName(), namespace, createCommand, saParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute command: %w", err)
+	}
+
+	// parse service accounts
+	saCreds, err := c.parseServiceCommandOutput(buffer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse service account: %w", err)
+	}
+
+	return saCreds, nil
 }
 
 func (c *Creator) getPublicKey(doguConfig registry.ConfigurationContext) (*keys.PublicKey, error) {
@@ -139,7 +159,6 @@ func (c *Creator) getPublicKey(doguConfig registry.ConfigurationContext) (*keys.
 }
 
 func (c *Creator) writeServiceAccounts(doguConfig registry.ConfigurationContext, serviceAccount core.ServiceAccount, saCreds map[string]string, publicKey *keys.PublicKey) error {
-
 	for key, value := range saCreds {
 		path := "/sa-" + serviceAccount.Type + "/" + key
 
