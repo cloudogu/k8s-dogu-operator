@@ -54,13 +54,12 @@ controller-release: ## Interactively starts the release workflow.
 ##@ K8s - Development
 
 .PHONY: build-controller
-build-controller: $(SRC) compile ## Builds the controller Go binary.
+build-controller: ${SRC} compile ## Builds the controller Go binary.
 
 # Allows to perform tasks before locally running the controller
 K8S_RUN_PRE_TARGETS ?=
 .PHONY: run
 run: manifests generate vet $(K8S_RUN_PRE_TARGETS) ## Run a controller from your host.
-	@echo "$(K8S_RUN_PRE_TARGETS)"
 	go run -ldflags "-X main.Version=$(VERSION)" ./main.go
 
 ##@ K8s - Integration test with envtest
