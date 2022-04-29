@@ -6,6 +6,8 @@ IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG?=1.17.7
 MAKEFILES_VERSION=5.0.0
 
+ADDITIONAL_CLEAN=dist-clean
+
 include build/make/variables.mk
 include build/make/self-update.mk
 include build/make/dependencies-gomod.mk
@@ -15,11 +17,12 @@ include build/make/test-unit.mk
 include build/make/static-analysis.mk
 include build/make/clean.mk
 include build/make/digital-signature.mk
-include build/make/k8s-controller.mk
 
-ADDITIONAL_CLEAN=dist-clean
 K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
 PRE_COMPILE=generate vet
+
+include build/make/k8s-controller.mk
+
 
 ##@ Controller specific targets
 
