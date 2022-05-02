@@ -20,6 +20,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/bombsimon/logrusr/v2"
+	"github.com/cloudogu/cesapp/v4/core"
+	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -141,7 +143,15 @@ func startK8sManager(k8sManager manager.Manager) error {
 }
 
 func configureReconciler(k8sManager manager.Manager, operatorConfig *config.OperatorConfig) error {
-	doguManager, err := controllers.NewDoguManager(operatorConfig.Version, k8sManager.GetClient(), operatorConfig)
+	cesRegistry, err := cesregistry.New(core.Registry{
+		Type:      "etcd",
+		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", operatorConfig.Namespace)},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create ces registry: %w", err)
+	}
+
+	doguManager, err := controllers.NewManager(k8sManager.GetClient(), operatorConfig, cesRegistry)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu manager: %w", err)
 	}

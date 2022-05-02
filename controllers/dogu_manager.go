@@ -26,6 +26,9 @@ import (
 
 const finalizerName = "dogu-finalizer"
 
+// NewManager is an alias mainly used for testing the main package
+var NewManager = NewDoguManager
+
 // DoguManager is a central unit in the process of handling dogu custom resources
 // The DoguManager creates, updates and deletes dogus
 type DoguManager struct {
@@ -75,21 +78,18 @@ type ServiceAccountCreator interface {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(version *core.Version, client client.Client, operatorConfig *config.OperatorConfig) (*DoguManager, error) {
+func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
 	doguRegistry := registry.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
 	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
 
-	cesRegistry, err := cesregistry.New(core.Registry{
-		Type:      "etcd",
-		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", operatorConfig.Namespace)},
-	})
+	err := validateKeyProvider(cesRegistry.GlobalConfig())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create ces registry: %w", err)
+		return nil, fmt.Errorf("failed to validate key provider: %w", err)
 	}
 
 	doguRegistrator := NewCESDoguRegistrator(client, cesRegistry, resourceGenerator)
-	dependencyValidator := dependency.NewCompositeDependencyValidator(version, cesRegistry.DoguRegistry())
+	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
 
 	clientSet, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
 	if err != nil {
@@ -109,6 +109,22 @@ func NewDoguManager(version *core.Version, client client.Client, operatorConfig 
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
 	}, nil
+}
+
+func validateKeyProvider(globalConfig cesregistry.ConfigurationContext) error {
+	exists, err := globalConfig.Exists("key_provider")
+	if err != nil {
+		return fmt.Errorf("failed to query key provider: %w", err)
+	}
+	if !exists {
+		err = globalConfig.Set("key_provider", "pkcs1v15")
+		if err != nil {
+			return fmt.Errorf("failed to set default key provider: %w", err)
+		}
+		log.Log.Info("No key provider found. Use default pkcs1v15.")
+	}
+
+	return nil
 }
 
 // Install installs a given Dogu Resource. This includes fetching the dogu.json and the container image. With the

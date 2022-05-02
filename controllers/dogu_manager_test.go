@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cloudogu/cesapp/v4/core"
+	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -616,4 +618,90 @@ func getCustomDoguDescriptorCm(value string) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{Name: ldapDogu.GetSimpleName() + "-descriptor", Namespace: ldapCr.Namespace},
 		Data:       data,
 	}
+}
+
+func TestNewDoguManager(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		config := &config.OperatorConfig{}
+		config.Namespace = "test"
+		cesRegistry := &cesmocks.Registry{}
+		globalConfig := &cesmocks.ConfigurationContext{}
+		doguRegistry := &cesmocks.DoguRegistry{}
+		globalConfig.Mock.On("Exists", "key_provider").Return(true, nil)
+		cesRegistry.Mock.On("GlobalConfig").Return(globalConfig)
+		cesRegistry.Mock.On("DoguRegistry").Return(doguRegistry)
+
+		// when
+		doguManager, err := controllers.NewDoguManager(client, config, cesRegistry)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, doguManager)
+		mock.AssertExpectationsForObjects(t, cesRegistry, globalConfig)
+	})
+
+	t.Run("failed to query existing key provider", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		config := &config.OperatorConfig{}
+		config.Namespace = "test"
+		cesRegistry := &cesmocks.Registry{}
+		globalConfig := &cesmocks.ConfigurationContext{}
+		globalConfig.Mock.On("Exists", "key_provider").Return(true, assert.AnError)
+		cesRegistry.Mock.On("GlobalConfig").Return(globalConfig)
+
+		// when
+		doguManager, err := controllers.NewDoguManager(client, config, cesRegistry)
+
+		// then
+		require.Error(t, err)
+		require.Nil(t, doguManager)
+		assert.ErrorIs(t, err, assert.AnError)
+		mock.AssertExpectationsForObjects(t, cesRegistry, globalConfig)
+	})
+
+	t.Run("failed to query existing key provider", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		config := &config.OperatorConfig{}
+		config.Namespace = "test"
+		cesRegistry := &cesmocks.Registry{}
+		globalConfig := &cesmocks.ConfigurationContext{}
+		globalConfig.Mock.On("Exists", "key_provider").Return(true, assert.AnError)
+		cesRegistry.Mock.On("GlobalConfig").Return(globalConfig)
+
+		// when
+		doguManager, err := controllers.NewDoguManager(client, config, cesRegistry)
+
+		// then
+		require.Error(t, err)
+		require.Nil(t, doguManager)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to query key provider")
+		mock.AssertExpectationsForObjects(t, cesRegistry, globalConfig)
+	})
+
+	t.Run("failed to set default key provider", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		config := &config.OperatorConfig{}
+		config.Namespace = "test"
+		cesRegistry := &cesmocks.Registry{}
+		globalConfig := &cesmocks.ConfigurationContext{}
+		globalConfig.Mock.On("Exists", "key_provider").Return(false, nil)
+		globalConfig.Mock.On("Set", "key_provider", "pkcs1v15").Return(assert.AnError)
+		cesRegistry.Mock.On("GlobalConfig").Return(globalConfig)
+
+		// when
+		doguManager, err := controllers.NewDoguManager(client, config, cesRegistry)
+
+		// then
+		require.Error(t, err)
+		require.Nil(t, doguManager)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to set default key provider")
+		mock.AssertExpectationsForObjects(t, cesRegistry, globalConfig)
+	})
 }

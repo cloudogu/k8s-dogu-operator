@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/mocks"
 	"github.com/go-logr/logr"
@@ -18,6 +20,7 @@ import (
 	"k8s.io/client-go/rest"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -75,6 +78,12 @@ func Test_startDoguOperator(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldSetLoggerDelegate := ctrl.SetLogger
 	defer func() { ctrl.SetLogger = oldSetLoggerDelegate }()
+
+	oldDoguManager := controllers.NewManager
+	defer func() { controllers.NewManager = oldDoguManager }()
+	controllers.NewManager = func(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*controllers.DoguManager, error) {
+		return &controllers.DoguManager{}, nil
+	}
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
