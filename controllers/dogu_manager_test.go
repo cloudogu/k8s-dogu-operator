@@ -21,6 +21,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 	"testing"
@@ -621,6 +623,13 @@ func getCustomDoguDescriptorCm(value string) *corev1.ConfigMap {
 }
 
 func TestNewDoguManager(t *testing.T) {
+	// override default controller method to retrieve a kube config
+	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
+	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
+	ctrl.GetConfigOrDie = func() *rest.Config {
+		return &rest.Config{}
+	}
+
 	t.Run("success", func(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
