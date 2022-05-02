@@ -1,7 +1,6 @@
 package resource_test
 
 import (
-	"errors"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
@@ -120,7 +119,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return errors.New("cannot set owner reference")
+			return assert.AnError
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
@@ -129,7 +128,8 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to set controller reference: cannot set owner reference")
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to set controller reference:")
 	})
 }
 
@@ -147,7 +147,7 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return errors.New("cannot set owner reference")
+			return assert.AnError
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
@@ -156,7 +156,8 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to set controller reference: cannot set owner reference")
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to set controller reference:")
 	})
 }
 
@@ -189,7 +190,7 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return errors.New("cannot set owner reference")
+			return assert.AnError
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
@@ -198,7 +199,8 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to set controller reference: cannot set owner reference")
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to set controller reference:")
 	})
 }
 
@@ -217,7 +219,7 @@ func TestResourceGenerator_GetDoguPVC(t *testing.T) {
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return errors.New("cannot set owner reference")
+			return assert.AnError
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
@@ -226,7 +228,8 @@ func TestResourceGenerator_GetDoguPVC(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to set controller reference: cannot set owner reference")
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to set controller reference:")
 	})
 }
 
@@ -245,7 +248,7 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return errors.New("cannot set owner reference")
+			return assert.AnError
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
@@ -254,6 +257,7 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to set controller reference: cannot set owner reference")
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to set controller reference:")
 	})
 }

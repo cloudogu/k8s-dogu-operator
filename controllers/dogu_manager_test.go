@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
@@ -39,7 +38,7 @@ func (d *doguManagerWithMocks) AssertMocks(t *testing.T) {
 }
 
 func getDoguManagerWithMocks() doguManagerWithMocks {
-	//Reset resource version otherwise the resource can't be created
+	// Reset resource version otherwise the resource can't be created
 	ldapCr.ResourceVersion = ""
 
 	scheme := getInstallScheme()
@@ -129,7 +128,6 @@ func init() {
 }
 
 func TestDoguManager_Install(t *testing.T) {
-	testError := fmt.Errorf("myTestError")
 	ctx := context.TODO()
 
 	t.Run("successfully install a dogu", func(t *testing.T) {
@@ -201,7 +199,7 @@ func TestDoguManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguManagerWithMocks()
 		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(testError)
+		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(assert.AnError)
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
 		// when
@@ -209,7 +207,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "myTestError")
+		assert.True(t, errors.Is(err, assert.AnError))
 		managerWithMocks.AssertMocks(t)
 	})
 
@@ -217,7 +215,7 @@ func TestDoguManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguManagerWithMocks()
 		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testError)
+		managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -226,7 +224,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "myTestError")
+		assert.ErrorIs(t, err, assert.AnError)
 		managerWithMocks.AssertMocks(t)
 	})
 
@@ -236,7 +234,7 @@ func TestDoguManager_Install(t *testing.T) {
 		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 		managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
-		managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(testError)
+		managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
 		// when
@@ -244,6 +242,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to create service accounts")
 		managerWithMocks.AssertMocks(t)
 	})
@@ -264,7 +263,7 @@ func TestDoguManager_Install(t *testing.T) {
 	t.Run("error get dogu", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguManagerWithMocks()
-		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(nil, testError)
+		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(nil, assert.AnError)
 
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -273,7 +272,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, testError))
+		assert.ErrorIs(t, err, assert.AnError)
 		managerWithMocks.AssertMocks(t)
 	})
 
@@ -281,7 +280,7 @@ func TestDoguManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguManagerWithMocks()
 		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
-		managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, testError)
+		managerWithMocks.ImageRegistry.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		managerWithMocks.DoguRegistrator.Mock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.DependencyValidator.Mock.On("ValidateDependencies", mock.Anything).Return(nil)
 		managerWithMocks.ServiceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -292,7 +291,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, testError))
+		assert.ErrorIs(t, err, assert.AnError)
 		managerWithMocks.AssertMocks(t)
 	})
 
@@ -308,9 +307,8 @@ func TestDoguManager_Install(t *testing.T) {
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
-			pvcError := fmt.Errorf("my pvc generation error")
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.Mock.On("GetDoguPVC", mock.Anything).Once().Return(nil, pvcError)
+			resourceGenerator.Mock.On("GetDoguPVC", mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
 
 			// when
@@ -318,7 +316,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			// then
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), pvcError.Error())
+			assert.ErrorIs(t, err, assert.AnError)
 			managerWithMocks.AssertMocks(t)
 		})
 
@@ -358,10 +356,9 @@ func TestDoguManager_Install(t *testing.T) {
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
-			deploymentError := fmt.Errorf("my deployment generation error")
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.Mock.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.Mock.On("GetDoguDeployment", mock.Anything, mock.Anything).Once().Return(nil, deploymentError)
+			resourceGenerator.Mock.On("GetDoguDeployment", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
 
 			// when
@@ -370,7 +367,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			// then
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), deploymentError.Error())
+			assert.ErrorIs(t, err, assert.AnError)
 			managerWithMocks.AssertMocks(t)
 		})
 
@@ -411,11 +408,10 @@ func TestDoguManager_Install(t *testing.T) {
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
-			serviceError := fmt.Errorf("my service generation error")
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.Mock.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
 			resourceGenerator.Mock.On("GetDoguDeployment", mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
-			resourceGenerator.Mock.On("GetDoguService", mock.Anything, mock.Anything).Once().Return(nil, serviceError)
+			resourceGenerator.Mock.On("GetDoguService", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
 
 			// when
@@ -424,7 +420,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			// then
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), serviceError.Error())
+			assert.ErrorIs(t, err, assert.AnError)
 			managerWithMocks.AssertMocks(t)
 		})
 
@@ -466,12 +462,11 @@ func TestDoguManager_Install(t *testing.T) {
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
-			eServiceError := fmt.Errorf("my exposed service generation error")
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.Mock.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
 			resourceGenerator.Mock.On("GetDoguDeployment", mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
 			resourceGenerator.Mock.On("GetDoguService", mock.Anything, mock.Anything).Return(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice"}}, nil)
-			resourceGenerator.Mock.On("GetDoguExposedServices", mock.Anything, mock.Anything).Once().Return(nil, eServiceError)
+			resourceGenerator.Mock.On("GetDoguExposedServices", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
 
 			// when
@@ -480,7 +475,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			// then
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), eServiceError.Error())
+			assert.ErrorIs(t, err, assert.AnError)
 			managerWithMocks.AssertMocks(t)
 		})
 
@@ -517,7 +512,6 @@ func TestDoguManager_Install(t *testing.T) {
 func TestDoguManager_Delete(t *testing.T) {
 	scheme := getDoguOnlyScheme()
 	ctx := context.TODO()
-	testErr := errors.New("test")
 
 	t.Run("successfully delete a dogu", func(t *testing.T) {
 		// given
@@ -551,7 +545,7 @@ func TestDoguManager_Delete(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		managerWithMocks := getDoguManagerWithMocks()
-		managerWithMocks.DoguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(testErr)
+		managerWithMocks.DoguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.DoguManager.Client = client
 		_ = client.Create(ctx, ldapCr)
 
@@ -560,6 +554,7 @@ func TestDoguManager_Delete(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to unregister dogu")
 		managerWithMocks.AssertMocks(t)
 	})

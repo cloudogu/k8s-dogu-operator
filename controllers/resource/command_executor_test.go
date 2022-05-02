@@ -3,7 +3,6 @@ package resource
 import (
 	"bytes"
 	"context"
-	"errors"
 	"github.com/cloudogu/cesapp/v4/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,8 +30,7 @@ type fakeFailExecutor struct {
 
 func (f *fakeExecutor) Stream(options remotecommand.StreamOptions) error {
 	if options.Stdout != nil {
-		buf := new(bytes.Buffer)
-		buf.WriteString("username:user")
+		buf := bytes.NewBufferString("username:user")
 		if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
 			return err
 		}
@@ -41,7 +39,7 @@ func (f *fakeExecutor) Stream(options remotecommand.StreamOptions) error {
 }
 
 func (f *fakeFailExecutor) Stream(_ remotecommand.StreamOptions) error {
-	return errors.New("test")
+	return assert.AnError
 }
 
 func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
@@ -56,13 +54,12 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		Command:     "/create-sa.sh",
 	}
 	params := []string{"ro"}
-	testErr := errors.New("test")
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		return &fakeExecutor{method: method, url: url}, nil
 	}
 	fakeErrorInitNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return nil, testErr
+		return nil, assert.AnError
 	}
 	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		return &fakeFailExecutor{method: method, url: url}, nil
@@ -81,8 +78,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		client := testclient.NewSimpleClientset(&readyPod)
 		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
-		expectedBuffer := new(bytes.Buffer)
-		expectedBuffer.WriteString("username:user")
+		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
 		buffer, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command, params)
@@ -132,6 +128,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to create new spdy executor")
 	})
 
@@ -146,6 +143,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to exec stream")
 	})
 }

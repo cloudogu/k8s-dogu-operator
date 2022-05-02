@@ -15,11 +15,6 @@ import (
 	"strings"
 )
 
-// DoguRegistry is used to fetch the dogu descriptor
-type DoguRegistry interface {
-	GetDogu(*k8sv1.Dogu) (*core.Dogu, error)
-}
-
 // CommandExecutor is used to execute command in a dogu
 type CommandExecutor interface {
 	ExecCommand(ctx context.Context, targetDogu string, namespace string, command *core.ExposedCommand, params []string) (*bytes.Buffer, error)
@@ -115,13 +110,11 @@ func (c *Creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguCon
 }
 
 func (c *Creator) executeServiceAccountCreateCommand(ctx context.Context, dogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
-	// get the create command
 	createCommand := c.getCreateCommand(dogu)
 	if createCommand == nil {
 		return nil, fmt.Errorf("service account dogu does not expose create command")
 	}
 
-	// exec command
 	saParams := append(serviceAccount.Params, dogu.GetSimpleName())
 	buffer, err := c.Executor.ExecCommand(ctx, dogu.GetSimpleName(), namespace, createCommand, saParams)
 	if err != nil {

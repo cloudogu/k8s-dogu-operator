@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
-	"errors"
 	"github.com/cloudogu/cesapp/v4/core"
 	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -66,12 +65,10 @@ func init() {
 }
 
 func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
-	testErr := errors.New("test")
 	validPubKey := "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApbhnnaIIXCADt0V7UCM7\nZfBEhpEeB5LTlvISkPQ91g+l06/soWFD65ba0PcZbIeKFqr7vkMB0nDNxX1p8PGv\nVJdUmwdB7U/bQlnO6c1DoY10g29O7itDfk92RCKeU5Vks9uRQ5ayZMjxEuahg2BW\nua72wi3GCiwLa9FZxGIP3hcYB21O6PfpxXsQYR8o3HULgL1ppDpuLv4fk/+jD31Z\n9ACoWOg6upyyNUsiA3hS9Kn1p3scVgsIN2jSSpxW42NvMo6KQY1Zo0N4Aw/mqySd\n+zdKytLqFto1t0gCbTCFPNMIObhWYXmAe26+h1b1xUI8ymsrXklwJVn0I77j9MM1\nHQIDAQAB\n-----END PUBLIC KEY-----"
 	invalidPubKey := "-----BEGIN PUBLIC KEY-----\nHQIDAQAB\n-----END PUBLIC KEY-----"
 	redmineCr.Namespace = "test"
-	buf := new(bytes.Buffer)
-	buf.WriteString("username:user\npassword:password\ndatabase:dbname")
+	buf := bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname")
 
 	t.Run("success", func(t *testing.T) {
 		// given
@@ -107,7 +104,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// given
 		ctx := context.TODO()
 		doguConfig := &cesmocks.ConfigurationContext{}
-		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, testErr)
+		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, assert.AnError)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
@@ -117,6 +114,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to check if service account already exists")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry)
 	})
@@ -138,11 +136,11 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, doguConfig, registry)
 	})
 
-	t.Run("service account dogu is not enabled", func(t *testing.T) {
+	t.Run("failed to check if service account dogu is enabled", func(t *testing.T) {
 		// given
 		ctx := context.TODO()
 		doguRegistry := &cesmocks.DoguRegistry{}
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, testErr)
+		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, assert.AnError)
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 		registry := &cesmocks.Registry{}
@@ -155,6 +153,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to check if dogu postgresql is enabled")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
@@ -205,7 +204,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		ctx := context.TODO()
 		doguRegistry := &cesmocks.DoguRegistry{}
 		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
-		doguRegistry.Mock.On("Get", "postgresql").Return(nil, testErr)
+		doguRegistry.Mock.On("Get", "postgresql").Return(nil, assert.AnError)
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 		registry := &cesmocks.Registry{}
@@ -218,6 +217,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to get service account dogu.json")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
@@ -256,7 +256,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(nil, testErr)
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
@@ -264,6 +264,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to execute command")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
@@ -280,9 +281,8 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
-		buf := new(bytes.Buffer)
-		buf.WriteString("username:user:invalid\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
+		invalidBuffer := bytes.NewBufferString("username:user:invalid\npassword:password\ndatabase:dbname")
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(invalidBuffer, nil)
 		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
 		// when
@@ -298,7 +298,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// given
 		ctx := context.TODO()
 		globalConfig := &cesmocks.ConfigurationContext{}
-		globalConfig.Mock.On("Get", "key_provider").Return("", testErr)
+		globalConfig.Mock.On("Get", "key_provider").Return("", assert.AnError)
 		doguRegistry := &cesmocks.DoguRegistry{}
 		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
 		doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
@@ -317,6 +317,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to get key provider")
 		mock.AssertExpectationsForObjects(t, doguConfig, globalConfig, doguRegistry, registry)
 	})
@@ -358,7 +359,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguRegistry.Mock.On("Get", "postgresql").Return(postgresqlDescriptor, nil)
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
-		doguConfig.Mock.On("Get", "public.pem").Return("", testErr)
+		doguConfig.Mock.On("Get", "public.pem").Return("", assert.AnError)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
@@ -372,6 +373,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to get dogu public key")
 		mock.AssertExpectationsForObjects(t, doguConfig, globalConfig, doguRegistry, registry)
 	})
@@ -415,14 +417,13 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 		doguConfig.Mock.On("Get", "public.pem").Return(validPubKey, nil)
-		doguConfig.Mock.On("Set", mock.Anything, mock.Anything).Return(testErr)
+		doguConfig.Mock.On("Set", mock.Anything, mock.Anything).Return(assert.AnError)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
-		buf := new(bytes.Buffer)
-		buf.WriteString("username:user\npassword:password\ndatabase:dbname")
+		buf := bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname")
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", mock.Anything, mock.Anything).Return(buf, nil)
 		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
 
@@ -431,6 +432,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to set encrypted sa value of key")
 		mock.AssertExpectationsForObjects(t, doguConfig, globalConfig, doguRegistry, registry)
 	})
