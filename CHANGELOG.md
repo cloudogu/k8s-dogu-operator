@@ -5,9 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.3.0] - 2022-05-03
 ### Added
 - [#2] Annotation `k8s-dogu-operator.cloudogu.com/ces-services` to Dogu-`Services` containing information of
   related CES services. For more information see [Annotations](/docs/operations/annotations_en.md).
+- [#13] The automatic generation of service accounts
 
 ### Changed
 - [#11] **Breaking Change ahead!** The secret containing the dogu registry data was split and renamed from 
