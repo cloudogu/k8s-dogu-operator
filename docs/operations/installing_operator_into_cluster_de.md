@@ -1,5 +1,12 @@
 # Installationsanleitung für den k8s-dogu-operator
 
+## Voraussetzungen
+
+Vor der Installation des Operators müssen die Login Daten für die Dogu- und Docker-Registry hinterlegt
+werden:
+1. [Docker-Registry](configuring_the_docker_registry_de.md)
+2. [Dogu-Registry](configuring_the_dogu_registry_de.md)
+
 ## Installation von GitHub
 
 Die Installation von GitHub erfordert die Installations-YAML, die alle benötigten K8s-Ressourcen enthält.
@@ -18,8 +25,5 @@ Der Dogu-Operator kann mit folgenden Befehlen lokal gebaut und in den Cluster in
 ```bash
 - export K8S_CLUSTER_ROOT=/home/user/k8scluster
 - export OPERATOR_NAMESPACE=ecosystem
-- make docker-build
-- make image-import
-- make k8s-generate
-- make k8s-deploy
+- make build
 ```

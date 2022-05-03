@@ -1,0 +1,12 @@
+{
+  "Labels": {
+    "SERVICE_TAGS": "webapp",
+    "SERVICE_NAME": "admin"
+  },
+  "Env": [
+    "SERVICE_ADDITIONAL_SERVICES=[{\"name\":\"admin-api\",\"location\":\"api\",\"pass\":\"admin/api/v2/\"}]"
+  ],
+  "ExposedPorts": {
+    "80/tcp": {}
+  }
+}

@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: postfix
+  annotations:
+    test: dev
+  labels:
+    dogu: postfix
+    app: ces
+spec:
+  name: official/postfix
+  version: 3.6.4-2

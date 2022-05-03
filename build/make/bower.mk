@@ -1,7 +1,9 @@
+##@ Bower dependency management
+
 BOWER_JSON=$(WORKDIR)/bower.json
 
 .PHONY: bower-install
-bower-install: $(BOWER_TARGET)
+bower-install: $(BOWER_TARGET) ## Execute yarn run bower (in Docker)
 
 ifeq ($(ENVIRONMENT), ci)
 

@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: swaggerui
+  annotations:
+    test: dev
+  labels:
+    dogu: swaggerui
+    app: ces
+spec:
+  name: official/swaggerui
+  version: 4.9.0-1

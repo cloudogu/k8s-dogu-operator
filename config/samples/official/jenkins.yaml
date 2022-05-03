@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: jenkins
+  annotations:
+    test: dev
+  labels:
+    dogu: jenkins
+    app: ces
+spec:
+  name: official/jenkins
+  version: 2.332.1-3

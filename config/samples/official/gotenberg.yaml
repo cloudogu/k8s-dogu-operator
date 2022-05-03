@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: gotenberg
+  annotations:
+    test: dev
+  labels:
+    dogu: gotenberg
+    app: ces
+spec:
+  name: official/gotenberg
+  version: 7.5.2-1

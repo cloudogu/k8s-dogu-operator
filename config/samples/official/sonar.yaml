@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: sonar
+  annotations:
+    test: dev
+  labels:
+    dogu: sonar
+    app: ces
+spec:
+  name: official/sonar
+  version: 8.9.6-2

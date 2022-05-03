@@ -21,4 +21,9 @@ vendor
 .code
 *~
 
+# ignore personal information
+.myenv
 .netrc
+
+# Makefiles
+.env

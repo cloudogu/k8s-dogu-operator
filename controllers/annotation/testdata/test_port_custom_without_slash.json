@@ -1,0 +1,11 @@
+{
+  "Env": [
+    "SERVICE_80_TAGS=webapp",
+    "SERVICE_80_NAME=superapi",
+    "SERVICE_80_LOCATION=api",
+    "SERVICE_80_PASS=serviceName/api/v2"
+  ],
+  "ExposedPorts": {
+    "80/tcp": {}
+  }
+}
