@@ -45,11 +45,23 @@ spec:
           status:
             description: DoguStatus defines the observed state of Dogu
             properties:
+              requeueTime:
+                description: RequeueTime contains time necessary to perform the next
+                  requeue
+                format: int64
+                type: integer
               status:
-                description: Status represents the installation status of the Dogu
+                description: Status represents the state of the Dogu in the ecosystem
                 type: string
+              statusMessages:
+                description: StatusMessages contains a list of status messages
+                items:
+                  type: string
+                type: array
             required:
+            - requeueTime
             - status
+            - statusMessages
             type: object
         type: object
     served: true

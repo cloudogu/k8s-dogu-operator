@@ -4,10 +4,17 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 )
 
 func TestNewOperatorConfig(t *testing.T) {
+	_ = os.Unsetenv("NAMESPACE")
+	_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
+	_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
+	_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
+	_ = os.Unsetenv("DOCKER_REGISTRY")
+
 	expectedNamespace := "myNamepsace"
 	expectedDoguRegistryData := config.DoguRegistryData{
 		Endpoint: "myEndpoint",
@@ -24,7 +31,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 	t.Run("Error on missing namespace env var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig()
+		operatorConfig, err := config.NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -35,7 +42,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("NAMESPACE", expectedNamespace)
 	t.Run("Error on missing dogu registry endpoint var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig()
+		operatorConfig, err := config.NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -46,7 +53,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_ENDPOINT", expectedDoguRegistryData.Endpoint)
 	t.Run("Error on missing dogu registry username var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig()
+		operatorConfig, err := config.NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -57,7 +64,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_USERNAME", expectedDoguRegistryData.Username)
 	t.Run("Error on missing dogu registry password var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig()
+		operatorConfig, err := config.NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -68,7 +75,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
 	t.Run("Error on missing docker registry data var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig()
+		operatorConfig, err := config.NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -79,7 +86,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOCKER_REGISTRY", inputDockerRegistrySecretData)
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig()
+		operatorConfig, err := config.NewOperatorConfig("0.1.0")
 
 		// then
 		require.NoError(t, err)
@@ -87,6 +94,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.Equal(t, expectedNamespace, operatorConfig.Namespace)
 		assert.Equal(t, expectedDoguRegistryData, operatorConfig.DoguRegistry)
 		assert.Equal(t, expectedDockerRegistryData, operatorConfig.DockerRegistry)
+		assert.Equal(t, "0.1.0", operatorConfig.Version.Raw)
 		assert.False(t, operatorConfig.DevelopmentLogMode)
 	})
 
@@ -95,7 +103,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		t.Setenv("ZAP_DEVELOPMENT_MODE", "invalid value")
 
 		// when
-		operatorConfig, err := config.NewOperatorConfig()
+		operatorConfig, err := config.NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)

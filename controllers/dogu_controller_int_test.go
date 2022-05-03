@@ -5,8 +5,9 @@ package controllers_test
 
 import (
 	"context"
-	"fmt"
 	_ "embed"
+	"fmt"
+	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
@@ -17,33 +18,49 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"time"
 )
 
 var _ = Describe("Dogu Controller", func() {
-	const timeoutInterval = time.Second * 10
-	const pollingInterval = time.Second * 1
+
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""
-	doguName := ldapCr.Name
-	namespace := ldapCr.Namespace
+	ldapDoguLookupKey := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
+
+	redmineCr.Namespace = "default"
+	redmineCr.ResourceVersion = ""
+	redmineDoguLookupKey := types.NamespacedName{Name: redmineCr.Name, Namespace: redmineCr.Namespace}
+
 	ctx := context.TODO()
-	doguLookupKey := types.NamespacedName{Name: doguName, Namespace: namespace}
 	ImageRegistryMock = mocks.ImageRegistry{}
 	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 	DoguRegistryMock = mocks.DoguRegistry{}
-	DoguRegistryMock.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+	DoguRegistryMock.Mock.On("GetDogu", mock.MatchedBy(func(dogu *k8sv1.Dogu) bool {
+		return dogu.Name == ldapCr.Name
+	})).Return(ldapDogu, nil)
+	DoguRegistryMock.Mock.On("GetDogu", mock.MatchedBy(func(dogu *k8sv1.Dogu) bool {
+		return dogu.Name == redmineCr.Name
+	})).Return(redmineDogu, nil)
+
+	EtcdDoguRegistry = cesmocks.DoguRegistry{}
+	EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed"))
+	EtcdDoguRegistry.Mock.On("Get", "cas").Return(nil, fmt.Errorf("not installed"))
+	EtcdDoguRegistry.Mock.On("Get", "nginx").Return(nil, fmt.Errorf("not installed"))
+	EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
+	EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
+	EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
+	EtcdDoguRegistry.Mock.On("Enable", mock.Anything).Return(nil)
+	EtcdDoguRegistry.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
 
 	Context("Handle dogu resource", func() {
 		It("Should install dogu in cluster", func() {
 			By("Creating dogu resource")
-			Expect(k8sClient.Create(ctx, ldapCr)).Should(Succeed())
+			installDoguCrd(ctx, ldapCr)
 
 			By("Expect created dogu")
 			createdDogu := &k8sv1.Dogu{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, doguLookupKey, createdDogu)
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
 				if err != nil {
 					return false
 				}
@@ -52,37 +69,37 @@ var _ = Describe("Dogu Controller", func() {
 					return true
 				}
 				return false
-			}, timeoutInterval, pollingInterval).Should(BeTrue())
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
 			By("Expect created deployment")
 			deployment := &appsv1.Deployment{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, doguLookupKey, deployment)
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
 				if err != nil {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, deployment.ObjectMeta)
-			}, timeoutInterval, pollingInterval).Should(BeTrue())
-			Expect(doguName).To(Equal(deployment.Name))
-			Expect(namespace).To(Equal(deployment.Namespace))
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			Expect(ldapCr.Name).To(Equal(deployment.Name))
+			Expect(ldapCr.Namespace).To(Equal(deployment.Namespace))
 
 			By("Expect created service")
 			service := &corev1.Service{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, doguLookupKey, service)
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, service)
 				if err != nil {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, service.ObjectMeta)
-			}, timeoutInterval, pollingInterval).Should(BeTrue())
-			Expect(doguName).To(Equal(service.Name))
-			Expect(namespace).To(Equal(service.Namespace))
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			Expect(ldapCr.Name).To(Equal(service.Name))
+			Expect(ldapCr.Namespace).To(Equal(service.Namespace))
 
 			By("Expect created secret")
 			secret := &corev1.Secret{}
-			secretLookupKey := types.NamespacedName{Name: doguName + "-private", Namespace: namespace}
+			secretLookupKey := types.NamespacedName{Name: ldapCr.Name + "-private", Namespace: ldapCr.Namespace}
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, secretLookupKey, secret)
@@ -90,64 +107,114 @@ var _ = Describe("Dogu Controller", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, secret.ObjectMeta)
-			}, timeoutInterval, pollingInterval).Should(BeTrue())
-			Expect(doguName + "-private").To(Equal(secret.Name))
-			Expect(namespace).To(Equal(secret.Namespace))
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			Expect(ldapCr.Name + "-private").To(Equal(secret.Name))
+			Expect(ldapCr.Namespace).To(Equal(secret.Namespace))
 
 			By("Expect created pvc")
 			pvc := &corev1.PersistentVolumeClaim{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, doguLookupKey, pvc)
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, pvc)
 				if err != nil {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, pvc.ObjectMeta)
-			}, timeoutInterval, pollingInterval).Should(BeTrue())
-			Expect(doguName).To(Equal(pvc.Name))
-			Expect(namespace).To(Equal(pvc.Namespace))
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			Expect(ldapCr.Name).To(Equal(pvc.Name))
+			Expect(ldapCr.Namespace).To(Equal(pvc.Namespace))
 
 			By("Expect exposed service for service port 2222")
 			exposedService2222 := &corev1.Service{}
-			exposedService2222Name := fmt.Sprintf("%s-exposed-2222", doguName)
-			exposedService2222LookupKey := types.NamespacedName{Name: exposedService2222Name, Namespace: namespace}
+			exposedService2222Name := fmt.Sprintf("%s-exposed-2222", ldapCr.Name)
+			exposedService2222LookupKey := types.NamespacedName{Name: exposedService2222Name, Namespace: ldapCr.Namespace}
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, exposedService2222LookupKey, exposedService2222)
-				if err != nil {
-					return false
-				}
-				return true
-			}, pollingInterval, timeoutInterval).Should(BeTrue())
+				return err == nil
+			}, PollingInterval, TimeoutInterval).Should(BeTrue())
 
 			By("Expect exposed service for service port 8888")
 			exposedService8888 := &corev1.Service{}
-			exposedService8888Name := fmt.Sprintf("%s-exposed-2222", doguName)
-			exposedService8888LookupKey := types.NamespacedName{Name: exposedService8888Name, Namespace: namespace}
+			exposedService8888Name := fmt.Sprintf("%s-exposed-2222", ldapCr.Name)
+			exposedService8888LookupKey := types.NamespacedName{Name: exposedService8888Name, Namespace: ldapCr.Namespace}
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, exposedService8888LookupKey, exposedService8888)
-				if err != nil {
-					return false
-				}
-				return true
-			}, pollingInterval, timeoutInterval).Should(BeTrue())
+				return err == nil
+			}, PollingInterval, TimeoutInterval).Should(BeTrue())
 
 			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
 		})
 
 		It("Should delete dogu", func() {
 			By("Delete Dogu")
-			Expect(k8sClient.Delete(ctx, ldapCr)).Should(Succeed())
+			deleteDoguCrd(ctx, ldapCr, ldapDoguLookupKey)
+		})
 
-			dogu := &k8sv1.Dogu{}
+		It("Should fail dogu installation as dependency is missing", func() {
+			By("Creating redmine dogu resource")
+			installDoguCrd(ctx, redmineCr)
+
+			By("Check for failed installation and check messages of dogu resource")
+			createdDogu := &k8sv1.Dogu{}
+
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, doguLookupKey, dogu)
-				return apierrors.IsNotFound(err)
-			}, timeoutInterval, pollingInterval).Should(BeTrue())
+				err := k8sClient.Get(ctx, redmineDoguLookupKey, createdDogu)
+				if err != nil {
+					return false
+				}
+				if createdDogu.Status.Status != k8sv1.DoguStatusNotInstalled {
+					return false
+				}
+				statusMessages := createdDogu.Status.StatusMessages
+				if len(statusMessages) != 4 {
+					return false
+				}
+				statusMessage := "failed to resolve dependency: {dogu postgresql }"
+				if !containsStatusMessage(statusMessages, statusMessage) {
+					return false
+				}
+				statusMessage = "failed to resolve dependency: {dogu cas }"
+				if !containsStatusMessage(statusMessages, statusMessage) {
+					return false
+				}
+				statusMessage = "failed to resolve dependency: {dogu postfix }"
+				if !containsStatusMessage(statusMessages, statusMessage) {
+					return false
+				}
+				return true
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			By("Delete redmine dogu crd")
+			deleteDoguCrd(ctx, redmineCr, redmineDoguLookupKey)
 		})
 	})
 })
+
+func containsStatusMessage(messages []string, statusMessage string) bool {
+	for _, msg := range messages {
+		if msg == statusMessage {
+			return true
+		}
+	}
+
+	return false
+}
+
+func installDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu) {
+	Expect(k8sClient.Create(ctx, doguCr)).Should(Succeed())
+}
+
+func deleteDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.NamespacedName) {
+	Expect(k8sClient.Delete(ctx, doguCr)).Should(Succeed())
+
+	dogu := &k8sv1.Dogu{}
+	Eventually(func() bool {
+		err := k8sClient.Get(ctx, doguLookupKey, dogu)
+		return apierrors.IsNotFound(err)
+	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+}
 
 // verifyOwner checks if the objectmetadata has a specific owner. This method should be used to verify that a dogu is
 // the owner of every related resource. This replaces an integration test for the deletion of dogu related resources.

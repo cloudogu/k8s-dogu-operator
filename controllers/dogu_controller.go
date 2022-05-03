@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -37,29 +38,53 @@ const (
 	Ignore
 )
 
+func (o Operation) toString() string {
+	switch o {
+	case Install:
+		return "Install"
+	case Upgrade:
+		return "Upgrade"
+	case Delete:
+		return "Delete"
+	default:
+		return "Ignore"
+	}
+}
+
 // DoguReconciler reconciles a Dogu object
 type DoguReconciler struct {
 	client.Client
-	scheme      *runtime.Scheme
-	doguManager Manager
+	scheme             *runtime.Scheme
+	doguManager        Manager
+	DoguRequeueHandler RequeueHandler
 }
 
-// Manager abstracts the simple dogu operations in a k8s CES
+// Manager abstracts the simple dogu operations in a k8s CES.
 type Manager interface {
-	// Install installs a dogu resource
+	// Install installs a dogu resource.
 	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
-	// Upgrade upgrades a dogu resource
+	// Upgrade upgrades a dogu resource.
 	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
-	// Delete deletes a dogu resource
+	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
+}
+
+// RequeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
+type RequeueHandler interface {
+	// Handle takes an error and handles the requeue process for the current dogu operation.
+	Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error)
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
 func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager Manager) *DoguReconciler {
+	doguStatusReporter := resource.NewDoguStatusReporter(client)
+	doguRequeueHandler := NewDoguRequeueHandler(client, doguStatusReporter)
+
 	return &DoguReconciler{
-		Client:      client,
-		scheme:      scheme,
-		doguManager: doguManager,
+		Client:             client,
+		scheme:             scheme,
+		doguManager:        doguManager,
+		DoguRequeueHandler: doguRequeueHandler,
 	}
 }
 
@@ -76,21 +101,31 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		logger.Info(fmt.Sprintf("failed to get doguResource: %s", err))
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	logger.Info(fmt.Sprintf("Dogu %s/%s has been found: %+v", doguResource.Namespace, doguResource.Name, doguResource))
+	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
 
 	requiredOperation, err := evaluateRequiredOperation(doguResource, logger)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to evaluate required operation: %w", err)
 	}
-	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s", doguResource.Namespace, doguResource.Name, operationToString(requiredOperation)))
+	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s", doguResource.Namespace, doguResource.Name, requiredOperation.toString()))
 
 	switch requiredOperation {
 	case Install:
-		err := r.doguManager.Install(ctx, doguResource)
+		installError := r.doguManager.Install(ctx, doguResource)
+		contextMessageOnError := fmt.Sprintf("failed to install dogu %s", doguResource.Name)
+		result, err := r.DoguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to install dogu: %w", err)
+			return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
 		}
-		return ctrl.Result{}, nil
+
+		if result.Requeue || result.RequeueAfter != 0 {
+			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
+			err := doguResource.Update(ctx, r.Client)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", err)
+			}
+		}
+		return result, nil
 	case Upgrade:
 		return ctrl.Result{}, nil
 	case Delete:
@@ -125,19 +160,6 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Op
 	default:
 		logger.Info(fmt.Sprintf("Found unknown operation for dogu status: %s", doguResource.Status.Status))
 		return Ignore, nil
-	}
-}
-
-func operationToString(operation Operation) string {
-	switch operation {
-	case Install:
-		return "Install"
-	case Upgrade:
-		return "Upgrade"
-	case Delete:
-		return "Delete"
-	default:
-		return "Ignore"
 	}
 }
 
