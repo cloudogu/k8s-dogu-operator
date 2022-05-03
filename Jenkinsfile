@@ -98,6 +98,15 @@ node('docker') {
                         }
             }
 
+            stage('Deploy etcd') {
+                k3d.kubectl("apply -f https://raw.githubusercontent.com/cloudogu/k8s-etcd/develop/manifests/etcd.yaml")
+            }
+
+            stage('Wait for etcd to be ready') {
+                sleep(time:5,unit:"SECONDS")
+                k3d.kubectl("wait --for=condition=ready pod -l statefulset.kubernetes.io/pod-name=etcd-0 --timeout=300s")
+            }
+
             stage('Deploy Manager') {
                 k3d.kubectl("apply -f ${sourceDeploymentYaml}")
             }
