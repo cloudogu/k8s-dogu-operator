@@ -33,7 +33,16 @@ lauten und die Nutzdaten müssen in der Data-Map unter dem Eintrag `dogu.json` v
 Es existiert ein Make-Target zur automatischen Erzeugung der Configmap - `make install-dogu-descriptor`.
 Dabei ist zu beachten, dass der Dateipfad unter der Variable `CUSTOM_DOGU_DESCRIPTOR` exportiert werden muss.
 
-Nach einer erfolgreichen Dogu-Installation, wird die Configmap gelöscht.
+Nach einer erfolgreichen Dogu-Installation wird die Configmap gelöscht.
+
+### Beispiel
+
+Installation des Dogu-Deskriptors für nginx-ingress:
+
+```
+export CUSTOM_DOGU_DESCRIPTOR=/home/USER/nginx-ingress/dogu.json
+make install-dogu-descriptor
+```
 
 ## Filtern der Reconcile-Funktion
 
