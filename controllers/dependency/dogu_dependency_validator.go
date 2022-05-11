@@ -14,6 +14,11 @@ type ErrorDependencyValidation struct {
 	Dependency  core.Dependency
 }
 
+// DoguDependencyChecker is used to  check a single dependency of a dogu
+type doguDependencyChecker interface {
+	CheckDoguDependency(dependency core.Dependency, optional bool) error
+}
+
 // Report returns the error in string representation
 func (e *ErrorDependencyValidation) Error() string {
 	return fmt.Sprintf("failed to resolve dependency: %v, source error: %s", e.Dependency, e.SourceError.Error())
@@ -31,7 +36,7 @@ func (e *ErrorDependencyValidation) Requeue() bool {
 
 // DoguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type DoguDependencyValidator struct {
-	DoguDependencyChecker *dependencies.DoguDependencyChecker
+	DoguDependencyChecker doguDependencyChecker
 }
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker
