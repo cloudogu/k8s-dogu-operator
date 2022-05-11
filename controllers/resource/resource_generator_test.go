@@ -1,6 +1,7 @@
 package resource_test
 
 import (
+	_ "embed"
 	"github.com/cloudogu/cesapp/v4/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
@@ -17,8 +18,6 @@ import (
 	"sigs.k8s.io/yaml"
 	"testing"
 )
-
-import _ "embed"
 
 //go:embed testdata/ldap-dogu.json
 var ldapBytes []byte

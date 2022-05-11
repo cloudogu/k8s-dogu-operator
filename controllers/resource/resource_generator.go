@@ -37,6 +37,8 @@ func NewResourceGenerator(scheme *runtime.Scheme) *ResourceGenerator {
 func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
 	volumes := getVolumesForDogu(doguResource, dogu)
 	volumeMounts := getVolumeMountsForDogu(doguResource, dogu)
+	startupProbe := createStartupProbe(dogu)
+	livenessProbe := createLivenessProbe(dogu)
 
 	// Create deployment
 	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
@@ -60,6 +62,8 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 				Hostname:         doguResource.Name,
 				Volumes:          volumes,
 				Containers: []corev1.Container{{
+					LivenessProbe:   livenessProbe,
+					StartupProbe:    startupProbe,
 					Name:            doguResource.Name,
 					Image:           dogu.Image + ":" + dogu.Version,
 					ImagePullPolicy: corev1.PullIfNotPresent,
@@ -85,6 +89,40 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 	}
 
 	return deployment, nil
+}
+
+func createLivenessProbe(dogu *core.Dogu) *corev1.Probe {
+	for _, healthCheck := range dogu.HealthChecks {
+		if healthCheck.Type == "tcp" {
+			return &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					TCPSocket: &corev1.TCPSocketAction{Port: intstr.IntOrString{IntVal: int32(healthCheck.Port)}},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			}
+		}
+	}
+	return nil
+}
+
+func createStartupProbe(dogu *core.Dogu) *corev1.Probe {
+	for _, healthCheck := range dogu.HealthChecks {
+		if healthCheck.Type == "state" {
+			return &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					Exec: &corev1.ExecAction{Command: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			}
+		}
+	}
+	return nil
 }
 
 func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
