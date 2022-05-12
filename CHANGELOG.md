@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.1] - 2022-05-12
 ### Fixed
 - [#17] Requeue dogu installation when an error occurs when creating a dependent service account.
 
