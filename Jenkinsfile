@@ -216,6 +216,10 @@ void stageAutomaticRelease() {
             gpg.createSignature()
         }
 
+        stage('Regenerate resources for release') {
+            make 'k8s-generate'
+        }
+
         stage('Add Github-Release') {
             Makefile makefile = new Makefile(this)
             String controllerVersion = makefile.getVersion()
