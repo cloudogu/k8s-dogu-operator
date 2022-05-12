@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.1] - 2022-05-12
+### Fixed
+- [#17] Requeue dogu installation when an error occurs when creating a dependent service account.
+
 ## [v0.3.0] - 2022-05-03
 ### Added
 - [#2] Annotation `k8s-dogu-operator.cloudogu.com/ces-services` to Dogu-`Services` containing information of

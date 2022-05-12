@@ -14,10 +14,9 @@ import (
 	"net/url"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"strings"
 )
 
-// ErrorResourceState is returned when a given dependency cloud not be validated.
+// ErrorResourceState is returned when a specific resource (pod/dogu) is not ready yet.
 type ErrorResourceState struct {
 	SourceError error
 	Resource    metav1.Object
@@ -30,7 +29,7 @@ func (e *ErrorResourceState) Error() string {
 
 // Report constructs a simple human readable message
 func (e *ErrorResourceState) Report() string {
-	return fmt.Sprintf("rsource is not ready: %v", e.Resource.GetName())
+	return fmt.Sprintf("resource is not ready: %v", e.Resource.GetName())
 }
 
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
@@ -81,7 +80,10 @@ func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 	req := ce.getCreateExecRequest(pod, namespace, command, params)
 	exec, err := ce.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new spdy executor: %w", err)
+		return nil, &ErrorResourceState{
+			SourceError: fmt.Errorf("failed to create new spdy executor: %w", err),
+			Resource:    pod,
+		}
 	}
 
 	buffer := bytes.NewBuffer([]byte{})
@@ -90,16 +92,11 @@ func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 		Stderr: os.Stderr,
 		Tty:    true,
 	})
-
 	if err != nil {
-		// TODO Remove this condition if probes are implemented
-		if strings.Contains(err.Error(), "container not found") {
-			return nil, &ErrorResourceState{
-				SourceError: fmt.Errorf("container not found"),
-				Resource:    pod,
-			}
+		return nil, &ErrorResourceState{
+			SourceError: err,
+			Resource:    pod,
 		}
-		return nil, fmt.Errorf("failed to exec stream: %w", err)
 	}
 
 	return buffer, nil
