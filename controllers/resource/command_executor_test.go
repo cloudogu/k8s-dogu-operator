@@ -128,7 +128,6 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to create new spdy executor")
 	})
 
@@ -143,7 +142,6 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to exec stream")
+		assert.Contains(t, err.Error(), assert.AnError.Error())
 	})
 }
