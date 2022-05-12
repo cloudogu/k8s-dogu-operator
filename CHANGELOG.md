@@ -5,9 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.4.0] - 2022-05-12
 ### Added
-- Add startup probe based on state at dogu deployment generation; #15
-- Add liveness probe based on tcp port at dogu deployment generation; #15
+- [#15] Add startup probe based on state at dogu deployment generation
+- [#15] Add liveness probe based on tcp port at dogu deployment generation
 
 ## [v0.3.1] - 2022-05-12
 ### Fixed
