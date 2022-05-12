@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
-	github.com/cloudogu/cesapp/v4 v4.2.2-0.20220420123953-b8c664276513
+	github.com/cloudogu/cesapp/v4 v4.3.0
 	github.com/go-logr/logr v1.2.0
 	github.com/google/go-containerregistry v0.8.0
 	github.com/hashicorp/go-multierror v1.1.0
