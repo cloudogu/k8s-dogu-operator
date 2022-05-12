@@ -14,7 +14,7 @@ type ErrorDependencyValidation struct {
 	Dependency  core.Dependency
 }
 
-// DoguDependencyChecker is used to  check a single dependency of a dogu
+// doguDependencyChecker is used to  check a single dependency of a dogu
 type doguDependencyChecker interface {
 	CheckDoguDependency(dependency core.Dependency, optional bool) error
 }
@@ -34,22 +34,22 @@ func (e *ErrorDependencyValidation) Requeue() bool {
 	return true
 }
 
-// DoguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
-type DoguDependencyValidator struct {
-	DoguDependencyChecker doguDependencyChecker
+// doguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
+type doguDependencyValidator struct {
+	doguDependencyChecker doguDependencyChecker
 }
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker
-func NewDoguDependencyValidator(doguRegistry registry.DoguRegistry) *DoguDependencyValidator {
+func NewDoguDependencyValidator(doguRegistry registry.DoguRegistry) *doguDependencyValidator {
 	doguDependencyChecker := dependencies.NewDoguDependencyChecker(doguRegistry)
 
-	return &DoguDependencyValidator{
-		DoguDependencyChecker: doguDependencyChecker,
+	return &doguDependencyValidator{
+		doguDependencyChecker: doguDependencyChecker,
 	}
 }
 
 // ValidateAllDependencies validates mandatory and optional dogu dependencies
-func (dc *DoguDependencyValidator) ValidateAllDependencies(dogu *core.Dogu) error {
+func (dc *doguDependencyValidator) ValidateAllDependencies(dogu *core.Dogu) error {
 	var allProblems error
 
 	deps := dogu.GetDependenciesOfType(core.DependencyTypeDogu)
@@ -67,7 +67,7 @@ func (dc *DoguDependencyValidator) ValidateAllDependencies(dogu *core.Dogu) erro
 	return allProblems
 }
 
-func (dc *DoguDependencyValidator) validateDoguDependencies(dependencies []core.Dependency, optional bool) error {
+func (dc *doguDependencyValidator) validateDoguDependencies(dependencies []core.Dependency, optional bool) error {
 	var problems error
 
 	for _, doguDependency := range dependencies {
@@ -75,7 +75,7 @@ func (dc *DoguDependencyValidator) validateDoguDependencies(dependencies []core.
 		if name == "nginx" || name == "registrator" {
 			continue
 		}
-		err := dc.DoguDependencyChecker.CheckDoguDependency(doguDependency, optional)
+		err := dc.doguDependencyChecker.CheckDoguDependency(doguDependency, optional)
 		if err != nil {
 			dependencyError := ErrorDependencyValidation{
 				SourceError: err,
