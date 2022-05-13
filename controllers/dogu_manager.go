@@ -40,6 +40,7 @@ type DoguManager struct {
 	DoguRegistrator       DoguRegistrator
 	DependencyValidator   DependencyValidator
 	ServiceAccountCreator ServiceAccountCreator
+	ServiceAccountRemover ServiceAccountRemover
 }
 
 // DoguRegistry is used to fetch the dogu descriptor
@@ -77,6 +78,11 @@ type ServiceAccountCreator interface {
 	CreateServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
 }
 
+// ServiceAccountRemover is used to remove service accounts for a given dogu
+type ServiceAccountRemover interface {
+	RemoveServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
+}
+
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
 	doguRegistry := registry.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
@@ -98,6 +104,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(cesRegistry, executor)
+	serviceAccountRemover := serviceaccount.NewServiceAccountRemover(cesRegistry, executor)
 
 	return &DoguManager{
 		Client:                client,
@@ -108,6 +115,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
+		ServiceAccountRemover: serviceAccountRemover,
 	}, nil
 }
 
@@ -155,7 +163,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, err := m.getDoguDescriptor(ctx, doguResource, doguConfigMap)
+	dogu, err := m.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
@@ -240,7 +248,7 @@ func (m DoguManager) getDoguConfigMap(ctx context.Context, doguResource *k8sv1.D
 	}
 }
 
-func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu, doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
+func (m DoguManager) getDoguDescriptorWithConfigMap(ctx context.Context, doguResource *k8sv1.Dogu, doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
 	logger := log.FromContext(ctx)
 
 	if doguConfigMap != nil {
@@ -250,6 +258,20 @@ func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.
 		logger.Info("Fetching dogu from dogu registry...")
 		return m.getDoguDescriptorFromRegistry(doguResource)
 	}
+}
+
+func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+	doguConfigMap, err := m.getDoguConfigMap(ctx, doguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dogu config map: %w", err)
+	}
+
+	dogu, err := m.getDoguDescriptorWithConfigMap(ctx, doguResource, doguConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dogu: %w", err)
+	}
+
+	return dogu, nil
 }
 
 func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) error {
@@ -355,6 +377,18 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 	err := doguResource.Update(ctx, m.Client)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
+	}
+
+	logger.Info("Fetching dogu...")
+	dogu, err := m.getDoguDescriptor(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to get dogu: %w", err)
+	}
+
+	logger.Info("Delete service accounts...")
+	err = m.ServiceAccountRemover.RemoveServiceAccounts(ctx, doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to remove service accounts: %w", err)
 	}
 
 	logger.Info("Unregister dogu...")

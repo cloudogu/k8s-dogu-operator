@@ -43,9 +43,9 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 		doguConfig := c.Registry.DoguConfig(dogu.GetSimpleName())
 
 		// check if the service account already exists
-		exists, err := c.serviceAccountExists(parentPath, doguConfig)
+		exists, err := serviceAccountExists(parentPath, doguConfig)
 		if err != nil {
-			return fmt.Errorf("failed to check existence of service account: %w", err)
+			return err
 		}
 
 		if exists {
@@ -62,7 +62,7 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 
 		// check if the service account is optional
 		if !enabled && c.isOptionalServiceAccount(dogu, serviceAccount.Type) {
-			logger.Info("skipping optional service account creation for %s, because the dogu is not installed", serviceAccount.Type)
+			logger.Info(fmt.Sprintf("skipping optional service account creation for %s, because the dogu is not installed", serviceAccount.Type))
 			continue
 		}
 
@@ -78,7 +78,7 @@ func (c *Creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 		}
 
 		// execute create service account command
-		saCreds, err := c.executeServiceAccountCreateCommand(ctx, targetDescriptor, doguResource.Namespace, serviceAccount)
+		saCreds, err := c.executeServiceAccountCreateCommand(ctx, dogu, targetDescriptor, doguResource.Namespace, serviceAccount)
 		if err != nil {
 			return fmt.Errorf("failed to execute service account create command: %w", err)
 		}
@@ -109,14 +109,17 @@ func (c *Creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguCon
 	return nil
 }
 
-func (c *Creator) executeServiceAccountCreateCommand(ctx context.Context, dogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
-	createCommand := c.getCreateCommand(dogu)
+func (c *Creator) executeServiceAccountCreateCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
+	createCommand := c.getCreateCommand(saDogu)
 	if createCommand == nil {
 		return nil, fmt.Errorf("service account dogu does not expose create command")
 	}
 
-	saParams := append(serviceAccount.Params, dogu.GetSimpleName())
-	buffer, err := c.Executor.ExecCommand(ctx, dogu.GetSimpleName(), namespace, createCommand, saParams)
+	var args []string
+	args = append(args, serviceAccount.Params...)
+	args = append(args, consumerDogu.GetSimpleName())
+
+	buffer, err := c.Executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, createCommand, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}
@@ -206,7 +209,7 @@ func (c *Creator) containsDependency(slice []core.Dependency, dependencyName str
 	return false
 }
 
-func (c *Creator) serviceAccountExists(saPath string, doguConfig registry.ConfigurationContext) (bool, error) {
+func serviceAccountExists(saPath string, doguConfig registry.ConfigurationContext) (bool, error) {
 	exists, err := doguConfig.Exists(saPath)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to check if service account already exists")
