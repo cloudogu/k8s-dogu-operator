@@ -35,6 +35,7 @@ type doguManagerWithMocks struct {
 	DoguRegistrator       *mocks.DoguRegistrator
 	DependencyValidator   *mocks.DependencyValidator
 	ServiceAccountCreator *mocks.ServiceAccountCreator
+	ServiceAccountRemover *mocks.ServiceAccountRemover
 }
 
 func (d *doguManagerWithMocks) AssertMocks(t *testing.T) {
@@ -53,6 +54,7 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 	doguRegistrator := &mocks.DoguRegistrator{}
 	dependencyValidator := &mocks.DependencyValidator{}
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
+	serviceAccountRemover := &mocks.ServiceAccountRemover{}
 
 	doguManager := controllers.DoguManager{
 		Client:                k8sClient,
@@ -63,6 +65,7 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
+		ServiceAccountRemover: serviceAccountRemover,
 	}
 
 	return doguManagerWithMocks{
@@ -72,6 +75,7 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
+		ServiceAccountRemover: serviceAccountRemover,
 	}
 }
 
@@ -516,12 +520,19 @@ func TestDoguManager_Install(t *testing.T) {
 func TestDoguManager_Delete(t *testing.T) {
 	scheme := getDoguOnlyScheme()
 	ctx := context.TODO()
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "ConfigMap",
+	}, &corev1.ConfigMap{})
 
 	t.Run("successfully delete a dogu", func(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		managerWithMocks := getDoguManagerWithMocks()
 		managerWithMocks.DoguRegistrator.Mock.On("UnregisterDogu", mock.Anything).Return(nil)
+		managerWithMocks.ServiceAccountRemover.Mock.On("RemoveServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
 		managerWithMocks.DoguManager.Client = client
 		_ = client.Create(ctx, ldapCr)
 
@@ -545,11 +556,46 @@ func TestDoguManager_Delete(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to update dogu status")
 	})
 
+	t.Run("failed to get dogu descriptor", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		managerWithMocks := getDoguManagerWithMocks()
+		managerWithMocks.DoguManager.Client = client
+		_ = client.Create(ctx, ldapCr)
+		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(nil, assert.AnError)
+
+		// when
+		err := managerWithMocks.DoguManager.Delete(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get dogu")
+	})
+
+	t.Run("failed to remove service accounts", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
+		managerWithMocks := getDoguManagerWithMocks()
+		managerWithMocks.DoguManager.Client = client
+		_ = client.Create(ctx, ldapCr)
+		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		managerWithMocks.ServiceAccountRemover.Mock.On("RemoveServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
+
+		// when
+		err := managerWithMocks.DoguManager.Delete(ctx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to remove service accounts")
+	})
+
 	t.Run("failed to unregister dogu", func(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		managerWithMocks := getDoguManagerWithMocks()
 		managerWithMocks.DoguRegistrator.Mock.On("UnregisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
+		managerWithMocks.DoguRegistry.Mock.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		managerWithMocks.ServiceAccountRemover.Mock.On("RemoveServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.DoguManager.Client = client
 		_ = client.Create(ctx, ldapCr)
 
