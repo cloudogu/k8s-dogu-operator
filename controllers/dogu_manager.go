@@ -77,6 +77,10 @@ type ServiceAccountCreator interface {
 	CreateServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
 }
 
+type doguSecretsHandler interface {
+	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
+}
+
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
 	doguRegistry := registry.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)

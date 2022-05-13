@@ -133,6 +133,14 @@ func (d Dogu) GetDescriptorObjectKey() client.ObjectKey {
 	}
 }
 
+// GetSecretObjectKey returns the object key for the config map containing values that should be encrypted for the dogu
+func (d Dogu) GetSecretObjectKey() client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: d.Namespace,
+		Name:      d.Name + "-secrets",
+	}
+}
+
 // GetObjectMeta return the object meta with the actual name and namespace from the dogu resource
 func (d Dogu) GetObjectMeta() *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
