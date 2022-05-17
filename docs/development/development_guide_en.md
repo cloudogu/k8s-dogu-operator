@@ -5,7 +5,7 @@
 1. Follow the deployment instructions of k8s-ecosystem
 2. Edit your `/etc/hosts` and add a mapping from localhost to etcd
     - `127.0.0.1       localhost etcd etcd.ecosystem.svc.cluster.local`
-3. open the file `.myenv.template` and follow the instructions to create an env file with your personal data
+3. open the file `.env.template` and follow the instructions to create an env file with your personal data
 4. Run `make run` to run the dogu operator locally
 
 ## Makefile-Targets

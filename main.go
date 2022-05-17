@@ -19,24 +19,24 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp/v4/core"
 	cesregistry "github.com/cloudogu/cesapp/v4/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/sirupsen/logrus"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -48,20 +48,10 @@ var (
 	probeAddr            string
 )
 
-// applicationExiter is responsible for exiting the application correctly.
-type applicationExiter interface {
-	// Exit exits the application and prints the actuator error to the console.
-	Exit(err error)
-}
-
-type osExiter struct {
-}
-
-// Exit prints the actual error to stout and exits the application properly.
-func (e *osExiter) Exit(err error) {
-	setupLog.Error(err, "exiting dogu operator because of error")
-	os.Exit(1)
-}
+var (
+	// Version of the application
+	Version = "0.0.0"
+)
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -70,33 +60,48 @@ func init() {
 }
 
 func main() {
-	exiter := &osExiter{}
-	ctrl.SetLogger(zap.New())
-
-	operatorConfig, err := config.NewOperatorConfig()
+	err := startDoguOperator()
 	if err != nil {
-		setupLog.Error(err, "unable to create the operator configuration")
-		exiter.Exit(err)
+		setupLog.Error(err, "failed to operate dogu operator")
+		os.Exit(1)
+	}
+}
+
+func startDoguOperator() error {
+	configureLogger()
+
+	operatorConfig, err := config.NewOperatorConfig(Version)
+	if err != nil {
+		return fmt.Errorf("falied to create new operator configuration: %w", err)
 	}
 
 	options := getK8sManagerOptions(operatorConfig)
-
 	k8sManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		exiter.Exit(err)
+		return fmt.Errorf("falied to start manager: %w", err)
 	}
 
-	configureManager(k8sManager, operatorConfig, exiter, options)
+	err = configureManager(k8sManager, operatorConfig)
+	if err != nil {
+		return fmt.Errorf("failed to configure manager: %w", err)
+	}
 
-	startK8sManager(k8sManager, exiter)
+	return startK8sManager(k8sManager)
 }
 
-func configureManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig, exister applicationExiter, options manager.Options) {
-	configureReconciler(k8sManager, operatorConfig, exister, options)
+func configureManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig) error {
+	err := configureReconciler(k8sManager, operatorConfig)
+	if err != nil {
+		return fmt.Errorf("failed to configure reconciler: %w", err)
+	}
 
 	//+kubebuilder:scaffold:builder
-	addChecks(k8sManager, exister)
+	err = addChecks(k8sManager)
+	if err != nil {
+		return fmt.Errorf("failed to add checks to the manager: %w", err)
+	}
+
+	return nil
 }
 
 func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options {
@@ -105,8 +110,6 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-
-	configureLogger(operatorConfig)
 
 	options := ctrl.Options{
 		Scheme:                 scheme,
@@ -121,57 +124,56 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 	return options
 }
 
-func configureLogger(operatorConfig *config.OperatorConfig) {
-	opts := zap.Options{
-		Development: operatorConfig.DevelopmentLogMode,
-	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+func configureLogger() {
+	logrusLog := logrus.New()
+	logrusLog.SetFormatter(&logrus.TextFormatter{})
+	logrusLog.SetLevel(logrus.DebugLevel)
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	ctrl.SetLogger(logrusr.New(logrusLog))
 }
 
-func startK8sManager(k8sManager manager.Manager, exiter applicationExiter) {
+func startK8sManager(k8sManager manager.Manager) error {
 	setupLog.Info("starting manager")
-	if err := k8sManager.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		exiter.Exit(err)
-	}
-}
-
-func configureReconciler(k8sManager manager.Manager, operatorConfig *config.OperatorConfig, exiter applicationExiter, options manager.Options) {
-	doguManager := createDoguManager(k8sManager, operatorConfig, exiter, options)
-	if err := (controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager)).SetupWithManager(k8sManager); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Dogu")
-		exiter.Exit(err)
-	}
-}
-
-func createDoguManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig, exiter applicationExiter, options manager.Options) *controllers.DoguManager {
-	doguRegistry := controllers.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
-	imageRegistry := controllers.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
-	resourceGenerator := controllers.NewResourceGenerator(k8sManager.GetScheme())
-	registry, err := cesregistry.New(core.Registry{
-		Type:      "etcd",
-		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", options.Namespace)},
-	})
-
+	err := k8sManager.Start(ctrl.SetupSignalHandler())
 	if err != nil {
-		setupLog.Error(err, "unable to create registry")
-		exiter.Exit(err)
+		return fmt.Errorf("failed to start manager: %w", err)
 	}
 
-	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), registry, resourceGenerator)
-	return controllers.NewDoguManager(k8sManager.GetClient(), k8sManager.GetScheme(), resourceGenerator, doguRegistry, imageRegistry, doguRegistrator)
+	return nil
 }
 
-func addChecks(mgr manager.Manager, exiter applicationExiter) {
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		exiter.Exit(err)
+func configureReconciler(k8sManager manager.Manager, operatorConfig *config.OperatorConfig) error {
+	cesRegistry, err := cesregistry.New(core.Registry{
+		Type:      "etcd",
+		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", operatorConfig.Namespace)},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create ces registry: %w", err)
 	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		exiter.Exit(err)
+
+	doguManager, err := controllers.NewManager(k8sManager.GetClient(), operatorConfig, cesRegistry)
+	if err != nil {
+		return fmt.Errorf("failed to create dogu manager: %w", err)
 	}
+
+	err = (controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager)).SetupWithManager(k8sManager)
+	if err != nil {
+		return fmt.Errorf("failed to setup reconciler with manager: %w", err)
+	}
+
+	return nil
+}
+
+func addChecks(mgr manager.Manager) error {
+	err := mgr.AddHealthzCheck("healthz", healthz.Ping)
+	if err != nil {
+		return fmt.Errorf("failed to add healthz check: %w", err)
+	}
+
+	err = mgr.AddReadyzCheck("readyz", healthz.Ping)
+	if err != nil {
+		return fmt.Errorf("failed to add readyz check: %w", err)
+	}
+
+	return nil
 }

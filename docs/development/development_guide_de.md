@@ -5,7 +5,7 @@
 1. Befolgen Sie die Installationsanweisungen von k8s-ecosystem
 2. Bearbeiten Sie Ihre `/etc/hosts` und fügen Sie ein Mapping von localhost zu etcd hinzu
    - `127.0.0.1       localhost etcd etcd.ecosystem.svc.cluster.local`
-3. Öffnen Sie die Datei `.myenv.template` und folgen Sie den Anweisungen um eine 
+3. Öffnen Sie die Datei `.env.template` und folgen Sie den Anweisungen um eine 
    Umgebungsvariablendatei mit persönlichen Informationen anzulegen
 4. Führen Sie `make run` aus, um den dogu-Operator lokal auszuführen
 

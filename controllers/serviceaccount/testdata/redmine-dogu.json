@@ -1,0 +1,128 @@
+{
+  "Name": "official/redmine",
+  "Version": "4.2.3-10",
+  "DisplayName": "Redmine",
+  "Description": "Redmine is a flexible project management web application",
+  "Category": "Development Apps",
+  "Tags": [
+    "warp",
+    "pm",
+    "projectmanagement",
+    "issue",
+    "task"
+  ],
+  "Logo": "https://cloudogu.com/images/dogus/redmine.png",
+  "Url": "http://www.redmine.org",
+  "Image": "registry.cloudogu.com/official/redmine",
+  "Dependencies": [
+    {
+      "type": "dogu",
+      "name": "postgresql"
+    },
+    {
+      "type": "dogu",
+      "name": "cas"
+    },
+    {
+      "type": "dogu",
+      "name": "nginx"
+    },
+    {
+      "type": "dogu",
+      "name": "postfix"
+    }
+  ],
+  "Configuration": [
+    {
+      "Name": "logging/root",
+      "Description": "Set the root log level to one of ERROR, WARN, INFO, DEBUG.",
+      "Optional": true,
+      "Default": "INFO",
+      "Validation": {
+        "Type": "ONE_OF",
+        "Values": [
+          "WARN",
+          "DEBUG",
+          "INFO",
+          "ERROR"
+        ]
+      }
+    },
+    {
+      "Name": "container_config/memory_limit",
+      "Description": "Limits the container's memory usage. Use a positive integer value followed by one of these units [b,k,m,g] (byte, kibibyte, mebibyte, gibibyte).",
+      "Optional": true,
+      "Validation": {
+        "Type": "BINARY_MEASUREMENT"
+      }
+    },
+    {
+      "Name": "container_config/swap_limit",
+      "Description": "Limits the container's swap memory usage. Use zero or a positive integer value followed by one of these units [b,k,m,g] (byte, kibibyte, mebibyte, gibibyte). 0 will disable swapping.",
+      "Optional": true,
+      "Validation": {
+        "Type": "BINARY_MEASUREMENT"
+      }
+    },
+    {
+      "Name": "etcd_redmine_config",
+      "Description": "Applies default configuration to redmine.",
+      "Optional": true
+    }
+  ],
+  "Volumes": [
+    {
+      "Name": "files",
+      "Path": "/usr/share/webapps/redmine/files",
+      "Owner": "1000",
+      "Group": "1000",
+      "NeedsBackup": true
+    },
+    {
+      "Name": "plugins",
+      "Path": "/var/tmp/redmine/plugins",
+      "Owner": "1000",
+      "Group": "1000",
+      "NeedsBackup": false
+    },
+    {
+      "Name": "logs",
+      "Path": "/usr/share/webapps/redmine/log",
+      "Owner": "1000",
+      "Group": "1000",
+      "NeedsBackup": false
+    }
+  ],
+  "ServiceAccounts": [
+    {
+      "Type": "postgresql"
+    }
+  ],
+  "HealthChecks": [
+    {
+      "Type": "tcp",
+      "Port": 3000
+    },
+    {
+      "Type": "state"
+    }
+  ],
+  "ExposedCommands": [
+    {
+      "Name": "post-upgrade",
+      "Command": "/post-upgrade.sh"
+    },
+    {
+      "Name": "upgrade-notification",
+      "Command": "/upgrade-notification.sh"
+    },
+    {
+      "Name": "pre-upgrade",
+      "Command": "/pre-upgrade.sh"
+    },
+    {
+      "Name": "delete-plugin",
+      "Command": "/delete-plugin.sh"
+    }
+  ]
+}

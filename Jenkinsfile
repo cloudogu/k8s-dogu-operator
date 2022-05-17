@@ -61,7 +61,7 @@ node('docker') {
                             }
 
                             stage('Generate k8s Resources') {
-                                make 'k8s-generate'
+                                make 'k8s-create-temporary-resource'
                                 archiveArtifacts 'target/*.yaml'
                             }
                         }
@@ -96,6 +96,15 @@ node('docker') {
                         .inside("--volume ${WORKSPACE}:/workdir -w /workdir") {
                             sh "yq -i '(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.name == \"manager\")).image=\"${imageName}\"' ${sourceDeploymentYaml}"
                         }
+            }
+
+            stage('Deploy etcd') {
+                k3d.kubectl("apply -f https://raw.githubusercontent.com/cloudogu/k8s-etcd/develop/manifests/etcd.yaml")
+            }
+
+            stage('Wait for etcd to be ready') {
+                sleep(time:5,unit:"SECONDS")
+                k3d.kubectl("wait --for=condition=ready pod -l statefulset.kubernetes.io/pod-name=etcd-0 --timeout=300s")
             }
 
             stage('Deploy Manager') {
@@ -205,6 +214,10 @@ void stageAutomaticRelease() {
 
         stage('Sign after Release') {
             gpg.createSignature()
+        }
+
+        stage('Regenerate resources for release') {
+            make 'k8s-generate'
         }
 
         stage('Add Github-Release') {

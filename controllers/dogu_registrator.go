@@ -33,29 +33,25 @@ func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, 
 
 // RegisterDogu registers a dogu in a cluster. It generates key pairs and configures the dogu registry
 func (c *CesDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
-	err := c.doguRegistry.Register(dogu)
+	logger := log.FromContext(ctx)
+	enabled, err := c.doguRegistry.IsEnabled(dogu.GetSimpleName())
 	if err != nil {
-		return fmt.Errorf("failed to register dogu %s: %w", dogu.GetSimpleName(), err)
+		return fmt.Errorf("failed to check if dogu is already installed and enabled: %w", err)
 	}
 
-	err = c.doguRegistry.Enable(dogu)
-	if err != nil {
-		return fmt.Errorf("failed to enable dogu: %w", err)
+	if enabled {
+		logger.Info("Skipping dogu registration because it is already installed and enabled in the dogu registry")
+		return nil
 	}
 
-	keyPair, err := c.createKeypair()
+	err = c.addDoguToRegistry(dogu)
 	if err != nil {
-		return fmt.Errorf("failed to create keypair: %w", err)
+		return fmt.Errorf("failed to add dogu to registry: %w", err)
 	}
 
-	err = c.writePublicKey(keyPair.Public(), dogu)
+	err = c.registerKeys(ctx, dogu, doguResource)
 	if err != nil {
-		return fmt.Errorf("failed to write public key: %w", err)
-	}
-
-	err = c.writePrivateKey(ctx, keyPair.Private(), doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to write private key: %w", err)
+		return fmt.Errorf("failed to register keys: %w", err)
 	}
 
 	return nil
@@ -76,10 +72,48 @@ func (c *CesDoguRegistrator) UnregisterDogu(dogu string) error {
 	return nil
 }
 
-func (c *CesDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
-	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: "pkcs1v15"})
+func (c *CesDoguRegistrator) addDoguToRegistry(dogu *core.Dogu) error {
+	err := c.doguRegistry.Register(dogu)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create key provider: %w", err)
+		return fmt.Errorf("failed to register dogu %s: %w", dogu.GetSimpleName(), err)
+	}
+
+	err = c.doguRegistry.Enable(dogu)
+	if err != nil {
+		return fmt.Errorf("failed to enable dogu: %w", err)
+	}
+
+	return nil
+}
+
+func (c *CesDoguRegistrator) registerKeys(ctx context.Context, dogu *core.Dogu, doguResource *k8sv1.Dogu) error {
+	keyPair, err := c.createKeypair()
+	if err != nil {
+		return fmt.Errorf("failed to create keypair: %w", err)
+	}
+
+	err = c.writePublicKey(keyPair.Public(), dogu)
+	if err != nil {
+		return fmt.Errorf("failed to write public key: %w", err)
+	}
+
+	err = c.writePrivateKey(ctx, keyPair.Private(), doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to write private key: %w", err)
+	}
+
+	return nil
+}
+
+func (c *CesDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
+	keyProviderStr, err := c.registry.GlobalConfig().Get("key_provider")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key provider: %w", err)
+	}
+
+	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: keyProviderStr})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create keyprovider: %w", err)
 	}
 
 	keyPair, err := keyProvider.Generate()

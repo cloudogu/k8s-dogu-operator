@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: cockpit
+  annotations:
+    test: dev
+  labels:
+    dogu: cockpit
+    app: ces
+spec:
+  name: official/cockpit
+  version: 2.0.2-3
