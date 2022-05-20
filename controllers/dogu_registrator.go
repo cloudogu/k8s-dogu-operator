@@ -17,12 +17,12 @@ type CesDoguRegistrator struct {
 	client.Client
 	registry        cesregistry.Registry
 	doguRegistry    cesregistry.DoguRegistry
-	secretGenerator DoguResourceGenerator
+	secretGenerator doguResourceGenerator
 }
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator DoguResourceGenerator) *CesDoguRegistrator {
+func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator doguResourceGenerator) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
 		Client:          client,
 		registry:        registry,

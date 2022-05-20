@@ -24,8 +24,8 @@ const (
 	serviceTagWebapp          = "webapp"
 )
 
-// CesService describes a reachable service in the ecosystem.
-type CesService struct {
+// cesService describes a reachable service in the ecosystem.
+type cesService struct {
 	Name     string `json:"name"`
 	Port     int32  `json:"port"`
 	Location string `json:"location"`
@@ -57,7 +57,7 @@ func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *i
 	return nil
 }
 
-func appendAnnotations(service *corev1.Service, cesServices []CesService) error {
+func appendAnnotations(service *corev1.Service, cesServices []cesService) error {
 	if len(cesServices) < 1 {
 		return nil
 	}
@@ -130,12 +130,12 @@ func splitEnvVariable(variable string) (string, string, error) {
 	return variableParts[0], variableParts[1], nil
 }
 
-func createCesServices(service *corev1.Service, config *imagev1.Config, serviceVariables map[string]string) ([]CesService, error) {
-	var cesServices []CesService
+func createCesServices(service *corev1.Service, config *imagev1.Config, serviceVariables map[string]string) ([]cesService, error) {
+	var cesServices []cesService
 
 	webAppServices, err := createWebAppCesServices(service, config, serviceVariables)
 	if err != nil {
-		return []CesService{}, fmt.Errorf("failed to create web app ces services: %w", err)
+		return []cesService{}, fmt.Errorf("failed to create web app ces services: %w", err)
 	}
 	cesServices = append(cesServices, webAppServices...)
 
@@ -143,7 +143,7 @@ func createCesServices(service *corev1.Service, config *imagev1.Config, serviceV
 
 	additionalServices, err := createAdditionalCesServices(serviceVariables, defaultPort)
 	if err != nil {
-		return []CesService{}, fmt.Errorf("failed to create additional ces services: %w", err)
+		return []cesService{}, fmt.Errorf("failed to create additional ces services: %w", err)
 	}
 	cesServices = append(cesServices, additionalServices...)
 
@@ -158,17 +158,17 @@ func getDefaultPortFromService(service *corev1.Service) int32 {
 	return service.Spec.Ports[0].Port
 }
 
-func createWebAppCesServices(service *corev1.Service, config *imagev1.Config, serviceVariables map[string]string) ([]CesService, error) {
-	var webAppServices []CesService
+func createWebAppCesServices(service *corev1.Service, config *imagev1.Config, serviceVariables map[string]string) ([]cesService, error) {
+	var webAppServices []cesService
 
 	for exposedPort := range config.ExposedPorts {
 		if webAppServices == nil {
-			webAppServices = []CesService{}
+			webAppServices = []cesService{}
 		}
 
 		port, protocol, err := SplitImagePortConfig(exposedPort)
 		if err != nil {
-			return []CesService{}, fmt.Errorf("error splitting port config: %w", err)
+			return []cesService{}, fmt.Errorf("error splitting port config: %w", err)
 		}
 
 		if !isServiceWebApp(port, protocol, serviceVariables) {
@@ -179,7 +179,7 @@ func createWebAppCesServices(service *corev1.Service, config *imagev1.Config, se
 		location := getServiceLocation(serviceVariables, port, name)
 		pass := getServicePass(serviceVariables, port, name)
 
-		cesService := CesService{
+		cesService := cesService{
 			Name:     name,
 			Port:     port,
 			Location: location,
@@ -277,14 +277,14 @@ func getValueFromServiceVariables(serviceVariables map[string]string, port int32
 	return value
 }
 
-func createAdditionalCesServices(serviceVariables map[string]string, defaultPort int32) ([]CesService, error) {
+func createAdditionalCesServices(serviceVariables map[string]string, defaultPort int32) ([]cesService, error) {
 	additionalCesServicesString, hasAdditionalServices := serviceVariables[serviceAdditionalServices]
 
 	if hasAdditionalServices {
-		var additionalCesServices []CesService
+		var additionalCesServices []cesService
 		err := json.Unmarshal([]byte(additionalCesServicesString), &additionalCesServices)
 		if err != nil {
-			return []CesService{}, fmt.Errorf("failed to unmarshal additional services: %w", err)
+			return []cesService{}, fmt.Errorf("failed to unmarshal additional services: %w", err)
 		}
 
 		for i, service := range additionalCesServices {
@@ -307,7 +307,7 @@ func createAdditionalCesServices(serviceVariables map[string]string, defaultPort
 		return additionalCesServices, nil
 	}
 
-	return []CesService{}, nil
+	return []cesService{}, nil
 }
 
 func SplitImagePortConfig(exposedPort string) (int32, corev1.Protocol, error) {

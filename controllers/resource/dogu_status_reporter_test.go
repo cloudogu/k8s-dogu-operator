@@ -47,7 +47,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		Kind:    "dogu",
 	}, &k8sv1.Dogu{})
 
-	t.Run("report with an error without a reportable error interface", func(t *testing.T) {
+	t.Run("Report with an error without a reportable error interface", func(t *testing.T) {
 		// given
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
@@ -69,7 +69,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		assert.Equal(t, "my error", savedDogu.Status.StatusMessages[0])
 	})
 
-	t.Run("report with an error with reportable error interface", func(t *testing.T) {
+	t.Run("Report with an error with reportable error interface", func(t *testing.T) {
 		// given
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
@@ -93,7 +93,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		assert.Equal(t, "my test error", savedDogu.Status.StatusMessages[1])
 	})
 
-	t.Run("report with an error with multiple wrapped reportable errors", func(t *testing.T) {
+	t.Run("Report with an error with multiple wrapped reportable errors", func(t *testing.T) {
 		// given
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
@@ -118,7 +118,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		assert.Equal(t, myError.Error(), savedDogu.Status.StatusMessages[1])
 	})
 
-	t.Run("report with a multierror containing multiple reportable errors", func(t *testing.T) {
+	t.Run("Report with a multierror containing multiple reportable errors", func(t *testing.T) {
 		// given
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
@@ -149,7 +149,7 @@ func TestDoguErrorReporter_ReportError(t *testing.T) {
 		assert.Equal(t, resultError.Error(), savedDogu.Status.StatusMessages[4])
 	})
 
-	t.Run("fail report on updating the status", func(t *testing.T) {
+	t.Run("fail Report on updating the status", func(t *testing.T) {
 		// given
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
@@ -174,7 +174,7 @@ func TestDoguErrorReporter_ReportMessage(t *testing.T) {
 		Kind:    "dogu",
 	}, &k8sv1.Dogu{})
 
-	t.Run("report a single message", func(t *testing.T) {
+	t.Run("Report a single message", func(t *testing.T) {
 		// given
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
@@ -195,7 +195,7 @@ func TestDoguErrorReporter_ReportMessage(t *testing.T) {
 		assert.Equal(t, "this is my message", savedDogu.Status.StatusMessages[0])
 	})
 
-	t.Run("report multiple message", func(t *testing.T) {
+	t.Run("Report multiple message", func(t *testing.T) {
 		// given
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},
@@ -220,7 +220,7 @@ func TestDoguErrorReporter_ReportMessage(t *testing.T) {
 		assert.Equal(t, "this is my message 2", savedDogu.Status.StatusMessages[1])
 	})
 
-	t.Run("fail report on updating the status", func(t *testing.T) {
+	t.Run("fail Report on updating the status", func(t *testing.T) {
 		// given
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "testdogu", Namespace: "testnamespace"},

@@ -9,27 +9,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// Remover is the unit to handle the removal of service accounts
-type Remover struct {
-	Registry registry.Registry `json:"registry"`
-	Executor CommandExecutor   `json:"executor"`
+// remover is the unit to handle the removal of service accounts
+type remover struct {
+	registry registry.Registry
+	executor commandExecutor
 }
 
 // NewServiceAccountRemover creates a new instance of ServiceAccountCreator
-func NewServiceAccountRemover(registry registry.Registry, commandExecutor CommandExecutor) *Remover {
-	return &Remover{
-		Registry: registry,
-		Executor: commandExecutor,
+func NewServiceAccountRemover(registry registry.Registry, commandExecutor commandExecutor) *remover {
+	return &remover{
+		registry: registry,
+		executor: commandExecutor,
 	}
 }
 
 // RemoveServiceAccounts removes all service accounts for a given dogu
-func (r *Remover) RemoveServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+func (r *remover) RemoveServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
 		parentPath := "sa-" + serviceAccount.Type
-		doguConfig := r.Registry.DoguConfig(dogu.GetSimpleName())
+		doguConfig := r.registry.DoguConfig(dogu.GetSimpleName())
 
 		// check if the service account really exists
 		exists, err := serviceAccountExists(parentPath, doguConfig)
@@ -43,7 +43,7 @@ func (r *Remover) RemoveServiceAccounts(ctx context.Context, doguResource *k8sv1
 		}
 
 		// check if the dogu is enabled
-		doguRegistry := r.Registry.DoguRegistry()
+		doguRegistry := r.registry.DoguRegistry()
 		enabled, err := doguRegistry.IsEnabled(serviceAccount.Type)
 		if err != nil {
 			return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
@@ -75,7 +75,7 @@ func (r *Remover) RemoveServiceAccounts(ctx context.Context, doguResource *k8sv1
 	return nil
 }
 
-func (r *Remover) executeServiceAccountRemoveCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) error {
+func (r *remover) executeServiceAccountRemoveCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) error {
 	removeCommand := r.getRemoveCommand(saDogu)
 	if removeCommand == nil {
 		return fmt.Errorf("service account dogu does not expose remove command")
@@ -84,7 +84,7 @@ func (r *Remover) executeServiceAccountRemoveCommand(ctx context.Context, consum
 	var args []string
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
-	_, err := r.Executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, removeCommand, args)
+	_, err := r.executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, removeCommand, args)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
@@ -92,7 +92,7 @@ func (r *Remover) executeServiceAccountRemoveCommand(ctx context.Context, consum
 	return nil
 }
 
-func (r *Remover) getRemoveCommand(dogu *core.Dogu) *core.ExposedCommand {
+func (r *remover) getRemoveCommand(dogu *core.Dogu) *core.ExposedCommand {
 	var createCmd *core.ExposedCommand
 	for _, cmd := range dogu.ExposedCommands {
 		if cmd.Name == "service-account-remove" {

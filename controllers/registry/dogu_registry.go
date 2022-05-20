@@ -9,17 +9,17 @@ import (
 	"net/http"
 )
 
-// HTTPDoguRegistry is a component which can communicate with a dogu registry.
+// httpDoguRegistry is a component which can communicate with a dogu registry.
 // It is used for pulling the dogu descriptor via http
-type HTTPDoguRegistry struct {
+type httpDoguRegistry struct {
 	username string
 	password string
 	url      string
 }
 
-// NewHTTPDoguRegistry create a new instance of HTTPDoguRegistry
-func NewHTTPDoguRegistry(username string, password string, url string) *HTTPDoguRegistry {
-	return &HTTPDoguRegistry{
+// NewHTTPDoguRegistry create a new instance of httpDoguRegistry
+func NewHTTPDoguRegistry(username string, password string, url string) *httpDoguRegistry {
+	return &httpDoguRegistry{
 		username: username,
 		password: password,
 		url:      url,
@@ -27,7 +27,7 @@ func NewHTTPDoguRegistry(username string, password string, url string) *HTTPDogu
 }
 
 // GetDogu fetches a dogu.json with a given dogu custom resource. It uses basic auth for registry authentication
-func (h HTTPDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+func (h httpDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s/%s", h.url, doguResource.Spec.Name, doguResource.Spec.Version), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error building request: %w", err)

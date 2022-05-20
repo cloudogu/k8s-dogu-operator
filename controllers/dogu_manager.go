@@ -34,22 +34,22 @@ var NewManager = NewDoguManager
 type DoguManager struct {
 	client.Client
 	Scheme                *runtime.Scheme
-	ResourceGenerator     DoguResourceGenerator
-	DoguRegistry          DoguRegistry
-	ImageRegistry         ImageRegistry
-	DoguRegistrator       DoguRegistrator
-	DependencyValidator   DependencyValidator
-	ServiceAccountCreator ServiceAccountCreator
-	ServiceAccountRemover ServiceAccountRemover
+	ResourceGenerator     doguResourceGenerator
+	DoguRegistry          doguRegistry
+	ImageRegistry         imageRegistry
+	DoguRegistrator       doguRegistrator
+	DependencyValidator   dependencyValidator
+	ServiceAccountCreator serviceAccountCreator
+	ServiceAccountRemover serviceAccountRemover
 }
 
-// DoguRegistry is used to fetch the dogu descriptor
-type DoguRegistry interface {
+// doguRegistry is used to fetch the dogu descriptor
+type doguRegistry interface {
 	GetDogu(*k8sv1.Dogu) (*core.Dogu, error)
 }
 
-// DoguResourceGenerator is used to generate kubernetes resources
-type DoguResourceGenerator interface {
+// doguResourceGenerator is used to generate kubernetes resources
+type doguResourceGenerator interface {
 	GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error)
 	GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error)
 	GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error)
@@ -57,29 +57,29 @@ type DoguResourceGenerator interface {
 	GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error)
 }
 
-// ImageRegistry is used to pull container images
-type ImageRegistry interface {
+// imageRegistry is used to pull container images
+type imageRegistry interface {
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
 }
 
-// DoguRegistrator is used to register dogus
-type DoguRegistrator interface {
+// doguRegistrator is used to register dogus
+type doguRegistrator interface {
 	RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
 	UnregisterDogu(dogu string) error
 }
 
-// DependencyValidator is used to check if dogu dependencies are installed
-type DependencyValidator interface {
+// dependencyValidator is used to check if dogu dependencies are installed
+type dependencyValidator interface {
 	ValidateDependencies(dogu *core.Dogu) error
 }
 
-// ServiceAccountCreator is used to create service accounts for a given dogu
-type ServiceAccountCreator interface {
+// serviceAccountCreator is used to create service accounts for a given dogu
+type serviceAccountCreator interface {
 	CreateServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
 }
 
-// ServiceAccountRemover is used to remove service accounts for a given dogu
-type ServiceAccountRemover interface {
+// serviceAccountRemover is used to remove service accounts for a given dogu
+type serviceAccountRemover interface {
 	RemoveServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
 }
 
