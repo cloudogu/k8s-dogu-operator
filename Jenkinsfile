@@ -217,7 +217,13 @@ void stageAutomaticRelease() {
         }
 
         stage('Regenerate resources for release') {
-            make 'k8s-generate'
+            new Docker(this)
+                    .image('golang:1.17.7')
+                    .mountJenkinsUser()
+                    .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
+                            {
+                                make 'k8s-generate'
+                            }
         }
 
         stage('Add Github-Release') {
