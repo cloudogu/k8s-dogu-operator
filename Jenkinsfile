@@ -35,7 +35,7 @@ node('docker') {
             lintDockerfile()
         }
 
-        docker
+        new Docker(this)
                 .image('golang:1.17.7')
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
@@ -217,7 +217,7 @@ void stageAutomaticRelease() {
         }
 
         stage('Regenerate resources for release') {
-            docker
+            new Docker(this)
                     .image('golang:1.17.7')
                     .mountJenkinsUser()
                     .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
