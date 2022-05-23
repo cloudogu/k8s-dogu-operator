@@ -103,6 +103,9 @@ var _ = BeforeSuite(func() {
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
 	serviceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
+	doguSecretHandler := &mocks.DoguSecretsHandler{}
+	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
+
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
 	doguManager := controllers.DoguManager{
 		Client:                k8sManager.GetClient(),
@@ -113,6 +116,7 @@ var _ = BeforeSuite(func() {
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
+		DoguSecretHandler:     doguSecretHandler,
 	}
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
