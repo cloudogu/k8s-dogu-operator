@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,12 +18,14 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 )
 
 const finalizerName = "dogu-finalizer"
@@ -184,6 +187,14 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	if err != nil {
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
+
+	customK8sResources, err := m.fileExtractor(ctx, doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to pull customK8sResources: %w", err)
+	}
+	logger.Info("============")
+	logger.Info(customK8sResources)
+	logger.Info("============")
 
 	logger.Info("Get image config from image...")
 	imageConfig, err := image.ConfigFile()
@@ -379,6 +390,58 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
 
 	return nil
+}
+
+func (m *DoguManager) fileExtractor(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (string, error) {
+	logger := log.FromContext(ctx)
+
+	podspec, containerPodName := createPodSpec(doguResource.ObjectMeta.Namespace, dogu)
+	err := m.Client.Create(ctx, &podspec)
+	if err != nil {
+		return "", fmt.Errorf("could not create pod for file extraction: %w", err)
+	}
+	defer func() {
+		logger.Info("Cleaning up intermediate exec pod for dogu ", dogu.Name)
+		err = m.Client.Delete(ctx, &podspec)
+		if err != nil {
+			logger.Error(fmt.Errorf("failed to delete custom dogu descriptor: %w", err), "Error while deleting intermediate ")
+		}
+	}()
+	time.Sleep(10 * time.Second)
+
+	podexec, err := newPodExec(ctx, doguResource.ObjectMeta.Namespace, containerPodName, containerPodName)
+	// TODO 1. list yaml files, 1. output filename for tracability, 3. iterate over all files and,  and 4. import single yaml to k8s
+	podFile := NewPodFile("/k8s/nginx-ingress.yaml", podexec)
+	var buf bytes.Buffer
+	_, err = podFile.downloadFile(&buf)
+	if err != nil {
+		return "", fmt.Errorf("could not read nginx-ingress.yaml ")
+	}
+	return buf.String(), nil
+}
+
+func createPodSpec(k8sNamespace string, dogu *core.Dogu) (corev1.Pod, string) {
+	containerName := dogu.GetSimpleName() + "-podexec"
+
+	return corev1.Pod{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        containerName,
+			Namespace:   k8sNamespace,
+			Labels:      map[string]string{"app": "ces", "dogu": containerName},
+			Annotations: make(map[string]string),
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:            containerName,
+					Image:           dogu.Image + ":" + dogu.Version,
+					Command:         []string{"/bin/sleep", "60"},
+					ImagePullPolicy: corev1.PullIfNotPresent,
+				},
+			},
+		},
+	}, containerName
 }
 
 // TODO: Implement Upgrade
