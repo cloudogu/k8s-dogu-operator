@@ -98,10 +98,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresCreateCmd, []string{"redmine"}).Return(buf, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -115,10 +115,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, assert.AnError)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, nil)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -134,10 +134,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, nil)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -154,10 +154,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, nil)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -176,10 +176,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, nil)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptorOptional)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptorOptional)
 
 		// then
 		require.NoError(t, err)
@@ -196,10 +196,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, nil)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -218,10 +218,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, nil)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -241,14 +241,14 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, nil)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, nil)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "service account dogu does not expose create command")
+		assert.Contains(t, err.Error(), "service account dogu postgresql does not expose service-account-create command")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
 
@@ -265,10 +265,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresCreateCmd, []string{"redmine"}).Return(nil, assert.AnError)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -291,10 +291,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		commandExecutorMock := &mocks.CommandExecutor{}
 		invalidBuffer := bytes.NewBufferString("username:user:invalid\npassword:password\ndatabase:dbname")
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresCreateCmd, []string{"redmine"}).Return(invalidBuffer, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -318,10 +318,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresCreateCmd, []string{"redmine"}).Return(buf, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -346,10 +346,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresCreateCmd, []string{"redmine"}).Return(buf, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -374,10 +374,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresCreateCmd, []string{"redmine"}).Return(buf, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -403,10 +403,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresCreateCmd, []string{"redmine"}).Return(buf, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -433,10 +433,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		commandExecutorMock := &mocks.CommandExecutor{}
 		buf := bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname")
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresCreateCmd, []string{"redmine"}).Return(buf, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountCreator(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewCreator(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.CreateServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)

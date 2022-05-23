@@ -17,8 +17,8 @@ type httpDoguRegistry struct {
 	url      string
 }
 
-// NewHTTPDoguRegistry create a new instance of httpDoguRegistry
-func NewHTTPDoguRegistry(username string, password string, url string) *httpDoguRegistry {
+// New creates a new instance of httpDoguRegistry
+func New(username string, password string, url string) *httpDoguRegistry {
 	return &httpDoguRegistry{
 		username: username,
 		password: password,

@@ -36,10 +36,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresRemoveCmd, []string{"redmine"}).Return(nil, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -53,10 +53,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, assert.AnError)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, nil)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, nil)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -71,10 +71,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, nil)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, nil)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -91,10 +91,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, nil)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, nil)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -112,17 +112,17 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, nil)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, nil)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
 		mock.AssertExpectationsForObjects(t, doguConfig, registry, doguRegistry)
 	})
 
-	t.Run("failed to get sa descriptor", func(t *testing.T) {
+	t.Run("failed to get dogu.json from service account dogu", func(t *testing.T) {
 		// given
 		ctx := context.TODO()
 		doguConfig := &cesmocks.ConfigurationContext{}
@@ -133,10 +133,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, nil)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, nil)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -155,14 +155,14 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, nil)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, nil)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "service account dogu does not expose remove command")
+		assert.Contains(t, err.Error(), "service account dogu postgresql does not expose service-account-remove command")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry, doguRegistry)
 	})
 
@@ -179,10 +179,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresRemoveCmd, []string{"redmine"}).Return(nil, assert.AnError)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -204,10 +204,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", &postgresRemoveCmd, []string{"redmine"}).Return(nil, nil)
-		serviceAccountCreator := serviceaccount.NewServiceAccountRemover(registry, commandExecutorMock)
+		serviceAccountCreator := serviceaccount.NewRemover(registry, commandExecutorMock)
 
 		// when
-		err := serviceAccountCreator.RemoveServiceAccounts(ctx, redmineCr, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptor)
 
 		// then
 		require.Error(t, err)

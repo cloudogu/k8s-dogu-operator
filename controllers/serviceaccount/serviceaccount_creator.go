@@ -8,7 +8,6 @@ import (
 	"github.com/cloudogu/cesapp/v4/core"
 	"github.com/cloudogu/cesapp/v4/keys"
 	"github.com/cloudogu/cesapp/v4/registry"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/pkg/errors"
 	"io"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,24 +25,23 @@ type creator struct {
 	executor commandExecutor
 }
 
-// NewServiceAccountCreator creates a new instance of ServiceAccountCreator
-func NewServiceAccountCreator(registry registry.Registry, commandExecutor commandExecutor) *creator {
+// NewCreator creates a new instance of ServiceAccountCreator
+func NewCreator(registry registry.Registry, commandExecutor commandExecutor) *creator {
 	return &creator{
 		registry: registry,
 		executor: commandExecutor,
 	}
 }
 
-// CreateServiceAccounts creates all service account for a given dogu
-func (c *creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+// CreateAll creates all service accounts for a given dogu
+func (c *creator) CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
-		parentPath := "sa-" + serviceAccount.Type
+		registryCredentialPath := "sa-" + serviceAccount.Type
 		doguConfig := c.registry.DoguConfig(dogu.GetSimpleName())
 
-		// check if the service account already exists
-		exists, err := serviceAccountExists(parentPath, doguConfig)
+		exists, err := serviceAccountExists(registryCredentialPath, doguConfig)
 		if err != nil {
 			return err
 		}
@@ -53,37 +51,31 @@ func (c *creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 			continue
 		}
 
-		// check if the dogu is enabled
 		doguRegistry := c.registry.DoguRegistry()
 		enabled, err := doguRegistry.IsEnabled(serviceAccount.Type)
 		if err != nil {
 			return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 		}
 
-		// check if the service account is optional
 		if !enabled && c.isOptionalServiceAccount(dogu, serviceAccount.Type) {
 			logger.Info(fmt.Sprintf("skipping optional service account creation for %s, because the dogu is not installed", serviceAccount.Type))
 			continue
 		}
 
-		// check if the service account dogu is enabled and mandatory
 		if !enabled && c.containsDependency(dogu.Dependencies, serviceAccount.Type) {
 			return fmt.Errorf("service account dogu is not enabled and not optional")
 		}
 
-		// get the service account dogu.json
-		targetDescriptor, err := doguRegistry.Get(serviceAccount.Type)
+		saDogu, err := doguRegistry.Get(serviceAccount.Type)
 		if err != nil {
 			return fmt.Errorf("failed to get service account dogu.json: %w", err)
 		}
 
-		// execute create service account command
-		saCreds, err := c.executeServiceAccountCreateCommand(ctx, dogu, targetDescriptor, doguResource.Namespace, serviceAccount)
+		saCreds, err := c.executeCommand(ctx, dogu, saDogu, namespace, serviceAccount)
 		if err != nil {
 			return fmt.Errorf("failed to execute service account create command: %w", err)
 		}
 
-		// save credentials
 		err = c.saveServiceAccount(serviceAccount, doguConfig, saCreds)
 		if err != nil {
 			return fmt.Errorf("failed to save the service account credentials: %w", err)
@@ -94,13 +86,11 @@ func (c *creator) CreateServiceAccounts(ctx context.Context, doguResource *k8sv1
 }
 
 func (c *creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguConfig registry.ConfigurationContext, credentials map[string]string) error {
-	// get dogu public key
 	publicKey, err := c.getPublicKey(doguConfig)
 	if err != nil {
 		return fmt.Errorf("failed to read public key from string: %w", err)
 	}
 
-	// write credentials
 	err = c.writeServiceAccounts(doguConfig, serviceAccount, credentials, publicKey)
 	if err != nil {
 		return fmt.Errorf("failed to write service account: %w", err)
@@ -109,10 +99,10 @@ func (c *creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguCon
 	return nil
 }
 
-func (c *creator) executeServiceAccountCreateCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
-	createCommand := c.getCreateCommand(saDogu)
-	if createCommand == nil {
-		return nil, fmt.Errorf("service account dogu does not expose create command")
+func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
+	createCommand, err := getCommand(saDogu, "service-account-create")
+	if err != nil {
+		return nil, err
 	}
 
 	var args []string
@@ -124,7 +114,6 @@ func (c *creator) executeServiceAccountCreateCommand(ctx context.Context, consum
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}
 
-	// parse service accounts
 	saCreds, err := c.parseServiceCommandOutput(buffer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse service account: %w", err)
@@ -172,20 +161,18 @@ func (c *creator) writeServiceAccounts(doguConfig registry.ConfigurationContext,
 	return nil
 }
 
-func (c *creator) getCreateCommand(dogu *core.Dogu) *core.ExposedCommand {
-	var createCmd *core.ExposedCommand
+func getCommand(dogu *core.Dogu, command string) (*core.ExposedCommand, error) {
 	for _, cmd := range dogu.ExposedCommands {
-		if cmd.Name == "service-account-create" {
-			createCmd = &core.ExposedCommand{
+		if cmd.Name == command {
+			return &core.ExposedCommand{
 				Name:        cmd.Name,
 				Description: cmd.Description,
 				Command:     cmd.Command,
-			}
-			break
+			}, nil
 		}
 	}
 
-	return createCmd
+	return nil, fmt.Errorf("service account dogu %s does not expose %s command", dogu.GetSimpleName(), command)
 }
 
 func (c *creator) isOptionalServiceAccount(dogu *core.Dogu, sa string) bool {

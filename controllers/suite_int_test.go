@@ -101,9 +101,9 @@ var _ = BeforeSuite(func() {
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, &EtcdDoguRegistry)
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
-	serviceAccountCreator.Mock.On("CreateServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	serviceAccountCreator.Mock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
-	serviceAccountRemover.Mock.On("RemoveServiceAccounts", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	serviceAccountRemover.Mock.On("RemoveAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
 	doguManager := controllers.DoguManager{

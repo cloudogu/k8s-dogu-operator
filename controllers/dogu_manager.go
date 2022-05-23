@@ -75,17 +75,17 @@ type dependencyValidator interface {
 
 // serviceAccountCreator is used to create service accounts for a given dogu
 type serviceAccountCreator interface {
-	CreateServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
+	CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error
 }
 
 // serviceAccountRemover is used to remove service accounts for a given dogu
 type serviceAccountRemover interface {
-	RemoveServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
+	RemoveAll(ctx context.Context, namespace string, dogu *core.Dogu) error
 }
 
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
-	doguRegistry := registry.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
+	doguRegistry := registry.New(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
 	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
 
@@ -103,8 +103,8 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	}
 
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(cesRegistry, executor)
-	serviceAccountRemover := serviceaccount.NewServiceAccountRemover(cesRegistry, executor)
+	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
+	serviceAccountRemover := serviceaccount.NewRemover(cesRegistry, executor)
 
 	return &DoguManager{
 		Client:                client,
@@ -181,7 +181,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	}
 
 	logger.Info("Create service accounts...")
-	err = m.ServiceAccountCreator.CreateServiceAccounts(ctx, doguResource, dogu)
+	err = m.ServiceAccountCreator.CreateAll(ctx, doguResource.Namespace, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create service accounts: %w", err)
 	}
@@ -386,15 +386,15 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 	}
 
 	logger.Info("Delete service accounts...")
-	err = m.ServiceAccountRemover.RemoveServiceAccounts(ctx, doguResource, dogu)
+	err = m.ServiceAccountRemover.RemoveAll(ctx, doguResource.Namespace, dogu)
 	if err != nil {
-		return fmt.Errorf("failed to remove service accounts: %w", err)
+		logger.Error(err, "failed to remove service accounts")
 	}
 
 	logger.Info("Unregister dogu...")
 	err = m.DoguRegistrator.UnregisterDogu(doguResource.Name)
 	if err != nil {
-		return fmt.Errorf("failed to unregister dogu: %w", err)
+		logger.Error(err, "failed to unregister dogu")
 	}
 
 	logger.Info("Remove finalizer...")
