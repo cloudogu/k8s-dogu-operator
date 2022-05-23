@@ -52,10 +52,10 @@ K8S_POST_GENERATE_TARGETS ?=
 # The additional targets executed before the generate target, executed before each apply and delete.
 K8S_PRE_GENERATE_TARGETS ?= k8s-create-temporary-resource
 .PHONY: k8s-generate
-k8s-generate: $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGETS) ## Generates the final resource yaml.
+k8s-generate: binary-yq $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGETS) ## Generates the final resource yaml.
 	@echo "Applying general transformations..."
 	@sed -i "s/'{{ .Namespace }}'/$(K8S_CURRENT_NAMESPACE)/" $(K8S_RESOURCE_TEMP_YAML)
-	@yq -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE)\"" $(K8S_RESOURCE_TEMP_YAML)
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE)\"" $(K8S_RESOURCE_TEMP_YAML)
 	@echo "Done."
 
 .PHONY: k8s-apply
@@ -101,3 +101,10 @@ check_defined = \
 __check_defined = \
     $(if $(value $1),, \
       $(error Undefined $1$(if $2, ($2))))
+
+##@ K8s - Download Kubernetes Utility Tools
+
+BINARY_YQ = $(UTILITY_BIN_PATH)/yq
+.PHONY: binary-yq
+binary-yq: ## Download controller-gen locally if necessary.
+	$(call go-get-tool,$(BINARY_YQ),github.com/mikefarah/yq/v4@v4.25.1)
