@@ -31,11 +31,10 @@ func NewDoguSecretsWriter(client client.Client, registry registry.Registry) *dog
 func (drr *doguSecretWriter) WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	secret, err := drr.getDoguSetupSecret(ctx, doguResource)
 	if err != nil {
-		return err
-	}
-
-	if secret == nil {
-		return nil
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get dogu secrets: %w", err)
 	}
 
 	err = drr.writeSecretsToRegistry(secret, doguResource.Name)
@@ -59,12 +58,13 @@ func (drr *doguSecretWriter) writeSecretsToRegistry(secret *corev1.Secret, dogu 
 	doguConfig := drr.Registry.DoguConfig(dogu)
 
 	for etcdKey, secretValue := range secret.Data {
-		// setup writes keys from secret with "." instead of "/" because they are not allowed
+		// setup writes keys from secret with "." instead of "/" because they are not allowed in keys for Kubernetes secrets
 		key := strings.ReplaceAll(etcdKey, ".", "/")
 		encryptedValue, err := doguPublicKey.Encrypt(string(secretValue))
 		if err != nil {
 			return fmt.Errorf("failed to encrypt value for key %s: %w", key, err)
 		}
+
 		err = doguConfig.Set(key, encryptedValue)
 		if err != nil {
 			return fmt.Errorf("failed to write key %s to registry: %w", key, err)
@@ -78,15 +78,13 @@ func (drr *doguSecretWriter) getDoguSetupSecret(ctx context.Context, doguResourc
 	secret := &corev1.Secret{}
 	err := drr.Client.Get(ctx, doguResource.GetSecretObjectKey(), secret)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get dogu secrets: %w", err)
+		return nil, err
 	}
-	return secret, err
+
+	return secret, nil
 }
 
-// GetPublicKey gets the public key from the dogu config
+// GetPublicKey returns the public key from the dogu configuration.
 func GetPublicKey(registry registry.Registry, dogu string) (*keys.PublicKey, error) {
 	keyProvider, err := GetKeyProvider(registry)
 	if err != nil {
@@ -97,6 +95,7 @@ func GetPublicKey(registry registry.Registry, dogu string) (*keys.PublicKey, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public key for dogu %s: %w", dogu, err)
 	}
+
 	doguPublicKey, err := keyProvider.ReadPublicKeyFromString(doguPublicKeyString)
 	if err != nil {
 		return nil, fmt.Errorf("could not get public key from public.pem: %w", err)
@@ -105,7 +104,7 @@ func GetPublicKey(registry registry.Registry, dogu string) (*keys.PublicKey, err
 	return doguPublicKey, nil
 }
 
-// GetKeyProvider gets the key provider from the global config
+// GetKeyProvider returns the key provider from the global configuration.
 func GetKeyProvider(registry registry.Registry) (*keys.KeyProvider, error) {
 	keyProviderStr, err := registry.GlobalConfig().Get("key_provider")
 	if err != nil {
