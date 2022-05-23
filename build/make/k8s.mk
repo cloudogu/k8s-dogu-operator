@@ -11,6 +11,10 @@ K8S_CLUSTER_ROOT ?=
 # The productive tag of the image
 IMAGE ?=
 
+K3S_CLUSTER_FQDN?=k3ces.local
+K3S_LOCAL_REGISTRY_PORT?=30099
+K3CES_REGISTRY_URL_PREFIX="${K3S_CLUSTER_FQDN}:${K3S_LOCAL_REGISTRY_PORT}"
+
 # Variables for the temporary yaml files. These are used as template to generate a development resource containing
 # the current namespace and the dev image.
 K8S_RESOURCE_TEMP_FOLDER ?= $(TARGET_DIR)/make/k8s
@@ -22,7 +26,7 @@ K8S_CURRENT_NAMESPACE=$(shell kubectl config view --minify -o jsonpath='{..names
 ##@ K8s - Variables
 
 .PHONY: check-all-vars
-check-all-vars: check-k8s-cluster-root-env-var check-k8s-image-env-var check-k8s-artifact-id
+check-all-vars: check-k8s-cluster-root-env-var check-k8s-image-env-var check-k8s-artifact-id check-etc-hosts check-insecure-cluster-registry ## Conduct a sanity check against selected build artefacts or local environment
 
 .PHONY: check-k8s-cluster-root-env-var
 check-k8s-cluster-root-env-var:
@@ -35,6 +39,16 @@ check-k8s-image-env-var:
 .PHONY: check-k8s-artifact-id
 check-k8s-artifact-id:
 	@$(call check_defined, ARTIFACT_ID, app/dogu name)
+
+.PHONY: check-etc-hosts
+check-etc-hosts:
+	@grep -E "^.+\s+${K3S_CLUSTER_FQDN}\$$" /etc/hosts > /dev/null || \
+		(echo "Missing /etc/hosts entry for ${K3S_CLUSTER_FQDN}" && exit 1)
+
+.PHONY: check-insecure-cluster-registry
+check-insecure-cluster-registry:
+	@grep "${K3CES_REGISTRY_URL_PREFIX}" /etc/docker/daemon.json > /dev/null || \
+		(echo "Missing /etc/docker/daemon.json for ${K3CES_REGISTRY_URL_PREFIX}" && exit 1)
 
 ##@ K8s - Resources
 
@@ -51,41 +65,43 @@ k8s-delete: k8s-generate $(K8S_POST_GENERATE_TARGETS) ## Deletes all dogu relate
 K8S_POST_GENERATE_TARGETS ?=
 # The additional targets executed before the generate target, executed before each apply and delete.
 K8S_PRE_GENERATE_TARGETS ?= k8s-create-temporary-resource
+
 .PHONY: k8s-generate
 k8s-generate: $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGETS) ## Generates the final resource yaml.
 	@echo "Applying general transformations..."
 	@sed -i "s/'{{ .Namespace }}'/$(K8S_CURRENT_NAMESPACE)/" $(K8S_RESOURCE_TEMP_YAML)
-	@yq -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE)\"" $(K8S_RESOURCE_TEMP_YAML)
+	@yq -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE_DEV)\"" $(K8S_RESOURCE_TEMP_YAML)
 	@echo "Done."
 
 .PHONY: k8s-apply
-k8s-apply: k8s-generate $(K8S_POST_GENERATE_TARGETS) ## Applies all dogu related resources from the K8s cluster.
-	@echo "Apply new dogu resources..."
+k8s-apply: k8s-generate $(K8S_POST_GENERATE_TARGETS) ## Applies all generated K8s resources to the current cluster and namespace.
+	@echo "Apply generated K8s resources..."
 	@kubectl apply -f $(K8S_RESOURCE_TEMP_YAML)
 
 ##@ K8s - Docker
 
 .PHONY: docker-build
-docker-build: check-k8s-image-env-var ## Builds the docker image of the k8s app.
-	@echo "Building docker image of dogu..."
+docker-build: check-k8s-image-env-var ## Builds the docker image of the K8s app.
+	@echo "Building docker image..."
 	DOCKER_BUILDKIT=1 docker build . -t $(IMAGE)
 
-${K8S_CLUSTER_ROOT}/${ARTIFACT_ID}.tar: check-k8s-artifact-id docker-build	## Saves the current image into a file into the K8s root path to be available on all nodes.
-	@echo "Saving image into k3ces as $(ARTIFACT_ID).tar..."
-	@docker save $(IMAGE) -o $(K8S_CLUSTER_ROOT)/$(ARTIFACT_ID).tar
-	@echo "Done."
+.PHONY: docker-dev-tag
+docker-dev-tag: check-k8s-image-dev-var docker-build ## Tags a Docker image for local K3ces deployment.
+	@echo "Tagging image with dev tag..."
+	DOCKER_BUILDKIT=1 docker tag ${IMAGE} ${IMAGE_DEV}
+
+.PHONY: check-k8s-image-dev-var
+check-k8s-image-dev-var:
+ifeq (${IMAGE_DEV},)
+	@echo "Missing make variable IMAGE_DEV detected. It should look like \$${K3CES_REGISTRY_URL_PREFIX}/docker-image:tag"
+	@exit 19
+endif
 
 .PHONY: image-import
-image-import: check-all-vars $(K8S_CLUSTER_ROOT)/$(ARTIFACT_ID).tar ## Imports the currently available image into the K8s cluster for all nodes.
-	@echo "Import $(K8S_CLUSTER_ROOT)/$(ARTIFACT_ID).tar into all K8s nodes..."
-	@cd $(K8S_CLUSTER_ROOT) && \
-		for node in $$(vagrant status --machine-readable | grep "state,running" | awk -F',' '{print $$2}'); \
-		do  \
-			echo "...$${node}"; \
-			vagrant ssh $${node} -- -t "sudo k3s ctr images import /vagrant/${ARTIFACT_ID}.tar"; \
-		done;
+image-import: check-all-vars check-k8s-artifact-id docker-dev-tag ## Imports the currently available image into the cluster-local registry.
+	@echo "Import ${IMAGE_DEV} into K8s cluster ${K3S_CLUSTER_FQDN}..."
+	@docker push ${IMAGE_DEV}
 	@echo "Done."
-	rm $(K8S_CLUSTER_ROOT)/$(ARTIFACT_ID).tar
 
 ## Functions
 
