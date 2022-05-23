@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strings"
 	"time"
 )
 
@@ -192,9 +193,13 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	if err != nil {
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
 	}
-	logger.Info("============")
-	logger.Info(customK8sResources)
-	logger.Info("============")
+	for file, yamlDocs := range customK8sResources {
+		logger.Info("============")
+		logger.Info("file:" + file)
+		logger.Info("============")
+		logger.Info(yamlDocs)
+		logger.Info("============")
+	}
 
 	logger.Info("Get image config from image...")
 	imageConfig, err := image.ConfigFile()
@@ -392,13 +397,14 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 	return nil
 }
 
-func (m *DoguManager) fileExtractor(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (string, error) {
+func (m *DoguManager) fileExtractor(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
 	logger := log.FromContext(ctx)
+	currentNamespace := doguResource.ObjectMeta.Namespace
 
-	podspec, containerPodName := createPodSpec(doguResource.ObjectMeta.Namespace, dogu)
+	podspec, containerPodName := createPodSpec(currentNamespace, dogu)
 	err := m.Client.Create(ctx, &podspec)
 	if err != nil {
-		return "", fmt.Errorf("could not create pod for file extraction: %w", err)
+		return nil, fmt.Errorf("could not create pod for file extraction: %w", err)
 	}
 	defer func() {
 		logger.Info("Cleaning up intermediate exec pod for dogu ", dogu.Name)
@@ -407,17 +413,59 @@ func (m *DoguManager) fileExtractor(ctx context.Context, doguResource *k8sv1.Dog
 			logger.Error(fmt.Errorf("failed to delete custom dogu descriptor: %w", err), "Error while deleting intermediate ")
 		}
 	}()
-	time.Sleep(10 * time.Second)
 
-	podexec, err := newPodExec(ctx, doguResource.ObjectMeta.Namespace, containerPodName, containerPodName)
-	// TODO 1. list yaml files, 1. output filename for tracability, 3. iterate over all files and,  and 4. import single yaml to k8s
-	podFile := NewPodFile("/k8s/nginx-ingress.yaml", podexec)
-	var buf bytes.Buffer
-	_, err = podFile.downloadFile(&buf)
-	if err != nil {
-		return "", fmt.Errorf("could not read nginx-ingress.yaml ")
+	podExecKey := createPodExecObjectKey(currentNamespace, containerPodName)
+
+	lePod := corev1.Pod{}
+	const maxTries = 10
+	for i := 0; i < maxTries; i++ {
+		err := m.Client.Get(ctx, podExecKey, &lePod)
+
+		if err == nil {
+			logger.Info("Found exec pod " + containerPodName)
+			break
+		}
+
+		if i == maxTries-1 {
+			return nil, fmt.Errorf("quitting dogu installation because exec pod %s could not be found", containerPodName)
+		}
+
+		logger.Info(fmt.Sprintf("Exec pod not found. Trying again in %d second(s)", i))
+		time.Sleep(time.Duration(i) * time.Second) // linear rising backoff
 	}
-	return buf.String(), nil
+
+	podexec, err := newPodExec(ctx, currentNamespace, containerPodName)
+
+	_, out, _, err := podexec.execCmd([]string{"/bin/ls", "/k8s/"})
+	if err != nil {
+		return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s: %w", containerPodName, err)
+	}
+
+	resultDocs := make(map[string]string)
+	const k8sDirectory = "/k8s/"
+
+	for _, file := range strings.Split(out.String(), " ") {
+		trimmedFile := k8sDirectory + strings.TrimSpace(file)
+		logger.Info("Reading k8s resource " + trimmedFile)
+
+		podFile := NewPodFile(trimmedFile, podexec)
+
+		var buf bytes.Buffer
+		_, err = podFile.downloadFile(&buf)
+		if err != nil {
+			return nil, fmt.Errorf("error reading %s in execPod %s: %w", trimmedFile, containerPodName, err)
+		}
+		resultDocs[trimmedFile] = buf.String()
+	}
+
+	return resultDocs, nil
+}
+
+func createPodExecObjectKey(k8sNamespace, containerPodName string) client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: k8sNamespace,
+		Name:      containerPodName,
+	}
 }
 
 func createPodSpec(k8sNamespace string, dogu *core.Dogu) (corev1.Pod, string) {

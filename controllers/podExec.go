@@ -17,7 +17,11 @@ import (
 	"strings"
 )
 
-// podExec creates a container pod for a given
+// prior worK taken from https://github.com/nvanheuverzwijn/k8s-operator-examples/commit/3c54b059d67d104f6e43391711d9948a727bd03d
+// which was released under apache 2 license
+// please refer to https://tldrlegal.com/license/apache-license-2.0-(apache-2.0) for tasks to be done when releasing the operator
+
+// podExec executes commands in a running K8s container
 type podExec struct {
 	RestConfig *rest.Config
 	*kubernetes.Clientset
@@ -26,9 +30,9 @@ type podExec struct {
 	ContainerName string
 }
 
-func newPodExec(ctx context.Context, namespace, podname, containername string) (*podExec, error) {
+func newPodExec(ctx context.Context, namespace, containerPodName string) (*podExec, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Creating new podExec")
+	logger.Info("Creating new podExec " + containerPodName)
 	config := ctrl.GetConfigOrDie()
 
 	clientSet, err := kubernetes.NewForConfig(config)
@@ -42,13 +46,13 @@ func newPodExec(ctx context.Context, namespace, podname, containername string) (
 		RestConfig:    config,
 		Clientset:     clientSet,
 		Namespace:     namespace,
-		PodName:       podname,
-		ContainerName: containername,
+		PodName:       containerPodName,
+		ContainerName: containerPodName,
 	}, nil
 }
 
 // execCmd executes arbitrary commands in a pod container.
-func (p *podExec) execCmd(command []string) (*bytes.Buffer, *bytes.Buffer, *bytes.Buffer, error) {
+func (p *podExec) execCmd(command []string) (in *bytes.Buffer, out *bytes.Buffer, errOut *bytes.Buffer, err error) {
 	ioStreams, in, out, errOut := genericclioptions.NewTestIOStreams()
 	options := &exec.ExecOptions{
 		StreamOptions: exec.StreamOptions{
@@ -68,7 +72,7 @@ func (p *podExec) execCmd(command []string) (*bytes.Buffer, *bytes.Buffer, *byte
 		Config:        p.RestConfig,
 	}
 
-	err := options.Run()
+	err = options.Run()
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("could not run exec operation: %w", err)
 	}
