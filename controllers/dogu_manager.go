@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,20 +12,18 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
+
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
-	"time"
 )
 
 const finalizerName = "dogu-finalizer"
@@ -45,6 +42,11 @@ type DoguManager struct {
 	DoguRegistrator       DoguRegistrator
 	DependencyValidator   DependencyValidator
 	ServiceAccountCreator ServiceAccountCreator
+	fileExtractor         *podFileExtractor
+}
+
+type fileExtractor interface {
+	extractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error)
 }
 
 // DoguRegistry is used to fetch the dogu descriptor
@@ -87,19 +89,21 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	doguRegistry := registry.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
 	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
+	restConfig := ctrl.GetConfigOrDie()
+	clientSet, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed find cluster config: %w", err)
+	}
 
-	err := validateKeyProvider(cesRegistry.GlobalConfig())
+	fileExtract := newPodFileExtractor(client, restConfig, clientSet)
+
+	err = validateKeyProvider(cesRegistry.GlobalConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate key provider: %w", err)
 	}
 
 	doguRegistrator := NewCESDoguRegistrator(client, cesRegistry, resourceGenerator)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
-
-	clientSet, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create clientSet: %w", err)
-	}
 
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(cesRegistry, executor)
@@ -113,6 +117,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
+		fileExtractor:         fileExtract,
 	}, nil
 }
 
@@ -189,10 +194,11 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
 
-	customK8sResources, err := m.fileExtractor(ctx, doguResource, dogu)
+	customK8sResources, err := m.fileExtractor.extractK8sResourcesFromContainer(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
 	}
+
 	for file, yamlDocs := range customK8sResources {
 		logger.Info("============")
 		logger.Info("file:" + file)
@@ -395,101 +401,6 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
 
 	return nil
-}
-
-func (m *DoguManager) fileExtractor(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
-	logger := log.FromContext(ctx)
-	currentNamespace := doguResource.ObjectMeta.Namespace
-
-	podspec, containerPodName := createPodSpec(currentNamespace, dogu)
-	err := m.Client.Create(ctx, &podspec)
-	if err != nil {
-		return nil, fmt.Errorf("could not create pod for file extraction: %w", err)
-	}
-	defer func() {
-		logger.Info("Cleaning up intermediate exec pod for dogu ", dogu.Name)
-		err = m.Client.Delete(ctx, &podspec)
-		if err != nil {
-			logger.Error(fmt.Errorf("failed to delete custom dogu descriptor: %w", err), "Error while deleting intermediate ")
-		}
-	}()
-
-	podExecKey := createPodExecObjectKey(currentNamespace, containerPodName)
-
-	lePod := corev1.Pod{}
-	const maxTries = 10
-	for i := 0; i < maxTries; i++ {
-		err := m.Client.Get(ctx, podExecKey, &lePod)
-
-		if err == nil {
-			logger.Info("Found exec pod " + containerPodName)
-			break
-		}
-
-		if i == maxTries-1 {
-			return nil, fmt.Errorf("quitting dogu installation because exec pod %s could not be found", containerPodName)
-		}
-
-		logger.Info(fmt.Sprintf("Exec pod not found. Trying again in %d second(s)", i))
-		time.Sleep(time.Duration(i) * time.Second) // linear rising backoff
-	}
-
-	podexec, err := newPodExec(ctx, currentNamespace, containerPodName)
-
-	_, out, _, err := podexec.execCmd([]string{"/bin/ls", "/k8s/"})
-	if err != nil {
-		return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s: %w", containerPodName, err)
-	}
-
-	resultDocs := make(map[string]string)
-	const k8sDirectory = "/k8s/"
-
-	for _, file := range strings.Split(out.String(), " ") {
-		trimmedFile := k8sDirectory + strings.TrimSpace(file)
-		logger.Info("Reading k8s resource " + trimmedFile)
-
-		podFile := NewPodFile(trimmedFile, podexec)
-
-		var buf bytes.Buffer
-		_, err = podFile.downloadFile(&buf)
-		if err != nil {
-			return nil, fmt.Errorf("error reading %s in execPod %s: %w", trimmedFile, containerPodName, err)
-		}
-		resultDocs[trimmedFile] = buf.String()
-	}
-
-	return resultDocs, nil
-}
-
-func createPodExecObjectKey(k8sNamespace, containerPodName string) client.ObjectKey {
-	return client.ObjectKey{
-		Namespace: k8sNamespace,
-		Name:      containerPodName,
-	}
-}
-
-func createPodSpec(k8sNamespace string, dogu *core.Dogu) (corev1.Pod, string) {
-	containerName := dogu.GetSimpleName() + "-podexec"
-
-	return corev1.Pod{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        containerName,
-			Namespace:   k8sNamespace,
-			Labels:      map[string]string{"app": "ces", "dogu": containerName},
-			Annotations: make(map[string]string),
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:            containerName,
-					Image:           dogu.Image + ":" + dogu.Version,
-					Command:         []string{"/bin/sleep", "60"},
-					ImagePullPolicy: corev1.PullIfNotPresent,
-				},
-			},
-		},
-	}, containerName
 }
 
 // TODO: Implement Upgrade
