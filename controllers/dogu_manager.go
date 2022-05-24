@@ -41,6 +41,7 @@ type DoguManager struct {
 	DependencyValidator   dependencyValidator
 	ServiceAccountCreator serviceAccountCreator
 	ServiceAccountRemover serviceAccountRemover
+	DoguSecretHandler     doguSecretHandler
 }
 
 // doguRegistry is used to fetch the dogu descriptor
@@ -55,6 +56,11 @@ type doguResourceGenerator interface {
 	GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error)
 	GetDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error)
 	GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error)
+}
+
+// doguSecretHandler is used to write potential secret from the setup.json registryConfigEncrypted
+type doguSecretHandler interface {
+	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
 // imageRegistry is used to pull container images
@@ -111,7 +117,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
 	serviceAccountRemover := serviceaccount.NewRemover(cesRegistry, executor)
 
-	doguSecretsHandler := resource.NewDoguSecretsWriter(client, cesRegistry)
+	doguSecretHandler := resource.NewDoguSecretsWriter(client, cesRegistry)
 
 	return &DoguManager{
 		Client:                client,
@@ -122,7 +128,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
-		DoguSecretHandler:     doguSecretsHandler,
+		DoguSecretHandler:     doguSecretHandler,
 		ServiceAccountRemover: serviceAccountRemover,
 	}, nil
 }
