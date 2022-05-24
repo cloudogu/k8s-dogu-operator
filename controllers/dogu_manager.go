@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -44,11 +45,18 @@ type DoguManager struct {
 	DoguRegistrator       DoguRegistrator
 	DependencyValidator   DependencyValidator
 	ServiceAccountCreator ServiceAccountCreator
-	fileExtractor         *podFileExtractor
+	FileExtractor         fileExtractor
+	Applier               k8sClient
+}
+
+type k8sClient interface {
+	// Apply sends a request to the K8s API with the provided YAML resources in order to apply them to the current cluster's namespace.
+	Apply(yamlResources []byte, namespace string) error
 }
 
 type fileExtractor interface {
-	extractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error)
+	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings
+	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error)
 }
 
 // DoguRegistry is used to fetch the dogu descriptor
@@ -98,6 +106,10 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	}
 
 	fileExtract := newPodFileExtractor(client, restConfig, clientSet)
+	applier, err := setupcore.NewK8sClient(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed create K8s Applier: %w", err)
+	}
 
 	err = validateKeyProvider(cesRegistry.GlobalConfig())
 	if err != nil {
@@ -119,7 +131,8 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
-		fileExtractor:         fileExtract,
+		FileExtractor:         fileExtract,
+		Applier:               applier,
 	}, nil
 }
 
@@ -196,17 +209,14 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
 
-	customK8sResources, err := m.fileExtractor.extractK8sResourcesFromContainer(ctx, doguResource, dogu)
+	customK8sResources, err := m.FileExtractor.ExtractK8sResourcesFromContainer(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
 	}
 
-	for file, yamlDocs := range customK8sResources {
-		logger.Info("============")
-		logger.Info("file:" + file)
-		logger.Info("============")
-		logger.Info(yamlDocs)
-		logger.Info("============")
+	err = m.applyCustomK8sResources(logger, customK8sResources, doguResource)
+	if err != nil {
+		return err
 	}
 
 	logger.Info("Get image config from image...")
@@ -235,6 +245,38 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	}
 
 	return nil
+}
+
+func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error {
+	for file, yamlDocs := range customK8sResources {
+		logger.Info(fmt.Sprintf("Applying custom K8s resources from file %s", file))
+		docs := splitYamlFileDocuments([]byte(yamlDocs))
+
+		for _, doc := range docs {
+			err := m.Applier.Apply(doc, doguResource.ObjectMeta.Namespace)
+			if err != nil {
+				return fmt.Errorf("failed to apply file '%s' to K8s API: failing doc: %s: root error: %w", file, doc, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+//shamelessly copied^Wborrowed from k8s-ces-setup
+func splitYamlFileDocuments(resourceBytes []byte) [][]byte {
+	yamlFileSeparator := []byte("---\n")
+
+	preResult := bytes.Split(resourceBytes, yamlFileSeparator)
+
+	cleanedResult := make([][]byte, 0)
+	for _, section := range preResult {
+		if len(section) > 0 {
+			cleanedResult = append(cleanedResult, section)
+		}
+	}
+
+	return cleanedResult
 }
 
 func (m DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {

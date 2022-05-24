@@ -36,7 +36,7 @@ func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clien
 
 // extractK8sResourcesFromContainer enumerates K8s resources and returns them in a map file->content. The map will be
 // empty if there are no files.
-func (fe *podFileExtractor) extractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
+func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 	currentNamespace := doguResource.ObjectMeta.Namespace
 
