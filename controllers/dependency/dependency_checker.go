@@ -13,7 +13,7 @@ type DependencyValidator interface {
 
 // CompositeDependencyValidator is a composite validator responsible to validate the dogu and client dependencies of dogus.
 type CompositeDependencyValidator struct {
-	Validators []DependencyValidator `json:"Validators"`
+	Validators []DependencyValidator `json:"validators"`
 }
 
 // NewCompositeDependencyValidator create a new composite validator checking the dogu and client dependencies
