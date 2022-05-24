@@ -35,7 +35,7 @@ node('docker') {
             lintDockerfile()
         }
 
-        docker
+        new Docker(this)
                 .image('golang:1.17.7')
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
@@ -86,10 +86,10 @@ node('docker') {
 
             def imageName
             stage('Build & Push Image') {
-                imageName=k3d.buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion)
+                imageName = k3d.buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion)
             }
 
-            GString sourceDeploymentYaml="target/${repositoryName}_${controllerVersion}.yaml"
+            GString sourceDeploymentYaml = "target/${repositoryName}_${controllerVersion}.yaml"
             stage('Update development resources') {
                 docker.image('mikefarah/yq:4.22.1')
                         .mountJenkinsUser()
@@ -103,7 +103,7 @@ node('docker') {
             }
 
             stage('Wait for etcd to be ready') {
-                sleep(time:5,unit:"SECONDS")
+                sleep(time: 5, unit: "SECONDS")
                 k3d.kubectl("wait --for=condition=ready pod -l statefulset.kubernetes.io/pod-name=etcd-0 --timeout=300s")
             }
 
@@ -217,7 +217,13 @@ void stageAutomaticRelease() {
         }
 
         stage('Regenerate resources for release') {
-            make 'k8s-generate'
+            new Docker(this)
+                    .image('golang:1.17.7')
+                    .mountJenkinsUser()
+                    .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
+                            {
+                                make 'k8s-generate'
+                            }
         }
 
         stage('Add Github-Release') {

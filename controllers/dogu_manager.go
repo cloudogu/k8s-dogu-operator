@@ -83,6 +83,11 @@ type serviceAccountRemover interface {
 	RemoveAll(ctx context.Context, namespace string, dogu *core.Dogu) error
 }
 
+// DoguSecretsHandler is used to write the encrypted secrets from the setup to the dogu config
+type DoguSecretsHandler interface {
+	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
+}
+
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
 	doguRegistry := registry.New(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
@@ -106,6 +111,8 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
 	serviceAccountRemover := serviceaccount.NewRemover(cesRegistry, executor)
 
+	doguSecretsHandler := resource.NewDoguSecretsWriter(client, cesRegistry)
+
 	return &DoguManager{
 		Client:                client,
 		Scheme:                client.Scheme(),
@@ -115,6 +122,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
+		DoguSecretHandler:     doguSecretsHandler,
 		ServiceAccountRemover: serviceAccountRemover,
 	}, nil
 }
@@ -178,6 +186,12 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	err = m.DoguRegistrator.RegisterDogu(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu: %w", err)
+	}
+
+	logger.Info("Write dogu secrets from setup...")
+	err = m.DoguSecretHandler.WriteDoguSecretsToRegistry(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to write dogu secrets from setup: %w", err)
 	}
 
 	logger.Info("Create service accounts...")

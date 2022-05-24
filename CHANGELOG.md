@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#19] Remove service account on dogu deletion.
 
+## [v0.5.0] - 2022-05-23
+### Added
+- [#20] Detect and write encrypted configuration entries for dogus into the etcd registry when installing a dogu.
+
+## [v0.4.0] - 2022-05-12
+### Added
+- [#15] Add startup probe based on state at dogu deployment generation
+- [#15] Add liveness probe based on tcp port at dogu deployment generation
+
 ## [v0.3.1] - 2022-05-12
 ### Fixed
 - [#17] Requeue dogu installation when an error occurs when creating a dependent service account.
