@@ -94,7 +94,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "parsed Version does not fulfill version requirement of 0.0.1 dogu k8s-dogu-operator")
+		assert.Contains(t, err.Error(), "parsed version does not fulfill version requirement of 0.0.1 dogu k8s-dogu-operator")
 	})
 
 	t.Run("success on mandatory and optrional dependency", func(t *testing.T) {

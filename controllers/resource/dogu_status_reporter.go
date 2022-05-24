@@ -14,24 +14,24 @@ type ReportableError interface {
 	Report() string
 }
 
-// DoguStatusReporter is responsible to add messages to a dogu resource.
-type DoguStatusReporter struct {
+// doguStatusReporter is responsible to add messages to a dogu resource.
+type doguStatusReporter struct {
 	KubernetesClient client.Client `json:"kubernetes_client"`
 }
 
 // NewDoguStatusReporter create a new instance of a dogu error reporter.
-func NewDoguStatusReporter(client client.Client) *DoguStatusReporter {
-	return &DoguStatusReporter{KubernetesClient: client}
+func NewDoguStatusReporter(client client.Client) *doguStatusReporter {
+	return &doguStatusReporter{KubernetesClient: client}
 }
 
 // ReportMessage adds the given message to the status of the dogu resource.
-func (der DoguStatusReporter) ReportMessage(ctx context.Context, doguResource *k8sv1.Dogu, message string) error {
+func (der doguStatusReporter) ReportMessage(ctx context.Context, doguResource *k8sv1.Dogu, message string) error {
 	doguResource.Status.AddMessage(message)
 	return doguResource.Update(ctx, der.KubernetesClient)
 }
 
 // ReportError adds the or all errors from a multi error to the status of the dogu resource.
-func (der DoguStatusReporter) ReportError(ctx context.Context, doguResource *k8sv1.Dogu, reportError error) error {
+func (der doguStatusReporter) ReportError(ctx context.Context, doguResource *k8sv1.Dogu, reportError error) error {
 	if reportError == nil {
 		return nil
 	}

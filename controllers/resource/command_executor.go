@@ -18,18 +18,18 @@ import (
 
 // ErrorResourceState is returned when a specific resource (pod/dogu) is not ready yet.
 type ErrorResourceState struct {
-	SourceError error
-	Resource    metav1.Object
+	sourceError error
+	resource    metav1.Object
 }
 
 // Report returns the error in string representation
 func (e *ErrorResourceState) Error() string {
-	return fmt.Sprintf("resource is not ready: %v, source error: %s", e.Resource.GetName(), e.SourceError.Error())
+	return fmt.Sprintf("resource is not ready: %v, source error: %s", e.resource.GetName(), e.sourceError.Error())
 }
 
 // Report constructs a simple human readable message
 func (e *ErrorResourceState) Report() string {
-	return fmt.Sprintf("resource is not ready: %v", e.Resource.GetName())
+	return fmt.Sprintf("resource is not ready: %v", e.resource.GetName())
 }
 
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
@@ -37,23 +37,23 @@ func (e *ErrorResourceState) Requeue() bool {
 	return true
 }
 
-// ExposedCommandExecutor is the unit to execute exposed commands in a dogu
-type ExposedCommandExecutor struct {
+// exposedCommandExecutor is the unit to execute exposed commands in a dogu
+type exposedCommandExecutor struct {
 	Client                 kubernetes.Interface `json:"client"`
 	CoreV1RestClient       rest.Interface       `json:"coreV1RestClient"`
 	CommandExecutorCreator func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error)
 }
 
 // NewCommandExecutor creates a new instance of NewCommandExecutor
-func NewCommandExecutor(client kubernetes.Interface, coreV1RestClient rest.Interface) *ExposedCommandExecutor {
-	return &ExposedCommandExecutor{
+func NewCommandExecutor(client kubernetes.Interface, coreV1RestClient rest.Interface) *exposedCommandExecutor {
+	return &exposedCommandExecutor{
 		Client:                 client,
 		CoreV1RestClient:       coreV1RestClient,
 		CommandExecutorCreator: remotecommand.NewSPDYExecutor,
 	}
 }
 
-func (ce *ExposedCommandExecutor) allContainersReady(pod *corev1.Pod) bool {
+func (ce *exposedCommandExecutor) allContainersReady(pod *corev1.Pod) bool {
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == corev1.ContainersReady {
 			return true
@@ -63,7 +63,7 @@ func (ce *ExposedCommandExecutor) allContainersReady(pod *corev1.Pod) bool {
 }
 
 // ExecCommand execs an exposed command in the first found pod of a dogu
-func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu string, namespace string,
+func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu string, namespace string,
 	command *core.ExposedCommand, params []string) (*bytes.Buffer, error) {
 	pod, err := ce.getTargetDoguPod(ctx, targetDogu, namespace)
 	if err != nil {
@@ -72,8 +72,8 @@ func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 
 	if !ce.allContainersReady(pod) {
 		return nil, &ErrorResourceState{
-			SourceError: fmt.Errorf("can't execute command in pod with status %v", pod.Status),
-			Resource:    pod,
+			sourceError: fmt.Errorf("can't execute command in pod with status %v", pod.Status),
+			resource:    pod,
 		}
 	}
 
@@ -81,8 +81,8 @@ func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 	exec, err := ce.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
 		return nil, &ErrorResourceState{
-			SourceError: fmt.Errorf("failed to create new spdy executor: %w", err),
-			Resource:    pod,
+			sourceError: fmt.Errorf("failed to create new spdy executor: %w", err),
+			resource:    pod,
 		}
 	}
 
@@ -94,15 +94,15 @@ func (ce *ExposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 	})
 	if err != nil {
 		return nil, &ErrorResourceState{
-			SourceError: err,
-			Resource:    pod,
+			sourceError: err,
+			resource:    pod,
 		}
 	}
 
 	return buffer, nil
 }
 
-func (ce *ExposedCommandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace string,
+func (ce *exposedCommandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace string,
 	createCommand *core.ExposedCommand, params []string) *rest.Request {
 	return ce.CoreV1RestClient.Post().
 		Resource("pods").
@@ -118,7 +118,7 @@ func (ce *ExposedCommandExecutor) getCreateExecRequest(pod *corev1.Pod, namespac
 		}, scheme.ParameterCodec)
 }
 
-func (ce *ExposedCommandExecutor) getTargetDoguPod(ctx context.Context, targetDogu string, namespace string) (*corev1.Pod, error) {
+func (ce *exposedCommandExecutor) getTargetDoguPod(ctx context.Context, targetDogu string, namespace string) (*corev1.Pod, error) {
 	listOptions := metav1.ListOptions{LabelSelector: "dogu=" + targetDogu}
 	pods, err := ce.Client.CoreV1().Pods(namespace).List(ctx, listOptions)
 	if err != nil {

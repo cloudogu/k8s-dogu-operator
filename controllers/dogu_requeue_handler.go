@@ -11,26 +11,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// StatusReporter is responsible to save information in the dogu status via messages.
-type StatusReporter interface {
+// statusReporter is responsible to save information in the dogu status via messages.
+type statusReporter interface {
 	ReportMessage(ctx context.Context, doguResource *k8sv1.Dogu, message string) error
 	ReportError(ctx context.Context, doguResource *k8sv1.Dogu, err error) error
 }
 
-// RequeueableError indicates that the current error requires the operator to requeue the dogu.
-type RequeueableError interface {
+// requeuableError indicates that the current error requires the operator to requeue the dogu.
+type requeuableError interface {
 	// Requeue returns true when the error should produce a requeue for the current dogu resource operation.
 	Requeue() bool
 }
 
 // DoguRequeueHandler is responsible to requeue a dogu resource after it failed.
 type DoguRequeueHandler struct {
-	DoguStatusReporter StatusReporter `json:"dogu_status_reporter"`
+	DoguStatusReporter statusReporter `json:"dogu_status_reporter"`
 	KubernetesClient   client.Client  `json:"kubernetes_client"`
 }
 
 // NewDoguRequeueHandler creates a new dogu requeue handler.
-func NewDoguRequeueHandler(client client.Client, reporter StatusReporter) *DoguRequeueHandler {
+func NewDoguRequeueHandler(client client.Client, reporter statusReporter) *DoguRequeueHandler {
 	return &DoguRequeueHandler{
 		DoguStatusReporter: reporter,
 		KubernetesClient:   client,
@@ -71,7 +71,7 @@ func shouldRequeue(err error) bool {
 
 	errorList := resource.GetAllErrorsFromChain(err)
 	for _, err := range errorList {
-		var requeueableError RequeueableError
+		var requeueableError requeuableError
 		if errors.As(err, &requeueableError) {
 			if requeueableError.Requeue() {
 				return true
