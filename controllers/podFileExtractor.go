@@ -63,7 +63,7 @@ func (fe *podFileExtractor) extractK8sResourcesFromContainer(ctx context.Context
 
 	podexec, err := newPodExec(fe.config, fe.clientSet, currentNamespace, containerPodName)
 
-	out, _, err := podexec.execCmd([]string{"/bin/ls", "/k8s/"})
+	out, _, err := podexec.execCmd([]string{"/bin/ls", "/k8s/*.yaml"})
 	if err != nil {
 		return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s: %w", containerPodName, err)
 	}
