@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp-lib/core"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"strconv"

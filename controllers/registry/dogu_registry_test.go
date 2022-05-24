@@ -2,7 +2,7 @@ package registry_test
 
 import (
 	"encoding/json"
-	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp-lib/core"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/stretchr/testify/assert"

@@ -1,7 +1,7 @@
 package dependency_test
 
 import (
-	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	core "github.com/cloudogu/cesapp/v4/core"
+	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"

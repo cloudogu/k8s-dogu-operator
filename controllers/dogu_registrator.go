@@ -3,9 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/cesapp/v4/core"
-	"github.com/cloudogu/cesapp/v4/keys"
-	cesregistry "github.com/cloudogu/cesapp/v4/registry"
+	"github.com/cloudogu/cesapp-lib/core"
+	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+	"github.com/cloudogu/cesapp/v5/config"
+	"github.com/cloudogu/cesapp/v5/keys"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -111,7 +112,7 @@ func (c *CesDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
 		return nil, fmt.Errorf("failed to get key provider: %w", err)
 	}
 
-	keyProvider, err := keys.NewKeyProvider(core.Keys{Type: keyProviderStr})
+	keyProvider, err := keys.NewKeyProvider(config.Keys{Type: keyProviderStr})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyprovider: %w", err)
 	}

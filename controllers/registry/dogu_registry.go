@@ -2,7 +2,7 @@ package registry
 
 import (
 	"fmt"
-	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/json"
