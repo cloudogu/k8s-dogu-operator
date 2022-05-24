@@ -5,8 +5,12 @@
 1. Follow the deployment instructions of k8s-ecosystem
 2. Edit your `/etc/hosts` and add a mapping from localhost to etcd
     - `127.0.0.1       localhost etcd etcd.ecosystem.svc.cluster.local`
-3. open the file `.env.template` and follow the instructions to create an env file with your personal data
-4. Run `make run` to run the dogu operator locally
+3. Open the file `.env.template` and follow the instructions to create an env file with your personal data
+4. Make an etcd port forward
+   - `kubectl -n=ecosystem port-forward etcd-0 4001:2379`
+5. Run `make run` to run the dogu operator locally
+6. Delete any existing dogu operator deployments to avoid concurrency issues
+   - `kubectl -n=ecosystem delete deployment k8s-dogu-operator`
 
 ## Makefile-Targets
 
