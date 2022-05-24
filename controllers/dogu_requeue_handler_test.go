@@ -135,5 +135,5 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 
 	// then
 	assert.NotNil(t, handler)
-	assert.Implements(t, (*RequeueHandler)(nil), handler)
+	assert.Implements(t, (*requeueHandler)(nil), handler)
 }

@@ -222,7 +222,7 @@ void stageAutomaticRelease() {
                     .mountJenkinsUser()
                     .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                             {
-                                make 'k8s-generate'
+                                make 'k8s-create-temporary-resource'
                             }
         }
 

@@ -37,7 +37,7 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 	}))
 
 	t.Run("Successful get dogu", func(t *testing.T) {
-		doguRegistry := registry.NewHTTPDoguRegistry(validUser, validPw, testServer.URL)
+		doguRegistry := registry.New(validUser, validPw, testServer.URL)
 
 		result, err := doguRegistry.GetDogu(ldapDoguResource)
 		require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 	})
 
 	t.Run("Error while doing request", func(t *testing.T) {
-		doguRegistry := registry.NewHTTPDoguRegistry(validUser, validPw, "wrongurl")
+		doguRegistry := registry.New(validUser, validPw, "wrongurl")
 
 		_, err := doguRegistry.GetDogu(ldapDoguResource)
 
@@ -54,7 +54,7 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 	})
 
 	t.Run("Error with status code 401", func(t *testing.T) {
-		doguRegistry := registry.NewHTTPDoguRegistry(validUser, "invalid", testServer.URL)
+		doguRegistry := registry.New(validUser, "invalid", testServer.URL)
 
 		_, err := doguRegistry.GetDogu(ldapDoguResource)
 		require.Error(t, err)
@@ -70,7 +70,7 @@ func TestHTTPDoguRegistry_GetDogu(t *testing.T) {
 				panic(err)
 			}
 		}))
-		doguRegistry := registry.NewHTTPDoguRegistry(validUser, validPw, testServer2.URL)
+		doguRegistry := registry.New(validUser, validPw, testServer2.URL)
 
 		_, err := doguRegistry.GetDogu(ldapDoguResource)
 		require.Error(t, err)

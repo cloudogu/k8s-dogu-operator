@@ -7,6 +7,7 @@ CUSTOM_GO_MOUNT?=-v /tmp:/tmp
 
 REVIEW_DOG=$(TMP_DIR)/bin/reviewdog
 LINT=$(TMP_DIR)/bin/golangci-lint
+LINT_VERSION?=v1.33.0
 # ignore tests and mocks
 LINTFLAGS=--tests=false --skip-files="^.*_mock.go$$" --skip-files="^.*/mock.*.go$$"
 
@@ -57,7 +58,8 @@ static-analysis-ci-report-local: $(STATIC_ANALYSIS_DIR)/static-analysis-cs.log $
 	@cat $(STATIC_ANALYSIS_DIR)/static-analysis-cs.log | $(REVIEW_DOG) -f checkstyle -diff "git diff develop"
 
 $(LINT): $(TMP_DIR)
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(TMP_DIR)/bin v1.33.0
+	@echo "Download golangci-lint $(LINT_VERSION)..."
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(TMP_DIR)/bin $(LINT_VERSION)
 
 $(REVIEW_DOG): $(TMP_DIR)
 	@curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s -- -b $(TMP_DIR)/bin

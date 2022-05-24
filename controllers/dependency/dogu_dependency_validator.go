@@ -8,10 +8,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-// ErrorDependencyValidation is returned when a given dependency cloud not be validated.
-type ErrorDependencyValidation struct {
-	SourceError error
-	Dependency  core.Dependency
+// errorDependencyValidation is returned when a given dependency cloud not be validated.
+type errorDependencyValidation struct {
+	sourceError error
+	dependency  core.Dependency
 }
 
 // doguDependencyChecker is used to  check a single dependency of a dogu
@@ -20,17 +20,17 @@ type doguDependencyChecker interface {
 }
 
 // Report returns the error in string representation
-func (e *ErrorDependencyValidation) Error() string {
-	return fmt.Sprintf("failed to resolve dependency: %v, source error: %s", e.Dependency, e.SourceError.Error())
+func (e *errorDependencyValidation) Error() string {
+	return fmt.Sprintf("failed to resolve dependency: %v, source error: %s", e.dependency, e.sourceError.Error())
 }
 
 // Report constructs a simple human readable message
-func (e *ErrorDependencyValidation) Report() string {
-	return fmt.Sprintf("failed to resolve dependency: %v", e.Dependency)
+func (e *errorDependencyValidation) Report() string {
+	return fmt.Sprintf("failed to resolve dependency: %v", e.dependency)
 }
 
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
-func (e *ErrorDependencyValidation) Requeue() bool {
+func (e *errorDependencyValidation) Requeue() bool {
 	return true
 }
 
@@ -77,9 +77,9 @@ func (dc *doguDependencyValidator) validateDoguDependencies(dependencies []core.
 		}
 		err := dc.doguDependencyChecker.CheckDoguDependency(doguDependency, optional)
 		if err != nil {
-			dependencyError := ErrorDependencyValidation{
-				SourceError: err,
-				Dependency:  doguDependency,
+			dependencyError := errorDependencyValidation{
+				sourceError: err,
+				dependency:  doguDependency,
 			}
 			problems = multierror.Append(problems, &dependencyError)
 		}
