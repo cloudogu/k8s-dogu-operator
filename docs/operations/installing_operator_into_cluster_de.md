@@ -23,7 +23,8 @@ Der Operator sollte nun erfolgreich im Cluster gestartet sein.
 Der Dogu-Operator kann mit folgenden Befehlen lokal gebaut und in den Cluster installiert werden. Dabei wird davon ausgegangen, dass der lokale Cluster mit Vagrant aufgesetzt wurde und das Verzeichnis mit dem Vagrantfile als K8S_CLUSTER_ROOT übergeben wird:
 
 ```bash
-- export K8S_CLUSTER_ROOT=/home/user/k8scluster
+- export K8S_CLUSTER_ROOT=/home/user/k3ces
 - export OPERATOR_NAMESPACE=ecosystem
+- kubectl config set-context --current --namespace=ecosystem
 - make build
 ```
