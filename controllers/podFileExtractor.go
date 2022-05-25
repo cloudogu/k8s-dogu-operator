@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/cmd/exec"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
@@ -34,7 +35,7 @@ func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clien
 	return &podFileExtractor{k8sClient: k8sClient, config: restConfig, clientSet: clientSet}
 }
 
-// extractK8sResourcesFromContainer enumerates K8s resources and returns them in a map file->content. The map will be
+// ExtractK8sResourcesFromContainer enumerates K8s resources and returns them in a map file->content. The map will be
 // empty if there are no files.
 func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
 	logger := log.FromContext(ctx)
@@ -63,9 +64,11 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 
 	podexec, err := newPodExec(fe.config, fe.clientSet, currentNamespace, containerPodName)
 
-	out, _, err := podexec.execCmd([]string{"/bin/ls", "/k8s/*.yaml"})
+	lsCmd := []string{"/bin/ls", "/k8s/"}
+	out, _, err := podexec.execCmd(lsCmd)
 	if err != nil {
-		return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s: %w", containerPodName, err)
+		return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s with command '%s': %w",
+			containerPodName, strings.Join(lsCmd, " "), err)
 	}
 
 	resultDocs := make(map[string]string)
@@ -78,9 +81,11 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 		trimmedFile := doguCustomK8sResourceDirectory + strings.TrimSpace(file)
 		logger.Info("Reading k8s resource " + trimmedFile)
 
-		out, _, err = podexec.execCmd([]string{"/bin/cat", trimmedFile})
+		catCmd := []string{"/bin/cat", trimmedFile}
+		out, _, err = podexec.execCmd(catCmd)
 		if err != nil {
-			return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s: %w", containerPodName, err)
+			return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s with command '%s': %w",
+				containerPodName, strings.Join(catCmd, " "), err)
 		}
 
 		resultDocs[trimmedFile] = out.String()
@@ -159,7 +164,14 @@ func createExecPodSpec(k8sNamespace string, dogu *core.Dogu) (corev1.Pod, string
 				},
 			},
 		},
-	}, containerName
+	}
+
+	err := ctrl.SetControllerReference(doguResource, &podSpec, fe.k8sClient.Scheme())
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to set controller reference to exec pod %s: %w", containerName, err)
+	}
+
+	return &podSpec, containerName, err
 }
 
 // podExec executes commands in a running K8s container
