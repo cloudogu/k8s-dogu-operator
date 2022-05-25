@@ -41,15 +41,19 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 	logger := log.FromContext(ctx)
 	currentNamespace := doguResource.ObjectMeta.Namespace
 
-	podspec, containerPodName := createExecPodSpec(currentNamespace, dogu)
+	podspec, containerPodName, err := fe.createExecPodSpec(currentNamespace, doguResource, dogu)
+	if err != nil {
+		return nil, fmt.Errorf("could not create pod for file extraction: %w", err)
+	}
+
 	logger.Info("Creating new exec pod " + containerPodName)
-	err := fe.k8sClient.Create(ctx, &podspec)
+	err = fe.k8sClient.Create(ctx, podspec)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pod for file extraction: %w", err)
 	}
 	defer func() {
 		logger.Info("Cleaning up intermediate exec pod for dogu ", dogu.Name)
-		err = fe.k8sClient.Delete(ctx, &podspec)
+		err = fe.k8sClient.Delete(ctx, podspec)
 		if err != nil {
 			logger.Error(fmt.Errorf("failed to delete custom dogu descriptor: %w", err), "Error while deleting intermediate ")
 		}
@@ -139,14 +143,14 @@ func createPodExecObjectKey(k8sNamespace, containerPodName string) client.Object
 	}
 }
 
-func createExecPodSpec(k8sNamespace string, dogu *core.Dogu) (corev1.Pod, string) {
+func (fe *podFileExtractor) createExecPodSpec(k8sNamespace string, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Pod, string, error) {
 	containerName := dogu.GetSimpleName() + "-execpod"
 	image := dogu.Image + ":" + dogu.Version
 	// command is of no importance because the pod will be killed after success
 	doNothingCommand := []string{"/bin/sleep", "60"}
 	labels := map[string]string{"app": "ces", "dogu": containerName}
 
-	return corev1.Pod{
+	podSpec := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        containerName,
