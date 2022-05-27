@@ -5,26 +5,26 @@ import (
 	"fmt"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
-// CraneContainerImageRegistry is a component to interact with a container registry.
+// craneContainerImageRegistry is a component to interact with a container registry.
 // It is able to pull the config of an image and uses the crane library
-type CraneContainerImageRegistry struct {
+type craneContainerImageRegistry struct {
 	dockerUsername string
 	dockerPassword string
 }
 
-// NewCraneContainerImageRegistry creates a new instance of CraneContainerImageRegistry
-func NewCraneContainerImageRegistry(dockerUsername string, dockerPassword string) *CraneContainerImageRegistry {
-	return &CraneContainerImageRegistry{
+// NewCraneContainerImageRegistry creates a new instance of craneContainerImageRegistry
+func NewCraneContainerImageRegistry(dockerUsername string, dockerPassword string) *craneContainerImageRegistry {
+	return &craneContainerImageRegistry{
 		dockerUsername: dockerUsername,
 		dockerPassword: dockerPassword,
 	}
 }
 
-// PullImage pulls an image with the crane library. It uses basic auth for the registry authentication
-func (i *CraneContainerImageRegistry) PullImage(ctx context.Context, image string) (v1.Image, error) {
+// PullImageConfig pulls an image with the crane library. It uses basic auth for the registry authentication.
+func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error) {
 	ctxOpt := crane.WithContext(ctx)
 	authOpts := crane.WithAuth(&authn.Basic{
 		Username: i.dockerUsername,
@@ -34,5 +34,5 @@ func (i *CraneContainerImageRegistry) PullImage(ctx context.Context, image strin
 	if err != nil {
 		return nil, fmt.Errorf("error pulling image: %w", err)
 	}
-	return img, nil
+	return img.ConfigFile()
 }

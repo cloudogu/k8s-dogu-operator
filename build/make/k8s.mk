@@ -67,11 +67,16 @@ K8S_POST_GENERATE_TARGETS ?=
 K8S_PRE_GENERATE_TARGETS ?= k8s-create-temporary-resource
 
 .PHONY: k8s-generate
-k8s-generate: $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGETS) ## Generates the final resource yaml.
+k8s-generate: binary-yq $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGETS) ## Generates the final resource yaml.
 	@echo "Applying general transformations..."
 	@sed -i "s/'{{ .Namespace }}'/$(K8S_CURRENT_NAMESPACE)/" $(K8S_RESOURCE_TEMP_YAML)
-	@yq -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE_DEV)\"" $(K8S_RESOURCE_TEMP_YAML)
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE_DEV)\"" $(K8S_RESOURCE_TEMP_YAML)
 	@echo "Done."
+
+BINARY_YQ = $(UTILITY_BIN_PATH)/yq
+.PHONY: binary-yq
+binary-yq: ## Download controller-gen locally if necessary.
+	$(call go-get-tool,$(BINARY_YQ),github.com/mikefarah/yq/v4@v4.25.1)
 
 .PHONY: k8s-apply
 k8s-apply: k8s-generate $(K8S_POST_GENERATE_TARGETS) ## Applies all generated K8s resources to the current cluster and namespace.

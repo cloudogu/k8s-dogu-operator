@@ -29,7 +29,7 @@ func (v *validatorCheckerError) ValidateAllDependencies(_ *core.Dogu) error {
 }
 
 func TestDependencyChecker_ValidateDependencies(t *testing.T) {
-	t.Run("successfully check all deps with multiple validators", func(t *testing.T) {
+	t.Run("successfully check all deps with multiple Validators", func(t *testing.T) {
 		// given
 		checkerOne := &validatorCheckerSuccess{}
 		checkerTwo := &validatorCheckerSuccess{}
@@ -48,7 +48,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		assert.True(t, checkerThree.called)
 	})
 
-	t.Run("return error when one validators returns error", func(t *testing.T) {
+	t.Run("return error when one Validators returns error", func(t *testing.T) {
 		// given
 		checkerOne := &validatorCheckerSuccess{}
 		checkerTwo := &validatorCheckerError{}

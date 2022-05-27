@@ -29,16 +29,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-type Operation int
+type operation int
 
 const (
-	Install Operation = iota
+	Install operation = iota
 	Upgrade
 	Delete
 	Ignore
 )
 
-func (o Operation) toString() string {
+func (o operation) toString() string {
 	switch o {
 	case Install:
 		return "Install"
@@ -51,16 +51,16 @@ func (o Operation) toString() string {
 	}
 }
 
-// DoguReconciler reconciles a Dogu object
-type DoguReconciler struct {
+// doguReconciler reconciles a Dogu object
+type doguReconciler struct {
 	client.Client
 	scheme             *runtime.Scheme
-	doguManager        Manager
-	DoguRequeueHandler RequeueHandler
+	doguManager        manager
+	doguRequeueHandler requeueHandler
 }
 
-// Manager abstracts the simple dogu operations in a k8s CES.
-type Manager interface {
+// manager abstracts the simple dogu operations in a k8s CES.
+type manager interface {
 	// Install installs a dogu resource.
 	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
 	// Upgrade upgrades a dogu resource.
@@ -69,22 +69,22 @@ type Manager interface {
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
-// RequeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
-type RequeueHandler interface {
+// requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
+type requeueHandler interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
 	Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error)
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager Manager) *DoguReconciler {
+func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager manager) *doguReconciler {
 	doguStatusReporter := resource.NewDoguStatusReporter(client)
 	doguRequeueHandler := NewDoguRequeueHandler(client, doguStatusReporter)
 
-	return &DoguReconciler{
+	return &doguReconciler{
 		Client:             client,
 		scheme:             scheme,
 		doguManager:        doguManager,
-		DoguRequeueHandler: doguRequeueHandler,
+		doguRequeueHandler: doguRequeueHandler,
 	}
 }
 
@@ -92,7 +92,7 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.0/pkg/reconcile
-func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	doguResource := &k8sv1.Dogu{}
@@ -113,7 +113,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	case Install:
 		installError := r.doguManager.Install(ctx, doguResource)
 		contextMessageOnError := fmt.Sprintf("failed to install dogu %s", doguResource.Name)
-		result, err := r.DoguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError)
+		result, err := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
 		}
@@ -141,7 +141,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 }
 
-func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Operation, error) {
+func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (operation, error) {
 	if !doguResource.DeletionTimestamp.IsZero() {
 		return Delete, nil
 	}
@@ -163,8 +163,8 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (Op
 	}
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *DoguReconciler) SetupWithManager(mgr ctrl.Manager) error {
+// SetupWithManager sets up the controller with the manager.
+func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&k8sv1.Dogu{}).
 		// Since we don't want to process dogus with same spec we use a generation change predicate

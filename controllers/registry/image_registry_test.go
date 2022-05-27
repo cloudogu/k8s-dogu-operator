@@ -21,14 +21,14 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 		server, src := setupCraneRegistry(t)
 		defer server.Close()
 
-		image, err := imageRegistry.PullImage(context.Background(), src)
+		image, err := imageRegistry.PullImageConfig(context.Background(), src)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, image)
 	})
 
 	t.Run("error pulling image with wrong URL", func(t *testing.T) {
-		_, err := imageRegistry.PullImage(context.Background(), "wrong url")
+		_, err := imageRegistry.PullImageConfig(context.Background(), "wrong url")
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "error pulling image")

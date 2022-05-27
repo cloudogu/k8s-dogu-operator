@@ -4,6 +4,7 @@ import (
 	"fmt"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
 )
@@ -53,4 +54,21 @@ func TestDoguStatus_ResetRequeueTime(t *testing.T) {
 		// then
 		assert.Equal(t, v1.RequeueTimeInitialRequeueTime, ds.RequeueTime)
 	})
+}
+
+func TestDogu_GetSecretObjectKey(t *testing.T) {
+	// given
+	ds := &v1.Dogu{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myspecialdogu",
+			Namespace: "testnamespace",
+		},
+	}
+
+	// when
+	key := ds.GetSecretObjectKey()
+
+	// then
+	assert.Equal(t, "myspecialdogu-secrets", key.Name)
+	assert.Equal(t, "testnamespace", key.Namespace)
 }

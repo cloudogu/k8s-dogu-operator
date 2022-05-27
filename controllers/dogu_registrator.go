@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/cesapp/v5/config"
 	"github.com/cloudogu/cesapp/v5/keys"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -18,12 +18,12 @@ type CesDoguRegistrator struct {
 	client.Client
 	registry        cesregistry.Registry
 	doguRegistry    cesregistry.DoguRegistry
-	secretGenerator DoguResourceGenerator
+	secretGenerator doguResourceGenerator
 }
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator DoguResourceGenerator) *CesDoguRegistrator {
+func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator doguResourceGenerator) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
 		Client:          client,
 		registry:        registry,
@@ -107,14 +107,9 @@ func (c *CesDoguRegistrator) registerKeys(ctx context.Context, dogu *core.Dogu, 
 }
 
 func (c *CesDoguRegistrator) createKeypair() (*keys.KeyPair, error) {
-	keyProviderStr, err := c.registry.GlobalConfig().Get("key_provider")
+	keyProvider, err := resource.GetKeyProvider(c.registry)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get key provider: %w", err)
-	}
-
-	keyProvider, err := keys.NewKeyProvider(config.Keys{Type: keyProviderStr})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create keyprovider: %w", err)
+		return nil, err
 	}
 
 	keyPair, err := keyProvider.Generate()

@@ -17,7 +17,6 @@ import (
 	"github.com/go-logr/logr"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,12 +38,14 @@ var NewManager = NewDoguManager
 type DoguManager struct {
 	client.Client
 	Scheme                *runtime.Scheme
-	ResourceGenerator     DoguResourceGenerator
-	DoguRegistry          DoguRegistry
-	ImageRegistry         ImageRegistry
-	DoguRegistrator       DoguRegistrator
-	DependencyValidator   DependencyValidator
-	ServiceAccountCreator ServiceAccountCreator
+	ResourceGenerator     doguResourceGenerator
+	DoguRegistry          doguRegistry
+	ImageRegistry         imageRegistry
+	DoguRegistrator       doguRegistrator
+	DependencyValidator   dependencyValidator
+	ServiceAccountCreator serviceAccountCreator
+	ServiceAccountRemover serviceAccountRemover
+	DoguSecretHandler     doguSecretHandler
 	FileExtractor         fileExtractor
 	Applier               k8sClient
 }
@@ -59,13 +60,13 @@ type fileExtractor interface {
 	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error)
 }
 
-// DoguRegistry is used to fetch the dogu descriptor
-type DoguRegistry interface {
+// doguRegistry is used to fetch the dogu descriptor
+type doguRegistry interface {
 	GetDogu(*k8sv1.Dogu) (*core.Dogu, error)
 }
 
-// DoguResourceGenerator is used to generate kubernetes resources
-type DoguResourceGenerator interface {
+// doguResourceGenerator is used to generate kubernetes resources
+type doguResourceGenerator interface {
 	GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error)
 	GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error)
 	GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error)
@@ -73,30 +74,45 @@ type DoguResourceGenerator interface {
 	GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error)
 }
 
-// ImageRegistry is used to pull container images
-type ImageRegistry interface {
-	PullImage(ctx context.Context, image string) (v1.Image, error)
+// doguSecretHandler is used to write potential secret from the setup.json registryConfigEncrypted
+type doguSecretHandler interface {
+	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
-// DoguRegistrator is used to register dogus
-type DoguRegistrator interface {
+// imageRegistry is used to pull container images
+type imageRegistry interface {
+	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
+}
+
+// doguRegistrator is used to register dogus
+type doguRegistrator interface {
 	RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
 	UnregisterDogu(dogu string) error
 }
 
-// DependencyValidator is used to check if dogu dependencies are installed
-type DependencyValidator interface {
+// dependencyValidator is used to check if dogu dependencies are installed
+type dependencyValidator interface {
 	ValidateDependencies(dogu *core.Dogu) error
 }
 
-// ServiceAccountCreator is used to create service accounts for a given dogu
-type ServiceAccountCreator interface {
-	CreateServiceAccounts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error
+// serviceAccountCreator is used to create service accounts for a given dogu
+type serviceAccountCreator interface {
+	CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error
+}
+
+// serviceAccountRemover is used to remove service accounts for a given dogu
+type serviceAccountRemover interface {
+	RemoveAll(ctx context.Context, namespace string, dogu *core.Dogu) error
+}
+
+// DoguSecretsHandler is used to write the encrypted secrets from the setup to the dogu config
+type DoguSecretsHandler interface {
+	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
-	doguRegistry := registry.NewHTTPDoguRegistry(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
+	doguRegistry := registry.New(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
 	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
 	restConfig := ctrl.GetConfigOrDie()
@@ -120,7 +136,10 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
 
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator := serviceaccount.NewServiceAccountCreator(cesRegistry, executor)
+	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
+	serviceAccountRemover := serviceaccount.NewRemover(cesRegistry, executor)
+
+	doguSecretHandler := resource.NewDoguSecretsWriter(client, cesRegistry)
 
 	return &DoguManager{
 		Client:                client,
@@ -131,6 +150,8 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
+		DoguSecretHandler:     doguSecretHandler,
+		ServiceAccountRemover: serviceAccountRemover,
 		FileExtractor:         fileExtract,
 		Applier:               applier,
 	}, nil
@@ -180,7 +201,7 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, err := m.getDoguDescriptor(ctx, doguResource, doguConfigMap)
+	dogu, err := m.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
@@ -197,16 +218,22 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 		return fmt.Errorf("failed to register dogu: %w", err)
 	}
 
+	logger.Info("Write dogu secrets from setup...")
+	err = m.DoguSecretHandler.WriteDoguSecretsToRegistry(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to write dogu secrets from setup: %w", err)
+	}
+
 	logger.Info("Create service accounts...")
-	err = m.ServiceAccountCreator.CreateServiceAccounts(ctx, doguResource, dogu)
+	err = m.ServiceAccountCreator.CreateAll(ctx, doguResource.Namespace, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create service accounts: %w", err)
 	}
 
-	logger.Info("Pull image...")
-	image, err := m.ImageRegistry.PullImage(ctx, dogu.Image+":"+dogu.Version)
+	logger.Info("Pull image config...")
+	imageConfig, err := m.ImageRegistry.PullImageConfig(ctx, dogu.Image+":"+dogu.Version)
 	if err != nil {
-		return fmt.Errorf("failed to pull image: %w", err)
+		return fmt.Errorf("failed to pull image config: %w", err)
 	}
 
 	customK8sResources, err := m.FileExtractor.ExtractK8sResourcesFromContainer(ctx, doguResource, dogu)
@@ -217,12 +244,6 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 	err = m.applyCustomK8sResources(logger, customK8sResources, doguResource)
 	if err != nil {
 		return err
-	}
-
-	logger.Info("Get image config from image...")
-	imageConfig, err := image.ConfigFile()
-	if err != nil {
-		return fmt.Errorf("failed to get image config: %w", err)
 	}
 
 	logger.Info("Create dogu resources...")
@@ -263,7 +284,6 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 	return nil
 }
 
-//shamelessly copied^Wborrowed from k8s-ces-setup
 func splitYamlFileDocuments(resourceBytes []byte) [][]byte {
 	yamlFileSeparator := []byte("---\n")
 
@@ -313,7 +333,7 @@ func (m DoguManager) getDoguConfigMap(ctx context.Context, doguResource *k8sv1.D
 	}
 }
 
-func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu, doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
+func (m DoguManager) getDoguDescriptorWithConfigMap(ctx context.Context, doguResource *k8sv1.Dogu, doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
 	logger := log.FromContext(ctx)
 
 	if doguConfigMap != nil {
@@ -323,6 +343,20 @@ func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.
 		logger.Info("Fetching dogu from dogu registry...")
 		return m.getDoguDescriptorFromRegistry(doguResource)
 	}
+}
+
+func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+	doguConfigMap, err := m.getDoguConfigMap(ctx, doguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dogu config map: %w", err)
+	}
+
+	dogu, err := m.getDoguDescriptorWithConfigMap(ctx, doguResource, doguConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dogu: %w", err)
+	}
+
+	return dogu, nil
 }
 
 func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) error {
@@ -430,10 +464,22 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
 
+	logger.Info("Fetching dogu...")
+	dogu, err := m.getDoguDescriptor(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to get dogu: %w", err)
+	}
+
+	logger.Info("Delete service accounts...")
+	err = m.ServiceAccountRemover.RemoveAll(ctx, doguResource.Namespace, dogu)
+	if err != nil {
+		logger.Error(err, "failed to remove service accounts")
+	}
+
 	logger.Info("Unregister dogu...")
 	err = m.DoguRegistrator.UnregisterDogu(doguResource.Name)
 	if err != nil {
-		return fmt.Errorf("failed to unregister dogu: %w", err)
+		logger.Error(err, "failed to unregister dogu")
 	}
 
 	logger.Info("Remove finalizer...")
