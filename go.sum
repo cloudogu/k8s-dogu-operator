@@ -286,6 +286,8 @@ github.com/cloudogu/cesapp/v5 v5.0.1 h1:9A2XYEvU0HbPMZIRrzmM59lJftchHCA0HxwhY4Le
 github.com/cloudogu/cesapp/v5 v5.0.1/go.mod h1:waZp/tJQzN150drIE5nPgUUjCDb76i0IgpK0nYJFhIE=
 github.com/cloudogu/k8s-ces-setup v0.0.0-20220527140533-7351808f0e13 h1:DHg5D+6eHe9MCpMjk6ZCr2wS7VBM+Vvyat/eqzoDOTE=
 github.com/cloudogu/k8s-ces-setup v0.0.0-20220527140533-7351808f0e13/go.mod h1:EmITN68/jfB2NEhjrhlKGn0IUMXHYpH3FWRgiEO1V78=
+github.com/cloudogu/k8s-ces-setup v0.0.0-20220527143458-5affa0bf240f h1:Ds6cdhD1IPh2Fg4y4VHnADRq3nIrteAvWWA4Ay2E8YM=
+github.com/cloudogu/k8s-ces-setup v0.0.0-20220527143458-5affa0bf240f/go.mod h1:EmITN68/jfB2NEhjrhlKGn0IUMXHYpH3FWRgiEO1V78=
 github.com/cloudogu/k8s-ces-setup v0.5.0 h1:tKJ+7kKyZqVUMaAtcIKbC+q4txBxFrq1S7GgYDwNRhc=
 github.com/cloudogu/k8s-ces-setup v0.5.0/go.mod h1:CUyETX2EvzihhCwlbQYvrXZAK/pw9rMEKjJxwxgTTXQ=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
