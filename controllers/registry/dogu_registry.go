@@ -27,7 +27,7 @@ func New(username string, password string, url string) *httpDoguRegistry {
 }
 
 // GetDogu fetches a dogu.json with a given dogu custom resource. It uses basic auth for registry authentication
-func (h httpDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+func (h *httpDoguRegistry) GetDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s/%s", h.url, doguResource.Spec.Name, doguResource.Spec.Version), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error building request: %w", err)
