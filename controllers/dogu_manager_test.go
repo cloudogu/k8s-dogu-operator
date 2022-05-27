@@ -884,8 +884,8 @@ type mockK8sClient struct {
 	mock.Mock
 }
 
-func (m *mockK8sClient) Apply(yamlResources []byte, namespace string) error {
-	args := m.Called(yamlResources, namespace)
+func (m *mockK8sClient) ApplyWithOwner(yamlResources []byte, namespace string, owner metav1.Object) error {
+	args := m.Called(yamlResources, namespace, owner)
 	return args.Error(0)
 }
 
