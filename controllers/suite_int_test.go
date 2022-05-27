@@ -85,30 +85,37 @@ var _ = BeforeSuite(func() {
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme())
 
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
-	doguConfigurationContext.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
-	doguConfigurationContext.Mock.On("RemoveAll", mock.Anything).Return(nil)
+	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)
+	doguConfigurationContext.On("RemoveAll", mock.Anything).Return(nil)
 
 	globalConfigurationContext := &cesmocks.ConfigurationContext{}
-	globalConfigurationContext.Mock.On("Get", "key_provider").Return("", nil)
+	globalConfigurationContext.On("Get", "key_provider").Return("", nil)
 
 	CesRegistryMock := cesmocks.Registry{}
-	CesRegistryMock.Mock.On("DoguRegistry").Return(&EtcdDoguRegistry)
-	CesRegistryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
-	CesRegistryMock.Mock.On("GlobalConfig").Return(globalConfigurationContext)
+	CesRegistryMock.On("DoguRegistry").Return(&EtcdDoguRegistry)
+	CesRegistryMock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
+	CesRegistryMock.On("GlobalConfig").Return(globalConfigurationContext)
 
 	version, err := core.ParseVersion("0.0.0")
 	Expect(err).ToNot(HaveOccurred())
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, &EtcdDoguRegistry)
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
-	serviceAccountCreator.Mock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	serviceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
-	serviceAccountRemover.Mock.On("RemoveAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	serviceAccountRemover.On("RemoveAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	doguSecretHandler := &mocks.DoguSecretsHandler{}
 	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
 	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
+
+	yamlResult := make(map[string]string, 0)
+	fileExtract := &mockFileExtractor{}
+	fileExtract.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
+	applyClient := &mockK8sClient{}
+	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
+
 	doguManager := controllers.DoguManager{
 		Client:                k8sManager.GetClient(),
 		Scheme:                k8sManager.GetScheme(),
@@ -120,6 +127,8 @@ var _ = BeforeSuite(func() {
 		ServiceAccountCreator: serviceAccountCreator,
 		ServiceAccountRemover: serviceAccountRemover,
 		DoguSecretHandler:     doguSecretHandler,
+		Applier:               applyClient,
+		FileExtractor:         fileExtract,
 	}
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
