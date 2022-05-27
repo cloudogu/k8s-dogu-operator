@@ -20,6 +20,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -51,8 +52,8 @@ type DoguManager struct {
 }
 
 type k8sClient interface {
-	// Apply sends a request to the K8s API with the provided YAML resources in order to apply them to the current cluster's namespace.
-	Apply(yamlResources []byte, namespace string) error
+	// ApplyWithOwner sends a request to the K8s API with the provided YAML resources in order to apply them to the current cluster's namespace.
+	ApplyWithOwner(yamlResources []byte, namespace string, owner metav1.Object) error
 }
 
 type fileExtractor interface {
@@ -269,12 +270,17 @@ func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) erro
 }
 
 func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error {
+	if len(customK8sResources) == 0 {
+		logger.Info("No custom K8s resources found")
+		return nil
+	}
+
 	for file, yamlDocs := range customK8sResources {
 		logger.Info(fmt.Sprintf("Applying custom K8s resources from file %s", file))
 		docs := splitYamlFileDocuments([]byte(yamlDocs))
 
 		for _, doc := range docs {
-			err := m.Applier.Apply(doc, doguResource.ObjectMeta.Namespace)
+			err := m.Applier.ApplyWithOwner(doc, doguResource.ObjectMeta.Namespace, doguResource)
 			if err != nil {
 				return fmt.Errorf("failed to apply file '%s' to K8s API: failing doc: %s: root error: %w", file, doc, err)
 			}

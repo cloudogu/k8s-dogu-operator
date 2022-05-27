@@ -1,12 +1,12 @@
 module github.com/cloudogu/k8s-dogu-operator
 
-go 1.17
+go 1.18
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/cesapp-lib v0.1.0
 	github.com/cloudogu/cesapp/v5 v5.0.1
-	github.com/cloudogu/k8s-ces-setup v0.5.0
+	github.com/cloudogu/k8s-ces-setup v0.0.0-20220527140533-7351808f0e13
 	github.com/go-logr/logr v1.2.0
 	github.com/google/go-containerregistry v0.8.0
 	github.com/hashicorp/go-multierror v1.1.0
@@ -56,6 +56,8 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
+	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/gin-gonic/gin v1.7.7 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-logr/zapr v1.2.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
@@ -112,6 +114,8 @@ require (
 	github.com/spf13/cobra v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.2.1-0.20190415111823-35313a95ee26 // indirect
+	github.com/toorop/gin-logrus v0.0.0-20210225092905-2c785434f26f // indirect
+	github.com/ugorji/go/codec v1.1.7 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
