@@ -40,7 +40,8 @@ type DoguManager struct {
 	client.Client
 	Scheme                *runtime.Scheme
 	ResourceGenerator     doguResourceGenerator
-	DoguRegistry          doguRegistry
+	DoguRemoteRegistry    doguRegistry
+	DoguLocalRegistry     cesregistry.DoguRegistry
 	ImageRegistry         imageRegistry
 	DoguRegistrator       doguRegistrator
 	DependencyValidator   dependencyValidator
@@ -113,7 +114,7 @@ type DoguSecretsHandler interface {
 
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
-	doguRegistry := registry.New(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
+	doguRemoteRegistry := registry.New(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
 	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
 	restConfig := ctrl.GetConfigOrDie()
@@ -146,7 +147,8 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		Client:                client,
 		Scheme:                client.Scheme(),
 		ResourceGenerator:     resourceGenerator,
-		DoguRegistry:          doguRegistry,
+		DoguRemoteRegistry:    doguRemoteRegistry,
+		DoguLocalRegistry:     cesRegistry.DoguRegistry(),
 		ImageRegistry:         imageRegistry,
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
@@ -317,8 +319,17 @@ func (m DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.Config
 	return dogu, nil
 }
 
-func (m DoguManager) getDoguDescriptorFromRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
-	dogu, err := m.DoguRegistry.GetDogu(doguResource)
+func (m DoguManager) getDoguDescriptorFromRemoteRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+	dogu, err := m.DoguRemoteRegistry.GetDogu(doguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
+	}
+
+	return dogu, nil
+}
+
+func (m DoguManager) getDoguDescriptorFromLocalRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+	dogu, err := m.DoguLocalRegistry.Get(doguResource.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
 	}
@@ -348,7 +359,7 @@ func (m DoguManager) getDoguDescriptorWithConfigMap(ctx context.Context, doguRes
 		return m.getDoguDescriptorFromConfigMap(doguConfigMap)
 	} else {
 		logger.Info("Fetching dogu from dogu registry...")
-		return m.getDoguDescriptorFromRegistry(doguResource)
+		return m.getDoguDescriptorFromRemoteRegistry(doguResource)
 	}
 }
 
@@ -472,7 +483,7 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, err := m.getDoguDescriptor(ctx, doguResource)
+	dogu, err := m.getDoguDescriptorFromLocalRegistry(doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
