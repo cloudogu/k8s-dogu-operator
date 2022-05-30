@@ -22,6 +22,8 @@ const (
 	nodeMasterFile = "node-master-file"
 )
 
+const doguPodNamespace = "POD_NAMESPACE"
+
 // ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type ResourceGenerator struct {
@@ -67,7 +69,9 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 					Name:            doguResource.Name,
 					Image:           dogu.Image + ":" + dogu.Version,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts:    volumeMounts}},
+					VolumeMounts:    volumeMounts,
+					Env:             []corev1.EnvVar{{Name: doguPodNamespace, Value: doguResource.Namespace}},
+				}},
 			},
 		},
 	}

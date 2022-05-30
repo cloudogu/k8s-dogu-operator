@@ -3,6 +3,7 @@ metadata:
   labels:
     dogu: ldap
   name: ldap
+  namespace: ecosystem
   ownerReferences:
     - apiVersion: k8s.cloudogu.com/v1
       blockOwnerDeletion: true
@@ -26,6 +27,9 @@ spec:
         - image: registry.cloudogu.com/official/ldap:2.4.48-4
           imagePullPolicy: IfNotPresent
           name: ldap
+          Env:
+            - name: POD_NAMESPACE
+              value: ecosystem
           resources: { }
           volumeMounts:
             - mountPath: /etc/ces/node_master
