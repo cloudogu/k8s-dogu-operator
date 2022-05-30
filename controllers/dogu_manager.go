@@ -313,7 +313,7 @@ func (m *DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.Confi
 	dogu := &core.Dogu{}
 	err := json.Unmarshal([]byte(jsonStr), dogu)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarschal custom dogu descriptor: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal custom dogu descriptor: %w", err)
 	}
 
 	return dogu, nil
@@ -322,7 +322,7 @@ func (m *DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.Confi
 func (m *DoguManager) getDoguDescriptorFromRemoteRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	dogu, err := m.DoguRemoteRegistry.GetDogu(doguResource)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
+		return nil, fmt.Errorf("failed to get dogu from remote dogu registry: %w", err)
 	}
 
 	return dogu, nil
@@ -331,7 +331,7 @@ func (m *DoguManager) getDoguDescriptorFromRemoteRegistry(doguResource *k8sv1.Do
 func (m *DoguManager) getDoguDescriptorFromLocalRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	dogu, err := m.DoguLocalRegistry.Get(doguResource.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
+		return nil, fmt.Errorf("failed to get dogu from local dogu registry: %w", err)
 	}
 
 	return dogu, nil
