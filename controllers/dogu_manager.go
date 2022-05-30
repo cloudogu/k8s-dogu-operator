@@ -280,6 +280,7 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 		docs := splitYamlFileDocuments([]byte(yamlDocs))
 
 		for _, doc := range docs {
+			logger.V(10).Info(string(doc))
 			err := m.Applier.ApplyWithOwner(doc, doguResource.ObjectMeta.Namespace, doguResource)
 			if err != nil {
 				return fmt.Errorf("failed to apply file '%s' to K8s API: failing doc: %s: root error: %w", file, doc, err)
