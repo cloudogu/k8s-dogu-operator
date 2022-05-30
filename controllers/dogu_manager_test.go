@@ -232,7 +232,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unmarschal custom dogu descriptor")
+		assert.Contains(t, err.Error(), "failed to unmarshal custom dogu descriptor")
 		managerWithMocks.AssertMocks(t)
 	})
 
