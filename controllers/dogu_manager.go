@@ -178,7 +178,7 @@ func validateKeyProvider(globalConfig cesregistry.ConfigurationContext) error {
 
 // Install installs a given Dogu Resource. This includes fetching the dogu.json and the container image. With the
 // information Install creates a Deployment and a Service
-func (m DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	doguResource.Status = k8sv1.DoguStatus{RequeueTime: doguResource.Status.RequeueTime, Status: k8sv1.DoguStatusInstalling, StatusMessages: []string{}}
@@ -308,7 +308,7 @@ func splitYamlFileDocuments(resourceBytes []byte) [][]byte {
 	return cleanedResult
 }
 
-func (m DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
+func (m *DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
 	jsonStr := doguConfigMap.Data["dogu.json"]
 	dogu := &core.Dogu{}
 	err := json.Unmarshal([]byte(jsonStr), dogu)
@@ -319,7 +319,7 @@ func (m DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.Config
 	return dogu, nil
 }
 
-func (m DoguManager) getDoguDescriptorFromRemoteRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+func (m *DoguManager) getDoguDescriptorFromRemoteRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	dogu, err := m.DoguRemoteRegistry.GetDogu(doguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
@@ -328,7 +328,7 @@ func (m DoguManager) getDoguDescriptorFromRemoteRegistry(doguResource *k8sv1.Dog
 	return dogu, nil
 }
 
-func (m DoguManager) getDoguDescriptorFromLocalRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+func (m *DoguManager) getDoguDescriptorFromLocalRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	dogu, err := m.DoguLocalRegistry.Get(doguResource.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu from dogu registry: %w", err)
@@ -337,7 +337,7 @@ func (m DoguManager) getDoguDescriptorFromLocalRegistry(doguResource *k8sv1.Dogu
 	return dogu, nil
 }
 
-func (m DoguManager) getDoguConfigMap(ctx context.Context, doguResource *k8sv1.Dogu) (*corev1.ConfigMap, error) {
+func (m *DoguManager) getDoguConfigMap(ctx context.Context, doguResource *k8sv1.Dogu) (*corev1.ConfigMap, error) {
 	configMap := &corev1.ConfigMap{}
 	err := m.Client.Get(ctx, doguResource.GetDescriptorObjectKey(), configMap)
 	if err != nil {
@@ -351,7 +351,7 @@ func (m DoguManager) getDoguConfigMap(ctx context.Context, doguResource *k8sv1.D
 	}
 }
 
-func (m DoguManager) getDoguDescriptorWithConfigMap(ctx context.Context, doguResource *k8sv1.Dogu, doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
+func (m *DoguManager) getDoguDescriptorWithConfigMap(ctx context.Context, doguResource *k8sv1.Dogu, doguConfigMap *corev1.ConfigMap) (*core.Dogu, error) {
 	logger := log.FromContext(ctx)
 
 	if doguConfigMap != nil {
@@ -363,7 +363,7 @@ func (m DoguManager) getDoguDescriptorWithConfigMap(ctx context.Context, doguRes
 	}
 }
 
-func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+func (m *DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	doguConfigMap, err := m.getDoguConfigMap(ctx, doguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu config map: %w", err)
@@ -377,7 +377,7 @@ func (m DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1.
 	return dogu, nil
 }
 
-func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) error {
+func (m *DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) error {
 	err := m.createVolumes(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create volumes for dogu %s: %w", dogu.Name, err)
@@ -401,7 +401,7 @@ func (m DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv
 	return nil
 }
 
-func (m DoguManager) createVolumes(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+func (m *DoguManager) createVolumes(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	if len(dogu.Volumes) > 0 {
@@ -421,7 +421,7 @@ func (m DoguManager) createVolumes(ctx context.Context, doguResource *k8sv1.Dogu
 	return nil
 }
 
-func (m DoguManager) createDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+func (m *DoguManager) createDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	desiredDeployment, err := m.ResourceGenerator.GetDoguDeployment(doguResource, dogu)
@@ -438,7 +438,7 @@ func (m DoguManager) createDeployment(ctx context.Context, doguResource *k8sv1.D
 	return nil
 }
 
-func (m DoguManager) createService(ctx context.Context, doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) error {
+func (m *DoguManager) createService(ctx context.Context, doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) error {
 	logger := log.FromContext(ctx)
 
 	desiredService, err := m.ResourceGenerator.GetDoguService(doguResource, imageConfig)
@@ -455,7 +455,7 @@ func (m DoguManager) createService(ctx context.Context, doguResource *k8sv1.Dogu
 	return nil
 }
 
-func (m DoguManager) createExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+func (m *DoguManager) createExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	exposedServices, err := m.ResourceGenerator.GetDoguExposedServices(doguResource, dogu)
@@ -474,7 +474,7 @@ func (m DoguManager) createExposedServices(ctx context.Context, doguResource *k8
 	return nil
 }
 
-func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting, StatusMessages: []string{}}
 	err := doguResource.Update(ctx, m.Client)
@@ -512,6 +512,6 @@ func (m DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
 // TODO: Implement Upgrade
-func (m DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
+func (m *DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
 	return nil
 }
