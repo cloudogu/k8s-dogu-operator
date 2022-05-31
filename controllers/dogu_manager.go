@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"text/template"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	setupcore "github.com/cloudogu/k8s-ces-setup/app/core"
@@ -286,7 +288,12 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 		for _, doc := range docs {
 			logger.Info(fmt.Sprintf("Apply document:\n---------------\n%s\n---------------", string(doc)))
 
-			sa, ok, err := retrieveServiceAccount(logger, doc)
+			renderedDoc, err := templateNamespaces(doc, doguResource.ObjectMeta.Namespace)
+			if err != nil {
+				return nil, err
+			}
+
+			sa, ok, err := retrieveServiceAccount(renderedDoc)
 			if err != nil {
 				return nil, err
 			}
@@ -299,9 +306,9 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 				serviceAccount = sa
 			}
 
-			err = m.Applier.ApplyWithOwner(doc, doguResource.ObjectMeta.Namespace, doguResource)
+			err = m.Applier.ApplyWithOwner(renderedDoc, doguResource.ObjectMeta.Namespace, doguResource)
 			if err != nil {
-				return nil, fmt.Errorf("failed to apply file '%s' to K8s API: failing doc: %s: root error: %w", file, doc, err)
+				return nil, fmt.Errorf("failed to apply file '%s' to K8s API: failing doc: %s: root error: %w", file, renderedDoc, err)
 			}
 		}
 	}
@@ -309,11 +316,31 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 	return serviceAccount, nil
 }
 
-func retrieveServiceAccount(logger logr.Logger, doc []byte) (*corev1.ServiceAccount, bool, error) {
+func templateNamespaces(doc []byte, namespace string) ([]byte, error) {
+	tpl := template.New("namespacer")
+	parsed, err := tpl.Parse(string(doc))
+	if err != nil {
+		return nil, err
+	}
+
+	resultWriter := bytes.NewBuffer([]byte{})
+	templateObj := struct {
+		Namespace string
+	}{
+		Namespace: namespace,
+	}
+	err = parsed.ExecuteTemplate(resultWriter, "namespacer", templateObj)
+	if err != nil {
+		return nil, err
+	}
+
+	return resultWriter.Bytes(), nil
+}
+
+func retrieveServiceAccount(doc []byte) (*corev1.ServiceAccount, bool, error) {
 	var serviceAccount = &corev1.ServiceAccount{}
 
 	err := yaml.Unmarshal(doc, serviceAccount)
-	logger.Info(fmt.Sprintf("Service Account: [%+v]", serviceAccount))
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to unmarshal object [%s] into service account: %w", string(doc), err)
 	}

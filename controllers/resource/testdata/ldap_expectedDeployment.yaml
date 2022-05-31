@@ -30,6 +30,10 @@ spec:
           Env:
             - name: POD_NAMESPACE
               value: ecosystem
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           resources: { }
           volumeMounts:
             - mountPath: /etc/ces/node_master
