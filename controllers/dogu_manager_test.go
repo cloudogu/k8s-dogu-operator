@@ -18,9 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	sigsclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -189,6 +191,67 @@ func TestDoguManager_Install(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		managerWithMocks.AssertMocks(t)
+	})
+
+	t.Run("successfully install a dogu with custom resources including service account", func(t *testing.T) {
+		// given
+		yamlResult := make(map[string]string, 2)
+
+		testRole := &rbacv1.Role{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "rbac.authorization.k8s.io/v1",
+				Kind:       "Role",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "testRole",
+			},
+			Rules: []rbacv1.PolicyRule{},
+		}
+		testRoleBytes, err := yaml.Marshal(testRole)
+		require.NoError(t, err)
+		yamlResult["testRole.yaml"] = string(testRoleBytes)
+
+		testServiceAccount := &corev1.ServiceAccount{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "ServiceAccount",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "testServiceAccount",
+			},
+		}
+		testServiceAccountBytes, err := yaml.Marshal(testServiceAccount)
+		require.NoError(t, err)
+		yamlResult["testServiceAccount.yaml"] = string(testServiceAccountBytes)
+
+		managerWithMocks := getDoguManagerWithMocks()
+		image = &mocks.Image{}
+		image.On("ConfigFile").Return(imageConfig, nil)
+		managerWithMocks.DoguRemoteRegistry.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		managerWithMocks.ImageRegistry.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+		managerWithMocks.DoguRegistrator.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.DependencyValidator.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.ServiceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.DoguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.FileExtractor.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
+		managerWithMocks.Applier.On("ApplyWithOwner", testRoleBytes, "", ldapCr).Return(nil)
+		managerWithMocks.Applier.On("ApplyWithOwner", testServiceAccountBytes, "", ldapCr).Return(nil)
+		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
+
+		// when
+		err = managerWithMocks.DoguManager.Install(ctx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		managerWithMocks.AssertMocks(t)
+
+		deployment := &v1.Deployment{}
+		err = managerWithMocks.DoguManager.Client.Get(ctx, types.NamespacedName{
+			Namespace: "",
+			Name:      "ldap",
+		}, deployment)
+		require.NoError(t, err)
+		assert.Equal(t, "testServiceAccount", deployment.Spec.Template.Spec.ServiceAccountName)
 	})
 
 	t.Run("successfully install dogu with custom descriptor", func(t *testing.T) {
