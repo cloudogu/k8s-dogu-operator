@@ -68,7 +68,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 
 	podexec, err := newPodExec(fe.config, fe.clientSet, currentNamespace, containerPodName)
 
-	lsCmd := []string{"/bin/ls", "/k8s/"}
+	lsCmd := []string{"/bin/bash", "-c", "/bin/ls /k8s/ || true"}
 	out, _, err := podexec.execCmd(lsCmd)
 	if err != nil {
 		return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s with command '%s': %w",
@@ -76,12 +76,13 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 	}
 
 	resultDocs := make(map[string]string)
-	if out.Len() == 0 {
-		logger.Info("No custom K8s resource files found.")
+	output := out.String()
+	if out.Len() == 0 || strings.Contains(output, "No such file or directory") || strings.Contains(output, "total 0") {
+		logger.Info("No custom K8s resource files found")
 		return resultDocs, nil
 	}
 
-	for _, file := range strings.Split(out.String(), " ") {
+	for _, file := range strings.Split(output, " ") {
 		trimmedFile := doguCustomK8sResourceDirectory + strings.TrimSpace(file)
 		logger.Info("Reading k8s resource " + trimmedFile)
 
