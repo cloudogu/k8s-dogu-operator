@@ -167,6 +167,9 @@ func (fe *podFileExtractor) createExecPodSpec(k8sNamespace string, doguResource 
 					ImagePullPolicy: corev1.PullIfNotPresent,
 				},
 			},
+			ImagePullSecrets: []corev1.LocalObjectReference{
+				{Name: "k8s-dogu-operator-docker-registry"},
+			},
 		},
 	}
 
