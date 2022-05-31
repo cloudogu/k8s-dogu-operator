@@ -23,6 +23,7 @@ const (
 )
 
 const doguPodNamespace = "POD_NAMESPACE"
+const doguPodName = "POD_NAME"
 
 // ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
@@ -70,7 +71,14 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 					Image:           dogu.Image + ":" + dogu.Version,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
-					Env:             []corev1.EnvVar{{Name: doguPodNamespace, Value: doguResource.Namespace}},
+					Env: []corev1.EnvVar{
+						{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
+						{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.name",
+							},
+						}},
+					},
 				}},
 			},
 		},
