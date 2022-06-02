@@ -6,6 +6,10 @@ package controllers_test
 import (
 	"context"
 	_ "embed"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -18,14 +22,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/kubernetes/scheme"
-	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"testing"
-	"time"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	//+kubebuilder:scaffold:imports
@@ -113,7 +114,7 @@ var _ = BeforeSuite(func() {
 	yamlResult := make(map[string]string, 0)
 	fileExtract := &mockFileExtractor{}
 	fileExtract.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
-	applyClient := &mockK8sClient{}
+	applyClient := &mockApplier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	doguManager := controllers.DoguManager{

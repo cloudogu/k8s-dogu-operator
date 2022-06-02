@@ -6,7 +6,7 @@ require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/cesapp-lib v0.1.0
 	github.com/cloudogu/cesapp/v5 v5.0.1
-	github.com/cloudogu/k8s-ces-setup v0.0.0-20220530142651-d2bbcf82b3a0
+	github.com/cloudogu/k8s-apply-lib v0.0.0-20220602080358-2def7bf37216
 	github.com/go-logr/logr v1.2.0
 	github.com/google/go-containerregistry v0.8.0
 	github.com/hashicorp/go-multierror v1.1.0
@@ -39,6 +39,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 // indirect
+	github.com/cloudogu/k8s-ces-setup v0.0.0-20220530142651-d2bbcf82b3a0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.10.1 // indirect
 	github.com/coreos/etcd v3.3.27+incompatible // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect

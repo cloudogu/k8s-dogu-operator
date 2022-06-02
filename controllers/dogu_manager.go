@@ -1,15 +1,13 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"text/template"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	setupcore "github.com/cloudogu/k8s-ces-setup/app/core"
+	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
@@ -52,12 +50,7 @@ type DoguManager struct {
 	ServiceAccountRemover serviceAccountRemover
 	DoguSecretHandler     doguSecretHandler
 	FileExtractor         fileExtractor
-	Applier               k8sClient
-}
-
-type k8sClient interface {
-	// ApplyWithOwner sends a request to the K8s API with the provided YAML resources in order to apply them to the current cluster's namespace.
-	ApplyWithOwner(yamlResources []byte, namespace string, owner metav1.Object) error
+	Applier               Applier
 }
 
 type fileExtractor interface {
@@ -115,6 +108,12 @@ type DoguSecretsHandler interface {
 	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
+// Applier provides ways to apply unstructured Kubernetes resources against the API.
+type Applier interface {
+	// ApplyWithOwner provides a testable method for applying generic, unstructured K8s resources to the API
+	ApplyWithOwner(doc apply.YamlDocument, namespace string, resource metav1.Object) error
+}
+
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
 	doguRemoteRegistry := registry.New(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
@@ -127,9 +126,13 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	}
 
 	fileExtract := newPodFileExtractor(client, restConfig, clientSet)
-	applier, err := setupcore.NewK8sClient(restConfig)
+	applier, scheme, err := apply.New(restConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed create K8s Applier: %w", err)
+	}
+	err = k8sv1.AddToScheme(scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed add applier scheme to dogu CRD scheme handling: %w", err)
 	}
 
 	err = validateKeyProvider(cesRegistry.GlobalConfig())
@@ -280,91 +283,64 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 		return nil, nil
 	}
 
-	var serviceAccount *corev1.ServiceAccount
+	targetNamespace := doguResource.ObjectMeta.Namespace
+
+	namespaceTemplate := struct {
+		Namespace string
+	}{
+		Namespace: targetNamespace,
+	}
+
+	saCollector := &serviceAccountCollector{collected: []*corev1.ServiceAccount{}}
+
 	for file, yamlDocs := range customK8sResources {
 		logger.Info(fmt.Sprintf("Applying custom K8s resources from file %s", file))
-		docs := splitYamlFileDocuments([]byte(yamlDocs))
 
-		for _, doc := range docs {
-			logger.Info(fmt.Sprintf("Apply document:\n---------------\n%s\n---------------", string(doc)))
+		err := apply.NewBuilder(m.Applier).
+			WithNamespace(targetNamespace).
+			WithOwner(doguResource).
+			WithTemplate(file, namespaceTemplate).
+			WithCollector(saCollector).
+			WithYamlResource(file, []byte(yamlDocs)).
+			ExecuteApply()
 
-			renderedDoc, err := templateNamespaces(doc, doguResource.ObjectMeta.Namespace)
-			if err != nil {
-				return nil, err
-			}
-
-			sa, ok, err := retrieveServiceAccount(renderedDoc)
-			if err != nil {
-				return nil, err
-			}
-
-			if ok {
-				if serviceAccount != nil {
-					return nil, fmt.Errorf("found multiple service accounts while reading custom resources from dogu")
-				}
-
-				serviceAccount = sa
-			}
-
-			err = m.Applier.ApplyWithOwner(renderedDoc, doguResource.ObjectMeta.Namespace, doguResource)
-			if err != nil {
-				return nil, fmt.Errorf("failed to apply file '%s' to K8s API: failing doc: %s: root error: %w", file, renderedDoc, err)
-			}
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return serviceAccount, nil
+	if len(saCollector.collected) > 1 {
+		return nil, fmt.Errorf("expected exactly one ServiceAccount but found %d - not sure how to continue", len(saCollector.collected))
+	}
+	if len(saCollector.collected) == 1 {
+		return saCollector.collected[0], nil
+	}
+
+	return nil, nil
 }
 
-func templateNamespaces(doc []byte, namespace string) ([]byte, error) {
-	tpl := template.New("namespacer")
-	parsed, err := tpl.Parse(string(doc))
-	if err != nil {
-		return nil, err
-	}
-
-	resultWriter := bytes.NewBuffer([]byte{})
-	templateObj := struct {
-		Namespace string
-	}{
-		Namespace: namespace,
-	}
-	err = parsed.ExecuteTemplate(resultWriter, "namespacer", templateObj)
-	if err != nil {
-		return nil, err
-	}
-
-	return resultWriter.Bytes(), nil
+type serviceAccountCollector struct {
+	collected []*corev1.ServiceAccount
 }
 
-func retrieveServiceAccount(doc []byte) (*corev1.ServiceAccount, bool, error) {
+func (sac *serviceAccountCollector) Predicate(doc apply.YamlDocument) (bool, error) {
 	var serviceAccount = &corev1.ServiceAccount{}
 
 	err := yaml.Unmarshal(doc, serviceAccount)
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to unmarshal object [%s] into service account: %w", string(doc), err)
+		return false, fmt.Errorf("failed to unmarshal object [%s] into service account: %w", string(doc), err)
 	}
 
-	if serviceAccount.Kind == "ServiceAccount" {
-		return serviceAccount, true, nil
-	}
-
-	return nil, false, nil
+	return serviceAccount.Kind == "ServiceAccount", nil
 }
 
-func splitYamlFileDocuments(resourceBytes []byte) [][]byte {
-	yamlFileSeparator := []byte("---\n")
+func (sac *serviceAccountCollector) Collect(doc apply.YamlDocument) {
+	var serviceAccount = &corev1.ServiceAccount{}
 
-	preResult := bytes.Split(resourceBytes, yamlFileSeparator)
+	// ignore error because it has already been parsed in Predicate()
+	_ = yaml.Unmarshal(doc, serviceAccount)
 
-	cleanedResult := make([][]byte, 0)
-	for _, section := range preResult {
-		if len(section) > 0 {
-			cleanedResult = append(cleanedResult, section)
-		}
-	}
-
-	return cleanedResult
+	sac.collected = append(sac.collected, serviceAccount)
 }
 
 func (m *DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.ConfigMap) (*cesappcore.Dogu, error) {

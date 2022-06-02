@@ -5,8 +5,11 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"testing"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -28,7 +31,6 @@ import (
 	sigsclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
-	"testing"
 )
 
 type doguManagerWithMocks struct {
@@ -41,7 +43,7 @@ type doguManagerWithMocks struct {
 	ServiceAccountCreator *mocks.ServiceAccountCreator
 	ServiceAccountRemover *mocks.ServiceAccountRemover
 	DoguSecretHandler     *mocks.DoguSecretsHandler
-	Applier               *mockK8sClient
+	Applier               *mockApplier
 	FileExtractor         *mockFileExtractor
 }
 
@@ -76,7 +78,7 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
 	doguSecretHandler := &mocks.DoguSecretsHandler{}
-	mockedK8sClient := &mockK8sClient{}
+	mockedApplier := &mockApplier{}
 	fileExtract := &mockFileExtractor{}
 
 	doguManager := controllers.DoguManager{
@@ -92,7 +94,7 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 		ServiceAccountRemover: serviceAccountRemover,
 		DoguSecretHandler:     doguSecretHandler,
 		FileExtractor:         fileExtract,
-		Applier:               mockedK8sClient,
+		Applier:               mockedApplier,
 	}
 
 	return doguManagerWithMocks{
@@ -106,7 +108,7 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 		ServiceAccountRemover: serviceAccountRemover,
 		DoguSecretHandler:     doguSecretHandler,
 		FileExtractor:         fileExtract,
-		Applier:               mockedK8sClient,
+		Applier:               mockedApplier,
 	}
 }
 
@@ -255,7 +257,7 @@ func TestDoguManager_Install(t *testing.T) {
 		managerWithMocks.ServiceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.DoguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.FileExtractor.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
-		managerWithMocks.Applier.On("ApplyWithOwner", testRoleBytes, testNamespace, ldapCr).Return(nil)
+		managerWithMocks.Applier.On("ApplyWithOwner", apply.YamlDocument(testRoleBytes), testNamespace, ldapCr).Return(nil)
 		managerWithMocks.Applier.On("ApplyWithOwner", mock.Anything, testNamespace, ldapCr).Return(nil)
 		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
 
@@ -960,12 +962,12 @@ func TestNewDoguManager(t *testing.T) {
 	})
 }
 
-type mockK8sClient struct {
+type mockApplier struct {
 	mock.Mock
 }
 
-func (m *mockK8sClient) ApplyWithOwner(yamlResources []byte, namespace string, owner metav1.Object) error {
-	args := m.Called(yamlResources, namespace, owner)
+func (m *mockApplier) ApplyWithOwner(doc apply.YamlDocument, namespace string, owner metav1.Object) error {
+	args := m.Called(doc, namespace, owner)
 	return args.Error(0)
 }
 
