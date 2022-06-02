@@ -51,7 +51,7 @@ type DoguManager struct {
 	ServiceAccountRemover serviceAccountRemover
 	DoguSecretHandler     doguSecretHandler
 	FileExtractor         fileExtractor
-	Applier               Applier
+	Applier               applier
 }
 
 type fileExtractor interface {
@@ -109,8 +109,8 @@ type DoguSecretsHandler interface {
 	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
-// Applier provides ways to apply unstructured Kubernetes resources against the API.
-type Applier interface {
+// applier provides ways to apply unstructured Kubernetes resources against the API.
+type applier interface {
 	// ApplyWithOwner provides a testable method for applying generic, unstructured K8s resources to the API
 	ApplyWithOwner(doc apply.YamlDocument, namespace string, resource metav1.Object) error
 }
