@@ -31,6 +31,7 @@ import (
 )
 
 const finalizerName = "dogu-finalizer"
+const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 
 // NewManager is an alias mainly used for testing the main package
 var NewManager = NewDoguManager
@@ -126,7 +127,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	}
 
 	fileExtract := newPodFileExtractor(client, restConfig, clientSet)
-	applier, scheme, err := apply.New(restConfig)
+	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed create K8s Applier: %w", err)
 	}
