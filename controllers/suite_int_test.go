@@ -117,7 +117,7 @@ var _ = BeforeSuite(func() {
 	applyClient := &mockApplier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
-	doguManager := controllers.DoguManager{
+	doguManager := &controllers.DoguManager{
 		Client:                k8sManager.GetClient(),
 		Scheme:                k8sManager.GetScheme(),
 		ResourceGenerator:     resourceGenerator,
