@@ -20,7 +20,7 @@ include $(WORKDIR)/build/make/k8s.mk
 ##@ K8s - EcoSystem
 
 .PHONY: build
-build: k8s-delete image-import install-dogu-descriptor k8s-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
+build: image-import install-dogu-descriptor k8s-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 ##@ K8s - Dogu - Resource
 

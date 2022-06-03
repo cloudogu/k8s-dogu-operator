@@ -52,6 +52,11 @@ node('docker') {
                                 make 'build-controller'
                             }
 
+                            stage("unit tests") {
+                                make 'unit-test'
+                                junit allowEmptyResults: true, testResults: 'target/unit-tests/*-tests.xml'
+                            }
+
                             stage('k8s-Integration-Test') {
                                 make 'k8s-integration-test'
                             }
