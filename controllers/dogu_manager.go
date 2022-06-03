@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
@@ -284,6 +285,8 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 		return nil, nil
 	}
 
+	apply.GetLogger = newExtendedLogr(logger).GetLogger
+
 	targetNamespace := doguResource.ObjectMeta.Namespace
 
 	namespaceTemplate := struct {
@@ -342,6 +345,29 @@ func (sac *serviceAccountCollector) Collect(doc apply.YamlDocument) {
 	_ = yaml.Unmarshal(doc, serviceAccount)
 
 	sac.collected = append(sac.collected, serviceAccount)
+}
+
+type extendedLogr struct {
+	logr.Logger
+}
+
+func newExtendedLogr(logger logr.Logger) *extendedLogr {
+	return &extendedLogr{logger}
+}
+
+func (e *extendedLogr) GetLogger() apply.Logger {
+	return e
+}
+
+func (e *extendedLogr) Info(args ...interface{}) {
+	e.Logger.Info(fmt.Sprintf("%+v", args))
+}
+func (e *extendedLogr) Error(args ...interface{}) {
+	e.Logger.Error(errors.New("asdf"), "%+v", args)
+}
+
+func (e *extendedLogr) Debug(args ...interface{}) {
+	e.Logger.V(10).Info(fmt.Sprintf("%+v", args))
 }
 
 func (m *DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.ConfigMap) (*cesappcore.Dogu, error) {
