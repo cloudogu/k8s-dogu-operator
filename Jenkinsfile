@@ -13,6 +13,7 @@ github = new GitHub(this, git)
 changelog = new Changelog(this)
 Docker docker = new Docker(this)
 gpg = new Gpg(this, docker)
+goVersion = "1.18"
 
 // Configuration of repository
 repositoryOwner = "cloudogu"
@@ -36,7 +37,7 @@ node('docker') {
         }
 
         new Docker(this)
-                .image('golang:1.17.7')
+                .image("golang:${goVersion}")
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
@@ -52,7 +53,7 @@ node('docker') {
                                 make 'build-controller'
                             }
 
-                            stage("unit tests") {
+                            stage("Unit test") {
                                 make 'unit-test'
                                 junit allowEmptyResults: true, testResults: 'target/unit-tests/*-tests.xml'
                             }
@@ -223,7 +224,7 @@ void stageAutomaticRelease() {
 
         stage('Regenerate resources for release') {
             new Docker(this)
-                    .image('golang:1.17.7')
+                    .image("golang:${goVersion}")
                     .mountJenkinsUser()
                     .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                             {

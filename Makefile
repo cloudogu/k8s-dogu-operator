@@ -4,7 +4,7 @@ VERSION=0.6.0
 ## Image URL to use all building/pushing image targets
 IMAGE_DEV=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}:${VERSION}
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG?=1.17.7
+GOTAG?=1.18
 MAKEFILES_VERSION=6.0.0
 
 ADDITIONAL_CLEAN=dist-clean
