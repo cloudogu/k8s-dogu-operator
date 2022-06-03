@@ -163,9 +163,9 @@ type defaultPodExecutor struct {
 }
 
 func (pe *defaultPodExecutor) exec(execPodKey *client.ObjectKey, cmdArgs ...string) (stdOut string, err error) {
-	podexec, err := newPodExec(pe.config, pe.clientset, execPodKey)
+	execPod := newExecPod(pe.config, pe.clientset, execPodKey)
 
-	out, _, err := podexec.execCmd(cmdArgs)
+	out, _, err := execPod.execCmd(cmdArgs)
 	if err != nil {
 		return "", fmt.Errorf("could not enumerate K8s resources in execPod %s with command '%s': %w",
 			execPodKey.Name, strings.Join(cmdArgs, " "), err)
@@ -234,7 +234,7 @@ type podExec struct {
 	restExecutor  exec.RemoteExecutor
 }
 
-func newPodExec(config *rest.Config, clientSet kubernetes.Interface, podExecKey *client.ObjectKey) (*podExec, error) {
+func newExecPod(config *rest.Config, clientSet kubernetes.Interface, podExecKey *client.ObjectKey) *podExec {
 	config.APIPath = "/api"
 	config.GroupVersion = &schema.GroupVersion{Version: "v1"}
 	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs}
@@ -246,7 +246,7 @@ func newPodExec(config *rest.Config, clientSet kubernetes.Interface, podExecKey 
 		podName:       podExecKey.Name,
 		containerName: podExecKey.Name,
 		restExecutor:  &exec.DefaultRemoteExecutor{},
-	}, nil
+	}
 }
 
 // execCmd executes arbitrary commands in a pod container.

@@ -369,10 +369,9 @@ func Test_createPodExecObjectKey(t *testing.T) {
 func Test_newPodExec(t *testing.T) {
 	t.Run("should return valid object", func(t *testing.T) {
 		// when
-		actual, err := newPodExec(&rest.Config{}, fake2.NewSimpleClientset(), testExecPodKey)
+		actual := newExecPod(&rest.Config{}, fake2.NewSimpleClientset(), testExecPodKey)
 
 		// then
-		require.NoError(t, err)
 		assert.NotEmpty(t, actual)
 	})
 }
@@ -400,7 +399,7 @@ func Test_podExec_execCmd(t *testing.T) {
 		clientset.AddReactor("get", "v1/Pod", func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
 			return true, podSpec, nil
 		})
-		sut, _ := newPodExec(&rest.Config{}, clientset, testExecPodKey)
+		sut := newExecPod(&rest.Config{}, clientset, testExecPodKey)
 
 		// when
 		_, errOut, err := sut.execCmd([]string{"/bin/ls", "/k8s/"})
@@ -432,7 +431,7 @@ func Test_podExec_execCmd(t *testing.T) {
 		clientset.AddReactor("get", "v1/Pod", func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
 			return true, podSpec, nil
 		})
-		sut, _ := newPodExec(&rest.Config{}, clientset, testExecPodKey)
+		sut := newExecPod(&rest.Config{}, clientset, testExecPodKey)
 		mockedRestExecutor := &mockRestExecutor{}
 		mockedRestExecutor.On("Execute").Return(nil)
 		sut.restExecutor = mockedRestExecutor
