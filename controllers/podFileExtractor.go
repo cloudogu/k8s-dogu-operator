@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/go-logr/logr"
@@ -11,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -19,19 +23,19 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
-	"time"
 )
 
 const doguCustomK8sResourceDirectory = "/k8s/"
 
+var maxTries = 20
+
 type podFileExtractor struct {
 	k8sClient client.Client
 	config    *rest.Config
-	clientSet *kubernetes.Clientset
+	clientSet kubernetes.Interface
 }
 
-func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clientSet *kubernetes.Clientset) *podFileExtractor {
+func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clientSet kubernetes.Interface) *podFileExtractor {
 	return &podFileExtractor{k8sClient: k8sClient, config: restConfig, clientSet: clientSet}
 }
 
@@ -61,7 +65,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 
 	podExecKey := createPodExecObjectKey(currentNamespace, containerPodName)
 
-	err = fe.findPod(ctx, podExecKey, logger, containerPodName)
+	err = fe.findPod(ctx, podExecKey, containerPodName)
 	if err != nil {
 		return nil, err
 	}
@@ -99,12 +103,12 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 	return resultDocs, nil
 }
 
-func (fe *podFileExtractor) findPod(ctx context.Context, podExecKey client.ObjectKey, logger logr.Logger, containerPodName string) error {
+func (fe *podFileExtractor) findPod(ctx context.Context, podExecKey client.ObjectKey, containerPodName string) error {
+	logger := log.FromContext(ctx)
 	lePod := corev1.Pod{}
-	const maxTries = 10
 
-	for i := 0; i < maxTries; i++ {
-		if i >= maxTries-1 {
+	for i := 1; i <= maxTries; i++ {
+		if i >= maxTries {
 			return fmt.Errorf("quitting dogu installation because exec pod %s could not be found", containerPodName)
 		}
 
@@ -145,7 +149,7 @@ func createPodExecObjectKey(k8sNamespace, containerPodName string) client.Object
 }
 
 func (fe *podFileExtractor) createExecPodSpec(k8sNamespace string, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Pod, string, error) {
-	containerName := dogu.GetSimpleName() + "-execpod"
+	containerName := fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", rand.String(6))
 	image := dogu.Image + ":" + dogu.Version
 	// command is of no importance because the pod will be killed after success
 	doNothingCommand := []string{"/bin/sleep", "60"}
@@ -184,21 +188,21 @@ func (fe *podFileExtractor) createExecPodSpec(k8sNamespace string, doguResource 
 
 // podExec executes commands in a running K8s container
 type podExec struct {
-	restConfig *rest.Config
-	*kubernetes.Clientset
+	clientset     kubernetes.Interface
+	restConfig    *rest.Config
 	namespace     string
 	podName       string
 	containerName string
 }
 
-func newPodExec(config *rest.Config, clientSet *kubernetes.Clientset, namespace, containerPodName string) (*podExec, error) {
+func newPodExec(config *rest.Config, clientSet kubernetes.Interface, namespace, containerPodName string) (*podExec, error) {
 	config.APIPath = "/api"
 	config.GroupVersion = &schema.GroupVersion{Version: "v1"}
 	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs}
 
 	return &podExec{
 		restConfig:    config,
-		Clientset:     clientSet,
+		clientset:     clientSet,
 		namespace:     namespace,
 		podName:       containerPodName,
 		containerName: containerPodName,
@@ -230,7 +234,7 @@ func (p *podExec) execCmd(command []string) (out *bytes.Buffer, errOut *bytes.Bu
 		},
 		Command:       command,
 		Executor:      &exec.DefaultRemoteExecutor{},
-		PodClient:     p.Clientset.CoreV1(),
+		PodClient:     p.clientset.CoreV1(),
 		GetPodTimeout: 0,
 		Config:        p.restConfig,
 	}
