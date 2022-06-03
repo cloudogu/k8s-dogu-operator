@@ -30,19 +30,35 @@ const doguCustomK8sResourceDirectory = "/k8s/"
 var maxTries = 20
 
 type podFileExtractor struct {
-	k8sClient client.Client
-	config    *rest.Config
-	clientSet kubernetes.Interface
-	suffixGen suffixGenerator
+	k8sClient   client.Client
+	config      *rest.Config
+	clientSet   kubernetes.Interface
+	suffixGen   suffixGenerator
+	podFinder   podFinder
+	podExecutor podExecutor
+}
+
+type suffixGenerator interface {
+	// String returns a random suffix string with the given length
+	String(length int) string
+}
+
+type podFinder interface {
+	find(ctx context.Context, podExecKey *client.ObjectKey) error
+}
+
+type podExecutor interface {
+	exec(podExecKey *client.ObjectKey, cmdArgs ...string) (stdOut string, err error)
 }
 
 func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clientSet kubernetes.Interface) *podFileExtractor {
-
 	return &podFileExtractor{
-		k8sClient: k8sClient,
-		config:    restConfig,
-		clientSet: clientSet,
-		suffixGen: &defaultSufficeGenerator{},
+		k8sClient:   k8sClient,
+		config:      restConfig,
+		clientSet:   clientSet,
+		suffixGen:   &defaultSufficeGenerator{},
+		podFinder:   &defaultPodFinder{k8sClient: k8sClient},
+		podExecutor: &defaultPodExecutor{config: restConfig, clientset: clientSet},
 	}
 }
 
@@ -70,56 +86,54 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 		}
 	}()
 
-	podExecKey := createPodExecObjectKey(currentNamespace, containerPodName)
+	execPodKey := createExecPodObjectKey(currentNamespace, containerPodName)
 
-	err = fe.findPod(ctx, podExecKey, containerPodName)
+	err = fe.podFinder.find(ctx, execPodKey)
 	if err != nil {
 		return nil, err
 	}
 
-	podexec, err := newPodExec(fe.config, fe.clientSet, currentNamespace, containerPodName)
-
-	lsCmd := []string{"/bin/bash", "-c", "/bin/ls /k8s/ || true"}
-	out, _, err := podexec.execCmd(lsCmd)
+	fileList, err := fe.podExecutor.exec(execPodKey, "/bin/bash", "-c", "/bin/ls /k8s/ || true")
 	if err != nil {
-		return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s with command '%s': %w",
-			containerPodName, strings.Join(lsCmd, " "), err)
+		return nil, err
 	}
 
 	resultDocs := make(map[string]string)
-	output := out.String()
-	if out.Len() == 0 || strings.Contains(output, "No such file or directory") || strings.Contains(output, "total 0") {
+	if fileList == "" || strings.Contains(fileList, "No such file or directory") || strings.Contains(fileList, "total 0") {
 		logger.Info("No custom K8s resource files found")
 		return resultDocs, nil
 	}
 
-	for _, file := range strings.Split(output, " ") {
+	for _, file := range strings.Split(fileList, " ") {
 		trimmedFile := doguCustomK8sResourceDirectory + strings.TrimSpace(file)
 		logger.Info("Reading k8s resource " + trimmedFile)
 
-		catCmd := []string{"/bin/cat", trimmedFile}
-		out, _, err = podexec.execCmd(catCmd)
+		fileContent, err := fe.podExecutor.exec(execPodKey, "/bin/cat", trimmedFile)
 		if err != nil {
-			return nil, fmt.Errorf("could not enumerate K8s resources in execPod %s with command '%s': %w",
-				containerPodName, strings.Join(catCmd, " "), err)
+			return nil, err
 		}
 
-		resultDocs[trimmedFile] = out.String()
+		resultDocs[trimmedFile] = fileContent
 	}
 
 	return resultDocs, nil
 }
 
-func (fe *podFileExtractor) findPod(ctx context.Context, podExecKey client.ObjectKey, containerPodName string) error {
+type defaultPodFinder struct {
+	k8sClient client.Client
+}
+
+func (pf *defaultPodFinder) find(ctx context.Context, execPodKey *client.ObjectKey) error {
 	logger := log.FromContext(ctx)
 	lePod := corev1.Pod{}
+	containerPodName := execPodKey.Name
 
 	for i := 1; i <= maxTries; i++ {
 		if i >= maxTries {
 			return fmt.Errorf("quitting dogu installation because exec pod %s could not be found", containerPodName)
 		}
 
-		err := fe.k8sClient.Get(ctx, podExecKey, &lePod)
+		err := pf.k8sClient.Get(ctx, *execPodKey, &lePod)
 		if err != nil {
 			logger.Error(err, "Error while finding exec pod "+containerPodName+". Will try again.")
 			sleep(logger, i)
@@ -143,13 +157,30 @@ func (fe *podFileExtractor) findPod(ctx context.Context, podExecKey client.Objec
 	return fmt.Errorf("unexpected loop end while finding exec pod %s", containerPodName)
 }
 
+type defaultPodExecutor struct {
+	config    *rest.Config
+	clientset kubernetes.Interface
+}
+
+func (pe *defaultPodExecutor) exec(execPodKey *client.ObjectKey, cmdArgs ...string) (stdOut string, err error) {
+	podexec, err := newPodExec(pe.config, pe.clientset, execPodKey)
+
+	out, _, err := podexec.execCmd(cmdArgs)
+	if err != nil {
+		return "", fmt.Errorf("could not enumerate K8s resources in execPod %s with command '%s': %w",
+			execPodKey.Name, strings.Join(cmdArgs, " "), err)
+	}
+
+	return out.String(), nil
+}
+
 func sleep(logger logr.Logger, sleepIntervalInSec int) {
 	logger.Info(fmt.Sprintf("Exec pod not found. Trying again in %d second(s)", sleepIntervalInSec))
 	time.Sleep(time.Duration(sleepIntervalInSec) * time.Second) // linear rising backoff
 }
 
-func createPodExecObjectKey(k8sNamespace, containerPodName string) client.ObjectKey {
-	return client.ObjectKey{
+func createExecPodObjectKey(k8sNamespace, containerPodName string) *client.ObjectKey {
+	return &client.ObjectKey{
 		Namespace: k8sNamespace,
 		Name:      containerPodName,
 	}
@@ -200,9 +231,10 @@ type podExec struct {
 	namespace     string
 	podName       string
 	containerName string
+	restExecutor  exec.RemoteExecutor
 }
 
-func newPodExec(config *rest.Config, clientSet kubernetes.Interface, namespace, containerPodName string) (*podExec, error) {
+func newPodExec(config *rest.Config, clientSet kubernetes.Interface, podExecKey *client.ObjectKey) (*podExec, error) {
 	config.APIPath = "/api"
 	config.GroupVersion = &schema.GroupVersion{Version: "v1"}
 	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs}
@@ -210,9 +242,10 @@ func newPodExec(config *rest.Config, clientSet kubernetes.Interface, namespace, 
 	return &podExec{
 		restConfig:    config,
 		clientset:     clientSet,
-		namespace:     namespace,
-		podName:       containerPodName,
-		containerName: containerPodName,
+		namespace:     podExecKey.Namespace,
+		podName:       podExecKey.Name,
+		containerName: podExecKey.Name,
+		restExecutor:  &exec.DefaultRemoteExecutor{},
 	}, nil
 }
 
@@ -240,7 +273,7 @@ func (p *podExec) execCmd(command []string) (out *bytes.Buffer, errOut *bytes.Bu
 			IOStreams:       ioStreams,
 		},
 		Command:       command,
-		Executor:      &exec.DefaultRemoteExecutor{},
+		Executor:      p.restExecutor,
 		PodClient:     p.clientset.CoreV1(),
 		GetPodTimeout: 0,
 		Config:        p.restConfig,
@@ -252,10 +285,6 @@ func (p *podExec) execCmd(command []string) (out *bytes.Buffer, errOut *bytes.Bu
 	}
 
 	return out, errOut, nil
-}
-
-type suffixGenerator interface {
-	String(int) string
 }
 
 type defaultSufficeGenerator struct{}
