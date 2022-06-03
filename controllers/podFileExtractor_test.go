@@ -22,7 +22,12 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const testNamespace = "test-namespace"
+const (
+	testNamespace              = "test-namespace"
+	testPodContainerNamePrefix = "ldap"
+	testPodContainerNameSuffix = "1q2w3e"
+	testPodContainerName       = testPodContainerNamePrefix + "-execpod-" + testPodContainerNameSuffix
+)
 
 var testContext = context.TODO()
 
@@ -39,14 +44,17 @@ func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().
 			WithScheme(getInstallScheme(ldapCr)).
 			Build()
-		sut := &podFileExtractor{k8sClient: fakeClient}
+		sut := &podFileExtractor{
+			k8sClient: fakeClient,
+			suffixGen: &testSuffixGenerator{},
+		}
 
 		// when
 		_, containerName, err := sut.createExecPodSpec(testNamespace, ldapCr, ldapDogu)
 
 		// then
 		require.NoError(t, err)
-		assert.Regexp(t, "^ldap-execpod-\\w{6}$", containerName)
+		assert.Equal(t, testPodContainerName, containerName)
 	})
 	t.Run("should create exec pod same name as container name", func(t *testing.T) {
 		ldapCr := readDoguResource(t)
@@ -54,7 +62,10 @@ func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().
 			WithScheme(getInstallScheme(ldapCr)).
 			Build()
-		sut := &podFileExtractor{k8sClient: fakeClient}
+		sut := &podFileExtractor{
+			k8sClient: fakeClient,
+			suffixGen: &testSuffixGenerator{},
+		}
 
 		// when
 		podspec, containerName, err := sut.createExecPodSpec(testNamespace, ldapCr, ldapDogu)
@@ -70,7 +81,8 @@ func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().
 			WithScheme(getInstallScheme(ldapCr)).
 			Build()
-		sut := &podFileExtractor{k8sClient: fakeClient}
+		sut := &podFileExtractor{k8sClient: fakeClient,
+			suffixGen: &testSuffixGenerator{}}
 
 		// when
 		podspec, _, err := sut.createExecPodSpec(testNamespace, ldapCr, ldapDogu)
@@ -87,22 +99,21 @@ func Test_podFileExtractor_findPod(t *testing.T) {
 	t.Run("should find running pod immediately", func(t *testing.T) {
 		ldapCr := readDoguResource(t)
 
-		const containerPodName = "letest-execpod-1q2w3e"
 		podObjectKey := client.ObjectKey{
-			Name:      containerPodName,
+			Name:      testPodContainerName,
 			Namespace: testNamespace,
 		}
 		podSpec := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      containerPodName,
+				Name:      testPodContainerName,
 				Namespace: testNamespace,
 			},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:  containerPodName,
-						Image: "le/test:image",
+						Name:  testPodContainerName,
+						Image: "official/ldap:1.2.3",
 					},
 				},
 			},
@@ -112,13 +123,14 @@ func Test_podFileExtractor_findPod(t *testing.T) {
 			WithScheme(getInstallScheme(ldapCr)).
 			WithObjects(podSpec).
 			Build()
-		sut := &podFileExtractor{k8sClient: fakeClient}
+		sut := &podFileExtractor{k8sClient: fakeClient,
+			suffixGen: &testSuffixGenerator{}}
 		// decrease waiting time; must not be lower than 2
 		maxTries = 2
 		defer func() { maxTries = 20 }()
 
 		// when
-		err := sut.findPod(testContext, podObjectKey, containerPodName)
+		err := sut.findPod(testContext, podObjectKey, testPodContainerName)
 
 		// then
 		require.NoError(t, err)
@@ -126,22 +138,21 @@ func Test_podFileExtractor_findPod(t *testing.T) {
 	t.Run("should return expressive error for unready pod after timeout", func(t *testing.T) {
 		ldapCr := readDoguResource(t)
 
-		const containerPodName = "letest-execpod-1q2w3e"
 		podObjectKey := client.ObjectKey{
-			Name:      containerPodName,
+			Name:      testPodContainerName,
 			Namespace: testNamespace,
 		}
 		podSpec := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      containerPodName,
+				Name:      testPodContainerName,
 				Namespace: testNamespace,
 			},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:  containerPodName,
-						Image: "le/test:image",
+						Name:  testPodContainerName,
+						Image: "official/ldap:1.2.3",
 					},
 				},
 			},
@@ -151,20 +162,74 @@ func Test_podFileExtractor_findPod(t *testing.T) {
 			WithScheme(getInstallScheme(ldapCr)).
 			WithObjects(podSpec).
 			Build()
-		sut := &podFileExtractor{k8sClient: fakeClient}
+		sut := &podFileExtractor{k8sClient: fakeClient,
+			suffixGen: &testSuffixGenerator{}}
 		// decrease waiting time; must not be lower than 2
 		maxTries = 2
 		defer func() { maxTries = 20 }()
 
 		// when
-		err := sut.findPod(testContext, podObjectKey, containerPodName)
+		err := sut.findPod(testContext, podObjectKey, testPodContainerName)
 
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "did not come up in time")
-		assert.Contains(t, err.Error(), containerPodName)
+		assert.Contains(t, err.Error(), testPodContainerName)
 		assert.Contains(t, err.Error(), "status Failed")
 	})
+	t.Run("should return expressive error for non-existing pod", func(t *testing.T) {
+		ldapCr := readDoguResource(t)
+
+		podObjectKey := client.ObjectKey{
+			Name:      testPodContainerName,
+			Namespace: testNamespace,
+		}
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(getInstallScheme(ldapCr)).
+			// No PodSpec here
+			Build()
+		sut := &podFileExtractor{k8sClient: fakeClient,
+			suffixGen: &testSuffixGenerator{}}
+		// decrease waiting time; must not be lower than 2
+		maxTries = 2
+		defer func() { maxTries = 20 }()
+
+		// when
+		err := sut.findPod(testContext, podObjectKey, testPodContainerName)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "ldap-execpod-1q2w3e could not be found")
+	})
+}
+
+func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
+	t.Run("should fail with non-existing exec pod", func(t *testing.T) {
+		ldapCr := readDoguResource(t)
+		// simulate dogu in a non-default namespace
+		ldapCr.Namespace = testNamespace
+		ldapDogu := readDogu(t)
+
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(getInstallScheme(ldapCr)).
+			Build()
+		clientset := fake2.NewSimpleClientset()
+
+		sut := &podFileExtractor{k8sClient: fakeClient, clientSet: clientset,
+			suffixGen: &testSuffixGenerator{}}
+		// decrease waiting time; must not be lower than 2
+		maxTries = 2
+		defer func() { maxTries = 20 }()
+
+		// when
+		actual, err := sut.ExtractK8sResourcesFromContainer(testContext, ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		assert.Nil(t, actual)
+		assert.Contains(t, err.Error(), "ldap-execpod-1q2w3e could not be found")
+	})
+
 }
 
 func Test_newPodFileExtractor(t *testing.T) {
@@ -176,6 +241,62 @@ func Test_newPodFileExtractor(t *testing.T) {
 
 		// then
 		assert.Implements(t, (*fileExtractor)(nil), actual)
+	})
+}
+
+func Test_createPodExecObjectKey(t *testing.T) {
+	const podName = "le-test-pod-name"
+
+	actual := createPodExecObjectKey(testNamespace, podName)
+
+	assert.NotEmpty(t, actual)
+	assert.Equal(t, podName, actual.Name)
+	assert.Equal(t, testNamespace, actual.Namespace)
+}
+
+func Test_newPodExec(t *testing.T) {
+	t.Run("should return valid object", func(t *testing.T) {
+		const podName = "le-test-pod-name"
+
+		// when
+		actual, err := newPodExec(&rest.Config{}, fake2.NewSimpleClientset(), testNamespace, podName)
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, actual)
+	})
+}
+
+func Test_podExec_execCmd(t *testing.T) {
+	t.Run("should run command with error on failed container", func(t *testing.T) {
+		const containerPodName = "le-test-pod-name"
+		podSpec := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      containerPodName,
+				Namespace: testNamespace,
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:  containerPodName,
+						Image: "official/ldap:1.2.3",
+					},
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodFailed},
+		}
+
+		clientset := fake2.NewSimpleClientset(podSpec)
+		sut, _ := newPodExec(&rest.Config{}, clientset, testNamespace, containerPodName)
+
+		// when
+		_, errOut, err := sut.execCmd([]string{"/bin/ls"})
+
+		// then
+		require.Error(t, err)
+		assert.Empty(t, errOut)
+		assert.Contains(t, err.Error(), "current phase is Failed")
 	})
 }
 
@@ -243,4 +364,10 @@ func getInstallScheme(dogu *k8sv1.Dogu) *runtime.Scheme {
 	}, &corev1.ConfigMap{})
 
 	return scheme
+}
+
+type testSuffixGenerator struct{}
+
+func (t *testSuffixGenerator) String(length int) string {
+	return testPodContainerNameSuffix
 }

@@ -33,10 +33,17 @@ type podFileExtractor struct {
 	k8sClient client.Client
 	config    *rest.Config
 	clientSet kubernetes.Interface
+	suffixGen suffixGenerator
 }
 
 func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clientSet kubernetes.Interface) *podFileExtractor {
-	return &podFileExtractor{k8sClient: k8sClient, config: restConfig, clientSet: clientSet}
+
+	return &podFileExtractor{
+		k8sClient: k8sClient,
+		config:    restConfig,
+		clientSet: clientSet,
+		suffixGen: &defaultSufficeGenerator{},
+	}
 }
 
 // ExtractK8sResourcesFromContainer enumerates K8s resources and returns them in a map file->content. The map will be
@@ -149,7 +156,7 @@ func createPodExecObjectKey(k8sNamespace, containerPodName string) client.Object
 }
 
 func (fe *podFileExtractor) createExecPodSpec(k8sNamespace string, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Pod, string, error) {
-	containerName := fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", rand.String(6))
+	containerName := fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", fe.suffixGen.String(6))
 	image := dogu.Image + ":" + dogu.Version
 	// command is of no importance because the pod will be killed after success
 	doNothingCommand := []string{"/bin/sleep", "60"}
@@ -245,4 +252,14 @@ func (p *podExec) execCmd(command []string) (out *bytes.Buffer, errOut *bytes.Bu
 	}
 
 	return out, errOut, nil
+}
+
+type suffixGenerator interface {
+	String(int) string
+}
+
+type defaultSufficeGenerator struct{}
+
+func (sg *defaultSufficeGenerator) String(suffixLength int) string {
+	return rand.String(suffixLength)
 }
