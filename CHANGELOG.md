@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#6] Installing generic kubernetes resources when installing a dogu. These resources need to be provided by the dogu image
+at the `k8s` folder in the root path (`/k8s`):
+  - There are no restriction for namespaced resources.
+  - The creation of cluster scoped resources is restricted and also their 
+  deletion is not performed automatically as they could be used inside multiple namespaces. 
+
+### Changed
+- [#6] Update makefiles to version 6.0.2
 
 ## [v0.6.0] - 2022-05-24
 ### Added

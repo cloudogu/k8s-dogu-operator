@@ -12,7 +12,7 @@ ARTIFACT_NAMESPACE=$(shell yq -e ".Name" $(DOGU_JSON_FILE) | sed "s|/.*||g")
 VERSION=$(shell yq -e ".Version" $(DOGU_JSON_FILE))
 # Image of the dogu is extracted from the dogu.json
 IMAGE=$(shell yq -e ".Image" $(DOGU_JSON_FILE)):$(VERSION)
-IMAGE_DEV_WITHOUT_TAG=$(shell yq -e ".Image" $(DOGU_JSON_FILE) | sed "s#registry\.cloudogu\.com\(.\+\)#${K3CES_REGISTRY_URL_PREFIX}\1#g")
+IMAGE_DEV_WITHOUT_TAG=$(shell yq -e ".Image" $(DOGU_JSON_FILE) | sed "s|registry\.cloudogu\.com\(.\+\)|${K3CES_REGISTRY_URL_PREFIX}\1|g")
 IMAGE_DEV=${IMAGE_DEV_WITHOUT_TAG}:${VERSION}
 
 include $(WORKDIR)/build/make/k8s.mk
@@ -20,7 +20,7 @@ include $(WORKDIR)/build/make/k8s.mk
 ##@ K8s - EcoSystem
 
 .PHONY: build
-build: k8s-delete image-import install-dogu-descriptor k8s-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
+build: image-import install-dogu-descriptor k8s-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 ##@ K8s - Dogu - Resource
 
@@ -30,18 +30,16 @@ K8S_RESOURCE_PRODUCTIVE_YAML ?= $(K8S_RESOURCE_PRODUCTIVE_FOLDER)/$(ARTIFACT_ID)
 K8S_RESOURCE_DOGU_CR_TEMPLATE_YAML ?= $(WORKDIR)/build/make/k8s-dogu.tpl
 # The pre generation script creates a k8s resource yaml containing the dogu crd and the content from the k8s folder.
 .PHONY: k8s-create-temporary-resource
- k8s-create-temporary-resource:
+ k8s-create-temporary-resource: $(TARGET_DIR) $(K8S_RESOURCE_TEMP_FOLDER)
 	@echo "Generating temporary K8s resources $(K8S_RESOURCE_TEMP_YAML)..."
 	@rm -f $(K8S_RESOURCE_TEMP_YAML)
-	@test -f $(K8S_RESOURCE_PRODUCTIVE_YAML) && (cp $(K8S_RESOURCE_PRODUCTIVE_YAML) $(K8S_RESOURCE_TEMP_YAML)) || (touch $(K8S_RESOURCE_TEMP_YAML))
-	@echo "---" >> $(K8S_RESOURCE_TEMP_YAML)
 	@sed "s|NAMESPACE|$(ARTIFACT_NAMESPACE)|g" $(K8S_RESOURCE_DOGU_CR_TEMPLATE_YAML) | sed "s|NAME|$(ARTIFACT_ID)|g"  | sed "s|VERSION|$(VERSION)|g" >> $(K8S_RESOURCE_TEMP_YAML)
 	@echo "Done."
 
 ##@ K8s - Dogu
 
 .PHONY: install-dogu-descriptor
-install-dogu-descriptor: ## Installs a configmap with current dogu.json into the cluster.
+install-dogu-descriptor: $(TARGET_DIR) ## Installs a configmap with current dogu.json into the cluster.
 	@echo "Generate configmap from dogu.json..."
 
 	@jq ".Image=\"${IMAGE_DEV_WITHOUT_TAG}\"" ${DOGU_JSON_FILE} > ${DOGU_JSON_DEV_FILE}

@@ -5,7 +5,7 @@ package mocks
 import (
 	appsv1 "k8s.io/api/apps/v1"
 
-	core "github.com/cloudogu/cesapp/v4/core"
+	core "github.com/cloudogu/cesapp-lib/core"
 
 	corev1 "k8s.io/api/core/v1"
 

@@ -2,7 +2,7 @@ package controllers_test
 
 import (
 	"context"
-	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"

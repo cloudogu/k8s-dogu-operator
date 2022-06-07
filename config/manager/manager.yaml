@@ -22,6 +22,8 @@ spec:
       - args:
         - --leader-elect
         env:
+          - name: STAGE
+            value: "production"
           - name: NAMESPACE
             valueFrom:
               fieldRef:
@@ -47,6 +49,7 @@ spec:
                 name: k8s-dogu-operator-docker-registry
                 key: .dockerconfigjson
         image: controller:latest
+        imagePullPolicy: IfNotPresent
         name: manager
         securityContext:
           allowPrivilegeEscalation: false

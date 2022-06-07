@@ -2,9 +2,10 @@ package resource
 
 import (
 	"fmt"
-	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +22,9 @@ const (
 	cesLabel       = "ces"
 	nodeMasterFile = "node-master-file"
 )
+
+const doguPodNamespace = "POD_NAMESPACE"
+const doguPodName = "POD_NAME"
 
 // ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
@@ -46,6 +50,11 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 		Namespace: doguResource.Namespace,
 	}}
 
+	pullPolicy := corev1.PullIfNotPresent
+	if config.Stage == config.StageDevelopment {
+		pullPolicy = corev1.PullAlways
+	}
+
 	labels := map[string]string{"dogu": doguResource.Name}
 	deployment.ObjectMeta.Labels = labels
 	deployment.Spec = appsv1.DeploymentSpec{
@@ -66,8 +75,17 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 					StartupProbe:    startupProbe,
 					Name:            doguResource.Name,
 					Image:           dogu.Image + ":" + dogu.Version,
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts:    volumeMounts}},
+					ImagePullPolicy: pullPolicy,
+					VolumeMounts:    volumeMounts,
+					Env: []corev1.EnvVar{
+						{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
+						{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.name",
+							},
+						}},
+					},
+				}},
 			},
 		},
 	}

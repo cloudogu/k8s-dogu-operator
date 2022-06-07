@@ -2,7 +2,7 @@ package dependency
 
 import (
 	"fmt"
-	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )

@@ -7,7 +7,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
@@ -46,6 +46,8 @@ var _ = Describe("Dogu Controller", func() {
 	EtcdDoguRegistry.Mock.On("Get", "cas").Return(nil, fmt.Errorf("not installed"))
 	EtcdDoguRegistry.Mock.On("Get", "nginx").Return(nil, fmt.Errorf("not installed"))
 	EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
+	EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapDogu, nil)
+	EtcdDoguRegistry.Mock.On("Get", "redmine").Return(redmineDogu, nil)
 	EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
 	EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
 	EtcdDoguRegistry.Mock.On("Enable", mock.Anything).Return(nil)
