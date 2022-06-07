@@ -10,6 +10,21 @@ import (
 	"strings"
 )
 
+const StageDevelopment = "development"
+const StageProduction = "production"
+const StageEnvironmentVariable = "STAGE"
+
+var Stage = StageProduction
+
+func init() {
+	stage, err := getEnvVar(StageEnvironmentVariable)
+	if err != nil {
+		return
+	}
+
+	Stage = stage
+}
+
 var (
 	envVarNamespace            = "NAMESPACE"
 	envVarDoguRegistryEndpoint = "DOGU_REGISTRY_ENDPOINT"
@@ -60,6 +75,10 @@ type OperatorConfig struct {
 
 // NewOperatorConfig creates a new operator config by reading values from the environment variables
 func NewOperatorConfig(version string) (*OperatorConfig, error) {
+	if Stage == StageDevelopment {
+		log.Info("Starting in development mode! This is not recommended for production!")
+	}
+
 	parsedVersion, err := core.ParseVersion(version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse version: %w", err)

@@ -7,6 +7,7 @@ IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG?=1.18
 MAKEFILES_VERSION=6.0.0
 LINT_VERSION=v1.45.2
+STAGE?=production
 
 ADDITIONAL_CLEAN=dist-clean
 
@@ -23,8 +24,9 @@ include build/make/digital-signature.mk
 K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
 PRE_COMPILE=generate vet
 
-include build/make/k8s-controller.mk
+K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy
 
+include build/make/k8s-controller.mk
 
 ##@ Controller specific targets
 
@@ -55,3 +57,13 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 setup-etcd-port-forward:
 	kubectl port-forward etcd-0 4001:2379 &
 
+.PHONY: template-stage
+template-stage:
+	@echo "Setting STAGE env in deployment to ${STAGE}!"
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"STAGE\").value)=\"${STAGE}\"" $(K8S_RESOURCE_TEMP_YAML)
+
+.PHONY: template-dev-only-image-pull-policy
+template-dev-only-image-pull-policy:
+	@if [[ ${STAGE} == "development" ]]; \
+		then echo "Setting pull policy to always for development stage!" && $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").imagePullPolicy)=\"Always\"" $(K8S_RESOURCE_TEMP_YAML); \
+	fi

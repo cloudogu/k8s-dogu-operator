@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"strings"
 	"time"
 
@@ -193,6 +194,11 @@ func (fe *podFileExtractor) createExecPodSpec(k8sNamespace string, doguResource 
 	doNothingCommand := []string{"/bin/sleep", "60"}
 	labels := map[string]string{"app": "ces", "dogu": containerName}
 
+	pullPolicy := corev1.PullIfNotPresent
+	if config.Stage == config.StageDevelopment {
+		pullPolicy = corev1.PullAlways
+	}
+
 	podSpec := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -207,7 +213,7 @@ func (fe *podFileExtractor) createExecPodSpec(k8sNamespace string, doguResource 
 					Name:            containerName,
 					Image:           image,
 					Command:         doNothingCommand,
-					ImagePullPolicy: corev1.PullIfNotPresent,
+					ImagePullPolicy: pullPolicy,
 				},
 			},
 			ImagePullSecrets: []corev1.LocalObjectReference{
