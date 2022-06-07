@@ -1,8 +1,8 @@
 package dependency
 
 import (
-	"github.com/cloudogu/cesapp/v4/core"
-	"github.com/cloudogu/cesapp/v4/registry"
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/hashicorp/go-multierror"
 )
 

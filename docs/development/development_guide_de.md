@@ -7,7 +7,11 @@
    - `127.0.0.1       localhost etcd etcd.ecosystem.svc.cluster.local`
 3. Öffnen Sie die Datei `.env.template` und folgen Sie den Anweisungen um eine 
    Umgebungsvariablendatei mit persönlichen Informationen anzulegen
-4. Führen Sie `make run` aus, um den dogu-Operator lokal auszuführen
+4. Erzeugen Sie einen etcd Port-Forward
+   - `kubectl -n=ecosystem port-forward etcd-0 4001:2379`
+5. Führen Sie `make run` aus, um den dogu-Operator lokal auszuführen
+6. Löschen Sie eventuelle Dogu-Operator-Deployments im Cluster, um Parallelisierungsfehler auszuschließen
+   - `kubectl delete deployment k8s-dogu-operator`
 
 ## Makefile-Targets
 
@@ -33,7 +37,16 @@ lauten und die Nutzdaten müssen in der Data-Map unter dem Eintrag `dogu.json` v
 Es existiert ein Make-Target zur automatischen Erzeugung der Configmap - `make install-dogu-descriptor`.
 Dabei ist zu beachten, dass der Dateipfad unter der Variable `CUSTOM_DOGU_DESCRIPTOR` exportiert werden muss.
 
-Nach einer erfolgreichen Dogu-Installation, wird die Configmap gelöscht.
+Nach einer erfolgreichen Dogu-Installation wird die Configmap gelöscht.
+
+### Beispiel
+
+Installation des Dogu-Deskriptors für nginx-ingress:
+
+```
+export CUSTOM_DOGU_DESCRIPTOR=/home/USER/nginx-ingress/dogu.json
+make install-dogu-descriptor
+```
 
 ## Filtern der Reconcile-Funktion
 

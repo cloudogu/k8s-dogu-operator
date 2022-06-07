@@ -17,20 +17,20 @@ import (
 func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 	imageRegistry := registry.NewCraneContainerImageRegistry("user", "password")
 
-	t.Run("successful pulling image", func(t *testing.T) {
+	t.Run("successfully pulling image", func(t *testing.T) {
 		server, src := setupCraneRegistry(t)
 		defer server.Close()
 
-		imageConfig, err := imageRegistry.PullImageConfig(context.Background(), src)
+		image, err := imageRegistry.PullImageConfig(context.Background(), src)
 
 		assert.NoError(t, err)
-		assert.NotNil(t, imageConfig)
+		assert.NotNil(t, image)
 	})
 
-	t.Run("error pulling image", func(t *testing.T) {
+	t.Run("error pulling image with wrong URL", func(t *testing.T) {
 		_, err := imageRegistry.PullImageConfig(context.Background(), "wrong url")
-		require.Error(t, err)
 
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "error pulling image")
 	})
 }

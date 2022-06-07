@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - image: registry.cloudogu.com/official/ldap:2.4.48-4
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           name: ldap
           Env:
             - name: POD_NAMESPACE

@@ -3,7 +3,7 @@ package resource_test
 import (
 	"context"
 	_ "embed"
-	"github.com/cloudogu/cesapp/v4/registry/mocks"
+	"github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/stretchr/testify/assert"

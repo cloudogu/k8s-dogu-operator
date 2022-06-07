@@ -2,8 +2,9 @@ package resource_test
 
 import (
 	_ "embed"
-	"github.com/cloudogu/cesapp/v4/core"
+	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,10 @@ var imageConf = &imagev1.ConfigFile{}
 //go:embed testdata/ldap_expectedDeployment.yaml
 var expectedDeploymentBytes []byte
 var expectedDeployment = &appsv1.Deployment{}
+
+//go:embed testdata/ldap_expectedDeployment_Development.yaml
+var expectedDeploymentDevelopBytes []byte
+var expectedDeploymentDevelop = &appsv1.Deployment{}
 
 //go:embed testdata/ldap_expectedPVC.yaml
 var expectedPVCBytes []byte
@@ -68,6 +73,11 @@ func init() {
 	}
 
 	err = yaml.Unmarshal(expectedDeploymentBytes, expectedDeployment)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(expectedDeploymentDevelopBytes, expectedDeploymentDevelop)
 	if err != nil {
 		panic(err)
 	}
@@ -113,6 +123,22 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, expectedDeployment, actualDeployment)
+	})
+
+	t.Run("Return simple deployment with development stage", func(t *testing.T) {
+		// given
+		oldStage := config.Stage
+		defer func() {
+			config.Stage = oldStage
+		}()
+		config.Stage = config.StageDevelopment
+
+		// when
+		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, expectedDeploymentDevelop, actualDeployment)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {

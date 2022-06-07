@@ -23,18 +23,16 @@ func NewCraneContainerImageRegistry(dockerUsername string, dockerPassword string
 	}
 }
 
-// PullImageConfig pulls a image with the crane library. It uses basic auth for the registry authentication
+// PullImageConfig pulls an image with the crane library. It uses basic auth for the registry authentication.
 func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error) {
 	ctxOpt := crane.WithContext(ctx)
 	authOpts := crane.WithAuth(&authn.Basic{
 		Username: i.dockerUsername,
 		Password: i.dockerPassword,
 	})
-
 	img, err := crane.Pull(image, authOpts, ctxOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error pulling image: %w", err)
 	}
-
 	return img.ConfigFile()
 }

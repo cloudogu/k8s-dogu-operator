@@ -4,6 +4,7 @@
       app: ces
       dogu: ldap
     name: ldap-exposed-2222
+    namespace: ecosystem
     ownerReferences:
       - apiVersion: k8s.cloudogu.com/v1
         blockOwnerDeletion: true
@@ -31,6 +32,7 @@
       app: ces
       dogu: ldap
     name: ldap-exposed-8888
+    namespace: ecosystem
     ownerReferences:
       - apiVersion: k8s.cloudogu.com/v1
         blockOwnerDeletion: true

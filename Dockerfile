@@ -1,7 +1,7 @@
 # Build the manager binary
-FROM golang:1.17 as builder
+FROM golang:1.18 as builder
 
-ENV GOPRIVATE=github.com/cloudogu/cesapp/v4
+ENV GOPRIVATE=github.com/cloudogu/cesapp/v5
 
 WORKDIR /workspace
 
@@ -37,7 +37,7 @@ RUN make compile-generic
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="0.6.0"
+      VERSION="0.7.0"
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .

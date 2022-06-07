@@ -3,8 +3,8 @@ package serviceaccount
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/cesapp/v4/core"
-	"github.com/cloudogu/cesapp/v4/registry"
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 

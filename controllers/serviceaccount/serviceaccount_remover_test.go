@@ -2,8 +2,8 @@ package serviceaccount_test
 
 import (
 	"context"
-	"github.com/cloudogu/cesapp/v4/core"
-	cesmocks "github.com/cloudogu/cesapp/v4/registry/mocks"
+	"github.com/cloudogu/cesapp-lib/core"
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount/mocks"
 	"github.com/stretchr/testify/assert"

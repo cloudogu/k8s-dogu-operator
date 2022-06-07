@@ -6,6 +6,7 @@ metadata:
     app: ces
     dogu: ldap
   name: ldap
+  namespace: ecosystem
   ownerReferences:
     - apiVersion: k8s.cloudogu.com/v1
       blockOwnerDeletion: true
