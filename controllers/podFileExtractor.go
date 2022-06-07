@@ -26,8 +26,7 @@ import (
 )
 
 const doguCustomK8sResourceDirectory = "/k8s/"
-
-var maxTries = 20
+const maxTries = 20
 
 type podFileExtractor struct {
 	k8sClient   client.Client
