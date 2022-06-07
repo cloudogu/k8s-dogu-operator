@@ -2,8 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: k8s-dogu-operator
+  name: cluster-role
   labels:
     app: k8s-dogu-operator
     app.kubernetes.io/name: k8s-dogu-operator
@@ -14,7 +13,4 @@ rules:
       - clusterroles
       - clusterrolebindings
     verbs:
-      - create
-      - patch
-      - update
-      - delete
+      - "*"
