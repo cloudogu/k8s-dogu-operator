@@ -19,13 +19,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"os"
 
-	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -69,7 +68,7 @@ func main() {
 }
 
 func startDoguOperator() error {
-	configureLogger()
+	logging.ConfigureLogger()
 
 	operatorConfig, err := config.NewOperatorConfig(Version)
 	if err != nil {
@@ -123,14 +122,6 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 	}
 
 	return options
-}
-
-func configureLogger() {
-	logrusLog := logrus.New()
-	logrusLog.SetFormatter(&logrus.TextFormatter{})
-	logrusLog.SetLevel(logrus.DebugLevel)
-
-	ctrl.SetLogger(logrusr.New(logrusLog))
 }
 
 func startK8sManager(k8sManager manager.Manager) error {
