@@ -6,7 +6,7 @@ require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/cesapp-lib v0.1.0
 	github.com/cloudogu/cesapp/v5 v5.0.1
-	github.com/cloudogu/k8s-apply-lib v0.0.0-20220608111536-773a6ab01b76
+	github.com/cloudogu/k8s-apply-lib v0.3.0
 	github.com/go-logr/logr v1.2.0
 	github.com/google/go-containerregistry v0.8.0
 	github.com/hashicorp/go-multierror v1.1.0

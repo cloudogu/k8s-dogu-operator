@@ -130,7 +130,7 @@ func applyValuesFromCustomDeployment(desiredDeployment *appsv1.Deployment, patch
 						}
 
 						containerGenerated.VolumeMounts = append(containerGenerated.VolumeMounts, containerProvided.VolumeMounts...)
-						desiredDeployment.Spec.Template.Spec.Containers[i] = containerGenerated
+						desiredDeployment.Spec.Template.Spec.Containers[i].VolumeMounts = containerGenerated.VolumeMounts
 					}
 				}
 			}
