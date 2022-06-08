@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"k8s.io/apimachinery/pkg/types"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -25,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	sigsclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -210,7 +210,7 @@ func TestDoguManager_Install(t *testing.T) {
 		managerWithMocks.AssertMocks(t)
 	})
 
-	managerRun(t, "successfully install a dogu with custom resources including service account", func(t *testing.T) {
+	managerRun(t, "successfully install a dogu with custom resources including service account and deployment", func(t *testing.T) {
 		// given
 		yamlResult := make(map[string]string, 2)
 
@@ -246,6 +246,28 @@ func TestDoguManager_Install(t *testing.T) {
 		testServiceAccountBytes, err := yaml.Marshal(testServiceAccount)
 		require.NoError(t, err)
 		yamlResult["testServiceAccount.yaml"] = string(testServiceAccountBytes)
+
+		testDeployment := &v1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Deployment",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testDeployment",
+				Namespace: "{{ .Namespace }}",
+			},
+			Spec: v1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "testServiceAccount",
+					},
+				},
+			},
+		}
+
+		testDeploymentBytes, err := yaml.Marshal(testDeployment)
+		require.NoError(t, err)
+		yamlResult["testDeployment.yaml"] = string(testDeploymentBytes)
 
 		managerWithMocks := getDoguManagerWithMocks()
 		image = &mocks.Image{}
@@ -528,7 +550,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
+			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
 
 			// when
@@ -559,7 +581,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything).Once().Return(&v1.Deployment{}, nil)
+			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Once().Return(&v1.Deployment{}, nil)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
 
 			// when
@@ -590,7 +612,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
+			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
 			resourceGenerator.On("GetDoguService", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
 
@@ -622,7 +644,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
+			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
 			resourceGenerator.On("GetDoguService", mock.Anything, mock.Anything).Once().Return(&corev1.Service{}, nil)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
 
@@ -654,7 +676,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
+			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
 			resourceGenerator.On("GetDoguService", mock.Anything, mock.Anything).Return(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice"}}, nil)
 			resourceGenerator.On("GetDoguExposedServices", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator
@@ -688,7 +710,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
 			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
+			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&v1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
 			resourceGenerator.On("GetDoguService", mock.Anything, mock.Anything).Return(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice"}}, nil)
 			resourceGenerator.On("GetDoguExposedServices", mock.Anything, mock.Anything).Once().Return([]corev1.Service{{}, {}}, nil)
 			managerWithMocks.DoguManager.ResourceGenerator = resourceGenerator

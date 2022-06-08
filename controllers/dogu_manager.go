@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-apply-lib/apply"
@@ -66,7 +65,7 @@ type doguRegistry interface {
 
 // doguResourceGenerator is used to generate kubernetes resources
 type doguResourceGenerator interface {
-	GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*appsv1.Deployment, error)
+	GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error)
 	GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error)
 	GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error)
 	GetDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error)
@@ -251,13 +250,13 @@ func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) err
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
 	}
 
-	serviceAccount, err := m.applyCustomK8sResources(logger, customK8sResources, doguResource)
+	customDeployment, err := m.applyCustomK8sResources(logger, customK8sResources, doguResource)
 	if err != nil {
 		return err
 	}
 
 	logger.Info("Create dogu resources...")
-	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig, serviceAccount)
+	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig, customDeployment)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
@@ -278,7 +277,7 @@ func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) err
 	return nil
 }
 
-func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*corev1.ServiceAccount, error) {
+func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
 	if len(customK8sResources) == 0 {
 		logger.Info("No custom K8s resources found")
 		return nil, nil
@@ -292,7 +291,7 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 		Namespace: targetNamespace,
 	}
 
-	saCollector := &serviceAccountCollector{collected: []*corev1.ServiceAccount{}}
+	dCollector := &deploymentCollector{collected: []*appsv1.Deployment{}}
 
 	for file, yamlDocs := range customK8sResources {
 		logger.Info(fmt.Sprintf("Applying custom K8s resources from file %s", file))
@@ -301,8 +300,9 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 			WithNamespace(targetNamespace).
 			WithOwner(doguResource).
 			WithTemplate(file, namespaceTemplate).
-			WithCollector(saCollector).
+			WithCollector(dCollector).
 			WithYamlResource(file, []byte(yamlDocs)).
+			WithApplyFilter(&deploymentAntiFilter{}).
 			ExecuteApply()
 
 		if err != nil {
@@ -310,38 +310,51 @@ func (m *DoguManager) applyCustomK8sResources(logger logr.Logger, customK8sResou
 		}
 	}
 
-	if len(saCollector.collected) > 1 {
-		return nil, fmt.Errorf("expected exactly one ServiceAccount but found %d - not sure how to continue", len(saCollector.collected))
+	if len(dCollector.collected) > 1 {
+		return nil, fmt.Errorf("expected exactly one Deployment but found %d - not sure how to continue", len(dCollector.collected))
 	}
-	if len(saCollector.collected) == 1 {
-		return saCollector.collected[0], nil
+	if len(dCollector.collected) == 1 {
+		return dCollector.collected[0], nil
 	}
 
 	return nil, nil
 }
 
-type serviceAccountCollector struct {
-	collected []*corev1.ServiceAccount
+type deploymentCollector struct {
+	collected []*appsv1.Deployment
 }
 
-func (sac *serviceAccountCollector) Predicate(doc apply.YamlDocument) (bool, error) {
-	var serviceAccount = &corev1.ServiceAccount{}
+type deploymentAntiFilter struct{}
 
-	err := yaml.Unmarshal(doc, serviceAccount)
+func (dc *deploymentAntiFilter) Predicate(doc apply.YamlDocument) (bool, error) {
+	var deployment = &appsv1.Deployment{}
+
+	err := yaml.Unmarshal(doc, deployment)
 	if err != nil {
-		return false, fmt.Errorf("failed to unmarshal object [%s] into service account: %w", string(doc), err)
+		return false, fmt.Errorf("failed to unmarshal object [%s] into deployment: %w", string(doc), err)
 	}
 
-	return serviceAccount.Kind == "ServiceAccount", nil
+	return deployment.Kind != "Deployment", nil
 }
 
-func (sac *serviceAccountCollector) Collect(doc apply.YamlDocument) {
-	var serviceAccount = &corev1.ServiceAccount{}
+func (dc *deploymentCollector) Predicate(doc apply.YamlDocument) (bool, error) {
+	var deployment = &appsv1.Deployment{}
+
+	err := yaml.Unmarshal(doc, deployment)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal object [%s] into deployment: %w", string(doc), err)
+	}
+
+	return deployment.Kind == "Deployment", nil
+}
+
+func (dc *deploymentCollector) Collect(doc apply.YamlDocument) {
+	var deployment = &appsv1.Deployment{}
 
 	// ignore error because it has already been parsed in Predicate()
-	_ = yaml.Unmarshal(doc, serviceAccount)
+	_ = yaml.Unmarshal(doc, deployment)
 
-	sac.collected = append(sac.collected, serviceAccount)
+	dc.collected = append(dc.collected, deployment)
 }
 
 func (m *DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.ConfigMap) (*cesappcore.Dogu, error) {
@@ -413,13 +426,13 @@ func (m *DoguManager) getDoguDescriptor(ctx context.Context, doguResource *k8sv1
 	return dogu, nil
 }
 
-func (m *DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile, serviceAccount *corev1.ServiceAccount) error {
+func (m *DoguManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile, patchingDeployment *appsv1.Deployment) error {
 	err := m.createVolumes(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create volumes for dogu %s: %w", dogu.Name, err)
 	}
 
-	err = m.createDeployment(ctx, doguResource, dogu, serviceAccount)
+	err = m.createDeployment(ctx, doguResource, dogu, patchingDeployment)
 	if err != nil {
 		return fmt.Errorf("failed to create deployment for dogu %s: %w", dogu.Name, err)
 	}
@@ -457,17 +470,12 @@ func (m *DoguManager) createVolumes(ctx context.Context, doguResource *k8sv1.Dog
 	return nil
 }
 
-func (m *DoguManager) createDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, serviceAccount *corev1.ServiceAccount) error {
+func (m *DoguManager) createDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, patchingDeployment *appsv1.Deployment) error {
 	logger := log.FromContext(ctx)
 
-	desiredDeployment, err := m.ResourceGenerator.GetDoguDeployment(doguResource, dogu)
+	desiredDeployment, err := m.ResourceGenerator.GetDoguDeployment(doguResource, dogu, patchingDeployment)
 	if err != nil {
 		return fmt.Errorf("failed to generate dogu deployment: %w", err)
-	}
-
-	if serviceAccount != nil {
-		logger.Info("Found service account in k8s folder... injecting into deployment")
-		desiredDeployment.Spec.Template.Spec.ServiceAccountName = serviceAccount.GetName()
 	}
 
 	err = m.Client.Create(ctx, desiredDeployment)

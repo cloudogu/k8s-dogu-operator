@@ -2,6 +2,7 @@ package resource_test
 
 import (
 	_ "embed"
+	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -35,6 +36,10 @@ var imageConf = &imagev1.ConfigFile{}
 //go:embed testdata/ldap_expectedDeployment.yaml
 var expectedDeploymentBytes []byte
 var expectedDeployment = &appsv1.Deployment{}
+
+//go:embed testdata/ldap_expectedDeployment_withCustomValues.yaml
+var expectedCustomDeploymentBytes []byte
+var expectedCustomDeployment = &appsv1.Deployment{}
 
 //go:embed testdata/ldap_expectedDeployment_Development.yaml
 var expectedDeploymentDevelopBytes []byte
@@ -73,6 +78,11 @@ func init() {
 	}
 
 	err = yaml.Unmarshal(expectedDeploymentBytes, expectedDeployment)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(expectedCustomDeploymentBytes, expectedCustomDeployment)
 	if err != nil {
 		panic(err)
 	}
@@ -118,11 +128,49 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 	t.Run("Return simple deployment", func(t *testing.T) {
 		// when
-		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu)
+		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, expectedDeployment, actualDeployment)
+	})
+
+	t.Run("Return simple deployment with given custom deployment", func(t *testing.T) {
+		// when
+		deployment := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ldapDoguResource.Name,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "mytestAccount",
+						Containers: []corev1.Container{
+							{Name: ldapDoguResource.Name, VolumeMounts: []corev1.VolumeMount{
+								{Name: "myTestMount", MountPath: "/my/host/path/test.txt", SubPath: "test.txt"},
+							}},
+						},
+						Volumes: []corev1.Volume{
+							{Name: "myTestVolume", VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/my/host/path",
+									Type: nil,
+								},
+							}},
+						},
+					},
+				},
+			},
+		}
+
+		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu, deployment)
+
+		bytes, _ := yaml.Marshal(actualDeployment)
+		fmt.Println(string(bytes))
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, expectedCustomDeployment, actualDeployment)
 	})
 
 	t.Run("Return simple deployment with development stage", func(t *testing.T) {
@@ -134,7 +182,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		config.Stage = config.StageDevelopment
 
 		// when
-		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu)
+		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
 
 		// then
 		require.NoError(t, err)
@@ -149,7 +197,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
 		// when
-		_, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu)
+		_, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
 
 		// then
 		require.Error(t, err)
