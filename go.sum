@@ -292,6 +292,8 @@ github.com/cloudogu/k8s-apply-lib v0.0.0-20220602114521-9b166b6927e1 h1:QSr7YeFS
 github.com/cloudogu/k8s-apply-lib v0.0.0-20220602114521-9b166b6927e1/go.mod h1:WHCe588o8e1vzNdLGV6N4E0g7BarbPXPpW4y8U0/lxE=
 github.com/cloudogu/k8s-apply-lib v0.0.0-20220607132355-867f5977c236 h1:BLCDWsiHr8LwqiS6XBJYMdGBeKQ/klzFHo1YnWVCu4o=
 github.com/cloudogu/k8s-apply-lib v0.0.0-20220607132355-867f5977c236/go.mod h1:WHCe588o8e1vzNdLGV6N4E0g7BarbPXPpW4y8U0/lxE=
+github.com/cloudogu/k8s-apply-lib v0.0.0-20220608111536-773a6ab01b76 h1:QHOGOaaQh8HNOF+EplrrXcAEgWf/q7ZTiuSKXNlYY0M=
+github.com/cloudogu/k8s-apply-lib v0.0.0-20220608111536-773a6ab01b76/go.mod h1:WHCe588o8e1vzNdLGV6N4E0g7BarbPXPpW4y8U0/lxE=
 github.com/cloudogu/k8s-apply-lib v0.2.0 h1:SriHQUj7/CDbn6TnuSviMN8J6XgLcg6nOcGvN9/WUnc=
 github.com/cloudogu/k8s-apply-lib v0.2.0/go.mod h1:WHCe588o8e1vzNdLGV6N4E0g7BarbPXPpW4y8U0/lxE=
 github.com/cloudogu/k8s-ces-setup v0.0.0-20220527140533-7351808f0e13 h1:DHg5D+6eHe9MCpMjk6ZCr2wS7VBM+Vvyat/eqzoDOTE=
