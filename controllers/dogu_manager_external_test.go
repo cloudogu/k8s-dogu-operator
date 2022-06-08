@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"k8s.io/apimachinery/pkg/types"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -21,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -206,6 +208,95 @@ func TestDoguManager_Install(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		managerWithMocks.AssertMocks(t)
+	})
+
+	managerRun(t, "successfully install a dogu with custom resources including service account and deployment", func(t *testing.T) {
+		// given
+		yamlResult := make(map[string]string, 2)
+
+		testRole := &rbacv1.Role{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "rbac.authorization.k8s.io/v1",
+				Kind:       "Role",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "testRole",
+			},
+			Rules: []rbacv1.PolicyRule{},
+		}
+		testRoleBytes, err := yaml.Marshal(testRole)
+		require.NoError(t, err)
+		yamlResult["testRole.yaml"] = string(testRoleBytes)
+
+		testServiceAccount := &corev1.ServiceAccount{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "ServiceAccount",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testServiceAccount",
+				Namespace: "{{ .Namespace }}",
+			},
+		}
+
+		// set namespace only once to test for namespace templating without to influence other tests
+		const testNamespace = "test"
+		ldapCr.ObjectMeta.Namespace = testNamespace
+
+		testServiceAccountBytes, err := yaml.Marshal(testServiceAccount)
+		require.NoError(t, err)
+		yamlResult["testServiceAccount.yaml"] = string(testServiceAccountBytes)
+
+		testDeployment := &v1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Deployment",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testDeployment",
+				Namespace: "{{ .Namespace }}",
+			},
+			Spec: v1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "testServiceAccount",
+					},
+				},
+			},
+		}
+
+		testDeploymentBytes, err := yaml.Marshal(testDeployment)
+		require.NoError(t, err)
+		yamlResult["testDeployment.yaml"] = string(testDeploymentBytes)
+
+		managerWithMocks := getDoguManagerWithMocks()
+		image = &mocks.Image{}
+		image.On("ConfigFile").Return(imageConfig, nil)
+		managerWithMocks.DoguRemoteRegistry.On("GetDogu", mock.Anything).Return(ldapDogu, nil)
+		managerWithMocks.ImageRegistry.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+		managerWithMocks.DoguRegistrator.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.DependencyValidator.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.ServiceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.DoguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.FileExtractor.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
+		managerWithMocks.Applier.On("ApplyWithOwner", apply.YamlDocument(testRoleBytes), testNamespace, ldapCr).Return(nil)
+		managerWithMocks.Applier.On("ApplyWithOwner", mock.Anything, testNamespace, ldapCr).Return(nil)
+		_ = managerWithMocks.DoguManager.Client.Create(ctx, ldapCr)
+
+		// when
+		err = managerWithMocks.DoguManager.Install(ctx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		managerWithMocks.AssertMocks(t)
+
+		deployment := &v1.Deployment{}
+		err = managerWithMocks.DoguManager.Client.Get(ctx, types.NamespacedName{
+			Namespace: testNamespace,
+			Name:      "ldap",
+		}, deployment)
+		require.NoError(t, err)
+		assert.Equal(t, "testServiceAccount", deployment.Spec.Template.Spec.ServiceAccountName)
 	})
 
 	managerRun(t, "successfully install dogu with custom descriptor", func(t *testing.T) {
