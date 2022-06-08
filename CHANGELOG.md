@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#26] Allow the definition of custom Deployment in dogus. In such custom Deployments it is possible
+  to define extra volumes,volume mounts, and the used service account for the dogu Deployment.
 
 ## [v0.7.0] - 2022-06-07
 ### Added
