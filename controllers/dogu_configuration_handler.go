@@ -12,15 +12,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"strings"
 )
 
 const (
-	cpuRequestKey    = "cpu_request"
-	cpuLimitKey      = "cpu_limit"
-	memoryRequestKey = "memory_request"
-	memoryLimitKey   = "memory_limit"
+	doguConfigurationLabel = "dogu-configuration"
+	cpuRequestKey          = "cpu-request"
+	cpuLimitKey            = "cpu-limit"
+	memoryRequestKey       = "memory-request"
+	memoryLimitKey         = "memory-limit"
 )
+
+var doguConfigurationPredicate = predicate.Funcs{
+	CreateFunc: func(e event.CreateEvent) bool {
+		return hasDoguConfigurationLabel(e.Object)
+	},
+	DeleteFunc: func(e event.DeleteEvent) bool {
+		return false
+	},
+	UpdateFunc: func(e event.UpdateEvent) bool {
+		if !hasDoguConfigurationLabel(e.ObjectOld) {
+			return false
+		}
+
+		return e.ObjectOld != e.ObjectNew
+	},
+	GenericFunc: func(e event.GenericEvent) bool {
+		return false
+	},
+}
+
+func hasDoguConfigurationLabel(obj client.Object) bool {
+	_, ok := obj.GetLabels()[doguConfigurationLabel]
+	return ok
+}
 
 // doguConfigurationHandler is used to detect changes in configmaps for dogu configuration.
 // It implements the event.EventHandler interface.
@@ -39,12 +65,6 @@ func (dch *doguConfigurationHandler) Create(evt event.CreateEvent, _ workqueue.R
 	logger.Info("Create method")
 
 	if evt.Object != nil {
-		name := evt.Object.GetName()
-
-		if !dch.isPotentialDoguConfigMap(name) {
-			return
-		}
-
 		err := dch.doUpdate(context.Background(), types.NamespacedName{
 			Name:      evt.Object.GetName(),
 			Namespace: evt.Object.GetNamespace(),
@@ -62,14 +82,8 @@ func (dch *doguConfigurationHandler) Update(evt event.UpdateEvent, _ workqueue.R
 	logger.Info("Update method")
 
 	if evt.ObjectNew != nil {
-		name := evt.ObjectNew.GetName()
-
-		if !dch.isPotentialDoguConfigMap(name) {
-			return
-		}
-
 		err := dch.doUpdate(context.Background(), types.NamespacedName{
-			Name:      name,
+			Name:      evt.ObjectNew.GetName(),
 			Namespace: evt.ObjectNew.GetNamespace(),
 		})
 
@@ -82,15 +96,11 @@ func (dch *doguConfigurationHandler) Update(evt event.UpdateEvent, _ workqueue.R
 // Delete implements EventHandler.
 func (dch *doguConfigurationHandler) Delete(_ event.DeleteEvent, _ workqueue.RateLimitingInterface) {
 	// do nothing
-	logger := log.FromContext(context.Background())
-	logger.Info("Delete method")
 }
 
 // Generic implements EventHandler
 func (dch *doguConfigurationHandler) Generic(_ event.GenericEvent, _ workqueue.RateLimitingInterface) {
 	// do nothing
-	logger := log.FromContext(context.Background())
-	logger.Info("Generic method")
 }
 
 func (dch *doguConfigurationHandler) doUpdate(ctx context.Context, config types.NamespacedName) error {
@@ -124,13 +134,27 @@ func (dch *doguConfigurationHandler) doUpdate(ctx context.Context, config types.
 		return fmt.Errorf("failed to update deployment: %w", err)
 	}
 
-	// TODO use dynamic namespace
-	err = dch.Client.DeleteAllOf(ctx, &v1.Pod{}, client.InNamespace("ecosystem"), client.MatchingLabels{"dogu": dogu.Name})
+	err = dch.Client.DeleteAllOf(ctx, &v1.Pod{}, client.InNamespace(dogu.Namespace), client.MatchingLabels{"dogu": dogu.Name})
 	if err != nil {
 		return fmt.Errorf("failed to restart pods: %w", err)
 	}
 
 	return nil
+}
+
+func (dch *doguConfigurationHandler) getDoguForConfigurationConfigMap(ctx context.Context, configmap types.NamespacedName) (*k8sv1.Dogu, error) {
+	doguName := strings.Split(configmap.Name, "-")[0]
+	dogu := &k8sv1.Dogu{}
+	objectKey := types.NamespacedName{
+		Name:      doguName,
+		Namespace: configmap.Namespace,
+	}
+	err := dch.Client.Get(ctx, objectKey, dogu)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dogu for configmap: %w", err)
+	}
+
+	return dogu, nil
 }
 
 func (dch *doguConfigurationHandler) updateDeployment(deployment *appsv1.Deployment, configmap *v1.ConfigMap) error {
@@ -177,27 +201,4 @@ func (dch *doguConfigurationHandler) updateDeployment(deployment *appsv1.Deploym
 	deployment.Spec.Template.Spec.Containers[0].Resources.Limits = resourceLimits
 
 	return nil
-}
-
-func (dch *doguConfigurationHandler) getDoguForConfigurationConfigMap(ctx context.Context, configmap types.NamespacedName) (*k8sv1.Dogu, error) {
-	doguName := strings.Split(configmap.Name, "-")[0]
-	dogu := &k8sv1.Dogu{}
-	objectKey := types.NamespacedName{
-		Name:      doguName,
-		Namespace: configmap.Namespace,
-	}
-	err := dch.Client.Get(ctx, objectKey, dogu)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get dogu for configmap: %w", err)
-	}
-
-	return dogu, nil
-}
-
-func (dch *doguConfigurationHandler) belongsDoguToConfigmap(dogu k8sv1.Dogu, configmap string) bool {
-	return fmt.Sprintf("%s-configuration", dogu.Name) == configmap
-}
-
-func (dch *doguConfigurationHandler) isPotentialDoguConfigMap(configmap string) bool {
-	return strings.HasSuffix(configmap, "-configuration")
 }

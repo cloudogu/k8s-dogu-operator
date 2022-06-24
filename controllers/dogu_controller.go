@@ -25,6 +25,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -169,8 +170,8 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (op
 func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&k8sv1.Dogu{}).
-		// TODO only watches at controller create delete? Add predicate to filter configmaps
-		Watches(&source.Kind{Type: &v1.ConfigMap{}}, NewDoguConfigurationHandler(r.Client)).
+		// TODO only watches at controller create delete?
+		Watches(&source.Kind{Type: &v1.ConfigMap{}}, NewDoguConfigurationHandler(r.Client), builder.WithPredicates(doguConfigurationPredicate)).
 		// Since we don't want to process dogus with same spec we use a generation change predicate
 		// as a filter to reduce the reconcile calls.
 		// The predicate implements a function that will be invoked of every update event that
