@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postfix-configuration
+  namespace: test
+  labels:
+    dogu-configuration: "true"
+data:
+  cpu-limit: "1"
+  cpu-request: "1"
+  memory-limit: "1Mi"
+  memory-request: "1Mi"
