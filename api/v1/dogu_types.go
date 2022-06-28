@@ -36,15 +36,27 @@ const (
 	RequeueTimeMaxRequeueTime = time.Hour * 6
 )
 
-// DoguSpec defines the desired state of Dogu
+// DoguSpec defines the desired state of a Dogu
 type DoguSpec struct {
 	// Name of the dogu (e.g. official/ldap)
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
 	Version string `json:"version,omitempty"`
+	// Limits defines the physical hardware limits of the dogu.
+	Limits DoguLimits `json:"limits,omitempty"`
 }
 
-// DoguStatus defines the observed state of Dogu
+// DoguLimits defines the physical hardware limits of a Dogu
+type DoguLimits struct {
+	// CPU contains a number which limits the number of cpu time available for the dogu container (e.g. 200m)
+	CPU string `json:"cpu_limit,omitempty"`
+	// Memory contains a number which limits the number of memory accessible by the dogu container (e.g. 2g)
+	Memory string `json:"memory_limit,omitempty"`
+	// InitialDiskSize defines the initial size of a dogu volume (e.g. 2g)
+	InitialDiskSize string `json:"initial_volume_size,omitempty"`
+}
+
+// DoguStatus defines the observed state of a Dogu
 type DoguStatus struct {
 	// Status represents the state of the Dogu in the ecosystem
 	Status string `json:"status"`
@@ -125,11 +137,20 @@ func (d Dogu) GetObjectKey() *client.ObjectKey {
 	}
 }
 
-// GetDescriptorObjectKey returns the object key for the custom dogu descriptor with the actual name and namespace from the dogu resource
+// GetDescriptorObjectKey returns the object key for the custom dogu descriptor with the actual name and namespace from
+// the dogu resource
 func (d Dogu) GetDescriptorObjectKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name + "-descriptor",
+	}
+}
+
+// GetConfigurationObjectKey returns the object key for the dogu configuration.
+func (d Dogu) GetConfigurationObjectKey() client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: d.Namespace,
+		Name:      d.Name + "-configuration",
 	}
 }
 

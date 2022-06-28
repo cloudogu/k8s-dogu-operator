@@ -4,7 +4,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.8.0
-  creationTimestamp: null
   name: dogus.k8s.cloudogu.com
 spec:
   group: k8s.cloudogu.com
@@ -33,8 +32,24 @@ spec:
           metadata:
             type: object
           spec:
-            description: DoguSpec defines the desired state of Dogu
+            description: DoguSpec defines the desired state of a Dogu
             properties:
+              limits:
+                description: Limits defines the physical hardware limits of the dogu.
+                properties:
+                  cpu_limit:
+                    description: CPU contains a number which limits the number of
+                      cpu time available for the dogu container (e.g. 200m)
+                    type: string
+                  initial_volume_size:
+                    description: InitialDiskSize defines the initial size of a dogu
+                      volume (e.g. 2g)
+                    type: string
+                  memory_limit:
+                    description: Memory contains a number which limits the number
+                      of memory accessible by the dogu container (e.g. 2g)
+                    type: string
+                type: object
               name:
                 description: Name of the dogu (e.g. official/ldap)
                 type: string
@@ -43,7 +58,7 @@ spec:
                 type: string
             type: object
           status:
-            description: DoguStatus defines the observed state of Dogu
+            description: DoguStatus defines the observed state of a Dogu
             properties:
               requeueTime:
                 description: RequeueTime contains time necessary to perform the next
@@ -66,11 +81,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
