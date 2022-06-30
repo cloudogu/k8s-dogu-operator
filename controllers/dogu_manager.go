@@ -6,6 +6,7 @@ import (
 	"fmt"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -41,7 +42,7 @@ type DoguManager struct {
 	client.Client
 	Scheme                *runtime.Scheme
 	ResourceGenerator     doguResourceGenerator
-	DoguRemoteRegistry    doguRegistry
+	DoguRemoteRegistry    cesremote.Registry
 	DoguLocalRegistry     cesregistry.DoguRegistry
 	ImageRegistry         imageRegistry
 	DoguRegistrator       doguRegistrator
@@ -56,11 +57,6 @@ type DoguManager struct {
 type fileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings
 	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (map[string]string, error)
-}
-
-// doguRegistry is used to fetch the dogu descriptor
-type doguRegistry interface {
-	GetDogu(*k8sv1.Dogu) (*cesappcore.Dogu, error)
 }
 
 // doguResourceGenerator is used to generate kubernetes resources
@@ -116,7 +112,11 @@ type applier interface {
 
 // NewDoguManager creates a new instance of DoguManager
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
-	doguRemoteRegistry := registry.New(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
+	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
+	if err != nil {
+		return nil, fmt.Errorf("failed find create new remote dogu registry: %w", err)
+	}
+
 	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
 	restConfig := ctrl.GetConfigOrDie()
@@ -369,7 +369,8 @@ func (m *DoguManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.Confi
 }
 
 func (m *DoguManager) getDoguDescriptorFromRemoteRegistry(doguResource *k8sv1.Dogu) (*cesappcore.Dogu, error) {
-	dogu, err := m.DoguRemoteRegistry.GetDogu(doguResource)
+	ctrl.Log.Info(doguResource.Spec.Name)
+	dogu, err := m.DoguRemoteRegistry.Get(doguResource.Spec.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu from remote dogu registry: %w", err)
 	}

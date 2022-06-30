@@ -1,7 +1,6 @@
-package config_test
+package config
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -16,13 +15,13 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("DOCKER_REGISTRY")
 
 	expectedNamespace := "myNamepsace"
-	expectedDoguRegistryData := config.DoguRegistryData{
+	expectedDoguRegistryData := DoguRegistryData{
 		Endpoint: "myEndpoint",
 		Username: "myUsername",
 		Password: "myPassword",
 	}
 	inputDockerRegistrySecretData := "{\"auths\":{\"your.private.registry.example.com\":{\"username\":\"myDockerUsername\",\"password\":\"myDockerPassword\",\"email\":\"jdoe@example.com\",\"auth\":\"c3R...zE2\"}}}"
-	expectedDockerRegistryData := config.DockerRegistryData{
+	expectedDockerRegistryData := DockerRegistryData{
 		Username: "myDockerUsername",
 		Password: "myDockerPassword",
 		Email:    "jdoe@example.com",
@@ -31,7 +30,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 	t.Run("Error on missing namespace env var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig("0.0.0")
+		operatorConfig, err := NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -42,7 +41,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("NAMESPACE", expectedNamespace)
 	t.Run("Error on missing dogu registry endpoint var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig("0.0.0")
+		operatorConfig, err := NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -53,7 +52,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_ENDPOINT", expectedDoguRegistryData.Endpoint)
 	t.Run("Error on missing dogu registry username var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig("0.0.0")
+		operatorConfig, err := NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -64,7 +63,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_USERNAME", expectedDoguRegistryData.Username)
 	t.Run("Error on missing dogu registry password var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig("0.0.0")
+		operatorConfig, err := NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -75,7 +74,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
 	t.Run("Error on missing docker registry data var", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig("0.0.0")
+		operatorConfig, err := NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
@@ -86,7 +85,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOCKER_REGISTRY", inputDockerRegistrySecretData)
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
-		operatorConfig, err := config.NewOperatorConfig("0.1.0")
+		operatorConfig, err := NewOperatorConfig("0.1.0")
 
 		// then
 		require.NoError(t, err)
@@ -103,11 +102,58 @@ func TestNewOperatorConfig(t *testing.T) {
 		t.Setenv("ZAP_DEVELOPMENT_MODE", "invalid value")
 
 		// when
-		operatorConfig, err := config.NewOperatorConfig("0.0.0")
+		operatorConfig, err := NewOperatorConfig("0.0.0")
 
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "strconv.ParseBool: parsing \"invalid value\"")
 		assert.Nil(t, operatorConfig)
 	})
+}
+
+func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputEndpopint string
+	}{
+		{name: "get remote configuration with correct url", inputEndpopint: "https://dogu.cloudogu.com/api/v2/"},
+		{name: "get remote configuration with 'dogus' suffix url", inputEndpopint: "https://dogu.cloudogu.com/api/v2/dogus"},
+		{name: "get remote configuration with 'dogus/' suffix url", inputEndpopint: "https://dogu.cloudogu.com/api/v2/dogus/"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// given
+			o := &OperatorConfig{
+				DoguRegistry: DoguRegistryData{
+					Endpoint: tt.inputEndpopint,
+				},
+			}
+
+			// when
+			remoteConfig := o.GetRemoteConfiguration()
+
+			// then
+			assert.NotNil(t, remoteConfig)
+			assert.Equal(t, "https://dogu.cloudogu.com/api/v2/", remoteConfig.Endpoint)
+		})
+	}
+}
+
+func TestOperatorConfig_GetRemoteCredentials(t *testing.T) {
+	// given
+	o := &OperatorConfig{
+		DoguRegistry: DoguRegistryData{
+			Username: "testUsername",
+			Password: "testPassword",
+		},
+	}
+
+	// when
+	remoteCredentials := o.GetRemoteCredentials()
+
+	// then
+	assert.NotNil(t, remoteCredentials)
+	assert.Equal(t, "testUsername", remoteCredentials.Username)
+	assert.Equal(t, "testPassword", remoteCredentials.Password)
 }

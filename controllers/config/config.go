@@ -190,3 +190,23 @@ func getEnvVar(name string) (string, error) {
 	}
 	return ns, nil
 }
+
+// GetRemoteConfiguration creates a remote configuration with the configured values.
+func (o *OperatorConfig) GetRemoteConfiguration() *core.Remote {
+	endpoint := o.DoguRegistry.Endpoint
+	// trim suffix 'dogus' or 'dogus/' to provide maximum compatibility with the old remote configuration of the operator
+	endpoint = strings.TrimSuffix(endpoint, "dogus/")
+	endpoint = strings.TrimSuffix(endpoint, "dogus")
+
+	return &core.Remote{
+		Endpoint: endpoint,
+	}
+}
+
+// GetRemoteCredentials creates a remote credential pair with the configured values.
+func (o *OperatorConfig) GetRemoteCredentials() *core.Credentials {
+	return &core.Credentials{
+		Username: o.DoguRegistry.Username,
+		Password: o.DoguRegistry.Password,
+	}
+}
