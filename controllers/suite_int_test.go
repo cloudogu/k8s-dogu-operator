@@ -6,6 +6,8 @@ package controllers_test
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
@@ -42,7 +45,7 @@ var cancel context.CancelFunc
 var ImageRegistryMock mocks.ImageRegistry
 
 // Used in other integration tests
-var DoguRegistryMock mocks.DoguRegistry
+var DoguRemoteRegistryMock cesremotemocks.Registry
 
 // Used in other integration tests
 var EtcdDoguRegistry cesmocks.DoguRegistry
@@ -59,6 +62,13 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	// we need to ensure that the development stage flag is not passed by our makefiles
+	err := os.Unsetenv(config.StageEnvironmentVariable)
+	Expect(err).NotTo(HaveOccurred())
+	err = os.Setenv(config.StageEnvironmentVariable, config.StageProduction)
+	Expect(err).NotTo(HaveOccurred())
+	config.Stage = config.StageProduction
+
 	logf.SetLogger(logrusr.New(logrus.New()))
 
 	var ctx context.Context
@@ -121,7 +131,7 @@ var _ = BeforeSuite(func() {
 		Client:                k8sManager.GetClient(),
 		Scheme:                k8sManager.GetScheme(),
 		ResourceGenerator:     resourceGenerator,
-		DoguRemoteRegistry:    &DoguRegistryMock,
+		DoguRemoteRegistry:    &DoguRemoteRegistryMock,
 		DoguLocalRegistry:     &EtcdDoguRegistry,
 		ImageRegistry:         &ImageRegistryMock,
 		DoguRegistrator:       doguRegistrator,
