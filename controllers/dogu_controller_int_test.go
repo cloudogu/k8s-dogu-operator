@@ -1,7 +1,7 @@
 //go:build k8s_integration
 // +build k8s_integration
 
-package controllers_test
+package controllers
 
 import (
 	"context"
@@ -19,9 +19,16 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"testing"
 )
 
 var _ = Describe("Dogu Controller", func() {
+	t := &testing.T{}
+	ldapCr := readTestDataLdapCr(t)
+	redmineCr := readTestDataRedmineCr(t)
+	imageConfig := readTestDataImageConfig(t)
+	ldapDogu := readTestDataLdapDogu(t)
+	redmineDogu := readTestDataRedmineDogu(t)
 
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""

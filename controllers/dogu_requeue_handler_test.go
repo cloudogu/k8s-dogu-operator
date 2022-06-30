@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
 	"time"
@@ -100,12 +99,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		// given
 		reporter := &mocks.StatusReporter{}
 		reporter.On("ReportError", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		scheme := runtime.NewScheme()
-		scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-			Group:   "k8s.cloudogu.com",
-			Version: "v1",
-			Kind:    "Dogu",
-		}, &k8sv1.Dogu{})
+		scheme := getTestScheme()
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myName"},
 			Status:     k8sv1.DoguStatus{},

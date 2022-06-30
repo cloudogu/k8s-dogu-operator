@@ -1,7 +1,7 @@
 //go:build k8s_integration
 // +build k8s_integration
 
-package controllers_test
+package controllers
 
 import (
 	"context"
@@ -16,7 +16,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
@@ -119,15 +118,15 @@ var _ = BeforeSuite(func() {
 	doguSecretHandler := &mocks.DoguSecretsHandler{}
 	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
-	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
+	doguRegistrator := NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
 
 	yamlResult := make(map[string]string, 0)
-	fileExtract := &mockFileExtractor{}
+	fileExtract := &mocks.FileExtractor{}
 	fileExtract.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
-	applyClient := &mockApplier{}
+	applyClient := &mocks.Applier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
-	doguManager := &controllers.DoguManager{
+	installManager := &doguInstallManager{
 		Client:                k8sManager.GetClient(),
 		Scheme:                k8sManager.GetScheme(),
 		ResourceGenerator:     resourceGenerator,
@@ -137,13 +136,29 @@ var _ = BeforeSuite(func() {
 		DoguRegistrator:       doguRegistrator,
 		DependencyValidator:   dependencyValidator,
 		ServiceAccountCreator: serviceAccountCreator,
-		ServiceAccountRemover: serviceAccountRemover,
 		DoguSecretHandler:     doguSecretHandler,
 		Applier:               applyClient,
 		FileExtractor:         fileExtract,
 	}
 
-	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
+	deleteManager := &doguDeleteManager{
+		Client:                k8sManager.GetClient(),
+		Scheme:                k8sManager.GetScheme(),
+		DoguLocalRegistry:     &EtcdDoguRegistry,
+		ImageRegistry:         &ImageRegistryMock,
+		DoguRegistrator:       doguRegistrator,
+		ServiceAccountRemover: serviceAccountRemover,
+		DoguSecretHandler:     doguSecretHandler,
+	}
+
+	doguManager := &DoguManager{
+		Client:         k8sManager.GetClient(),
+		Scheme:         k8sManager.GetScheme(),
+		InstallManager: installManager,
+		DeleteManager:  deleteManager,
+	}
+
+	err = NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
