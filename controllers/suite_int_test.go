@@ -10,15 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bombsimon/logrusr/v2"
+        "github.com/bombsimon/logrusr/v2"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -83,8 +84,6 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme())
-
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)
 	doguConfigurationContext.On("RemoveAll", mock.Anything).Return(nil)
@@ -92,10 +91,12 @@ var _ = BeforeSuite(func() {
 	globalConfigurationContext := &cesmocks.ConfigurationContext{}
 	globalConfigurationContext.On("Get", "key_provider").Return("", nil)
 
-	CesRegistryMock := cesmocks.Registry{}
+	CesRegistryMock := &cesmocks.Registry{}
 	CesRegistryMock.On("DoguRegistry").Return(&EtcdDoguRegistry)
 	CesRegistryMock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 	CesRegistryMock.On("GlobalConfig").Return(globalConfigurationContext)
+
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), CesRegistryMock)
 
 	version, err := core.ParseVersion("0.0.0")
 	Expect(err).ToNot(HaveOccurred())
@@ -109,7 +110,7 @@ var _ = BeforeSuite(func() {
 	doguSecretHandler := &mocks.DoguSecretsHandler{}
 	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
-	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
+	doguRegistrator := controllers.NewCESDoguRegistrator(k8sManager.GetClient(), CesRegistryMock, resourceGenerator)
 
 	yamlResult := make(map[string]string, 0)
 	fileExtract := &mockFileExtractor{}
