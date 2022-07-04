@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
@@ -120,7 +121,7 @@ func getResourceGenerator() *resource.ResourceGenerator {
 		Version: "v1",
 		Kind:    "Dogu",
 	}, &k8sv1.Dogu{})
-	return resource.NewResourceGenerator(scheme)
+	return resource.NewResourceGenerator(scheme, &mocks.Registry{})
 }
 
 func TestResourceGenerator_GetDoguDeployment(t *testing.T) {

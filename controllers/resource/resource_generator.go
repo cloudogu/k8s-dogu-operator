@@ -3,6 +3,7 @@ package resource
 import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -29,12 +30,13 @@ const doguPodName = "POD_NAME"
 // ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type ResourceGenerator struct {
-	scheme *runtime.Scheme
+	scheme   *runtime.Scheme
+	registry registry.Registry
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme) *ResourceGenerator {
-	return &ResourceGenerator{scheme: scheme}
+func NewResourceGenerator(scheme *runtime.Scheme, registry registry.Registry) *ResourceGenerator {
+	return &ResourceGenerator{scheme: scheme, registry: registry}
 }
 
 // GetDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource

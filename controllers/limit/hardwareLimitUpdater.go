@@ -20,6 +20,14 @@ type hardwareLimitUpdater struct {
 	registry registry.Registry
 }
 
+type doguLimits struct {
+	cpuLimit              string
+	memoryLimit           string
+	storageLimit          string
+	podsLimit             string
+	ephemeralStorageLimit string
+}
+
 // NewHardwareLimitUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
 func NewHardwareLimitUpdater(client client.Client, namespace string) (*hardwareLimitUpdater, error) {
 	endpoint := fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", namespace)

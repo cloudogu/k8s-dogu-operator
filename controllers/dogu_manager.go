@@ -118,7 +118,7 @@ type applier interface {
 func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
 	doguRemoteRegistry := registry.New(operatorConfig.DoguRegistry.Username, operatorConfig.DoguRegistry.Password, operatorConfig.DoguRegistry.Endpoint)
 	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
+	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), cesRegistry)
 	restConfig := ctrl.GetConfigOrDie()
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
