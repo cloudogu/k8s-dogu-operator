@@ -82,7 +82,7 @@ func startDoguOperator() error {
 		return fmt.Errorf("failed to start manager: %w", err)
 	}
 
-	if err = handleHardwareLimitUpdater(k8sManager); err != nil {
+	if err = handleHardwareLimitUpdater(k8sManager, operatorConfig.Namespace); err != nil {
 		return fmt.Errorf("failed to create hardware limit updater: %w", err)
 	}
 
@@ -139,8 +139,11 @@ func startK8sManager(k8sManager manager.Manager) error {
 	return nil
 }
 
-func handleHardwareLimitUpdater(k8sManager manager.Manager) error {
-	hardwareLimitUpdater := limit.NewHardwareLimitUpdater(k8sManager.GetClient())
+func handleHardwareLimitUpdater(k8sManager manager.Manager, namespace string) error {
+	hardwareLimitUpdater, err := limit.NewHardwareLimitUpdater(k8sManager.GetClient(), namespace)
+	if err != nil {
+		return err
+	}
 
 	if err := k8sManager.Add(hardwareLimitUpdater); err != nil {
 		return fmt.Errorf("failed to add hardwareLimitUpdater as runnable to the manager: %w", err)
