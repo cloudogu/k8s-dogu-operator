@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
@@ -62,7 +61,9 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	// we need to ensure that the development stage flag is not passed by our makefiles
+	// We need to ensure that the development stage flag is not passed by our makefiles to prevent the dogu operator
+	// from running in the developing mode. The developing mode changes some operator behaviour. Our integration test
+	// aim to test the production functionality of the operator.
 	err := os.Unsetenv(config.StageEnvironmentVariable)
 	Expect(err).NotTo(HaveOccurred())
 	err = os.Setenv(config.StageEnvironmentVariable, config.StageProduction)
