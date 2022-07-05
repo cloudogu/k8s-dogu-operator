@@ -35,7 +35,7 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		testDoguRegistry := &mocks.ConfigurationContext{}
 		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
 
-		testDoguRegistry.On("Get", CpuLimitKey).Return("", assert.AnError)
+		testDoguRegistry.On("Get", cpuLimitKey).Return("", assert.AnError)
 
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
@@ -55,8 +55,8 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		testDoguRegistry := &mocks.ConfigurationContext{}
 		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
 
-		testDoguRegistry.On("Get", CpuLimitKey).Return("100m", nil)
-		testDoguRegistry.On("Get", MemoryLimitKey).Return("", assert.AnError)
+		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
+		testDoguRegistry.On("Get", memoryLimitKey).Return("", assert.AnError)
 
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
@@ -76,9 +76,9 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		testDoguRegistry := &mocks.ConfigurationContext{}
 		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
 
-		testDoguRegistry.On("Get", CpuLimitKey).Return("100m", nil)
-		testDoguRegistry.On("Get", MemoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", PodsLimitKey).Return("", assert.AnError)
+		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
+		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
+		testDoguRegistry.On("Get", podsLimitKey).Return("", assert.AnError)
 
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
@@ -98,10 +98,10 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		testDoguRegistry := &mocks.ConfigurationContext{}
 		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
 
-		testDoguRegistry.On("Get", CpuLimitKey).Return("100m", nil)
-		testDoguRegistry.On("Get", MemoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", PodsLimitKey).Return("2", nil)
-		testDoguRegistry.On("Get", StorageLimitKey).Return("", assert.AnError)
+		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
+		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
+		testDoguRegistry.On("Get", podsLimitKey).Return("2", nil)
+		testDoguRegistry.On("Get", storageLimitKey).Return("", assert.AnError)
 
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
@@ -121,11 +121,11 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		testDoguRegistry := &mocks.ConfigurationContext{}
 		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
 
-		testDoguRegistry.On("Get", CpuLimitKey).Return("100m", nil)
-		testDoguRegistry.On("Get", MemoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", PodsLimitKey).Return("2", nil)
-		testDoguRegistry.On("Get", StorageLimitKey).Return("3Gi", nil)
-		testDoguRegistry.On("Get", EphemeralStorageLimitKey).Return("", assert.AnError)
+		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
+		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
+		testDoguRegistry.On("Get", podsLimitKey).Return("2", nil)
+		testDoguRegistry.On("Get", storageLimitKey).Return("3Gi", nil)
+		testDoguRegistry.On("Get", ephemeralStorageLimitKey).Return("", assert.AnError)
 
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
@@ -145,11 +145,11 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		testDoguRegistry := &mocks.ConfigurationContext{}
 		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
 
-		testDoguRegistry.On("Get", CpuLimitKey).Return("100m", nil)
-		testDoguRegistry.On("Get", MemoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", PodsLimitKey).Return("", nil)
-		testDoguRegistry.On("Get", StorageLimitKey).Return("", nil)
-		testDoguRegistry.On("Get", EphemeralStorageLimitKey).Return("4Gi", nil)
+		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
+		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
+		testDoguRegistry.On("Get", podsLimitKey).Return("", nil)
+		testDoguRegistry.On("Get", storageLimitKey).Return("", nil)
+		testDoguRegistry.On("Get", ephemeralStorageLimitKey).Return("4Gi", nil)
 
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
@@ -174,11 +174,11 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		testDoguRegistry := &mocks.ConfigurationContext{}
 		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
 
-		testDoguRegistry.On("Get", CpuLimitKey).Return("100m", nil)
-		testDoguRegistry.On("Get", MemoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", PodsLimitKey).Return("2", nil)
-		testDoguRegistry.On("Get", StorageLimitKey).Return("3Gi", nil)
-		testDoguRegistry.On("Get", EphemeralStorageLimitKey).Return("4Gi", nil)
+		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
+		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
+		testDoguRegistry.On("Get", podsLimitKey).Return("2", nil)
+		testDoguRegistry.On("Get", storageLimitKey).Return("3Gi", nil)
+		testDoguRegistry.On("Get", ephemeralStorageLimitKey).Return("4Gi", nil)
 
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock

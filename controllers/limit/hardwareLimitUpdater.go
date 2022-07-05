@@ -18,7 +18,7 @@ const (
 	triggerSyncEtcdKeyFullPath = "/config/_global/trigger-container-limit-sync"
 )
 
-// hardwareLimitUpdater is responsible to create a cluster wide ingress class in the cluster.
+// hardwareLimitUpdater is responsible to update all hardware limits for dogu deployments when a certain trigger is called.
 type hardwareLimitUpdater struct {
 	client           client.Client
 	namespace        string
@@ -33,7 +33,7 @@ type limitPatcher interface {
 	PatchDeployment(deployment *v1.Deployment, limits DoguLimits) error
 }
 
-// DoguLimits contains all data necessary to limit the resources for a dogu
+// DoguLimits contains all data necessary to limit the physical resources for a dogu.
 type DoguLimits struct {
 	// Sets the cpu requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
 	CpuLimit string
@@ -66,6 +66,7 @@ func NewHardwareLimitUpdater(client client.Client, namespace string) (*hardwareL
 	}, nil
 }
 
+// Start is the entry point for the updater.
 func (hlu *hardwareLimitUpdater) Start(ctx context.Context) error {
 	return hlu.startEtcdWatch(ctx)
 }

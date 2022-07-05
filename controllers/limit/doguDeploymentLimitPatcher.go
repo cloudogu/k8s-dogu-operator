@@ -10,17 +10,18 @@ import (
 )
 
 const (
-	CpuLimitKey              = "/containers/cpu-limit"
-	MemoryLimitKey           = "/containers/memory-limit"
-	PodsLimitKey             = "/containers/pods-limit"
-	StorageLimitKey          = "/containers/storage-limit"
-	EphemeralStorageLimitKey = "/containers/ephemeral-storage-limit"
+	cpuLimitKey              = "/containers/cpu-limit"
+	memoryLimitKey           = "/containers/memory-limit"
+	podsLimitKey             = "/containers/pods-limit"
+	storageLimitKey          = "/containers/storage-limit"
+	ephemeralStorageLimitKey = "/containers/ephemeral-storage-limit"
 )
 
 type doguDeploymentLimitPatcher struct {
 	registry registry.Registry
 }
 
+// NewDoguDeploymentLimitPatcher creates a patcher with the ability to update the dogu deployments with their configured hardware limits
 func NewDoguDeploymentLimitPatcher(registry registry.Registry) *doguDeploymentLimitPatcher {
 	return &doguDeploymentLimitPatcher{
 		registry: registry,
@@ -32,35 +33,35 @@ func (d *doguDeploymentLimitPatcher) RetrieveMemoryLimits(doguResource *v12.Dogu
 	doguRegistry := d.registry.DoguConfig(doguResource.Name)
 	doguLimitObject := DoguLimits{}
 
-	cpuLimit, err := doguRegistry.Get(CpuLimitKey)
+	cpuLimit, err := doguRegistry.Get(cpuLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
 		return DoguLimits{}, err
 	} else if err == nil {
 		doguLimitObject.CpuLimit = cpuLimit
 	}
 
-	memoryLimit, err := doguRegistry.Get(MemoryLimitKey)
+	memoryLimit, err := doguRegistry.Get(memoryLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
 		return DoguLimits{}, err
 	} else if err == nil {
 		doguLimitObject.MemoryLimit = memoryLimit
 	}
 
-	podsLimit, err := doguRegistry.Get(PodsLimitKey)
+	podsLimit, err := doguRegistry.Get(podsLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
 		return DoguLimits{}, err
 	} else if err == nil {
 		doguLimitObject.PodsLimit = podsLimit
 	}
 
-	storageLimit, err := doguRegistry.Get(StorageLimitKey)
+	storageLimit, err := doguRegistry.Get(storageLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
 		return DoguLimits{}, err
 	} else if err == nil {
 		doguLimitObject.StorageLimit = storageLimit
 	}
 
-	ephemeralStorageLimit, err := doguRegistry.Get(EphemeralStorageLimitKey)
+	ephemeralStorageLimit, err := doguRegistry.Get(ephemeralStorageLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
 		return DoguLimits{}, err
 	} else if err == nil {

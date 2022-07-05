@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: postfix-configuration
-  labels:
-    dogu-configuration: "true"
-data:
-  cpu-limit: "1"
