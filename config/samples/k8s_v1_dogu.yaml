@@ -5,7 +5,3 @@ metadata:
 spec:
   name: official/postfix
   version: 3.6.4-3
-  limits:
-    cpu_limit: 200m
-    initial_volume_size: 2g
-    memory_limit: 500M

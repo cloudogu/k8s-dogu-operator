@@ -150,6 +150,11 @@ func TestNewResourceGenerator(t *testing.T) {
 }
 
 func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
+	oldStage := config.Stage
+	defer func() {
+		config.Stage = oldStage
+	}()
+	config.Stage = config.StageProduction
 	generator := getResourceGenerator()
 
 	t.Run("Return simple deployment", func(t *testing.T) {

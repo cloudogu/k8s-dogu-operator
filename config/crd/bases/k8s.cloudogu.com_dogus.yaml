@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
   name: dogus.k8s.cloudogu.com
 spec:
   group: k8s.cloudogu.com
@@ -65,3 +66,11 @@ spec:
         type: object
     served: true
     storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
