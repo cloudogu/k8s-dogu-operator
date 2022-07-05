@@ -42,18 +42,6 @@ type DoguSpec struct {
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
 	Version string `json:"version,omitempty"`
-	// Limits defines the physical hardware limits of the dogu.
-	Limits DoguLimits `json:"limits,omitempty"`
-}
-
-// DoguLimits defines the physical hardware limits of a Dogu
-type DoguLimits struct {
-	// CPU contains a number which limits the number of cpu time available for the dogu container (e.g. 200m)
-	CPU string `json:"cpu_limit,omitempty"`
-	// Memory contains a number which limits the number of memory accessible by the dogu container (e.g. 2g)
-	Memory string `json:"memory_limit,omitempty"`
-	// InitialDiskSize defines the initial size of a dogu volume (e.g. 2g)
-	InitialDiskSize string `json:"initial_volume_size,omitempty"`
 }
 
 // DoguStatus defines the observed state of a Dogu

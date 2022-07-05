@@ -34,22 +34,6 @@ spec:
           spec:
             description: DoguSpec defines the desired state of a Dogu
             properties:
-              limits:
-                description: Limits defines the physical hardware limits of the dogu.
-                properties:
-                  cpu_limit:
-                    description: CPU contains a number which limits the number of
-                      cpu time available for the dogu container (e.g. 200m)
-                    type: string
-                  initial_volume_size:
-                    description: InitialDiskSize defines the initial size of a dogu
-                      volume (e.g. 2g)
-                    type: string
-                  memory_limit:
-                    description: Memory contains a number which limits the number
-                      of memory accessible by the dogu container (e.g. 2g)
-                    type: string
-                type: object
               name:
                 description: Name of the dogu (e.g. official/ldap)
                 type: string

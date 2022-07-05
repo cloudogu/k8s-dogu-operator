@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	coreosclient "github.com/coreos/etcd/client"
+	"github.com/hashicorp/go-multierror"
+	v1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -16,16 +20,31 @@ const (
 
 // hardwareLimitUpdater is responsible to create a cluster wide ingress class in the cluster.
 type hardwareLimitUpdater struct {
-	client   client.Client
-	registry registry.Registry
+	client           client.Client
+	namespace        string
+	registry         registry.Registry
+	doguLimitPatcher limitPatcher
 }
 
-type doguLimits struct {
-	cpuLimit              string
-	memoryLimit           string
-	storageLimit          string
-	podsLimit             string
-	ephemeralStorageLimit string
+type limitPatcher interface {
+	// RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
+	RetrieveMemoryLimits(doguResource *k8sv1.Dogu) (DoguLimits, error)
+	// PatchDeployment patches the given deployment with the resource limits provided.
+	PatchDeployment(deployment *v1.Deployment, limits DoguLimits) error
+}
+
+// DoguLimits contains all data necessary to limit the resources for a dogu
+type DoguLimits struct {
+	// Sets the cpu requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
+	CpuLimit string
+	// Sets the memory requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
+	MemoryLimit string
+	// Sets the storage requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
+	StorageLimit string
+	// Sets the pods requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
+	PodsLimit string
+	// Sets the ephemeral storage requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
+	EphemeralStorageLimit string
 }
 
 // NewHardwareLimitUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
@@ -40,8 +59,10 @@ func NewHardwareLimitUpdater(client client.Client, namespace string) (*hardwareL
 	}
 
 	return &hardwareLimitUpdater{
-		client:   client,
-		registry: reg,
+		client:           client,
+		namespace:        namespace,
+		registry:         reg,
+		doguLimitPatcher: NewDoguDeploymentLimitPatcher(reg),
 	}, nil
 }
 
@@ -73,5 +94,51 @@ func (hlu *hardwareLimitUpdater) startEtcdWatch(ctx context.Context) error {
 func (hlu *hardwareLimitUpdater) triggerSync(ctx context.Context) error {
 	ctrl.LoggerFrom(ctx).Info("Trigger for updating dogu hardware limits detected in registry. Updating deployment for all dogus...")
 
-	return nil
+	installedDogus, err := hlu.getInstalledDogus(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get installed dogus from the cluster: %w", err)
+	}
+
+	var result error
+	for _, dogu := range installedDogus.Items {
+		doguIdentifier := types.NamespacedName{Name: dogu.GetName(), Namespace: dogu.GetNamespace()}
+		doguDeployment := &v1.Deployment{}
+		err = hlu.client.Get(ctx, doguIdentifier, doguDeployment)
+		if err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to get deployment of dogu [%s/%s]: %w", doguIdentifier.Namespace, doguIdentifier.Name, err))
+			continue
+		}
+
+		limits, err := hlu.doguLimitPatcher.RetrieveMemoryLimits(&dogu)
+		if err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to retrieve memory limits of dogu [%s/%s]: %w", doguIdentifier.Namespace, doguIdentifier.Name, err))
+			continue
+		}
+
+		ctrl.LoggerFrom(ctx).Info(fmt.Sprintf("Updating deployment for dogu [%s] with limits [%+v]", dogu.GetName(), limits))
+		err = hlu.doguLimitPatcher.PatchDeployment(doguDeployment, limits)
+		if err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to change deployment of dogu [%s/%s]: %w", doguIdentifier.Namespace, doguIdentifier.Name, err))
+			continue
+		}
+
+		err = hlu.client.Update(ctx, doguDeployment)
+		if err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to update deployment of dogu [%s/%s] in cluster: %w", doguIdentifier.Namespace, doguIdentifier.Name, err))
+			continue
+		}
+	}
+
+	return result
+}
+
+func (hlu *hardwareLimitUpdater) getInstalledDogus(ctx context.Context) (*k8sv1.DoguList, error) {
+	doguList := &k8sv1.DoguList{}
+
+	err := hlu.client.List(ctx, doguList, client.InNamespace(hlu.namespace))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list dogus in namespace [%s]: %w", hlu.namespace, err)
+	}
+
+	return doguList, nil
 }

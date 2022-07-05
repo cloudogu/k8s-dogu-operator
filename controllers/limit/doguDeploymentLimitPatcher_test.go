@@ -161,11 +161,11 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		require.NoError(t, err)
 		mock.AssertExpectationsForObjects(t, regMock, testDoguRegistry)
 
-		assert.Equal(t, "100m", doguLimitObject.cpuLimit)
-		assert.Equal(t, "1Gi", doguLimitObject.memoryLimit)
-		assert.Equal(t, "", doguLimitObject.podsLimit)
-		assert.Equal(t, "", doguLimitObject.storageLimit)
-		assert.Equal(t, "4Gi", doguLimitObject.ephemeralStorageLimit)
+		assert.Equal(t, "100m", doguLimitObject.CpuLimit)
+		assert.Equal(t, "1Gi", doguLimitObject.MemoryLimit)
+		assert.Equal(t, "", doguLimitObject.PodsLimit)
+		assert.Equal(t, "", doguLimitObject.StorageLimit)
+		assert.Equal(t, "4Gi", doguLimitObject.EphemeralStorageLimit)
 	})
 
 	t.Run("successfully create limits with all keys", func(t *testing.T) {
@@ -190,11 +190,11 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		require.NoError(t, err)
 		mock.AssertExpectationsForObjects(t, regMock, testDoguRegistry)
 
-		assert.Equal(t, "100m", doguLimitObject.cpuLimit)
-		assert.Equal(t, "1Gi", doguLimitObject.memoryLimit)
-		assert.Equal(t, "2", doguLimitObject.podsLimit)
-		assert.Equal(t, "3Gi", doguLimitObject.storageLimit)
-		assert.Equal(t, "4Gi", doguLimitObject.ephemeralStorageLimit)
+		assert.Equal(t, "100m", doguLimitObject.CpuLimit)
+		assert.Equal(t, "1Gi", doguLimitObject.MemoryLimit)
+		assert.Equal(t, "2", doguLimitObject.PodsLimit)
+		assert.Equal(t, "3Gi", doguLimitObject.StorageLimit)
+		assert.Equal(t, "4Gi", doguLimitObject.EphemeralStorageLimit)
 	})
 }
 
@@ -210,7 +210,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, doguLimits{})
+		err := patcher.PatchDeployment(deployment, DoguLimits{})
 
 		// then
 		require.Error(t, err)
@@ -232,7 +232,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, doguLimits{memoryLimit: "12e890uq209er"})
+		err := patcher.PatchDeployment(deployment, DoguLimits{MemoryLimit: "12e890uq209er"})
 
 		// then
 		require.Error(t, err)
@@ -254,7 +254,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, doguLimits{cpuLimit: "12e890uq209er"})
+		err := patcher.PatchDeployment(deployment, DoguLimits{CpuLimit: "12e890uq209er"})
 
 		// then
 		require.Error(t, err)
@@ -276,7 +276,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, doguLimits{storageLimit: "12e890uq209er"})
+		err := patcher.PatchDeployment(deployment, DoguLimits{StorageLimit: "12e890uq209er"})
 
 		// then
 		require.Error(t, err)
@@ -298,7 +298,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, doguLimits{podsLimit: "12e890uq209er"})
+		err := patcher.PatchDeployment(deployment, DoguLimits{PodsLimit: "12e890uq209er"})
 
 		// then
 		require.Error(t, err)
@@ -320,7 +320,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, doguLimits{ephemeralStorageLimit: "12e890uq209er"})
+		err := patcher.PatchDeployment(deployment, DoguLimits{EphemeralStorageLimit: "12e890uq209er"})
 
 		// then
 		require.Error(t, err)
@@ -341,9 +341,9 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
 
-		doguLimits := doguLimits{
-			cpuLimit:    "100m",
-			memoryLimit: "2Gi",
+		doguLimits := DoguLimits{
+			CpuLimit:    "100m",
+			MemoryLimit: "2Gi",
 		}
 
 		// when
@@ -377,12 +377,12 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
 
-		doguLimits := doguLimits{
-			cpuLimit:              "100m",
-			memoryLimit:           "2Gi",
-			podsLimit:             "2",
-			storageLimit:          "3Gi",
-			ephemeralStorageLimit: "4Gi",
+		doguLimits := DoguLimits{
+			CpuLimit:              "100m",
+			MemoryLimit:           "2Gi",
+			PodsLimit:             "2",
+			StorageLimit:          "3Gi",
+			EphemeralStorageLimit: "4Gi",
 		}
 
 		// when

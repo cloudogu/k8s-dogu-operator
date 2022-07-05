@@ -27,51 +27,51 @@ func NewDoguDeploymentLimitPatcher(registry registry.Registry) *doguDeploymentLi
 	}
 }
 
-// RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a doguLimits object.
-func (d *doguDeploymentLimitPatcher) RetrieveMemoryLimits(doguResource *v12.Dogu) (doguLimits, error) {
+// RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
+func (d *doguDeploymentLimitPatcher) RetrieveMemoryLimits(doguResource *v12.Dogu) (DoguLimits, error) {
 	doguRegistry := d.registry.DoguConfig(doguResource.Name)
-	doguLimitObject := doguLimits{}
+	doguLimitObject := DoguLimits{}
 
 	cpuLimit, err := doguRegistry.Get(CpuLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
-		return doguLimits{}, err
+		return DoguLimits{}, err
 	} else if err == nil {
-		doguLimitObject.cpuLimit = cpuLimit
+		doguLimitObject.CpuLimit = cpuLimit
 	}
 
 	memoryLimit, err := doguRegistry.Get(MemoryLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
-		return doguLimits{}, err
+		return DoguLimits{}, err
 	} else if err == nil {
-		doguLimitObject.memoryLimit = memoryLimit
+		doguLimitObject.MemoryLimit = memoryLimit
 	}
 
 	podsLimit, err := doguRegistry.Get(PodsLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
-		return doguLimits{}, err
+		return DoguLimits{}, err
 	} else if err == nil {
-		doguLimitObject.podsLimit = podsLimit
+		doguLimitObject.PodsLimit = podsLimit
 	}
 
 	storageLimit, err := doguRegistry.Get(StorageLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
-		return doguLimits{}, err
+		return DoguLimits{}, err
 	} else if err == nil {
-		doguLimitObject.storageLimit = storageLimit
+		doguLimitObject.StorageLimit = storageLimit
 	}
 
 	ephemeralStorageLimit, err := doguRegistry.Get(EphemeralStorageLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
-		return doguLimits{}, err
+		return DoguLimits{}, err
 	} else if err == nil {
-		doguLimitObject.ephemeralStorageLimit = ephemeralStorageLimit
+		doguLimitObject.EphemeralStorageLimit = ephemeralStorageLimit
 	}
 
 	return doguLimitObject, nil
 }
 
 // PatchDeployment patches the given deployment with the resource limits provided.
-func (d *doguDeploymentLimitPatcher) PatchDeployment(deployment *appsv1.Deployment, limits doguLimits) error {
+func (d *doguDeploymentLimitPatcher) PatchDeployment(deployment *appsv1.Deployment, limits DoguLimits) error {
 	if len(deployment.Spec.Template.Spec.Containers) <= 0 {
 		return fmt.Errorf("given deployment cannot be patched, no containers are defined, at least one container is required for patching")
 	}
@@ -110,9 +110,9 @@ func (d *doguDeploymentLimitPatcher) PatchDeployment(deployment *appsv1.Deployme
 	return nil
 }
 
-func (d *doguDeploymentLimitPatcher) patchStorageEphemeralLimits(limits doguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
-	if limits.ephemeralStorageLimit != "" {
-		storageEphemeralLimit, err := containerresource.ParseQuantity(limits.ephemeralStorageLimit)
+func (d *doguDeploymentLimitPatcher) patchStorageEphemeralLimits(limits DoguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
+	if limits.EphemeralStorageLimit != "" {
+		storageEphemeralLimit, err := containerresource.ParseQuantity(limits.EphemeralStorageLimit)
 		if err != nil {
 			return fmt.Errorf("failed to parse storageEphemeral request quantity: %w", err)
 		}
@@ -123,9 +123,9 @@ func (d *doguDeploymentLimitPatcher) patchStorageEphemeralLimits(limits doguLimi
 	return nil
 }
 
-func (d *doguDeploymentLimitPatcher) patchPodsLimits(limits doguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
-	if limits.podsLimit != "" {
-		podsLimit, err := containerresource.ParseQuantity(limits.podsLimit)
+func (d *doguDeploymentLimitPatcher) patchPodsLimits(limits DoguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
+	if limits.PodsLimit != "" {
+		podsLimit, err := containerresource.ParseQuantity(limits.PodsLimit)
 		if err != nil {
 			return fmt.Errorf("failed to parse pods request quantity: %w", err)
 		}
@@ -136,9 +136,9 @@ func (d *doguDeploymentLimitPatcher) patchPodsLimits(limits doguLimits, resource
 	return nil
 }
 
-func (d *doguDeploymentLimitPatcher) patchStrorageLimits(limits doguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
-	if limits.storageLimit != "" {
-		storageLimit, err := containerresource.ParseQuantity(limits.storageLimit)
+func (d *doguDeploymentLimitPatcher) patchStrorageLimits(limits DoguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
+	if limits.StorageLimit != "" {
+		storageLimit, err := containerresource.ParseQuantity(limits.StorageLimit)
 		if err != nil {
 			return fmt.Errorf("failed to parse storage request quantity: %w", err)
 		}
@@ -149,9 +149,9 @@ func (d *doguDeploymentLimitPatcher) patchStrorageLimits(limits doguLimits, reso
 	return nil
 }
 
-func (d *doguDeploymentLimitPatcher) patchCpuLimits(limits doguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
-	if limits.cpuLimit != "" {
-		cpuLimit, err := containerresource.ParseQuantity(limits.cpuLimit)
+func (d *doguDeploymentLimitPatcher) patchCpuLimits(limits DoguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
+	if limits.CpuLimit != "" {
+		cpuLimit, err := containerresource.ParseQuantity(limits.CpuLimit)
 		if err != nil {
 			return fmt.Errorf("failed to parse cpu request quantity: %w", err)
 		}
@@ -162,9 +162,9 @@ func (d *doguDeploymentLimitPatcher) patchCpuLimits(limits doguLimits, resourceR
 	return nil
 }
 
-func (d *doguDeploymentLimitPatcher) patchMemoryLimits(limits doguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
-	if limits.memoryLimit != "" {
-		memLimit, err := containerresource.ParseQuantity(limits.memoryLimit)
+func (d *doguDeploymentLimitPatcher) patchMemoryLimits(limits DoguLimits, resourceRequests map[v1.ResourceName]containerresource.Quantity, resourceLimits map[v1.ResourceName]containerresource.Quantity) error {
+	if limits.MemoryLimit != "" {
+		memLimit, err := containerresource.ParseQuantity(limits.MemoryLimit)
 		if err != nil {
 			return fmt.Errorf("failed to parse memory request quantity: %w", err)
 		}

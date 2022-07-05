@@ -3,10 +3,10 @@ package resource
 import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,13 +30,20 @@ const doguPodName = "POD_NAME"
 // ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type ResourceGenerator struct {
-	scheme   *runtime.Scheme
-	registry registry.Registry
+	scheme           *runtime.Scheme
+	doguLimitPatcher limitPatcher
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, registry registry.Registry) *ResourceGenerator {
-	return &ResourceGenerator{scheme: scheme, registry: registry}
+func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher limitPatcher) *ResourceGenerator {
+	return &ResourceGenerator{scheme: scheme, doguLimitPatcher: limitPatcher}
+}
+
+type limitPatcher interface {
+	// RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
+	RetrieveMemoryLimits(doguResource *k8sv1.Dogu) (limit.DoguLimits, error)
+	// PatchDeployment patches the given deployment with the resource limits provided.
+	PatchDeployment(deployment *appsv1.Deployment, limits limit.DoguLimits) error
 }
 
 // GetDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
@@ -109,6 +116,16 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 	}
 
 	applyValuesFromCustomDeployment(deployment, customDeployment)
+
+	doguLimits, err := r.doguLimitPatcher.RetrieveMemoryLimits(doguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve resource limits for dogu [%s]: %w", doguResource.Name, err)
+	}
+
+	err = r.doguLimitPatcher.PatchDeployment(deployment, doguLimits)
+	if err != nil {
+		return nil, fmt.Errorf("failed to patch resource limits into dogu deployment [%s]: %w", doguResource.Name, err)
+	}
 
 	return deployment, nil
 }
