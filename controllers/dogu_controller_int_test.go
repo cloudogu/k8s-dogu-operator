@@ -8,6 +8,7 @@ import (
 	_ "embed"
 	"fmt"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	. "github.com/onsi/ginkgo"
@@ -33,13 +34,9 @@ var _ = Describe("Dogu Controller", func() {
 	ctx := context.TODO()
 	ImageRegistryMock = mocks.ImageRegistry{}
 	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-	DoguRegistryMock = mocks.DoguRegistry{}
-	DoguRegistryMock.Mock.On("GetDogu", mock.MatchedBy(func(dogu *k8sv1.Dogu) bool {
-		return dogu.Name == ldapCr.Name
-	})).Return(ldapDogu, nil)
-	DoguRegistryMock.Mock.On("GetDogu", mock.MatchedBy(func(dogu *k8sv1.Dogu) bool {
-		return dogu.Name == redmineCr.Name
-	})).Return(redmineDogu, nil)
+	DoguRemoteRegistryMock = cesremotemocks.Registry{}
+	DoguRemoteRegistryMock.Mock.On("Get", "official/ldap").Return(ldapDogu, nil)
+	DoguRemoteRegistryMock.Mock.On("Get", "official/redmine").Return(redmineDogu, nil)
 
 	EtcdDoguRegistry = cesmocks.DoguRegistry{}
 	EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed"))
