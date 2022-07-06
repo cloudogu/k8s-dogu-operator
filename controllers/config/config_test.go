@@ -20,7 +20,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		Username: "myUsername",
 		Password: "myPassword",
 	}
-	inputDockerRegistrySecretData := "{\"auths\":{\"your.private.registry.example.com\":{\"username\":\"myDockerUsername\",\"password\":\"myDockerPassword\",\"email\":\"jdoe@example.com\",\"auth\":\"c3R...zE2\"}}}"
+	inputDockerRegistrySecretData := `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`
 	expectedDockerRegistryData := DockerRegistryData{
 		Username: "myDockerUsername",
 		Password: "myDockerPassword",
