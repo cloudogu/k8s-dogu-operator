@@ -25,6 +25,10 @@ var redmineCr = &k8sv1.Dogu{}
 var redmineDescriptorBytes []byte
 var redmineDescriptor = &core.Dogu{}
 
+//go:embed testdata/redmine-dogu-two-sa.json
+var redmineDescriptorTwoSaBytes []byte
+var redmineDescriptorTwoSa = &core.Dogu{}
+
 //go:embed testdata/redmine-dogu-optional.json
 var redmineDescriptorOptionalBytes []byte
 var redmineDescriptorOptional = &core.Dogu{}
@@ -45,6 +49,11 @@ func init() {
 	redmineCr.Namespace = "test"
 
 	err = json.Unmarshal(redmineDescriptorBytes, redmineDescriptor)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(redmineDescriptorTwoSaBytes, redmineDescriptorTwoSa)
 	if err != nil {
 		panic(err)
 	}

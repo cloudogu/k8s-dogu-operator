@@ -6,6 +6,7 @@ import (
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount/mocks"
+	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -43,6 +44,30 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry, commandExecutorMock)
+	})
+
+	t.Run("failure during first sa deletion should not interrupt second sa deletion", func(t *testing.T) {
+		// given
+		ctx := context.TODO()
+		doguConfig := &cesmocks.ConfigurationContext{}
+		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, assert.AnError)
+		doguConfig.Mock.On("Exists", "sa-cas").Return(true, assert.AnError)
+		registry := &cesmocks.Registry{}
+		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
+		commandExecutorMock := &mocks.CommandExecutor{}
+		doguRegistry := &cesmocks.DoguRegistry{}
+
+		serviceAccountCreator := serviceaccount.NewRemover(registry, commandExecutorMock)
+
+		// when
+		err := serviceAccountCreator.RemoveAll(ctx, redmineCr.Namespace, redmineDescriptorTwoSa)
+
+		// then
+		require.Error(t, err)
+		multiError, ok := err.(*multierror.Error)
+		require.True(t, ok)
+		assert.Equal(t, 2, len(multiError.Errors))
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry, commandExecutorMock)
 	})
 
