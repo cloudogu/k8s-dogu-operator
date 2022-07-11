@@ -20,22 +20,22 @@ import (
 )
 
 type doguDeleteManagerWithMocks struct {
-	DeleteManager         *doguDeleteManager
-	DoguRemoteRegistry    *cesremotemocks.Registry
-	DoguLocalRegistry     *cesmocks.DoguRegistry
-	ImageRegistry         *mocks.ImageRegistry
-	DoguRegistrator       *mocks.DoguRegistrator
-	ServiceAccountRemover *mocks.ServiceAccountRemover
+	deleteManager         *doguDeleteManager
+	doguRemoteRegistry    *cesremotemocks.Registry
+	doguLocalRegistry     *cesmocks.DoguRegistry
+	imageRegistry         *mocks.ImageRegistry
+	doguRegistrator       *mocks.DoguRegistrator
+	serviceAccountRemover *mocks.ServiceAccountRemover
 }
 
 func (d *doguDeleteManagerWithMocks) AssertMocks(t *testing.T) {
 	t.Helper()
 	mock.AssertExpectationsForObjects(t,
-		d.DoguRemoteRegistry,
-		d.DoguLocalRegistry,
-		d.ImageRegistry,
-		d.DoguRegistrator,
-		d.ServiceAccountRemover,
+		d.doguRemoteRegistry,
+		d.doguLocalRegistry,
+		d.imageRegistry,
+		d.doguRegistrator,
+		d.serviceAccountRemover,
 	)
 }
 
@@ -49,35 +49,36 @@ func getDoguDeleteManagerWithMocks() doguDeleteManagerWithMocks {
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
 
 	doguDeleteManager := &doguDeleteManager{
-		Client:                k8sClient,
-		Scheme:                scheme,
-		DoguRemoteRegistry:    doguRemoteRegistry,
-		DoguLocalRegistry:     doguLocalRegistry,
-		ImageRegistry:         imageRegistry,
-		DoguRegistrator:       doguRegistrator,
-		ServiceAccountRemover: serviceAccountRemover,
+		client:                k8sClient,
+		scheme:                scheme,
+		doguRemoteRegistry:    doguRemoteRegistry,
+		doguLocalRegistry:     doguLocalRegistry,
+		imageRegistry:         imageRegistry,
+		doguRegistrator:       doguRegistrator,
+		serviceAccountRemover: serviceAccountRemover,
 	}
 
 	return doguDeleteManagerWithMocks{
-		DeleteManager:         doguDeleteManager,
-		DoguRemoteRegistry:    doguRemoteRegistry,
-		DoguLocalRegistry:     doguLocalRegistry,
-		ImageRegistry:         imageRegistry,
-		DoguRegistrator:       doguRegistrator,
-		ServiceAccountRemover: serviceAccountRemover,
+		deleteManager:         doguDeleteManager,
+		doguRemoteRegistry:    doguRemoteRegistry,
+		doguLocalRegistry:     doguLocalRegistry,
+		imageRegistry:         imageRegistry,
+		doguRegistrator:       doguRegistrator,
+		serviceAccountRemover: serviceAccountRemover,
 	}
 }
 
 func TestNewDoguDeleteManager(t *testing.T) {
-	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = func() *rest.Config {
-		return &rest.Config{}
-	}
-
 	t.Run("success", func(t *testing.T) {
 		// given
+
+		// override default controller method to retrieve a kube config
+		oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
+		defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
+		ctrl.GetConfigOrDie = func() *rest.Config {
+			return &rest.Config{}
+		}
+
 		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
@@ -128,13 +129,13 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks()
-		managerWithMocks.DoguLocalRegistry.On("Get", "ldap").Return(ldapDogu, nil)
-		managerWithMocks.ServiceAccountRemover.On("RemoveAll", mock.Anything, ldapCr.ObjectMeta.Namespace, ldapDogu).Return(nil)
-		managerWithMocks.DoguRegistrator.On("UnregisterDogu", "ldap").Return(nil)
-		managerWithMocks.DeleteManager.Client = client
+		managerWithMocks.doguLocalRegistry.On("Get", "ldap").Return(ldapDogu, nil)
+		managerWithMocks.serviceAccountRemover.On("RemoveAll", mock.Anything, ldapCr.ObjectMeta.Namespace, ldapDogu).Return(nil)
+		managerWithMocks.doguRegistrator.On("UnregisterDogu", "ldap").Return(nil)
+		managerWithMocks.deleteManager.client = client
 
 		// when
-		err := managerWithMocks.DeleteManager.Delete(ctx, ldapCr)
+		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
 
 		// then
 		require.NoError(t, err)
@@ -150,7 +151,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks := getDoguDeleteManagerWithMocks()
 
 		// when
-		err := managerWithMocks.DeleteManager.Delete(ctx, ldapCr)
+		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
 
 		// then
 		require.Error(t, err)
@@ -161,14 +162,15 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 	t.Run("failed to get dogu descriptor", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks()
-		managerWithMocks.DeleteManager.Client = fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
-		managerWithMocks.DoguLocalRegistry.On("Get", "ldap").Return(nil, assert.AnError)
+		managerWithMocks.deleteManager.client = fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
+		managerWithMocks.doguLocalRegistry.On("Get", "ldap").Return(nil, assert.AnError)
 
 		// when
-		err := managerWithMocks.DeleteManager.Delete(ctx, ldapCr)
+		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to get dogu")
 		managerWithMocks.AssertMocks(t)
 	})
@@ -177,13 +179,13 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks()
-		managerWithMocks.DoguLocalRegistry.On("Get", "ldap").Return(ldapDogu, nil)
-		managerWithMocks.ServiceAccountRemover.On("RemoveAll", mock.Anything, ldapCr.ObjectMeta.Namespace, ldapDogu).Return(assert.AnError)
-		managerWithMocks.DoguRegistrator.On("UnregisterDogu", "ldap").Return(nil)
-		managerWithMocks.DeleteManager.Client = client
+		managerWithMocks.doguLocalRegistry.On("Get", "ldap").Return(ldapDogu, nil)
+		managerWithMocks.serviceAccountRemover.On("RemoveAll", mock.Anything, ldapCr.ObjectMeta.Namespace, ldapDogu).Return(assert.AnError)
+		managerWithMocks.doguRegistrator.On("UnregisterDogu", "ldap").Return(nil)
+		managerWithMocks.deleteManager.client = client
 
 		// when
-		err := managerWithMocks.DeleteManager.Delete(ctx, ldapCr)
+		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
 
 		// then
 		require.NoError(t, err)
@@ -198,13 +200,13 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks()
-		managerWithMocks.DoguLocalRegistry.On("Get", "ldap").Return(ldapDogu, nil)
-		managerWithMocks.ServiceAccountRemover.On("RemoveAll", mock.Anything, ldapCr.ObjectMeta.Namespace, ldapDogu).Return(nil)
-		managerWithMocks.DoguRegistrator.On("UnregisterDogu", "ldap").Return(assert.AnError)
-		managerWithMocks.DeleteManager.Client = client
+		managerWithMocks.doguLocalRegistry.On("Get", "ldap").Return(ldapDogu, nil)
+		managerWithMocks.serviceAccountRemover.On("RemoveAll", mock.Anything, ldapCr.ObjectMeta.Namespace, ldapDogu).Return(nil)
+		managerWithMocks.doguRegistrator.On("UnregisterDogu", "ldap").Return(assert.AnError)
+		managerWithMocks.deleteManager.client = client
 
 		// when
-		err := managerWithMocks.DeleteManager.Delete(ctx, ldapCr)
+		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
 
 		// then
 		require.NoError(t, err)

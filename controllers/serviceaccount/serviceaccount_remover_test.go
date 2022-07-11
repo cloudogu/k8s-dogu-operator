@@ -60,6 +60,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to check if service account already exists")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry)
 	})

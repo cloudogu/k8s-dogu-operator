@@ -20,23 +20,23 @@ import (
 
 const finalizerName = "dogu-finalizer"
 
-// doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
+// doguDeleteManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguDeleteManager struct {
-	client.Client
-	Scheme                *runtime.Scheme
-	DoguRemoteRegistry    cesremote.Registry
-	DoguLocalRegistry     cesregistry.DoguRegistry
-	ImageRegistry         imageRegistry
-	DoguRegistrator       doguRegistrator
-	ServiceAccountRemover serviceAccountRemover
-	DoguSecretHandler     doguSecretHandler
+	client                client.Client
+	scheme                *runtime.Scheme
+	doguRemoteRegistry    cesremote.Registry
+	doguLocalRegistry     cesregistry.DoguRegistry
+	imageRegistry         imageRegistry
+	doguRegistrator       doguRegistrator
+	serviceAccountRemover serviceAccountRemover
+	doguSecretHandler     doguSecretHandler
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
 func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*doguDeleteManager, error) {
 	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
 	if err != nil {
-		return nil, fmt.Errorf("failed find create new remote dogu registry: %w", err)
+		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
 	}
 
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
@@ -44,22 +44,22 @@ func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorC
 	restConfig := ctrl.GetConfigOrDie()
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed find cluster config: %w", err)
+		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 
 	return &doguDeleteManager{
-		Client:                client,
-		Scheme:                client.Scheme(),
-		DoguRemoteRegistry:    doguRemoteRegistry,
-		DoguLocalRegistry:     cesRegistry.DoguRegistry(),
-		DoguRegistrator:       NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
-		ServiceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor),
+		client:                client,
+		scheme:                client.Scheme(),
+		doguRemoteRegistry:    doguRemoteRegistry,
+		doguLocalRegistry:     cesRegistry.DoguRegistry(),
+		doguRegistrator:       newCESDoguRegistrator(client, cesRegistry, resourceGenerator),
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor),
 	}, nil
 }
 
 func (m *doguDeleteManager) getDoguDescriptorFromLocalRegistry(doguResource *k8sv1.Dogu) (*cesappcore.Dogu, error) {
-	dogu, err := m.DoguLocalRegistry.Get(doguResource.Name)
+	dogu, err := m.doguLocalRegistry.Get(doguResource.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu from local dogu registry: %w", err)
 	}
@@ -67,10 +67,11 @@ func (m *doguDeleteManager) getDoguDescriptorFromLocalRegistry(doguResource *k8s
 	return dogu, nil
 }
 
+// Delete deletes the given dogu along with all those Kubernetes resources that the dogu operator initially created.
 func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting, StatusMessages: []string{}}
-	err := doguResource.Update(ctx, m.Client)
+	err := doguResource.Update(ctx, m.client)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
@@ -82,20 +83,20 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	}
 
 	logger.Info("Delete service accounts...")
-	err = m.ServiceAccountRemover.RemoveAll(ctx, doguResource.Namespace, dogu)
+	err = m.serviceAccountRemover.RemoveAll(ctx, doguResource.Namespace, dogu)
 	if err != nil {
 		logger.Error(err, "failed to remove service accounts")
 	}
 
 	logger.Info("Unregister dogu...")
-	err = m.DoguRegistrator.UnregisterDogu(doguResource.Name)
+	err = m.doguRegistrator.UnregisterDogu(doguResource.Name)
 	if err != nil {
 		logger.Error(err, "failed to unregister dogu")
 	}
 
 	logger.Info("Remove finalizer...")
 	controllerutil.RemoveFinalizer(doguResource, finalizerName)
-	err = m.Client.Update(ctx, doguResource)
+	err = m.client.Update(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu: %w", err)
 	}

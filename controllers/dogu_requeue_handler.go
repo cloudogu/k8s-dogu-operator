@@ -23,24 +23,24 @@ type requeuableError interface {
 	Requeue() bool
 }
 
-// DoguRequeueHandler is responsible to requeue a dogu resource after it failed.
-type DoguRequeueHandler struct {
-	DoguStatusReporter statusReporter `json:"dogu_status_reporter"`
-	KubernetesClient   client.Client  `json:"kubernetes_client"`
+// doguRequeueHandler is responsible to requeue a dogu resource after it failed.
+type doguRequeueHandler struct {
+	doguStatusReporter statusReporter
+	client             client.Client
 }
 
 // NewDoguRequeueHandler creates a new dogu requeue handler.
-func NewDoguRequeueHandler(client client.Client, reporter statusReporter) *DoguRequeueHandler {
-	return &DoguRequeueHandler{
-		DoguStatusReporter: reporter,
-		KubernetesClient:   client,
+func NewDoguRequeueHandler(client client.Client, reporter statusReporter) *doguRequeueHandler {
+	return &doguRequeueHandler{
+		doguStatusReporter: reporter,
+		client:             client,
 	}
 }
 
 // Handle takes an error and handles the requeue process for the current dogu operation.
-func (d *DoguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error) {
+func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error) {
 	if err != nil {
-		reportError := d.DoguStatusReporter.ReportError(ctx, doguResource, err)
+		reportError := d.doguStatusReporter.ReportError(ctx, doguResource, err)
 		if reportError != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to report error: %w", reportError)
 		}
@@ -49,10 +49,10 @@ func (d *DoguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 	return d.handleRequeue(ctx, contextMessage, doguResource, err)
 }
 
-func (d *DoguRequeueHandler) handleRequeue(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error) {
+func (d *doguRequeueHandler) handleRequeue(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error) {
 	if shouldRequeue(err) {
 		requeueTime := doguResource.Status.NextRequeue()
-		updateError := doguResource.Update(ctx, d.KubernetesClient)
+		updateError := doguResource.Update(ctx, d.client)
 		if updateError != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
 		}

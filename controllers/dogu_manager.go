@@ -23,10 +23,9 @@ var NewManager = NewDoguManager
 // DoguManager is a central unit in the process of handling dogu custom resources
 // The DoguManager creates, updates and deletes dogus
 type DoguManager struct {
-	client.Client
-	Scheme         *runtime.Scheme
-	InstallManager installManager
-	DeleteManager  deleteManager
+	scheme         *runtime.Scheme
+	installManager installManager
+	deleteManager  deleteManager
 }
 
 type installManager interface {
@@ -113,10 +112,9 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	}
 
 	return &DoguManager{
-		Client:         client,
-		Scheme:         client.Scheme(),
-		InstallManager: installManager,
-		DeleteManager:  deleteManager,
+		scheme:         client.Scheme(),
+		installManager: installManager,
+		deleteManager:  deleteManager,
 	}, nil
 }
 
@@ -139,7 +137,7 @@ func validateKeyProvider(globalConfig cesregistry.ConfigurationContext) error {
 
 // Install installs a dogu resource.
 func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	return m.InstallManager.Install(ctx, doguResource)
+	return m.installManager.Install(ctx, doguResource)
 }
 
 // Upgrade upgrades a dogu resource.
@@ -149,5 +147,5 @@ func (m *DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
 
 // Delete deletes a dogu resource.
 func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	return m.DeleteManager.Delete(ctx, doguResource)
+	return m.deleteManager.Delete(ctx, doguResource)
 }

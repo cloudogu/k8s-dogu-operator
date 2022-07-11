@@ -22,7 +22,7 @@ func TestDoguManager_Delete(t *testing.T) {
 	inputContext := context.Background()
 	deleteManager := &mocks.DeleteManager{}
 	deleteManager.On("Delete", inputContext, inputDogu).Return(nil)
-	m := DoguManager{DeleteManager: deleteManager}
+	m := DoguManager{deleteManager: deleteManager}
 
 	// when
 	err := m.Delete(inputContext, inputDogu)
@@ -38,7 +38,7 @@ func TestDoguManager_Install(t *testing.T) {
 	inputContext := context.Background()
 	installManager := &mocks.InstallManager{}
 	installManager.On("Install", inputContext, inputDogu).Return(nil)
-	m := DoguManager{InstallManager: installManager}
+	m := DoguManager{installManager: installManager}
 
 	// when
 	err := m.Install(inputContext, inputDogu)
