@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
+	"github.com/hashicorp/go-multierror"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -26,13 +27,16 @@ func NewRemover(registry registry.Registry, commandExecutor commandExecutor) *re
 func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
+	var allProblems error
+
 	for _, serviceAccount := range dogu.ServiceAccounts {
 		registryCredentialPath := "sa-" + serviceAccount.Type
 		doguConfig := r.registry.DoguConfig(dogu.GetSimpleName())
 
 		exists, err := serviceAccountExists(registryCredentialPath, doguConfig)
 		if err != nil {
-			return err
+			allProblems = multierror.Append(allProblems, err)
+			continue
 		}
 
 		if !exists {
@@ -43,7 +47,8 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 		doguRegistry := r.registry.DoguRegistry()
 		enabled, err := doguRegistry.IsEnabled(serviceAccount.Type)
 		if err != nil {
-			return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
+			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err))
+			continue
 		}
 		if !enabled {
 			logger.Info("skipping removal of service account because dogu is not enabled")
@@ -52,21 +57,24 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 
 		saDogu, err := doguRegistry.Get(serviceAccount.Type)
 		if err != nil {
-			return fmt.Errorf("failed to get service account dogu.json: %w", err)
+			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to get service account dogu.json: %w", err))
+			continue
 		}
 
 		err = r.executeCommand(ctx, dogu, saDogu, namespace, serviceAccount)
 		if err != nil {
-			return fmt.Errorf("failed to execute service account remove command: %w", err)
+			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to execute service account remove command: %w", err))
+			continue
 		}
 
 		err = doguConfig.DeleteRecursive(registryCredentialPath)
 		if err != nil {
-			return fmt.Errorf("failed to remove service account from config: %w", err)
+			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to remove service account from config: %w", err))
+			continue
 		}
 	}
 
-	return nil
+	return allProblems
 }
 
 func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) error {

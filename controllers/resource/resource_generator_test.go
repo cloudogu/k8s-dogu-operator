@@ -1,14 +1,17 @@
-package resource_test
+package resource
 
 import (
 	_ "embed"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -113,17 +116,45 @@ func init() {
 	}
 }
 
-func getResourceGenerator() *resource.ResourceGenerator {
+func getResourceGenerator() *ResourceGenerator {
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
 		Version: "v1",
 		Kind:    "Dogu",
 	}, &k8sv1.Dogu{})
-	return resource.NewResourceGenerator(scheme)
+	patcher := &mocks2.LimitPatcher{}
+	patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
+	patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+	return &ResourceGenerator{
+		scheme:           scheme,
+		doguLimitPatcher: patcher,
+	}
+}
+
+func TestNewResourceGenerator(t *testing.T) {
+	// given
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v1",
+		Kind:    "Dogu",
+	}, &k8sv1.Dogu{})
+	registry := &mocks.Registry{}
+
+	// when
+	generator := NewResourceGenerator(scheme, limit.NewDoguDeploymentLimitPatcher(registry))
+
+	// then
+	require.NotNil(t, generator)
 }
 
 func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
+	oldStage := config.Stage
+	defer func() {
+		config.Stage = oldStage
+	}()
+	config.Stage = config.StageProduction
 	generator := getResourceGenerator()
 
 	t.Run("Return simple deployment", func(t *testing.T) {
@@ -133,6 +164,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, expectedDeployment, actualDeployment)
+		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
 	t.Run("Return simple deployment with given custom deployment", func(t *testing.T) {
@@ -171,6 +203,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, expectedCustomDeployment, actualDeployment)
+		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
 	t.Run("Return simple deployment with development stage", func(t *testing.T) {
@@ -187,6 +220,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, expectedDeploymentDevelop, actualDeployment)
+		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
@@ -203,6 +237,34 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
+	})
+
+	t.Run("Error on retrieving memory limits", func(t *testing.T) {
+		// when
+		generatorFail := getResourceGenerator()
+		patcher := &mocks2.LimitPatcher{}
+		patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, assert.AnError)
+		generatorFail.doguLimitPatcher = patcher
+		_, err := generatorFail.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+		mock.AssertExpectationsForObjects(t, generatorFail.doguLimitPatcher)
+	})
+
+	t.Run("Error on patching deployment", func(t *testing.T) {
+		// when
+		generatorFail := getResourceGenerator()
+		patcher := &mocks2.LimitPatcher{}
+		patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
+		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
+		generatorFail.doguLimitPatcher = patcher
+		_, err := generatorFail.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+		mock.AssertExpectationsForObjects(t, generatorFail.doguLimitPatcher)
 	})
 }
 

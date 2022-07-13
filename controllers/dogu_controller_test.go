@@ -12,13 +12,13 @@ import (
 )
 
 func Test_evaluateRequiredOperation(t *testing.T) {
-	ldapCr := &k8sv1.Dogu{}
+	testDoguCr := &k8sv1.Dogu{}
 	logger := log.FromContext(context.TODO())
 
 	t.Run("installed should return upgrade", func(t *testing.T) {
-		ldapCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
+		testDoguCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
 
-		operation, err := evaluateRequiredOperation(ldapCr, logger)
+		operation, err := evaluateRequiredOperation(testDoguCr, logger)
 
 		require.NoError(t, err)
 		assert.Equal(t, Upgrade, operation)
@@ -26,37 +26,37 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 	t.Run("deletiontimestamp should return delete", func(t *testing.T) {
 		now := v1.NewTime(time.Now())
-		ldapCr.DeletionTimestamp = &now
+		testDoguCr.DeletionTimestamp = &now
 
-		operation, err := evaluateRequiredOperation(ldapCr, logger)
+		operation, err := evaluateRequiredOperation(testDoguCr, logger)
 
 		require.NoError(t, err)
 		assert.Equal(t, Delete, operation)
-		ldapCr.DeletionTimestamp = nil
+		testDoguCr.DeletionTimestamp = nil
 	})
 
 	t.Run("installing should return ignore", func(t *testing.T) {
-		ldapCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling}
+		testDoguCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling}
 
-		operation, err := evaluateRequiredOperation(ldapCr, logger)
+		operation, err := evaluateRequiredOperation(testDoguCr, logger)
 
 		require.NoError(t, err)
 		assert.Equal(t, Ignore, operation)
 	})
 
 	t.Run("deleting should return ignore", func(t *testing.T) {
-		ldapCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting}
+		testDoguCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting}
 
-		operation, err := evaluateRequiredOperation(ldapCr, logger)
+		operation, err := evaluateRequiredOperation(testDoguCr, logger)
 
 		require.NoError(t, err)
 		assert.Equal(t, Ignore, operation)
 	})
 
 	t.Run("default should return ignore", func(t *testing.T) {
-		ldapCr.Status = k8sv1.DoguStatus{Status: "youaresomethingelse"}
+		testDoguCr.Status = k8sv1.DoguStatus{Status: "youaresomethingelse"}
 
-		operation, err := evaluateRequiredOperation(ldapCr, logger)
+		operation, err := evaluateRequiredOperation(testDoguCr, logger)
 
 		require.NoError(t, err)
 		assert.Equal(t, Ignore, operation)

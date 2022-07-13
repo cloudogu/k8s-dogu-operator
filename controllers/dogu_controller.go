@@ -53,7 +53,7 @@ func (o operation) toString() string {
 
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
-	client.Client
+	client             client.Client
 	scheme             *runtime.Scheme
 	doguManager        manager
 	doguRequeueHandler requeueHandler
@@ -81,7 +81,7 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 	doguRequeueHandler := NewDoguRequeueHandler(client, doguStatusReporter)
 
 	return &doguReconciler{
-		Client:             client,
+		client:             client,
 		scheme:             scheme,
 		doguManager:        doguManager,
 		doguRequeueHandler: doguRequeueHandler,
@@ -96,7 +96,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	logger := log.FromContext(ctx)
 
 	doguResource := &k8sv1.Dogu{}
-	err := r.Get(ctx, req.NamespacedName, doguResource)
+	err := r.client.Get(ctx, req.NamespacedName, doguResource)
 	if err != nil {
 		logger.Info(fmt.Sprintf("failed to get doguResource: %s", err))
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -120,7 +120,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		if result.Requeue || result.RequeueAfter != 0 {
 			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
-			err := doguResource.Update(ctx, r.Client)
+			err := doguResource.Update(ctx, r.client)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", err)
 			}

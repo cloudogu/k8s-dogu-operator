@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.9.0] - 2022-07-13
+### Added
+- [#28] Dogu hardware limit updater responsible to update the deployments of dogus with configured container limits.
+
+### Changed
+- [#28] Updated cesapp-lib to version 0.2.0
+- [#29] Remove implementation of the remote http dogu registry and instead, reuse the implementation from the cesapp-lib.
+- [#31] Split dogu manager in separate components according to it functions (install, update, delete).
+
 ## [v0.8.0] - 2022-06-08
 ### Added
 - [#26] Allow the definition of custom Deployment in dogus. In such custom Deployments it is possible

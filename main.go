@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"os"
 
@@ -81,6 +82,10 @@ func startDoguOperator() error {
 		return fmt.Errorf("failed to start manager: %w", err)
 	}
 
+	if err = handleHardwareLimitUpdater(k8sManager, operatorConfig.Namespace); err != nil {
+		return fmt.Errorf("failed to create hardware limit updater: %w", err)
+	}
+
 	err = configureManager(k8sManager, operatorConfig)
 	if err != nil {
 		return fmt.Errorf("failed to configure manager: %w", err)
@@ -129,6 +134,19 @@ func startK8sManager(k8sManager manager.Manager) error {
 	err := k8sManager.Start(ctrl.SetupSignalHandler())
 	if err != nil {
 		return fmt.Errorf("failed to start manager: %w", err)
+	}
+
+	return nil
+}
+
+func handleHardwareLimitUpdater(k8sManager manager.Manager, namespace string) error {
+	hardwareLimitUpdater, err := limit.NewHardwareLimitUpdater(k8sManager.GetClient(), namespace)
+	if err != nil {
+		return err
+	}
+
+	if err := k8sManager.Add(hardwareLimitUpdater); err != nil {
+		return fmt.Errorf("failed to add hardwareLimitUpdater as runnable to the manager: %w", err)
 	}
 
 	return nil
