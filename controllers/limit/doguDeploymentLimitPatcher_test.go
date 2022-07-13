@@ -70,7 +70,7 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, regMock, testDoguRegistry)
 	})
 
-	t.Run("return error when retrieving pods limit key", func(t *testing.T) {
+	t.Run("return error when retrieving ephemeral storage limit key", func(t *testing.T) {
 		// given
 		regMock := &mocks.Registry{}
 		testDoguRegistry := &mocks.ConfigurationContext{}
@@ -78,53 +78,6 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 
 		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
 		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", podsLimitKey).Return("", assert.AnError)
-
-		patcher := doguDeploymentLimitPatcher{}
-		patcher.registry = regMock
-
-		// when
-		_, err := patcher.RetrieveMemoryLimits(doguResource)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		mock.AssertExpectationsForObjects(t, regMock, testDoguRegistry)
-	})
-
-	t.Run("return error when retrieving storage limit key", func(t *testing.T) {
-		// given
-		regMock := &mocks.Registry{}
-		testDoguRegistry := &mocks.ConfigurationContext{}
-		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
-
-		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
-		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", podsLimitKey).Return("2", nil)
-		testDoguRegistry.On("Get", storageLimitKey).Return("", assert.AnError)
-
-		patcher := doguDeploymentLimitPatcher{}
-		patcher.registry = regMock
-
-		// when
-		_, err := patcher.RetrieveMemoryLimits(doguResource)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		mock.AssertExpectationsForObjects(t, regMock, testDoguRegistry)
-	})
-
-	t.Run("return error when retrieving storage limit key", func(t *testing.T) {
-		// given
-		regMock := &mocks.Registry{}
-		testDoguRegistry := &mocks.ConfigurationContext{}
-		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
-
-		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
-		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", podsLimitKey).Return("2", nil)
-		testDoguRegistry.On("Get", storageLimitKey).Return("3Gi", nil)
 		testDoguRegistry.On("Get", ephemeralStorageLimitKey).Return("", assert.AnError)
 
 		patcher := doguDeploymentLimitPatcher{}
@@ -147,8 +100,6 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 
 		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
 		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", podsLimitKey).Return("", nil)
-		testDoguRegistry.On("Get", storageLimitKey).Return("", nil)
 		testDoguRegistry.On("Get", ephemeralStorageLimitKey).Return("4Gi", nil)
 
 		patcher := doguDeploymentLimitPatcher{}
@@ -163,8 +114,6 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 
 		assert.Equal(t, "100m", doguLimitObject.CpuLimit)
 		assert.Equal(t, "1Gi", doguLimitObject.MemoryLimit)
-		assert.Equal(t, "", doguLimitObject.PodsLimit)
-		assert.Equal(t, "", doguLimitObject.StorageLimit)
 		assert.Equal(t, "4Gi", doguLimitObject.EphemeralStorageLimit)
 	})
 
@@ -176,8 +125,6 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 
 		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
 		testDoguRegistry.On("Get", memoryLimitKey).Return("1Gi", nil)
-		testDoguRegistry.On("Get", podsLimitKey).Return("2", nil)
-		testDoguRegistry.On("Get", storageLimitKey).Return("3Gi", nil)
 		testDoguRegistry.On("Get", ephemeralStorageLimitKey).Return("4Gi", nil)
 
 		patcher := doguDeploymentLimitPatcher{}
@@ -192,8 +139,6 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 
 		assert.Equal(t, "100m", doguLimitObject.CpuLimit)
 		assert.Equal(t, "1Gi", doguLimitObject.MemoryLimit)
-		assert.Equal(t, "2", doguLimitObject.PodsLimit)
-		assert.Equal(t, "3Gi", doguLimitObject.StorageLimit)
 		assert.Equal(t, "4Gi", doguLimitObject.EphemeralStorageLimit)
 	})
 }
@@ -259,50 +204,6 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse cpu request quantity")
-	})
-
-	t.Run("receives error when patching storage limits", func(t *testing.T) {
-		// given
-		deployment := &v1.Deployment{
-			Spec: v1.DeploymentSpec{Template: v12.PodTemplateSpec{Spec: v12.PodSpec{
-				Containers: []v12.Container{
-					{Name: "testContainer"},
-				},
-			}}},
-		}
-
-		regMock := &mocks.Registry{}
-		patcher := doguDeploymentLimitPatcher{}
-		patcher.registry = regMock
-
-		// when
-		err := patcher.PatchDeployment(deployment, DoguLimits{StorageLimit: "12e890uq209er"})
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse storage request quantity")
-	})
-
-	t.Run("receives error when patching pods limits", func(t *testing.T) {
-		// given
-		deployment := &v1.Deployment{
-			Spec: v1.DeploymentSpec{Template: v12.PodTemplateSpec{Spec: v12.PodSpec{
-				Containers: []v12.Container{
-					{Name: "testContainer"},
-				},
-			}}},
-		}
-
-		regMock := &mocks.Registry{}
-		patcher := doguDeploymentLimitPatcher{}
-		patcher.registry = regMock
-
-		// when
-		err := patcher.PatchDeployment(deployment, DoguLimits{PodsLimit: "12e890uq209er"})
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse pods request quantity")
 	})
 
 	t.Run("receives error when patching storageEphemeral limits", func(t *testing.T) {
@@ -380,8 +281,6 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		doguLimits := DoguLimits{
 			CpuLimit:              "100m",
 			MemoryLimit:           "2Gi",
-			PodsLimit:             "2",
-			StorageLimit:          "3Gi",
 			EphemeralStorageLimit: "4Gi",
 		}
 
@@ -400,16 +299,6 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		memoryRequestQuantity := deployment.Spec.Template.Spec.Containers[0].Resources.Requests[v12.ResourceMemory]
 		assert.Equal(t, memoryLimitQuantity.String(), "2Gi")
 		assert.Equal(t, memoryRequestQuantity.String(), "2Gi")
-
-		storageLimitQuantity := deployment.Spec.Template.Spec.Containers[0].Resources.Limits[v12.ResourceStorage]
-		storageResourceQuantity := deployment.Spec.Template.Spec.Containers[0].Resources.Requests[v12.ResourceStorage]
-		assert.Equal(t, storageLimitQuantity.String(), "3Gi")
-		assert.Equal(t, storageResourceQuantity.String(), "3Gi")
-
-		podsLimitQuantity := deployment.Spec.Template.Spec.Containers[0].Resources.Limits[v12.ResourcePods]
-		podsResourceQuantity := deployment.Spec.Template.Spec.Containers[0].Resources.Requests[v12.ResourcePods]
-		assert.Equal(t, podsLimitQuantity.String(), "2")
-		assert.Equal(t, podsResourceQuantity.String(), "2")
 
 		empheralStorageLimitQuantity := deployment.Spec.Template.Spec.Containers[0].Resources.Limits[v12.ResourceEphemeralStorage]
 		empheralStorageResourceQuantity := deployment.Spec.Template.Spec.Containers[0].Resources.Requests[v12.ResourceEphemeralStorage]
