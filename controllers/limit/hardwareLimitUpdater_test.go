@@ -188,7 +188,7 @@ func Test_hardwareLimitUpdater_Start(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("run start and get error on ssl change method", func(t *testing.T) {
+	t.Run("run start and get error on etcd change method", func(t *testing.T) {
 		// given
 		regMock := &mocks.Registry{}
 
@@ -217,7 +217,6 @@ func Test_hardwareLimitUpdater_Start(t *testing.T) {
 		cancelFunc()
 
 		// then
-		//require.Error(t, err, assert.AnError)
 	})
 }
 

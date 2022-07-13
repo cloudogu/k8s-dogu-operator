@@ -52,12 +52,12 @@ In general, the following entries can be set in any `config` section of a Dogus 
 
 ## Apply configured limits
 
-In order for the limits to be applied, the global etcd key: `config/_global/trigger-container-limit-sync`
+In order for the limits to be applied, the global etcd key: `config/_global/trigger_container_limit_sync`
 must be created/modified/deleted. Any change to the key will result in the start of an automatic update process
 for all dogus. In this update process the limits are applied to all dogus and the dogus are restarted if new limits are set.
 are restarted. Unchanged dogus are not restarted. In general, the update process can be started with the
 command:
 
 ```bash
-etcdctl set /config/_global/trigger-container-limit-sync true
+etcdctl set /config/_global/trigger_container_limit_sync true
 ```

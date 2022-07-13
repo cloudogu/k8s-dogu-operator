@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	triggerSyncEtcdKeyFullPath = "/config/_global/trigger-container-limit-sync"
+	triggerSyncEtcdKeyFullPath = "/config/_global/trigger_container_limit_sync"
 )
 
 // hardwareLimitUpdater is responsible to update all hardware limits for dogu deployments when a certain trigger is called.
@@ -35,12 +35,12 @@ type limitPatcher interface {
 
 // DoguLimits contains all data necessary to limit the physical resources for a dogu.
 type DoguLimits struct {
-	// Sets the cpu requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-	CpuLimit string
-	// Sets the memory requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-	MemoryLimit string
-	// Sets the ephemeral storage requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-	EphemeralStorageLimit string
+	// cpuLimit Sets the cpu requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
+	cpuLimit string
+	// memoryLimit Sets the memory requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
+	memoryLimit string
+	// ephemeralStorageLimit Sets the ephemeral storage requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
+	ephemeralStorageLimit string
 }
 
 // NewHardwareLimitUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.

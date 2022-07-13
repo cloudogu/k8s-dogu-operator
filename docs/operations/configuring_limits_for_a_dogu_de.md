@@ -52,14 +52,14 @@ Generell können in jedem `config`-Bereich eines Dogus unter dem Abschnitt `pod_
 
 ## Konfigurierte Limits anwenden
 
-Damit die Limits auch angewendet werden, muss der globale Etcd-Key: `config/_global/trigger-container-limit-sync`
+Damit die Limits auch angewendet werden, muss der globale Etcd-Key: `config/_global/trigger_container_limit_sync`
 erstellt/verändert/gelöscht werden. Jede Änderung an dem Schlüssel führt zum Start einem automatischen Update Prozess
 für alle Dogus. In diesem Update Prozess werden für alle Dogus die Limits angewendet und die Dogus, wenn neue Limits
 gesetzt wurden, neu gestartet. Unveränderte Dogus werden nicht neu gestartet. Generell kann der Update-Prozess mit dem
 Befehl:
 
 ```bash
-etcdctl set /config/_global/trigger-container-limit-sync true
+etcdctl set /config/_global/trigger_container_limit_sync true
 ```
 
 gestartet werden.

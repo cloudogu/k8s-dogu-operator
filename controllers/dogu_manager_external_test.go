@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
+	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"k8s.io/apimachinery/pkg/types"
 	"testing"
 
@@ -70,7 +70,7 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 	ldapCr.ResourceVersion = ""
 	scheme := getInstallScheme()
 
-	limitPatcher := &mocks2.LimitPatcher{}
+	limitPatcher := &resourceMocks.LimitPatcher{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher)
