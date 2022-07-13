@@ -8,6 +8,8 @@ import (
 	_ "embed"
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"os"
@@ -107,7 +109,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	CesRegistryMock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 	CesRegistryMock.On("GlobalConfig").Return(globalConfigurationContext)
 
-	limitPatcher := &mocks2.LimitPatcher{}
+	limitPatcher := &resourceMocks.LimitPatcher{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher)

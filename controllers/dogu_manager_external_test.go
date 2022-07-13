@@ -77,8 +77,6 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher)
 
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	doguRemoteRegistry := &mocks.DoguRegistry{}
-	resourceGenerator := resource.NewResourceGenerator(scheme)
 	doguRemoteRegistry := &cesremotemocks.Registry{}
 	doguLocalRegistry := &cesmocks.DoguRegistry{}
 	imageRegistry := &mocks.ImageRegistry{}
