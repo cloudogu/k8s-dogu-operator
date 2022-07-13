@@ -39,10 +39,6 @@ type DoguLimits struct {
 	CpuLimit string
 	// Sets the memory requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
 	MemoryLimit string
-	// Sets the storage requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-	StorageLimit string
-	// Sets the pods requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-	PodsLimit string
 	// Sets the ephemeral storage requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
 	EphemeralStorageLimit string
 }
