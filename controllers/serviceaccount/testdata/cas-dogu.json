@@ -1,0 +1,377 @@
+{
+  "Name": "official/cas",
+  "Version": "6.5.5-2",
+  "DisplayName": "Central Authentication Service",
+  "Description": "The Central Authentication Service (CAS) is a single sign-on protocol for the web.",
+  "Url": "http://jasig.github.io/cas",
+  "Category": "Base",
+  "Tags": [
+    "authentication",
+    "sso",
+    "cas"
+  ],
+  "Logo": "https://cloudogu.com/images/dogus/cas.png",
+  "Image": "registry.cloudogu.com/official/cas",
+  "Dependencies": [
+    {
+      "Type": "dogu",
+      "Name": "nginx"
+    },
+    {
+      "type": "dogu",
+      "name": "postfix"
+    }
+  ],
+  "OptionalDependencies": [
+    {
+      "Type": "dogu",
+      "Name": "ldap"
+    }
+  ],
+  "ServiceAccounts": [
+    {
+      "Type": "ldap",
+      "Params": [
+        "rw"
+      ]
+    }
+  ],
+  "Configuration": [
+    {
+      "Name": "limit/max_number",
+      "Description": "Max number of login retries (0 means disabled)",
+      "Optional": true
+    },
+    {
+      "Name": "limit/failure_store_time",
+      "Description": "Max time to store failed logins (in seconds); has to be set > 0 when limit/max_number is > 0",
+      "Optional": true
+    },
+    {
+      "Name": "limit/lock_time",
+      "Description": "Time to lock an account if limit/max_number is reached (in seconds); has to be set > 0 when limit/max_number is > 0",
+      "Optional": true
+    },
+    {
+      "Name": "mail_sender",
+      "Description": "Email address to use as sender of the CAS dogu",
+      "Optional": true
+    },
+    {
+      "Name": "password_management/enable_password_reset_via_email",
+      "Description": "Specifies whether the functionality for resetting the password via a link sent by e-mail should be activated. This entry is set to 'true' by default.",
+      "Default": "true",
+      "Optional": true,
+      "Validation": {
+        "Type": "ONE_OF",
+        "Values": [
+          "true",
+          "false"
+        ]
+      }
+    },
+    {
+      "Name": "password_management/reset_password_subject",
+      "Description": "Specifies the subject of the e-mail when resetting the password.",
+      "Optional": true
+    },
+    {
+      "Name": "password_management/reset_password_text",
+      "Description": "Specifies the text for the password reset email. Note: The password reset link must be inserted mandatory with %s",
+      "Optional": true
+    },
+    {
+      "Name": "forgot_password_text",
+      "Description": "Text which shall be shown if a user clicks 'Forgot Password'. Note: The button 'Forgot password' is only visible if the value 'enable_password_reset_via_email' is not `true`.",
+      "Optional": true
+    },
+    {
+      "Name": "legal_urls/terms_of_service",
+      "Description": "This URL links to the Terms of Service and will be the first link at the bottom of login or logout pages. If empty the whole link will be omitted. If changed the CAS dogu must be restarted to take effect.",
+      "Optional": true
+    },
+    {
+      "Name": "legal_urls/imprint",
+      "Description": "This URL links to the Imprint and will be the second link at the bottom of login or logout pages. If empty the whole link will be omitted. If changed the CAS dogu must be restarted to take effect.",
+      "Optional": true
+    },
+    {
+      "Name": "legal_urls/privacy_policy",
+      "Description": "This URL links to the Privacy Policy and will be the last link at the bottom of login or logout pages. If empty the whole link will be omitted. If changed the CAS dogu must be restarted to take effect.",
+      "Optional": true
+    },
+    {
+      "Name": "session_tgt/max_time_to_live_in_seconds",
+      "Description": "Maximum session timeout - TGT will expire after defined timespan regardless the usage",
+      "Optional": true
+    },
+    {
+      "Name": "session_tgt/time_to_kill_in_seconds",
+      "Description": "Idle session timeout -  TGT will expire sooner if no further requests keep the session alive",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/host",
+      "Description": "The host of the LDAP (without protocol and without port), e.g. ldap if LDAP dogu is used.",
+      "Optional": false
+    },
+    {
+      "Name": "ldap/port",
+      "Description": "The port of the LDAP, e.g. 389",
+      "Optional": false
+    },
+    {
+      "Name": "ldap/base_dn",
+      "Description": "Base DN of users to be authenticated, \"(dc=cloudogu,dc=com)\". This value is only used when using an external LDAP.",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/connection_dn",
+      "Description": "Manager DN for authenticated searches, e.g. \"(cn=admin,dc=cloudogu,dc=com)\" This value is only used when using an external LDAP.",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/password",
+      "Description": "The password for connection to ldap in encrypted form. This value is only used when using an external LDAP.",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/search_filter",
+      "Description": "Search filter used for configurations that require searching for DNs, e.g. (objectClass=person)"
+    },
+    {
+      "Name": "ldap/ds_type",
+      "Description": "Type of the LDAP",
+      "Optional": true,
+      "Validation": {
+        "Type": "ONE_OF",
+        "Values": [
+          "embedded",
+          "external"
+        ]
+      }
+    },
+    {
+      "Name": "ldap/encryption",
+      "Description": "Type of the encryption of the LDAP. Defaults to 'none'.",
+      "Default": "none",
+      "Optional": true,
+      "Validation": {
+        "Type": "ONE_OF",
+        "Values": [
+          "",
+          "none",
+          "startTLS",
+          "startTLSAny",
+          "ssl",
+          "sslAny"
+        ]
+      }
+    },
+    {
+      "Name": "ldap/attribute_id",
+      "Description": "The attribute for the user ID in the LDAP"
+    },
+    {
+      "Name": "ldap/attribute_given_name",
+      "Description": "The attribute for the user's given name in the LDAP",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/attribute_surname",
+      "Description": "The attribute for the user's surname in the LDAP",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/attribute_fullname",
+      "Description": "The attribute for the user's fullname in the LDAP, which can also be seen as display name like \"John Doe\"",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/attribute_mail",
+      "Description": "The attribute for the user's mail address in the LDAP",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/attribute_group",
+      "Description": "The user's group membership attribute (e.g. memberOf)",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/group_attribute_name",
+      "Description": "Name of the attribute for groups (the group's user membership attribute) in LDAP, e.g. member",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/group_base_dn",
+      "Description": "Settings for ldap group search by member. Base dn for group search e.g.: o=ces.local,dc=cloudogu,dc=com",
+      "Optional": true
+    },
+    {
+      "Name": "ldap/group_search_filter",
+      "Description": "Search filter for group search. If this property is empty, group search by member will be skipped",
+      "Optional": true
+    },
+    {
+      "Name": "logging/root",
+      "Description": "Set the root log level to one of ERROR, WARN, INFO, DEBUG.",
+      "Optional": true,
+      "Default": "WARN",
+      "Validation": {
+        "Type": "ONE_OF",
+        "Values": [
+          "WARN",
+          "DEBUG",
+          "INFO",
+          "ERROR"
+        ]
+      }
+    },
+    {
+      "Name": "container_config/memory_limit",
+      "Description": "Limits the container's memory usage. Use a positive integer value followed by one of these units [b,k,m,g] (byte, kibibyte, mebibyte, gibibyte).",
+      "Optional": true,
+      "Validation": {
+        "Type": "BINARY_MEASUREMENT"
+      }
+    },
+    {
+      "Name": "container_config/swap_limit",
+      "Description": "Limits the container's swap memory usage. Use zero or a positive integer value followed by one of these units [b,k,m,g] (byte, kibibyte, mebibyte, gibibyte). 0 will disable swapping.",
+      "Optional": true,
+      "Validation": {
+        "Type": "BINARY_MEASUREMENT"
+      }
+    },
+    {
+      "Name": "container_config/java_max_ram_percentage",
+      "Description": "Limits the heap stack size of the CAS process to the configured percentage of the available physical memory when the container has more than approx. 250 MB of memory available. Is only considered when a memory_limit is set. Use a valid float value with decimals between 0 and 100 (f. ex. 55.0 for 55%). Default value for CAS: 25%",
+      "Optional": true,
+      "Default": "25.0",
+      "Validation": {
+        "Type": "FLOAT_PERCENTAGE_HUNDRED"
+      }
+    },
+    {
+      "Name": "container_config/java_min_ram_percentage",
+      "Description": "Limits the heap stack size of the CAS process to the configured percentage of the available physical memory when the container has less than approx. 250 MB of memory available. Is only considered when a memory_limit is set. Use a valid float value with decimals between 0 and 100 (f. ex. 55.0 for 55%). Default value for CAS: 50%",
+      "Optional": true,
+      "Default": "50.0",
+      "Validation": {
+        "Type": "FLOAT_PERCENTAGE_HUNDRED"
+      }
+    },
+    {
+      "Name": "oidc/enabled",
+      "Description": "Determines whether the CAS should use the configured OIDC provider for delegated authentication. This entry is set to 'false' by default.",
+      "Default": "false",
+      "Optional": true,
+      "Validation": {
+        "Type": "ONE_OF",
+        "Values": [
+          "true",
+          "false"
+        ]
+      }
+    },
+    {
+      "Name": "oidc/discovery_uri",
+      "Description": "Describes the URI that contains the description for the OIDC protocol of the target provider.",
+      "Optional": true
+    },
+    {
+      "Name": "oidc/client_id",
+      "Description": "Contains the identifier that should be used to identify the client against the OIDC provider.",
+      "Optional": true
+    },
+    {
+      "Name": "oidc/client_secret",
+      "Description": "Contains the secret that should be used along the client ID to identify the client against the OIDC provider.",
+      "Optional": true,
+      "Encrypted": true
+    },
+    {
+      "Name": "oidc/display_name",
+      "Description": "The display name is used for the OIDC provider in the user interface.",
+      "Default": "OIDC Provider",
+      "Optional": true
+    },
+    {
+      "Name": "oidc/redirect_uri",
+      "Description": "The url which will be used as redirect target after a successful delegated logout. The url has to match the patterns which are allowed for the configured client. [defaults to <instance>/cas/logout]",
+      "Default": "",
+      "Optional": true
+    },
+    {
+      "Name": "oidc/optional",
+      "Description": "Determines whether the authentication via the configured OIDC provider is optional. The user is automatically redirected to the login page of the OIDC provider if this property is set to 'false'. The 'true' entry makes authentication via the OIDC provider optional. For this, an additional button for the OIDC provider is displayed on the login page of the CAS, which can be used for authentication with the OIDC provider. This entry is set to 'false' by default.",
+      "Default": "false",
+      "Optional": true,
+      "Validation": {
+        "Type": "ONE_OF",
+        "Values": [
+          "true",
+          "false"
+        ]
+      }
+    },
+    {
+      "Name": "oidc/scopes",
+      "Description": "Specifies the resource to be queried against OIDC. Normally, this enumeration should contain at least the openid, user's email, profile information, and the groups assigned to the user. This entry is set to `openid email profile groups` by default.",
+      "Default": "openid email profile groups",
+      "Optional": true
+    },
+    {
+      "Name": "oidc/attribute_mapping",
+      "Description": "The attributes provided by OIDC do not exactly match the attributes required by the CAS. It is necessary to transform the OIDC attributes into attributes accepted by the cas. Therefore, this entry should contain rules to transform an attribute provided by the OIDC provider into an attribute required by CAS. The rules should be provided in the following format: 'email:mail,family_name:surname'. With the given example the OIDC attribute 'email' and 'family_name' are transformed into 'mail' and 'surname' respectively. The CAS requires the following attributes to function properly: 'mail,surname,givenName,username,displayName'.",
+      "Optional": true
+    },
+    {
+      "Name": "oidc/principal_attribute",
+      "Description": "Specifies an attribute that should be used as principal id inside the CES. CAS uses the ID provided by the OIDC provider when this property is empty.",
+      "Optional": true
+    }
+  ],
+  "Volumes": [
+    {
+      "Name": "data",
+      "Path": "/var/lib/cas",
+      "Owner": "1000",
+      "Group": "1000",
+      "NeedsBackup": true
+    }
+  ],
+  "ExposedCommands": [
+    {
+      "Name": "service-account-create",
+      "Description": "Creates a new service account",
+      "Command": "/create-sa.sh"
+    },
+    {
+      "Name": "service-account-remove",
+      "Description": "Removes an existing service account",
+      "Command": "/remove-sa.sh"
+    },
+    {
+      "Name": "pre-upgrade",
+      "Command": "/pre-upgrade.sh"
+    },
+    {
+      "Name": "post-upgrade",
+      "Command": "/post-upgrade.sh"
+    },
+    {
+      "Name": "upgrade-notification",
+      "Command": "/upgrade-notification.sh"
+    }
+  ],
+  "HealthChecks": [
+    {
+      "Type": "tcp",
+      "Port": 8080
+    },
+    {
+      "Type": "state"
+    }
+  ]
+}

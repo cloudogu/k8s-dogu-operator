@@ -25,6 +25,10 @@ var redmineCr = &k8sv1.Dogu{}
 var redmineDescriptorBytes []byte
 var redmineDescriptor = &core.Dogu{}
 
+//go:embed testdata/redmine-dogu-two-sa.json
+var redmineDescriptorTwoSaBytes []byte
+var redmineDescriptorTwoSa = &core.Dogu{}
+
 //go:embed testdata/redmine-dogu-optional.json
 var redmineDescriptorOptionalBytes []byte
 var redmineDescriptorOptional = &core.Dogu{}
@@ -37,6 +41,10 @@ var postgresqlDescriptor = &core.Dogu{}
 var invalidPostgresqlDescriptorBytes []byte
 var invalidPostgresqlDescriptor = &core.Dogu{}
 
+//go:embed testdata/cas-dogu.json
+var casDescriptorBytes []byte
+var casDescriptor = &core.Dogu{}
+
 func init() {
 	err := yaml.Unmarshal(redmineBytes, redmineCr)
 	if err != nil {
@@ -45,6 +53,11 @@ func init() {
 	redmineCr.Namespace = "test"
 
 	err = json.Unmarshal(redmineDescriptorBytes, redmineDescriptor)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(redmineDescriptorTwoSaBytes, redmineDescriptorTwoSa)
 	if err != nil {
 		panic(err)
 	}
@@ -60,6 +73,11 @@ func init() {
 	}
 
 	err = json.Unmarshal(invalidPostgresqlDescriptorBytes, invalidPostgresqlDescriptor)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(casDescriptorBytes, casDescriptor)
 	if err != nil {
 		panic(err)
 	}

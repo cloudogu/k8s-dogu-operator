@@ -40,7 +40,7 @@ func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher limitPatcher) *Re
 }
 
 type limitPatcher interface {
-	// RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
+	// RetrievePodLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
 	RetrievePodLimits(doguResource *k8sv1.Dogu) (limit.DoguLimits, error)
 	// PatchDeployment patches the given deployment with the resource limits provided.
 	PatchDeployment(deployment *appsv1.Deployment, limits limit.DoguLimits) error

@@ -3,28 +3,22 @@ package controllers
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"io"
 	"net/url"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	fake2 "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	testing2 "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -37,24 +31,18 @@ const (
 var testContext = context.TODO()
 var testExecPodKey = newObjectKey(testNamespace, testPodContainerName)
 
-//go:embed testdata/ldap-cr.yaml
-var ldapCrBytes []byte
-
-//go:embed testdata/ldap-dogu.json
-var ldapBytes []byte
-
 func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
-	t.Run("should create exec container name with pseudo-unique suffix", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-		ldapDogu := readDogu(t)
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
-			Build()
-		sut := &podFileExtractor{
-			k8sClient: fakeClient,
-			suffixGen: &testSuffixGenerator{},
-		}
+	ldapCr := readTestDataLdapCr(t)
+	ldapDogu := readTestDataLdapDogu(t)
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(getTestScheme()).
+		Build()
+	sut := &podFileExtractor{
+		k8sClient: fakeClient,
+		suffixGen: &testSuffixGenerator{},
+	}
 
+	t.Run("should create exec container name with pseudo-unique suffix", func(t *testing.T) {
 		// when
 		_, containerName, err := sut.createExecPodSpec(testNamespace, ldapCr, ldapDogu)
 
@@ -62,17 +50,8 @@ func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, testPodContainerName, containerName)
 	})
-	t.Run("should create exec pod same name as container name", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-		ldapDogu := readDogu(t)
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
-			Build()
-		sut := &podFileExtractor{
-			k8sClient: fakeClient,
-			suffixGen: &testSuffixGenerator{},
-		}
 
+	t.Run("should create exec pod same name as container name", func(t *testing.T) {
 		// when
 		podspec, containerName, err := sut.createExecPodSpec(testNamespace, ldapCr, ldapDogu)
 
@@ -81,15 +60,8 @@ func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
 		require.Len(t, podspec.Spec.Containers, 1)
 		assert.Equal(t, podspec.Spec.Containers[0].Name, containerName)
 	})
-	t.Run("should create exec pod from dogu image", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-		ldapDogu := readDogu(t)
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
-			Build()
-		sut := &podFileExtractor{k8sClient: fakeClient,
-			suffixGen: &testSuffixGenerator{}}
 
+	t.Run("should create exec pod from dogu image", func(t *testing.T) {
 		// when
 		podspec, _, err := sut.createExecPodSpec(testNamespace, ldapCr, ldapDogu)
 
@@ -98,13 +70,10 @@ func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
 		require.Len(t, podspec.Spec.Containers, 1)
 		assert.Equal(t, podspec.Spec.Containers[0].Image, ldapDogu.Image+":"+ldapDogu.Version)
 	})
-
 }
 
 func Test_defaultPodFinder_find(t *testing.T) {
 	t.Run("should find running pod immediately", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-
 		podSpec := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
@@ -122,7 +91,7 @@ func Test_defaultPodFinder_find(t *testing.T) {
 			Status: corev1.PodStatus{Phase: corev1.PodRunning},
 		}
 		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
+			WithScheme(getTestScheme()).
 			WithObjects(podSpec).
 			Build()
 		sut := &defaultPodFinder{k8sClient: fakeClient}
@@ -137,8 +106,6 @@ func Test_defaultPodFinder_find(t *testing.T) {
 		require.NoError(t, err)
 	})
 	t.Run("should return expressive error for unready pod after timeout", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-
 		podSpec := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
@@ -156,7 +123,7 @@ func Test_defaultPodFinder_find(t *testing.T) {
 			Status: corev1.PodStatus{Phase: corev1.PodFailed},
 		}
 		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
+			WithScheme(getTestScheme()).
 			WithObjects(podSpec).
 			Build()
 		sut := &defaultPodFinder{k8sClient: fakeClient}
@@ -174,10 +141,8 @@ func Test_defaultPodFinder_find(t *testing.T) {
 		assert.Contains(t, err.Error(), "status Failed")
 	})
 	t.Run("should return expressive error for non-existing pod", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-
 		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
+			WithScheme(getTestScheme()).
 			// No PodSpec here
 			Build()
 		sut := &defaultPodFinder{k8sClient: fakeClient}
@@ -195,14 +160,14 @@ func Test_defaultPodFinder_find(t *testing.T) {
 }
 
 func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
-	t.Run("should fail with non-existing exec pod", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-		// simulate dogu in a non-default namespace
-		ldapCr.Namespace = testNamespace
-		ldapDogu := readDogu(t)
+	ldapCr := readTestDataLdapCr(t)
+	// simulate dogu in a non-default namespace
+	ldapCr.Namespace = testNamespace
+	ldapDogu := readTestDataLdapDogu(t)
 
+	t.Run("should fail with non-existing exec pod", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
+			WithScheme(getTestScheme()).
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		mockedPodFinder := &mockPodFinder{}
@@ -230,13 +195,8 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		mockedPodExecutor.AssertExpectations(t)
 	})
 	t.Run("should fail with command error on exec pod", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-		// simulate dogu in a non-default namespace
-		ldapCr.Namespace = testNamespace
-		ldapDogu := readDogu(t)
-
 		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
+			WithScheme(getTestScheme()).
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		mockedPodFinder := &mockPodFinder{}
@@ -266,13 +226,8 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		mockedPodExecutor.AssertExpectations(t)
 	})
 	t.Run("should run successfully with file output", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-		// simulate dogu in a non-default namespace
-		ldapCr.Namespace = testNamespace
-		ldapDogu := readDogu(t)
-
 		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
+			WithScheme(getTestScheme()).
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		mockedPodFinder := &mockPodFinder{}
@@ -306,13 +261,8 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		mockedPodExecutor.AssertExpectations(t)
 	})
 	t.Run("should run successfully without file output", func(t *testing.T) {
-		ldapCr := readDoguResource(t)
-		// simulate dogu in a non-default namespace
-		ldapCr.Namespace = testNamespace
-		ldapDogu := readDogu(t)
-
 		fakeClient := fake.NewClientBuilder().
-			WithScheme(getInstallScheme(ldapCr)).
+			WithScheme(getTestScheme()).
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		mockedPodFinder := &mockPodFinder{}
@@ -463,72 +413,6 @@ func Test_defaultPodExecutor_exec(t *testing.T) {
 func Test_defaultSufficeGenerator_String(t *testing.T) {
 	actual := (&defaultSufficeGenerator{}).String(6)
 	assert.Len(t, actual, 6)
-}
-
-func readDoguResource(t *testing.T) *k8sv1.Dogu {
-	t.Helper()
-	ldapCr := &k8sv1.Dogu{}
-
-	err := yaml.Unmarshal(ldapCrBytes, ldapCr)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return ldapCr
-}
-
-func readDogu(t *testing.T) *core.Dogu {
-	t.Helper()
-
-	ldapDogu := &core.Dogu{}
-	err := json.Unmarshal(ldapBytes, ldapDogu)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return ldapDogu
-}
-
-func getInstallScheme(dogu *k8sv1.Dogu) *runtime.Scheme {
-	scheme := runtime.NewScheme()
-
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "dogu.cloudogu.com",
-		Version: "v1",
-		Kind:    "dogu",
-	}, dogu)
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "apps",
-		Version: "v1",
-		Kind:    "Deployment",
-	}, &v1.Deployment{})
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "",
-		Version: "v1",
-		Kind:    "Pod",
-	}, &corev1.Pod{})
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "",
-		Version: "v1",
-		Kind:    "Secret",
-	}, &corev1.Secret{})
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "",
-		Version: "v1",
-		Kind:    "Service",
-	}, &corev1.Service{})
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "",
-		Version: "v1",
-		Kind:    "PersistentVolumeClaim",
-	}, &corev1.PersistentVolumeClaim{})
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "",
-		Version: "v1",
-		Kind:    "ConfigMap",
-	}, &corev1.ConfigMap{})
-
-	return scheme
 }
 
 func newObjectKey(namespace, name string) *client.ObjectKey {
