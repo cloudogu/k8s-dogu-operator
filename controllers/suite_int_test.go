@@ -6,18 +6,18 @@ package controllers_test
 import (
 	"context"
 	_ "embed"
+	"github.com/bombsimon/logrusr/v2"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/bombsimon/logrusr/v2"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
@@ -45,7 +45,7 @@ var cancel context.CancelFunc
 var ImageRegistryMock mocks.ImageRegistry
 
 // Used in other integration tests
-var DoguRegistryMock mocks.DoguRegistry
+var DoguRemoteRegistryMock cesremotemocks.Registry
 
 // Used in other integration tests
 var EtcdDoguRegistry cesmocks.DoguRegistry
@@ -54,37 +54,46 @@ const TimeoutInterval = time.Second * 10
 const PollingInterval = time.Second * 1
 
 func TestAPIs(t *testing.T) {
-	RegisterFailHandler(Fail)
+	gomega.RegisterFailHandler(ginkgo.Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t,
+	ginkgo.RunSpecsWithDefaultAndCustomReporters(t,
 		"Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+		[]ginkgo.Reporter{printer.NewlineReporter{}})
 }
 
-var _ = BeforeSuite(func() {
+var _ = ginkgo.BeforeSuite(func() {
+	// We need to ensure that the development stage flag is not passed by our makefiles to prevent the dogu operator
+	// from running in the developing mode. The developing mode changes some operator behaviour. Our integration test
+	// aim to test the production functionality of the operator.
+	err := os.Unsetenv(config.StageEnvironmentVariable)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	err = os.Setenv(config.StageEnvironmentVariable, config.StageProduction)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	config.Stage = config.StageProduction
+
 	logf.SetLogger(logrusr.New(logrus.New()))
 
 	var ctx context.Context
 	ctx, cancel = context.WithCancel(context.TODO())
 
-	By("bootstrapping test environment")
+	ginkgo.By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 	}
 
 	cfg, err := testEnv.Start()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(cfg).NotTo(BeNil())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	gomega.Expect(cfg).NotTo(gomega.BeNil())
 
 	err = k8sv1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
-	Expect(err).ToNot(HaveOccurred())
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)
@@ -104,7 +113,7 @@ var _ = BeforeSuite(func() {
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher)
 
 	version, err := core.ParseVersion("0.0.0")
-	Expect(err).ToNot(HaveOccurred())
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, &EtcdDoguRegistry)
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
@@ -127,7 +136,7 @@ var _ = BeforeSuite(func() {
 		Client:                k8sManager.GetClient(),
 		Scheme:                k8sManager.GetScheme(),
 		ResourceGenerator:     resourceGenerator,
-		DoguRemoteRegistry:    &DoguRegistryMock,
+		DoguRemoteRegistry:    &DoguRemoteRegistryMock,
 		DoguLocalRegistry:     &EtcdDoguRegistry,
 		ImageRegistry:         &ImageRegistryMock,
 		DoguRegistrator:       doguRegistrator,
@@ -140,20 +149,20 @@ var _ = BeforeSuite(func() {
 	}
 
 	err = controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	go func() {
 		err = k8sManager.Start(ctx)
-		Expect(err).ToNot(HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	}()
 
 	k8sClient = k8sManager.GetClient()
-	Expect(k8sClient).ToNot(BeNil())
+	gomega.Expect(k8sClient).ToNot(gomega.BeNil())
 }, 60)
 
-var _ = AfterSuite(func() {
+var _ = ginkgo.AfterSuite(func() {
 	cancel()
-	By("tearing down the test environment")
+	ginkgo.By("tearing down the test environment")
 	err := testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 })

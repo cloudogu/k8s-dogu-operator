@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - [#28] Updated cesapp-lib to version 0.2.0
+- [#29] Remove implementation of the remote http dogu registry and instead, reuse the implementation from the cesapp-lib.
 
 ## [v0.8.0] - 2022-06-08
 ### Added
