@@ -124,7 +124,7 @@ func getResourceGenerator() *ResourceGenerator {
 		Kind:    "Dogu",
 	}, &k8sv1.Dogu{})
 	patcher := &mocks2.LimitPatcher{}
-	patcher.On("RetrieveMemoryLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
+	patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
 	patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	return &ResourceGenerator{
 		scheme:           scheme,
@@ -244,7 +244,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// when
 		generatorFail := getResourceGenerator()
 		patcher := &mocks2.LimitPatcher{}
-		patcher.On("RetrieveMemoryLimits", ldapDoguResource).Return(limit.DoguLimits{}, assert.AnError)
+		patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, assert.AnError)
 		generatorFail.doguLimitPatcher = patcher
 		_, err := generatorFail.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
 
@@ -257,7 +257,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// when
 		generatorFail := getResourceGenerator()
 		patcher := &mocks2.LimitPatcher{}
-		patcher.On("RetrieveMemoryLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
+		patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
 		generatorFail.doguLimitPatcher = patcher
 		_, err := generatorFail.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)

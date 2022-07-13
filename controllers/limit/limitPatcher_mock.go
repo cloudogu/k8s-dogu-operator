@@ -29,7 +29,7 @@ func (_m *limitPatcherMock) PatchDeployment(deployment *v1.Deployment, limits Do
 }
 
 // RetrieveMemoryLimits provides a mock function with given fields: doguResource
-func (_m *limitPatcherMock) RetrieveMemoryLimits(doguResource *apiv1.Dogu) (DoguLimits, error) {
+func (_m *limitPatcherMock) RetrievePodLimits(doguResource *apiv1.Dogu) (DoguLimits, error) {
 	ret := _m.Called(doguResource)
 
 	var r0 DoguLimits

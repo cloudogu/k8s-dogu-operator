@@ -41,7 +41,7 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		_, err := patcher.RetrieveMemoryLimits(doguResource)
+		_, err := patcher.RetrievePodLimits(doguResource)
 
 		// then
 		require.Error(t, err)
@@ -62,7 +62,7 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		_, err := patcher.RetrieveMemoryLimits(doguResource)
+		_, err := patcher.RetrievePodLimits(doguResource)
 
 		// then
 		require.Error(t, err)
@@ -84,7 +84,7 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		_, err := patcher.RetrieveMemoryLimits(doguResource)
+		_, err := patcher.RetrievePodLimits(doguResource)
 
 		// then
 		require.Error(t, err)
@@ -106,7 +106,7 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		doguLimitObject, err := patcher.RetrieveMemoryLimits(doguResource)
+		doguLimitObject, err := patcher.RetrievePodLimits(doguResource)
 
 		// then
 		require.NoError(t, err)
@@ -131,7 +131,7 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		doguLimitObject, err := patcher.RetrieveMemoryLimits(doguResource)
+		doguLimitObject, err := patcher.RetrievePodLimits(doguResource)
 
 		// then
 		require.NoError(t, err)

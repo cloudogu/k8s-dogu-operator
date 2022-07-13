@@ -27,7 +27,7 @@ func NewDoguDeploymentLimitPatcher(registry registry.Registry) *doguDeploymentLi
 }
 
 // RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
-func (d *doguDeploymentLimitPatcher) RetrieveMemoryLimits(doguResource *v12.Dogu) (DoguLimits, error) {
+func (d *doguDeploymentLimitPatcher) RetrievePodLimits(doguResource *v12.Dogu) (DoguLimits, error) {
 	doguRegistry := d.registry.DoguConfig(doguResource.Name)
 	doguLimitObject := DoguLimits{}
 

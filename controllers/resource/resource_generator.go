@@ -41,7 +41,7 @@ func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher limitPatcher) *Re
 
 type limitPatcher interface {
 	// RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
-	RetrieveMemoryLimits(doguResource *k8sv1.Dogu) (limit.DoguLimits, error)
+	RetrievePodLimits(doguResource *k8sv1.Dogu) (limit.DoguLimits, error)
 	// PatchDeployment patches the given deployment with the resource limits provided.
 	PatchDeployment(deployment *appsv1.Deployment, limits limit.DoguLimits) error
 }
@@ -117,7 +117,7 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 
 	applyValuesFromCustomDeployment(deployment, customDeployment)
 
-	doguLimits, err := r.doguLimitPatcher.RetrieveMemoryLimits(doguResource)
+	doguLimits, err := r.doguLimitPatcher.RetrievePodLimits(doguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve resource limits for dogu [%s]: %w", doguResource.Name, err)
 	}

@@ -71,7 +71,7 @@ func getDoguManagerWithMocks() doguManagerWithMocks {
 	scheme := getInstallScheme()
 
 	limitPatcher := &mocks2.LimitPatcher{}
-	limitPatcher.On("RetrieveMemoryLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
+	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher)
 

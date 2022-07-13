@@ -28,7 +28,7 @@ type hardwareLimitUpdater struct {
 
 type limitPatcher interface {
 	// RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
-	RetrieveMemoryLimits(doguResource *k8sv1.Dogu) (DoguLimits, error)
+	RetrievePodLimits(doguResource *k8sv1.Dogu) (DoguLimits, error)
 	// PatchDeployment patches the given deployment with the resource limits provided.
 	PatchDeployment(deployment *v1.Deployment, limits DoguLimits) error
 }
@@ -106,7 +106,7 @@ func (hlu *hardwareLimitUpdater) triggerSync(ctx context.Context) error {
 			continue
 		}
 
-		limits, err := hlu.doguLimitPatcher.RetrieveMemoryLimits(&dogu)
+		limits, err := hlu.doguLimitPatcher.RetrievePodLimits(&dogu)
 		if err != nil {
 			result = multierror.Append(result, fmt.Errorf("failed to retrieve memory limits of dogu [%s/%s]: %w", doguIdentifier.Namespace, doguIdentifier.Name, err))
 			continue

@@ -169,7 +169,7 @@ func Test_hardwareLimitUpdater_Start(t *testing.T) {
 			Build()
 
 		limitPatcher := newLimitPatcher(t)
-		limitPatcher.On("RetrieveMemoryLimits", mock.Anything).Return(DoguLimits{}, nil)
+		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(DoguLimits{}, nil)
 		limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 
 		hardwareUpdater := &hardwareLimitUpdater{
@@ -279,7 +279,7 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 			Build()
 
 		limitPatcher := newLimitPatcher(t)
-		limitPatcher.On("RetrieveMemoryLimits", mock.Anything).Return(DoguLimits{}, assert.AnError)
+		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(DoguLimits{}, assert.AnError)
 		hardwareUpdater := &hardwareLimitUpdater{
 			client:           clientMock,
 			doguLimitPatcher: limitPatcher,
@@ -309,7 +309,7 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 			Build()
 
 		limitPatcher := newLimitPatcher(t)
-		limitPatcher.On("RetrieveMemoryLimits", mock.Anything).Return(DoguLimits{}, nil)
+		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(DoguLimits{}, nil)
 		limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
 		hardwareUpdater := &hardwareLimitUpdater{
 			client:           clientMock,
@@ -340,7 +340,7 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 			Build()
 
 		limitPatcher := newLimitPatcher(t)
-		limitPatcher.On("RetrieveMemoryLimits", mock.Anything).Return(DoguLimits{}, nil)
+		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(DoguLimits{}, nil)
 		limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 
 		hardwareUpdater := &hardwareLimitUpdater{

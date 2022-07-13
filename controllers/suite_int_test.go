@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-        "github.com/bombsimon/logrusr/v2"
+	"github.com/bombsimon/logrusr/v2"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-        "github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-        mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -99,7 +99,7 @@ var _ = BeforeSuite(func() {
 	CesRegistryMock.On("GlobalConfig").Return(globalConfigurationContext)
 
 	limitPatcher := &mocks2.LimitPatcher{}
-	limitPatcher.On("RetrieveMemoryLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
+	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher)
 
