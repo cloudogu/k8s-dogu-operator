@@ -9,7 +9,6 @@ This document describes how to configure and apply physical limits for a dogu.
 ## Physical Limits
 
 Physical limits can be applied to each dogu and restrict the pod of the dogu to specified limits.
-limits.
 Generally, there are three different limits:
 
 1. **CPU Limit**: More information is available on the official page of
@@ -22,7 +21,7 @@ Generally, there are three different limits:
 ## Configuring Limits
 
 Limits are generally configured in etcd. **Note:** Setting a limit does not automatically cause a restart of the
-restart of the Dogus. Limits must be applied explicitly. This is described in the next section.
+Dogus. Limits must be applied explicitly. This is described in the next section.
 
 In general, the following entries can be set in any `config` section of a Dogus under the `pod_limit` section:
 
@@ -55,7 +54,7 @@ In general, the following entries can be set in any `config` section of a Dogus 
 In order for the limits to be applied, the global etcd key: `config/_global/trigger_container_limit_sync`
 must be created/modified/deleted. Any change to the key will result in the start of an automatic update process
 for all dogus. In this update process the limits are applied to all dogus and the dogus are restarted if new limits are set.
-are restarted. Unchanged dogus are not restarted. In general, the update process can be started with the
+Unchanged dogus are not restarted. In general, the update process can be started with the
 command:
 
 ```bash
