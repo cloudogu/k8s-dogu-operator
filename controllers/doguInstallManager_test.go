@@ -9,8 +9,10 @@ import (
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -60,7 +62,10 @@ func (d *doguInstallManagerWithMocks) AssertMocks(t *testing.T) {
 func getDoguInstallManagerWithMocks() doguInstallManagerWithMocks {
 	scheme := getTestScheme()
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	resourceGenerator := resource.NewResourceGenerator(scheme)
+	limitPatcher := &resourceMocks.LimitPatcher{}
+	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
+	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher)
 	doguRemoteRegistry := &cesremotemocks.Registry{}
 	doguLocalRegistry := &cesmocks.DoguRegistry{}
 	imageRegistry := &mocks.ImageRegistry{}

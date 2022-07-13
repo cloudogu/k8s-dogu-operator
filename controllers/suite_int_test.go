@@ -8,6 +8,8 @@ import (
 	_ "embed"
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"os"
@@ -94,8 +96,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	})
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme())
-
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)
 	doguConfigurationContext.On("RemoveAll", mock.Anything).Return(nil)
@@ -103,10 +103,15 @@ var _ = ginkgo.BeforeSuite(func() {
 	globalConfigurationContext := &cesmocks.ConfigurationContext{}
 	globalConfigurationContext.On("Get", "key_provider").Return("", nil)
 
-	CesRegistryMock := cesmocks.Registry{}
+	CesRegistryMock := &cesmocks.Registry{}
 	CesRegistryMock.On("DoguRegistry").Return(&EtcdDoguRegistry)
 	CesRegistryMock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 	CesRegistryMock.On("GlobalConfig").Return(globalConfigurationContext)
+
+	limitPatcher := &resourceMocks.LimitPatcher{}
+	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
+	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher)
 
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -120,7 +125,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguSecretHandler := &mocks.DoguSecretsHandler{}
 	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
-	doguRegistrator := newCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
+	doguRegistrator := newCESDoguRegistrator(k8sManager.GetClient(), CesRegistryMock, resourceGenerator)
 
 	yamlResult := make(map[string]string, 0)
 	fileExtract := &mocks.FileExtractor{}

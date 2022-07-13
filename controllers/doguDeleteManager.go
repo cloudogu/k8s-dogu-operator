@@ -8,6 +8,7 @@ import (
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,7 +40,7 @@ func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorC
 		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
 	}
 
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme())
+	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
 
 	restConfig := ctrl.GetConfigOrDie()
 	clientSet, err := kubernetes.NewForConfig(restConfig)

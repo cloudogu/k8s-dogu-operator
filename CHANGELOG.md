@@ -5,7 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#28] Dogu hardware limit updater responsible to update the deployments of dogus with configured container limits.
+
 ### Changed
+- [#28] Updated cesapp-lib to version 0.2.0
 - [#29] Remove implementation of the remote http dogu registry and instead, reuse the implementation from the cesapp-lib.
 - [#31] Split dogu manager in separate components according to it functions (install, update, delete).
 
