@@ -180,11 +180,9 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
 
-	if doguConfigMap != nil {
-		err = m.client.Delete(ctx, doguConfigMap)
-		if err != nil {
-			return fmt.Errorf("failed to delete custom dogu descriptor: %w", err)
-		}
+	err = deleteDoguConfigMap(ctx, m.client, doguConfigMap)
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -41,6 +41,10 @@ var postgresqlDescriptor = &core.Dogu{}
 var invalidPostgresqlDescriptorBytes []byte
 var invalidPostgresqlDescriptor = &core.Dogu{}
 
+//go:embed testdata/cas-dogu.json
+var casDescriptorBytes []byte
+var casDescriptor = &core.Dogu{}
+
 func init() {
 	err := yaml.Unmarshal(redmineBytes, redmineCr)
 	if err != nil {
@@ -69,6 +73,11 @@ func init() {
 	}
 
 	err = json.Unmarshal(invalidPostgresqlDescriptorBytes, invalidPostgresqlDescriptor)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(casDescriptorBytes, casDescriptor)
 	if err != nil {
 		panic(err)
 	}

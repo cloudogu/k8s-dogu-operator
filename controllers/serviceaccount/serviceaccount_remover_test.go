@@ -52,11 +52,16 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		ctx := context.TODO()
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, assert.AnError)
-		doguConfig.Mock.On("Exists", "sa-cas").Return(true, assert.AnError)
+		doguConfig.Mock.On("Exists", "sa-cas").Return(true, nil)
+		doguConfig.Mock.On("DeleteRecursive", "sa-cas").Return(nil)
+		doguRegistry := &cesmocks.DoguRegistry{}
+		doguRegistry.Mock.On("IsEnabled", "cas").Return(true, nil)
+		doguRegistry.Mock.On("Get", "cas").Return(casDescriptor, nil)
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
+		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		commandExecutorMock := &mocks.CommandExecutor{}
-		doguRegistry := &cesmocks.DoguRegistry{}
+		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "cas", "test", mock.Anything, []string{"redmine"}).Return(nil, nil)
 
 		serviceAccountCreator := serviceaccount.NewRemover(registry, commandExecutorMock)
 
@@ -67,7 +72,8 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		require.Error(t, err)
 		multiError, ok := err.(*multierror.Error)
 		require.True(t, ok)
-		assert.Equal(t, 2, len(multiError.Errors))
+		assert.Equal(t, 1, len(multiError.Errors))
+		assert.ErrorIs(t, multiError.Errors[0], assert.AnError)
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry, commandExecutorMock)
 	})
 

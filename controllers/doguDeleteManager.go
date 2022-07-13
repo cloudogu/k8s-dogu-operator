@@ -94,6 +94,17 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		logger.Error(err, "failed to unregister dogu")
 	}
 
+	// delete custom descriptor
+	doguConfigMap, err := getDoguConfigMap(ctx, m.client, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to get dogu config map: %w", err)
+	}
+
+	err = deleteDoguConfigMap(ctx, m.client, doguConfigMap)
+	if err != nil {
+		logger.Error(err, "failed to delete custom dogu configmap %s: %w", doguResource.Name, err)
+	}
+
 	logger.Info("Remove finalizer...")
 	controllerutil.RemoveFinalizer(doguResource, finalizerName)
 	err = m.client.Update(ctx, doguResource)

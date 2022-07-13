@@ -11,6 +11,7 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -130,6 +131,30 @@ func validateKeyProvider(globalConfig cesregistry.ConfigurationContext) error {
 			return fmt.Errorf("failed to set default key provider: %w", err)
 		}
 		log.Log.Info("No key provider found. Use default pkcs1v15.")
+	}
+
+	return nil
+}
+
+func getDoguConfigMap(ctx context.Context, client client.Client, doguResource *k8sv1.Dogu) (*corev1.ConfigMap, error) {
+	configMap := &corev1.ConfigMap{}
+	err := client.Get(ctx, doguResource.GetDescriptorObjectKey(), configMap)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get custom dogu descriptor: %w", err)
+	} else {
+		return configMap, nil
+	}
+}
+
+func deleteDoguConfigMap(ctx context.Context, client client.Client, doguConfigMap *corev1.ConfigMap) error {
+	if doguConfigMap != nil {
+		err := client.Delete(ctx, doguConfigMap)
+		if err != nil {
+			return fmt.Errorf("failed to delete custom dogu descriptor: %w", err)
+		}
 	}
 
 	return nil
