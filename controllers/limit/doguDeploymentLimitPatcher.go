@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	cpuLimitKey              = "/containers/cpu-limit"
-	memoryLimitKey           = "/containers/memory-limit"
-	ephemeralStorageLimitKey = "/containers/ephemeral-storage-limit"
+	cpuLimitKey              = "/pod_limit/cpu"
+	memoryLimitKey           = "/pod_limit/memory"
+	ephemeralStorageLimitKey = "/pod_limit/ephemeral_storage"
 )
 
 type doguDeploymentLimitPatcher struct {
