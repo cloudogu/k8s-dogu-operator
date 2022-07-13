@@ -36,7 +36,7 @@ const (
 	RequeueTimeMaxRequeueTime = time.Hour * 6
 )
 
-// DoguSpec defines the desired state of Dogu
+// DoguSpec defines the desired state of a Dogu
 type DoguSpec struct {
 	// Name of the dogu (e.g. official/ldap)
 	Name string `json:"name,omitempty"`
@@ -44,7 +44,7 @@ type DoguSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
-// DoguStatus defines the observed state of Dogu
+// DoguStatus defines the observed state of a Dogu
 type DoguStatus struct {
 	// Status represents the state of the Dogu in the ecosystem
 	Status string `json:"status"`
@@ -125,7 +125,8 @@ func (d Dogu) GetObjectKey() *client.ObjectKey {
 	}
 }
 
-// GetDescriptorObjectKey returns the object key for the custom dogu descriptor with the actual name and namespace from the dogu resource
+// GetDescriptorObjectKey returns the object key for the custom dogu descriptor with the actual name and namespace from
+// the dogu resource
 func (d Dogu) GetDescriptorObjectKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,

@@ -5,6 +5,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"k8s.io/apimachinery/pkg/types"
 	"testing"
 
@@ -67,10 +69,14 @@ func (d *doguManagerWithMocks) AssertMocks(t *testing.T) {
 func getDoguManagerWithMocks() doguManagerWithMocks {
 	// Reset resource version otherwise the resource can't be created
 	ldapCr.ResourceVersion = ""
-
 	scheme := getInstallScheme()
+
+	limitPatcher := &resourceMocks.LimitPatcher{}
+	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
+	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher)
+
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	resourceGenerator := resource.NewResourceGenerator(scheme)
 	doguRemoteRegistry := &cesremotemocks.Registry{}
 	doguLocalRegistry := &cesmocks.DoguRegistry{}
 	imageRegistry := &mocks.ImageRegistry{}
