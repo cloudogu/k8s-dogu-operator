@@ -15,17 +15,17 @@ import (
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
 type CesDoguRegistrator struct {
-	client.Client
+	client          client.Client
 	registry        cesregistry.Registry
 	doguRegistry    cesregistry.DoguRegistry
 	secretGenerator doguResourceGenerator
 }
 
-// NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
+// newCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator doguResourceGenerator) *CesDoguRegistrator {
+func newCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator doguResourceGenerator) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
-		Client:          client,
+		client:          client,
 		registry:        registry,
 		doguRegistry:    registry.DoguRegistry(),
 		secretGenerator: secretGenerator,
@@ -132,7 +132,7 @@ func (c *CesDoguRegistrator) writePrivateKey(ctx context.Context, privateKey *ke
 		return fmt.Errorf("failed to generate secret: %w", err)
 	}
 
-	err = c.Client.Create(ctx, secret)
+	err = c.client.Create(ctx, secret)
 	if err != nil {
 		return fmt.Errorf("failed to create secret: %w", err)
 	}

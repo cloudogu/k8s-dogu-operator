@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- [#29] Remove implementation of the remote http dogu registry and instead, reuse the implementation from the cesapp-lib. 
+- [#29] Remove implementation of the remote http dogu registry and instead, reuse the implementation from the cesapp-lib.
+- [#31] Split dogu manager in separate components according to it functions (install, update, delete).
 
 ## [v0.8.0] - 2022-06-08
 ### Added

@@ -120,7 +120,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguSecretHandler := &mocks.DoguSecretsHandler{}
 	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
-	doguRegistrator := NewCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
+	doguRegistrator := newCESDoguRegistrator(k8sManager.GetClient(), &CesRegistryMock, resourceGenerator)
 
 	yamlResult := make(map[string]string, 0)
 	fileExtract := &mocks.FileExtractor{}
@@ -129,35 +129,34 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	installManager := &doguInstallManager{
-		Client:                k8sManager.GetClient(),
-		Scheme:                k8sManager.GetScheme(),
-		ResourceGenerator:     resourceGenerator,
-		DoguRemoteRegistry:    &DoguRemoteRegistryMock,
-		DoguLocalRegistry:     &EtcdDoguRegistry,
-		ImageRegistry:         &ImageRegistryMock,
-		DoguRegistrator:       doguRegistrator,
-		DependencyValidator:   dependencyValidator,
-		ServiceAccountCreator: serviceAccountCreator,
-		DoguSecretHandler:     doguSecretHandler,
-		Applier:               applyClient,
-		FileExtractor:         fileExtract,
+		client:                k8sManager.GetClient(),
+		scheme:                k8sManager.GetScheme(),
+		resourceGenerator:     resourceGenerator,
+		doguRemoteRegistry:    &DoguRemoteRegistryMock,
+		doguLocalRegistry:     &EtcdDoguRegistry,
+		imageRegistry:         &ImageRegistryMock,
+		doguRegistrator:       doguRegistrator,
+		dependencyValidator:   dependencyValidator,
+		serviceAccountCreator: serviceAccountCreator,
+		doguSecretHandler:     doguSecretHandler,
+		applier:               applyClient,
+		fileExtractor:         fileExtract,
 	}
 
 	deleteManager := &doguDeleteManager{
-		Client:                k8sManager.GetClient(),
-		Scheme:                k8sManager.GetScheme(),
-		DoguLocalRegistry:     &EtcdDoguRegistry,
-		ImageRegistry:         &ImageRegistryMock,
-		DoguRegistrator:       doguRegistrator,
-		ServiceAccountRemover: serviceAccountRemover,
-		DoguSecretHandler:     doguSecretHandler,
+		client:                k8sManager.GetClient(),
+		scheme:                k8sManager.GetScheme(),
+		doguLocalRegistry:     &EtcdDoguRegistry,
+		imageRegistry:         &ImageRegistryMock,
+		doguRegistrator:       doguRegistrator,
+		serviceAccountRemover: serviceAccountRemover,
+		doguSecretHandler:     doguSecretHandler,
 	}
 
 	doguManager := &DoguManager{
-		Client:         k8sManager.GetClient(),
-		Scheme:         k8sManager.GetScheme(),
-		InstallManager: installManager,
-		DeleteManager:  deleteManager,
+		scheme:         k8sManager.GetScheme(),
+		installManager: installManager,
+		deleteManager:  deleteManager,
 	}
 
 	err = NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
