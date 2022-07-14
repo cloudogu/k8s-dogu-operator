@@ -10,20 +10,15 @@ import (
 	"strings"
 )
 
-const StageDevelopment = "development"
-const StageProduction = "production"
-const StageEnvironmentVariable = "STAGE"
+const (
+	StageDevelopment         = "development"
+	StageProduction          = "production"
+	StageEnvironmentVariable = "STAGE"
+	CacheDirProduction       = "/home/nonroot"
+	CacheDirDevelopment      = "."
+)
 
 var Stage = StageProduction
-
-func init() {
-	stage, err := getEnvVar(StageEnvironmentVariable)
-	if err != nil {
-		return
-	}
-
-	Stage = stage
-}
 
 var (
 	envVarNamespace            = "NAMESPACE"
@@ -75,6 +70,12 @@ type OperatorConfig struct {
 
 // NewOperatorConfig creates a new operator config by reading values from the environment variables
 func NewOperatorConfig(version string) (*OperatorConfig, error) {
+	stage, err := getEnvVar(StageEnvironmentVariable)
+	if err != nil {
+		log.Error(err, "Error reading stage environment variable. Use Stage production")
+	}
+	Stage = stage
+
 	if Stage == StageDevelopment {
 		log.Info("Starting in development mode! This is not recommended for production!")
 	}
@@ -198,8 +199,17 @@ func (o *OperatorConfig) GetRemoteConfiguration() *core.Remote {
 	endpoint = strings.TrimSuffix(endpoint, "dogus/")
 	endpoint = strings.TrimSuffix(endpoint, "dogus")
 
+	var cacheDir string
+
+	if Stage == StageProduction {
+		cacheDir = CacheDirProduction
+	} else {
+		cacheDir = CacheDirDevelopment
+	}
+
 	return &core.Remote{
 		Endpoint: endpoint,
+		CacheDir: cacheDir,
 	}
 }
 
