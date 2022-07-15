@@ -368,6 +368,7 @@ func (m *doguInstallManager) createVolumes(ctx context.Context, doguResource *k8
 			return fmt.Errorf("failed to create pvc: %w", err)
 		}
 
+		// TODO After this create pod, job and cronjob. Apply job AND cronjob
 		logger.Info(fmt.Sprintf("PersistentVolumeClaim %s/%s has been : %s", desiredPvc.Namespace, desiredPvc.Name, controllerutil.OperationResultCreated))
 	}
 

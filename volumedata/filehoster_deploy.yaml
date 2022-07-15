@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filehoster
+  labels:
+    app: filehoster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: filehoster
+  template:
+    metadata:
+      labels:
+        app: filehoster
+    spec:
+      containers:
+        - name: filehoster
+          image: ubuntu
+          command: [ "/bin/bash", "-c", "--" ]
+          args: [ "while true; do sleep 30; done;" ]
+          volumeMounts:
+            - mountPath: "/data"
+              name: filehoster-volume
+      volumes:
+        - name: filehoster-volume
+          persistentVolumeClaim:
+            claimName: filehoster-pvc
+
