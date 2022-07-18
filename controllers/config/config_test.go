@@ -113,22 +113,41 @@ func TestNewOperatorConfig(t *testing.T) {
 
 func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	tests := []struct {
-		name           string
-		inputEndpopint string
+		name          string
+		inputEndpoint string
+		stage         string
 	}{
-		{name: "get remote configuration with correct url", inputEndpopint: "https://dogu.cloudogu.com/api/v2/"},
-		{name: "get remote configuration with 'dogus' suffix url", inputEndpopint: "https://dogu.cloudogu.com/api/v2/dogus"},
-		{name: "get remote configuration with 'dogus/' suffix url", inputEndpopint: "https://dogu.cloudogu.com/api/v2/dogus/"},
+		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction},
+		{name: "get remote configuration with correct url and development mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageDevelopment},
+		{name: "get remote configuration with 'dogus' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", stage: StageProduction},
+		{name: "get remote configuration with 'dogus/' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus/", stage: StageProduction},
 	}
+
+	t.Setenv(envVarNamespace, "test")
+	t.Setenv("DOGU_REGISTRY_ENDPOINT", "myEndpoint")
+	t.Setenv("DOGU_REGISTRY_USERNAME", "user")
+	t.Setenv("DOGU_REGISTRY_PASSWORD", "password")
+	t.Setenv("DOCKER_REGISTRY", `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`)
+
+	defer func() {
+		_ = os.Unsetenv(envVarNamespace)
+		_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
+		_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
+		_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
+		_ = os.Unsetenv("DOCKER_REGISTRY")
+	}()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// given
-			o := &OperatorConfig{
-				DoguRegistry: DoguRegistryData{
-					Endpoint: tt.inputEndpopint,
-				},
-			}
+			t.Setenv(StageEnvironmentVariable, tt.stage)
+			defer func() {
+				_ = os.Unsetenv(StageEnvironmentVariable)
+			}()
+
+			o, err := NewOperatorConfig("1.0.0")
+			require.NoError(t, err)
+			o.DoguRegistry = DoguRegistryData{Endpoint: tt.inputEndpoint}
 
 			// when
 			remoteConfig := o.GetRemoteConfiguration()
@@ -136,6 +155,11 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 			// then
 			assert.NotNil(t, remoteConfig)
 			assert.Equal(t, "https://dogu.cloudogu.com/api/v2/", remoteConfig.Endpoint)
+			if tt.stage == StageProduction {
+				assert.Equal(t, "/home/nonroot", remoteConfig.CacheDir)
+			} else {
+				assert.Equal(t, ".", remoteConfig.CacheDir)
+			}
 		})
 	}
 }

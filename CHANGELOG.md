@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.9.1] - 2022-07-18
+### Fixed
+- [#34] Fixed a permission issue where the remote registry trys to write to a non-privileged cache dir.
+
 ## [v0.9.0] - 2022-07-13
 ### Added
 - [#28] Dogu hardware limit updater responsible to update the deployments of dogus with configured container limits.
