@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#36] Update `cesapp-lib` to version `xxx`
+- [#36] Update `k8s-apply-lib` to version `xxx`
+- [#36] Changed the loggers for the both libs `cesapp-lib` and `k8s-apply-lib` according to the new logging interface.
 
 ## [v0.9.1] - 2022-07-18
 ### Fixed
