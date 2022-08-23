@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/cesapp-lib v0.0.0-20220823093106-91ad08a10149
-	github.com/cloudogu/k8s-apply-lib v0.3.0
+	github.com/cloudogu/k8s-apply-lib v0.0.0-20220822142454-7d24ca23eb4e
 	github.com/coreos/etcd v3.3.27+incompatible
 	github.com/go-logr/logr v1.2.3
 	github.com/google/go-containerregistry v0.8.0
