@@ -372,9 +372,25 @@ func (m *doguInstallManager) createVolumes(ctx context.Context, doguResource *k8
 			Name:      doguResource.Name,
 		}
 
-		_ = m.client.Get(ctx, doguPVCKey, doguPVCClaim)
+		err := m.client.Get(ctx, doguPVCKey, doguPVCClaim)
 
-		if doguPVCClaim != nil {
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				desiredPvc, err := m.resourceGenerator.GetDoguPVC(doguResource)
+				if err != nil {
+					return fmt.Errorf("failed to generate pvc: %w", err)
+				}
+
+				err = m.client.Create(ctx, desiredPvc)
+				if err != nil {
+					return fmt.Errorf("failed to create pvc: %w", err)
+				}
+
+				logger.Info(fmt.Sprintf("PersistentVolumeClaim %s/%s has been : %s", desiredPvc.Namespace, desiredPvc.Name, controllerutil.OperationResultCreated))
+			} else {
+				return fmt.Errorf("failed to get prebuilt dogu pvc for dogu %s: %w", dogu.Name, err)
+			}
+		} else {
 			logger.Info(fmt.Sprintf("PVC for dogu [%s] already exists. Verifing pvc...", dogu.GetFullName()))
 
 			if doguPVCClaim.Annotations[annotationKubernetesBetaVolumeDriver] != longhornDiverID {
@@ -399,18 +415,6 @@ func (m *doguInstallManager) createVolumes(ctx context.Context, doguResource *k8
 			}
 
 			logger.Info(fmt.Sprintf("Existing PVC for dogu [%s] is valid.", dogu.GetFullName()))
-		} else {
-			desiredPvc, err := m.resourceGenerator.GetDoguPVC(doguResource)
-			if err != nil {
-				return fmt.Errorf("failed to generate pvc: %w", err)
-			}
-
-			err = m.client.Create(ctx, desiredPvc)
-			if err != nil {
-				return fmt.Errorf("failed to create pvc: %w", err)
-			}
-
-			logger.Info(fmt.Sprintf("PersistentVolumeClaim %s/%s has been : %s", desiredPvc.Namespace, desiredPvc.Name, controllerutil.OperationResultCreated))
 		}
 	}
 
