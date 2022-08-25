@@ -9,4 +9,4 @@ metadata:
     app: ces
 spec:
   name: official/nexus
-  version: 3.37.3-4
+  version: 3.40.1-2

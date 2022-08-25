@@ -5,7 +5,7 @@ VERSION=0.9.1
 IMAGE_DEV=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}:${VERSION}
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG?=1.18
-MAKEFILES_VERSION=6.0.2
+MAKEFILES_VERSION=6.3.0
 LINT_VERSION=v1.45.2
 STAGE?=production
 
@@ -24,6 +24,7 @@ include build/make/digital-signature.mk
 K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
 PRE_COMPILE=generate vet
 
+K8S_RESOURCE_TEMP_FOLDER ?= $(TARGET_DIR)
 K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy
 
 include build/make/k8s-controller.mk

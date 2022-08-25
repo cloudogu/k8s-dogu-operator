@@ -9,4 +9,4 @@ metadata:
     app: ces
 spec:
   name: official/jenkins
-  version: 2.332.1-3
+  version: 2.346.1-1

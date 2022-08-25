@@ -9,4 +9,4 @@ metadata:
     app: ces
 spec:
   name: official/cockpit
-  version: 2.0.2-3
+  version: 2.0.2-5

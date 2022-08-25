@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 	"testing"
@@ -42,6 +44,7 @@ type doguInstallManagerWithMocks struct {
 	doguSecretHandlerMock     *mocks.DoguSecretsHandler
 	applierMock               *mocks.Applier
 	fileExtractorMock         *mocks.FileExtractor
+	client                    client.WithWatch
 }
 
 func (d *doguInstallManagerWithMocks) AssertMocks(t *testing.T) {
@@ -59,8 +62,7 @@ func (d *doguInstallManagerWithMocks) AssertMocks(t *testing.T) {
 	)
 }
 
-func getDoguInstallManagerWithMocks() doguInstallManagerWithMocks {
-	scheme := getTestScheme()
+func getDoguInstallManagerWithMocks(scheme *runtime.Scheme) doguInstallManagerWithMocks {
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	limitPatcher := &resourceMocks.LimitPatcher{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
@@ -102,6 +104,7 @@ func getDoguInstallManagerWithMocks() doguInstallManagerWithMocks {
 		doguSecretHandlerMock:     doguSecretHandler,
 		fileExtractorMock:         fileExtract,
 		applierMock:               mockedApplier,
+		client:                    k8sClient,
 	}
 }
 
@@ -123,7 +126,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
@@ -131,7 +134,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
-		doguManager, err := NewDoguInstallManager(client, operatorConfig, cesRegistry)
+		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry)
 
 		// then
 		require.NoError(t, err)
@@ -149,13 +152,13 @@ func TestNewDoguInstallManager(t *testing.T) {
 			return &rest.Config{ExecProvider: &api.ExecConfig{}, AuthProvider: &api.AuthProviderConfig{}}
 		}
 
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
 
 		// when
-		doguManager, err := NewDoguInstallManager(client, operatorConfig, cesRegistry)
+		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry)
 
 		// then
 		require.Error(t, err)
@@ -168,7 +171,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("successfully install a dogu", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 
 		managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
@@ -249,7 +252,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		require.NoError(t, err)
 		yamlResult["testDeployment.yaml"] = string(testDeploymentBytes)
 
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -279,7 +282,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("successfully install dogu with custom descriptor", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, _, imageConfig := getDoguInstallManagerTestData(t)
 		ldapDescriptorCm := readTestDataLdapDescriptor(t)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -302,7 +305,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("failed to install dogu with error query descriptor configmap", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, ldapDescriptor, _ := getDoguInstallManagerTestData(t)
 		ldapDescriptor.Data["dogu.json"] = "invalid"
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
@@ -319,7 +322,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("failed to validate dependencies", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(assert.AnError)
@@ -336,7 +339,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("failed to register dogu", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
@@ -354,7 +357,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("failed to handle dogu secrets from setup", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -374,7 +377,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("failed to create service accounts", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -395,7 +398,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("dogu resource not found", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
 
 		// when
@@ -409,7 +412,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("error get dogu", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(nil, assert.AnError)
 
@@ -426,7 +429,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 	t.Run("error on pull image", func(t *testing.T) {
 		// given
-		managerWithMocks := getDoguInstallManagerWithMocks()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, assert.AnError)
@@ -448,7 +451,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("error on createDoguResources", func(t *testing.T) {
 		t.Run("volumes - fail on resource generation", func(t *testing.T) {
 			// given
-			managerWithMocks := getDoguInstallManagerWithMocks()
+			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 			managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -476,7 +479,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		t.Run("volumes - fail on kubernetes update", func(t *testing.T) {
 			// given
-			managerWithMocks := getDoguInstallManagerWithMocks()
+			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 			managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -505,7 +508,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		t.Run("deployment - fail on resource generation", func(t *testing.T) {
 			// given
-			managerWithMocks := getDoguInstallManagerWithMocks()
+			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 			managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -536,7 +539,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		t.Run("deployment - fail on kubernetes update", func(t *testing.T) {
 			// given
-			managerWithMocks := getDoguInstallManagerWithMocks()
+			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 			managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -566,7 +569,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		t.Run("service - fail on resource generation", func(t *testing.T) {
 			// given
-			managerWithMocks := getDoguInstallManagerWithMocks()
+			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 			managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -598,7 +601,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		t.Run("service - fail on kubernetes update", func(t *testing.T) {
 			// given
-			managerWithMocks := getDoguInstallManagerWithMocks()
+			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 			managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -629,7 +632,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		t.Run("exposed services - fail on resource generation", func(t *testing.T) {
 			// given
-			managerWithMocks := getDoguInstallManagerWithMocks()
+			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 			managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -662,7 +665,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		t.Run("exposed services - fail on kubernetes update", func(t *testing.T) {
 			// given
-			managerWithMocks := getDoguInstallManagerWithMocks()
+			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 			managerWithMocks.doguRemoteRegistryMock.On("Get", mock.Anything).Return(ldapDogu, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -693,4 +696,165 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.AssertMocks(t)
 		})
 	})
+}
+
+func Test_doguInstallManager_createVolumes(t *testing.T) {
+	t.Run("error getting pvc should return an error", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(runtime.NewScheme())
+		ldapCr := readTestDataLdapCr(t)
+		ldapDogu := readTestDataLdapDogu(t)
+
+		// when
+		err := managerWithMocks.installManager.createVolumes(context.TODO(), ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("failed to get prebuilt dogu pvc for dogu %s", ldapDogu.Name))
+		managerWithMocks.AssertMocks(t)
+	})
+
+	invalidStorageClass := "test"
+	validStorageClass := longhornStorageClassName
+
+	t.Run("invalid beta volume driver on prebuilt pvc should return an error", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
+		prebuiltPvc := getPvc("ldap")
+		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
+		require.NoError(t, err)
+		ldapCr := readTestDataLdapCr(t)
+		ldapDogu := readTestDataLdapDogu(t)
+
+		// when
+		err = managerWithMocks.installManager.createVolumes(context.TODO(), ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]", ldapDogu.GetFullName(), annotationKubernetesBetaVolumeDriver, longhornDiverID))
+		managerWithMocks.AssertMocks(t)
+	})
+
+	t.Run("invalid kubernetes volume driver on prebuilt pvc should return an error", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
+		require.NoError(t, err)
+		ldapCr := readTestDataLdapCr(t)
+		ldapDogu := readTestDataLdapDogu(t)
+
+		// when
+		err = managerWithMocks.installManager.createVolumes(context.TODO(), ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]", ldapDogu.GetFullName(), annotationKubernetesVolumeDriver, longhornDiverID))
+		managerWithMocks.AssertMocks(t)
+	})
+
+	t.Run("invalid dogu label on prebuilt pvc should return an error", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
+		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
+		require.NoError(t, err)
+		ldapCr := readTestDataLdapCr(t)
+		ldapDogu := readTestDataLdapDogu(t)
+
+		// when
+		err = managerWithMocks.installManager.createVolumes(context.TODO(), ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("pvc for dogu [%s] is not valid as pvc does not contain label [dogu] with value [%s]", ldapDogu.GetFullName(), ldapCr.Name))
+		managerWithMocks.AssertMocks(t)
+	})
+
+	t.Run("invalid storage class name on prebuilt pvc should return an error", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
+		prebuiltPvc.Spec.StorageClassName = &invalidStorageClass
+		prebuiltPvc.Labels["dogu"] = "ldap"
+		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
+		require.NoError(t, err)
+		ldapCr := readTestDataLdapCr(t)
+		ldapDogu := readTestDataLdapDogu(t)
+
+		// when
+		err = managerWithMocks.installManager.createVolumes(context.TODO(), ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("pvc for dogu [%s] is not valid as pvc has invalid storage class: the storage class must be [%s]", ldapDogu.GetFullName(), longhornStorageClassName))
+		managerWithMocks.AssertMocks(t)
+	})
+
+	t.Run("error setting controller reference should return an error", func(t *testing.T) {
+		// given
+		oldMethod := ctrl.SetControllerReference
+		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
+			return assert.AnError
+		}
+		defer func() { ctrl.SetControllerReference = oldMethod }()
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
+		prebuiltPvc.Spec.StorageClassName = &validStorageClass
+		prebuiltPvc.Labels["dogu"] = "ldap"
+		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
+		require.NoError(t, err)
+		ldapCr := readTestDataLdapCr(t)
+		ldapDogu := readTestDataLdapDogu(t)
+
+		// when
+		err = managerWithMocks.installManager.createVolumes(context.TODO(), ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to set controller reference")
+		managerWithMocks.AssertMocks(t)
+	})
+
+	t.Run("success with prebuilt pvc", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
+		prebuiltPvc.Labels["dogu"] = "ldap"
+		prebuiltPvc.Spec.StorageClassName = &validStorageClass
+		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
+		require.NoError(t, err)
+		ldapCr := readTestDataLdapCr(t)
+		ldapDogu := readTestDataLdapDogu(t)
+
+		// when
+		err = managerWithMocks.installManager.createVolumes(context.TODO(), ldapCr, ldapDogu)
+
+		// then
+		require.NoError(t, err)
+		doguPVCClaim := &corev1.PersistentVolumeClaim{}
+		doguPVCKey := client.ObjectKey{
+			Name: ldapCr.Name,
+		}
+		err = managerWithMocks.installManager.client.Get(context.TODO(), doguPVCKey, doguPVCClaim)
+		require.NoError(t, err)
+		assert.Equal(t, ldapCr.Name, doguPVCClaim.OwnerReferences[0].Name)
+	})
+}
+
+func getPvc(name string) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		TypeMeta:   metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Annotations: make(map[string]string), Labels: make(map[string]string)},
+		Spec:       corev1.PersistentVolumeClaimSpec{},
+	}
 }
