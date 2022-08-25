@@ -8,7 +8,6 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
@@ -144,12 +143,4 @@ func getTestScheme() *runtime.Scheme {
 	}, &v1.Pod{})
 
 	return scheme
-}
-
-func getPvc(name string) *v1.PersistentVolumeClaim {
-	return &v1.PersistentVolumeClaim{
-		TypeMeta:   metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{Name: name, Annotations: make(map[string]string), Labels: make(map[string]string)},
-		Spec:       v1.PersistentVolumeClaimSpec{},
-	}
 }

@@ -126,7 +126,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
@@ -134,7 +134,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
-		doguManager, err := NewDoguInstallManager(client, operatorConfig, cesRegistry)
+		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry)
 
 		// then
 		require.NoError(t, err)
@@ -152,13 +152,13 @@ func TestNewDoguInstallManager(t *testing.T) {
 			return &rest.Config{ExecProvider: &api.ExecConfig{}, AuthProvider: &api.AuthProviderConfig{}}
 		}
 
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
 
 		// when
-		doguManager, err := NewDoguInstallManager(client, operatorConfig, cesRegistry)
+		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry)
 
 		// then
 		require.Error(t, err)
@@ -849,4 +849,12 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, ldapCr.Name, doguPVCClaim.OwnerReferences[0].Name)
 	})
+}
+
+func getPvc(name string) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		TypeMeta:   metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Annotations: make(map[string]string), Labels: make(map[string]string)},
+		Spec:       corev1.PersistentVolumeClaimSpec{},
+	}
 }
