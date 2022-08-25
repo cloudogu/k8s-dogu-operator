@@ -2,11 +2,12 @@
 
 ## Gedanken zum Vorgehen
 
-Um Daten in einem Dogu-Volume zu bearbeiten, kann der Befehl `kubectl cp` verwendet werden. Dabei wird die Referenz des 
-Pods angegeben und in diesen Daten kopiert. Damit man nicht abhängig von einem `running` Dogu-Container sein möchte, ist
-es sinnvoll einen extra Pod zu starten, der das Kopieren bzw. Verändern der Daten übernimmt. Für den Zugriff der 
-Dogu-Daten wird an diesem Pod das Dogu-Volume gemounted. Dieses Vorgehen ermöglicht es z.B. Daten in einem Dogu zu 
-bearbeiten, auch wenn es in einem fehlerhaften Zustand ist.
+Um Daten in einem Dogu-Volume zu bearbeiten, kann der Befehl `kubectl cp` verwendet werden. Dabei wird der Name des Pods
+angegeben und in diesen Daten kopiert. Damit man nicht abhängig von einem running-Dogu-Container sein möchte, ist es
+sinnvoll einen extra Pod zu starten, der das Kopieren bzw. Verändern der Daten übernimmt. Für den Zugriff der Dogu-Daten
+wird an diesem Pod das Dogu-Volume gemounted. Dieses Vorgehen ermöglicht es z.B. Daten in einem Dogu zu bearbeiten, auch
+wenn es in einem fehlerhaften Zustand ist. Ebenfalls ist es auch möglich Daten vor einer Dogu Installation zu
+hinterlegen.
 
 ## Bearbeitung von Dogu-Volumes
 
@@ -28,7 +29,7 @@ spec:
   containers:
     - image: alpine:3.16.2
       name: alpine-container
-      command: ['sh', '-c', 'echo "Starting volume explorer!" && while sleep 3600; do :; done']
+      command: [ 'sh', '-c', 'echo "Starting volume explorer!" && while sleep 3600; do :; done' ]
       volumeMounts:
         - mountPath: /volumes
           name: redmine-volume
@@ -39,7 +40,10 @@ spec:
 ```
 
 Erstellung des Pods:
-`kubectl apply -f <filename>.yaml`
+
+```bash
+kubectl apply -f <filename>.yaml
+```
 
 Dieser Pod bindet das Redmine-Volume unter `/volumes` ein. Zu beachten ist, dass für andere Dogus deren Volume-Namen der
 Dogu-Namen entsprechen.
@@ -47,11 +51,17 @@ Dogu-Namen entsprechen.
 Ist der Pod gestartet kann man nun über `kubectl cp` Daten in das Volume hinzufügen.
 
 Beispiel Redmine-Plugin:
-`kubectl -n ecosystem cp redmine_dark/ dogu-redmine-volume-explorer:/volumes/plugins/`
 
-Das Verhalten des Dogus bestimmt ob dieses anschließend neu gestartet werden muss.
-Anschließend kann der erstellte Pod wieder aus dem Cluster entfernt werden:
-`kubectl -n ecosystem delete pod dogu-redmine-volume-explorer`
+```bash
+kubectl -n ecosystem cp redmine_dark/ dogu-redmine-volume-explorer:/volumes/plugins/
+```
+
+Das Verhalten des Dogus bestimmt ob dieses anschließend neu gestartet werden muss. Anschließend kann der erstellte Pod
+wieder aus dem Cluster entfernt werden:
+
+```bash
+kubectl -n ecosystem delete pod dogu-redmine-volume-explorer
+```
 
 ### Initiale Bereitstellung von Daten eines noch nicht installierten Dogus
 
@@ -81,11 +91,14 @@ spec:
 ```
 
 Erstellung des Volumes:
-`kubectl apply -f <filename>.yaml`
+
+```bash
+kubectl apply -f <filename>.yaml
+```
 
 Die Provisioner, Labels und die Storageclass werden von dem `dogu-operator` validiert und dürfen nicht verändert werden.
 Die Größe des Volumes kann beliebig angepasst werden.
 
-Nach der Erstellung des Volumes kopiert man mit dem obigen Vorgehen Daten in das Volume. Danach kann das Dogu 
-installiert werden. Der `dogu-operator` erkennt bei der Installation, dass für das Dogu bereits ein Volume existiert und 
+Nach der Erstellung des Volumes kopiert man mit dem obigen Vorgehen Daten in das Volume. Danach kann das Dogu
+installiert werden. Der `dogu-operator` erkennt bei der Installation, dass für das Dogu bereits ein Volume existiert und
 verwendet es.

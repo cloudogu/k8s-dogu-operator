@@ -1,20 +1,21 @@
-# Adding or editing data in Dogu volumes
+# Adding or editing data in Dogu volumes.
 
 ## Thoughts on how to proceed
 
-To edit data in a Dogu volume, the `kubectl cp` command can be used. This specifies the reference of the pod and copies
-data into it. So that one does not want to be dependent on a `running` Dogu container, it makes sense to start an extra 
-pod, which takes care of copying or modifying the data. For accessing the Dogu data the Dogu volume is mounted on this 
-pod. This procedure makes it possible, for example, to edit data in a dogu even if it is in a faulty state.
+To edit data in a Dogu volume, the `kubectl cp` command can be used. This specifies the name of the pod and copies data
+into it. So that one does not want to be dependent on a running Dogu container, it makes sense to start an extra Pod,
+which takes over the copying and/or changing of the data. For the access of the Dogu data the Dogu volume is mounted at
+this pod. This procedure makes it possible, for example, to edit data in a dogu even if it is in a faulty state. It is
+also possible to mount data before a Dogu installation.
 
-## Editing dogu volumes
+## Editing of Dogu volumes
 
-From the general consensus, there are two following use cases where dogu volumes are edited.
+From the consensus, there are two following use cases where Dogu volumes are edited.
 
 ### Editing data of an already installed dogu
 
 For an installed dogu, its dogu volume already exists.
-In this case, a pod must be created for the dogu in the cluster that mounts the dogu volume.
+In this case, a matching pod must be created for the dogu in the cluster that mounts the dogu volume.
 
 Example Redmine:
 
@@ -27,7 +28,7 @@ spec:
   containers:
     - image: alpine:3.16.2
       name: alpine-container
-      command: ['sh', '-c', 'echo "Starting volume explorer!" && while sleep 3600; do :; done']
+      command: [ 'sh', '-c', 'echo "Starting volume explorer!" && while sleep 3600; do :; done' ]
       volumeMounts:
         - mountPath: /volumes
           name: redmine-volume
@@ -37,24 +38,33 @@ spec:
         claimName: redmine
 ```
 
-Creation of the pod:
-`kubectl apply -f <filename>.yaml`.
+Pod creation:
 
-This pod mounts the redmine volume under `/volumes`. Note that for other dogus, their volume names must be the same as 
-the Dogu names correspond.
+```bash
+kubectl apply -f <filename>.yaml
+```
+
+This pod mounts the Redmine volume under `/volumes`. Note that for other dogus, their volume names are the same as the
+dogu name.
 
 Once the pod is started you can now add data to the volume using `kubectl cp`.
 
 Example Redmine plugin:
-`kubectl -n ecosystem cp redmine_dark/ dogu-redmine-volume-explorer:/volumes/plugins/`.
 
-The behavior of dogu determines if it needs to be restarted afterwards.
-Afterwards the created pod can be removed from the cluster again:
-`kubectl -n ecosystem delete pod dogu-redmine-volume-explorer`
+```bash
+kubectl -n ecosystem cp redmine_dark/ dogu-redmine-volume-explorer:/volumes/plugins/
+```
 
-### Initial provisioning of data from a not yet installed Dogus
+The behavior of dogu determines if it needs to be restarted. Then, the created pod can be removed from
+the cluster again:
 
-To initially provision data to Dogus, the Dogu volume itself must be created.
+```bash
+kubectl -n ecosystem delete pod dogu-redmine-volume-explorer
+```
+
+### Initial provisioning of data of a not yet installed Dogus
+
+To initially provision data to dogus, the dogu volume itself must be created.
 
 Example Redmine:
 
@@ -79,11 +89,14 @@ spec:
   storageClassName: longhorn
 ```
 
-Creation of the volume:
-`kubectl apply -f <filename>.yaml`.
+Volume creation:
 
-The provisioner, labels and storageclass are validated by the `dogu-operator` and must not be changed.
+```bash
+kubectl apply -f <filename>.yaml
+```
+
+The provisioner, labels and storage class are validated by the `dogu-operator` and must not be changed.
 The size of the volume can be adjusted as desired.
 
-After creating the volume, copy data to the volume using the above procedure. After that the Dogu can be installed. 
-The `dogu-operator` recognizes during the installation that for the Dogu already exists for the dogu and uses it.
+After creating the volume, copy data to the volume using the above procedure. After that the Dogu can be installed.
+The `dogu-operator` recognizes during the installation that a volume already exists for the Dogu and uses it.
