@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.10.0] - 2022-08-25
 ### Changed
 - [#38] Detect existing PVC when installing a dogu. This allows users to store initial data for dogus before their installation. See [documentation](docs/operations/edit_dogu_volume_data_en.md) for more details.
 - [#38] Update `ces-build-lib` to version 1.56.0
