@@ -1,6 +1,6 @@
 #!groovy
 
-@Library(['github.com/cloudogu/dogu-build-lib@v1.6.0', 'github.com/cloudogu/ces-build-lib@9fa37a1a'])
+@Library(['github.com/cloudogu/dogu-build-lib@v1.6.0', 'github.com/cloudogu/ces-build-lib@3a7f24db'])
 import com.cloudogu.ces.cesbuildlib.*
 import com.cloudogu.ces.dogubuildlib.*
 
@@ -37,15 +37,27 @@ node('docker') {
                     .mountJenkinsUser()
                     .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                             {
+                                withCredentials([usernamePassword(credentialsId: 'cesmarvin',
+                                                                        passwordVariable: 'CES_MARVIN_PASSWORD',
+                                                                        usernameVariable: 'CES_MARVIN_USERNAME')]) {
+                                    // .netrc is necessary to access private repos
+                                    sh "echo \"machine github.com\n" +
+                                            "login ${CES_MARVIN_USERNAME}\n" +
+                                            "password ${CES_MARVIN_PASSWORD}\" >> ~/.netrc"
+                                }
                                 make 'k8s-create-temporary-resource'
                             }
         }
-        GString targetOperatorResourceYaml = "target/${repositoryName}_${controllerVersion}.yaml"
 
         Makefile makefile = new Makefile(this)
         String controllerVersion = makefile.getVersion()
+        GString targetOperatorResourceYaml = "target/${repositoryName}_${controllerVersion}.yaml"
 
-        ADoguRegistry registry = new ADoguRegistry(this)
-        registry.pushK8sYaml(targetOperatorResourceYaml, "k8s-dogu-operator", "k8s", controllerVersion)
+        DoguRegistry registry = new DoguRegistry(this, "https://staging-dogu.cloudogu.com")
+        registry.pushK8sYaml(targetOperatorResourceYaml, repositoryName, "k8s", "${controllerVersion}")
     }
+}
+
+void make(String makeArgs) {
+    sh "make ${makeArgs}"
 }
