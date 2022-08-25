@@ -841,5 +841,12 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		doguPVCClaim := &corev1.PersistentVolumeClaim{}
+		doguPVCKey := client.ObjectKey{
+			Name: ldapCr.Name,
+		}
+		err = managerWithMocks.installManager.client.Get(context.TODO(), doguPVCKey, doguPVCClaim)
+		require.NoError(t, err)
+		assert.Equal(t, ldapCr.Name, doguPVCClaim.OwnerReferences[0].Name)
 	})
 }

@@ -424,6 +424,11 @@ func (m *doguInstallManager) validateDoguPvc(ctx context.Context, dogu *cesappco
 		return fmt.Errorf("failed to set controller reference: %w", err)
 	}
 
+	err = m.client.Update(ctx, doguPVCClaim)
+	if err != nil {
+		return fmt.Errorf("failed to update dogu pvc %s: %w", doguPVCClaim.Name, err)
+	}
+
 	logger.Info(fmt.Sprintf("Existing PVC for dogu [%s] is valid.", dogu.GetFullName()))
 
 	return nil
