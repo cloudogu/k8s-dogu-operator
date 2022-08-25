@@ -376,9 +376,8 @@ func (m *doguInstallManager) createVolumes(ctx context.Context, doguResource *k8
 				return m.createPvcForDogu(ctx, doguResource)
 			}
 			return fmt.Errorf("failed to get prebuilt dogu pvc for dogu %s: %w", dogu.Name, err)
-		} else {
-			return m.validateDoguPvc(ctx, dogu, doguResource, doguPVCClaim)
 		}
+		return m.validateDoguPvc(ctx, dogu, doguResource, doguPVCClaim)
 	}
 
 	return nil
