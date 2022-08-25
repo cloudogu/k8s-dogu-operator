@@ -9,4 +9,4 @@ metadata:
     app: ces
 spec:
   name: official/cas
-  version: 6.5.3-6
+  version: 6.5.5-4

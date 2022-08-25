@@ -1,6 +1,6 @@
 #!groovy
 
-@Library(['github.com/cloudogu/dogu-build-lib@v1.6.0', 'github.com/cloudogu/ces-build-lib@1.53.0'])
+@Library(['github.com/cloudogu/dogu-build-lib@v1.6.0', 'github.com/cloudogu/ces-build-lib@1.56.0'])
 import com.cloudogu.ces.cesbuildlib.*
 import com.cloudogu.ces.dogubuildlib.*
 
@@ -80,7 +80,7 @@ node('docker') {
             stageStaticAnalysisSonarQube()
         }
 
-        K3d k3d = new K3d(this, "${WORKSPACE}/k3d", env.PATH)
+        K3d k3d = new K3d(this, "${WORKSPACE}", "${WORKSPACE}/k3d", env.PATH)
 
         try {
             Makefile makefile = new Makefile(this)
@@ -232,14 +232,17 @@ void stageAutomaticRelease() {
                             }
         }
 
-        stage('Add Github-Release') {
+        stage('Push to Registry') {
             Makefile makefile = new Makefile(this)
             String controllerVersion = makefile.getVersion()
             GString targetOperatorResourceYaml = "target/${repositoryName}_${controllerVersion}.yaml"
+
+            DoguRegistry registry = new DoguRegistry(this)
+            registry.pushK8sYaml(targetOperatorResourceYaml, repositoryName, "k8s", "${controllerVersion}")
+        }
+
+        stage('Add Github-Release') {
             releaseId = github.createReleaseWithChangelog(releaseVersion, changelog, productionReleaseBranch)
-            github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}")
-            github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}.sha256sum")
-            github.addReleaseAsset("${releaseId}", "${targetOperatorResourceYaml}.sha256sum.asc")
         }
     }
 }

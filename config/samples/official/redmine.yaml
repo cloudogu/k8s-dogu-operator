@@ -9,4 +9,4 @@ metadata:
     app: ces
 spec:
   name: official/redmine
-  version: 4.2.3-10
+  version: 4.2.5-1

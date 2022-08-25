@@ -15,7 +15,6 @@ GO_ENVIRONMENT?=
 # GO_CALL accomodates the go CLI command as well as necessary environment variables which are optional.
 GO_CALL=${GO_ENVIRONMENT} go
 PACKAGES=$(shell ${GO_CALL} list ./... | grep -v /vendor/)
-PACKAGES_FOR_INTEGRATION_TEST?=${PACKAGES}
 GO_BUILD_TAG_INTEGRATION_TEST?=integration
 GOMODULES=on
 UTILITY_BIN_PATH?=${WORKDIR}/.bin

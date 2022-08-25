@@ -18,9 +18,6 @@ include $(WORKDIR)/build/make/k8s.mk
 
 ## Variables
 
-# Contains the artifact yaml used as
-K8S_RESOURCE_TEMP_YAML=${TARGET_DIR}/${ARTIFACT_ID}_${VERSION}.yaml
-
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.

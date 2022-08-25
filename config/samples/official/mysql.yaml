@@ -9,4 +9,4 @@ metadata:
     app: ces
 spec:
   name: official/mysql
-  version: 5.7.37-2
+  version: 5.7.37-4
