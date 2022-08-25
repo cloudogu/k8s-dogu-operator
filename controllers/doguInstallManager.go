@@ -362,8 +362,6 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 }
 
 func (m *doguInstallManager) createVolumes(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) error {
-	logger := log.FromContext(ctx)
-
 	if len(dogu.Volumes) > 0 {
 		// check if pvc already exists
 		doguPVCClaim := &corev1.PersistentVolumeClaim{}
@@ -373,50 +371,61 @@ func (m *doguInstallManager) createVolumes(ctx context.Context, doguResource *k8
 		}
 
 		err := m.client.Get(ctx, doguPVCKey, doguPVCClaim)
-
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				desiredPvc, err := m.resourceGenerator.GetDoguPVC(doguResource)
-				if err != nil {
-					return fmt.Errorf("failed to generate pvc: %w", err)
-				}
-
-				err = m.client.Create(ctx, desiredPvc)
-				if err != nil {
-					return fmt.Errorf("failed to create pvc: %w", err)
-				}
-
-				logger.Info(fmt.Sprintf("PersistentVolumeClaim %s/%s has been : %s", desiredPvc.Namespace, desiredPvc.Name, controllerutil.OperationResultCreated))
-			} else {
-				return fmt.Errorf("failed to get prebuilt dogu pvc for dogu %s: %w", dogu.Name, err)
+				return m.createPvcForDogu(ctx, doguResource)
 			}
+			return fmt.Errorf("failed to get prebuilt dogu pvc for dogu %s: %w", dogu.Name, err)
 		} else {
-			logger.Info(fmt.Sprintf("PVC for dogu [%s] already exists. Verifing pvc...", dogu.GetFullName()))
-
-			if doguPVCClaim.Annotations[annotationKubernetesBetaVolumeDriver] != longhornDiverID {
-				return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]", dogu.GetFullName(), annotationKubernetesBetaVolumeDriver, longhornDiverID)
-			}
-
-			if doguPVCClaim.Annotations[annotationKubernetesVolumeDriver] != longhornDiverID {
-				return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]", dogu.GetFullName(), annotationKubernetesVolumeDriver, longhornDiverID)
-			}
-
-			if doguPVCClaim.Labels["dogu"] != doguResource.Name {
-				return fmt.Errorf("pvc for dogu [%s] is not valid as pvc does not contain label [dogu] with value [%s]", dogu.GetFullName(), doguResource.Name)
-			}
-
-			if *doguPVCClaim.Spec.StorageClassName != longhornStorageClassName {
-				return fmt.Errorf("pvc for dogu [%s] is not valid as pvc has invalid storage class: the storage class must be [%s]", dogu.GetFullName(), longhornStorageClassName)
-			}
-
-			err := ctrl.SetControllerReference(doguResource, doguPVCClaim, m.scheme)
-			if err != nil {
-				return fmt.Errorf("failed to set controller reference: %w", err)
-			}
-
-			logger.Info(fmt.Sprintf("Existing PVC for dogu [%s] is valid.", dogu.GetFullName()))
+			return m.validateDoguPvc(ctx, dogu, doguResource, doguPVCClaim)
 		}
 	}
+
+	return nil
+}
+
+func (m *doguInstallManager) createPvcForDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	logger := log.FromContext(ctx)
+	desiredPvc, err := m.resourceGenerator.GetDoguPVC(doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to generate pvc: %w", err)
+	}
+
+	err = m.client.Create(ctx, desiredPvc)
+	if err != nil {
+		return fmt.Errorf("failed to create pvc: %w", err)
+	}
+
+	logger.Info(fmt.Sprintf("PersistentVolumeClaim %s/%s has been : %s", desiredPvc.Namespace, desiredPvc.Name, controllerutil.OperationResultCreated))
+	return nil
+}
+
+func (m *doguInstallManager) validateDoguPvc(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv1.Dogu, doguPVCClaim *corev1.PersistentVolumeClaim) error {
+	logger := log.FromContext(ctx)
+	logger.Info(fmt.Sprintf("PVC for dogu [%s] already exists. Verifing pvc...", dogu.GetFullName()))
+
+	if doguPVCClaim.Annotations[annotationKubernetesBetaVolumeDriver] != longhornDiverID {
+		return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]", dogu.GetFullName(), annotationKubernetesBetaVolumeDriver, longhornDiverID)
+	}
+
+	if doguPVCClaim.Annotations[annotationKubernetesVolumeDriver] != longhornDiverID {
+		return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]", dogu.GetFullName(), annotationKubernetesVolumeDriver, longhornDiverID)
+	}
+
+	if doguPVCClaim.Labels["dogu"] != doguResource.Name {
+		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc does not contain label [dogu] with value [%s]", dogu.GetFullName(), doguResource.Name)
+	}
+
+	if *doguPVCClaim.Spec.StorageClassName != longhornStorageClassName {
+		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc has invalid storage class: the storage class must be [%s]", dogu.GetFullName(), longhornStorageClassName)
+	}
+
+	err := ctrl.SetControllerReference(doguResource, doguPVCClaim, m.scheme)
+	if err != nil {
+		return fmt.Errorf("failed to set controller reference: %w", err)
+	}
+
+	logger.Info(fmt.Sprintf("Existing PVC for dogu [%s] is valid.", dogu.GetFullName()))
 
 	return nil
 }
