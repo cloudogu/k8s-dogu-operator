@@ -44,22 +44,21 @@ Pod creation:
 kubectl apply -f <filename>.yaml
 ```
 
-This pod mounts the Redmine volume under `/volumes`. Note that for other dogus, their volume names are the same as the
-dogu name.
-
-Once the pod is started you can now add data to the volume using `kubectl cp`.
+This pod mounts the Redmine volume under `/volumes`. Note that for other dogus, their volume names must be the same as the
+Dogu names correspond.
 
 Example Redmine plugin:
 
+For Redmine, we have to manually create the subfolder `plugins` at first.
+
 ```bash
-kubectl -n ecosystem cp redmine_dark/ dogu-redmine-volume-explorer:/volumes/plugins/
+kubectl exec -it dogu-redmine-volume-explorer -- mkdir -p /volumes/plugins
 ```
 
-The behavior of dogu determines if it needs to be restarted. Then, the created pod can be removed from
-the cluster again:
+Now you can add data to the volume via `kubectl cp`.
 
 ```bash
-kubectl -n ecosystem delete pod dogu-redmine-volume-explorer
+kubectl -n ecosystem cp redmine_dark/ dogu-redmine-volume-explorer:/volumes/plugins/
 ```
 
 ### Initial provisioning of data of a not yet installed Dogus

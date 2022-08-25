@@ -48,9 +48,15 @@ kubectl apply -f <filename>.yaml
 Dieser Pod bindet das Redmine-Volume unter `/volumes` ein. Zu beachten ist, dass für andere Dogus deren Volume-Namen der
 Dogu-Namen entsprechen.
 
-Ist der Pod gestartet kann man nun über `kubectl cp` Daten in das Volume hinzufügen.
-
 Beispiel Redmine-Plugin:
+
+Für Redmine müssen wir initial den Unterordner `plugins` manuell anlegen. 
+
+```bash
+kubectl exec -it dogu-redmine-volume-explorer -- mkdir -p /volumes/plugins
+```
+
+Nun kann man nun über `kubectl cp` Daten in das Volume hinzufügen.
 
 ```bash
 kubectl -n ecosystem cp redmine_dark/ dogu-redmine-volume-explorer:/volumes/plugins/
