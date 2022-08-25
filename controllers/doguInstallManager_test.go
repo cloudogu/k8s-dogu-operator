@@ -715,16 +715,12 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 	})
 
 	invalidStorageClass := "test"
-	prebuiltPvc := &corev1.PersistentVolumeClaim{
-		TypeMeta:   metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{Name: "ldap", Annotations: make(map[string]string), Labels: make(map[string]string)},
-		Spec:       corev1.PersistentVolumeClaimSpec{StorageClassName: &invalidStorageClass},
-		Status:     corev1.PersistentVolumeClaimStatus{},
-	}
+	validStorageClass := longhornStorageClassName
 
 	t.Run("invalid beta volume driver on prebuilt pvc should return an error", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
+		prebuiltPvc := getPvc("ldap")
 		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
 		require.NoError(t, err)
 		ldapCr := readTestDataLdapCr(t)
@@ -739,12 +735,11 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 		managerWithMocks.AssertMocks(t)
 	})
 
-	prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
-
 	t.Run("invalid kubernetes volume driver on prebuilt pvc should return an error", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
-		prebuiltPvc.ResourceVersion = ""
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
 		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
 		require.NoError(t, err)
 		ldapCr := readTestDataLdapCr(t)
@@ -759,12 +754,12 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 		managerWithMocks.AssertMocks(t)
 	})
 
-	prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
-
-	t.Run("invalid dogu laben on prebuilt pvc should return an error", func(t *testing.T) {
+	t.Run("invalid dogu label on prebuilt pvc should return an error", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
-		prebuiltPvc.ResourceVersion = ""
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
 		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
 		require.NoError(t, err)
 		ldapCr := readTestDataLdapCr(t)
@@ -779,12 +774,14 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 		managerWithMocks.AssertMocks(t)
 	})
 
-	prebuiltPvc.Labels["dogu"] = "ldap"
-
 	t.Run("invalid storage class name on prebuilt pvc should return an error", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
-		prebuiltPvc.ResourceVersion = ""
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
+		prebuiltPvc.Spec.StorageClassName = &invalidStorageClass
+		prebuiltPvc.Labels["dogu"] = "ldap"
 		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
 		require.NoError(t, err)
 		ldapCr := readTestDataLdapCr(t)
@@ -799,9 +796,6 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 		managerWithMocks.AssertMocks(t)
 	})
 
-	validStorageClass := longhornStorageClassName
-	prebuiltPvc.Spec.StorageClassName = &validStorageClass
-
 	t.Run("error setting controller reference should return an error", func(t *testing.T) {
 		// given
 		oldMethod := ctrl.SetControllerReference
@@ -810,7 +804,11 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
-		prebuiltPvc.ResourceVersion = ""
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
+		prebuiltPvc.Spec.StorageClassName = &validStorageClass
+		prebuiltPvc.Labels["dogu"] = "ldap"
 		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
 		require.NoError(t, err)
 		ldapCr := readTestDataLdapCr(t)
@@ -828,7 +826,11 @@ func Test_doguInstallManager_createVolumes(t *testing.T) {
 	t.Run("success with prebuilt pvc", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
-		prebuiltPvc.ResourceVersion = ""
+		prebuiltPvc := getPvc("ldap")
+		prebuiltPvc.Annotations[annotationKubernetesBetaVolumeDriver] = longhornDiverID
+		prebuiltPvc.Annotations[annotationKubernetesVolumeDriver] = longhornDiverID
+		prebuiltPvc.Labels["dogu"] = "ldap"
+		prebuiltPvc.Spec.StorageClassName = &validStorageClass
 		err := managerWithMocks.client.Create(context.TODO(), prebuiltPvc)
 		require.NoError(t, err)
 		ldapCr := readTestDataLdapCr(t)
