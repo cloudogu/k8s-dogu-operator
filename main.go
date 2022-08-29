@@ -69,7 +69,10 @@ func main() {
 }
 
 func startDoguOperator() error {
-	logging.ConfigureLogger()
+	err := logging.ConfigureLogger()
+	if err != nil {
+		return err
+	}
 
 	operatorConfig, err := config.NewOperatorConfig(Version)
 	if err != nil {

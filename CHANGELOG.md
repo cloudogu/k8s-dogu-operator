@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.11.0] - 2022-08-29
+### Changed
+- [#36] Update `cesapp-lib` to version `v0.4.0`
+- [#36] Update `k8s-apply-lib` to version `v0.4.0`
+- [#36] Changed the loggers for the both libs `cesapp-lib` and `k8s-apply-lib` according to the new logging interface.
+
 ## [v0.10.0] - 2022-08-25
 ### Changed
 - [#38] Detect existing PVC when installing a dogu. This allows users to store initial data for dogus before their installation. See [documentation](docs/operations/edit_dogu_volume_data_en.md) for more details.
