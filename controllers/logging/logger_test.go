@@ -1,13 +1,14 @@
 package logging
 
 import (
+	"os"
+	"testing"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"testing"
 )
 
 func TestConfigureLogger(t *testing.T) {
@@ -132,33 +133,6 @@ func Test_libraryLogger_Infof(t *testing.T) {
 	// when
 	text := "myText"
 	logger.Infof("%s - %s", text, "test info call")
-
-	// then
-	mock.AssertExpectationsForObjects(t, loggerSink)
-}
-
-func Test_libraryLogger_Print(t *testing.T) {
-	// given
-	loggerSink := &mocks.LogSink{}
-	loggerSink.On("Info", printLevel, "[testLogger] test print call")
-	logger := libraryLogger{name: "testLogger", logger: loggerSink}
-
-	// when
-	logger.Print("test print call")
-
-	// then
-	mock.AssertExpectationsForObjects(t, loggerSink)
-}
-
-func Test_libraryLogger_Printf(t *testing.T) {
-	// given
-	loggerSink := &mocks.LogSink{}
-	loggerSink.On("Info", printLevel, "[testLogger] myText - test print call")
-	logger := libraryLogger{name: "testLogger", logger: loggerSink}
-
-	// when
-	text := "myText"
-	logger.Printf("%s - %s", text, "test print call")
 
 	// then
 	mock.AssertExpectationsForObjects(t, loggerSink)
