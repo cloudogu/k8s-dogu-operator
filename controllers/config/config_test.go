@@ -94,20 +94,6 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.Equal(t, expectedDoguRegistryData, operatorConfig.DoguRegistry)
 		assert.Equal(t, expectedDockerRegistryData, operatorConfig.DockerRegistry)
 		assert.Equal(t, "0.1.0", operatorConfig.Version.Raw)
-		assert.False(t, operatorConfig.DevelopmentLogMode)
-	})
-
-	t.Run("Error on parsing wrong value for zap log level", func(t *testing.T) {
-		// given
-		t.Setenv("ZAP_DEVELOPMENT_MODE", "invalid value")
-
-		// when
-		operatorConfig, err := NewOperatorConfig("0.0.0")
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "strconv.ParseBool: parsing \"invalid value\"")
-		assert.Nil(t, operatorConfig)
 	})
 }
 

@@ -6,7 +6,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"strconv"
 	"strings"
 )
 
@@ -26,12 +25,7 @@ var (
 	envVarDoguRegistryUsername = "DOGU_REGISTRY_USERNAME"
 	envVarDoguRegistryPassword = "DOGU_REGISTRY_PASSWORD"
 	envVarDockerRegistry       = "DOCKER_REGISTRY"
-	// logModeEnvVar is the constant for env variable ZAP_DEVELOPMENT_MODE
-	// which specifies the development mode for zap options. Valid values are
-	// true or false. In development mode the logger produces stacktraces on warnings and no smapling.
-	// In regular mode (default) the logger produces stacktraces on errors and sampling
-	envVarLogMode = "ZAP_DEVELOPMENT_MODE"
-	log           = ctrl.Log.WithName("config")
+	log                        = ctrl.Log.WithName("config")
 )
 
 // DoguRegistryData contains all necessary data for the dogu registry.
@@ -62,8 +56,6 @@ type OperatorConfig struct {
 	DoguRegistry DoguRegistryData `json:"dogu_registry"`
 	// DockerRegistry contains all necessary data for the Docker registry.
 	DockerRegistry DockerRegistryData `json:"docker_registry"`
-	// DevelopmentLogMode determines whether the development mode should be used when logging
-	DevelopmentLogMode bool `json:"development_log_mode"`
 	// Version contains the current version of the operator
 	Version *core.Version `json:"version"`
 }
@@ -92,11 +84,6 @@ func NewOperatorConfig(version string) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Deploying the k8s dogu operator in namespace %s", namespace))
 
-	logLevel, err := readZapLogLevel()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read namespace: %w", err)
-	}
-
 	doguRegistryData, err := readDoguRegistryData()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read dogu registry data: %w", err)
@@ -110,11 +97,10 @@ func NewOperatorConfig(version string) (*OperatorConfig, error) {
 	log.Info("Found stored docker registry data!")
 
 	return &OperatorConfig{
-		Namespace:          namespace,
-		DoguRegistry:       doguRegistryData,
-		DockerRegistry:     dockerRegistryData,
-		DevelopmentLogMode: logLevel,
-		Version:            &parsedVersion,
+		Namespace:      namespace,
+		DoguRegistry:   doguRegistryData,
+		DockerRegistry: dockerRegistryData,
+		Version:        &parsedVersion,
 	}, nil
 }
 
@@ -125,20 +111,6 @@ func readNamespace() (string, error) {
 	}
 
 	return namespace, nil
-}
-
-func readZapLogLevel() (bool, error) {
-	logMode := false
-	logModeEnv, err := getEnvVar(envVarLogMode)
-
-	if err == nil {
-		logMode, err = strconv.ParseBool(logModeEnv)
-		if err != nil {
-			return false, fmt.Errorf("failed to parse %s; valid values are true or false: %w", logModeEnv, err)
-		}
-	}
-
-	return logMode, nil
 }
 
 func readDoguRegistryData() (DoguRegistryData, error) {
