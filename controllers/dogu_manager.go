@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-apply-lib/apply"
@@ -27,6 +28,7 @@ var NewManager = NewDoguManager
 type DoguManager struct {
 	scheme         *runtime.Scheme
 	installManager installManager
+	upgradeManager upgradeManager
 	deleteManager  deleteManager
 	recorder       record.EventRecorder
 }
@@ -36,6 +38,10 @@ type installManager interface {
 	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
+type upgradeManager interface {
+	// Upgrade upgrades a dogu resource.
+	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
+}
 type deleteManager interface {
 	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
@@ -109,6 +115,11 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, err
 	}
 
+	upgradeManager, err := NewDoguUpgradeManager(client, operatorConfig, cesRegistry)
+	if err != nil {
+		return nil, err
+	}
+
 	deleteManager, err := NewDoguDeleteManager(client, operatorConfig, cesRegistry)
 	if err != nil {
 		return nil, err
@@ -117,6 +128,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	return &DoguManager{
 		scheme:         client.Scheme(),
 		installManager: installManager,
+		upgradeManager: upgradeManager,
 		deleteManager:  deleteManager,
 		recorder:       eventRecorder,
 	}, nil
