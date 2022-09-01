@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
@@ -74,6 +74,99 @@ type doguUpgradeManager struct {
 	applier               applier
 }
 
-func (d *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	return errors.New("not implemented yet")
+func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
+
+	currentDogu, err := dum.getCurrentDogu(doguResource)
+	if err != nil {
+		return err
+	}
+
+	remoteDogu, err := dum.getRemoteDogu(doguResource.Spec.Name, doguResource.Spec.Version)
+	if err != nil {
+		return err
+	}
+
+	err = dum.checkPremises(doguResource, currentDogu, remoteDogu)
+
+	const forceUpgrade = false
+	err = dum.checkUpgradeability(doguResource, currentDogu, remoteDogu, forceUpgrade)
+
+	steps, err := dum.collectUpgradeSteps()
+
+	err = dum.runUpgradeSteps(steps)
+	if err != nil {
+		return err
+	}
+
+	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
+
+	return nil
+}
+
+func (dum *doguUpgradeManager) getCurrentDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+	return nil, nil
+}
+
+func (dum *doguUpgradeManager) assertDependentDogusRunning() error {
+	return nil
+}
+
+func (dum *doguUpgradeManager) assertDoguHealth() error {
+	return nil
+}
+
+func (dum *doguUpgradeManager) namespaceChange() (bool, error) {
+	return false, nil
+}
+
+func (dum *doguUpgradeManager) getRemoteDogu(string, string) (*core.Dogu, error) {
+	return nil, nil
+}
+
+func (dum *doguUpgradeManager) assertDoguVersionChanged(namespaceChanging bool, dogu *core.Dogu) error {
+	return nil
+}
+
+func (dum *doguUpgradeManager) checkPremises(doguResource *k8sv1.Dogu, dogu *core.Dogu, remoteDogu *core.Dogu) error {
+	err := dum.assertDependentDogusRunning()
+	if err != nil {
+		return err
+	}
+	err = dum.assertDoguHealth()
+	if err != nil {
+		return err
+	}
+	namespaceChanging, err := dum.namespaceChange()
+	if err != nil {
+		return err
+	}
+
+	err = dum.assertDoguVersionChanged(namespaceChanging, remoteDogu)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dum *doguUpgradeManager) checkUpgradeability(doguResource *k8sv1.Dogu, dogu *core.Dogu, remoteDogu *core.Dogu, upgrade bool) error {
+	// Upgradefähigkeit prüfen
+	// wenn Force-Update dann weiter
+	// wenn Dogu-lokal.Version > Dogu-remote.Version dann Fehler
+	// Namensidentitätsprüfung
+	// Dogu-Name
+	// Namespace-Name (wenn nicht Namespace-Änderung anliegt)
+	return nil
+}
+
+type upgradeStep struct {
+	action func() error
+}
+
+func (dum *doguUpgradeManager) collectUpgradeSteps() ([]upgradeStep, error) {
+	return nil, nil
+}
+
+func (dum *doguUpgradeManager) runUpgradeSteps(steps []upgradeStep) error {
+	return nil
 }
