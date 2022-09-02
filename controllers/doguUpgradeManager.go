@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
+	"github.com/cloudogu/cesapp/v5/logging"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -76,20 +77,26 @@ type doguUpgradeManager struct {
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
 
-	currentDogu, err := dum.getCurrentDogu(doguResource)
+	localDogu, err := dum.getLocalDogu(doguResource)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get local dogu descriptor for %s:%s: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
 	}
 
 	remoteDogu, err := dum.getRemoteDogu(doguResource.Spec.Name, doguResource.Spec.Version)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get remote dogu descriptor for %s:%s: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
 	}
 
-	err = dum.checkPremises(doguResource, currentDogu, remoteDogu)
-
 	const forceUpgrade = false
-	err = dum.checkUpgradeability(doguResource, currentDogu, remoteDogu, forceUpgrade)
+	err = dum.checkPremises(doguResource, localDogu, remoteDogu)
+	if err != nil {
+		return fmt.Errorf("failed failed to get remote dogu descriptor for %s:%s: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
+	}
+
+	err = checkUpgradeability(localDogu, remoteDogu, forceUpgrade)
+	if err != nil {
+
+	}
 
 	steps, err := dum.collectUpgradeSteps()
 
@@ -103,15 +110,20 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	return nil
 }
 
-func (dum *doguUpgradeManager) getCurrentDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
-	return nil, nil
+func (dum *doguUpgradeManager) getLocalDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+	dogu, err := dum.doguLocalRegistry.Get(doguResource.Spec.Name)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch the local descriptor for dogu %s: %w", doguResource.Spec.Name, err)
+	}
+
+	return dogu, nil
 }
 
-func (dum *doguUpgradeManager) assertDependentDogusRunning() error {
+func (dum *doguUpgradeManager) checkDependentDogusRunning() error {
 	return nil
 }
 
-func (dum *doguUpgradeManager) assertDoguHealth() error {
+func (dum *doguUpgradeManager) checkDoguHealth() error {
 	return nil
 }
 
@@ -123,25 +135,27 @@ func (dum *doguUpgradeManager) getRemoteDogu(string, string) (*core.Dogu, error)
 	return nil, nil
 }
 
-func (dum *doguUpgradeManager) assertDoguVersionChanged(namespaceChanging bool, dogu *core.Dogu) error {
+func (dum *doguUpgradeManager) checkDoguVersionChanged(namespaceChanging bool, dogu *core.Dogu) error {
 	return nil
 }
 
-func (dum *doguUpgradeManager) checkPremises(doguResource *k8sv1.Dogu, dogu *core.Dogu, remoteDogu *core.Dogu) error {
-	err := dum.assertDependentDogusRunning()
+func (dum *doguUpgradeManager) checkPremises(doguResource *k8sv1.Dogu, localDogu *core.Dogu, remoteDogu *core.Dogu) error {
+	err := dum.checkDependentDogusRunning()
 	if err != nil {
 		return err
 	}
-	err = dum.assertDoguHealth()
+
+	err = dum.checkDoguHealth()
 	if err != nil {
 		return err
 	}
+
 	namespaceChanging, err := dum.namespaceChange()
 	if err != nil {
 		return err
 	}
 
-	err = dum.assertDoguVersionChanged(namespaceChanging, remoteDogu)
+	err = checkVersionBeforeUpgrade(localDogu, remoteDogu, namespaceChanging)
 	if err != nil {
 		return err
 	}
@@ -149,13 +163,48 @@ func (dum *doguUpgradeManager) checkPremises(doguResource *k8sv1.Dogu, dogu *cor
 	return nil
 }
 
-func (dum *doguUpgradeManager) checkUpgradeability(doguResource *k8sv1.Dogu, dogu *core.Dogu, remoteDogu *core.Dogu, upgrade bool) error {
-	// Upgradefähigkeit prüfen
-	// wenn Force-Update dann weiter
-	// wenn Dogu-lokal.Version > Dogu-remote.Version dann Fehler
-	// Namensidentitätsprüfung
-	// Dogu-Name
-	// Namespace-Name (wenn nicht Namespace-Änderung anliegt)
+func checkUpgradeability(localDogu *core.Dogu, remoteDogu *core.Dogu, namespaceChange bool) error {
+	logger := logging.GetInstance()
+	logger.Debugf("Check upgrade-ability of dogu versions (l:%s <-> r:%s)", localDogu.Name, localDogu.Version)
+
+	err := checkDoguIdentity(localDogu, remoteDogu, namespaceChange)
+	if err != nil {
+		return fmt.Errorf("upgrade-ability check failed: %w", err)
+	}
+
+	return nil
+}
+
+func checkDoguIdentity(localDogu *core.Dogu, remoteDogu *core.Dogu, namespaceChange bool) error {
+	if localDogu.GetSimpleName() != remoteDogu.GetSimpleName() {
+		return fmt.Errorf("dogus must have the same name (%s=%s)", localDogu.GetSimpleName(), remoteDogu.GetSimpleName())
+	}
+
+	if !namespaceChange && localDogu.GetNamespace() != remoteDogu.GetNamespace() {
+		return fmt.Errorf("dogus must have the same namespace (%s=%s)", localDogu.GetNamespace(), remoteDogu.GetNamespace())
+	}
+
+	return nil
+}
+
+func checkVersionBeforeUpgrade(localDogu *core.Dogu, remoteDogu *core.Dogu, forceUpgrade bool) error {
+	if !forceUpgrade {
+		return nil
+	}
+
+	localVersion, err := core.ParseVersion(localDogu.Version)
+	if err != nil {
+		return fmt.Errorf("could not check upgrade-ability of local dogu: %w", err)
+	}
+	remoteVersion, err := core.ParseVersion(remoteDogu.Version)
+	if err != nil {
+		return fmt.Errorf("could not check upgrade-ability of remote dogu: %w", err)
+	}
+
+	if remoteVersion.IsOlderOrEqualThan(localVersion) {
+		return fmt.Errorf("remote version must be greater than local version '%s > %s'",
+			remoteDogu.Version, localDogu.Version)
+	}
 	return nil
 }
 

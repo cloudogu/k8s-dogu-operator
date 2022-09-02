@@ -137,3 +137,50 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 		cesRegistry.AssertExpectations(t)
 	})
 }
+
+func Test_checkUpgradeability(t *testing.T) {
+	t.Run("should succeed for dogus when forceUpgrade is off and remote dogu has a higher version", func(t *testing.T) {
+		localDogu := readTestDataLdapDogu(t)
+		remoteDogu := readTestDataLdapDogu(t)
+		remoteDogu.Version = "2.4.48-5"
+
+		// when
+		err := checkUpgradeability(localDogu, remoteDogu, false)
+
+		// then
+		require.NoError(t, err)
+	})
+	t.Run("should succeed for dogus when forceUpgrade is on but would originally fail because of versions or names", func(t *testing.T) {
+		localDogu := readTestDataLdapDogu(t)
+		remoteDogu := readTestDataLdapDogu(t)
+		remoteDogu.Name = "different-ns/ldap"
+
+		// when
+		err := checkUpgradeability(localDogu, remoteDogu, true)
+
+		// then
+		require.NoError(t, err)
+	})
+	t.Run("should fail for different dogu names", func(t *testing.T) {
+		localDogu := readTestDataLdapDogu(t)
+		remoteDogu := readTestDataLdapDogu(t)
+		remoteDogu.Name = remoteDogu.GetNamespace() + "/test"
+		// when
+		err := checkUpgradeability(localDogu, remoteDogu, false)
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, "upgrade-ability check failed: dogus must have the same name (ldap=test)", err.Error())
+	})
+	t.Run("should fail for different dogu names", func(t *testing.T) {
+		localDogu := readTestDataLdapDogu(t)
+		remoteDogu := readTestDataLdapDogu(t)
+		remoteDogu.Name = "different-ns/ldap"
+		// when
+		err := checkUpgradeability(localDogu, remoteDogu, false)
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, "upgrade-ability check failed: dogus must have the same namespace (official=different-ns)", err.Error())
+	})
+}
