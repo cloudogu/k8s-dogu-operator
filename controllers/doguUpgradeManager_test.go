@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -13,7 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -21,6 +24,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+var deploymentTypeMeta = metav1.TypeMeta{
+	APIVersion: "apps/v1",
+	Kind:       "Deployment",
+}
 
 type doguUpgradeManagerWithMocks struct {
 	*doguUpgradeManager
@@ -145,7 +153,7 @@ func Test_checkUpgradeability(t *testing.T) {
 		remoteDogu.Version = "2.4.48-5"
 
 		// when
-		err := checkUpgradeability(localDogu, remoteDogu, false)
+		err := checkUpgradeability(nil, localDogu, remoteDogu, false)
 
 		// then
 		require.NoError(t, err)
@@ -156,7 +164,7 @@ func Test_checkUpgradeability(t *testing.T) {
 		remoteDogu.Name = "different-ns/ldap"
 
 		// when
-		err := checkUpgradeability(localDogu, remoteDogu, true)
+		err := checkUpgradeability(nil, localDogu, remoteDogu, true)
 
 		// then
 		require.NoError(t, err)
@@ -166,7 +174,7 @@ func Test_checkUpgradeability(t *testing.T) {
 		remoteDogu := readTestDataLdapDogu(t)
 		remoteDogu.Name = remoteDogu.GetNamespace() + "/test"
 		// when
-		err := checkUpgradeability(localDogu, remoteDogu, false)
+		err := checkUpgradeability(nil, localDogu, remoteDogu, false)
 
 		// then
 		require.Error(t, err)
@@ -177,10 +185,94 @@ func Test_checkUpgradeability(t *testing.T) {
 		remoteDogu := readTestDataLdapDogu(t)
 		remoteDogu.Name = "different-ns/ldap"
 		// when
-		err := checkUpgradeability(localDogu, remoteDogu, false)
+		err := checkUpgradeability(nil, localDogu, remoteDogu, false)
 
 		// then
 		require.Error(t, err)
 		assert.Equal(t, "upgrade-ability check failed: dogus must have the same namespace (official=different-ns)", err.Error())
+	})
+}
+
+func Test_doguUpgradeManager_checkDoguHealth(t *testing.T) {
+	// override default controller method to retrieve a kube config
+	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
+	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
+	ctrl.GetConfigOrDie = func() *rest.Config {
+		return &rest.Config{}
+	}
+
+	t.Run("should succeed", func(t *testing.T) {
+		operatorConfig := &config.OperatorConfig{}
+		operatorConfig.Namespace = "test"
+		doguRegistry := &cesmocks.DoguRegistry{}
+		cesRegistry := &cesmocks.Registry{}
+		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+		testDeployment := &appsv1.Deployment{
+			TypeMeta: deploymentTypeMeta,
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ldap",
+				Namespace: testNamespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "testServiceAccount",
+					},
+				},
+			},
+		}
+		scheme := runtime.NewScheme()
+		scheme.AddKnownTypeWithName(testDeployment.GroupVersionKind(), &appsv1.Deployment{})
+		myClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(testDeployment).Build()
+
+		ldapResource := readTestDataLdapCr(t)
+		ldapResource.Namespace = testNamespace
+		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry)
+
+		// when
+		err := sut.checkDoguHealth(context.TODO(), ldapResource)
+
+		// then
+		require.NoError(t, err)
+		cesRegistry.AssertExpectations(t)
+		doguRegistry.AssertExpectations(t)
+	})
+	t.Run("should fail because of unready replicas", func(t *testing.T) {
+		operatorConfig := &config.OperatorConfig{}
+		operatorConfig.Namespace = "test"
+		doguRegistry := &cesmocks.DoguRegistry{}
+		cesRegistry := &cesmocks.Registry{}
+		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+		testDeployment := &appsv1.Deployment{
+			TypeMeta: deploymentTypeMeta,
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ldap",
+				Namespace: testNamespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						ServiceAccountName: "testServiceAccount",
+					},
+				},
+			},
+			Status: appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 0}, // trigger failure
+		}
+		scheme := runtime.NewScheme()
+		scheme.AddKnownTypeWithName(testDeployment.GroupVersionKind(), &appsv1.Deployment{})
+		myClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(testDeployment).Build()
+
+		ldapResource := readTestDataLdapCr(t)
+		ldapResource.Namespace = testNamespace
+		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry)
+
+		// when
+		err := sut.checkDoguHealth(context.TODO(), ldapResource)
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, "dogu appears unhealthy (expected: 1, ready: 0)", err.Error())
+		cesRegistry.AssertExpectations(t)
+		doguRegistry.AssertExpectations(t)
 	})
 }
