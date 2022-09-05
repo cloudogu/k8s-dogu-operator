@@ -11,10 +11,10 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
-	v1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -22,6 +22,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type doguHealthChecker interface {
+	// CheckWithResource returns nil if the dogu described by the resource is up and running.
+	CheckWithResource(ctx context.Context, doguResource *k8sv1.Dogu) error
+	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
+	CheckDependenciesRecursive(ctx context.Context, localDogu *core.Dogu, currentK8sNamespace string) error
+}
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
 func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*doguUpgradeManager, error) {
@@ -47,19 +54,22 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 		return nil, fmt.Errorf("failed to add applier scheme to dogu CRD scheme handling: %w", err)
 	}
 
-	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
+	doguLocalRegistry := cesRegistry.DoguRegistry()
+
+	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
 
 	return &doguUpgradeManager{
 		client:                client,
 		scheme:                scheme,
-		doguLocalRegistry:     cesRegistry.DoguRegistry(),
+		doguLocalRegistry:     doguLocalRegistry,
 		doguRemoteRegistry:    doguRemoteRegistry,
 		imageRegistry:         imageRegistry,
 		dependencyValidator:   dependencyValidator,
 		serviceAccountCreator: serviceAccountCreator,
 		applier:               applier,
+		doguHealthChecker:     health.NewDoguChecker(client, doguLocalRegistry),
 	}, nil
 }
 
@@ -73,6 +83,7 @@ type doguUpgradeManager struct {
 	dependencyValidator   dependencyValidator
 	serviceAccountCreator serviceAccountCreator
 	applier               applier
+	doguHealthChecker     doguHealthChecker
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
@@ -137,12 +148,12 @@ func (dum *doguUpgradeManager) checkDoguVersionChanged(namespaceChanging bool, d
 func (dum *doguUpgradeManager) checkPremises(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu, remoteDogu *core.Dogu) error {
 	const premErrMsg = "premises check failed: %w"
 
-	err := dum.checkDependentDogusRunning(ctx, doguResource)
+	err := dum.checkDependencyDogusHealthy(ctx, doguResource, localDogu)
 	if err != nil {
 		return fmt.Errorf(premErrMsg, err)
 	}
 
-	err = dum.checkDoguHealth(ctx, doguResource)
+	err = dum.doguHealthChecker.CheckWithResource(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf(premErrMsg, err)
 	}
@@ -160,22 +171,14 @@ func (dum *doguUpgradeManager) checkPremises(ctx context.Context, doguResource *
 	return nil
 }
 
-func (dum *doguUpgradeManager) checkDependentDogusRunning(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	return nil
-}
-
-func (dum *doguUpgradeManager) checkDoguHealth(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	deployment := &v1.Deployment{}
-	err := dum.client.Get(ctx, *doguResource.GetObjectKey(), deployment)
+func (dum *doguUpgradeManager) checkDependencyDogusHealthy(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu) error {
+	err := dum.dependencyValidator.ValidateDependencies(localDogu)
 	if err != nil {
-		return fmt.Errorf("failed to check if dogu is running: %w", err)
+		return err
 	}
 
-	if deployment.Status.ReadyReplicas == 0 {
-		return fmt.Errorf("dogu appears unhealthy (expected: %d, ready: %d)", deployment.Status.Replicas, deployment.Status.ReadyReplicas)
-	}
+	return dum.doguHealthChecker.CheckDependenciesRecursive(ctx, localDogu, doguResource.Namespace)
 
-	return nil
 }
 
 func (dum *doguUpgradeManager) namespaceChange() (bool, error) {

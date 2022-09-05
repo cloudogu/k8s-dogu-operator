@@ -4,13 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -55,56 +52,11 @@ func (dum *doguUpgradeManagerWithMocks) AssertMocks(t *testing.T) {
 	)
 }
 
-func getDoguUpgradeManagerWithMocks(scheme *runtime.Scheme) doguUpgradeManagerWithMocks {
-	mockK8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	mockDoguRemoteRegistry := &cesremotemocks.Registry{}
-	mockDoguLocalRegistry := &cesmocks.DoguRegistry{}
-	mockImageRegistry := &mocks.ImageRegistry{}
-	mockDoguRegistrator := &mocks.DoguRegistrator{}
-	mockDependencyValidator := &mocks.DependencyValidator{}
-	mockServiceAccountCreator := &mocks.ServiceAccountCreator{}
-	mockedApplier := &mocks.Applier{}
-
-	sut := &doguUpgradeManager{
-		client:                mockK8sClient,
-		scheme:                scheme,
-		doguRemoteRegistry:    mockDoguRemoteRegistry,
-		doguLocalRegistry:     mockDoguLocalRegistry,
-		imageRegistry:         mockImageRegistry,
-		doguRegistrator:       mockDoguRegistrator,
-		dependencyValidator:   mockDependencyValidator,
-		serviceAccountCreator: mockServiceAccountCreator,
-		applier:               mockedApplier,
-	}
-
-	return doguUpgradeManagerWithMocks{
-		doguUpgradeManager:        sut,
-		client:                    mockK8sClient,
-		doguRemoteRegistryMock:    mockDoguRemoteRegistry,
-		doguLocalRegistryMock:     mockDoguLocalRegistry,
-		imageRegistryMock:         mockImageRegistry,
-		doguRegistratorMock:       mockDoguRegistrator,
-		dependencyValidatorMock:   mockDependencyValidator,
-		serviceAccountCreatorMock: mockServiceAccountCreator,
-		applierMock:               mockedApplier,
-	}
-}
-
-func getDoguUpgradeManagerTestData(t *testing.T) (*k8sv1.Dogu, *core.Dogu, *corev1.ConfigMap, *imagev1.ConfigFile) {
-	ldapCr := readTestDataLdapCr(t)
-	ldapDogu := readTestDataLdapDogu(t)
-	ldapDoguDescriptor := readTestDataLdapDescriptor(t)
-	imageConfig := readTestDataImageConfig(t)
-	return ldapCr, ldapDogu, ldapDoguDescriptor, imageConfig
-}
-
 func TestNewDoguUpgradeManager(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
 	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = func() *rest.Config {
-		return &rest.Config{}
-	}
+	ctrl.GetConfigOrDie = createTestRestConfig
 
 	t.Run("fail when no valid kube config was found", func(t *testing.T) {
 		// given
@@ -197,13 +149,11 @@ func Test_doguUpgradeManager_checkDoguHealth(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
 	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = func() *rest.Config {
-		return &rest.Config{}
-	}
+	ctrl.GetConfigOrDie = createTestRestConfig
+	operatorConfig := &config.OperatorConfig{}
+	operatorConfig.Namespace = testNamespace
 
 	t.Run("should succeed", func(t *testing.T) {
-		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
 		doguRegistry := &cesmocks.DoguRegistry{}
 		cesRegistry := &cesmocks.Registry{}
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
@@ -230,7 +180,7 @@ func Test_doguUpgradeManager_checkDoguHealth(t *testing.T) {
 		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry)
 
 		// when
-		err := sut.checkDoguHealth(context.TODO(), ldapResource)
+		err := sut.doguHealthChecker.CheckWithResource(context.TODO(), ldapResource)
 
 		// then
 		require.NoError(t, err)
@@ -238,8 +188,6 @@ func Test_doguUpgradeManager_checkDoguHealth(t *testing.T) {
 		doguRegistry.AssertExpectations(t)
 	})
 	t.Run("should fail because of unready replicas", func(t *testing.T) {
-		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
 		doguRegistry := &cesmocks.DoguRegistry{}
 		cesRegistry := &cesmocks.Registry{}
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
@@ -267,7 +215,7 @@ func Test_doguUpgradeManager_checkDoguHealth(t *testing.T) {
 		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry)
 
 		// when
-		err := sut.checkDoguHealth(context.TODO(), ldapResource)
+		err := sut.doguHealthChecker.CheckWithResource(context.TODO(), ldapResource)
 
 		// then
 		require.Error(t, err)
@@ -275,4 +223,71 @@ func Test_doguUpgradeManager_checkDoguHealth(t *testing.T) {
 		cesRegistry.AssertExpectations(t)
 		doguRegistry.AssertExpectations(t)
 	})
+}
+
+func Test_doguUpgradeManager_checkDependencyDogusHealthy(t *testing.T) {
+	// override default controller method to retrieve a kube config
+	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
+	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
+	ctrl.GetConfigOrDie = createTestRestConfig
+
+	operatorConfig := &config.OperatorConfig{}
+	operatorConfig.Namespace = testNamespace
+
+	t.Run("should succeed when all dogu dependencies are in a healthy state", func(t *testing.T) {
+		// when
+
+		// then
+
+	})
+	t.Run("should fail when at least one dependency dogus is unhealthy", func(t *testing.T) {
+		redmineCr := readTestDataRedmineCr(t)
+
+		doguRegistry := &cesmocks.DoguRegistry{}
+		cesRegistry := &cesmocks.Registry{}
+		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+		dependentDeployment := &appsv1.Deployment{
+			TypeMeta: deploymentTypeMeta,
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "redmine",
+				Namespace: testNamespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: "somethingNonEmptyToo"}},
+			},
+			Status: appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
+		}
+		dependencyDeployment := &appsv1.Deployment{
+			TypeMeta: deploymentTypeMeta,
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "postgresql",
+				Namespace: testNamespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: "somethingNonEmpty"}},
+			},
+			Status: appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 0},
+		}
+
+		scheme := runtime.NewScheme()
+		scheme.AddKnownTypeWithName(dependencyDeployment.GroupVersionKind(), &appsv1.Deployment{})
+		myClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dependentDeployment, dependencyDeployment).Build()
+
+		ldapResource := readTestDataLdapCr(t)
+		ldapResource.Namespace = testNamespace
+		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry)
+
+		// when
+		err := sut.checkDependencyDogusHealthy(context.TODO(), redmineCr, nil)
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, "dogu appears unhealthy (expected: 1, ready: 0)", err.Error())
+		cesRegistry.AssertExpectations(t)
+		doguRegistry.AssertExpectations(t)
+	})
+}
+
+func createTestRestConfig() *rest.Config {
+	return &rest.Config{}
 }
