@@ -1,0 +1,8 @@
+{
+  "Name": "official/mandatory2",
+  "Version": "4.3.2-1",
+  "DisplayName": "Mandatory Dep 2",
+  "Image": "registry.cloudogu.com/official/mandatory2",
+  "Dependencies": [],
+  "OptionalDependencies": []
+}

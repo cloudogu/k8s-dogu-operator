@@ -4,13 +4,13 @@ go 1.18
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
-	github.com/cloudogu/cesapp-lib v0.4.0
+	github.com/cloudogu/cesapp-lib v0.0.0-20220906124759-f99bf1b04490
 	github.com/cloudogu/cesapp/v5 v5.0.0-20220823093250-9363b1cb6d3a
 	github.com/cloudogu/k8s-apply-lib v0.4.0
 	github.com/coreos/etcd v3.3.27+incompatible
 	github.com/go-logr/logr v1.2.3
 	github.com/google/go-containerregistry v0.8.0
-	github.com/hashicorp/go-multierror v1.1.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/pkg/errors v0.9.1

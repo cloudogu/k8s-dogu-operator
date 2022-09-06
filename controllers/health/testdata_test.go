@@ -26,6 +26,18 @@ var postgresqlCrBytes []byte
 //go:embed testdata/postgresql-dogu.json
 var postgresqlBytes []byte
 
+//go:embed testdata/mandatory1-dogu.json
+var mandatory1Bytes []byte
+
+//go:embed testdata/mandatory2-dogu.json
+var mandatory2Bytes []byte
+
+//go:embed testdata/optional1-dogu.json
+var optional1Bytes []byte
+
+//go:embed testdata/optional2-dogu.json
+var optional2Bytes []byte
+
 func readTestDataPostgresqlCr(t *testing.T) *corev1.Dogu {
 	t.Helper()
 
@@ -38,40 +50,16 @@ func readTestDataPostgresqlCr(t *testing.T) *corev1.Dogu {
 	return PostgresqlCr
 }
 
-func readTestDataPostgresqlDogu(t *testing.T) *core.Dogu {
+func readTestDataDogu(t *testing.T, doguBytes []byte) *core.Dogu {
 	t.Helper()
 
-	PostgresqlDogu := &core.Dogu{}
-	err := json.Unmarshal(postgresqlBytes, PostgresqlDogu)
+	dogu := &core.Dogu{}
+	err := json.Unmarshal(doguBytes, dogu)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	return PostgresqlDogu
-}
-
-func readTestDataRedmineCr(t *testing.T) *corev1.Dogu {
-	t.Helper()
-
-	redmineCr := &corev1.Dogu{}
-	err := yaml.Unmarshal(redmineCrBytes, redmineCr)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return redmineCr
-}
-
-func readTestDataRedmineDogu(t *testing.T) *core.Dogu {
-	t.Helper()
-
-	redmineDogu := &core.Dogu{}
-	err := json.Unmarshal(redmineBytes, redmineDogu)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return redmineDogu
+	return dogu
 }
 
 func getTestScheme() *runtime.Scheme {
