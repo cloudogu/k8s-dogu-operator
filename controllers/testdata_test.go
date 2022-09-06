@@ -3,6 +3,8 @@ package controllers
 import (
 	_ "embed"
 	"encoding/json"
+	"testing"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -12,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
-	"testing"
 )
 
 //go:embed testdata/redmine-cr.yaml
@@ -33,6 +34,18 @@ var ldapDescriptorBytes []byte
 //go:embed testdata/ldap-dogu.json
 var ldapBytes []byte
 
+//go:embed testdata/postgresql-dogu.json
+var postgresqlBytes []byte
+
+//go:embed testdata/simple-postfix-dogu.json
+var postfixBytes []byte
+
+//go:embed testdata/simple-nginx-dogu.json
+var nginxBytes []byte
+
+//go:embed testdata/simple-cas-dogu.json
+var casBytes []byte
+
 func readTestDataLdapCr(t *testing.T) *corev1.Dogu {
 	t.Helper()
 
@@ -48,13 +61,7 @@ func readTestDataLdapCr(t *testing.T) *corev1.Dogu {
 func readTestDataLdapDogu(t *testing.T) *core.Dogu {
 	t.Helper()
 
-	ldapDogu := &core.Dogu{}
-	err := json.Unmarshal(ldapBytes, ldapDogu)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return ldapDogu
+	return readTestDataDogu(t, ldapBytes)
 }
 func readTestDataLdapDescriptor(t *testing.T) *v1.ConfigMap {
 	t.Helper()
@@ -83,13 +90,7 @@ func readTestDataRedmineCr(t *testing.T) *corev1.Dogu {
 func readTestDataRedmineDogu(t *testing.T) *core.Dogu {
 	t.Helper()
 
-	redmineDogu := &core.Dogu{}
-	err := json.Unmarshal(redmineBytes, redmineDogu)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return redmineDogu
+	return readTestDataDogu(t, redmineBytes)
 }
 
 func readTestDataImageConfig(t *testing.T) *imagev1.ConfigFile {
@@ -102,6 +103,18 @@ func readTestDataImageConfig(t *testing.T) *imagev1.ConfigFile {
 	}
 
 	return imageConfig
+}
+
+func readTestDataDogu(t *testing.T, doguBytes []byte) *core.Dogu {
+	t.Helper()
+
+	dogu := &core.Dogu{}
+	err := json.Unmarshal(doguBytes, dogu)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return dogu
 }
 
 func getTestScheme() *runtime.Scheme {
