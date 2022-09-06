@@ -129,7 +129,7 @@ func (dum *doguUpgradeManager) getDogusForResource(doguResource *k8sv1.Dogu) (lo
 }
 
 func (dum *doguUpgradeManager) getLocalDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
-	dogu, err := dum.doguLocalRegistry.Get(doguResource.Spec.Name)
+	dogu, err := dum.doguLocalRegistry.Get(doguResource.Name)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch the local descriptor for dogu %s: %w", doguResource.Spec.Name, err)
 	}

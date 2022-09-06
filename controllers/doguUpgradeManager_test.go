@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,24 @@ const defaultNamespace = ""
 var deploymentTypeMeta = metav1.TypeMeta{
 	APIVersion: "apps/v1",
 	Kind:       "Deployment",
+}
+
+func createTestRestConfig() *rest.Config {
+	return &rest.Config{}
+}
+
+func createDeployment(doguName string, replicas, replicasReady int32) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		TypeMeta: deploymentTypeMeta,
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      doguName,
+			Namespace: defaultNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: "somethingNonEmptyToo"}},
+		},
+		Status: appsv1.DeploymentStatus{Replicas: replicas, ReadyReplicas: replicasReady},
+	}
 }
 
 func TestNewDoguUpgradeManager(t *testing.T) {
@@ -271,20 +290,42 @@ func Test_doguUpgradeManager_checkDependencyDogusHealthy(t *testing.T) {
 	})
 }
 
-func createTestRestConfig() *rest.Config {
-	return &rest.Config{}
-}
+func Test_doguUpgradeManager_getDogusForResource(t *testing.T) {
+	// override default controller method to retrieve a kube config
+	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
+	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
+	ctrl.GetConfigOrDie = createTestRestConfig
 
-func createDeployment(doguName string, replicas, replicasReady int32) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		TypeMeta: deploymentTypeMeta,
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguName,
-			Namespace: defaultNamespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: "somethingNonEmptyToo"}},
-		},
-		Status: appsv1.DeploymentStatus{Replicas: replicas, ReadyReplicas: replicasReady},
-	}
+	operatorConfig := &config.OperatorConfig{}
+	operatorConfig.Namespace = testNamespace
+
+	t.Run("should return installed dogu and remote upgrade", func(t *testing.T) {
+		// given
+		redmineCr := readTestDataRedmineCr(t)
+		upgradeVersion := "4.2.3-11"
+		redmineCr.Spec.Version = upgradeVersion
+		redmineDogu := readTestDataRedmineDogu(t)
+		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguUpgrade.Version = upgradeVersion
+
+		doguRegistry := &cesmocks.DoguRegistry{}
+		doguRegistry.On("Get", "redmine").Return(redmineDogu, nil)
+		cesRegistry := &cesmocks.Registry{}
+		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+
+		remoteRegistryMock := &cesremotemocks.Registry{}
+		remoteRegistryMock.On("GetVersion", "official/redmine", upgradeVersion).Return(redmineDoguUpgrade, nil)
+
+		sut, err := NewDoguUpgradeManager(nil, operatorConfig, cesRegistry)
+		sut.doguRemoteRegistry = remoteRegistryMock
+
+		// when
+		localDogu, remoteDogu, err := sut.getDogusForResource(redmineCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, redmineDogu, localDogu)
+		assert.Equal(t, redmineDoguUpgrade, remoteDogu)
+		remoteRegistryMock.AssertExpectations(t)
+	})
 }
