@@ -134,7 +134,6 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 }
 
 func (dc *doguChecker) checkByNameAndK8sObjectKey(ctx context.Context, doguName string, objectKey *client.ObjectKey) error {
-	println("looking at", doguName)
 	deployment := &v1.Deployment{}
 	err := dc.client.Get(ctx, *objectKey, deployment)
 	if err != nil {
