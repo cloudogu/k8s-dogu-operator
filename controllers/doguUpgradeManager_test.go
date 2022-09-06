@@ -181,10 +181,48 @@ func Test_doguUpgradeManager_checkDependencyDogusHealthy(t *testing.T) {
 	operatorConfig.Namespace = testNamespace
 
 	t.Run("should succeed when all dogu dependencies are in a healthy state", func(t *testing.T) {
+		redmineCr := readTestDataRedmineCr(t)
+
+		doguRegistry := &cesmocks.DoguRegistry{}
+		cesRegistry := &cesmocks.Registry{}
+		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+
+		redmineDogu := readTestDataRedmineDogu(t)
+		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
+		nginxDogu := readTestDataDogu(t, nginxBytes)
+		casDogu := readTestDataDogu(t, casBytes)
+		postfixDogu := readTestDataDogu(t, postfixBytes)
+		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
+		doguRegistry.On("Get", "nginx").Return(nginxDogu, nil)
+		doguRegistry.On("Get", "cas").Return(casDogu, nil)
+		doguRegistry.On("Get", "postfix").Return(postfixDogu, nil)
+
+		dependentDeployment := createDeployment("redmine", 1, 0)
+		dependencyDeployment1 := createDeployment("postgresql", 1, 1)
+		dependencyDeployment2 := createDeployment("nginx", 1, 1)
+		dependencyDeployment3 := createDeployment("cas", 1, 1)
+		dependencyDeployment4 := createDeployment("postfix", 1, 1)
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
+			Build()
+
+		ldapResource := readTestDataLdapCr(t)
+		ldapResource.Namespace = testNamespace
+		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry)
+		dependencyValidatorMock := &mocks.DependencyValidator{}
+		dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+		sut.dependencyValidator = dependencyValidatorMock
+
 		// when
+		err := sut.checkDependencyDogusHealthy(context.TODO(), redmineCr, redmineDogu)
 
 		// then
-
+		require.NoError(t, err)
+		cesRegistry.AssertExpectations(t)
+		doguRegistry.AssertExpectations(t)
+		dependencyValidatorMock.AssertExpectations(t)
 	})
 	t.Run("should fail when at least one dependency dogus is unhealthy", func(t *testing.T) {
 		redmineCr := readTestDataRedmineCr(t)
