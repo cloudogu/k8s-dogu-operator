@@ -38,6 +38,7 @@ const (
 	InstallEventReason        = "Installation"
 	ErrorOnInstallEventReason = "ErrInstallation"
 	RequeueEventReason        = "Requeue"
+	ErrorOnRequeueEventReason = "ErrRequeue"
 )
 
 const (
@@ -139,7 +140,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
 		})
 		if err != nil {
-			r.recorder.Event(doguResource, v1.EventTypeWarning, InstallEventReason, "Failed to requeue the installation.")
+			r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the installation.")
 			return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
 		}
 
