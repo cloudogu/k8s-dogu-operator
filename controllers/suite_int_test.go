@@ -12,6 +12,7 @@ import (
 	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"k8s.io/client-go/rest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -54,6 +55,9 @@ var EtcdDoguRegistry cesmocks.DoguRegistry
 const TimeoutInterval = time.Second * 10
 const PollingInterval = time.Second * 1
 
+var oldGetConfig func() (*rest.Config, error)
+var oldGetConfigOrDie func() *rest.Config
+
 func TestAPIs(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
@@ -86,6 +90,16 @@ var _ = ginkgo.BeforeSuite(func() {
 	cfg, err := testEnv.Start()
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	gomega.Expect(cfg).NotTo(gomega.BeNil())
+
+	oldGetConfig = ctrl.GetConfig
+	ctrl.GetConfig = func() (*rest.Config, error) {
+		return cfg, nil
+	}
+
+	oldGetConfigOrDie = ctrl.GetConfigOrDie
+	ctrl.GetConfigOrDie = func() *rest.Config {
+		return cfg
+	}
 
 	err = k8sv1.AddToScheme(scheme.Scheme)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -190,4 +204,7 @@ var _ = ginkgo.AfterSuite(func() {
 	ginkgo.By("tearing down the test environment")
 	err := testEnv.Stop()
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	ctrl.GetConfig = oldGetConfig
+	ctrl.GetConfigOrDie = oldGetConfigOrDie
 })
