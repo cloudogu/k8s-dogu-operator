@@ -14,6 +14,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -27,6 +28,7 @@ type DoguManager struct {
 	scheme         *runtime.Scheme
 	installManager installManager
 	deleteManager  deleteManager
+	recorder       record.EventRecorder
 }
 
 type installManager interface {
@@ -96,13 +98,13 @@ type applier interface {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*DoguManager, error) {
+func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	err := validateKeyProvider(cesRegistry.GlobalConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate key provider: %w", err)
 	}
 
-	installManager, err := NewDoguInstallManager(client, operatorConfig, cesRegistry)
+	installManager, err := NewDoguInstallManager(client, operatorConfig, cesRegistry, eventRecorder)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +118,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		scheme:         client.Scheme(),
 		installManager: installManager,
 		deleteManager:  deleteManager,
+		recorder:       eventRecorder,
 	}, nil
 }
 
@@ -162,15 +165,18 @@ func deleteDoguConfigMap(ctx context.Context, client client.Client, doguConfigMa
 
 // Install installs a dogu resource.
 func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Event(doguResource, "Normal", "Installation", "Starting installation...")
 	return m.installManager.Install(ctx, doguResource)
 }
 
 // Upgrade upgrades a dogu resource.
 func (m *DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
+	//m.recorder.Eventf(doguResource, "Normal", "Installation", "Starting upgrade of dogu [%s] from version [%s] to version [%s]", doguResource.Name)
 	return fmt.Errorf("currently not implemented")
 }
 
 // Delete deletes a dogu resource.
 func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Eventf(doguResource, "Normal", "Deinstallation", "Starting deinstallation of the %s dogu.", doguResource.Name)
 	return m.deleteManager.Delete(ctx, doguResource)
 }

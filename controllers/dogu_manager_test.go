@@ -22,7 +22,10 @@ func TestDoguManager_Delete(t *testing.T) {
 	inputContext := context.Background()
 	deleteManager := &mocks.DeleteManager{}
 	deleteManager.On("Delete", inputContext, inputDogu).Return(nil)
-	m := DoguManager{deleteManager: deleteManager}
+	eventRecorder := &mocks.EventRecorder{}
+	m := DoguManager{deleteManager: deleteManager, recorder: eventRecorder}
+
+	eventRecorder.On("Eventf", mock.Anything, "Normal", "Deinstallation", "Starting deinstallation of the %s dogu.", "")
 
 	// when
 	err := m.Delete(inputContext, inputDogu)
@@ -38,7 +41,10 @@ func TestDoguManager_Install(t *testing.T) {
 	inputContext := context.Background()
 	installManager := &mocks.InstallManager{}
 	installManager.On("Install", inputContext, inputDogu).Return(nil)
-	m := DoguManager{installManager: installManager}
+	eventRecorder := &mocks.EventRecorder{}
+	m := DoguManager{installManager: installManager, recorder: eventRecorder}
+
+	eventRecorder.On("Event", mock.Anything, "Normal", "Installation", "Starting installation...")
 
 	// when
 	err := m.Install(inputContext, inputDogu)
@@ -53,7 +59,8 @@ func TestDoguManager_Upgrade(t *testing.T) {
 	// given
 	inputDogu := &k8sv1.Dogu{}
 	inputContext := context.Background()
-	m := DoguManager{}
+	eventRecorder := &mocks.EventRecorder{}
+	m := DoguManager{recorder: eventRecorder}
 
 	// when
 	err := m.Upgrade(inputContext, inputDogu)
@@ -79,12 +86,13 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry := &cesmocks.Registry{}
 		globalConfig := &cesmocks.ConfigurationContext{}
 		doguRegistry := &cesmocks.DoguRegistry{}
+		eventRecorder := &mocks.EventRecorder{}
 		globalConfig.On("Exists", "key_provider").Return(true, nil)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
-		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry)
+		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.NoError(t, err)
@@ -100,13 +108,14 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry := &cesmocks.Registry{}
 		globalConfig := &cesmocks.ConfigurationContext{}
 		doguRegistry := &cesmocks.DoguRegistry{}
+		eventRecorder := &mocks.EventRecorder{}
 		globalConfig.On("Exists", "key_provider").Return(false, nil)
 		globalConfig.On("Set", "key_provider", "pkcs1v15").Return(nil)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
-		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry)
+		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.NoError(t, err)
@@ -118,6 +127,7 @@ func TestNewDoguManager(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
+		eventRecorder := &mocks.EventRecorder{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
 		globalConfig := &cesmocks.ConfigurationContext{}
@@ -125,7 +135,7 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
-		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry)
+		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.Error(t, err)
@@ -144,9 +154,10 @@ func TestNewDoguManager(t *testing.T) {
 		globalConfig.On("Exists", "key_provider").Return(false, nil)
 		globalConfig.On("Set", "key_provider", "pkcs1v15").Return(assert.AnError)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
+		eventRecorder := &mocks.EventRecorder{}
 
 		// when
-		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry)
+		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.Error(t, err)

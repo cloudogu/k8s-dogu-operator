@@ -133,6 +133,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient := &mocks.Applier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
+	eventHandler := &mocks.EventRecorder{}
+	eventHandler.On("Event", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	eventHandler.On("Eventf", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
 	installManager := &doguInstallManager{
 		client:                k8sManager.GetClient(),
 		scheme:                k8sManager.GetScheme(),
@@ -146,6 +150,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguSecretHandler:     doguSecretHandler,
 		applier:               applyClient,
 		fileExtractor:         fileExtract,
+		recorder:              eventHandler,
 	}
 
 	deleteManager := &doguDeleteManager{
@@ -162,9 +167,13 @@ var _ = ginkgo.BeforeSuite(func() {
 		scheme:         k8sManager.GetScheme(),
 		installManager: installManager,
 		deleteManager:  deleteManager,
+		recorder:       eventHandler,
 	}
 
-	err = NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager).SetupWithManager(k8sManager)
+	reconciler, err := NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager, eventHandler, testNamespace)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+	err = reconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	go func() {

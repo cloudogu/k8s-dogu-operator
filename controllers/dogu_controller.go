@@ -22,14 +22,23 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"strings"
 )
 
 type operation int
+
+const (
+	InstallEventReason        = "Installation"
+	ErrorOnInstallEventReason = "ErrInstallation"
+	RequeueEventReason        = "Requeue"
+)
 
 const (
 	Install operation = iota
@@ -57,6 +66,7 @@ type doguReconciler struct {
 	scheme             *runtime.Scheme
 	doguManager        manager
 	doguRequeueHandler requeueHandler
+	recorder           record.EventRecorder
 }
 
 // manager abstracts the simple dogu operations in a k8s CES.
@@ -72,20 +82,24 @@ type manager interface {
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
 type requeueHandler interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
-	Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error) (ctrl.Result, error)
+	Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error, onRequeue func(dogu *k8sv1.Dogu)) (ctrl.Result, error)
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager manager) *doguReconciler {
+func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager manager, eventHandler record.EventRecorder, namespace string) (*doguReconciler, error) {
 	doguStatusReporter := resource.NewDoguStatusReporter(client)
-	doguRequeueHandler := NewDoguRequeueHandler(client, doguStatusReporter)
+	doguRequeueHandler, err := NewDoguRequeueHandler(client, doguStatusReporter, eventHandler, namespace)
+	if err != nil {
+		return nil, err
+	}
 
 	return &doguReconciler{
 		client:             client,
 		scheme:             scheme,
 		doguManager:        doguManager,
 		doguRequeueHandler: doguRequeueHandler,
-	}
+		recorder:           eventHandler,
+	}, nil
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -113,18 +127,22 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	case Install:
 		installError := r.doguManager.Install(ctx, doguResource)
 		contextMessageOnError := fmt.Sprintf("failed to install dogu %s", doguResource.Name)
-		result, err := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError)
+
+		if installError != nil {
+			printError := strings.Replace(installError.Error(), "\n", "", -1)
+			r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnInstallEventReason, "Installation failed. Reason: %s.", printError)
+		} else {
+			r.recorder.Event(doguResource, v1.EventTypeNormal, InstallEventReason, "Installation successful.")
+		}
+
+		result, err := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError, func(dogu *k8sv1.Dogu) {
+			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
+		})
 		if err != nil {
+			r.recorder.Event(doguResource, v1.EventTypeWarning, InstallEventReason, "Failed to requeue the installation.")
 			return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
 		}
 
-		if result.Requeue || result.RequeueAfter != 0 {
-			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
-			err := doguResource.Update(ctx, r.client)
-			if err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", err)
-			}
-		}
 		return result, nil
 	case Upgrade:
 		return ctrl.Result{}, nil
