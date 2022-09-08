@@ -41,13 +41,13 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
 		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventHandler := &mocks.EventRecorder{}
+		eventRecorder := &mocks.EventRecorder{}
 
 		handler := doguRequeueHandler{
 			client:         fakeClient,
 			nonCacheClient: fakeNonCacheClient,
 			namespace:      namespace,
-			recorder:       eventHandler,
+			recorder:       eventRecorder,
 		}
 
 		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
@@ -63,7 +63,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 		assert.Nil(t, doguResource.Status.StatusMessages)
 		assert.Equal(t, "false", doguResource.Labels["test"])
-		mock.AssertExpectationsForObjects(t, eventHandler)
+		mock.AssertExpectationsForObjects(t, eventRecorder)
 	})
 
 	t.Run("handle non reportable error", func(t *testing.T) {
@@ -75,13 +75,13 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects().Build()
 		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventHandler := &mocks.EventRecorder{}
+		eventRecorder := &mocks.EventRecorder{}
 
 		handler := doguRequeueHandler{
 			client:         fakeClient,
 			nonCacheClient: fakeNonCacheClient,
 			namespace:      namespace,
-			recorder:       eventHandler,
+			recorder:       eventRecorder,
 		}
 
 		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
@@ -95,7 +95,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		assert.Equal(t, result.RequeueAfter, time.Duration(0))
 		assert.Nil(t, doguResource.Status.StatusMessages)
 		assert.Equal(t, "false", doguResource.Labels["test"])
-		mock.AssertExpectationsForObjects(t, eventHandler)
+		mock.AssertExpectationsForObjects(t, eventRecorder)
 	})
 
 	t.Run("handle with requeueable error", func(t *testing.T) {
@@ -118,14 +118,14 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 
 		fakeNonCacheClient := fake2.NewSimpleClientset(event)
-		eventHandler := &mocks.EventRecorder{}
-		eventHandler.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
+		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
 		handler := doguRequeueHandler{
 			client:         fakeClient,
 			nonCacheClient: fakeNonCacheClient,
 			namespace:      namespace,
-			recorder:       eventHandler,
+			recorder:       eventRecorder,
 		}
 		myError := myRequeueableError{}
 
@@ -139,7 +139,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		assert.False(t, result.Requeue)
 		assert.Equal(t, result.RequeueAfter, time.Second*10)
 		assert.Equal(t, "true", doguResource.Labels["test"])
-		mock.AssertExpectationsForObjects(t, eventHandler)
+		mock.AssertExpectationsForObjects(t, eventRecorder)
 
 		eventList, err := fakeNonCacheClient.CoreV1().Events(namespace).List(context.Background(), metav1.ListOptions{})
 		require.NoError(t, err)
@@ -156,11 +156,11 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 		return &rest.Config{}, nil
 	}
 
-	eventHandler := &mocks.EventRecorder{}
+	eventRecorder := &mocks.EventRecorder{}
 	fakeClient := fake.NewClientBuilder().WithScheme(&runtime.Scheme{}).Build()
 
 	// when
-	handler, err := NewDoguRequeueHandler(fakeClient, eventHandler, "mynamespace")
+	handler, err := NewDoguRequeueHandler(fakeClient, eventRecorder, "mynamespace")
 
 	// then
 	require.NoError(t, err)

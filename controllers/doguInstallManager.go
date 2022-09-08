@@ -140,14 +140,14 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	logger.Info("Check dogu dependencies...")
-	m.recorder.Event(doguResource, "Normal", "Installation", "Checking dependencies...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
 	err = m.dependencyValidator.ValidateDependencies(dogu)
 	if err != nil {
 		return err
 	}
 
 	logger.Info("Register dogu...")
-	m.recorder.Event(doguResource, "Normal", "Installation", "Registering in the local dogu registry...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 	err = m.doguRegistrator.RegisterDogu(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu: %w", err)
@@ -160,14 +160,14 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	logger.Info("Create service accounts...")
-	m.recorder.Event(doguResource, "Normal", "Installation", "Creating required service accounts...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 	err = m.serviceAccountCreator.CreateAll(ctx, doguResource.Namespace, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create service accounts: %w", err)
 	}
 
 	logger.Info("Pull image config...")
-	m.recorder.Eventf(doguResource, "Normal", "Installation", "Pulling dogu image %s...", dogu.Image+":"+dogu.Version)
+	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", dogu.Image+":"+dogu.Version)
 	imageConfig, err := m.imageRegistry.PullImageConfig(ctx, dogu.Image+":"+dogu.Version)
 	if err != nil {
 		return fmt.Errorf("failed to pull image config: %w", err)
@@ -184,7 +184,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	logger.Info("Create dogu resources...")
-	m.recorder.Event(doguResource, "Normal", "Installation", "Creating kubernetes resources...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig, customDeployment)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu resources: %w", err)
@@ -324,11 +324,11 @@ func (m *doguInstallManager) getDoguDescriptorWithConfigMap(ctx context.Context,
 
 	if doguConfigMap != nil {
 		logger.Info("Fetching dogu from custom configmap...")
-		m.recorder.Event(doguResource, "Normal", "Installation", "Fetching dogu descriptor using custom configmap...")
+		m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor using custom configmap...")
 		return m.getDoguDescriptorFromConfigMap(doguConfigMap)
 	} else {
 		logger.Info("Fetching dogu from dogu registry...")
-		m.recorder.Event(doguResource, "Normal", "Installation", "Fetching dogu descriptor from dogu registry...")
+		m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
 		return m.getDoguDescriptorFromRemoteRegistry(doguResource)
 	}
 }

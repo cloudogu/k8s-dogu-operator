@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -25,7 +26,7 @@ func TestDoguManager_Delete(t *testing.T) {
 	eventRecorder := &mocks.EventRecorder{}
 	m := DoguManager{deleteManager: deleteManager, recorder: eventRecorder}
 
-	eventRecorder.On("Eventf", mock.Anything, "Normal", "Deinstallation", "Starting deinstallation of the %s dogu.", "")
+	eventRecorder.On("Eventf", mock.Anything, corev1.EventTypeNormal, "Deinstallation", "Starting deinstallation of the %s dogu.", "")
 
 	// when
 	err := m.Delete(inputContext, inputDogu)
@@ -44,7 +45,7 @@ func TestDoguManager_Install(t *testing.T) {
 	eventRecorder := &mocks.EventRecorder{}
 	m := DoguManager{installManager: installManager, recorder: eventRecorder}
 
-	eventRecorder.On("Event", mock.Anything, "Normal", "Installation", "Starting installation...")
+	eventRecorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
 
 	// when
 	err := m.Install(inputContext, inputDogu)

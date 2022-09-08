@@ -178,7 +178,6 @@ var _ = Describe("Dogu Controller", func() {
 				eventList := &corev1.EventList{}
 				err = k8sClient.List(ctx, eventList, &client.ListOptions{})
 				if err != nil {
-					fmt.Print(fmt.Sprintf("HIER: %+v\n", err))
 					return false
 				}
 

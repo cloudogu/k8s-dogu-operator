@@ -147,7 +147,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient := &mocks.Applier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
-	eventHandler := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
+	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
 
 	installManager := &doguInstallManager{
 		client:                k8sManager.GetClient(),
@@ -162,7 +162,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguSecretHandler:     doguSecretHandler,
 		applier:               applyClient,
 		fileExtractor:         fileExtract,
-		recorder:              eventHandler,
+		recorder:              eventRecorder,
 	}
 
 	deleteManager := &doguDeleteManager{
@@ -179,10 +179,10 @@ var _ = ginkgo.BeforeSuite(func() {
 		scheme:         k8sManager.GetScheme(),
 		installManager: installManager,
 		deleteManager:  deleteManager,
-		recorder:       eventHandler,
+		recorder:       eventRecorder,
 	}
 
-	reconciler, err := NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager, eventHandler, testNamespace)
+	reconciler, err := NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager, eventRecorder, testNamespace)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = reconciler.SetupWithManager(k8sManager)

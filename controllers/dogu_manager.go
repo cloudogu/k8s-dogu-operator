@@ -165,18 +165,17 @@ func deleteDoguConfigMap(ctx context.Context, client client.Client, doguConfigMa
 
 // Install installs a dogu resource.
 func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	m.recorder.Event(doguResource, "Normal", "Installation", "Starting installation...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
 	return m.installManager.Install(ctx, doguResource)
 }
 
 // Upgrade upgrades a dogu resource.
 func (m *DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
-	//m.recorder.Eventf(doguResource, "Normal", "Installation", "Starting upgrade of dogu [%s] from version [%s] to version [%s]", doguResource.Name)
 	return fmt.Errorf("currently not implemented")
 }
 
 // Delete deletes a dogu resource.
 func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	m.recorder.Eventf(doguResource, "Normal", "Deinstallation", "Starting deinstallation of the %s dogu.", doguResource.Name)
+	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, DeinstallEventReason, "Starting deinstallation of the %s dogu.", doguResource.Name)
 	return m.deleteManager.Delete(ctx, doguResource)
 }

@@ -36,6 +36,8 @@ type operation int
 const (
 	InstallEventReason        = "Installation"
 	ErrorOnInstallEventReason = "ErrInstallation"
+	DeinstallEventReason      = "Deinstallation"
+	ErrorDeinstallEventReason = "ErrDeinstallation"
 	RequeueEventReason        = "Requeue"
 	ErrorOnRequeueEventReason = "ErrRequeue"
 )
@@ -86,8 +88,8 @@ type requeueHandler interface {
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager manager, eventHandler record.EventRecorder, namespace string) (*doguReconciler, error) {
-	doguRequeueHandler, err := NewDoguRequeueHandler(client, eventHandler, namespace)
+func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager manager, eventRecorder record.EventRecorder, namespace string) (*doguReconciler, error) {
+	doguRequeueHandler, err := NewDoguRequeueHandler(client, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +99,7 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 		scheme:             scheme,
 		doguManager:        doguManager,
 		doguRequeueHandler: doguRequeueHandler,
-		recorder:           eventHandler,
+		recorder:           eventRecorder,
 	}, nil
 }
 
@@ -146,11 +148,25 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	case Upgrade:
 		return ctrl.Result{}, nil
 	case Delete:
-		err := r.doguManager.Delete(ctx, doguResource)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to delete dogu: %w", err)
+		deleteError := r.doguManager.Delete(ctx, doguResource)
+		contextMessageOnError := fmt.Sprintf("failed to delete dogu %s", doguResource.Name)
+
+		if deleteError != nil {
+			printError := strings.Replace(deleteError.Error(), "\n", "", -1)
+			r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorDeinstallEventReason, "Deinstallation failed. Reason: %s.", printError)
+		} else {
+			r.recorder.Event(doguResource, v1.EventTypeNormal, DeinstallEventReason, "Deinstallation successful.")
 		}
-		return ctrl.Result{}, nil
+
+		result, err := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, deleteError, func(dogu *k8sv1.Dogu) {
+			doguResource.Status.Status = k8sv1.DoguStatusInstalled
+		})
+		if err != nil {
+			r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the deinstallation.")
+			return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
+		}
+
+		return result, nil
 	case Ignore:
 		return ctrl.Result{}, nil
 	default:
