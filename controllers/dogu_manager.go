@@ -28,6 +28,7 @@ type DoguManager struct {
 	scheme         *runtime.Scheme
 	installManager installManager
 	deleteManager  deleteManager
+	supportManager supportManager
 	recorder       record.EventRecorder
 }
 
@@ -39,6 +40,11 @@ type installManager interface {
 type deleteManager interface {
 	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
+}
+
+type supportManager interface {
+	// HandleSupportFlag handles the support flag in the dogu spec.
+	HandleSupportFlag(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error)
 }
 
 type fileExtractor interface {
@@ -114,10 +120,13 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, err
 	}
 
+	supportManager := NewDoguSupportManager(client, cesRegistry, eventRecorder)
+
 	return &DoguManager{
 		scheme:         client.Scheme(),
 		installManager: installManager,
 		deleteManager:  deleteManager,
+		supportManager: supportManager,
 		recorder:       eventRecorder,
 	}, nil
 }
@@ -178,4 +187,10 @@ func (m *DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
 func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, DeinstallEventReason, "Starting deinstallation of the %s dogu.", doguResource.Name)
 	return m.deleteManager.Delete(ctx, doguResource)
+}
+
+// HandleSupportFlag handles the support flag in the dogu spec.
+func (m *DoguManager) HandleSupportFlag(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, SupportEventReason, "Checking support flag of the dogu.")
+	return m.supportManager.HandleSupportFlag(ctx, doguResource)
 }

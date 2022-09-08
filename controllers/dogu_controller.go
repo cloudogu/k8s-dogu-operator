@@ -38,6 +38,8 @@ const (
 	ErrorOnInstallEventReason = "ErrInstallation"
 	DeinstallEventReason      = "Deinstallation"
 	ErrorDeinstallEventReason = "ErrDeinstallation"
+	SupportEventReason        = "Support"
+	ErrorOnSupportEventReason = "ErrSupport"
 	RequeueEventReason        = "Requeue"
 	ErrorOnRequeueEventReason = "ErrRequeue"
 )
@@ -79,6 +81,8 @@ type manager interface {
 	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
 	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
+	// HandleSupportFlag handles the support flag in the dogu spec.
+	HandleSupportFlag(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error)
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
@@ -103,7 +107,7 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 	}, nil
 }
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// Reconcile is part of the main kubernetes reconciliation loop which aims tomal
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.0/pkg/reconcile
@@ -117,6 +121,29 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
+
+	// Only recognise support mode if dogu is installed.
+	if doguResource.Status.Status == k8sv1.DoguStatusInstalled {
+		// Handle support mode flag and detect if the support mode changed.
+		supportModeChanged, err := r.doguManager.HandleSupportFlag(ctx, doguResource)
+		if err != nil {
+			printError := strings.ReplaceAll(err.Error(), "\n", "")
+			r.recorder.Eventf(doguResource, v1.EventTypeWarning, SupportEventReason, "Handling of support mode failed.", printError)
+			return ctrl.Result{}, fmt.Errorf("failed to handle support mode: %w", err)
+		}
+
+		// Do not care about other operations if the mode has changed. Data change with support won't and shouldn't be processed.
+		if supportModeChanged {
+			r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode has changed. Ignoring other events.")
+			return ctrl.Result{}, nil
+		}
+
+		// Do not care about other operations if the support mode is currently active.
+		if doguResource.Spec.SupportMode {
+			r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode is active. Ignoring other events.")
+			return ctrl.Result{}, nil
+		}
+	}
 
 	requiredOperation, err := evaluateRequiredOperation(doguResource, logger)
 	if err != nil {

@@ -42,6 +42,8 @@ type DoguSpec struct {
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
 	Version string `json:"version,omitempty"`
+	// SupportMode is a flag that indicates if a dogu is in the support mode.
+	SupportMode bool `json:"supportMode,omitempty"`
 }
 
 // DoguStatus defines the observed state of a Dogu
@@ -95,8 +97,8 @@ const (
 	DoguStatusInstalled    = "installed"
 )
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // Dogu is the Schema for the dogus API
 type Dogu struct {
@@ -160,7 +162,7 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	return nil
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // DoguList contains a list of Dogu
 type DoguList struct {

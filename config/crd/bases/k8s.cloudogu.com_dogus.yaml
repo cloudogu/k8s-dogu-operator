@@ -38,6 +38,10 @@ spec:
               name:
                 description: Name of the dogu (e.g. official/ldap)
                 type: string
+              supportMode:
+                description: SupportMode is a flag that indicates if a dogu is in
+                  the support mode.
+                type: boolean
               version:
                 description: Version of the dogu (e.g. 2.4.48-3)
                 type: string
