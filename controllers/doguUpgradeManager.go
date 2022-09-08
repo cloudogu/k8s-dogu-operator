@@ -26,6 +26,9 @@ import (
 type doguHealthChecker interface {
 	// CheckWithResource returns nil if the dogu described by the resource is up and running.
 	CheckWithResource(ctx context.Context, doguResource *k8sv1.Dogu) error
+}
+
+type doguRecursiveHealthChecker interface {
 	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
 	CheckDependenciesRecursive(ctx context.Context, localDogu *core.Dogu, currentK8sNamespace string) error
 }
@@ -60,30 +63,35 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
 
+	doguChecker := health.NewDoguChecker(client, doguLocalRegistry)
+	doguRecursiveChecker := doguChecker
+
 	return &doguUpgradeManager{
-		client:                client,
-		scheme:                scheme,
-		doguLocalRegistry:     doguLocalRegistry,
-		doguRemoteRegistry:    doguRemoteRegistry,
-		imageRegistry:         imageRegistry,
-		dependencyValidator:   dependencyValidator,
-		serviceAccountCreator: serviceAccountCreator,
-		applier:               applier,
-		doguHealthChecker:     health.NewDoguChecker(client, doguLocalRegistry),
+		client:                     client,
+		scheme:                     scheme,
+		doguLocalRegistry:          doguLocalRegistry,
+		doguRemoteRegistry:         doguRemoteRegistry,
+		imageRegistry:              imageRegistry,
+		dependencyValidator:        dependencyValidator,
+		serviceAccountCreator:      serviceAccountCreator,
+		applier:                    applier,
+		doguHealthChecker:          doguChecker,
+		doguRecursiveHealthChecker: doguRecursiveChecker,
 	}, nil
 }
 
 type doguUpgradeManager struct {
-	client                client.Client
-	scheme                *runtime.Scheme
-	doguLocalRegistry     cesregistry.DoguRegistry
-	doguRemoteRegistry    cesremote.Registry
-	imageRegistry         imageRegistry
-	doguRegistrator       doguRegistrator
-	dependencyValidator   dependencyValidator
-	serviceAccountCreator serviceAccountCreator
-	applier               applier
-	doguHealthChecker     doguHealthChecker
+	client                     client.Client
+	scheme                     *runtime.Scheme
+	doguLocalRegistry          cesregistry.DoguRegistry
+	doguRemoteRegistry         cesremote.Registry
+	imageRegistry              imageRegistry
+	doguRegistrator            doguRegistrator
+	dependencyValidator        dependencyValidator
+	serviceAccountCreator      serviceAccountCreator
+	applier                    applier
+	doguHealthChecker          doguHealthChecker
+	doguRecursiveHealthChecker doguRecursiveHealthChecker
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
@@ -177,7 +185,7 @@ func (dum *doguUpgradeManager) checkDependencyDogusHealthy(ctx context.Context, 
 		return err
 	}
 
-	return dum.doguHealthChecker.CheckDependenciesRecursive(ctx, localDogu, doguResource.Namespace)
+	return dum.doguRecursiveHealthChecker.CheckDependenciesRecursive(ctx, localDogu, doguResource.Namespace)
 
 }
 

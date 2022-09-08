@@ -329,3 +329,11 @@ func Test_doguUpgradeManager_getDogusForResource(t *testing.T) {
 		remoteRegistryMock.AssertExpectations(t)
 	})
 }
+
+func Test_doguUpgradeManager_namespaceChange(t *testing.T) {
+	t.Run("should return true when the namespace should be changed", func(t *testing.T) {
+		// when
+
+		// then
+	})
+}
