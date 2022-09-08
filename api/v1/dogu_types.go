@@ -19,9 +19,10 @@ package v1
 import (
 	"context"
 	"fmt"
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -42,6 +43,16 @@ type DoguSpec struct {
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
 	Version string `json:"version,omitempty"`
+	//
+	UpgradeConfig UpgradeConfig `json:"upgradeConfig"`
+}
+
+// UpgradeConfig contains configuration hints for the dogu operator regarding aspects during the upgrade of dogus.
+type UpgradeConfig struct {
+	// AllowNamespaceSwitch lets a dogu switch its dogu namespace during an upgrade. The dogu must be technically the
+	// same dogu which did reside in a different namespace. The remote dogu's version must be equal to or greater than
+	// the version of the local dogu.
+	AllowNamespaceSwitch bool `json:"allowNamespaceSwitch"`
 }
 
 // DoguStatus defines the observed state of a Dogu
@@ -95,8 +106,8 @@ const (
 	DoguStatusInstalled    = "installed"
 )
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // Dogu is the Schema for the dogus API
 type Dogu struct {
@@ -160,7 +171,7 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	return nil
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // DoguList contains a list of Dogu
 type DoguList struct {
