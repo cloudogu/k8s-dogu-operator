@@ -1,4 +1,4 @@
-# Event Policy for the k9s-dogu-operator
+# Event Policy for the `k8s-dogu-operator`
 
 ## What is a Kubernetes Event?
 
@@ -10,7 +10,28 @@ person responsible for installing the dogu in the EcoSystem.
 
 One great strength for using events is their flexibility. It is quite easy to read the events regarding the
 dogu `redmine` from the cluster and understanding its current state. It is also possible to react on specific events by
-perform certain tasks for example.
+perform any tasks.
 
-More information about using events within controller can be found in
-the [official documentation](https://book-v1.book.kubebuilder.io/beyond_basics/creating_events.html).
+## Scope of Events in the `k8s-dogu-operator`
+
+The dogu operator creates events for the dogu CRD while performing daily tasks such as installing, deleting or upgrading
+a dogu. Having most of the process information on the dogu resource helps to understand the current process of a
+dogu without having to search in the `k8s-dogu-operator` logs for an extended time.
+
+An important factor when designing new processes and events is their granularity. The operator should report significant
+actions so that the user can understand the current state of a process. However, the aim is not to spam small operation
+as an event. The following images show an unsuccessful installation and a successful one to get a good
+overview about the granularity used in the `k8s-dogu-operator`.
+
+**Error on `redmine` dogu installation**
+
+![Image depicting events when error on `postgresql` dogu installation occured.](figures/events_with_errors.png)
+
+**Successful `postgresql` dogu installation**
+
+![Image depicting events for successful `postgresql` dogu installation.](figures/events_without_errors.png)
+
+## Using events in the `k8s-dogu-operator`
+
+The [kubebuilder documentation](https://book-v1.book.kubebuilder.io/beyond_basics/creating_events.html) explains
+perfectly how to use events inside a kubernetes controller.
