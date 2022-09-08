@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- [#41] Fire events to the specific dogu resource when installing or deleting a dogu.
+- [#41] Fire events to the specific dogu resource when installing or deleting a dogu. See 
+[event policy](docs/development/event_policy_for_the_operator_en.md) for more information.
 
 ## [v0.11.0] - 2022-08-29
 ### Changed
@@ -16,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.10.0] - 2022-08-25
 ### Changed
-- [#38] Detect existing PVC when installing a dogu. This allows users to store initial data for dogus before their installation. See [documentation](docs/operations/edit_dogu_volume_data_en.md) for more details.
+- [#38] Detect existing PVC when installing a dogu. This allows users to store initial data for dogus before their 
+installation. See [documentation](docs/operations/edit_dogu_volume_data_en.md) for more details.
 - [#38] Update `ces-build-lib` to version 1.56.0
 - [#38] Update `makefiles` to version 6.3.0
 
@@ -40,8 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.7.0] - 2022-06-07
 ### Added
-- [#6] Installing generic kubernetes resources when installing a dogu. These resources need to be provided by the dogu image
-at the `k8s` folder in the root path (`/k8s`):
+- [#6] Installing generic kubernetes resources when installing a dogu. These resources need to be provided by the dogu 
+image at the `k8s` folder in the root path (`/k8s`):
   - There are no restriction for namespaced resources.
   - The creation of cluster scoped resources is restricted and also their 
   deletion is not performed automatically as they could be used inside multiple namespaces. 
