@@ -28,7 +28,7 @@ K8S_RESOURCE_PRODUCTIVE_YAML ?= $(K8S_RESOURCE_PRODUCTIVE_FOLDER)/$(ARTIFACT_ID)
 K8S_RESOURCE_DOGU_CR_TEMPLATE_YAML ?= $(WORKDIR)/build/make/k8s-dogu.tpl
 # The pre generation script creates a k8s resource yaml containing the dogu crd and the content from the k8s folder.
 .PHONY: k8s-create-temporary-resource
- k8s-create-temporary-resource: ${BINARY_YQ} $(TARGET_DIR) $(K8S_RESOURCE_TEMP_FOLDER)
+ k8s-create-temporary-resource: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER)
 	@echo "Generating temporary K8s resources $(K8S_RESOURCE_TEMP_YAML)..."
 	@rm -f $(K8S_RESOURCE_TEMP_YAML)
 	@sed "s|NAMESPACE|$(ARTIFACT_NAMESPACE)|g" $(K8S_RESOURCE_DOGU_CR_TEMPLATE_YAML) | sed "s|NAME|$(ARTIFACT_ID)|g"  | sed "s|VERSION|$(VERSION)|g" >> $(K8S_RESOURCE_TEMP_YAML)

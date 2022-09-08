@@ -57,6 +57,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(k8sv1.AddToScheme(scheme))
+
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -164,12 +165,19 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 		return fmt.Errorf("failed to create ces registry: %w", err)
 	}
 
-	doguManager, err := controllers.NewManager(k8sManager.GetClient(), operatorConfig, cesRegistry)
+	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
+
+	doguManager, err := controllers.NewManager(k8sManager.GetClient(), operatorConfig, cesRegistry, eventRecorder)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu manager: %w", err)
 	}
 
-	err = (controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager)).SetupWithManager(k8sManager)
+	reconciler, err := controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager, eventRecorder, operatorConfig.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
+	}
+
+	err = reconciler.SetupWithManager(k8sManager)
 	if err != nil {
 		return fmt.Errorf("failed to setup reconciler with manager: %w", err)
 	}

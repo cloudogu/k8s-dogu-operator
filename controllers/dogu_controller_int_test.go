@@ -19,6 +19,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 )
 
@@ -162,7 +163,7 @@ var _ = Describe("Dogu Controller", func() {
 			By("Creating redmine dogu resource")
 			installDoguCrd(ctx, redmineCr)
 
-			By("Check for failed installation and check messages of dogu resource")
+			By("Check for failed installation and check events of dogu resource")
 			createdDogu := &k8sv1.Dogu{}
 
 			Eventually(func() bool {
@@ -173,22 +174,24 @@ var _ = Describe("Dogu Controller", func() {
 				if createdDogu.Status.Status != k8sv1.DoguStatusNotInstalled {
 					return false
 				}
-				statusMessages := createdDogu.Status.StatusMessages
-				if len(statusMessages) != 4 {
+
+				eventList := &corev1.EventList{}
+				err = k8sClient.List(ctx, eventList, &client.ListOptions{})
+				if err != nil {
 					return false
 				}
-				statusMessage := "failed to resolve dependency: {dogu postgresql }"
-				if !containsStatusMessage(statusMessages, statusMessage) {
+
+				count := 0
+				for _, item := range eventList.Items {
+					if item.InvolvedObject.Name == createdDogu.Name && item.Reason == ErrorOnInstallEventReason {
+						count++
+					}
+				}
+
+				if count != 1 {
 					return false
 				}
-				statusMessage = "failed to resolve dependency: {dogu cas }"
-				if !containsStatusMessage(statusMessages, statusMessage) {
-					return false
-				}
-				statusMessage = "failed to resolve dependency: {dogu postfix }"
-				if !containsStatusMessage(statusMessages, statusMessage) {
-					return false
-				}
+
 				return true
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
@@ -197,16 +200,6 @@ var _ = Describe("Dogu Controller", func() {
 		})
 	})
 })
-
-func containsStatusMessage(messages []string, statusMessage string) bool {
-	for _, msg := range messages {
-		if msg == statusMessage {
-			return true
-		}
-	}
-
-	return false
-}
 
 func installDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu) {
 	Expect(k8sClient.Create(ctx, doguCr)).Should(Succeed())

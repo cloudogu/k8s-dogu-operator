@@ -2,14 +2,15 @@
 
 STATIC_ANALYSIS_DIR=$(TARGET_DIR)/static-analysis
 GOIMAGE?=golang
-GOTAG?=1.14.13
+GOTAG?=1.18
 CUSTOM_GO_MOUNT?=-v /tmp:/tmp
 
 REVIEW_DOG=$(TMP_DIR)/bin/reviewdog
 LINT=$(TMP_DIR)/bin/golangci-lint
-LINT_VERSION?=v1.33.0
+LINT_VERSION?=v1.49.0
 # ignore tests and mocks
-LINTFLAGS=--tests=false --skip-files="^.*_mock.go$$" --skip-files="^.*/mock.*.go$$"
+LINTFLAGS=--tests=false --skip-files="^.*_mock.go$$" --skip-files="^.*/mock.*.go$$" --timeout 10m --issues-exit-code 0
+ADDITIONAL_LINTER=-E bodyclose -E containedctx -E contextcheck -E decorder -E dupl -E errname -E forcetypeassert -E funlen -E unparam
 
 .PHONY: static-analysis
 static-analysis: static-analysis-$(ENVIRONMENT) ## Start a static analysis of the code
@@ -42,11 +43,11 @@ $(STATIC_ANALYSIS_DIR)/static-analysis.log: $(STATIC_ANALYSIS_DIR)
 	@echo ""
 	@echo "complete static analysis:"
 	@echo ""
-	@$(LINT) $(LINTFLAGS) run ./... | tee $@
+	@$(LINT) $(LINTFLAGS) run ./... $(ADDITIONAL_LINTER) > $@
 
 $(STATIC_ANALYSIS_DIR)/static-analysis-cs.log: $(STATIC_ANALYSIS_DIR)
 	@echo "run static analysis with export to checkstyle format"
-	@$(LINT) $(LINTFLAGS) run --out-format=checkstyle ./... > $@ | true
+	@$(LINT) $(LINTFLAGS) run --out-format=checkstyle ./... $(ADDITIONAL_LINTER) > $@
 
 $(STATIC_ANALYSIS_DIR): $(LINT)
 	@mkdir -p $(STATIC_ANALYSIS_DIR)
@@ -63,11 +64,3 @@ $(LINT): $(TMP_DIR)
 
 $(REVIEW_DOG): $(TMP_DIR)
 	@curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s -- -b $(TMP_DIR)/bin
-
-##@ Go Static Analysis
-
-${STATIC_ANALYSIS_DIR}/report-govet.out: ${SRC} $(STATIC_ANALYSIS_DIR)
-	@go vet ./... | tee $@
-
-.PHONY: vet
-vet: ${STATIC_ANALYSIS_DIR}/report-govet.out ## Run go vet against code.

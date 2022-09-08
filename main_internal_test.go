@@ -18,6 +18,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -68,6 +69,13 @@ func Test_startDoguOperator(t *testing.T) {
 		return &rest.Config{}
 	}
 
+	// override default controller method to retrieve a kube config
+	oldGetConfigDelegate := ctrl.GetConfig
+	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+	ctrl.GetConfig = func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	}
+
 	// override default controller method to signal the setup handler
 	oldHandler := ctrl.SetupSignalHandler
 	defer func() { ctrl.SetupSignalHandler = oldHandler }()
@@ -81,7 +89,7 @@ func Test_startDoguOperator(t *testing.T) {
 
 	oldDoguManager := controllers.NewManager
 	defer func() { controllers.NewManager = oldDoguManager }()
-	controllers.NewManager = func(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*controllers.DoguManager, error) {
+	controllers.NewManager = func(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*controllers.DoguManager, error) {
 		return &controllers.DoguManager{}, nil
 	}
 
@@ -92,17 +100,18 @@ func Test_startDoguOperator(t *testing.T) {
 		Version: "v1",
 		Kind:    "dogu",
 	}, &v1.Dogu{})
-	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	myClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	defaultMockDefinitions := map[string]mockDefinition{
 		"GetScheme":            {ReturnValue: scheme},
-		"GetClient":            {ReturnValue: client},
+		"GetClient":            {ReturnValue: myClient},
 		"Add":                  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 		"AddHealthzCheck":      {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
 		"AddReadyzCheck":       {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
 		"Start":                {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 		"GetControllerOptions": {ReturnValue: v1alpha1.ControllerConfigurationSpec{}},
 		"SetFields":            {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
+		"GetEventRecorderFor":  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 	}
 
 	t.Run("Error on missing namespace environment variable", func(t *testing.T) {
