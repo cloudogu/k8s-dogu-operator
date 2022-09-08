@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -28,7 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"strings"
 )
 
 type operation int
@@ -36,8 +37,18 @@ type operation int
 const (
 	InstallEventReason        = "Installation"
 	ErrorOnInstallEventReason = "ErrInstallation"
+)
+const (
+	UpgradeEventReason                      = "Upgrading"
+	ErrorOnFailedPremisesUpgradeEventReason = "ErrUpgradePremises"
+	ErrorOnFailedUpgradeabilityEventReason  = "ErrUpgradeability"
+	ErrorOnFailedUpgradeEventReason         = "ErrUpgrade"
+)
+const (
 	DeinstallEventReason      = "Deinstallation"
 	ErrorDeinstallEventReason = "ErrDeinstallation"
+)
+const (
 	RequeueEventReason        = "Requeue"
 	ErrorOnRequeueEventReason = "ErrRequeue"
 )

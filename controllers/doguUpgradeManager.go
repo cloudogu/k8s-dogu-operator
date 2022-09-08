@@ -15,11 +15,11 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
-	"k8s.io/client-go/kubernetes"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -34,7 +34,8 @@ type doguRecursiveHealthChecker interface {
 }
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
-func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*doguUpgradeManager, error) {
+func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry,
+	eventRecorder record.EventRecorder) (*doguUpgradeManager, error) {
 	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
@@ -77,6 +78,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 		applier:                    applier,
 		doguHealthChecker:          doguChecker,
 		doguRecursiveHealthChecker: doguRecursiveChecker,
+		eventRecorder:              eventRecorder,
 	}, nil
 }
 
@@ -92,6 +94,7 @@ type doguUpgradeManager struct {
 	applier                    applier
 	doguHealthChecker          doguHealthChecker
 	doguRecursiveHealthChecker doguRecursiveHealthChecker
+	eventRecorder              record.EventRecorder
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
@@ -100,17 +103,22 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 		return err
 	}
 
-	const forceUpgrade = false
+	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Checking premises...")
 	err = dum.checkPremises(ctx, doguResource, localDogu, remoteDogu)
 	if err != nil {
+		dum.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, ErrorOnFailedPremisesUpgradeEventReason, "Checking premises failed: %s", err.Error())
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
 	}
 
-	err = checkUpgradeability(ctx, localDogu, remoteDogu, forceUpgrade)
+	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Checking upgradeability...")
+	const forceUpgrade = false
+	err = checkUpgradeability(localDogu, remoteDogu, forceUpgrade)
 	if err != nil {
+		dum.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, ErrorOnFailedUpgradeabilityEventReason, "Checking upgradeability failed: %s", err.Error())
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
 	}
 
+	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Checking upgradeability...")
 	steps, err := dum.collectUpgradeSteps()
 
 	err = dum.runUpgradeSteps(steps)
@@ -154,6 +162,7 @@ func (dum *doguUpgradeManager) checkDoguVersionChanged(namespaceChanging bool, d
 }
 
 func (dum *doguUpgradeManager) checkPremises(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu, remoteDogu *core.Dogu) error {
+
 	const premErrMsg = "premises check failed: %w"
 
 	err := dum.checkDependencyDogusHealthy(ctx, doguResource, localDogu)
@@ -214,10 +223,7 @@ func checkVersionBeforeUpgrade(localDogu *core.Dogu, remoteDogu *core.Dogu, forc
 	return nil
 }
 
-func checkUpgradeability(ctx context.Context, localDogu *core.Dogu, remoteDogu *core.Dogu, namespaceChange bool) error {
-	logger := log.FromContext(ctx)
-	logger.Info("Check upgrade-ability of dogu versions (l:%s <-> r:%s)", localDogu.Name, localDogu.Version)
-
+func checkUpgradeability(localDogu *core.Dogu, remoteDogu *core.Dogu, namespaceChange bool) error {
 	err := checkDoguIdentity(localDogu, remoteDogu, namespaceChange)
 	if err != nil {
 		return fmt.Errorf("upgrade-ability check failed: %w", err)

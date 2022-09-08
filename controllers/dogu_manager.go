@@ -115,7 +115,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, err
 	}
 
-	upgradeManager, err := NewDoguUpgradeManager(client, operatorConfig, cesRegistry)
+	upgradeManager, err := NewDoguUpgradeManager(client, operatorConfig, cesRegistry, eventRecorder)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,8 @@ func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) err
 }
 
 // Upgrade upgrades a dogu resource.
-func (m *DoguManager) Upgrade(_ context.Context, _ *k8sv1.Dogu) error {
+func (m *DoguManager) Upgrade(_ context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Starting upgrade of %s.", doguResource.Name)
 	return fmt.Errorf("currently not implemented")
 }
 
