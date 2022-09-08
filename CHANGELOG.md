@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#41] Fire events to the specific dogu resource when installing or deleting a dogu. See 
 [event policy](docs/development/event_policy_for_the_operator_en.md) for more information.
 
+### Changed
+- [#41] Update makefiles to version `v7.0.1`.
+
 ## [v0.11.0] - 2022-08-29
 ### Changed
 - [#36] Update `cesapp-lib` to version `v0.4.0`
