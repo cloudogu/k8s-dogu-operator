@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -88,8 +87,7 @@ type requeueHandler interface {
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
 func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager manager, eventHandler record.EventRecorder, namespace string) (*doguReconciler, error) {
-	doguStatusReporter := resource.NewDoguStatusReporter(client)
-	doguRequeueHandler, err := NewDoguRequeueHandler(client, doguStatusReporter, eventHandler, namespace)
+	doguRequeueHandler, err := NewDoguRequeueHandler(client, eventHandler, namespace)
 	if err != nil {
 		return nil, err
 	}

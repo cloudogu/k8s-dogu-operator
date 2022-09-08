@@ -147,9 +147,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient := &mocks.Applier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
-	eventHandler := &mocks.EventRecorder{}
-	eventHandler.On("Event", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	eventHandler.On("Eventf", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	eventHandler := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
 
 	installManager := &doguInstallManager{
 		client:                k8sManager.GetClient(),

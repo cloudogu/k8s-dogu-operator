@@ -27,11 +27,6 @@ func (e *ErrorResourceState) Error() string {
 	return fmt.Sprintf("resource is not ready: %v, source error: %s", e.resource.GetName(), e.sourceError.Error())
 }
 
-// Report constructs a simple human readable message
-func (e *ErrorResourceState) Report() string {
-	return fmt.Sprintf("resource is not ready: %v", e.resource.GetName())
-}
-
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
 func (e *ErrorResourceState) Requeue() bool {
 	return true

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/stretchr/testify/assert"
@@ -35,9 +34,6 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 	t.Run("handle nil error", func(t *testing.T) {
 		// given
-
-		reporter := &mocks.StatusReporter{}
-
 		scheme := getTestScheme()
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}},
@@ -48,11 +44,10 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		eventHandler := &mocks.EventRecorder{}
 
 		handler := doguRequeueHandler{
-			doguStatusReporter: reporter,
-			client:             fakeClient,
-			nonCacheClient:     fakeNonCacheClient,
-			namespace:          namespace,
-			recorder:           eventHandler,
+			client:         fakeClient,
+			nonCacheClient: fakeNonCacheClient,
+			namespace:      namespace,
+			recorder:       eventHandler,
 		}
 
 		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
@@ -68,15 +63,11 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 		assert.Nil(t, doguResource.Status.StatusMessages)
 		assert.Equal(t, "false", doguResource.Labels["test"])
-		mock.AssertExpectationsForObjects(t, reporter, eventHandler)
+		mock.AssertExpectationsForObjects(t, eventHandler)
 	})
 
 	t.Run("handle non reportable error", func(t *testing.T) {
 		// given
-
-		reporter := &mocks.StatusReporter{}
-		reporter.On("ReportError", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
 		scheme := getTestScheme()
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}},
@@ -87,11 +78,10 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		eventHandler := &mocks.EventRecorder{}
 
 		handler := doguRequeueHandler{
-			doguStatusReporter: reporter,
-			client:             fakeClient,
-			nonCacheClient:     fakeNonCacheClient,
-			namespace:          namespace,
-			recorder:           eventHandler,
+			client:         fakeClient,
+			nonCacheClient: fakeNonCacheClient,
+			namespace:      namespace,
+			recorder:       eventHandler,
 		}
 
 		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
@@ -105,52 +95,11 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		assert.Equal(t, result.RequeueAfter, time.Duration(0))
 		assert.Nil(t, doguResource.Status.StatusMessages)
 		assert.Equal(t, "false", doguResource.Labels["test"])
-		mock.AssertExpectationsForObjects(t, reporter, eventHandler)
-	})
-
-	t.Run("error on reporting error", func(t *testing.T) {
-		// given
-		myReportError := fmt.Errorf("this is my report error")
-		reporter := &mocks.StatusReporter{}
-		reporter.On("ReportError", mock.Anything, mock.Anything, mock.Anything).Return(myReportError)
-
-		scheme := getTestScheme()
-		doguResource := &k8sv1.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}},
-			Status:     k8sv1.DoguStatus{},
-		}
-		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
-		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventHandler := &mocks.EventRecorder{}
-
-		handler := doguRequeueHandler{
-			doguStatusReporter: reporter,
-			client:             fakeClient,
-			nonCacheClient:     fakeNonCacheClient,
-			namespace:          namespace,
-			recorder:           eventHandler,
-		}
-
-		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
-
-		// when
-		result, err := handler.Handle(context.Background(), "my context", doguResource, assert.AnError, onRequeue)
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to report error: this is my report error")
-		assert.False(t, result.Requeue)
-		assert.Equal(t, result.RequeueAfter, time.Duration(0))
-		assert.Nil(t, doguResource.Status.StatusMessages)
-		assert.Equal(t, "false", doguResource.Labels["test"])
-		mock.AssertExpectationsForObjects(t, reporter, eventHandler)
+		mock.AssertExpectationsForObjects(t, eventHandler)
 	})
 
 	t.Run("handle with requeueable error", func(t *testing.T) {
 		// given
-		reporter := &mocks.StatusReporter{}
-		reporter.On("ReportError", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
 		scheme := getTestScheme()
 		doguResource := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}, Namespace: namespace},
@@ -173,11 +122,10 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		eventHandler.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
 		handler := doguRequeueHandler{
-			doguStatusReporter: reporter,
-			client:             fakeClient,
-			nonCacheClient:     fakeNonCacheClient,
-			namespace:          namespace,
-			recorder:           eventHandler,
+			client:         fakeClient,
+			nonCacheClient: fakeNonCacheClient,
+			namespace:      namespace,
+			recorder:       eventHandler,
 		}
 		myError := myRequeueableError{}
 
@@ -190,9 +138,8 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, result.Requeue)
 		assert.Equal(t, result.RequeueAfter, time.Second*10)
-		mock.AssertExpectationsForObjects(t, reporter)
 		assert.Equal(t, "true", doguResource.Labels["test"])
-		mock.AssertExpectationsForObjects(t, reporter, eventHandler)
+		mock.AssertExpectationsForObjects(t, eventHandler)
 
 		eventList, err := fakeNonCacheClient.CoreV1().Events(namespace).List(context.Background(), metav1.ListOptions{})
 		require.NoError(t, err)
@@ -209,12 +156,11 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 		return &rest.Config{}, nil
 	}
 
-	reporter := &mocks.StatusReporter{}
 	eventHandler := &mocks.EventRecorder{}
 	fakeClient := fake.NewClientBuilder().WithScheme(&runtime.Scheme{}).Build()
 
 	// when
-	handler, err := NewDoguRequeueHandler(fakeClient, reporter, eventHandler, "mynamespace")
+	handler, err := NewDoguRequeueHandler(fakeClient, eventHandler, "mynamespace")
 
 	// then
 	require.NoError(t, err)

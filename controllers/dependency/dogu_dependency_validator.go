@@ -24,11 +24,6 @@ func (e *errorDependencyValidation) Error() string {
 	return fmt.Sprintf("failed to resolve dependency: %v, source error: %s", e.dependency, e.sourceError.Error())
 }
 
-// Report constructs a simple human readable message
-func (e *errorDependencyValidation) Report() string {
-	return fmt.Sprintf("failed to resolve dependency: %v", e.dependency)
-}
-
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
 func (e *errorDependencyValidation) Requeue() bool {
 	return true
