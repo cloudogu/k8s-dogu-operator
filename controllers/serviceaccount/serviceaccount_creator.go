@@ -5,14 +5,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/cesapp/v5/config"
 	"github.com/cloudogu/cesapp/v5/keys"
 	"github.com/pkg/errors"
-	"io"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
 )
 
 // commandExecutor is used to execute command in a dogu
@@ -34,7 +35,7 @@ func NewCreator(registry registry.Registry, commandExecutor commandExecutor) *cr
 	}
 }
 
-// CreateAll creates all service accounts for a given dogu
+// CreateAll creates all service accounts for a given dogu. Existing service accounts will be skipped.
 func (c *creator) CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 

@@ -102,6 +102,7 @@ func (ds *DoguStatus) ClearMessages() {
 const (
 	DoguStatusNotInstalled = ""
 	DoguStatusInstalling   = "installing"
+	DoguStatusUpgrading    = "upgrading"
 	DoguStatusDeleting     = "deleting"
 	DoguStatusInstalled    = "installed"
 )
