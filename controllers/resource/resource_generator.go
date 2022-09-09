@@ -358,12 +358,18 @@ func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.Persis
 		},
 	}
 
+	// todo put into dogu crd method
+	doguTargetVolumeSize := resource.MustParse(k8sv1.DefaultVolumeSize)
+	if (doguResource.Spec.Resources.VolumeSize != resource.Quantity{}) {
+		doguTargetVolumeSize = doguResource.Spec.Resources.VolumeSize
+	}
+
 	doguPvc.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
 	doguPvc.Spec = corev1.PersistentVolumeClaimSpec{
 		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceStorage: resource.MustParse("5Gi"),
+				corev1.ResourceStorage: doguTargetVolumeSize,
 			},
 		},
 	}

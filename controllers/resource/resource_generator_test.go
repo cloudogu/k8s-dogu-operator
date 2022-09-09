@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -51,6 +52,10 @@ var expectedDeploymentDevelop = &appsv1.Deployment{}
 //go:embed testdata/ldap_expectedPVC.yaml
 var expectedPVCBytes []byte
 var expectedPVC = &corev1.PersistentVolumeClaim{}
+
+//go:embed testdata/ldap_expectedPVC_withCustomSize.yaml
+var expectedPVCWithCustomSizeBytes []byte
+var expectedPVCWithCustomSize = &corev1.PersistentVolumeClaim{}
 
 //go:embed testdata/ldap_expectedSecret.yaml
 var expectedSecretBytes []byte
@@ -96,6 +101,11 @@ func init() {
 	}
 
 	err = yaml.Unmarshal(expectedPVCBytes, expectedPVC)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(expectedPVCWithCustomSizeBytes, expectedPVCWithCustomSize)
 	if err != nil {
 		panic(err)
 	}
@@ -349,6 +359,20 @@ func TestResourceGenerator_GetDoguPVC(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, expectedPVC, actualPVC)
+	})
+
+	t.Run("Return simple pvc with custom size", func(t *testing.T) {
+		// given
+		sizeBefore := ldapDoguResource.Spec.Resources.VolumeSize
+		defer func() { ldapDoguResource.Spec.Resources.VolumeSize = sizeBefore }()
+		ldapDoguResource.Spec.Resources.VolumeSize = resource.MustParse("6Gi")
+
+		// when
+		actualPVC, err := generator.GetDoguPVC(ldapDoguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, expectedPVCWithCustomSize, actualPVC)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {

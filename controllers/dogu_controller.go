@@ -22,6 +22,8 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,10 +38,15 @@ type operation int
 const (
 	InstallEventReason        = "Installation"
 	ErrorOnInstallEventReason = "ErrInstallation"
+
 	DeinstallEventReason      = "Deinstallation"
 	ErrorDeinstallEventReason = "ErrDeinstallation"
+
 	RequeueEventReason        = "Requeue"
 	ErrorOnRequeueEventReason = "ErrRequeue"
+
+	VolumeExpansionEventReason        = "VolumeExpansion"
+	ErrorOnVolumeExpansionEventReason = "ErrVolumeExpansion"
 )
 
 const (
@@ -47,6 +54,7 @@ const (
 	Upgrade
 	Delete
 	Ignore
+	ExpandVolume
 )
 
 func (o operation) toString() string {
@@ -118,7 +126,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
 
-	requiredOperation, err := evaluateRequiredOperation(doguResource, logger)
+	requiredOperation, err := r.evaluateRequiredOperation(ctx, doguResource, logger)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to evaluate required operation: %w", err)
 	}
@@ -169,12 +177,15 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return result, nil
 	case Ignore:
 		return ctrl.Result{}, nil
+	case ExpandVolume:
+		r.recorder.Event(doguResource, v1.EventTypeNormal, VolumeExpansionEventReason, "Starting volume expansion from xxxGi to xxxGi")
+		return ctrl.Result{}, nil
 	default:
 		return ctrl.Result{}, nil
 	}
 }
 
-func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (operation, error) {
+func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguResource *k8sv1.Dogu, logger logr.Logger) (operation, error) {
 	if !doguResource.DeletionTimestamp.IsZero() {
 		return Delete, nil
 	}
@@ -183,6 +194,14 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (op
 	case k8sv1.DoguStatusNotInstalled:
 		return Install, nil
 	case k8sv1.DoguStatusInstalled:
+		ok, err := r.checkForVolumeExpansion(ctx, doguResource)
+		if err != nil {
+			return Ignore, err
+		}
+
+		if ok {
+			return ExpandVolume, nil
+		}
 		// Checking if the resource spec field has changed is unnecessary because we
 		// use a predicate to filter update events where specs don't change
 		return Upgrade, nil
@@ -193,6 +212,32 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (op
 	default:
 		logger.Info(fmt.Sprintf("Found unknown operation for dogu status: %s", doguResource.Status.Status))
 		return Ignore, nil
+	}
+}
+
+func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
+	log.FromContext(ctx).Info("Check dogu volume expansion")
+
+	doguPvc := &v1.PersistentVolumeClaim{}
+	err := r.client.Get(ctx, *doguResource.GetObjectKey(), doguPvc)
+	if apierrors.IsNotFound(err) {
+		// no persistent volume claim -> no volume for the dogu -> no expansion possible
+		return false, nil
+	} else if err != nil {
+		return false, fmt.Errorf("failed to get persistent volume claim of dogu [%s]: %w", doguResource.Name, err)
+	}
+
+	doguTargetVolumeSize := resource.MustParse(k8sv1.DefaultVolumeSize)
+	if (doguResource.Spec.Resources.VolumeSize != resource.Quantity{}) {
+		doguTargetVolumeSize = doguResource.Spec.Resources.VolumeSize
+	}
+
+	if doguTargetVolumeSize.Value() > doguPvc.Spec.Resources.Requests.Storage().Value() {
+		return true, nil
+	} else if doguTargetVolumeSize.Value() == doguPvc.Spec.Resources.Requests.Storage().Value() {
+		return false, nil
+	} else {
+		return false, fmt.Errorf("invalid dogu state for dogu [%s] as requestes volume size is [%s] while existing volume is [%s], shrinking of volumes is not allowed", doguResource.Name, doguTargetVolumeSize.String(), doguPvc.Spec.Resources.Requests.Storage().String())
 	}
 }
 
