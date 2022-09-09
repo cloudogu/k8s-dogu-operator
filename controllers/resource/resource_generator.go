@@ -50,6 +50,8 @@ func (r *ResourceGenerator) getDoguLabels(doguResource *k8sv1.Dogu) map[string]s
 	return map[string]string{"dogu": doguResource.Name}
 }
 
+// GetPodTemplate returns a pod template for the given dogu. If the support mode flag is set to true, the pod template
+// receives a custom command which turns the pod to a sleep infinity mode.
 func (r *ResourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu, supportMode bool) corev1.PodTemplateSpec {
 	volumes := getVolumesForDogu(doguResource, dogu)
 	volumeMounts := getVolumeMountsForDogu(doguResource, dogu)
