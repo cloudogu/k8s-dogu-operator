@@ -191,6 +191,6 @@ func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) erro
 
 // HandleSupportFlag handles the support flag in the dogu spec.
 func (m *DoguManager) HandleSupportFlag(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, SupportEventReason, "Starting support handler.")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, SupportEventReason, "Starting support handler...")
 	return m.supportManager.HandleSupportFlag(ctx, doguResource)
 }

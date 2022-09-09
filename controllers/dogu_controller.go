@@ -169,8 +169,8 @@ func (r *doguReconciler) handleSupportFlag(ctx context.Context, doguResource *k8
 		}
 
 		// Do not care about other operations if the support mode is currently active.
-		logger.Info(fmt.Sprintf("Check if support mode is currently active for dogu %s", doguResource.Name))
 		if doguResource.Spec.SupportMode {
+			logger.Info(fmt.Sprintf("Support mode is currently active for dogu %s", doguResource.Name))
 			r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode is active. Ignoring other events.")
 			return &ctrl.Result{}, nil
 		}
