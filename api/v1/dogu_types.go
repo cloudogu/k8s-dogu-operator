@@ -19,6 +19,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
@@ -34,17 +35,29 @@ const (
 	RequeueTimeInitialRequeueTime = time.Second * 5
 	// RequeueTimeMaxRequeueTime defines the maximum amount of time to wait for a requeue of a dogu resource
 	RequeueTimeMaxRequeueTime = time.Hour * 6
+	// DefaultVolumeSize is the default size of a new dogu volume if no volume size is specified in the dogu resource.
+	DefaultVolumeSize = "2Gi"
 )
 
-// DoguSpec defines the desired state of a Dogu
+// DoguSpec defines the desired state of a Dogu.
 type DoguSpec struct {
 	// Name of the dogu (e.g. official/ldap)
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
-	Version string `json:"version,omitempty"`
+	Version   string        `json:"version,omitempty"`
+	Resources DoguResources `json:"resources,omitempty"`
 }
 
-// DoguStatus defines the observed state of a Dogu
+// DoguResources defines the physical resources used by the dogu.
+type DoguResources struct {
+	// VolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
+	// expansion. This includes a downtime for the respective dogu. The default size for volumes is "2Gi".
+	// It is not possible to lower the volume size after an expansion. This will introduce an inconsistent state for the
+	// dogu.
+	VolumeSize resource.Quantity `json:"volumeSize,omitempty"`
+}
+
+// DoguStatus defines the observed state of a Dogu.
 type DoguStatus struct {
 	// Status represents the state of the Dogu in the ecosystem
 	Status string `json:"status"`
