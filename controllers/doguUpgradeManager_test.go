@@ -100,14 +100,14 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 	})
 }
 
-func Test_checkUpgradeability(t *testing.T) {
+func Test_checkDoguIdentity(t *testing.T) {
 	t.Run("should succeed for dogus when forceUpgrade is off and remote dogu has a higher version", func(t *testing.T) {
 		localDogu := readTestDataLdapDogu(t)
 		remoteDogu := readTestDataLdapDogu(t)
 		remoteDogu.Version = "2.4.48-5"
 
 		// when
-		err := checkUpgradeability(localDogu, remoteDogu, false)
+		err := checkDoguIdentity(localDogu, remoteDogu, false)
 
 		// then
 		require.NoError(t, err)
@@ -118,32 +118,32 @@ func Test_checkUpgradeability(t *testing.T) {
 		remoteDogu.Name = "different-ns/ldap"
 
 		// when
-		err := checkUpgradeability(localDogu, remoteDogu, true)
+		err := checkDoguIdentity(localDogu, remoteDogu, true)
 
 		// then
 		require.NoError(t, err)
 	})
-	t.Run("should fail for different dogu names", func(t *testing.T) {
+	t.Run("should fail for different dogu namespaces", func(t *testing.T) {
 		localDogu := readTestDataLdapDogu(t)
 		remoteDogu := readTestDataLdapDogu(t)
 		remoteDogu.Name = remoteDogu.GetNamespace() + "/test"
 		// when
-		err := checkUpgradeability(localDogu, remoteDogu, false)
+		err := checkDoguIdentity(localDogu, remoteDogu, false)
 
 		// then
 		require.Error(t, err)
-		assert.Equal(t, "upgrade-ability check failed: dogus must have the same name (ldap=test)", err.Error())
+		assert.Equal(t, "dogus must have the same name (ldap=test)", err.Error())
 	})
 	t.Run("should fail for different dogu names", func(t *testing.T) {
 		localDogu := readTestDataLdapDogu(t)
 		remoteDogu := readTestDataLdapDogu(t)
-		remoteDogu.Name = "different-ns/ldap"
+		remoteDogu.Name = "different-ns/" + remoteDogu.GetSimpleName()
 		// when
-		err := checkUpgradeability(localDogu, remoteDogu, false)
+		err := checkDoguIdentity(localDogu, remoteDogu, false)
 
 		// then
 		require.Error(t, err)
-		assert.Equal(t, "upgrade-ability check failed: dogus must have the same namespace (official=different-ns)", err.Error())
+		assert.Equal(t, "dogus must have the same namespace (official=different-ns)", err.Error())
 	})
 }
 
@@ -338,42 +338,6 @@ func Test_doguUpgradeManager_getDogusForResource(t *testing.T) {
 	})
 }
 
-func Test_doguUpgradeManager_namespaceChange(t *testing.T) {
-	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
-
-	operatorConfig := &config.OperatorConfig{}
-	operatorConfig.Namespace = testNamespace
-
-	t.Run("should return true when the namespace should be changed", func(t *testing.T) {
-		// given
-		redmineCr := readTestDataRedmineCr(t)
-		upgradeVersion := "4.2.3-11"
-		redmineCr.Spec.Version = upgradeVersion
-		redmineDogu := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade.Version = upgradeVersion
-
-		doguRegistry := &cesmocks.DoguRegistry{}
-		doguRegistry.On("Get", "redmine").Return(redmineDogu, nil)
-		cesRegistry := &cesmocks.Registry{}
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-
-		remoteRegistryMock := &cesremotemocks.Registry{}
-		remoteRegistryMock.On("GetVersion", "official/redmine", upgradeVersion).Return(redmineDoguUpgrade, nil)
-
-		sut, err := NewDoguUpgradeManager(nil, operatorConfig, cesRegistry, nil)
-		sut.doguRemoteRegistry = remoteRegistryMock
-
-		// when
-
-		// then
-		require.NoError(t, err)
-	})
-}
-
 func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
@@ -483,5 +447,51 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		cesRegistry.AssertExpectations(t)
 		remoteRegistryMock.AssertExpectations(t)
 		recorderMock.AssertExpectations(t)
+	})
+}
+
+func Test_checkUpgradeability(t *testing.T) {
+	t.Run("should succeed without forceUpgrade", func(t *testing.T) {
+		// given
+		upgradeVersion := "4.2.3-11"
+
+		local := readTestDataRedmineDogu(t)
+		remoteUpgrade := readTestDataRedmineDogu(t)
+		remoteUpgrade.Version = upgradeVersion
+
+		// when
+		err := checkUpgradeability(local, remoteUpgrade, false)
+
+		// then
+		require.NoError(t, err)
+	})
+	t.Run("should fail for downgrade without forceUpgrade", func(t *testing.T) {
+		// given
+		downgradeVersion := "1.2.3-4"
+
+		local := readTestDataRedmineDogu(t)
+		remoteDowngrade := readTestDataRedmineDogu(t)
+		remoteDowngrade.Version = downgradeVersion
+
+		// when
+		err := checkUpgradeability(local, remoteDowngrade, false)
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, "upgradeability check failed: remote version must be greater than local version '1.2.3-4 > 4.2.3-10'", err.Error())
+	})
+	t.Run("should succeed for downgrade with forceUpgrade", func(t *testing.T) {
+		// given
+		downgradeVersion := "1.2.3-4"
+
+		local := readTestDataRedmineDogu(t)
+		remoteDowngrade := readTestDataRedmineDogu(t)
+		remoteDowngrade.Version = downgradeVersion
+
+		// when
+		err := checkUpgradeability(local, remoteDowngrade, true)
+
+		// then
+		require.NoError(t, err)
 	})
 }

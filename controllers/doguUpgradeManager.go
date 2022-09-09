@@ -98,54 +98,69 @@ type doguUpgradeManager struct {
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	upgradeDoguName := doguResource.Spec.Name
+	upgradeDoguVersion := doguResource.Spec.Version
+
 	localDogu, remoteDogu, err := dum.getDogusForResource(doguResource)
 	if err != nil {
-		return err
+		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting dogus for upgrade: %s", err)
+		return fmt.Errorf("dogu upgrade failed: %w", err)
 	}
 
-	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Checking premises...")
+	dum.normalEvent(doguResource, "Checking premises...")
+
 	err = dum.checkPremises(ctx, doguResource, localDogu, remoteDogu)
 	if err != nil {
-		dum.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, ErrorOnFailedPremisesUpgradeEventReason, "Checking premises failed: %s", err.Error())
-		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
+		dum.errorEventf(doguResource, ErrorOnFailedPremisesUpgradeEventReason, "Checking premises failed: %s", err)
+		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 
-	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Checking upgradeability...")
+	dum.normalEvent(doguResource, "Checking upgradeability...")
 	const forceUpgrade = false
+
 	err = checkUpgradeability(localDogu, remoteDogu, forceUpgrade)
 	if err != nil {
-		dum.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, ErrorOnFailedUpgradeabilityEventReason, "Checking upgradeability failed: %s", err.Error())
-		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
+		dum.errorEventf(doguResource, ErrorOnFailedUpgradeabilityEventReason, "Checking upgradeability failed: %s", err)
+		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 
-	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Checking upgradeability...")
+	dum.normalEvent(doguResource, "Checking upgradeability...")
+
 	steps, err := dum.collectUpgradeSteps()
+	if err != nil {
+		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Collecting upgrade steps failed: %s", err)
+		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
+	}
 
 	err = dum.runUpgradeSteps(steps)
 	if err != nil {
-		return err
+		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error during upgrade: %s", err)
+		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
-
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
 
 	return nil
 }
 
 func (dum *doguUpgradeManager) getDogusForResource(doguResource *k8sv1.Dogu) (localDogu *core.Dogu, remoteDogu *core.Dogu, err error) {
+	upgradeDoguName := doguResource.Spec.Name
+	upgradeDoguVersion := doguResource.Spec.Version
+
 	localDogu, err = dum.getLocalDogu(doguResource)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get local dogu descriptor for %s:%s: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
+		return nil, nil, fmt.Errorf("failed to get local dogu descriptor for %s:%s: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 
-	remoteDogu, err = dum.getRemoteDogu(doguResource.Spec.Name, doguResource.Spec.Version)
+	remoteDogu, err = dum.getRemoteDogu(upgradeDoguName, upgradeDoguVersion)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get remote dogu descriptor for %s:%s: %w", doguResource.Spec.Name, doguResource.Spec.Version, err)
+		return nil, nil, fmt.Errorf("failed to get remote dogu descriptor for %s:%s: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 	return localDogu, remoteDogu, nil
 }
 
 func (dum *doguUpgradeManager) getLocalDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
-	dogu, err := dum.doguLocalRegistry.Get(doguResource.Name)
+	simpleDoguName := doguResource.Name
+	dogu, err := dum.doguLocalRegistry.Get(simpleDoguName)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch the local descriptor for dogu %s: %w", doguResource.Spec.Name, err)
 	}
@@ -157,12 +172,7 @@ func (dum *doguUpgradeManager) getRemoteDogu(name, version string) (*core.Dogu, 
 	return dum.doguRemoteRegistry.GetVersion(name, version)
 }
 
-func (dum *doguUpgradeManager) checkDoguVersionChanged(namespaceChanging bool, dogu *core.Dogu) error {
-	return nil
-}
-
 func (dum *doguUpgradeManager) checkPremises(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu, remoteDogu *core.Dogu) error {
-
 	const premErrMsg = "premises check failed: %w"
 
 	err := dum.checkDependencyDogusHealthy(ctx, doguResource, localDogu)
@@ -175,12 +185,8 @@ func (dum *doguUpgradeManager) checkPremises(ctx context.Context, doguResource *
 		return fmt.Errorf(premErrMsg, err)
 	}
 
-	namespaceChanging, err := dum.namespaceChange()
-	if err != nil {
-		return fmt.Errorf(premErrMsg, err)
-	}
-
-	err = checkVersionBeforeUpgrade(localDogu, remoteDogu, namespaceChanging)
+	changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
+	err = checkDoguIdentity(localDogu, remoteDogu, changeNamespace)
 	if err != nil {
 		return fmt.Errorf(premErrMsg, err)
 	}
@@ -198,37 +204,33 @@ func (dum *doguUpgradeManager) checkDependencyDogusHealthy(ctx context.Context, 
 
 }
 
-func (dum *doguUpgradeManager) namespaceChange() (bool, error) {
-	return false, nil
-}
-
-func checkVersionBeforeUpgrade(localDogu *core.Dogu, remoteDogu *core.Dogu, forceUpgrade bool) error {
-	if !forceUpgrade {
+func checkUpgradeability(localDogu *core.Dogu, remoteDogu *core.Dogu, forceUpgrade bool) error {
+	if forceUpgrade {
 		return nil
 	}
 
+	err := checkVersionBeforeUpgrade(localDogu, remoteDogu)
+	if err != nil {
+		return fmt.Errorf("upgradeability check failed: %w", err)
+	}
+
+	return nil
+}
+
+func checkVersionBeforeUpgrade(localDogu *core.Dogu, remoteDogu *core.Dogu) error {
 	localVersion, err := core.ParseVersion(localDogu.Version)
 	if err != nil {
-		return fmt.Errorf("could not check upgrade-ability of local dogu: %w", err)
+		return fmt.Errorf("could not check upgradeability of local dogu: %w", err)
 	}
 	remoteVersion, err := core.ParseVersion(remoteDogu.Version)
 	if err != nil {
-		return fmt.Errorf("could not check upgrade-ability of remote dogu: %w", err)
+		return fmt.Errorf("could not check upgradeability of remote dogu: %w", err)
 	}
 
 	if remoteVersion.IsOlderOrEqualThan(localVersion) {
 		return fmt.Errorf("remote version must be greater than local version '%s > %s'",
 			remoteDogu.Version, localDogu.Version)
 	}
-	return nil
-}
-
-func checkUpgradeability(localDogu *core.Dogu, remoteDogu *core.Dogu, namespaceChange bool) error {
-	err := checkDoguIdentity(localDogu, remoteDogu, namespaceChange)
-	if err != nil {
-		return fmt.Errorf("upgrade-ability check failed: %w", err)
-	}
-
 	return nil
 }
 
@@ -254,4 +256,12 @@ func (dum *doguUpgradeManager) collectUpgradeSteps() ([]upgradeStep, error) {
 
 func (dum *doguUpgradeManager) runUpgradeSteps(steps []upgradeStep) error {
 	return nil
+}
+
+func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv1.Dogu, msg string) {
+	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, msg)
+}
+
+func (dum *doguUpgradeManager) errorEventf(doguResource *k8sv1.Dogu, reason, msg string, err error) {
+	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, reason, msg, err.Error())
 }
