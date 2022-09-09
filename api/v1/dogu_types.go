@@ -53,6 +53,9 @@ type UpgradeConfig struct {
 	// same dogu which did reside in a different namespace. The remote dogu's version must be equal to or greater than
 	// the version of the local dogu.
 	AllowNamespaceSwitch bool `json:"allowNamespaceSwitch"`
+	// ForceUpgrade allows to install the same or even lower dogu version than already is installed. Please note, that
+	// possible data loss may occur by inappropriate dogu downgrading.
+	ForceUpgrade bool `json:"forceUpgrade"`
 }
 
 // DoguStatus defines the observed state of a Dogu

@@ -94,9 +94,11 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 }
 
 type doguUpgradeManager struct {
-	client                client.Client
-	scheme                *runtime.Scheme
-	eventRecorder         record.EventRecorder
+	// general purpose
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
+	// upgrade business
 	premisesChecker       premisesChecker
 	doguFetcher           doguFetcher
 	upgradeabilityChecker upgradeabilityChecker
@@ -124,7 +126,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	dum.normalEvent(doguResource, "Checking upgradeability...")
 	const forceUpgrade = false
 
-	err = dum.upgradeabilityChecker.Check(localDogu, remoteDogu, forceUpgrade)
+	err = dum.upgradeabilityChecker.Check(localDogu, remoteDogu, doguResource.Spec.UpgradeConfig.ForceUpgrade)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeabilityEventReason, "Checking upgradeability failed: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
