@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
@@ -15,6 +17,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
+
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/yaml"

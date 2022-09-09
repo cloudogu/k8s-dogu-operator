@@ -1,18 +1,13 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/coreos/etcd/client"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +16,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const defaultNamespace = ""
@@ -100,243 +98,105 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 	})
 }
 
-func Test_checkDoguIdentity(t *testing.T) {
-	t.Run("should succeed for dogus when forceUpgrade is off and remote dogu has a higher version", func(t *testing.T) {
-		localDogu := readTestDataLdapDogu(t)
-		remoteDogu := readTestDataLdapDogu(t)
-		remoteDogu.Version = "2.4.48-5"
-
-		// when
-		err := checkDoguIdentity(localDogu, remoteDogu, false)
-
-		// then
-		require.NoError(t, err)
-	})
-	t.Run("should succeed for dogus when forceUpgrade is on but would originally fail because of versions or names", func(t *testing.T) {
-		localDogu := readTestDataLdapDogu(t)
-		remoteDogu := readTestDataLdapDogu(t)
-		remoteDogu.Name = "different-ns/ldap"
-
-		// when
-		err := checkDoguIdentity(localDogu, remoteDogu, true)
-
-		// then
-		require.NoError(t, err)
-	})
-	t.Run("should fail for different dogu namespaces", func(t *testing.T) {
-		localDogu := readTestDataLdapDogu(t)
-		remoteDogu := readTestDataLdapDogu(t)
-		remoteDogu.Name = remoteDogu.GetNamespace() + "/test"
-		// when
-		err := checkDoguIdentity(localDogu, remoteDogu, false)
-
-		// then
-		require.Error(t, err)
-		assert.Equal(t, "dogus must have the same name (ldap=test)", err.Error())
-	})
-	t.Run("should fail for different dogu names", func(t *testing.T) {
-		localDogu := readTestDataLdapDogu(t)
-		remoteDogu := readTestDataLdapDogu(t)
-		remoteDogu.Name = "different-ns/" + remoteDogu.GetSimpleName()
-		// when
-		err := checkDoguIdentity(localDogu, remoteDogu, false)
-
-		// then
-		require.Error(t, err)
-		assert.Equal(t, "dogus must have the same namespace (official=different-ns)", err.Error())
-	})
-}
-
-func Test_doguUpgradeManager_checkDoguHealth(t *testing.T) {
-	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
-	operatorConfig := &config.OperatorConfig{}
-	operatorConfig.Namespace = testNamespace
-
-	t.Run("should succeed", func(t *testing.T) {
-		doguRegistry := &cesmocks.DoguRegistry{}
-		cesRegistry := &cesmocks.Registry{}
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-		testDeployment := createReadyDeployment("ldap")
-		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
-
-		ldapResource := readTestDataLdapCr(t)
-		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
-
-		// when
-		err := sut.doguHealthChecker.CheckWithResource(context.TODO(), ldapResource)
-
-		// then
-		require.NoError(t, err)
-		cesRegistry.AssertExpectations(t)
-		doguRegistry.AssertExpectations(t)
-	})
-	t.Run("should fail because of unready replicas", func(t *testing.T) {
-		doguRegistry := &cesmocks.DoguRegistry{}
-		cesRegistry := &cesmocks.Registry{}
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-		testDeployment := createDeployment("ldap", 1, 0) // trigger failure
-
-		scheme := runtime.NewScheme()
-		scheme.AddKnownTypeWithName(testDeployment.GroupVersionKind(), &appsv1.Deployment{})
-		myClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(testDeployment).Build()
-
-		ldapResource := readTestDataLdapCr(t)
-		ldapResource.Namespace = defaultNamespace
-		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
-
-		// when
-		err := sut.doguHealthChecker.CheckWithResource(context.TODO(), ldapResource)
-
-		// then
-		require.Error(t, err)
-		assert.Equal(t, "dogu failed a health check: dogu ldap appears unhealthy (desired replicas: 1, ready: 0)", err.Error())
-		cesRegistry.AssertExpectations(t)
-		doguRegistry.AssertExpectations(t)
-	})
-}
-
-func Test_doguUpgradeManager_checkDependencyDogusHealthy(t *testing.T) {
-	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
-
-	operatorConfig := &config.OperatorConfig{}
-	operatorConfig.Namespace = testNamespace
-
-	t.Run("should succeed when all dogu dependencies are in a healthy state", func(t *testing.T) {
-		redmineCr := readTestDataRedmineCr(t)
-
-		doguRegistry := &cesmocks.DoguRegistry{}
-		cesRegistry := &cesmocks.Registry{}
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-
-		redmineDogu := readTestDataRedmineDogu(t)
-		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
-		nginxDogu := readTestDataDogu(t, nginxBytes)
-		casDogu := readTestDataDogu(t, casBytes)
-		postfixDogu := readTestDataDogu(t, postfixBytes)
-		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-		doguRegistry.On("Get", "nginx").Return(nginxDogu, nil)
-		doguRegistry.On("Get", "cas").Return(casDogu, nil)
-		doguRegistry.On("Get", "postfix").Return(postfixDogu, nil)
-
-		dependentDeployment := createDeployment("redmine", 1, 0)
-		dependencyDeployment1 := createReadyDeployment("postgresql")
-		dependencyDeployment2 := createReadyDeployment("nginx")
-		dependencyDeployment3 := createReadyDeployment("cas")
-		dependencyDeployment4 := createReadyDeployment("postfix")
-
-		myClient := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
-			Build()
-
-		ldapResource := readTestDataLdapCr(t)
-		ldapResource.Namespace = testNamespace
-		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
-		dependencyValidatorMock := &mocks.DependencyValidator{}
-		dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
-		sut.dependencyValidator = dependencyValidatorMock
-
-		// when
-		err := sut.checkDependencyDogusHealthy(context.TODO(), redmineCr, redmineDogu)
-
-		// then
-		require.NoError(t, err)
-		cesRegistry.AssertExpectations(t)
-		doguRegistry.AssertExpectations(t)
-		dependencyValidatorMock.AssertExpectations(t)
-	})
-	t.Run("should fail when at least one dependency dogus is unhealthy", func(t *testing.T) {
-		redmineCr := readTestDataRedmineCr(t)
-
-		doguRegistry := &cesmocks.DoguRegistry{}
-		cesRegistry := &cesmocks.Registry{}
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-
-		redmineDogu := readTestDataRedmineDogu(t)
-		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
-		nginxDogu := readTestDataDogu(t, nginxBytes)
-		casDogu := readTestDataDogu(t, casBytes)
-		postfixDogu := readTestDataDogu(t, postfixBytes)
-		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-		doguRegistry.On("Get", "nginx").Return(nginxDogu, nil)
-		doguRegistry.On("Get", "cas").Return(casDogu, nil)
-		doguRegistry.On("Get", "postfix").Return(postfixDogu, nil)
-
-		dependentDeployment := createDeployment("redmine", 1, 0)
-		dependencyDeployment1 := createReadyDeployment("postgresql")
-		dependencyDeployment2 := createReadyDeployment("nginx")
-		dependencyDeployment3 := createReadyDeployment("cas")
-		dependencyDeployment4 := createDeployment("postfix", 1, 0) // boom
-
-		myClient := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
-			Build()
-
-		ldapResource := readTestDataLdapCr(t)
-		ldapResource.Namespace = testNamespace
-		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
-		dependencyValidatorMock := &mocks.DependencyValidator{}
-		dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
-		sut.dependencyValidator = dependencyValidatorMock
-
-		// when
-		err := sut.checkDependencyDogusHealthy(context.TODO(), redmineCr, redmineDogu)
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "dogu failed a health check: dogu postfix appears unhealthy (desired replicas: 1, ready: 0)")
-		cesRegistry.AssertExpectations(t)
-		doguRegistry.AssertExpectations(t)
-		dependencyValidatorMock.AssertExpectations(t)
-	})
-}
-
-func Test_doguUpgradeManager_getDogusForResource(t *testing.T) {
-	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
-
-	operatorConfig := &config.OperatorConfig{}
-	operatorConfig.Namespace = testNamespace
-
-	t.Run("should return installed dogu and remote upgrade", func(t *testing.T) {
-		// given
-		redmineCr := readTestDataRedmineCr(t)
-		upgradeVersion := "4.2.3-11"
-		redmineCr.Spec.Version = upgradeVersion
-		redmineDogu := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade.Version = upgradeVersion
-
-		doguRegistry := &cesmocks.DoguRegistry{}
-		doguRegistry.On("Get", "redmine").Return(redmineDogu, nil)
-		cesRegistry := &cesmocks.Registry{}
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-
-		remoteRegistryMock := &cesremotemocks.Registry{}
-		remoteRegistryMock.On("GetVersion", "official/redmine", upgradeVersion).Return(redmineDoguUpgrade, nil)
-
-		sut, err := NewDoguUpgradeManager(nil, operatorConfig, cesRegistry, nil)
-		sut.doguRemoteRegistry = remoteRegistryMock
-
-		// when
-		localDogu, remoteDogu, err := sut.getDogusForResource(redmineCr)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, redmineDogu, localDogu)
-		assert.Equal(t, redmineDoguUpgrade, remoteDogu)
-		remoteRegistryMock.AssertExpectations(t)
-	})
-}
+// func Test_doguUpgradeManager_checkDependencyDogusHealthy(t *testing.T) {
+// 	// override default controller method to retrieve a kube config
+// 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
+// 	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
+// 	ctrl.GetConfigOrDie = createTestRestConfig
+//
+// 	operatorConfig := &config.OperatorConfig{}
+// 	operatorConfig.Namespace = testNamespace
+//
+// 	t.Run("should succeed when all dogu dependencies are in a healthy state", func(t *testing.T) {
+// 		redmineCr := readTestDataRedmineCr(t)
+//
+// 		doguRegistry := &cesmocks.DoguRegistry{}
+// 		cesRegistry := &cesmocks.Registry{}
+// 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+//
+// 		redmineDogu := readTestDataRedmineDogu(t)
+// 		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
+// 		nginxDogu := readTestDataDogu(t, nginxBytes)
+// 		casDogu := readTestDataDogu(t, casBytes)
+// 		postfixDogu := readTestDataDogu(t, postfixBytes)
+// 		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
+// 		doguRegistry.On("Get", "nginx").Return(nginxDogu, nil)
+// 		doguRegistry.On("Get", "cas").Return(casDogu, nil)
+// 		doguRegistry.On("Get", "postfix").Return(postfixDogu, nil)
+//
+// 		dependentDeployment := createDeployment("redmine", 1, 0)
+// 		dependencyDeployment1 := createReadyDeployment("postgresql")
+// 		dependencyDeployment2 := createReadyDeployment("nginx")
+// 		dependencyDeployment3 := createReadyDeployment("cas")
+// 		dependencyDeployment4 := createReadyDeployment("postfix")
+//
+// 		myClient := fake.NewClientBuilder().
+// 			WithScheme(getTestScheme()).
+// 			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
+// 			Build()
+//
+// 		ldapResource := readTestDataLdapCr(t)
+// 		ldapResource.Namespace = testNamespace
+// 		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
+// 		dependencyValidatorMock := &mocks.DependencyValidator{}
+// 		dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+// 		sut.dependencyValidator = dependencyValidatorMock
+//
+// 		// when
+// 		err := sut.checkDependencyDogusHealthy(context.TODO(), redmineCr, redmineDogu)
+//
+// 		// then
+// 		require.NoError(t, err)
+// 		cesRegistry.AssertExpectations(t)
+// 		doguRegistry.AssertExpectations(t)
+// 		dependencyValidatorMock.AssertExpectations(t)
+// 	})
+// 	t.Run("should fail when at least one dependency dogus is unhealthy", func(t *testing.T) {
+// 		redmineCr := readTestDataRedmineCr(t)
+//
+// 		doguRegistry := &cesmocks.DoguRegistry{}
+// 		cesRegistry := &cesmocks.Registry{}
+// 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+//
+// 		redmineDogu := readTestDataRedmineDogu(t)
+// 		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
+// 		nginxDogu := readTestDataDogu(t, nginxBytes)
+// 		casDogu := readTestDataDogu(t, casBytes)
+// 		postfixDogu := readTestDataDogu(t, postfixBytes)
+// 		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
+// 		doguRegistry.On("Get", "nginx").Return(nginxDogu, nil)
+// 		doguRegistry.On("Get", "cas").Return(casDogu, nil)
+// 		doguRegistry.On("Get", "postfix").Return(postfixDogu, nil)
+//
+// 		dependentDeployment := createDeployment("redmine", 1, 0)
+// 		dependencyDeployment1 := createReadyDeployment("postgresql")
+// 		dependencyDeployment2 := createReadyDeployment("nginx")
+// 		dependencyDeployment3 := createReadyDeployment("cas")
+// 		dependencyDeployment4 := createDeployment("postfix", 1, 0) // boom
+//
+// 		myClient := fake.NewClientBuilder().
+// 			WithScheme(getTestScheme()).
+// 			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
+// 			Build()
+//
+// 		ldapResource := readTestDataLdapCr(t)
+// 		ldapResource.Namespace = testNamespace
+// 		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
+// 		dependencyValidatorMock := &mocks.DependencyValidator{}
+// 		dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+// 		sut.dependencyValidator = dependencyValidatorMock
+//
+// 		// when
+// 		err := sut.checkDependencyDogusHealthy(context.TODO(), redmineCr, redmineDogu)
+//
+// 		// then
+// 		require.Error(t, err)
+// 		assert.Contains(t, err.Error(), "dogu failed a health check: dogu postfix appears unhealthy (desired replicas: 1, ready: 0)")
+// 		cesRegistry.AssertExpectations(t)
+// 		doguRegistry.AssertExpectations(t)
+// 		dependencyValidatorMock.AssertExpectations(t)
+// 	})
+// }
 
 // func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 // 	// override default controller method to retrieve a kube config
@@ -449,49 +309,3 @@ func Test_doguUpgradeManager_getDogusForResource(t *testing.T) {
 // 		recorderMock.AssertExpectations(t)
 // 	})
 // }
-
-func Test_checkUpgradeability(t *testing.T) {
-	t.Run("should succeed without forceUpgrade", func(t *testing.T) {
-		// given
-		upgradeVersion := "4.2.3-11"
-
-		local := readTestDataRedmineDogu(t)
-		remoteUpgrade := readTestDataRedmineDogu(t)
-		remoteUpgrade.Version = upgradeVersion
-
-		// when
-		err := checkUpgradeability(local, remoteUpgrade, false)
-
-		// then
-		require.NoError(t, err)
-	})
-	t.Run("should fail for downgrade without forceUpgrade", func(t *testing.T) {
-		// given
-		downgradeVersion := "1.2.3-4"
-
-		local := readTestDataRedmineDogu(t)
-		remoteDowngrade := readTestDataRedmineDogu(t)
-		remoteDowngrade.Version = downgradeVersion
-
-		// when
-		err := checkUpgradeability(local, remoteDowngrade, false)
-
-		// then
-		require.Error(t, err)
-		assert.Equal(t, "upgradeability check failed: remote version must be greater than local version '1.2.3-4 > 4.2.3-10'", err.Error())
-	})
-	t.Run("should succeed for downgrade with forceUpgrade", func(t *testing.T) {
-		// given
-		downgradeVersion := "1.2.3-4"
-
-		local := readTestDataRedmineDogu(t)
-		remoteDowngrade := readTestDataRedmineDogu(t)
-		remoteDowngrade.Version = downgradeVersion
-
-		// when
-		err := checkUpgradeability(local, remoteDowngrade, true)
-
-		// then
-		require.NoError(t, err)
-	})
-}

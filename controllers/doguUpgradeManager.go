@@ -16,6 +16,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,14 +27,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type doguHealthChecker interface {
-	// CheckWithResource returns nil if the dogu described by the resource is up and running.
-	CheckWithResource(ctx context.Context, doguResource *k8sv1.Dogu) error
+type premisesChecker interface {
+	Check(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *core.Dogu, toDogu *core.Dogu) error
 }
 
-type doguRecursiveHealthChecker interface {
-	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
-	CheckDependenciesRecursive(ctx context.Context, localDogu *core.Dogu, currentK8sNamespace string) error
+type doguFetcher interface {
+	Fetch(doguResource *k8sv1.Dogu) (fromDogu *core.Dogu, toDogu *core.Dogu, err error)
+}
+
+type upgradeabilityChecker interface {
+	Check(fromDogu *core.Dogu, toDogu *core.Dogu, forceUpgrade bool) error
 }
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
@@ -65,50 +68,50 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 
 	doguLocalRegistry := cesRegistry.DoguRegistry()
 
-	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
 
+	doguFetcher := upgrade.NewDoguFetcher(doguLocalRegistry, doguRemoteRegistry)
+
+	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
 	doguChecker := health.NewDoguChecker(client, doguLocalRegistry)
-	doguRecursiveChecker := doguChecker
+	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
 	return &doguUpgradeManager{
-		client:                     client,
-		scheme:                     scheme,
-		eventRecorder:              eventRecorder,
-		doguLocalRegistry:          doguLocalRegistry,
-		doguRemoteRegistry:         doguRemoteRegistry,
-		imageRegistry:              imageRegistry,
-		dependencyValidator:        dependencyValidator,
-		serviceAccountCreator:      serviceAccountCreator,
-		applier:                    applier,
-		doguHealthChecker:          doguChecker,
-		doguRecursiveHealthChecker: doguRecursiveChecker,
-		fileExtractor:              fileExtract,
+		client:                client,
+		scheme:                scheme,
+		eventRecorder:         eventRecorder,
+		imageRegistry:         imageRegistry,
+		serviceAccountCreator: serviceAccountCreator,
+		applier:               applier,
+		fileExtractor:         fileExtract,
+		doguFetcher:           doguFetcher,
+		premisesChecker:       premisesChecker,
+		upgradeabilityChecker: upgrade.NewUpgradeabilityChecker(),
 	}, nil
 }
 
 type doguUpgradeManager struct {
-	client                     client.Client
-	scheme                     *runtime.Scheme
-	eventRecorder              record.EventRecorder
-	doguLocalRegistry          cesregistry.DoguRegistry
-	doguRemoteRegistry         cesremote.Registry
-	imageRegistry              imageRegistry
-	doguRegistrator            doguRegistrator
-	dependencyValidator        dependencyValidator
-	serviceAccountCreator      serviceAccountCreator
-	applier                    applier
-	doguHealthChecker          doguHealthChecker
-	doguRecursiveHealthChecker doguRecursiveHealthChecker
-	fileExtractor              fileExtractor
+	client                client.Client
+	scheme                *runtime.Scheme
+	eventRecorder         record.EventRecorder
+	doguLocalRegistry     cesregistry.DoguRegistry
+	doguRemoteRegistry    cesremote.Registry
+	imageRegistry         imageRegistry
+	doguRegistrator       doguRegistrator
+	serviceAccountCreator serviceAccountCreator
+	applier               applier
+	fileExtractor         fileExtractor
+	premisesChecker       premisesChecker
+	doguFetcher           doguFetcher
+	upgradeabilityChecker upgradeabilityChecker
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	upgradeDoguName := doguResource.Spec.Name
 	upgradeDoguVersion := doguResource.Spec.Version
 
-	localDogu, remoteDogu, err := dum.getDogusForResource(doguResource)
+	localDogu, remoteDogu, err := dum.doguFetcher.Fetch(doguResource)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting dogus for upgrade: %s", err)
 		return fmt.Errorf("dogu upgrade failed: %w", err)
@@ -116,7 +119,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 
 	dum.normalEvent(doguResource, "Checking premises...")
 
-	err = dum.checkPremises(ctx, doguResource, localDogu, remoteDogu)
+	err = dum.premisesChecker.Check(ctx, doguResource, localDogu, remoteDogu)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedPremisesUpgradeEventReason, "Checking premises failed: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
@@ -125,7 +128,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	dum.normalEvent(doguResource, "Checking upgradeability...")
 	const forceUpgrade = false
 
-	err = checkUpgradeability(localDogu, remoteDogu, forceUpgrade)
+	err = dum.upgradeabilityChecker.Check(localDogu, remoteDogu, forceUpgrade)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeabilityEventReason, "Checking upgradeability failed: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
@@ -141,114 +144,6 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
 
 	return nil
-}
-
-func (dum *doguUpgradeManager) getDogusForResource(doguResource *k8sv1.Dogu) (localDogu *core.Dogu, remoteDogu *core.Dogu, err error) {
-	upgradeDoguName := doguResource.Spec.Name
-	upgradeDoguVersion := doguResource.Spec.Version
-
-	localDogu, err = dum.getLocalDogu(doguResource)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get local dogu descriptor for %s:%s: %w", upgradeDoguName, upgradeDoguVersion, err)
-	}
-
-	remoteDogu, err = dum.getRemoteDogu(upgradeDoguName, upgradeDoguVersion)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get remote dogu descriptor for %s:%s: %w", upgradeDoguName, upgradeDoguVersion, err)
-	}
-	return localDogu, remoteDogu, nil
-}
-
-func (dum *doguUpgradeManager) getLocalDogu(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
-	simpleDoguName := doguResource.Name
-	dogu, err := dum.doguLocalRegistry.Get(simpleDoguName)
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch the local descriptor for dogu %s: %w", doguResource.Spec.Name, err)
-	}
-
-	return dogu, nil
-}
-
-func (dum *doguUpgradeManager) getRemoteDogu(name, version string) (*core.Dogu, error) {
-	return dum.doguRemoteRegistry.GetVersion(name, version)
-}
-
-func (dum *doguUpgradeManager) checkPremises(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu, remoteDogu *core.Dogu) error {
-	const premErrMsg = "premises check failed: %w"
-
-	err := dum.doguHealthChecker.CheckWithResource(ctx, doguResource)
-	if err != nil {
-		return fmt.Errorf(premErrMsg, err)
-	}
-
-	err = dum.checkDependencyDogusHealthy(ctx, doguResource, localDogu)
-	if err != nil {
-		return fmt.Errorf(premErrMsg, err)
-	}
-
-	changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
-	err = checkDoguIdentity(localDogu, remoteDogu, changeNamespace)
-	if err != nil {
-		return fmt.Errorf(premErrMsg, err)
-	}
-
-	return nil
-}
-
-func (dum *doguUpgradeManager) checkDependencyDogusHealthy(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu) error {
-	err := dum.dependencyValidator.ValidateDependencies(localDogu)
-	if err != nil {
-		return err
-	}
-
-	return dum.doguRecursiveHealthChecker.CheckDependenciesRecursive(ctx, localDogu, doguResource.Namespace)
-
-}
-
-func checkUpgradeability(localDogu *core.Dogu, remoteDogu *core.Dogu, forceUpgrade bool) error {
-	if forceUpgrade {
-		return nil
-	}
-
-	err := checkVersionBeforeUpgrade(localDogu, remoteDogu)
-	if err != nil {
-		return fmt.Errorf("upgradeability check failed: %w", err)
-	}
-
-	return nil
-}
-
-func checkVersionBeforeUpgrade(localDogu *core.Dogu, remoteDogu *core.Dogu) error {
-	localVersion, err := core.ParseVersion(localDogu.Version)
-	if err != nil {
-		return fmt.Errorf("could not check upgradeability of local dogu: %w", err)
-	}
-	remoteVersion, err := core.ParseVersion(remoteDogu.Version)
-	if err != nil {
-		return fmt.Errorf("could not check upgradeability of remote dogu: %w", err)
-	}
-
-	if remoteVersion.IsOlderOrEqualThan(localVersion) {
-		return fmt.Errorf("remote version must be greater than local version '%s > %s'",
-			remoteDogu.Version, localDogu.Version)
-	}
-	return nil
-}
-
-func checkDoguIdentity(localDogu *core.Dogu, remoteDogu *core.Dogu, namespaceChange bool) error {
-	if localDogu.GetSimpleName() != remoteDogu.GetSimpleName() {
-		return fmt.Errorf("dogus must have the same name (%s=%s)", localDogu.GetSimpleName(), remoteDogu.GetSimpleName())
-	}
-
-	if !namespaceChange && localDogu.GetNamespace() != remoteDogu.GetNamespace() {
-		return fmt.Errorf("dogus must have the same namespace (%s=%s)", localDogu.GetNamespace(), remoteDogu.GetNamespace())
-	}
-
-	return nil
-}
-
-type upgradeStep struct {
-	action func(ctx context.Context) error
 }
 
 func (dum *doguUpgradeManager) runUpgradeSteps(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
