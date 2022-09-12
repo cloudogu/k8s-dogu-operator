@@ -52,7 +52,7 @@ func (r *ResourceGenerator) getDoguLabels(doguResource *k8sv1.Dogu) map[string]s
 
 // GetPodTemplate returns a pod template for the given dogu. If the support mode flag is set to true, the pod template
 // receives a custom command which turns the pod to a sleep infinity mode.
-func (r *ResourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu, supportMode bool) corev1.PodTemplateSpec {
+func (r *ResourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu, supportMode bool) *corev1.PodTemplateSpec {
 	volumes := getVolumesForDogu(doguResource, dogu)
 	volumeMounts := getVolumeMountsForDogu(doguResource, dogu)
 	envVars := []corev1.EnvVar{
@@ -80,7 +80,7 @@ func (r *ResourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		pullPolicy = corev1.PullAlways
 	}
 
-	return corev1.PodTemplateSpec{
+	return &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: r.getDoguLabels(doguResource),
 		},
@@ -120,7 +120,7 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 		Strategy: appsv1.DeploymentStrategy{
 			Type: "Recreate",
 		},
-		Template: podTemplate,
+		Template: *podTemplate,
 	}
 
 	fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch

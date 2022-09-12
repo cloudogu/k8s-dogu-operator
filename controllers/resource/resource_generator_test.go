@@ -64,6 +64,14 @@ var expectedService = &corev1.Service{}
 var expectedExposedServicesBytes []byte
 var expectedExposedServices = &[]corev1.Service{}
 
+//go:embed testdata/ldap_expectedPodTemplate_support_on.yaml
+var expectedPodTemplateSupportOnBytes []byte
+var expectedPodTemplateSupportOn = &corev1.PodTemplateSpec{}
+
+//go:embed testdata/ldap_expectedPodTemplate_support_off.yaml
+var expectedPodTemplateSupportOffBytes []byte
+var expectedPodTemplateSupportOff = &corev1.PodTemplateSpec{}
+
 func init() {
 	err := json.Unmarshal(ldapBytes, ldapDogu)
 	if err != nil {
@@ -111,6 +119,16 @@ func init() {
 	}
 
 	err = yaml.Unmarshal(expectedExposedServicesBytes, expectedExposedServices)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(expectedPodTemplateSupportOnBytes, expectedPodTemplateSupportOn)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(expectedPodTemplateSupportOffBytes, expectedPodTemplateSupportOff)
 	if err != nil {
 		panic(err)
 	}
@@ -394,5 +412,27 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to set controller reference:")
+	})
+}
+
+func TestResourceGenerator_GetPodTemplate(t *testing.T) {
+	generator := getResourceGenerator()
+
+	t.Run("return template with sleep command an no probes in support mode", func(t *testing.T) {
+		// when
+		template := generator.GetPodTemplate(ldapDoguResource, ldapDogu, true)
+
+		// then
+		require.NotNil(t, template)
+		assert.Equal(t, expectedPodTemplateSupportOn, template)
+	})
+
+	t.Run("return regular template with probes without support mode", func(t *testing.T) {
+		// when
+		template := generator.GetPodTemplate(ldapDoguResource, ldapDogu, false)
+
+		// then
+		require.NotNil(t, template)
+		assert.Equal(t, expectedPodTemplateSupportOff, template)
 	})
 }
