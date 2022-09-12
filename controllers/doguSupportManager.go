@@ -13,7 +13,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
 )
 
 // doguSupportManager is used to handle the support mode for dogus.
@@ -41,21 +40,23 @@ func NewDoguSupportManager(client client.Client, cesRegistry registry.Registry, 
 // true, nil. If there was no change of the support mode it returns false, nil
 func (dsm *doguSupportManager) HandleSupportFlag(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
 	logger := log.FromContext(ctx)
-	logger.Info(fmt.Sprintf("Get a list of all containers from dogu %s...", doguResource.Name))
-	containers, err := dsm.getDoguContainers(ctx, doguResource)
+
+	deployment := &appsv1.Deployment{}
+	err := dsm.client.Get(ctx, *doguResource.GetObjectKey(), deployment)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err)
 	}
 
 	logger.Info(fmt.Sprintf("Check if support mode is currently active for dogu %s...", doguResource.Name))
-	active := dsm.isSupportModeActive(containers)
+	active := dsm.isDeploymentInSupportMode(deployment)
+	logger.Info(fmt.Sprintf("Active %t...", active))
 	if !dsm.supportModeChanged(doguResource, active) {
 		dsm.eventRecorder.Event(doguResource, corev1.EventTypeNormal, SupportEventReason, "Support flag did not change. Do nothing.")
 		return false, nil
 	}
 
 	logger.Info(fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
-	err = dsm.updateDeployment(ctx, doguResource)
+	err = dsm.updateDeployment(ctx, doguResource, deployment)
 	if err != nil {
 		return false, err
 	}
@@ -64,19 +65,13 @@ func (dsm *doguSupportManager) HandleSupportFlag(ctx context.Context, doguResour
 	return true, nil
 }
 
-func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	deployment := &appsv1.Deployment{}
-	err := dsm.client.Get(ctx, *doguResource.GetObjectKey(), deployment)
-	if err != nil {
-		return fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err)
-	}
-
+func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *k8sv1.Dogu, deployment *appsv1.Deployment) error {
 	dogu, err := dsm.doguRegistry.Get(doguResource.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu deskriptor of dogu %s: %w", doguResource.Name, err)
 	}
 
-	deployment.Spec.Template = dsm.resourceGenerator.GetPodTemplate(doguResource, dogu, doguResource.Spec.SupportMode)
+	deployment.Spec.Template = *dsm.resourceGenerator.GetPodTemplate(doguResource, dogu, doguResource.Spec.SupportMode)
 	err = dsm.client.Update(ctx, deployment)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu deployment %s: %w", doguResource.Name, err)
@@ -85,43 +80,17 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 	return nil
 }
 
-func (dsm *doguSupportManager) isSupportModeActive(containers []corev1.Container) bool {
-	supportModeActive := false
-	for _, container := range containers {
-		for _, envVar := range container.Env {
-			if envVar.Name == resource.SupportModeEnvVar && envVar.Value == "true" {
-				supportModeActive = true
-				break
-			}
-		}
-
-		if supportModeActive {
-			break
-		}
-	}
-
-	return supportModeActive
-}
-
-func (dsm *doguSupportManager) getDoguContainers(ctx context.Context, doguResource *k8sv1.Dogu) ([]corev1.Container, error) {
-	podList := &corev1.PodList{}
-	err := dsm.client.List(ctx, podList, client.InNamespace(doguResource.Namespace), client.HasLabels{
-		fmt.Sprintf("dogu=%s", doguResource.Name),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get list of pods from dogu %s: %w", doguResource.Name, err)
-	}
-	var containers []corev1.Container
-	for _, pod := range podList.Items {
-		for _, container := range pod.Spec.Containers {
-			if strings.Contains(container.Image, fmt.Sprintf("%s:%s", doguResource.Spec.Name, doguResource.Spec.Version)) {
-				containers = append(containers, container)
-				continue
+func (dsm *doguSupportManager) isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		envVars := container.Env
+		for _, env := range envVars {
+			if env.Name == "SUPPORT_MODE" && env.Value == "true" {
+				return true
 			}
 		}
 	}
 
-	return containers, nil
+	return false
 }
 
 func (dsm *doguSupportManager) supportModeChanged(doguResource *k8sv1.Dogu, active bool) bool {

@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
@@ -101,53 +100,18 @@ func Test_doguSupportManager_supportModeChanged(t *testing.T) {
 	}
 }
 
-func Test_doguSupportManager_getDoguContainers(t *testing.T) {
-	t.Run("successfully get dogu container", func(t *testing.T) {
-		// given
-		sut := getDoguSupportManagerWithMocks(getTestScheme())
-		ldapCr := readTestDataLdapCr(t)
-		ldapCr.Namespace = "test"
-		labels := make(map[string]string)
-		labels["dogu"] = "ldap"
-		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test", Labels: labels},
-			Spec: corev1.PodSpec{Containers: []corev1.Container{{Image: "official/ldap:2.4.48-4"}, {Image: "other:1.2.3"}}}}
-		err := sut.k8sClient.Create(context.TODO(), pod)
-		require.NoError(t, err)
-
-		// when
-		containers, err := sut.supportManager.getDoguContainers(context.TODO(), ldapCr)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, 1, len(containers))
-		sut.AssertMocks(t)
-	})
-
-	t.Run("failed to get pod list", func(t *testing.T) {
+func Test_doguSupportManager_isDeploymentInSupportMode(t *testing.T) {
+	t.Run("return true if one container has the env var SUPPORT_MODE to true, sleep command and no probes", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(runtime.NewScheme())
-		ldapCr := readTestDataLdapCr(t)
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test"},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{Command: []string{"/bin/bash", "-c", "--"}, Args: []string{"while true; do sleep 30; done;"}, Env: []corev1.EnvVar{{Name: "SUPPORT_MODE", Value: "true"}}}}}}}}
 
 		// when
-		_, err := sut.supportManager.getDoguContainers(context.TODO(), ldapCr)
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get list of pods from dogu")
-		sut.AssertMocks(t)
-	})
-}
-
-func Test_doguSupportManager_isSupportModeActive(t *testing.T) {
-	t.Run("return true if one container has the env var SUPPORT_MODE to true", func(t *testing.T) {
-		// given
-		sut := getDoguSupportManagerWithMocks(runtime.NewScheme())
-		containers := []corev1.Container{
-			{Env: []corev1.EnvVar{{Name: "SUPPORT_MODE", Value: "true"}}},
-		}
-
-		// when
-		result := sut.supportManager.isSupportModeActive(containers)
+		result := sut.supportManager.isDeploymentInSupportMode(deployment)
 
 		// then
 		assert.True(t, result)
@@ -157,10 +121,10 @@ func Test_doguSupportManager_isSupportModeActive(t *testing.T) {
 	t.Run("return false if no container has the env var SUPPORT_MODE to true", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(runtime.NewScheme())
-		containers := []corev1.Container{{}}
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test"}}
 
 		// when
-		result := sut.supportManager.isSupportModeActive(containers)
+		result := sut.supportManager.isDeploymentInSupportMode(deployment)
 
 		// then
 		assert.False(t, result)
@@ -183,7 +147,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		resourceVersion := deployment.ResourceVersion
 
 		// when
-		err = sut.supportManager.updateDeployment(context.TODO(), ldapCr)
+		err = sut.supportManager.updateDeployment(context.TODO(), ldapCr, deployment)
 
 		// then
 		require.NoError(t, err)
@@ -195,18 +159,20 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		assert.Greater(t, deployment.ResourceVersion, resourceVersion)
 	})
 
-	t.Run("error getting deployment of dogu", func(t *testing.T) {
+	t.Run("error updating deployment of dogu", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(runtime.NewScheme())
 		ldapCr := readTestDataLdapCr(t)
 		ldapCr.Namespace = "test"
+		ldap := readTestDataLdapDogu(t)
+		sut.doguRegistryMock.On("Get", "ldap").Return(ldap, nil)
 
 		// when
-		err := sut.supportManager.updateDeployment(context.TODO(), ldapCr)
+		err := sut.supportManager.updateDeployment(context.TODO(), ldapCr, &appsv1.Deployment{})
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get deployment of dogu ldap")
+		assert.Contains(t, err.Error(), "failed to update dogu deployment ldap")
 		sut.AssertMocks(t)
 	})
 
@@ -222,7 +188,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		err = sut.supportManager.updateDeployment(context.TODO(), ldapCr)
+		err = sut.supportManager.updateDeployment(context.TODO(), ldapCr, nil)
 
 		// then
 		require.Error(t, err)
@@ -242,17 +208,13 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 		sut.doguRegistryMock.On("Get", "ldap").Return(ldap, nil)
 		sut.recorderMock.On("Eventf", ldapCr, "Normal", "Support", "Support flag changed to %t. Deployment updated.", true)
 
-		// add containers
-		labels := make(map[string]string)
-		labels["dogu"] = "ldap"
-		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test", Labels: labels},
-			Spec: corev1.PodSpec{Containers: []corev1.Container{{Image: "official/ldap:2.4.48-4"}, {Image: "other:1.2.3"}}}}
-		err := sut.k8sClient.Create(context.TODO(), pod)
-		require.NoError(t, err)
-
 		// add deployment
-		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test"}}
-		err = sut.supportManager.client.Create(context.TODO(), deployment)
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test"},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{Image: "official/ldap:2.4.48-4"}, {Image: "other:1.2.3"}}}}}}
+		err := sut.supportManager.client.Create(context.TODO(), deployment)
 		require.NoError(t, err)
 
 		// when
@@ -264,7 +226,7 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 		sut.AssertMocks(t)
 	})
 
-	t.Run("error getting pod list from dogu", func(t *testing.T) {
+	t.Run("error getting deployment from dogu", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(runtime.NewScheme())
 		ldapCr := readTestDataLdapCr(t)
@@ -274,7 +236,7 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get list of pods from dogu ldap")
+		assert.Contains(t, err.Error(), "failed to get deployment of dogu ldap")
 		sut.AssertMocks(t)
 	})
 
@@ -286,12 +248,13 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 		ldapCr.Spec.SupportMode = false
 		sut.recorderMock.On("Event", ldapCr, "Normal", "Support", "Support flag did not change. Do nothing.")
 
-		// add containers
-		labels := make(map[string]string)
-		labels["dogu"] = "ldap"
-		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test", Labels: labels},
-			Spec: corev1.PodSpec{Containers: []corev1.Container{{Image: "official/ldap:2.4.48-4"}, {Image: "other:1.2.3"}}}}
-		err := sut.k8sClient.Create(context.TODO(), pod)
+		// add deployment
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test"},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{Image: "official/ldap:2.4.48-4"}, {Image: "other:1.2.3"}}}}}}
+		err := sut.supportManager.client.Create(context.TODO(), deployment)
 		require.NoError(t, err)
 
 		// when
@@ -305,23 +268,27 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 
 	t.Run("error updating deployment", func(t *testing.T) {
 		// given
-		scheme := runtime.NewScheme()
-		scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "PodList",
-		}, &corev1.PodList{})
-
-		sut := getDoguSupportManagerWithMocks(scheme)
+		sut := getDoguSupportManagerWithMocks(getTestScheme())
 		ldapCr := readTestDataLdapCr(t)
+		ldapCr.Namespace = "test"
 		ldapCr.Spec.SupportMode = true
+		sut.doguRegistryMock.On("Get", "ldap").Return(nil, assert.AnError)
+
+		// add deployment
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "test"},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{Image: "official/ldap:2.4.48-4"}, {Image: "other:1.2.3"}}}}}}
+		err := sut.supportManager.client.Create(context.TODO(), deployment)
+		require.NoError(t, err)
 
 		// when
-		_, err := sut.supportManager.HandleSupportFlag(context.TODO(), ldapCr)
+		_, err = sut.supportManager.HandleSupportFlag(context.TODO(), ldapCr)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get deployment of dogu ldap")
+		assert.Contains(t, err.Error(), "failed to get dogu deskriptor of dogu ldap")
 		sut.AssertMocks(t)
 	})
 }

@@ -17,6 +17,25 @@ import (
 	"testing"
 )
 
+func TestDoguManager_HandleSupportFlag(t *testing.T) {
+	// given
+	dogu := &k8sv1.Dogu{}
+	supportManagerMock := &mocks.SupportManager{}
+	eventRecorderMock := &mocks.EventRecorder{}
+	manager := DoguManager{supportManager: supportManagerMock, recorder: eventRecorderMock}
+
+	supportManagerMock.On("HandleSupportFlag", mock.Anything, mock.Anything).Return(true, nil)
+	eventRecorderMock.On("Event", dogu, corev1.EventTypeNormal, "Support", "Starting support handler...")
+
+	// when
+	result, err := manager.HandleSupportFlag(context.TODO(), dogu)
+
+	// then
+	require.NoError(t, err)
+	require.True(t, result)
+	mock.AssertExpectationsForObjects(t, supportManagerMock, eventRecorderMock)
+}
+
 func TestDoguManager_Delete(t *testing.T) {
 	// given
 	inputDogu := &k8sv1.Dogu{}

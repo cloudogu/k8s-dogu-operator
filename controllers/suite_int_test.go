@@ -34,7 +34,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	//+kubebuilder:scaffold:imports
+	// +kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -104,7 +104,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	err = k8sv1.AddToScheme(scheme.Scheme)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
@@ -175,10 +175,19 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguSecretHandler:     doguSecretHandler,
 	}
 
+	supportManager := &doguSupportManager{
+		client:            k8sManager.GetClient(),
+		scheme:            k8sManager.GetScheme(),
+		doguRegistry:      &EtcdDoguRegistry,
+		resourceGenerator: resourceGenerator,
+		eventRecorder:     eventRecorder,
+	}
+
 	doguManager := &DoguManager{
 		scheme:         k8sManager.GetScheme(),
 		installManager: installManager,
 		deleteManager:  deleteManager,
+		supportManager: supportManager,
 		recorder:       eventRecorder,
 	}
 
