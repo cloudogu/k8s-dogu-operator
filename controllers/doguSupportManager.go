@@ -49,7 +49,6 @@ func (dsm *doguSupportManager) HandleSupportFlag(ctx context.Context, doguResour
 
 	logger.Info(fmt.Sprintf("Check if support mode is currently active for dogu %s...", doguResource.Name))
 	active := dsm.isDeploymentInSupportMode(deployment)
-	logger.Info(fmt.Sprintf("Active %t...", active))
 	if !dsm.supportModeChanged(doguResource, active) {
 		dsm.eventRecorder.Event(doguResource, corev1.EventTypeNormal, SupportEventReason, "Support flag did not change. Do nothing.")
 		return false, nil

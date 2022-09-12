@@ -59,7 +59,7 @@ func (odv *operatorDependencyValidator) validateMandatoryDependencies(dogu *core
 			}
 
 			if !allows {
-				dependencyError := errorDependencyValidation{
+				dependencyError := dependencyValidationError{
 					sourceError: errors.Errorf("%s parsed version does not fulfill version requirement of %s dogu %s", dependency.Version, odv.version.Raw, dependency.Name),
 					dependency:  dependency,
 				}

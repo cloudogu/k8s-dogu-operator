@@ -163,7 +163,6 @@ func (r *doguReconciler) handleSupportFlag(ctx context.Context, doguResource *k8
 
 		// Do not care about other operations if the mode has changed. Data change with support won't and shouldn't be processed.
 		logger.Info(fmt.Sprintf("Check if support mode changed for dogu %s", doguResource.Name))
-		logger.Info(fmt.Sprintf("Changed %t", supportModeChanged))
 		if supportModeChanged {
 			r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode has changed. Ignoring other events.")
 			return &ctrl.Result{}, nil
@@ -180,46 +179,37 @@ func (r *doguReconciler) handleSupportFlag(ctx context.Context, doguResource *k8
 	return nil, nil
 }
 
-func (r *doguReconciler) handleInstallOperation(ctx context.Context, doguResource *k8sv1.Dogu) (reconcile.Result, error) {
+func (r *doguReconciler) handleInstallOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
 	installError := r.doguManager.Install(ctx, doguResource)
-	contextMessageOnError := fmt.Sprintf("failed to install dogu %s", doguResource.Name)
-
 	if installError == nil {
 		r.recorder.Event(doguResource, v1.EventTypeNormal, InstallEventReason, "Installation successful.")
 		return ctrl.Result{}, nil
 	}
 
-	printError := strings.Replace(installError.Error(), "\n", "", -1)
-	r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnInstallEventReason, "Installation failed. Reason: %s.", printError)
-
-	result, err := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError, func(dogu *k8sv1.Dogu) {
-		doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
-	})
-	if err != nil {
-		r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the installation.")
-		return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
-	}
-
-	return result, nil
+	contextMessageOnError := fmt.Sprintf("failed to install dogu %s", doguResource.Name)
+	return r.handleOperationError(ctx, doguResource, installError, ErrorOnInstallEventReason, "Installation failed.", contextMessageOnError, k8sv1.DoguStatusNotInstalled)
 }
 
-func (r *doguReconciler) handleDeleteOperation(ctx context.Context, doguResource *k8sv1.Dogu) (reconcile.Result, error) {
+func (r *doguReconciler) handleDeleteOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
 	deleteError := r.doguManager.Delete(ctx, doguResource)
-	contextMessageOnError := fmt.Sprintf("failed to delete dogu %s", doguResource.Name)
-
 	if deleteError == nil {
 		r.recorder.Event(doguResource, v1.EventTypeNormal, DeinstallEventReason, "Deinstallation successful.")
 		return ctrl.Result{}, nil
 	}
 
-	printError := strings.Replace(deleteError.Error(), "\n", "", -1)
-	r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorDeinstallEventReason, "Deinstallation failed. Reason: %s.", printError)
+	contextMessageOnError := fmt.Sprintf("failed to delete dogu %s", doguResource.Name)
+	return r.handleOperationError(ctx, doguResource, deleteError, ErrorDeinstallEventReason, "Deinstallation failed.", contextMessageOnError, k8sv1.DoguStatusInstalled)
+}
 
-	result, err := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, deleteError, func(dogu *k8sv1.Dogu) {
-		doguResource.Status.Status = k8sv1.DoguStatusInstalled
+func (r *doguReconciler) handleOperationError(ctx context.Context, doguResource *k8sv1.Dogu, err error, operationEventReason string, message string, contextMessage string, requeueStatus string) (ctrl.Result, error) {
+	printError := strings.ReplaceAll(err.Error(), "\n", "")
+	r.recorder.Eventf(doguResource, v1.EventTypeWarning, operationEventReason, "%s Reason: %s.", message, printError)
+
+	result, err := r.doguRequeueHandler.Handle(ctx, contextMessage, doguResource, err, func(dogu *k8sv1.Dogu) {
+		doguResource.Status.Status = requeueStatus
 	})
 	if err != nil {
-		r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the deinstallation.")
+		r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue.")
 		return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
 	}
 
