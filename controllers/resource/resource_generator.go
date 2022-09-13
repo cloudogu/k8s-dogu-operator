@@ -134,7 +134,7 @@ func (r *ResourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 func applyValuesFromCustomDeployment(desiredDeployment *appsv1.Deployment, patchingDeployment *appsv1.Deployment) {
 	logger := ctrl.Log
 
-	if patchingDeployment != nil {
+	if patchingDeployment == nil {
 		return
 	}
 
