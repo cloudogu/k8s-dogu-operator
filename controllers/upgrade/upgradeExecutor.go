@@ -91,7 +91,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	imageConfigFile, err := ue.pullUpgradeImage(ctx, toDogu)
+	imageConfigFile, err := pullUpgradeImage(ctx, ue.imageRegistry, toDogu)
 	if err != nil {
 		return err
 	}
@@ -139,8 +139,13 @@ func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCrea
 	return nil
 }
 
-func (ue *upgradeExecutor) pullUpgradeImage(ctx context.Context, toDogu *core.Dogu) (*imagev1.ConfigFile, error) {
-	return ue.imageRegistry.PullImageConfig(ctx, toDogu.Image+":"+toDogu.Version)
+func pullUpgradeImage(ctx context.Context, imgRegistry imageRegistry, toDogu *core.Dogu) (*imagev1.ConfigFile, error) {
+	configFile, err := imgRegistry.PullImageConfig(ctx, toDogu.Image+":"+toDogu.Version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull upgrade image: %w", err)
+	}
+
+	return configFile, nil
 }
 
 func extractCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
