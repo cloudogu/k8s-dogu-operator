@@ -109,6 +109,8 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	upgradeDoguName := doguResource.Spec.Name
 	upgradeDoguVersion := doguResource.Spec.Version
 
+	// TODO feasibly fetch the toRemoteDogu from a custom dogu config map
+	// config map zur lokalen Entwicklung hat gleichen Namen wie dogu
 	fromLocalDogu, toRemoteDogu, err := dum.doguFetcher.Fetch(doguResource)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting dogus for upgrade: %s", err)
@@ -124,7 +126,6 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	}
 
 	dum.normalEvent(doguResource, "Checking upgradeability...")
-	const forceUpgrade = false
 
 	err = dum.upgradeabilityChecker.Check(fromLocalDogu, toRemoteDogu, doguResource.Spec.UpgradeConfig.ForceUpgrade)
 	if err != nil {
@@ -140,6 +141,8 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
+
+	// TODO custom config map wieder löschen
 
 	return nil
 }

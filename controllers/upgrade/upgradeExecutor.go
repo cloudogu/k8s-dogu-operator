@@ -52,64 +52,108 @@ func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, appli
 }
 
 func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
-	// collectPreUpgradeScript goes here
 
-	err := ue.pullUpgradeImage(ctx, toDogu)
+	err := markDoguAsUpgrading(ctx, toDoguResource)
 	if err != nil {
 		return err
 	}
 
-	err = ue.handleCustomK8sResources(ctx, toDoguResource, toDogu)
-	if err != nil {
-
-	}
-
-	customDeployment, err := ue.applyDoguResource(ctx, toDoguResource, toDogu)
+	err = registerUpgradedDoguVersion(ctx, toDogu)
 	if err != nil {
 		return err
 	}
 
-	// since new dogus may define new SAs in later versions we should take care of that
-	err = ue.createServiceAccounts(ctx, toDoguResource, toDogu)
+	err = registerNewServiceAccount(ctx, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
 
-	err = ue.updateDoguResource(ctx, toDoguResource, toDogu, customDeployment)
+	imageConfigFile, err := ue.pullUpgradeImage(ctx, toDogu)
 	if err != nil {
-		return err
+
 	}
 
-	// collectPostUpgradeScript goes here
+	var customK8sResources map[string]string
+	customK8sResources, err = extractCustomK8sResources(ctx, toDoguResource, toDogu)
+	if err != nil {
+
+	}
+
+	customDeployment, err := applyCustomK8sResources(ctx, toDoguResource, customK8sResources)
+	if err != nil {
+
+	}
+
+	err = generateDoguResources(ctx, toDoguResource, toDogu, imageConfigFile, customDeployment)
+	if err != nil {
+
+	}
+
+	err = markDoguAsInstalled(ctx, toDoguResource)
+	if err != nil {
+
+	}
 
 	return nil
 }
 
-func (ue *upgradeExecutor) pullUpgradeImage(ctx context.Context, toDogu *core.Dogu) error {
-	_, err := ue.imageRegistry.PullImageConfig(ctx, toDogu.Image+":"+toDogu.Version)
+func registerUpgradedDoguVersion(ctx context.Context, toDogu *core.Dogu) error {
+	return nil
+}
+
+func registerNewServiceAccount(ctx context.Context, resource *k8sv1.Dogu, toDogu *core.Dogu) error {
+	return nil
+}
+
+func (ue *upgradeExecutor) pullUpgradeImage(ctx context.Context, toDogu *core.Dogu) (*imagev1.ConfigFile, error) {
+	return ue.imageRegistry.PullImageConfig(ctx, toDogu.Image+":"+toDogu.Version)
+}
+
+func extractCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
+	return nil, nil
+}
+
+func applyCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, k8sResources map[string]string) (*appsv1.Deployment, error) {
+	return nil, nil
+}
+
+func generateDoguResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
+	/*deployment*/ _, err := createOrGetDeployment(ctx, toDoguResource, customDeployment)
 	if err != nil {
-		return nil
+
+	}
+
+	err = createVolumes(ctx, toDoguResource, toDogu)
+	if err != nil {
+
+	}
+
+	err = createOrUpdateInternalServices(ctx, toDoguResource, toDogu, image)
+	if err != nil {
+
+	}
+
+	err = createOrUpdateExternalServices(ctx, toDoguResource, toDogu)
+	if err != nil {
+
 	}
 
 	return nil
 }
 
-func (ue *upgradeExecutor) applyDoguResource(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) (*appsv1.Deployment, error) {
-	customK8sResources, err := ue.fileExtractor.ExtractK8sResourcesFromContainer(ctx, toDoguResource, toDogu)
-	if err != nil {
-		return nil, fmt.Errorf("failed to pull customK8sResources: %w", err)
-	}
-
-	customDeployment, err := ue.applyCustomK8sResources(customK8sResources, toDoguResource)
-	if err != nil {
-		return nil, err
-	}
-
-	return customDeployment, nil
+func createOrGetDeployment(ctx context.Context, toDoguResource *k8sv1.Dogu, deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
+	return nil, nil
 }
 
-func (ue *upgradeExecutor) updateDeployment(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
+func createVolumes(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
+	return nil
+}
 
+func createOrUpdateInternalServices(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile) error {
+	return nil
+}
+
+func createOrUpdateExternalServices(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
 	return nil
 }
 
@@ -123,12 +167,8 @@ func (ue *upgradeExecutor) createServiceAccounts(ctx context.Context, toDoguReso
 }
 
 func (ue *upgradeExecutor) updateDoguResource(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, customDeployment *appsv1.Deployment) error {
-	err := ue.createVolumes(ctx, toDoguResource, toDogu)
-	if err != nil {
-		return fmt.Errorf("failed to create volumes for dogu %s: %w", toDogu.Name, err)
-	}
 
-	err = ue.patchDeployment(ctx, toDoguResource, toDogu, customDeployment)
+	err := ue.patchDeployment(ctx, toDoguResource, toDogu, customDeployment)
 	if err != nil {
 		return fmt.Errorf("failed to create deployment for dogu %s: %w", toDogu.Name, err)
 	}
@@ -147,38 +187,6 @@ func (ue *upgradeExecutor) applyCustomK8sResources(customK8sResources map[string
 		return nil, nil
 	}
 
-	// targetNamespace := doguResource.ObjectMeta.Namespace
-
-	// namespaceTemplate := struct {
-	// 	Namespace string
-	// }{
-	// 	Namespace: targetNamespace,
-	// }
-
-	// dCollector := &deploymentCollector{collected: []*appsv1.Deployment{}}
-	//
-	// for file, yamlDocs := range customK8sResources {
-	// 	err := apply.NewBuilder(ue.applier).
-	// 		WithNamespace(targetNamespace).
-	// 		WithOwner(doguResource).
-	// 		WithTemplate(file, namespaceTemplate).
-	// 		WithCollector(dCollector).
-	// 		WithYamlResource(file, []byte(yamlDocs)).
-	// 		WithApplyFilter(&deploymentAntiFilter{}).
-	// 		ExecuteApply()
-	//
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-	//
-	// if len(dCollector.collected) > 1 {
-	// 	return nil, fmt.Errorf("expected exactly one Deployment but found %d - not sure how to continue", len(dCollector.collected))
-	// }
-	// if len(dCollector.collected) == 1 {
-	// 	return dCollector.collected[0], nil
-	// }
-
 	return nil, nil
 }
 
@@ -190,6 +198,14 @@ func (ue *upgradeExecutor) patchDeployment(ctx context.Context, toDoguResource *
 	return nil
 }
 
-func (ue *upgradeExecutor) handleCustomK8sResources(ctx context.Context, resource *k8sv1.Dogu, dogu *core.Dogu) error {
+func (ue *upgradeExecutor) handleCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
+	return nil
+}
+
+func markDoguAsUpgrading(ctx context.Context, toDoguResource *k8sv1.Dogu) error {
+	return nil
+}
+
+func markDoguAsInstalled(ctx context.Context, toDoguResource *k8sv1.Dogu) error {
 	return nil
 }

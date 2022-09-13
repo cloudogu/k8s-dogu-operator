@@ -274,7 +274,9 @@ func getVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.
 }
 
 // GetDoguService creates a new instance of a service with the given dogu custom resource and container image.
-// The container image is used to extract the exposed ports
+// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
+// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
+// the service ports to the created service.
 func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -316,6 +318,9 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 }
 
 // GetDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
+// The created service is rather meant for cluster-external access. The given dogu provides the service ports to the
+// created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
+// (see K8s-service-discovery).
 func (r *ResourceGenerator) GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
 	exposedServices := []corev1.Service{}
 
