@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -58,7 +59,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	err = registerUpgradedDoguVersion(ctx, toDogu)
+	err = registerUpgradedDoguVersion(ctx, nil, toDogu)
 	if err != nil {
 		return err
 	}
@@ -97,8 +98,9 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	return nil
 }
 
-func registerUpgradedDoguVersion(ctx context.Context, toDogu *core.Dogu) error {
-	return nil
+func registerUpgradedDoguVersion(ctx context.Context, registry registry.DoguRegistry, toDogu *core.Dogu) error {
+	return registry.Register(toDogu)
+
 }
 
 func registerNewServiceAccount(ctx context.Context, resource *k8sv1.Dogu, toDogu *core.Dogu) error {
