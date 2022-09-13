@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"testing"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -15,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
@@ -49,7 +50,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
-		doguResourceGenerator.Mock.On("GetDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
+		doguResourceGenerator.Mock.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
 		globalConfigMock.Mock.On("Get", "key_provider").Return("", nil)
 		registrator := newCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
@@ -206,7 +207,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
 		globalConfigMock.Mock.On("Get", "key_provider").Return("", nil)
-		doguResourceGenerator.Mock.On("GetDoguSecret", mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		doguResourceGenerator.Mock.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		registrator := newCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -236,7 +237,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
 		globalConfigMock.Mock.On("Get", "key_provider").Return("", nil)
-		doguResourceGenerator.Mock.On("GetDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
+		doguResourceGenerator.Mock.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
 		registrator := newCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when

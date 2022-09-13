@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/cesapp/v5/keys"
@@ -127,7 +128,7 @@ func (c *CesDoguRegistrator) writePrivateKey(ctx context.Context, privateKey *ke
 		return fmt.Errorf("failed to get private key as string: %w", err)
 	}
 
-	secret, err := c.secretGenerator.GetDoguSecret(doguResource, map[string]string{"private.pem": secretString})
+	secret, err := c.secretGenerator.CreateDoguSecret(doguResource, map[string]string{"private.pem": secretString})
 	if err != nil {
 		return fmt.Errorf("failed to generate secret: %w", err)
 	}

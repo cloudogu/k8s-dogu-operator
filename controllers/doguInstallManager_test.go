@@ -520,7 +520,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.On("GetDoguPVC", mock.Anything).Once().Return(nil, assert.AnError)
+			resourceGenerator.On("CreateDoguPVC", mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.installManager.resourceGenerator = resourceGenerator
 
 			managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
@@ -555,7 +555,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.On("GetDoguPVC", mock.Anything).Once().Return(&corev1.PersistentVolumeClaim{}, nil)
+			resourceGenerator.On("CreateDoguPVC", mock.Anything).Once().Return(&corev1.PersistentVolumeClaim{}, nil)
 			managerWithMocks.installManager.resourceGenerator = resourceGenerator
 
 			managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
@@ -591,8 +591,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
+			resourceGenerator.On("CreateDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
+			resourceGenerator.On("CreateDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.installManager.resourceGenerator = resourceGenerator
 
 			managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
@@ -629,8 +629,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Once().Return(&appsv1.Deployment{}, nil)
+			resourceGenerator.On("CreateDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
+			resourceGenerator.On("CreateDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Once().Return(&appsv1.Deployment{}, nil)
 			managerWithMocks.installManager.resourceGenerator = resourceGenerator
 
 			managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
@@ -666,9 +666,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
-			resourceGenerator.On("GetDoguService", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
+			resourceGenerator.On("CreateDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
+			resourceGenerator.On("CreateDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
+			resourceGenerator.On("CreateDoguService", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.installManager.resourceGenerator = resourceGenerator
 
 			managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
@@ -705,9 +705,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
-			resourceGenerator.On("GetDoguService", mock.Anything, mock.Anything).Once().Return(&corev1.Service{}, nil)
+			resourceGenerator.On("CreateDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
+			resourceGenerator.On("CreateDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
+			resourceGenerator.On("CreateDoguService", mock.Anything, mock.Anything).Once().Return(&corev1.Service{}, nil)
 			managerWithMocks.installManager.resourceGenerator = resourceGenerator
 
 			managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
@@ -743,10 +743,10 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
-			resourceGenerator.On("GetDoguService", mock.Anything, mock.Anything).Return(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice"}}, nil)
-			resourceGenerator.On("GetDoguExposedServices", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
+			resourceGenerator.On("CreateDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
+			resourceGenerator.On("CreateDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
+			resourceGenerator.On("CreateDoguService", mock.Anything, mock.Anything).Return(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice"}}, nil)
+			resourceGenerator.On("CreateDoguExposedServices", mock.Anything, mock.Anything).Once().Return(nil, assert.AnError)
 			managerWithMocks.installManager.resourceGenerator = resourceGenerator
 
 			managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
@@ -784,10 +784,10 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 			resourceGenerator := &mocks.DoguResourceGenerator{}
-			resourceGenerator.On("GetDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
-			resourceGenerator.On("GetDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
-			resourceGenerator.On("GetDoguService", mock.Anything, mock.Anything).Return(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice"}}, nil)
-			resourceGenerator.On("GetDoguExposedServices", mock.Anything, mock.Anything).Once().Return([]corev1.Service{{}, {}}, nil)
+			resourceGenerator.On("CreateDoguPVC", mock.Anything).Return(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "myclaim"}}, nil)
+			resourceGenerator.On("CreateDoguDeployment", mock.Anything, mock.Anything, mock.Anything).Return(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "mydeploy"}}, nil)
+			resourceGenerator.On("CreateDoguService", mock.Anything, mock.Anything).Return(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice"}}, nil)
+			resourceGenerator.On("CreateDoguExposedServices", mock.Anything, mock.Anything).Once().Return([]corev1.Service{{}, {}}, nil)
 			managerWithMocks.installManager.resourceGenerator = resourceGenerator
 
 			managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")

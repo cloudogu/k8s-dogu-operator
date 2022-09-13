@@ -12,6 +12,8 @@ type resourceManager struct {
 	client client.Client
 }
 
+// TODO: custom dogu config maps nicht vergessen
+
 // 1. dogu status auf upgrading stellen
 
 // 2. pre upgrade skript punkt markieren
@@ -33,14 +35,15 @@ type resourceManager struct {
 // 8. Custom K8s resourcen anwenden
 // analog zu installManager / wegen apply-lib sollte dies ohne Konflikte stattfinden
 
-// !? RG soll selbst entscheiden, ob Resourcen neu erzeugt oder existierende wieder verwendet werden sollen
+// !? RG soll selbst entscheiden, ob Resourcen neu erzeugt oder existierende wieder verwendet werden sollen ???
 // 9. K8s resource beschreibungen erzeugen
 //    1. resourceGenerator.createUpgradeDeployment
 //    2. volumes usw überschreiben analog RG
 //    3. createOrUpdateServiceService
 //    4. createOrUpdateExposedServices
+//    5. tolle Resourcen anwenden
 
 // 10. post upgrade skript punkt markieren
 
 // 11. dogu status auf Installed zurücksetzen
-// 12. (custom) dogu config map löschen
+// 12. TODO evtl.e (custom) dogu config map löschen

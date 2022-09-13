@@ -47,10 +47,10 @@ type limitPatcher interface {
 	PatchDeployment(deployment *appsv1.Deployment, limits limit.DoguLimits) error
 }
 
-// GetDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
-func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
-	volumes := getVolumesForDogu(doguResource, dogu)
-	volumeMounts := getVolumeMountsForDogu(doguResource, dogu)
+// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
+func (r *ResourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
+	volumes := createVolumesForDogu(doguResource, dogu)
+	volumeMounts := createVolumeMountsForDogu(doguResource, dogu)
 	startupProbe := createStartupProbe(dogu)
 	livenessProbe := createLivenessProbe(dogu)
 
@@ -203,7 +203,7 @@ func createStartupProbe(dogu *core.Dogu) *corev1.Probe {
 	return nil
 }
 
-func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
+func createVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
 	nodeMasterVolume := corev1.Volume{
 		Name: nodeMasterFile,
 		VolumeSource: corev1.VolumeSource{
@@ -245,7 +245,7 @@ func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volum
 	return volumes
 }
 
-func getVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	doguVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      nodeMasterFile,
@@ -273,11 +273,11 @@ func getVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.
 	return doguVolumeMounts
 }
 
-// GetDoguService creates a new instance of a service with the given dogu custom resource and container image.
+// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
 // The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 // apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
 // the service ports to the created service.
-func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
+func (r *ResourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      doguResource.Name,
@@ -317,11 +317,11 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 	return service, nil
 }
 
-// GetDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
+// CreateDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
 // The created service is rather meant for cluster-external access. The given dogu provides the service ports to the
 // created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
 // (see K8s-service-discovery).
-func (r *ResourceGenerator) GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
+func (r *ResourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
 	exposedServices := []corev1.Service{}
 
 	for _, exposedPort := range dogu.ExposedPorts {
@@ -357,8 +357,8 @@ func (r *ResourceGenerator) GetDoguExposedServices(doguResource *k8sv1.Dogu, dog
 	return exposedServices, nil
 }
 
-// GetDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu
-func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
+// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu
+func (r *ResourceGenerator) CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	doguPvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      doguResource.Name,
@@ -384,8 +384,8 @@ func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.Persis
 	return doguPvc, nil
 }
 
-// GetDoguSecret generates a secret with a given data map for the dogu
-func (r *ResourceGenerator) GetDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
+// CreateDoguSecret generates a secret with a given data map for the dogu
+func (r *ResourceGenerator) CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Name:      doguResource.GetPrivateVolumeName(),
 		Namespace: doguResource.Namespace,

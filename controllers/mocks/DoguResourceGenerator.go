@@ -22,7 +22,7 @@ type DoguResourceGenerator struct {
 }
 
 // GetDoguDeployment provides a mock function with given fields: doguResource, dogu, customDeployment
-func (_m *DoguResourceGenerator) GetDoguDeployment(doguResource *v1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
+func (_m *DoguResourceGenerator) CreateDoguDeployment(doguResource *v1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
 	ret := _m.Called(doguResource, dogu, customDeployment)
 
 	var r0 *appsv1.Deployment
@@ -45,7 +45,7 @@ func (_m *DoguResourceGenerator) GetDoguDeployment(doguResource *v1.Dogu, dogu *
 }
 
 // GetDoguExposedServices provides a mock function with given fields: doguResource, dogu
-func (_m *DoguResourceGenerator) GetDoguExposedServices(doguResource *v1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
+func (_m *DoguResourceGenerator) CreateDoguExposedServices(doguResource *v1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
 	ret := _m.Called(doguResource, dogu)
 
 	var r0 []corev1.Service
@@ -68,7 +68,7 @@ func (_m *DoguResourceGenerator) GetDoguExposedServices(doguResource *v1.Dogu, d
 }
 
 // GetDoguPVC provides a mock function with given fields: doguResource
-func (_m *DoguResourceGenerator) GetDoguPVC(doguResource *v1.Dogu) (*corev1.PersistentVolumeClaim, error) {
+func (_m *DoguResourceGenerator) CreateDoguPVC(doguResource *v1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	ret := _m.Called(doguResource)
 
 	var r0 *corev1.PersistentVolumeClaim
@@ -91,7 +91,7 @@ func (_m *DoguResourceGenerator) GetDoguPVC(doguResource *v1.Dogu) (*corev1.Pers
 }
 
 // GetDoguSecret provides a mock function with given fields: doguResource, stringData
-func (_m *DoguResourceGenerator) GetDoguSecret(doguResource *v1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
+func (_m *DoguResourceGenerator) CreateDoguSecret(doguResource *v1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
 	ret := _m.Called(doguResource, stringData)
 
 	var r0 *corev1.Secret
@@ -114,7 +114,7 @@ func (_m *DoguResourceGenerator) GetDoguSecret(doguResource *v1.Dogu, stringData
 }
 
 // GetDoguService provides a mock function with given fields: doguResource, imageConfig
-func (_m *DoguResourceGenerator) GetDoguService(doguResource *v1.Dogu, imageConfig *pkgv1.ConfigFile) (*corev1.Service, error) {
+func (_m *DoguResourceGenerator) CreateDoguService(doguResource *v1.Dogu, imageConfig *pkgv1.ConfigFile) (*corev1.Service, error) {
 	ret := _m.Called(doguResource, imageConfig)
 
 	var r0 *corev1.Service

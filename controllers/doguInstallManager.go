@@ -398,7 +398,7 @@ func (m *doguInstallManager) createVolumes(ctx context.Context, doguResource *k8
 
 func (m *doguInstallManager) createPvcForDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
-	desiredPvc, err := m.resourceGenerator.GetDoguPVC(doguResource)
+	desiredPvc, err := m.resourceGenerator.CreateDoguPVC(doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to generate pvc: %w", err)
 	}
@@ -450,7 +450,7 @@ func (m *doguInstallManager) validateDoguPvc(ctx context.Context, dogu *cesappco
 func (m *doguInstallManager) createDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, patchingDeployment *appsv1.Deployment) error {
 	logger := log.FromContext(ctx)
 
-	desiredDeployment, err := m.resourceGenerator.GetDoguDeployment(doguResource, dogu, patchingDeployment)
+	desiredDeployment, err := m.resourceGenerator.CreateDoguDeployment(doguResource, dogu, patchingDeployment)
 	if err != nil {
 		return fmt.Errorf("failed to generate dogu deployment: %w", err)
 	}
@@ -467,7 +467,7 @@ func (m *doguInstallManager) createDeployment(ctx context.Context, doguResource 
 func (m *doguInstallManager) createService(ctx context.Context, doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) error {
 	logger := log.FromContext(ctx)
 
-	desiredService, err := m.resourceGenerator.GetDoguService(doguResource, imageConfig)
+	desiredService, err := m.resourceGenerator.CreateDoguService(doguResource, imageConfig)
 	if err != nil {
 		return fmt.Errorf("failed to generate dogu service: %w", err)
 	}
@@ -484,7 +484,7 @@ func (m *doguInstallManager) createService(ctx context.Context, doguResource *k8
 func (m *doguInstallManager) createExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) error {
 	logger := log.FromContext(ctx)
 
-	exposedServices, err := m.resourceGenerator.GetDoguExposedServices(doguResource, dogu)
+	exposedServices, err := m.resourceGenerator.CreateDoguExposedServices(doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to generate exposed services: %w", err)
 	}

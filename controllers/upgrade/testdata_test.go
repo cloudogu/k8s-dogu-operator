@@ -17,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"
 )
 
@@ -127,26 +126,4 @@ func getTestScheme() *runtime.Scheme {
 var deploymentTypeMeta = metav1.TypeMeta{
 	APIVersion: "apps/v1",
 	Kind:       "Deployment",
-}
-
-func createTestRestConfig() *rest.Config {
-	return &rest.Config{}
-}
-
-func createReadyDeployment(doguName string) *appsv1.Deployment {
-	return createDeployment(doguName, 1, 1)
-}
-
-func createDeployment(doguName string, replicas, replicasReady int32) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		TypeMeta: deploymentTypeMeta,
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguName,
-			Namespace: defaultNamespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Template: v1.PodTemplateSpec{Spec: v1.PodSpec{ServiceAccountName: "somethingNonEmptyToo"}},
-		},
-		Status: appsv1.DeploymentStatus{Replicas: replicas, ReadyReplicas: replicasReady},
-	}
 }

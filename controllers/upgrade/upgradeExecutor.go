@@ -84,7 +84,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 
 	}
 
-	err = generateDoguResources(ctx, toDoguResource, toDogu, imageConfigFile, customDeployment)
+	err = createDoguResources(ctx, toDoguResource, toDogu, imageConfigFile, customDeployment)
 	if err != nil {
 
 	}
@@ -117,8 +117,8 @@ func applyCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, k8
 	return nil, nil
 }
 
-func generateDoguResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
-	/*deployment*/ _, err := createOrGetDeployment(ctx, toDoguResource, customDeployment)
+func createDoguResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
+	/*deployment*/ _, err := createDeployment(ctx, toDoguResource, customDeployment)
 	if err != nil {
 
 	}
@@ -141,7 +141,7 @@ func generateDoguResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDo
 	return nil
 }
 
-func createOrGetDeployment(ctx context.Context, toDoguResource *k8sv1.Dogu, deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
+func createDeployment(ctx context.Context, toDoguResource *k8sv1.Dogu, deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
 	return nil, nil
 }
 
