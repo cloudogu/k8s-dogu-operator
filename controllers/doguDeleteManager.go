@@ -3,10 +3,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
@@ -54,7 +56,7 @@ func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorC
 		scheme:                client.Scheme(),
 		doguRemoteRegistry:    doguRemoteRegistry,
 		doguLocalRegistry:     cesRegistry.DoguRegistry(),
-		doguRegistrator:       newCESDoguRegistrator(client, cesRegistry, resourceGenerator),
+		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
 		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor),
 	}, nil
 }

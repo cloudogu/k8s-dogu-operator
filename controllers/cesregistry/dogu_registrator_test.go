@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
+func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 	ctx := context.TODO()
 	scheme := getTestScheme()
 	// fake k8sClient
@@ -55,7 +55,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -91,7 +91,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -130,7 +130,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -154,7 +154,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -181,7 +181,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -211,7 +211,7 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -241,12 +241,57 @@ func TestEtcdDoguRegistrator_RegisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
-		err := registrator.RegisterDogu(ctx, ldapCr, ldapDogu)
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
 
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create secret")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
+	})
+}
+
+func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
+	ldapDogu := &core.Dogu{
+		Name:    "official/ldap",
+		Version: "1.0.0",
+	}
+
+	t.Run("successfully register a new dogu version", func(t *testing.T) {
+		// given
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguConfigMock := &cesmocks.ConfigurationContext{}
+		globalConfigMock := &cesmocks.ConfigurationContext{}
+		doguRegistryMock.Mock.On("Register", ldapDogu).Return(nil)
+		doguRegistryMock.Mock.On("Enable", ldapDogu).Return(nil)
+		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(true, nil)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
+
+		// when
+		err := registrator.RegisterDoguVersion(ldapDogu)
+
+		// then
+		require.NoError(t, err)
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
+	})
+
+	t.Run("fail to check if dogu is already registered", func(t *testing.T) {
+		// given
+		registryMock := &cesmocks.Registry{}
+		doguRegistryMock := &cesmocks.DoguRegistry{}
+		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(true, assert.AnError)
+		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
+
+		// when
+		err := registrator.RegisterDoguVersion(ldapDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to check if dogu is already installed and enabled")
+		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 }
 

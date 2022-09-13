@@ -152,7 +152,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 
 	logger.Info("Register dogu...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
-	err = m.doguRegistrator.RegisterDogu(ctx, doguResource, dogu)
+	err = m.doguRegistrator.RegisterNewDogu(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu: %w", err)
 	}

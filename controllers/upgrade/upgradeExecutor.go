@@ -8,6 +8,8 @@ import (
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,21 +36,33 @@ type serviceAccountCreator interface {
 	CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error
 }
 
+// doguRegistrator is used to register dogus
+type doguRegistrator interface {
+	RegisterDoguVersion(dogu *core.Dogu) error
+}
+
 type upgradeExecutor struct {
 	client                client.Client
 	imageRegistry         imageRegistry
 	applier               applier
 	fileExtractor         fileExtractor
 	serviceAccountCreator serviceAccountCreator
+	doguRegistrator       doguRegistrator
+	resourceGenerator     *resource.ResourceGenerator
 }
 
-func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, applier applier, fileExtractor fileExtractor, serviceAccountCreator serviceAccountCreator) *upgradeExecutor {
+func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, applier applier, fileExtractor fileExtractor, serviceAccountCreator serviceAccountCreator, registry registry.Registry, resourceGenerator *resource.ResourceGenerator) *upgradeExecutor {
+
+	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, registry, nil)
+
 	return &upgradeExecutor{
 		client:                client,
 		imageRegistry:         imageRegistry,
 		applier:               applier,
 		fileExtractor:         fileExtractor,
 		serviceAccountCreator: serviceAccountCreator,
+		doguRegistrator:       doguRegistrator,
+		resourceGenerator:     resourceGenerator,
 	}
 }
 
@@ -59,7 +73,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	err = registerUpgradedDoguVersion(ctx, nil, toDogu)
+	err = registerUpgradedDoguVersion(ue.doguRegistrator, toDogu)
 	if err != nil {
 		return err
 	}
@@ -98,9 +112,13 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	return nil
 }
 
-func registerUpgradedDoguVersion(ctx context.Context, registry registry.DoguRegistry, toDogu *core.Dogu) error {
-	return registry.Register(toDogu)
+func registerUpgradedDoguVersion(cesreg doguRegistrator, toDogu *core.Dogu) error {
+	err := cesreg.RegisterDoguVersion(toDogu)
+	if err != nil {
+		return fmt.Errorf("failed to register upgrade: %w", err)
+	}
 
+	return nil
 }
 
 func registerNewServiceAccount(ctx context.Context, resource *k8sv1.Dogu, toDogu *core.Dogu) error {

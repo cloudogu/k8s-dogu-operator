@@ -5,26 +5,20 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/cesapp/v5/keys"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	appsv1 "k8s.io/api/apps/v1"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// doguResourceGenerator is used to generate kubernetes resources
-type doguResourceGenerator interface {
-	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error)
-	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error)
-	CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error)
+// secretResourceGenerator is used to generate kubernetes secret resources
+type secretResourceGenerator interface {
 	CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error)
-	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) ([]corev1.Service, error)
 }
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
@@ -32,12 +26,12 @@ type CesDoguRegistrator struct {
 	client          client.Client
 	registry        cesregistry.Registry
 	doguRegistry    cesregistry.DoguRegistry
-	secretGenerator doguResourceGenerator
+	secretGenerator secretResourceGenerator
 }
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator doguResourceGenerator) *CesDoguRegistrator {
+func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator secretResourceGenerator) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
 		client:          client,
 		registry:        registry,
@@ -46,8 +40,9 @@ func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, 
 	}
 }
 
-// RegisterDogu registers a dogu in a cluster. It generates key pairs and configures the dogu registry
-func (c *CesDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+// RegisterNewDogu registers a completely new dogu in a cluster. Use RegisterDoguVersion() for upgrades of an existing
+// dogu.
+func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 	enabled, err := c.doguRegistry.IsEnabled(dogu.GetSimpleName())
 	if err != nil {
@@ -64,9 +59,29 @@ func (c *CesDoguRegistrator) RegisterDogu(ctx context.Context, doguResource *k8s
 		return fmt.Errorf("failed to add dogu to registry: %w", err)
 	}
 
-	err = c.registerKeys(ctx, dogu, doguResource)
+	err = c.registerNewKeys(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register keys: %w", err)
+	}
+
+	return nil
+}
+
+// RegisterDoguVersion registers an upgrade of an existing dogu.dogu in a cluster. Use RegisterNewDogu() complete new
+// dogu installations.
+func (c *CesDoguRegistrator) RegisterDoguVersion(dogu *core.Dogu) error {
+	enabled, err := c.doguRegistry.IsEnabled(dogu.GetSimpleName())
+	if err != nil {
+		return fmt.Errorf("failed to check if dogu is already installed and enabled: %w", err)
+	}
+
+	if !enabled {
+		return errors.New("could not register dogu version: previous version not found")
+	}
+
+	err = c.addDoguToRegistry(dogu)
+	if err != nil {
+		return fmt.Errorf("failed to add dogu to registry: %w", err)
 	}
 
 	return nil
@@ -101,20 +116,23 @@ func (c *CesDoguRegistrator) addDoguToRegistry(dogu *core.Dogu) error {
 	return nil
 }
 
-func (c *CesDoguRegistrator) registerKeys(ctx context.Context, dogu *core.Dogu, doguResource *k8sv1.Dogu) error {
+// RegisterNewKeys creates a new key pair and registers it with the dogu in the registry. Any pre-existing keys will
+// then no longer work.
+func (c *CesDoguRegistrator) registerNewKeys(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+	const sharedErrMsg = "failed to register keys"
 	keyPair, err := c.createKeypair()
 	if err != nil {
-		return fmt.Errorf("failed to create keypair: %w", err)
+		return fmt.Errorf("%s: failed to create keypair: %w", sharedErrMsg, err)
 	}
 
 	err = c.writePublicKey(keyPair.Public(), dogu)
 	if err != nil {
-		return fmt.Errorf("failed to write public key: %w", err)
+		return fmt.Errorf("%s: failed to write public key: %w", sharedErrMsg, err)
 	}
 
 	err = c.writePrivateKey(ctx, keyPair.Private(), doguResource)
 	if err != nil {
-		return fmt.Errorf("failed to write private key: %w", err)
+		return fmt.Errorf("%s: failed to write private key: %w", sharedErrMsg, err)
 	}
 
 	return nil

@@ -14,6 +14,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
@@ -79,8 +80,9 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
 	doguChecker := health.NewDoguChecker(client, doguLocalRegistry)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
+	resourceGen := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(client, imageRegistry, applier, fileExtractor, serviceAccountCreator)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(client, imageRegistry, applier, fileExtractor, serviceAccountCreator, cesRegistry, resourceGen)
 
 	return &doguUpgradeManager{
 		client:                client,
