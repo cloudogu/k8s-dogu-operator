@@ -9,12 +9,13 @@ import (
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
+	reg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 
@@ -67,7 +68,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
 	}
 
-	imageRegistry := registry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
+	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
 	restConfig := ctrl.GetConfigOrDie()
 	clientSet, err := kubernetes.NewForConfig(restConfig)
@@ -85,7 +86,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		return nil, fmt.Errorf("failed to add applier scheme to dogu CRD scheme handling: %w", err)
 	}
 
-	doguRegistrator := newCESDoguRegistrator(client, cesRegistry, resourceGenerator)
+	doguRegistrator := reg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
 
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())

@@ -1,18 +1,31 @@
-package controllers
+package cesregistry
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/cesapp/v5/keys"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+// doguResourceGenerator is used to generate kubernetes resources
+type doguResourceGenerator interface {
+	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error)
+	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error)
+	CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error)
+	CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error)
+	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) ([]corev1.Service, error)
+}
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
 type CesDoguRegistrator struct {
@@ -22,9 +35,9 @@ type CesDoguRegistrator struct {
 	secretGenerator doguResourceGenerator
 }
 
-// newCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
+// NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func newCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator doguResourceGenerator) *CesDoguRegistrator {
+func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator doguResourceGenerator) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
 		client:          client,
 		registry:        registry,
