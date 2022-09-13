@@ -51,7 +51,15 @@ type upgradeExecutor struct {
 	resourceGenerator     *resource.ResourceGenerator
 }
 
-func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, applier applier, fileExtractor fileExtractor, serviceAccountCreator serviceAccountCreator, registry registry.Registry, resourceGenerator *resource.ResourceGenerator) *upgradeExecutor {
+func NewUpgradeExecutor(
+	client client.Client,
+	imageRegistry imageRegistry,
+	applier applier,
+	fileExtractor fileExtractor,
+	serviceAccountCreator serviceAccountCreator,
+	registry registry.Registry,
+	resourceGenerator *resource.ResourceGenerator,
+) *upgradeExecutor {
 
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, registry, nil)
 
@@ -78,7 +86,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	err = registerNewServiceAccount(ctx, toDoguResource, toDogu)
+	err = registerNewServiceAccount(ctx, ue.serviceAccountCreator, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
@@ -121,7 +129,13 @@ func registerUpgradedDoguVersion(cesreg doguRegistrator, toDogu *core.Dogu) erro
 	return nil
 }
 
-func registerNewServiceAccount(ctx context.Context, resource *k8sv1.Dogu, toDogu *core.Dogu) error {
+func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCreator, resource *k8sv1.Dogu, toDogu *core.Dogu) error {
+	err := saCreator.CreateAll(ctx, resource.Namespace, toDogu)
+	if err != nil {
+		if err != nil {
+			return fmt.Errorf("failed to register service accounts: %w", err)
+		}
+	}
 	return nil
 }
 
