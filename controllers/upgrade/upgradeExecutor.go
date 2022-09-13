@@ -10,10 +10,12 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type imageRegistry interface {
@@ -41,10 +43,15 @@ type doguRegistrator interface {
 	RegisterDoguVersion(dogu *core.Dogu) error
 }
 
+type collectApplier interface {
+	// CollectApply applies the given resources to the K8s cluster but filters and collects deployments.
+	CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error)
+}
+
 type upgradeExecutor struct {
 	client                client.Client
 	imageRegistry         imageRegistry
-	applier               applier
+	collectApplier        collectApplier
 	fileExtractor         fileExtractor
 	serviceAccountCreator serviceAccountCreator
 	doguRegistrator       doguRegistrator
@@ -54,7 +61,7 @@ type upgradeExecutor struct {
 func NewUpgradeExecutor(
 	client client.Client,
 	imageRegistry imageRegistry,
-	applier applier,
+	collectApplier collectApplier,
 	fileExtractor fileExtractor,
 	serviceAccountCreator serviceAccountCreator,
 	registry registry.Registry,
@@ -66,7 +73,7 @@ func NewUpgradeExecutor(
 	return &upgradeExecutor{
 		client:                client,
 		imageRegistry:         imageRegistry,
-		applier:               applier,
+		collectApplier:        collectApplier,
 		fileExtractor:         fileExtractor,
 		serviceAccountCreator: serviceAccountCreator,
 		doguRegistrator:       doguRegistrator,
@@ -102,7 +109,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	customDeployment, err := applyCustomK8sResources(ctx, ue.applier, toDoguResource, customK8sResources)
+	customDeployment, err := applyCustomK8sResources(ctx, ue.collectApplier, toDoguResource, customK8sResources)
 	if err != nil {
 		return err
 	}
@@ -157,8 +164,14 @@ func extractCustomK8sResources(ctx context.Context, extractor fileExtractor, toD
 	return resources, nil
 }
 
-func applyCustomK8sResources(ctx context.Context, a applier, toDoguResource *k8sv1.Dogu, additionalK8sResources map[string]string) (*appsv1.Deployment, error) {
-	return nil, nil
+func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) (*appsv1.Deployment, error) {
+	logger := log.FromContext(ctx)
+	resources, err := collectApplier.CollectApply(logger, customK8sResources, toDoguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply custom K8s resources: %w", err)
+	}
+
+	return resources, nil
 }
 
 func createDoguResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {

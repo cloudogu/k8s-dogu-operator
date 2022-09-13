@@ -8,10 +8,14 @@ import (
 	"github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var testCtx = context.TODO()
@@ -199,6 +203,61 @@ func Test_extractCustomK8sResources(t *testing.T) {
 	})
 }
 
+func Test_applyCustomK8sResources(t *testing.T) {
+	t.Run("should apply K8s resources and return deployment", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = "4.2.3-11"
+		toDoguCr := readTestDataRedmineCr(t)
+		toDoguCr.Spec.Version = "4.2.3-11"
+		collectApplier := new(collectApplyMock)
+		fakeResources := make(map[string]string, 0)
+		fakeResources["lefile.yaml"] = "levalue"
+		fakeDeployment := createTestDeployment("redmine")
+		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(fakeDeployment, nil)
+
+		// when
+		deployment, err := applyCustomK8sResources(testCtx, collectApplier, toDoguCr, fakeResources)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, fakeDeployment, deployment)
+	})
+	t.Run("should fail", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = "4.2.3-11"
+		toDoguCr := readTestDataRedmineCr(t)
+		toDoguCr.Spec.Version = "4.2.3-11"
+		collectApplier := new(collectApplyMock)
+		fakeResources := make(map[string]string, 0)
+		fakeResources["lefile.yaml"] = "levalue"
+		var noDeployment *appsv1.Deployment
+		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(noDeployment, assert.AnError)
+
+		// when
+		_, err := applyCustomK8sResources(testCtx, collectApplier, toDoguCr, fakeResources)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to apply custom K8s resources: assert.AnError")
+	})
+}
+
+func createTestDeployment(doguName string) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		TypeMeta: deploymentTypeMeta,
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      doguName,
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: "somethingNonEmptyToo"}},
+		},
+		Status: appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
+	}
+}
+
 func (s *saCreatorMock) CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
 	args := s.Called(ctx, namespace, dogu)
 	return args.Error(0)
@@ -220,4 +279,13 @@ type fileExtractorMock struct {
 func (f *fileExtractorMock) ExtractK8sResourcesFromContainer(ctx context.Context, resource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
 	args := f.Called(ctx, resource, dogu)
 	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+type collectApplyMock struct {
+	mock.Mock
+}
+
+func (c *collectApplyMock) CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
+	args := c.Called(logger, customK8sResources, doguResource)
+	return args.Get(0).(*appsv1.Deployment), args.Error(1)
 }
