@@ -53,7 +53,7 @@ func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, appli
 
 func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
 
-	err := markDoguAsUpgrading(ctx, toDoguResource)
+	err := toDoguResource.ChangeState(ctx, ue.client, k8sv1.DoguStatusUpgrading)
 	if err != nil {
 		return err
 	}
@@ -70,28 +70,28 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 
 	imageConfigFile, err := ue.pullUpgradeImage(ctx, toDogu)
 	if err != nil {
-
+		return err
 	}
 
 	var customK8sResources map[string]string
 	customK8sResources, err = extractCustomK8sResources(ctx, toDoguResource, toDogu)
 	if err != nil {
-
+		return err
 	}
 
 	customDeployment, err := applyCustomK8sResources(ctx, toDoguResource, customK8sResources)
 	if err != nil {
-
+		return err
 	}
 
 	err = createDoguResources(ctx, toDoguResource, toDogu, imageConfigFile, customDeployment)
 	if err != nil {
-
+		return err
 	}
 
-	err = markDoguAsInstalled(ctx, toDoguResource)
+	err = toDoguResource.ChangeState(ctx, ue.client, k8sv1.DoguStatusInstalled)
 	if err != nil {
-
+		return err
 	}
 
 	return nil
@@ -199,13 +199,5 @@ func (ue *upgradeExecutor) patchDeployment(ctx context.Context, toDoguResource *
 }
 
 func (ue *upgradeExecutor) handleCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
-	return nil
-}
-
-func markDoguAsUpgrading(ctx context.Context, toDoguResource *k8sv1.Dogu) error {
-	return nil
-}
-
-func markDoguAsInstalled(ctx context.Context, toDoguResource *k8sv1.Dogu) error {
 	return nil
 }
