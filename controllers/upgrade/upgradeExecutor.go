@@ -97,7 +97,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	var customK8sResources map[string]string
-	customK8sResources, err = extractCustomK8sResources(ctx, toDoguResource, toDogu)
+	customK8sResources, err = extractCustomK8sResources(ctx, ue.fileExtractor, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
@@ -148,8 +148,13 @@ func pullUpgradeImage(ctx context.Context, imgRegistry imageRegistry, toDogu *co
 	return configFile, nil
 }
 
-func extractCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
-	return nil, nil
+func extractCustomK8sResources(ctx context.Context, extractor fileExtractor, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) (map[string]string, error) {
+	resources, err := extractor.ExtractK8sResourcesFromContainer(ctx, toDoguResource, toDogu)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract custom K8s resources: %w", err)
+	}
+
+	return resources, nil
 }
 
 func applyCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, k8sResources map[string]string) (*appsv1.Deployment, error) {

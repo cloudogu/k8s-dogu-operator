@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
@@ -143,6 +144,61 @@ func Test_upgradeExecutor_pullUpgradeImage(t *testing.T) {
 	})
 }
 
+func Test_extractCustomK8sResources(t *testing.T) {
+	t.Run("should return custom K8s resources", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = "4.2.3-11"
+		toDoguCr := readTestDataRedmineCr(t)
+		toDoguCr.Spec.Version = "4.2.3-11"
+		extractor := new(fileExtractorMock)
+		fakeResources := make(map[string]string, 0)
+		fakeResources["lefile.yaml"] = "levalue"
+		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(fakeResources, nil)
+
+		// when
+		resources, err := extractCustomK8sResources(testCtx, extractor, toDoguCr, toDogu)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, fakeResources, resources)
+	})
+	t.Run("should return no custom K8s resources", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = "4.2.3-11"
+		toDoguCr := readTestDataRedmineCr(t)
+		toDoguCr.Spec.Version = "4.2.3-11"
+		extractor := new(fileExtractorMock)
+		var emptyResourcesAreValidToo map[string]string
+		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(emptyResourcesAreValidToo, nil)
+
+		// when
+		resources, err := extractCustomK8sResources(testCtx, extractor, toDoguCr, toDogu)
+
+		// then
+		require.NoError(t, err)
+		assert.Nil(t, resources)
+	})
+	t.Run("should fail", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = "4.2.3-11"
+		toDoguCr := readTestDataRedmineCr(t)
+		toDoguCr.Spec.Version = "4.2.3-11"
+		extractor := new(fileExtractorMock)
+		var nilMap map[string]string
+		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(nilMap, assert.AnError)
+
+		// when
+		_, err := extractCustomK8sResources(testCtx, extractor, toDoguCr, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to extract custom K8s resources: assert.AnError")
+	})
+}
+
 func (s *saCreatorMock) CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
 	args := s.Called(ctx, namespace, dogu)
 	return args.Error(0)
@@ -155,4 +211,13 @@ type imagePullMock struct {
 func (i *imagePullMock) PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error) {
 	args := i.Called(ctx, image)
 	return args.Get(0).(*imagev1.ConfigFile), args.Error(1)
+}
+
+type fileExtractorMock struct {
+	mock.Mock
+}
+
+func (f *fileExtractorMock) ExtractK8sResourcesFromContainer(ctx context.Context, resource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
+	args := f.Called(ctx, resource, dogu)
+	return args.Get(0).(map[string]string), args.Error(1)
 }
