@@ -44,7 +44,7 @@ type DoguSpec struct {
 	// Version of the dogu (e.g. 2.4.48-3)
 	Version string `json:"version,omitempty"`
 	//
-	UpgradeConfig UpgradeConfig `json:"upgradeConfig"`
+	UpgradeConfig UpgradeConfig `json:"upgradeConfig,omitempty"`
 }
 
 // UpgradeConfig contains configuration hints for the dogu operator regarding aspects during the upgrade of dogus.
@@ -52,10 +52,10 @@ type UpgradeConfig struct {
 	// AllowNamespaceSwitch lets a dogu switch its dogu namespace during an upgrade. The dogu must be technically the
 	// same dogu which did reside in a different namespace. The remote dogu's version must be equal to or greater than
 	// the version of the local dogu.
-	AllowNamespaceSwitch bool `json:"allowNamespaceSwitch"`
+	AllowNamespaceSwitch bool `json:"allowNamespaceSwitch,omitempty"`
 	// ForceUpgrade allows to install the same or even lower dogu version than already is installed. Please note, that
 	// possible data loss may occur by inappropriate dogu downgrading.
-	ForceUpgrade bool `json:"forceUpgrade"`
+	ForceUpgrade bool `json:"forceUpgrade,omitempty"`
 }
 
 // DoguStatus defines the observed state of a Dogu
