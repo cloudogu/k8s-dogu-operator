@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#41] Fire events to the specific dogu resource when installing or deleting a dogu. See 
 [event policy](docs/development/event_policy_for_the_operator_en.md) for more information.
+- [#43] Dogu resource has now a support mode, which leads the dogu pods to a freeze but running state.
+This is useful in cases where the dogu is in a restart loop. See [support mode](docs/operations/dogu_support_mode_en.md)
+for more information.
 
 ### Changed
 - [#41] Update makefiles to version `v7.0.1`.
