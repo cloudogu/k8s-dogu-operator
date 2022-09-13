@@ -175,6 +175,12 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	return nil
 }
 
+// ChangeState changes the state of this dogu resource and applies it to the cluster state.
+func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
+	d.Status.Status = newStatus
+	return client.Status().Update(ctx, d)
+}
+
 // +kubebuilder:object:root=true
 
 // DoguList contains a list of Dogu

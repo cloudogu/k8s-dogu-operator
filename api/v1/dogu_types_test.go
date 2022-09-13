@@ -1,12 +1,17 @@
 package v1_test
 
 import (
+	"context"
 	"fmt"
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"testing"
 	"time"
+
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestDoguStatus_GetRequeueTime(t *testing.T) {
@@ -71,4 +76,40 @@ func TestDogu_GetSecretObjectKey(t *testing.T) {
 	// then
 	assert.Equal(t, "myspecialdogu-secrets", key.Name)
 	assert.Equal(t, "testnamespace", key.Namespace)
+}
+
+func Test_Dogu_ChangeState(t *testing.T) {
+	ctx := context.TODO()
+
+	t.Run("should set the dogu resource's status to upgrade", func(t *testing.T) {
+		sut := &v1.Dogu{}
+		myClient := new(mocks.Client)
+		statusMock := new(mocks.StatusWriter)
+		myClient.On("Status").Return(statusMock)
+		statusMock.On("Update", ctx, sut).Return(nil)
+
+		// when
+		err := sut.ChangeState(ctx, myClient, v1.DoguStatusUpgrading)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, v1.DoguStatusUpgrading, sut.Status.Status)
+		myClient.AssertExpectations(t)
+		statusMock.AssertExpectations(t)
+	})
+	t.Run("should fail on client error", func(t *testing.T) {
+		sut := &v1.Dogu{}
+		myClient := new(mocks.Client)
+		statusMock := new(mocks.StatusWriter)
+		myClient.On("Status").Return(statusMock)
+		statusMock.On("Update", ctx, sut).Return(assert.AnError)
+
+		// when
+		err := sut.ChangeState(ctx, myClient, v1.DoguStatusUpgrading)
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+		myClient.AssertExpectations(t)
+		statusMock.AssertExpectations(t)
+	})
 }
