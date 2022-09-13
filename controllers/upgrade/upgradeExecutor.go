@@ -102,7 +102,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	customDeployment, err := applyCustomK8sResources(ctx, toDoguResource, customK8sResources)
+	customDeployment, err := applyCustomK8sResources(ctx, ue.applier, toDoguResource, customK8sResources)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func extractCustomK8sResources(ctx context.Context, extractor fileExtractor, toD
 	return resources, nil
 }
 
-func applyCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, k8sResources map[string]string) (*appsv1.Deployment, error) {
+func applyCustomK8sResources(ctx context.Context, a applier, toDoguResource *k8sv1.Dogu, additionalK8sResources map[string]string) (*appsv1.Deployment, error) {
 	return nil, nil
 }
 

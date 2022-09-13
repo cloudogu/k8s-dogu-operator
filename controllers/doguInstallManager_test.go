@@ -81,6 +81,7 @@ func getDoguInstallManagerWithMocks(scheme *runtime.Scheme) doguInstallManagerWi
 	mockedApplier := &mocks.Applier{}
 	fileExtract := &mocks.FileExtractor{}
 	eventRecorderMock := &mocks.EventRecorder{}
+	collectApplier := resource.NewCollectApplier(mockedApplier)
 
 	doguInstallManager := &doguInstallManager{
 		client:                k8sClient,
@@ -94,7 +95,7 @@ func getDoguInstallManagerWithMocks(scheme *runtime.Scheme) doguInstallManagerWi
 		serviceAccountCreator: serviceAccountCreator,
 		doguSecretHandler:     doguSecretHandler,
 		fileExtractor:         fileExtract,
-		applier:               mockedApplier,
+		collectApplier:        collectApplier,
 		recorder:              eventRecorderMock,
 	}
 

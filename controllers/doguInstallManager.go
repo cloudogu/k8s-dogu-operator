@@ -20,15 +20,13 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 
 	"github.com/go-logr/logr"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/yaml"
-
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -57,7 +55,7 @@ type doguInstallManager struct {
 	serviceAccountCreator serviceAccountCreator
 	doguSecretHandler     doguSecretHandler
 	fileExtractor         fileExtractor
-	applier               applier
+	collectApplier        collectApplier
 	recorder              record.EventRecorder
 }
 
@@ -91,6 +89,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
+	collectApplier := resource.NewCollectApplier(applier)
 
 	return &doguInstallManager{
 		client:                client,
@@ -104,7 +103,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		serviceAccountCreator: serviceAccountCreator,
 		doguSecretHandler:     resource.NewDoguSecretsWriter(client, cesRegistry),
 		fileExtractor:         fileExtract,
-		applier:               applier,
+		collectApplier:        collectApplier,
 		recorder:              eventRecorder,
 	}, nil
 }
@@ -209,83 +208,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 }
 
 func (m *doguInstallManager) applyCustomK8sResources(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
-	if len(customK8sResources) == 0 {
-		logger.Info("No custom K8s resources found")
-		return nil, nil
-	}
-
-	targetNamespace := doguResource.ObjectMeta.Namespace
-
-	namespaceTemplate := struct {
-		Namespace string
-	}{
-		Namespace: targetNamespace,
-	}
-
-	dCollector := &deploymentCollector{collected: []*appsv1.Deployment{}}
-
-	for file, yamlDocs := range customK8sResources {
-		logger.Info(fmt.Sprintf("Applying custom K8s resources from file %s", file))
-
-		err := apply.NewBuilder(m.applier).
-			WithNamespace(targetNamespace).
-			WithOwner(doguResource).
-			WithTemplate(file, namespaceTemplate).
-			WithCollector(dCollector).
-			WithYamlResource(file, []byte(yamlDocs)).
-			WithApplyFilter(&deploymentAntiFilter{}).
-			ExecuteApply()
-
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(dCollector.collected) > 1 {
-		return nil, fmt.Errorf("expected exactly one Deployment but found %d - not sure how to continue", len(dCollector.collected))
-	}
-	if len(dCollector.collected) == 1 {
-		return dCollector.collected[0], nil
-	}
-
-	return nil, nil
-}
-
-type deploymentCollector struct {
-	collected []*appsv1.Deployment
-}
-
-type deploymentAntiFilter struct{}
-
-func (dc *deploymentAntiFilter) Predicate(doc apply.YamlDocument) (bool, error) {
-	var deployment = &appsv1.Deployment{}
-
-	err := yaml.Unmarshal(doc, deployment)
-	if err != nil {
-		return false, fmt.Errorf("failed to unmarshal object [%s] into deployment: %w", string(doc), err)
-	}
-
-	return deployment.Kind != "Deployment", nil
-}
-
-func (dc *deploymentCollector) Predicate(doc apply.YamlDocument) (bool, error) {
-	var deployment = &appsv1.Deployment{}
-
-	err := yaml.Unmarshal(doc, deployment)
-	if err != nil {
-		return false, fmt.Errorf("failed to unmarshal object [%s] into deployment: %w", string(doc), err)
-	}
-
-	return deployment.Kind == "Deployment", nil
-}
-
-func (dc *deploymentCollector) Collect(doc apply.YamlDocument) {
-	var deployment = &appsv1.Deployment{}
-
-	// ignore error because it has already been parsed in Predicate()
-	_ = yaml.Unmarshal(doc, deployment)
-
-	dc.collected = append(dc.collected, deployment)
+	return m.collectApplier.CollectApply(logger, customK8sResources, doguResource)
 }
 
 func (m *doguInstallManager) getDoguDescriptorFromConfigMap(doguConfigMap *corev1.ConfigMap) (*cesappcore.Dogu, error) {

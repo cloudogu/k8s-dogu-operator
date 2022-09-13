@@ -6,6 +6,7 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -81,4 +82,9 @@ type DoguSecretsHandler interface {
 type applier interface {
 	// ApplyWithOwner provides a testable method for applying generic, unstructured K8s resources to the API
 	ApplyWithOwner(doc apply.YamlDocument, namespace string, resource metav1.Object) error
+}
+
+type collectApplier interface {
+	// CollectApply applies the given resources to the K8s cluster but filters and collects deployments.
+	CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error)
 }
