@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -162,6 +163,8 @@ func (u *upserter) updateOrInsert(ctx context.Context, objectKey *client.ObjectK
 type longhornPVCValidator struct{}
 
 func (v *longhornPVCValidator) validate(ctx context.Context, doguName string, resourceObj client.Object) error {
+	log.FromContext(ctx).Info(fmt.Sprintf("Starting validation of existing pvc in cluster with name [%s]", doguName))
+
 	castedPVC, ok := resourceObj.(*v1.PersistentVolumeClaim)
 	if !ok {
 		return fmt.Errorf("unsupported validation object (expected: PVC): %v", resourceObj)
