@@ -27,7 +27,6 @@ func TestNewUpserter(t *testing.T) {
 	require.NotNil(t, upserter)
 	assert.Equal(t, client, upserter.client)
 	require.NotNil(t, upserter.generator)
-	assert.Equal(t, patcher, upserter.generator.doguLimitPatcher)
 }
 
 func Test_longhornPVCValidator_validate(t *testing.T) {

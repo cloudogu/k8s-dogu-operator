@@ -21,14 +21,14 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func getResourceGenerator(t *testing.T) *ResourceGenerator {
+func getResourceGenerator(t *testing.T) *resourceGenerator {
 	t.Helper()
 
 	patcher := &mocks2.LimitPatcher{}
 	patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(limit.DoguLimits{}, nil)
 	patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 
-	return &ResourceGenerator{
+	return &resourceGenerator{
 		scheme:           getTestScheme(),
 		doguLimitPatcher: patcher,
 	}

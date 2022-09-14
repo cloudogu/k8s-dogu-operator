@@ -37,9 +37,17 @@ type resourceValidator interface {
 	validate(ctx context.Context, doguName string, obj client.Object) error
 }
 
+// doguResourceGenerator is used to generate kubernetes resources for the dogu.
+type doguResourceGenerator interface {
+	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error)
+	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*v1.Service, error)
+	CreateDoguPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
+	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*v1.Service, error)
+}
+
 type upserter struct {
 	client    client.Client
-	generator *ResourceGenerator
+	generator doguResourceGenerator
 }
 
 // ApplyDoguResource generates K8s resources from a given dogu and applies them to the cluster.
