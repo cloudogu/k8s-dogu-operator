@@ -26,15 +26,8 @@ const (
 
 var noValidator resourceValidator
 
-// NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, limitPatcher limitPatcher) *upserter {
-	schema := client.Scheme()
-	generator := NewResourceGenerator(schema, limitPatcher)
-	return &upserter{client: client, generator: generator}
-}
-
 type resourceValidator interface {
-	validate(ctx context.Context, doguName string, obj client.Object) error
+	Validate(ctx context.Context, doguName string, obj client.Object) error
 }
 
 // doguResourceGenerator is used to generate kubernetes resources for the dogu.
@@ -48,6 +41,13 @@ type doguResourceGenerator interface {
 type upserter struct {
 	client    client.Client
 	generator doguResourceGenerator
+}
+
+// NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
+func NewUpserter(client client.Client, limitPatcher limitPatcher) *upserter {
+	schema := client.Scheme()
+	generator := NewResourceGenerator(schema, limitPatcher)
+	return &upserter{client: client, generator: generator}
 }
 
 // ApplyDoguResource generates K8s resources from a given dogu and applies them to the cluster.
@@ -110,7 +110,7 @@ func (u *upserter) upsertDoguService(ctx context.Context, doguResource *k8sv1.Do
 func (u *upserter) upsertDoguExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	newExposedServices, err := u.generator.CreateDoguExposedServices(doguResource, dogu)
 	if err != nil {
-		return fmt.Errorf("failed to generate service: %w", err)
+		return fmt.Errorf("failed to generate exposed services: %w", err)
 	}
 
 	var collectedErrs error
@@ -129,7 +129,7 @@ func (u *upserter) upsertDoguExposedServices(ctx context.Context, doguResource *
 func (u *upserter) upsertDoguPVC(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	newPVC, err := u.generator.CreateDoguPVC(doguResource)
 	if err != nil {
-		return fmt.Errorf("failed to generate service: %w", err)
+		return fmt.Errorf("failed to generate pvc: %w", err)
 	}
 
 	err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}, newPVC, &longhornPVCValidator{})
@@ -142,6 +142,7 @@ func (u *upserter) upsertDoguPVC(ctx context.Context, doguResource *k8sv1.Dogu) 
 
 func (u *upserter) updateOrInsert(ctx context.Context, objectKey *client.ObjectKey, resourceType client.Object, newResource client.Object, val resourceValidator) error {
 	if resourceType == nil {
+		// todo i am currently not satisfied that we don't check the compatibility of both objects. An imput of a *v1.Service (resourceType) and *appsv1.Deployment (newResource) is valid but it should not be!.
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
 	}
 
@@ -158,7 +159,7 @@ func (u *upserter) updateOrInsert(ctx context.Context, objectKey *client.ObjectK
 	// it does not contain any useful metadata.
 	ownerRef := metav1.GetControllerOf(resourceType)
 	if ownerRef != nil && val != nil {
-		err = val.validate(ctx, objectKey.Name, resourceType)
+		err = val.Validate(ctx, objectKey.Name, resourceType)
 		if err != nil {
 			return err
 		}
@@ -170,7 +171,8 @@ func (u *upserter) updateOrInsert(ctx context.Context, objectKey *client.ObjectK
 
 type longhornPVCValidator struct{}
 
-func (v *longhornPVCValidator) validate(ctx context.Context, doguName string, resourceObj client.Object) error {
+// Validate validates that a pvc contains all necessary data to be used as a valid dogu pvc.
+func (v *longhornPVCValidator) Validate(ctx context.Context, doguName string, resourceObj client.Object) error {
 	log.FromContext(ctx).Info(fmt.Sprintf("Starting validation of existing pvc in cluster with name [%s]", doguName))
 
 	castedPVC, ok := resourceObj.(*v1.PersistentVolumeClaim)
