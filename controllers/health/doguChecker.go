@@ -133,9 +133,9 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 	return result.ErrorOrNil()
 }
 
-func (dc *doguChecker) checkByNameAndK8sObjectKey(ctx context.Context, doguName string, objectKey *client.ObjectKey) error {
+func (dc *doguChecker) checkByNameAndK8sObjectKey(ctx context.Context, doguName string, objectKey client.ObjectKey) error {
 	deployment := &v1.Deployment{}
-	err := dc.client.Get(ctx, *objectKey, deployment)
+	err := dc.client.Get(ctx, objectKey, deployment)
 	if err != nil {
 		return fmt.Errorf("dogu %s health check failed: %w", doguName, err)
 	}
@@ -149,8 +149,8 @@ func (dc *doguChecker) checkByNameAndK8sObjectKey(ctx context.Context, doguName 
 	return nil
 }
 
-func getObjectKeyForDoguAndNamespace(localDogu, currentK8sNamespace string) *client.ObjectKey {
-	return &client.ObjectKey{
+func getObjectKeyForDoguAndNamespace(localDogu, currentK8sNamespace string) client.ObjectKey {
+	return client.ObjectKey{
 		Namespace: currentK8sNamespace,
 		Name:      localDogu,
 	}

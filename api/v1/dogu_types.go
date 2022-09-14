@@ -133,8 +133,8 @@ func (d Dogu) GetPrivateVolumeName() string {
 }
 
 // GetObjectKey returns the object key with the actual name and namespace from the dogu resource
-func (d Dogu) GetObjectKey() *client.ObjectKey {
-	return &client.ObjectKey{
+func (d Dogu) GetObjectKey() client.ObjectKey {
+	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name,
 	}

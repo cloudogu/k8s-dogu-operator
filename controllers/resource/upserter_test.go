@@ -336,7 +336,7 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		afterUpsert := &appsv1.Deployment{}
-		err = client.Get(context.Background(), *doguResource.GetObjectKey(), afterUpsert)
+		err = client.Get(context.Background(), doguResource.GetObjectKey(), afterUpsert)
 		assert.Nil(t, afterUpsert.Spec.Replicas)
 	})
 }
@@ -348,7 +348,7 @@ func Test_upserter_upsertDoguDeployment(t *testing.T) {
 		dogu := readLdapDogu(t)
 
 		client := &mocks.Client{}
-		client.On("Get", context.Background(), *doguResource.GetObjectKey(), &appsv1.Deployment{}).Return(assert.AnError)
+		client.On("Get", context.Background(), doguResource.GetObjectKey(), &appsv1.Deployment{}).Return(assert.AnError)
 
 		generator := &mocks2.DoguResourceGenerator{}
 		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(readLdapDoguExpectedDeployment(t), nil)
@@ -374,9 +374,9 @@ func Test_upserter_upsertDoguExposedServices(t *testing.T) {
 
 		client := &mocks.Client{}
 		failedToCreateFirstError := errors.New("failed on exposed service 1")
-		client.On("Get", context.Background(), *doguResource.GetObjectKey(), &v1.Service{}).Once().Return(failedToCreateFirstError)
+		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Once().Return(failedToCreateFirstError)
 		failedToCreateSecondError := errors.New("failed on exposed service 2")
-		client.On("Get", context.Background(), *doguResource.GetObjectKey(), &v1.Service{}).Once().Return(failedToCreateSecondError)
+		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Once().Return(failedToCreateSecondError)
 
 		generator := &mocks2.DoguResourceGenerator{}
 		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(readLdapDoguExpectedExposedServices(t), nil)
@@ -405,7 +405,7 @@ func Test_upserter_upsertDoguPVC(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 
 		client := &mocks.Client{}
-		client.On("Get", context.Background(), *doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
+		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 
 		generator := &mocks2.DoguResourceGenerator{}
 		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedPVC(t), nil)
@@ -430,7 +430,7 @@ func Test_upserter_upsertDoguService(t *testing.T) {
 		imageConfig := readLdapDoguImageConfig(t)
 
 		client := &mocks.Client{}
-		client.On("Get", context.Background(), *doguResource.GetObjectKey(), &v1.Service{}).Return(assert.AnError)
+		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Return(assert.AnError)
 
 		generator := &mocks2.DoguResourceGenerator{}
 		generator.On("CreateDoguService", doguResource, imageConfig).Return(readLdapDoguExpectedService(t), nil)

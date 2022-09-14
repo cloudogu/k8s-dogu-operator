@@ -140,13 +140,13 @@ func (u *upserter) upsertDoguPVC(ctx context.Context, doguResource *k8sv1.Dogu) 
 	return nil
 }
 
-func (u *upserter) updateOrInsert(ctx context.Context, objectKey *client.ObjectKey, resourceType client.Object, newResource client.Object, val resourceValidator) error {
+func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKey, resourceType client.Object, newResource client.Object, val resourceValidator) error {
 	if resourceType == nil {
 		// todo i am currently not satisfied that we don't check the compatibility of both objects. An imput of a *v1.Service (resourceType) and *appsv1.Deployment (newResource) is valid but it should not be!.
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
 	}
 
-	err := u.client.Get(ctx, *objectKey, resourceType)
+	err := u.client.Get(ctx, objectKey, resourceType)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
