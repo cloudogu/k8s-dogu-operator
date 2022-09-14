@@ -2,16 +2,32 @@ package resource
 
 import (
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"testing"
 )
 
 func TestNewUpserter(t *testing.T) {
+	// given
+	client := &mocks.Client{}
+	client.On("Scheme").Return(new(runtime.Scheme))
+	patcher := &mocks2.LimitPatcher{}
+
+	// when
+	upserter := NewUpserter(client, patcher)
+
+	// given
+	require.NotNil(t, upserter)
+	assert.Equal(t, client, upserter.client)
+	require.NotNil(t, upserter.generator)
+	assert.Equal(t, patcher, upserter.generator.doguLimitPatcher)
 }
 
 func Test_longhornPVCValidator_validate(t *testing.T) {
