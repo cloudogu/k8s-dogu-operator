@@ -4,13 +4,11 @@ import (
 	"context"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type installManager interface {
@@ -78,13 +76,12 @@ type DoguSecretsHandler interface {
 	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
-// applier provides ways to apply unstructured Kubernetes resources against the API.
-type applier interface {
-	// ApplyWithOwner provides a testable method for applying generic, unstructured K8s resources to the API
-	ApplyWithOwner(doc apply.YamlDocument, namespace string, resource metav1.Object) error
-}
-
 type collectApplier interface {
 	// CollectApply applies the given resources to the K8s cluster but filters and collects deployments.
 	CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error)
+}
+
+type resourceUpserter interface {
+	// ApplyDoguResource generates K8s resources from a given dogu and creates/updates them in the cluster.
+	ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error
 }

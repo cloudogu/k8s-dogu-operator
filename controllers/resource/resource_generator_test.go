@@ -63,7 +63,7 @@ var expectedService = &corev1.Service{}
 
 //go:embed testdata/ldap_expectedExposedServices.yaml
 var expectedExposedServicesBytes []byte
-var expectedExposedServices = &[]corev1.Service{}
+var expectedExposedServices = &[]*corev1.Service{}
 
 func init() {
 	err := json.Unmarshal(ldapBytes, ldapDogu)

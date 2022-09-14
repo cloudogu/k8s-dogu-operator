@@ -3,7 +3,6 @@ package upgrade
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
@@ -20,9 +19,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var registryKeyNotFoundTestErr = fmt.Errorf("oh no: %w", &client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"})
+var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
 
-const defaultNamespace = ""
 const testNamespace = "test-namespace"
 
 //go:embed testdata/redmine-cr.yaml

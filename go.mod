@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
-	github.com/cloudogu/cesapp-lib v0.0.0-20220906124759-f99bf1b04490
+	github.com/cloudogu/cesapp-lib v0.4.0
 	github.com/cloudogu/cesapp/v5 v5.0.0-20220823093250-9363b1cb6d3a
 	github.com/cloudogu/k8s-apply-lib v0.4.0
 	github.com/coreos/etcd v3.3.27+incompatible

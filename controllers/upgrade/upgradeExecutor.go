@@ -7,9 +7,12 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-apply-lib/apply"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+
 	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,6 +51,11 @@ type collectApplier interface {
 	CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error)
 }
 
+type resourceUpserter interface {
+	// ApplyDoguResource generates K8s resources from a given dogu and creates/updates them in the cluster.
+	ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error
+}
+
 type upgradeExecutor struct {
 	client                client.Client
 	imageRegistry         imageRegistry
@@ -55,20 +63,14 @@ type upgradeExecutor struct {
 	fileExtractor         fileExtractor
 	serviceAccountCreator serviceAccountCreator
 	doguRegistrator       doguRegistrator
-	resourceGenerator     *resource.ResourceGenerator
+	resourceUpserter      resourceUpserter
 }
 
-func NewUpgradeExecutor(
-	client client.Client,
-	imageRegistry imageRegistry,
-	collectApplier collectApplier,
-	fileExtractor fileExtractor,
-	serviceAccountCreator serviceAccountCreator,
-	registry registry.Registry,
-	resourceGenerator *resource.ResourceGenerator,
-) *upgradeExecutor {
+func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, collectApplier collectApplier, fileExtractor fileExtractor, serviceAccountCreator serviceAccountCreator, registry registry.Registry) *upgradeExecutor {
 
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, registry, nil)
+	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
+	upserter := resource.NewUpserter(client, limitPatcher)
 
 	return &upgradeExecutor{
 		client:                client,
@@ -77,12 +79,11 @@ func NewUpgradeExecutor(
 		fileExtractor:         fileExtractor,
 		serviceAccountCreator: serviceAccountCreator,
 		doguRegistrator:       doguRegistrator,
-		resourceGenerator:     resourceGenerator,
+		resourceUpserter:      upserter,
 	}
 }
 
-func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
-
+func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
 	err := toDoguResource.ChangeState(ctx, ue.client, k8sv1.DoguStatusUpgrading)
 	if err != nil {
 		return err
@@ -114,7 +115,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	err = createDoguResources(ctx, toDoguResource, toDogu, imageConfigFile, customDeployment)
+	err = updateDoguResources(ctx, ue.resourceUpserter, toDoguResource, toDogu, imageConfigFile, customDeployment)
 	if err != nil {
 		return err
 	}
@@ -174,43 +175,12 @@ func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier,
 	return resources, nil
 }
 
-func createDoguResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
-	/*deployment*/ _, err := createDeployment(ctx, toDoguResource, customDeployment)
+func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
+	err := upserter.ApplyDoguResource(ctx, toDoguResource, toDogu, image, customDeployment)
 	if err != nil {
-
+		return fmt.Errorf("failed to apply custom K8s resources: %w", err)
 	}
 
-	err = createVolumes(ctx, toDoguResource, toDogu)
-	if err != nil {
-
-	}
-
-	err = createOrUpdateInternalServices(ctx, toDoguResource, toDogu, image)
-	if err != nil {
-
-	}
-
-	err = createOrUpdateExternalServices(ctx, toDoguResource, toDogu)
-	if err != nil {
-
-	}
-
-	return nil
-}
-
-func createDeployment(ctx context.Context, toDoguResource *k8sv1.Dogu, deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
-	return nil, nil
-}
-
-func createVolumes(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
-	return nil
-}
-
-func createOrUpdateInternalServices(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile) error {
-	return nil
-}
-
-func createOrUpdateExternalServices(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
 	return nil
 }
 
@@ -223,36 +193,12 @@ func (ue *upgradeExecutor) createServiceAccounts(ctx context.Context, toDoguReso
 	return nil
 }
 
-func (ue *upgradeExecutor) updateDoguResource(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, customDeployment *appsv1.Deployment) error {
-
-	err := ue.patchDeployment(ctx, toDoguResource, toDogu, customDeployment)
-	if err != nil {
-		return fmt.Errorf("failed to create deployment for dogu %s: %w", toDogu.Name, err)
-	}
-
-	toDoguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled, StatusMessages: []string{}}
-	err = toDoguResource.Update(ctx, ue.client)
-	if err != nil {
-		return fmt.Errorf("failed to update dogu status: %w", err)
-	}
-
-	return nil
-}
-
 func (ue *upgradeExecutor) applyCustomK8sResources(customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
 	if len(customK8sResources) == 0 {
 		return nil, nil
 	}
 
 	return nil, nil
-}
-
-func (ue *upgradeExecutor) createVolumes(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
-	return nil
-}
-
-func (ue *upgradeExecutor) patchDeployment(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, customDeployment *appsv1.Deployment) error {
-	return nil
 }
 
 func (ue *upgradeExecutor) handleCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {

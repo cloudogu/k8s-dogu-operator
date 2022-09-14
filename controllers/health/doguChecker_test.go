@@ -24,7 +24,7 @@ var deploymentTypeMeta = metav1.TypeMeta{
 	Kind:       "Deployment",
 }
 
-var registryKeyNotFoundTestErr = &client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
+var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
 
 func Test_doguChecker_checkDoguHealth(t *testing.T) {
 	// override default controller method to retrieve a kube config

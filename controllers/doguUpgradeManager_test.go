@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -28,7 +27,7 @@ var deploymentTypeMeta = metav1.TypeMeta{
 	Kind:       "Deployment",
 }
 
-var registryKeyNotFoundTestErr = fmt.Errorf("oh no: %w", &client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"})
+var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
 
 func createTestRestConfig() *rest.Config {
 	return &rest.Config{}

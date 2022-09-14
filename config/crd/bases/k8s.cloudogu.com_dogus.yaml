@@ -38,6 +38,23 @@ spec:
               name:
                 description: Name of the dogu (e.g. official/ldap)
                 type: string
+              upgradeConfig:
+                description: UpgradeConfig contains configuration hints for the dogu
+                  operator regarding aspects during the upgrade of dogus.
+                properties:
+                  allowNamespaceSwitch:
+                    description: AllowNamespaceSwitch lets a dogu switch its dogu
+                      namespace during an upgrade. The dogu must be technically the
+                      same dogu which did reside in a different namespace. The remote
+                      dogu's version must be equal to or greater than the version
+                      of the local dogu.
+                    type: boolean
+                  forceUpgrade:
+                    description: ForceUpgrade allows to install the same or even lower
+                      dogu version than already is installed. Please note, that possible
+                      data loss may occur by inappropriate dogu downgrading.
+                    type: boolean
+                type: object
               version:
                 description: Version of the dogu (e.g. 2.4.48-3)
                 type: string

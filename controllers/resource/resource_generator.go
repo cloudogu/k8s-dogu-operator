@@ -321,12 +321,12 @@ func (r *ResourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageCon
 // The created service is rather meant for cluster-external access. The given dogu provides the service ports to the
 // created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
 // (see K8s-service-discovery).
-func (r *ResourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
-	exposedServices := []corev1.Service{}
+func (r *ResourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*corev1.Service, error) {
+	exposedServices := []*corev1.Service{}
 
 	for _, exposedPort := range dogu.ExposedPorts {
 		ipSingleStackPolicy := corev1.IPFamilyPolicySingleStack
-		exposedService := corev1.Service{
+		exposedService := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-exposed-%d", doguResource.Name, exposedPort.Host),
 				Namespace: doguResource.Namespace,
@@ -346,7 +346,7 @@ func (r *ResourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, 
 			},
 		}
 
-		err := ctrl.SetControllerReference(doguResource, &exposedService, r.scheme)
+		err := ctrl.SetControllerReference(doguResource, exposedService, r.scheme)
 		if err != nil {
 			return nil, wrapControllerReferenceError(err)
 		}

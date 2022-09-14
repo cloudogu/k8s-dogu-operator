@@ -6,13 +6,6 @@ package controllers
 import (
 	"context"
 	_ "embed"
-	"github.com/bombsimon/logrusr/v2"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
-	"github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
-	"k8s.io/client-go/rest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,12 +14,22 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
+
+	"github.com/bombsimon/logrusr/v2"
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -34,7 +37,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	//+kubebuilder:scaffold:imports
+	// +kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -104,7 +107,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	err = k8sv1.AddToScheme(scheme.Scheme)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
@@ -139,7 +142,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguSecretHandler := &mocks.DoguSecretsHandler{}
 	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
-	doguRegistrator := newCESDoguRegistrator(k8sManager.GetClient(), CesRegistryMock, resourceGenerator)
+	doguRegistrator := cesregistry.NewCESDoguRegistrator(k8sManager.GetClient(), CesRegistryMock, resourceGenerator)
 
 	yamlResult := make(map[string]string, 0)
 	fileExtract := &mocks.FileExtractor{}
@@ -148,11 +151,12 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
+	upserter := resource.NewUpserter(k8sManager.GetClient(), limitPatcher)
+	collectApplier := resource.NewCollectApplier(applyClient)
 
 	installManager := &doguInstallManager{
 		client:                k8sManager.GetClient(),
-		scheme:                k8sManager.GetScheme(),
-		resourceGenerator:     resourceGenerator,
+		resourceUpserter:      upserter,
 		doguRemoteRegistry:    &DoguRemoteRegistryMock,
 		doguLocalRegistry:     &EtcdDoguRegistry,
 		imageRegistry:         &ImageRegistryMock,
@@ -160,14 +164,13 @@ var _ = ginkgo.BeforeSuite(func() {
 		dependencyValidator:   dependencyValidator,
 		serviceAccountCreator: serviceAccountCreator,
 		doguSecretHandler:     doguSecretHandler,
-		applier:               applyClient,
+		collectApplier:        collectApplier,
 		fileExtractor:         fileExtract,
 		recorder:              eventRecorder,
 	}
 
 	deleteManager := &doguDeleteManager{
 		client:                k8sManager.GetClient(),
-		scheme:                k8sManager.GetScheme(),
 		doguLocalRegistry:     &EtcdDoguRegistry,
 		imageRegistry:         &ImageRegistryMock,
 		doguRegistrator:       doguRegistrator,

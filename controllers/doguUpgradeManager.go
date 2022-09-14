@@ -14,7 +14,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
@@ -40,7 +39,7 @@ type upgradeabilityChecker interface {
 }
 
 type upgradeExecutor interface {
-	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error
+	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error
 }
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
@@ -62,6 +61,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
 	}
+	collectApplier := resource.NewCollectApplier(applier)
 
 	fileExtractor := newPodFileExtractor(client, restConfig, clientSet)
 
@@ -80,9 +80,8 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
 	doguChecker := health.NewDoguChecker(client, doguLocalRegistry)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
-	resourceGen := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(client, imageRegistry, applier, fileExtractor, serviceAccountCreator, cesRegistry, resourceGen)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(client, imageRegistry, collectApplier, fileExtractor, serviceAccountCreator, cesRegistry)
 
 	return &doguUpgradeManager{
 		client:                client,
@@ -137,7 +136,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 
 	dum.normalEventf(doguResource, "Executing upgrade from %s to %s...", fromLocalDogu.Version, toRemoteDogu.Version)
 
-	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, fromLocalDogu, toRemoteDogu)
+	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, toRemoteDogu)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error during upgrade: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)

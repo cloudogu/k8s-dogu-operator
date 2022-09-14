@@ -27,7 +27,7 @@ func NewCollectApplier(applier applier) *collectApplier {
 	return &collectApplier{applier: applier}
 }
 
-// ApplyCollect applies the given resource but filters deployment resources and returns them so that they can be
+// CollectApply applies the given resource but filters deployment resources and returns them so that they can be
 // applied later.
 func (ca *collectApplier) CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
 	if len(customK8sResources) == 0 {

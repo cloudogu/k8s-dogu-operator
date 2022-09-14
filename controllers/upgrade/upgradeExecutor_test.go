@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry/mocks"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/go-logr/logr"
@@ -51,9 +52,9 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 	t.Run("should fail", func(t *testing.T) {
 		toDoguCr := readTestDataRedmineCr(t)
 		toDoguCr.Spec.Version = "4.2.3-11"
-
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = "4.2.3-11"
+
 		doguRegistryMock := new(mocks.DoguRegistry)
 		registryMock := new(mocks.Registry)
 		registryMock.On("DoguRegistry").Return(doguRegistryMock)
@@ -241,6 +242,12 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to apply custom K8s resources: assert.AnError")
+	})
+}
+
+func Test_createDoguResources(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
+		// integration of dogu resource creation goes here
 	})
 }
 

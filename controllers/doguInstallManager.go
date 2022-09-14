@@ -24,7 +24,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,20 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	annotationKubernetesVolumeDriver     = "volume.kubernetes.io/storage-provisioner"
-	annotationKubernetesBetaVolumeDriver = "volume.beta.kubernetes.io/storage-provisioner"
-	longhornDiverID                      = "driver.longhorn.io"
-	longhornStorageClassName             = "longhorn"
-)
-
 const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
 	client                client.Client
-	scheme                *runtime.Scheme
-	resourceGenerator     doguResourceGenerator
+	recorder              record.EventRecorder
 	doguRemoteRegistry    cesremote.Registry
 	doguLocalRegistry     cesregistry.DoguRegistry
 	imageRegistry         imageRegistry
@@ -56,7 +47,7 @@ type doguInstallManager struct {
 	doguSecretHandler     doguSecretHandler
 	fileExtractor         fileExtractor
 	collectApplier        collectApplier
-	recorder              record.EventRecorder
+	resourceUpserter      resourceUpserter
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
@@ -66,13 +57,16 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
 	}
 
-	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
 	restConfig := ctrl.GetConfigOrDie()
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
+
+	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
+	limitPatcher := limit.NewDoguDeploymentLimitPatcher(cesRegistry)
+	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
+	upserter := resource.NewUpserter(client, limitPatcher)
 
 	fileExtract := newPodFileExtractor(client, restConfig, clientSet)
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
@@ -93,8 +87,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 
 	return &doguInstallManager{
 		client:                client,
-		scheme:                client.Scheme(),
-		resourceGenerator:     resourceGenerator,
+		recorder:              eventRecorder,
 		doguRemoteRegistry:    doguRemoteRegistry,
 		doguLocalRegistry:     cesRegistry.DoguRegistry(),
 		imageRegistry:         imageRegistry,
@@ -104,7 +97,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		doguSecretHandler:     resource.NewDoguSecretsWriter(client, cesRegistry),
 		fileExtractor:         fileExtract,
 		collectApplier:        collectApplier,
-		recorder:              eventRecorder,
+		resourceUpserter:      upserter,
 	}, nil
 }
 
@@ -275,151 +268,10 @@ func (m *doguInstallManager) getDoguDescriptor(ctx context.Context, doguResource
 }
 
 func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile, patchingDeployment *appsv1.Deployment) error {
-	err := m.createVolumes(ctx, doguResource, dogu)
+	err := m.resourceUpserter.ApplyDoguResource(ctx, doguResource, dogu, imageConfig, patchingDeployment)
 	if err != nil {
-		return fmt.Errorf("failed to create volumes for dogu %s: %w", dogu.Name, err)
+		return fmt.Errorf("failed to create resource(s) for dogu %s: %w", dogu.Name, err)
 	}
 
-	err = m.createDeployment(ctx, doguResource, dogu, patchingDeployment)
-	if err != nil {
-		return fmt.Errorf("failed to create deployment for dogu %s: %w", dogu.Name, err)
-	}
-
-	err = m.createService(ctx, doguResource, imageConfig)
-	if err != nil {
-		return fmt.Errorf("failed to create service for dogu %s: %w", dogu.Name, err)
-	}
-
-	err = m.createExposedServices(ctx, doguResource, dogu)
-	if err != nil {
-		return fmt.Errorf("failed to create exposed services for dogu %s: %w", dogu.Name, err)
-	}
-
-	return nil
-}
-
-func (m *doguInstallManager) createVolumes(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) error {
-	if len(dogu.Volumes) > 0 {
-		// check if pvc already exists
-		doguPVCClaim := &corev1.PersistentVolumeClaim{}
-		doguPVCKey := client.ObjectKey{
-			Namespace: doguResource.Namespace,
-			Name:      doguResource.Name,
-		}
-
-		err := m.client.Get(ctx, doguPVCKey, doguPVCClaim)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return m.createPvcForDogu(ctx, doguResource)
-			}
-			return fmt.Errorf("failed to get prebuilt dogu pvc for dogu %s: %w", dogu.Name, err)
-		}
-		return m.validateDoguPvc(ctx, dogu, doguResource, doguPVCClaim)
-	}
-
-	return nil
-}
-
-func (m *doguInstallManager) createPvcForDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	logger := log.FromContext(ctx)
-	desiredPvc, err := m.resourceGenerator.CreateDoguPVC(doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to generate pvc: %w", err)
-	}
-
-	err = m.client.Create(ctx, desiredPvc)
-	if err != nil {
-		return fmt.Errorf("failed to create pvc: %w", err)
-	}
-
-	logger.Info(fmt.Sprintf("PersistentVolumeClaim %s/%s has been : %s", desiredPvc.Namespace, desiredPvc.Name, controllerutil.OperationResultCreated))
-	return nil
-}
-
-func (m *doguInstallManager) validateDoguPvc(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv1.Dogu, doguPVCClaim *corev1.PersistentVolumeClaim) error {
-	logger := log.FromContext(ctx)
-	logger.Info(fmt.Sprintf("PVC for dogu [%s] already exists. Verifing pvc...", dogu.GetFullName()))
-
-	if doguPVCClaim.Annotations[annotationKubernetesBetaVolumeDriver] != longhornDiverID {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]", dogu.GetFullName(), annotationKubernetesBetaVolumeDriver, longhornDiverID)
-	}
-
-	if doguPVCClaim.Annotations[annotationKubernetesVolumeDriver] != longhornDiverID {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]", dogu.GetFullName(), annotationKubernetesVolumeDriver, longhornDiverID)
-	}
-
-	if doguPVCClaim.Labels["dogu"] != doguResource.Name {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc does not contain label [dogu] with value [%s]", dogu.GetFullName(), doguResource.Name)
-	}
-
-	if *doguPVCClaim.Spec.StorageClassName != longhornStorageClassName {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc has invalid storage class: the storage class must be [%s]", dogu.GetFullName(), longhornStorageClassName)
-	}
-
-	err := ctrl.SetControllerReference(doguResource, doguPVCClaim, m.scheme)
-	if err != nil {
-		return fmt.Errorf("failed to set controller reference: %w", err)
-	}
-
-	err = m.client.Update(ctx, doguPVCClaim)
-	if err != nil {
-		return fmt.Errorf("failed to update dogu pvc %s: %w", doguPVCClaim.Name, err)
-	}
-
-	logger.Info(fmt.Sprintf("Existing PVC for dogu [%s] is valid.", dogu.GetFullName()))
-
-	return nil
-}
-
-func (m *doguInstallManager) createDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, patchingDeployment *appsv1.Deployment) error {
-	logger := log.FromContext(ctx)
-
-	desiredDeployment, err := m.resourceGenerator.CreateDoguDeployment(doguResource, dogu, patchingDeployment)
-	if err != nil {
-		return fmt.Errorf("failed to generate dogu deployment: %w", err)
-	}
-
-	err = m.client.Create(ctx, desiredDeployment)
-	if err != nil {
-		return fmt.Errorf("failed to create dogu deployment: %w", err)
-	}
-
-	logger.Info(fmt.Sprintf("Deployment %s/%s has been : %s", desiredDeployment.Namespace, desiredDeployment.Name, controllerutil.OperationResultCreated))
-	return nil
-}
-
-func (m *doguInstallManager) createService(ctx context.Context, doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) error {
-	logger := log.FromContext(ctx)
-
-	desiredService, err := m.resourceGenerator.CreateDoguService(doguResource, imageConfig)
-	if err != nil {
-		return fmt.Errorf("failed to generate dogu service: %w", err)
-	}
-
-	err = m.client.Create(ctx, desiredService)
-	if err != nil {
-		return fmt.Errorf("failed to create dogu service: %w", err)
-	}
-
-	logger.Info(fmt.Sprintf("Service %s/%s has been : %s", desiredService.Namespace, desiredService.Name, controllerutil.OperationResultCreated))
-	return nil
-}
-
-func (m *doguInstallManager) createExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) error {
-	logger := log.FromContext(ctx)
-
-	exposedServices, err := m.resourceGenerator.CreateDoguExposedServices(doguResource, dogu)
-	if err != nil {
-		return fmt.Errorf("failed to generate exposed services: %w", err)
-	}
-
-	for _, service := range exposedServices {
-		err = m.client.Create(ctx, &service)
-		if err != nil {
-			return fmt.Errorf("failed to create exposed service: %w", err)
-		}
-
-		logger.Info(fmt.Sprintf("Exposed Service %s/%s have been : %s", service.Namespace, service.Name, controllerutil.OperationResultCreated))
-	}
 	return nil
 }
