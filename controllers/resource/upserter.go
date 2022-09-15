@@ -3,6 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -142,8 +144,11 @@ func (u *upserter) upsertDoguPVC(ctx context.Context, doguResource *k8sv1.Dogu) 
 
 func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKey, resourceType client.Object, newResource client.Object, val resourceValidator) error {
 	if resourceType == nil {
-		// todo i am currently not satisfied that we don't check the compatibility of both objects. An imput of a *v1.Service (resourceType) and *appsv1.Deployment (newResource) is valid but it should not be!.
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
+	}
+	ok, type1, type2 := sameTypes(resourceType, newResource)
+	if !ok {
+		return fmt.Errorf("incompatible types provided (%v != %v)", type1, type2)
 	}
 
 	err := u.client.Get(ctx, objectKey, resourceType)
@@ -201,4 +206,18 @@ func (v *longhornPVCValidator) Validate(ctx context.Context, doguName string, re
 	}
 
 	return nil
+}
+
+func sameTypes(resourceType client.Object, newResource client.Object) (bool, string, string) {
+	if reflect.TypeOf(resourceType).AssignableTo(reflect.TypeOf(newResource)) {
+		return true, "", ""
+	}
+
+	return false, getTypeName(resourceType), getTypeName(newResource)
+}
+
+func getTypeName(objectInQuestion interface{}) string {
+	// we don't check if the object is of pointer type because the method signature of updateOrInsert enforces this for us
+	t := reflect.TypeOf(objectInQuestion)
+	return "*" + t.Elem().Name()
 }

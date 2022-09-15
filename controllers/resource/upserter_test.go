@@ -2,6 +2,8 @@ package resource
 
 import (
 	"context"
+	"testing"
+
 	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
 	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/hashicorp/go-multierror"
@@ -15,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 func TestNewUpserter(t *testing.T) {
@@ -64,7 +65,6 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "pvc for dogu [name] is not valid as annotation [volume.beta.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
 	})
-
 	t.Run("error on missing default longhorn annotation", func(t *testing.T) {
 		// given
 		validator := longhornPVCValidator{}
@@ -301,7 +301,20 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "upsert type must be a valid pointer to an K8s resource")
 	})
+	t.Run("should fail on incompatible input types", func(t *testing.T) {
+		// given
+		depl := &appsv1.Deployment{}
+		svc := &v1.Service{}
+		doguResource := readLdapDoguResource(t)
+		sut := upserter{}
 
+		// when
+		err := sut.updateOrInsert(context.Background(), doguResource.GetObjectKey(), depl, svc, noValidator)
+
+		// given
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "incompatible types provided (*Deployment != *Service)")
+	})
 	t.Run("update existing pcv when no controller reference is set and fail on validation", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
