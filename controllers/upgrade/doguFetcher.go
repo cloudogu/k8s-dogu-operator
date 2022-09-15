@@ -1,7 +1,13 @@
 package upgrade
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -11,37 +17,77 @@ import (
 )
 
 type doguFetcher struct {
+	client             client.Client
 	doguLocalRegistry  registry.DoguRegistry
 	doguRemoteRegistry cesremote.Registry
 }
 
-// NewDoguFetcher creates a new dogu fetcher that provides descriptors for the currently installed dogu and the remote
-// dogu being used as upgrade.
-func NewDoguFetcher(doguLocalRegistry registry.DoguRegistry, doguRemoteRegistry cesremote.Registry) *doguFetcher {
-	return &doguFetcher{doguLocalRegistry: doguLocalRegistry, doguRemoteRegistry: doguRemoteRegistry}
+// NewDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
+func NewDoguFetcher(client client.Client, doguLocalRegistry registry.DoguRegistry, doguRemoteRegistry cesremote.Registry) *doguFetcher {
+	return &doguFetcher{client: client, doguLocalRegistry: doguLocalRegistry, doguRemoteRegistry: doguRemoteRegistry}
 }
 
-func (df *doguFetcher) Fetch(toDoguResource *k8sv1.Dogu) (fromDogu *core.Dogu, toDogu *core.Dogu, err error) {
-	localDoguName := toDoguResource.Name
-	upgradeDoguName := toDoguResource.Spec.Name
-	upgradeDoguVersion := toDoguResource.Spec.Version
-
-	fromDogu, err = df.getLocalDogu(toDoguResource.Name)
+func (df *doguFetcher) FetchInstalled(doguName string) (installedDogu *core.Dogu, err error) {
+	installedDogu, err = df.getLocalDogu(doguName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get local dogu descriptor for %s: %w", localDoguName, err)
+		return nil, fmt.Errorf("failed to get local dogu descriptor for %s: %w", doguName, err)
 	}
 
-	toDogu, err = df.getRemoteDogu(upgradeDoguName, upgradeDoguVersion)
+	return installedDogu, nil
+}
+
+func (df *doguFetcher) FetchFromResource(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
+	developmentDoguMap, err := df.getDevelopmentDoguMap(ctx, doguResource)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get remote dogu descriptor for %s:%s: %w", upgradeDoguName, upgradeDoguVersion, err)
+		return nil, nil, fmt.Errorf("failed to get development dogu map: %w", err)
 	}
-	return fromDogu, toDogu, nil
+
+	if developmentDoguMap == nil {
+		log.FromContext(ctx).Info("Fetching dogu from remote dogu registry...")
+		//todo events df.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
+		return df.getDoguFromRemoteRegistry(doguResource)
+	}
+
+	log.FromContext(ctx).Info("Fetching dogu from development dogu map...")
+	//todo events df.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor using custom configmap...")
+	return df.getFromDevelopmentDoguMap(developmentDoguMap)
 }
 
 func (df *doguFetcher) getLocalDogu(fromDoguName string) (*core.Dogu, error) {
 	return df.doguLocalRegistry.Get(fromDoguName)
 }
 
-func (df *doguFetcher) getRemoteDogu(name, version string) (*core.Dogu, error) {
-	return df.doguRemoteRegistry.GetVersion(name, version)
+func (df *doguFetcher) getDevelopmentDoguMap(ctx context.Context, doguResource *k8sv1.Dogu) (*k8sv1.DevelopmentDoguMap, error) {
+	configMap := &corev1.ConfigMap{}
+	err := df.client.Get(ctx, doguResource.GetDevelopmentDoguMapKey(), configMap)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		} else {
+			return nil, fmt.Errorf("failed to get development dogu map for dogu %s: %w", doguResource.Name, err)
+		}
+	} else {
+		doguDevMap := k8sv1.DevelopmentDoguMap(*configMap)
+		return &doguDevMap, nil
+	}
+}
+
+func (df *doguFetcher) getFromDevelopmentDoguMap(doguConfigMap *k8sv1.DevelopmentDoguMap) (*core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
+	jsonStr := doguConfigMap.Data["dogu.json"]
+	dogu := &core.Dogu{}
+	err := json.Unmarshal([]byte(jsonStr), dogu)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal custom dogu descriptor: %w", err)
+	}
+
+	return dogu, doguConfigMap, nil
+}
+
+func (df *doguFetcher) getDoguFromRemoteRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
+	dogu, err := df.doguRemoteRegistry.GetVersion(doguResource.Spec.Name, doguResource.Spec.Version)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get dogu from remote dogu registry: %w", err)
+	}
+
+	return dogu, nil, nil
 }

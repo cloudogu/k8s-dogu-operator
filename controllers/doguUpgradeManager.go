@@ -30,10 +30,6 @@ type premisesChecker interface {
 	Check(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *core.Dogu, toDogu *core.Dogu) error
 }
 
-type doguFetcher interface {
-	Fetch(doguResource *k8sv1.Dogu) (fromDogu *core.Dogu, toDogu *core.Dogu, err error)
-}
-
 type upgradeabilityChecker interface {
 	Check(fromDogu *core.Dogu, toDogu *core.Dogu, forceUpgrade bool) error
 }
@@ -75,7 +71,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
 
-	doguFetcher := upgrade.NewDoguFetcher(doguLocalRegistry, doguRemoteRegistry)
+	doguFetcher := upgrade.NewDoguFetcher(client, doguLocalRegistry, doguRemoteRegistry)
 
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
 	doguChecker := health.NewDoguChecker(client, doguLocalRegistry)
@@ -110,42 +106,58 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	upgradeDoguName := doguResource.Spec.Name
 	upgradeDoguVersion := doguResource.Spec.Version
 
-	// TODO feasibly fetch the toRemoteDogu from a custom dogu config map
-	// config map zur lokalen Entwicklung hat gleichen Namen wie dogu
-	fromLocalDogu, toRemoteDogu, err := dum.doguFetcher.Fetch(doguResource)
+	fromDogu, toDogu, developmentDoguMap, err := dum.getDogusForUpgrade(ctx, doguResource)
 	if err != nil {
-		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting dogus for upgrade: %s", err)
-		return fmt.Errorf("dogu upgrade failed: %w", err)
+		return err
 	}
 
 	dum.normalEvent(doguResource, "Checking premises...")
-
-	err = dum.premisesChecker.Check(ctx, doguResource, fromLocalDogu, toRemoteDogu)
+	err = dum.premisesChecker.Check(ctx, doguResource, fromDogu, toDogu)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedPremisesUpgradeEventReason, "Checking premises failed: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 
 	dum.normalEvent(doguResource, "Checking upgradeability...")
-
-	err = dum.upgradeabilityChecker.Check(fromLocalDogu, toRemoteDogu, doguResource.Spec.UpgradeConfig.ForceUpgrade)
+	err = dum.upgradeabilityChecker.Check(fromDogu, toDogu, doguResource.Spec.UpgradeConfig.ForceUpgrade)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeabilityEventReason, "Checking upgradeability failed: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 
-	dum.normalEventf(doguResource, "Executing upgrade from %s to %s...", fromLocalDogu.Version, toRemoteDogu.Version)
-
-	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, toRemoteDogu)
+	dum.normalEventf(doguResource, "Executing upgrade from %s to %s...", fromDogu.Version, toDogu.Version)
+	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, toDogu)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error during upgrade: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
 
-	// TODO custom config map wieder löschen
+	if developmentDoguMap != nil {
+		err = developmentDoguMap.DeleteFromCluster(ctx, dum.client)
+		if err != nil {
+			dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error during upgrade: %s", err)
+			return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
+		}
+	}
 
 	return nil
+}
+
+func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
+	fromDogu, err := dum.doguFetcher.FetchInstalled(doguResource.Name)
+	if err != nil {
+		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting installed dogu for upgrade: %s", err)
+		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
+	}
+
+	toDogu, developmentDoguMap, err := dum.doguFetcher.FetchFromResource(ctx, doguResource)
+	if err != nil {
+		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting remote dogu for upgrade: %s", err)
+		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
+	}
+
+	return fromDogu, toDogu, developmentDoguMap, nil
 }
 
 func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv1.Dogu, msg string) {

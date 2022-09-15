@@ -6,6 +6,7 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"os"
 	"path/filepath"
 	"testing"
@@ -154,6 +155,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	upserter := resource.NewUpserter(k8sManager.GetClient(), limitPatcher)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
+	doguFetcher := upgrade.NewDoguFetcher(k8sManager.GetClient(), &EtcdDoguRegistry, &DoguRemoteRegistryMock)
+
 	installManager := &doguInstallManager{
 		client:                k8sManager.GetClient(),
 		resourceUpserter:      upserter,
@@ -167,15 +170,16 @@ var _ = ginkgo.BeforeSuite(func() {
 		collectApplier:        collectApplier,
 		fileExtractor:         fileExtract,
 		recorder:              eventRecorder,
+		doguFetcher:           doguFetcher,
 	}
 
 	deleteManager := &doguDeleteManager{
 		client:                k8sManager.GetClient(),
-		doguLocalRegistry:     &EtcdDoguRegistry,
 		imageRegistry:         &ImageRegistryMock,
 		doguRegistrator:       doguRegistrator,
 		serviceAccountRemover: serviceAccountRemover,
 		doguSecretHandler:     doguSecretHandler,
+		doguFetcher:           doguFetcher,
 	}
 
 	doguManager := &DoguManager{

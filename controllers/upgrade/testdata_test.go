@@ -8,8 +8,6 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
-	"github.com/coreos/etcd/client"
-
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	eventV1 "k8s.io/api/events/v1"
@@ -19,8 +17,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
-
 const testNamespace = "test-namespace"
 
 //go:embed testdata/redmine-cr.yaml
@@ -29,20 +25,11 @@ var redmineCrBytes []byte
 //go:embed testdata/redmine-dogu.json
 var redmineBytes []byte
 
+//go:embed testdata/redmine-descriptor-cm.yaml
+var redmineCrConfigMapBytes []byte
+
 //go:embed testdata/ldap-dogu.json
 var ldapBytes []byte
-
-//go:embed testdata/postgresql-dogu.json
-var postgresqlBytes []byte
-
-//go:embed testdata/simple-postfix-dogu.json
-var postfixBytes []byte
-
-//go:embed testdata/simple-nginx-dogu.json
-var nginxBytes []byte
-
-//go:embed testdata/simple-cas-dogu.json
-var casBytes []byte
 
 func readTestDataLdapDogu(t *testing.T) *cesappcore.Dogu {
 	t.Helper()
@@ -60,6 +47,19 @@ func readTestDataRedmineCr(t *testing.T) *k8sv1.Dogu {
 	}
 
 	return redmineCr
+}
+
+func readDoguDescriptorConfigMap(t *testing.T, descriptorBytes []byte) *k8sv1.DevelopmentDoguMap {
+	t.Helper()
+
+	descriptorCM := &v1.ConfigMap{}
+	err := yaml.Unmarshal(descriptorBytes, descriptorCM)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	doguDevMap := k8sv1.DevelopmentDoguMap(*descriptorCM)
+	return &doguDevMap
 }
 
 func readTestDataDogu(t *testing.T, doguBytes []byte) *cesappcore.Dogu {

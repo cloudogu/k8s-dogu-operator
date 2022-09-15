@@ -43,8 +43,8 @@ var _ = Describe("Dogu Controller", func() {
 	ImageRegistryMock = mocks.ImageRegistry{}
 	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 	DoguRemoteRegistryMock = cesremotemocks.Registry{}
-	DoguRemoteRegistryMock.Mock.On("Get", "official/ldap").Return(ldapDogu, nil)
-	DoguRemoteRegistryMock.Mock.On("Get", "official/redmine").Return(redmineDogu, nil)
+	DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil)
+	DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil)
 
 	EtcdDoguRegistry = cesmocks.DoguRegistry{}
 	EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed"))

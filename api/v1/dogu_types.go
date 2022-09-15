@@ -19,6 +19,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -140,9 +141,9 @@ func (d Dogu) GetObjectKey() client.ObjectKey {
 	}
 }
 
-// GetDescriptorObjectKey returns the object key for the custom dogu descriptor with the actual name and namespace from
-// the dogu resource
-func (d Dogu) GetDescriptorObjectKey() client.ObjectKey {
+// GetDevelopmentDoguMapKey returns the object key for the custom dogu descriptor with the actual name and namespace from
+// the dogu resource DoguJsonCM DoguJsonConfigMap DoguJsonMap DevelopmentDoguMap DevDoguMap
+func (d Dogu) GetDevelopmentDoguMapKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name + "-descriptor",
@@ -192,4 +193,24 @@ type DoguList struct {
 
 func init() {
 	SchemeBuilder.Register(&Dogu{}, &DoguList{})
+}
+
+// DevelopmentDoguMap is a config map that is especially used to when developing a dogu. The map contains a custom
+// dogu.json in the data filed with the "dogu.json" identifier.
+type DevelopmentDoguMap v1.ConfigMap
+
+// DeleteFromCluster deletes this development config map from the cluster.
+func (ddm *DevelopmentDoguMap) DeleteFromCluster(ctx context.Context, client client.Client) error {
+	err := client.Delete(ctx, ddm.ToConfigMap())
+	if err != nil {
+		return fmt.Errorf("failed to delete custom dogu development map %s: %w", ddm.Name, err)
+	}
+
+	return nil
+}
+
+// ToConfigMap returns the development dogu map as config map pointer.
+func (ddm *DevelopmentDoguMap) ToConfigMap() *v1.ConfigMap {
+	configMap := v1.ConfigMap(*ddm)
+	return &configMap
 }

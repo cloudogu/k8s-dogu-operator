@@ -75,3 +75,9 @@ type resourceUpserter interface {
 	// ApplyDoguResource generates K8s resources from a given dogu and creates/updates them in the cluster.
 	ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error
 }
+
+// todo split interface
+type doguFetcher interface {
+	FetchInstalled(doguName string) (installedDogu *cesappcore.Dogu, err error)
+	FetchFromResource(ctx context.Context, doguResource *k8sv1.Dogu) (*cesappcore.Dogu, *k8sv1.DevelopmentDoguMap, error)
+}

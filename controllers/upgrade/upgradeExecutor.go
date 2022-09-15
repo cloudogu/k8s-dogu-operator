@@ -6,8 +6,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-apply-lib/apply"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
@@ -16,7 +14,6 @@ import (
 	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -24,11 +21,6 @@ import (
 type imageRegistry interface {
 	// PullImageConfig pulls a given container image by name.
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
-}
-
-type applier interface {
-	// ApplyWithOwner applies a K8s resource as YAML doc.
-	ApplyWithOwner(doc apply.YamlDocument, namespace string, resource metav1.Object) error
 }
 
 type fileExtractor interface {
@@ -178,7 +170,7 @@ func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier,
 func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
 	err := upserter.ApplyDoguResource(ctx, toDoguResource, toDogu, image, customDeployment)
 	if err != nil {
-		return fmt.Errorf("failed to apply custom K8s resources: %w", err)
+		return fmt.Errorf("failed to update dogu resources: %w", err)
 	}
 
 	return nil

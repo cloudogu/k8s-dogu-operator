@@ -157,6 +157,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		return result, nil
 	case Upgrade:
+		// todo put in separate method
 		return ctrl.Result{}, nil
 	case Delete:
 		deleteError := r.doguManager.Delete(ctx, doguResource)

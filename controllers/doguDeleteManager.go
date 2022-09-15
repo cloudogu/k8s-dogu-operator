@@ -3,8 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
-	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -27,8 +27,7 @@ const finalizerName = "dogu-finalizer"
 type doguDeleteManager struct {
 	client                client.Client
 	scheme                *runtime.Scheme
-	doguRemoteRegistry    cesremote.Registry
-	doguLocalRegistry     cesregistry.DoguRegistry
+	doguFetcher           doguFetcher
 	imageRegistry         imageRegistry
 	doguRegistrator       doguRegistrator
 	serviceAccountRemover serviceAccountRemover
@@ -54,20 +53,10 @@ func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorC
 	return &doguDeleteManager{
 		client:                client,
 		scheme:                client.Scheme(),
-		doguRemoteRegistry:    doguRemoteRegistry,
-		doguLocalRegistry:     cesRegistry.DoguRegistry(),
+		doguFetcher:           upgrade.NewDoguFetcher(client, cesRegistry.DoguRegistry(), doguRemoteRegistry),
 		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
 		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor),
 	}, nil
-}
-
-func (m *doguDeleteManager) getDoguDescriptorFromLocalRegistry(doguResource *k8sv1.Dogu) (*cesappcore.Dogu, error) {
-	dogu, err := m.doguLocalRegistry.Get(doguResource.Name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get dogu from local dogu registry: %w", err)
-	}
-
-	return dogu, nil
 }
 
 // Delete deletes the given dogu along with all those Kubernetes resources that the dogu operator initially created.
@@ -80,9 +69,9 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, err := m.getDoguDescriptorFromLocalRegistry(doguResource)
+	dogu, err := m.doguFetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
-		return fmt.Errorf("failed to get dogu: %w", err)
+		logger.Error(err, "failed to fetch installed dogu ")
 	}
 
 	logger.Info("Delete service accounts...")
@@ -95,17 +84,6 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	err = m.doguRegistrator.UnregisterDogu(doguResource.Name)
 	if err != nil {
 		logger.Error(err, "failed to unregister dogu")
-	}
-
-	// delete custom descriptor
-	doguConfigMap, err := getDoguConfigMap(ctx, m.client, doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to get dogu config map: %w", err)
-	}
-
-	err = deleteDoguConfigMap(ctx, m.client, doguConfigMap)
-	if err != nil {
-		logger.Error(err, "failed to delete custom dogu configmap %s: %w", doguResource.Name, err)
 	}
 
 	logger.Info("Remove finalizer...")
