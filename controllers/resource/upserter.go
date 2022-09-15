@@ -148,7 +148,7 @@ func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKe
 	}
 	ok, type1, type2 := sameTypes(resourceType, newResource)
 	if !ok {
-		return fmt.Errorf("incompatible types provided (%v != %v)", type1, type2)
+		return fmt.Errorf("incompatible types provided (%s != %s)", type1, type2)
 	}
 
 	err := u.client.Get(ctx, objectKey, resourceType)
