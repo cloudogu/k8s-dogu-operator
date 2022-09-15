@@ -5,7 +5,7 @@ metadata:
 spec:
   containers:
     - args:
-        - while true; do sleep 30; done;
+        - while true; do sleep 5; done;
       command:
         - /bin/bash
         - -c

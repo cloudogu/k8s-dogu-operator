@@ -71,7 +71,7 @@ func (r *ResourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		livenessProbe = createLivenessProbe(dogu)
 	} else {
 		command = []string{"/bin/bash", "-c", "--"}
-		args = []string{"while true; do sleep 30; done;"}
+		args = []string{"while true; do sleep 5; done;"}
 		envVars = append(envVars, corev1.EnvVar{Name: SupportModeEnvVar, Value: "true"})
 	}
 

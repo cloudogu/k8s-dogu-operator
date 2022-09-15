@@ -284,7 +284,7 @@ func hasSleepCommand(container corev1.Container) bool {
 	if len(args) != 1 {
 		return false
 	}
-	if args[0] != "while true; do sleep 30; done;" {
+	if args[0] != "while true; do sleep 5; done;" {
 		return false
 	}
 
