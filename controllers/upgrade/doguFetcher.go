@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,7 +34,7 @@ func (df *doguFetcher) FetchInstalled(doguName string) (installedDogu *core.Dogu
 		return nil, fmt.Errorf("failed to get local dogu descriptor for %s: %w", doguName, err)
 	}
 
-	return installedDogu, nil
+	return replaceK8sIncompatibleDoguDependencies(installedDogu), nil
 }
 
 func (df *doguFetcher) FetchFromResource(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
@@ -44,13 +45,17 @@ func (df *doguFetcher) FetchFromResource(ctx context.Context, doguResource *k8sv
 
 	if developmentDoguMap == nil {
 		log.FromContext(ctx).Info("Fetching dogu from remote dogu registry...")
-		//todo events df.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor from dogu registry...")
-		return df.getDoguFromRemoteRegistry(doguResource)
+		dogu, err := df.getDoguFromRemoteRegistry(doguResource)
+
+		patchedDogu := replaceK8sIncompatibleDoguDependencies(dogu)
+		return patchedDogu, nil, err
 	}
 
 	log.FromContext(ctx).Info("Fetching dogu from development dogu map...")
-	//todo events df.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Fetching dogu descriptor using custom configmap...")
-	return df.getFromDevelopmentDoguMap(developmentDoguMap)
+	dogu, err := df.getFromDevelopmentDoguMap(developmentDoguMap)
+
+	patchedDogu := replaceK8sIncompatibleDoguDependencies(dogu)
+	return patchedDogu, developmentDoguMap, err
 }
 
 func (df *doguFetcher) getLocalDogu(fromDoguName string) (*core.Dogu, error) {
@@ -72,22 +77,58 @@ func (df *doguFetcher) getDevelopmentDoguMap(ctx context.Context, doguResource *
 	}
 }
 
-func (df *doguFetcher) getFromDevelopmentDoguMap(doguConfigMap *k8sv1.DevelopmentDoguMap) (*core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
+func (df *doguFetcher) getFromDevelopmentDoguMap(doguConfigMap *k8sv1.DevelopmentDoguMap) (*core.Dogu, error) {
 	jsonStr := doguConfigMap.Data["dogu.json"]
 	dogu := &core.Dogu{}
 	err := json.Unmarshal([]byte(jsonStr), dogu)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal custom dogu descriptor: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal custom dogu descriptor: %w", err)
 	}
 
-	return dogu, doguConfigMap, nil
+	return dogu, nil
 }
 
-func (df *doguFetcher) getDoguFromRemoteRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
+func (df *doguFetcher) getDoguFromRemoteRegistry(doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	dogu, err := df.doguRemoteRegistry.GetVersion(doguResource.Spec.Name, doguResource.Spec.Version)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get dogu from remote dogu registry: %w", err)
+		return nil, fmt.Errorf("failed to get dogu from remote dogu registry: %w", err)
 	}
 
-	return dogu, nil, nil
+	return dogu, nil
+}
+
+func replaceK8sIncompatibleDoguDependencies(dogu *core.Dogu) *core.Dogu {
+	dogu.Dependencies = patchDependencies(dogu.Dependencies)
+	dogu.OptionalDependencies = patchDependencies(dogu.OptionalDependencies)
+
+	return dogu
+}
+
+func patchDependencies(deps []core.Dependency) []core.Dependency {
+	patchedDependencies := make([]core.Dependency, 0)
+
+	for _, doguDep := range deps {
+		name := doguDep.Name
+		if name == "registrator" {
+			continue
+		}
+
+		if name == "nginx" {
+			ingress := core.Dependency{
+				Name: "nginx-ingress",
+				Type: core.DependencyTypeDogu,
+			}
+			staticNginx := core.Dependency{
+				Name: "nginx-static",
+				Type: core.DependencyTypeDogu,
+			}
+			leDeps := append(patchedDependencies, ingress)
+			leDeps = append(leDeps, staticNginx)
+
+			continue
+		}
+
+		patchedDependencies = append(patchedDependencies, doguDep)
+	}
+	return patchedDependencies
 }

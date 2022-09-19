@@ -2,6 +2,8 @@ package upgrade
 
 import (
 	"context"
+	"testing"
+
 	mocks2 "github.com/cloudogu/cesapp-lib/registry/mocks"
 	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
@@ -9,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 func Test_doguFetcher_FetchInstalled(t *testing.T) {
@@ -117,7 +118,7 @@ func Test_doguFetcher_getDoguFromConfigMap(t *testing.T) {
 		redmineDoguDevelopmentMap.Data["dogu.json"] = "invalid dogu json"
 
 		// when
-		_, _, err := sut.getFromDevelopmentDoguMap(redmineDoguDevelopmentMap)
+		_, err := sut.getFromDevelopmentDoguMap(redmineDoguDevelopmentMap)
 
 		// given
 		require.Error(t, err)
@@ -136,11 +137,23 @@ func Test_doguFetcher_getDoguFromRemoteRegistry(t *testing.T) {
 		sut := NewDoguFetcher(nil, nil, remoteDoguRegistry)
 
 		// when
-		_, _, err := sut.getDoguFromRemoteRegistry(doguCr)
+		_, err := sut.getDoguFromRemoteRegistry(doguCr)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to get dogu from remote dogu registry")
 		mock.AssertExpectationsForObjects(t, remoteDoguRegistry)
+	})
+}
+
+func Test_replaceK8sIncompatibleDoguDependencies(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
+		// given
+
+		// when
+		t.Fail()
+
+		// then
+
 	})
 }
