@@ -157,8 +157,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		return result, nil
 	case Upgrade:
-		// todo put in separate method
-		return ctrl.Result{}, nil
+		return r.performUpgradeOperation(ctx, doguResource)
 	case Delete:
 		deleteError := r.doguManager.Delete(ctx, doguResource)
 		contextMessageOnError := fmt.Sprintf("failed to delete dogu %s", doguResource.Name)
@@ -220,4 +219,27 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// and new dogu resource. If they are equal the reconcile loop will not be called.
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
+}
+
+func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	upgradeError := r.doguManager.Upgrade(ctx, doguResource)
+	contextMessageOnError := fmt.Sprintf("failed to upgrade dogu %s", doguResource.Name)
+
+	if upgradeError != nil {
+		printError := strings.Replace(upgradeError.Error(), "\n", "", -1)
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnFailedUpgradeEventReason, "Dogu upgrade failed. Reason: %s.", printError)
+	} else {
+		r.recorder.Event(doguResource, v1.EventTypeNormal, UpgradeEventReason, "Dogu upgrade successful.")
+	}
+
+	result, err := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, upgradeError, func(dogu *k8sv1.Dogu) {
+		// todo make the state transition more clear
+		doguResource.Status.Status = k8sv1.DoguStatusInstalled
+	})
+	if err != nil {
+		r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the dogu upgrade.")
+		return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", err)
+	}
+
+	return result, nil
 }
