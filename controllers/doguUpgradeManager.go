@@ -26,18 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type premisesChecker interface {
-	Check(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *core.Dogu, toDogu *core.Dogu) error
-}
-
-type upgradeabilityChecker interface {
-	Check(fromDogu *core.Dogu, toDogu *core.Dogu, forceUpgrade bool) error
-}
-
-type upgradeExecutor interface {
-	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error
-}
-
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
 func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry,
 	eventRecorder record.EventRecorder) (*doguUpgradeManager, error) {
@@ -80,13 +68,12 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	upgradeExecutor := upgrade.NewUpgradeExecutor(client, imageRegistry, collectApplier, fileExtractor, serviceAccountCreator, cesRegistry)
 
 	return &doguUpgradeManager{
-		client:                client,
-		scheme:                scheme,
-		eventRecorder:         eventRecorder,
-		doguFetcher:           doguFetcher,
-		premisesChecker:       premisesChecker,
-		upgradeabilityChecker: upgrade.NewUpgradeabilityChecker(),
-		upgradeExecutor:       upgradeExecutor,
+		client:          client,
+		scheme:          scheme,
+		eventRecorder:   eventRecorder,
+		doguFetcher:     doguFetcher,
+		premisesChecker: premisesChecker,
+		upgradeExecutor: upgradeExecutor,
 	}, nil
 }
 
@@ -96,10 +83,9 @@ type doguUpgradeManager struct {
 	scheme        *runtime.Scheme
 	eventRecorder record.EventRecorder
 	// upgrade business
-	premisesChecker       premisesChecker
-	doguFetcher           doguFetcher
-	upgradeabilityChecker upgradeabilityChecker
-	upgradeExecutor       upgradeExecutor
+	premisesChecker premisesChecker
+	doguFetcher     doguFetcher
+	upgradeExecutor upgradeExecutor
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
@@ -115,13 +101,6 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	err = dum.premisesChecker.Check(ctx, doguResource, fromDogu, toDogu)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedPremisesUpgradeEventReason, "Checking premises failed: %s", err)
-		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
-	}
-
-	dum.normalEvent(doguResource, "Checking upgradeability...")
-	err = dum.upgradeabilityChecker.Check(fromDogu, toDogu, doguResource.Spec.UpgradeConfig.ForceUpgrade)
-	if err != nil {
-		dum.errorEventf(doguResource, ErrorOnFailedUpgradeabilityEventReason, "Checking upgradeability failed: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 

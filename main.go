@@ -3,26 +3,28 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"os"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+	reg "github.com/cloudogu/cesapp-lib/registry"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
+
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	//+kubebuilder:scaffold:imports
+	// +kubebuilder:scaffold:imports
 )
 
 var (
@@ -42,7 +44,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(k8sv1.AddToScheme(scheme))
 
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 }
 
 func main() {
@@ -88,7 +90,7 @@ func configureManager(k8sManager manager.Manager, operatorConfig *config.Operato
 		return fmt.Errorf("failed to configure reconciler: %w", err)
 	}
 
-	//+kubebuilder:scaffold:builder
+	// +kubebuilder:scaffold:builder
 	err = addChecks(k8sManager)
 	if err != nil {
 		return fmt.Errorf("failed to add checks to the manager: %w", err)
@@ -141,22 +143,22 @@ func handleHardwareLimitUpdater(k8sManager manager.Manager, namespace string) er
 }
 
 func configureReconciler(k8sManager manager.Manager, operatorConfig *config.OperatorConfig) error {
-	cesRegistry, err := cesregistry.New(core.Registry{
+	cesReg, err := reg.New(core.Registry{
 		Type:      "etcd",
 		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", operatorConfig.Namespace)},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create ces registry: %w", err)
+		return fmt.Errorf("failed to create CES registry: %w", err)
 	}
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
 
-	doguManager, err := controllers.NewManager(k8sManager.GetClient(), operatorConfig, cesRegistry, eventRecorder)
+	doguManager, err := controllers.NewManager(k8sManager.GetClient(), operatorConfig, cesReg, eventRecorder)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu manager: %w", err)
 	}
 
-	reconciler, err := controllers.NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager, eventRecorder, operatorConfig.Namespace)
+	reconciler, err := controllers.NewDoguReconciler(k8sManager.GetClient(), doguManager, eventRecorder, operatorConfig.Namespace, cesReg.DoguRegistry())
 	if err != nil {
 		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
 	}

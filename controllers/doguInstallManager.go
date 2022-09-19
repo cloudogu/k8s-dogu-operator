@@ -3,15 +3,16 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	reg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	reg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"

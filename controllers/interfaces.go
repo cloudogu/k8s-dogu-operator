@@ -81,3 +81,13 @@ type doguFetcher interface {
 	FetchInstalled(doguName string) (installedDogu *cesappcore.Dogu, err error)
 	FetchFromResource(ctx context.Context, doguResource *k8sv1.Dogu) (*cesappcore.Dogu, *k8sv1.DevelopmentDoguMap, error)
 }
+
+type premisesChecker interface {
+	// Check checks if dogu premises are met before a dogu upgrade
+	Check(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
+}
+
+type upgradeExecutor interface {
+	// Upgrade executes the actual dogu upgrade.
+	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *cesappcore.Dogu) error
+}

@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,6 +34,8 @@ import (
 
 type operation int
 
+const operatorEventReason = "OperationThresholding"
+
 const (
 	InstallEventReason        = "Installation"
 	ErrorOnInstallEventReason = "ErrInstallation"
@@ -41,7 +43,6 @@ const (
 const (
 	UpgradeEventReason                      = "Upgrading"
 	ErrorOnFailedPremisesUpgradeEventReason = "ErrUpgradePremises"
-	ErrorOnFailedUpgradeabilityEventReason  = "ErrUpgradeability"
 	ErrorOnFailedUpgradeEventReason         = "ErrUpgrade"
 )
 const (
@@ -76,10 +77,10 @@ func (o operation) toString() string {
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
 	client             client.Client
-	scheme             *runtime.Scheme
 	doguManager        manager
 	doguRequeueHandler requeueHandler
 	recorder           record.EventRecorder
+	localReg           registry.DoguRegistry
 }
 
 // manager abstracts the simple dogu operations in a k8s CES.
@@ -99,7 +100,7 @@ type requeueHandler interface {
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager manager, eventRecorder record.EventRecorder, namespace string) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguManager manager, eventRecorder record.EventRecorder, namespace string, localRegistry registry.DoguRegistry) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(client, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
@@ -107,10 +108,10 @@ func NewDoguReconciler(client client.Client, scheme *runtime.Scheme, doguManager
 
 	return &doguReconciler{
 		client:             client,
-		scheme:             scheme,
 		doguManager:        doguManager,
 		doguRequeueHandler: doguRequeueHandler,
 		recorder:           eventRecorder,
+		localReg:           localRegistry,
 	}, nil
 }
 
@@ -129,7 +130,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
 
-	requiredOperation, err := evaluateRequiredOperation(doguResource, logger)
+	requiredOperation, err := r.evaluateRequiredOperation(ctx, doguResource)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to evaluate required operation: %w", err)
 	}
@@ -185,7 +186,8 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 }
 
-func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (operation, error) {
+func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguResource *k8sv1.Dogu) (operation, error) {
+	logger := log.FromContext(ctx)
 	if !doguResource.DeletionTimestamp.IsZero() {
 		return Delete, nil
 	}
@@ -196,7 +198,19 @@ func evaluateRequiredOperation(doguResource *k8sv1.Dogu, logger logr.Logger) (op
 	case k8sv1.DoguStatusInstalled:
 		// Checking if the resource spec field has changed is unnecessary because we
 		// use a predicate to filter update events where specs don't change
-		return Upgrade, nil
+		upgradeable, err := checkUpgradeability(doguResource, r.localReg)
+		if err != nil {
+			printError := strings.ReplaceAll(err.Error(), "\n", "")
+			r.recorder.Eventf(doguResource, v1.EventTypeWarning, operatorEventReason, "Could not check if dogu needs to be upgraded: %s", printError)
+
+			return Ignore, err
+		}
+
+		if upgradeable {
+			return Upgrade, nil
+		}
+
+		return Ignore, nil
 	case k8sv1.DoguStatusInstalling:
 		return Ignore, nil
 	case k8sv1.DoguStatusDeleting:
@@ -242,4 +256,16 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 	}
 
 	return result, nil
+}
+
+func checkUpgradeability(doguResource *k8sv1.Dogu, reg registry.DoguRegistry) (bool, error) {
+	fromDogu, err := reg.Get(doguResource.Name)
+	if err != nil {
+		return false, err
+	}
+
+	checker := &upgradeChecker{}
+	toDogu := &core.Dogu{Name: doguResource.Spec.Name, Version: doguResource.Spec.Version}
+
+	return checker.IsUpgradeable(fromDogu, toDogu, doguResource.Spec.UpgradeConfig.ForceUpgrade)
 }

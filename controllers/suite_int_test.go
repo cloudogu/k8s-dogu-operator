@@ -6,11 +6,12 @@ package controllers
 import (
 	"context"
 	_ "embed"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -189,7 +190,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		recorder:       eventRecorder,
 	}
 
-	reconciler, err := NewDoguReconciler(k8sManager.GetClient(), k8sManager.GetScheme(), doguManager, eventRecorder, testNamespace)
+	reconciler, err := NewDoguReconciler(k8sManager.GetClient(), doguManager, eventRecorder, testNamespace, nil)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = reconciler.SetupWithManager(k8sManager)
