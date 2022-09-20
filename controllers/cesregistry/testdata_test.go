@@ -2,14 +2,65 @@ package cesregistry
 
 import (
 	_ "embed"
+	"encoding/json"
+	"testing"
 
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	eventV1 "k8s.io/api/events/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/yaml"
 )
+
+//go:embed testdata/redmine-cr.yaml
+var redmineCrBytes []byte
+
+//go:embed testdata/redmine-dogu.json
+var redmineBytes []byte
+
+//go:embed testdata/redmine-descriptor-cm.yaml
+var redmineCrConfigMapBytes []byte
+
+func readTestDataRedmineCr(t *testing.T) *k8sv1.Dogu {
+	t.Helper()
+
+	redmineCr := &k8sv1.Dogu{}
+	err := yaml.Unmarshal(redmineCrBytes, redmineCr)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return redmineCr
+}
+
+func readDoguDescriptorConfigMap(t *testing.T, descriptorBytes []byte) *k8sv1.DevelopmentDoguMap {
+	t.Helper()
+
+	descriptorCM := &v1.ConfigMap{}
+	err := yaml.Unmarshal(descriptorBytes, descriptorCM)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	doguDevMap := k8sv1.DevelopmentDoguMap(*descriptorCM)
+	return &doguDevMap
+}
+
+func readTestDataDogu(t *testing.T, doguBytes []byte) *cesappcore.Dogu {
+	t.Helper()
+
+	dogu := &cesappcore.Dogu{}
+	err := json.Unmarshal(doguBytes, dogu)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return dogu
+}
 
 func getTestScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
@@ -18,7 +69,7 @@ func getTestScheme() *runtime.Scheme {
 		Group:   "dogu.cloudogu.com",
 		Version: "v1",
 		Kind:    "dogu",
-	}, &corev1.Dogu{})
+	}, &k8sv1.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

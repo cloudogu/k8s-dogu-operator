@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
@@ -156,7 +154,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	upserter := resource.NewUpserter(k8sManager.GetClient(), limitPatcher)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
-	doguFetcher := upgrade.NewDoguFetcher(k8sManager.GetClient(), &EtcdDoguRegistry, &DoguRemoteRegistryMock)
+	doguFetcher := cesregistry.NewDoguFetcher(k8sManager.GetClient(), &EtcdDoguRegistry, &DoguRemoteRegistryMock)
 
 	installManager := &doguInstallManager{
 		client:                k8sManager.GetClient(),

@@ -25,9 +25,6 @@ var redmineCrBytes []byte
 //go:embed testdata/redmine-dogu.json
 var redmineBytes []byte
 
-//go:embed testdata/redmine-descriptor-cm.yaml
-var redmineCrConfigMapBytes []byte
-
 //go:embed testdata/ldap-dogu.json
 var ldapBytes []byte
 
@@ -47,19 +44,6 @@ func readTestDataRedmineCr(t *testing.T) *k8sv1.Dogu {
 	}
 
 	return redmineCr
-}
-
-func readDoguDescriptorConfigMap(t *testing.T, descriptorBytes []byte) *k8sv1.DevelopmentDoguMap {
-	t.Helper()
-
-	descriptorCM := &v1.ConfigMap{}
-	err := yaml.Unmarshal(descriptorBytes, descriptorCM)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	doguDevMap := k8sv1.DevelopmentDoguMap(*descriptorCM)
-	return &doguDevMap
 }
 
 func readTestDataDogu(t *testing.T, doguBytes []byte) *cesappcore.Dogu {

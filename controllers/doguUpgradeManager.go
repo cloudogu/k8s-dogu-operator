@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+	cesreg "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
@@ -27,7 +28,7 @@ import (
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
-func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry,
+func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry,
 	eventRecorder record.EventRecorder) (*doguUpgradeManager, error) {
 	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
 	if err != nil {
@@ -59,7 +60,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
 
-	doguFetcher := upgrade.NewDoguFetcher(client, doguLocalRegistry, doguRemoteRegistry)
+	doguFetcher := cesregistry.NewDoguFetcher(client, doguLocalRegistry, doguRemoteRegistry)
 
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
 	doguChecker := health.NewDoguChecker(client, doguLocalRegistry)

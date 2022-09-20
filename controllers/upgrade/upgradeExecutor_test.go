@@ -22,7 +22,7 @@ import (
 var testCtx = context.TODO()
 
 func Test_upgradeExecutor_Upgrade(t *testing.T) {
-
+	// todo implement
 }
 
 func Test_registerUpgradedDoguVersion(t *testing.T) {
@@ -248,6 +248,7 @@ func Test_applyCustomK8sResources(t *testing.T) {
 func Test_createDoguResources(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		// integration of dogu resource creation goes here
+		// todo implement
 	})
 }
 

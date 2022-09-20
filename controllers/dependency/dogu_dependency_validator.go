@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -38,7 +38,7 @@ type doguDependencyValidator struct {
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker
 func NewDoguDependencyValidator(localDoguRegistry registry.DoguRegistry) *doguDependencyValidator {
-	doguDependencyChecker := upgrade.NewDoguFetcher(nil, localDoguRegistry, nil)
+	doguDependencyChecker := cesregistry.NewDoguFetcher(nil, localDoguRegistry, nil)
 
 	return &doguDependencyValidator{
 		fetcher: doguDependencyChecker,

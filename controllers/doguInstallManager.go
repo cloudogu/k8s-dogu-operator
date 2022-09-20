@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
@@ -64,7 +62,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
 
-	doguFetcher := upgrade.NewDoguFetcher(client, cesRegistry.DoguRegistry(), doguRemoteRegistry)
+	doguFetcher := reg.NewDoguFetcher(client, cesRegistry.DoguRegistry(), doguRemoteRegistry)
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(cesRegistry)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
