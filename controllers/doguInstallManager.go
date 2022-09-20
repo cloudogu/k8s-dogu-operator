@@ -125,7 +125,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, developmentDoguMap, err := m.doguFetcher.FetchFromResource(ctx, doguResource)
+	dogu, developmentDoguMap, err := m.doguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
 		return err
 	}

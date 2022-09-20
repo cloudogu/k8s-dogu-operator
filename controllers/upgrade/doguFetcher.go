@@ -37,7 +37,7 @@ func (df *doguFetcher) FetchInstalled(doguName string) (installedDogu *core.Dogu
 	return replaceK8sIncompatibleDoguDependencies(installedDogu), nil
 }
 
-func (df *doguFetcher) FetchFromResource(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
+func (df *doguFetcher) FetchWithResource(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
 	developmentDoguMap, err := df.getDevelopmentDoguMap(ctx, doguResource)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get development dogu map: %w", err)
@@ -122,8 +122,8 @@ func patchDependencies(deps []core.Dependency) []core.Dependency {
 				Name: "nginx-static",
 				Type: core.DependencyTypeDogu,
 			}
-			leDeps := append(patchedDependencies, ingress)
-			leDeps = append(leDeps, staticNginx)
+			patchedDependencies = append(patchedDependencies, ingress)
+			patchedDependencies = append(patchedDependencies, staticNginx)
 
 			continue
 		}

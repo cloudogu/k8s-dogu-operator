@@ -18,7 +18,7 @@ type DoguFetcher struct {
 }
 
 // FetchFromResource provides a mock function with given fields: ctx, doguResource
-func (_m *DoguFetcher) FetchFromResource(ctx context.Context, doguResource *v1.Dogu) (*core.Dogu, *v1.DevelopmentDoguMap, error) {
+func (_m *DoguFetcher) FetchWithResource(ctx context.Context, doguResource *v1.Dogu) (*core.Dogu, *v1.DevelopmentDoguMap, error) {
 	ret := _m.Called(ctx, doguResource)
 
 	var r0 *core.Dogu

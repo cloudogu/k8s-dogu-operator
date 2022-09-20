@@ -130,7 +130,7 @@ func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResou
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
 	}
 
-	toDogu, developmentDoguMap, err := dum.doguFetcher.FetchFromResource(ctx, doguResource)
+	toDogu, developmentDoguMap, err := dum.doguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting remote dogu for upgrade: %s", err)
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)

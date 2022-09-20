@@ -79,7 +79,7 @@ type resourceUpserter interface {
 // todo split interface
 type doguFetcher interface {
 	FetchInstalled(doguName string) (installedDogu *cesappcore.Dogu, err error)
-	FetchFromResource(ctx context.Context, doguResource *k8sv1.Dogu) (*cesappcore.Dogu, *k8sv1.DevelopmentDoguMap, error)
+	FetchWithResource(ctx context.Context, doguResource *k8sv1.Dogu) (*cesappcore.Dogu, *k8sv1.DevelopmentDoguMap, error)
 }
 
 type premisesChecker interface {
