@@ -3,8 +3,9 @@ package v1
 import (
 	"context"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -108,26 +109,26 @@ type Dogu struct {
 }
 
 // GetDataVolumeName returns the data volume name for the dogu resource
-func (d Dogu) GetDataVolumeName() string {
+func (d *Dogu) GetDataVolumeName() string {
 	return d.Name + "-data"
 }
 
 // GetPrivateVolumeName returns the private volume name for the dogu resource
-func (d Dogu) GetPrivateVolumeName() string {
+func (d *Dogu) GetPrivateVolumeName() string {
 	return d.Name + "-private"
 }
 
 // GetObjectKey returns the object key with the actual name and namespace from the dogu resource
-func (d Dogu) GetObjectKey() client.ObjectKey {
+func (d *Dogu) GetObjectKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name,
 	}
 }
 
-// GetDevelopmentDoguMapKey returns the object key for the custom dogu descriptor with the actual name and namespace from
-// the dogu resource DoguJsonCM DoguJsonConfigMap DoguJsonMap DevelopmentDoguMap DevDoguMap
-func (d Dogu) GetDevelopmentDoguMapKey() client.ObjectKey {
+// GetDevelopmentDoguMapKey returns the object key for the custom dogu descriptor with the actual name and namespace
+// from the dogu resource.
+func (d *Dogu) GetDevelopmentDoguMapKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name + "-descriptor",
@@ -135,7 +136,7 @@ func (d Dogu) GetDevelopmentDoguMapKey() client.ObjectKey {
 }
 
 // GetSecretObjectKey returns the object key for the config map containing values that should be encrypted for the dogu
-func (d Dogu) GetSecretObjectKey() client.ObjectKey {
+func (d *Dogu) GetSecretObjectKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name + "-secrets",
@@ -143,7 +144,7 @@ func (d Dogu) GetSecretObjectKey() client.ObjectKey {
 }
 
 // GetObjectMeta return the object meta with the actual name and namespace from the dogu resource
-func (d Dogu) GetObjectMeta() *metav1.ObjectMeta {
+func (d *Dogu) GetObjectMeta() *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
 		Namespace: d.Namespace,
 		Name:      d.Name,
