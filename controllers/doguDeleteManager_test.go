@@ -160,7 +160,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks := getDoguDeleteManagerWithMocks()
 
 		keyNotFoundErr := client3.Error{Code: client3.ErrorCodeKeyNotFound}
-		managerWithMocks.doguFetcherMock.On("FetchInstalled", "ldap").Return(nil, keyNotFoundErr)
+		managerWithMocks.localDoguFetcherMock.On("FetchInstalled", "ldap").Return(nil, keyNotFoundErr)
 		managerWithMocks.deleteManager.client = client
 
 		// when

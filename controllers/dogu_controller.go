@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -64,7 +65,7 @@ type doguReconciler struct {
 	doguManager        manager
 	doguRequeueHandler requeueHandler
 	recorder           record.EventRecorder
-	localReg           registry.DoguRegistry
+	fetcher            localDoguFetcher
 }
 
 // manager abstracts the simple dogu operations in a k8s CES.
@@ -90,12 +91,13 @@ func NewDoguReconciler(client client.Client, doguManager manager, eventRecorder 
 		return nil, err
 	}
 
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localRegistry)
 	return &doguReconciler{
 		client:             client,
 		doguManager:        doguManager,
 		doguRequeueHandler: doguRequeueHandler,
 		recorder:           eventRecorder,
-		localReg:           localRegistry,
+		fetcher:            localDoguFetcher,
 	}, nil
 }
 
@@ -182,7 +184,7 @@ func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguReso
 	case k8sv1.DoguStatusInstalled:
 		// Checking if the resource spec field has changed is unnecessary because we
 		// use a predicate to filter update events where specs don't change
-		upgradeable, err := checkUpgradeability(doguResource, r.localReg)
+		upgradeable, err := checkUpgradeability(doguResource, r.fetcher)
 		if err != nil {
 			printError := strings.ReplaceAll(err.Error(), "\n", "")
 			r.recorder.Eventf(doguResource, v1.EventTypeWarning, operatorEventReason, "Could not check if dogu needs to be upgraded: %s", printError)
@@ -242,8 +244,8 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 	return result, nil
 }
 
-func checkUpgradeability(doguResource *k8sv1.Dogu, reg registry.DoguRegistry) (bool, error) {
-	fromDogu, err := reg.Get(doguResource.Name)
+func checkUpgradeability(doguResource *k8sv1.Dogu, reg localDoguFetcher) (bool, error) {
+	fromDogu, err := reg.FetchInstalled(doguResource.Name)
 	if err != nil {
 		return false, err
 	}

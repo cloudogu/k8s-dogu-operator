@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/stretchr/testify/assert"
@@ -31,15 +30,15 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		testDoguCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
 		recorder := mocks.NewEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localReg := new(cesmocks.DoguRegistry)
-		localReg.On("Get", "ledogu").Return(localDogu, nil)
+		localDoguFetcher := new(mocks.LocalDoguFetcher)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
 			client:             nil,
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
-			localReg:           localReg,
+			fetcher:            localDoguFetcher,
 		}
 
 		// when
@@ -47,7 +46,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		localReg.AssertExpectations(t)
+		localDoguFetcher.AssertExpectations(t)
 		recorder.AssertExpectations(t)
 		assert.Equal(t, Upgrade, operation)
 	})
@@ -64,15 +63,15 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		testDoguCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
 		recorder := mocks.NewEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localReg := new(cesmocks.DoguRegistry)
-		localReg.On("Get", "ledogu").Return(localDogu, nil)
+		localDoguFetcher := new(mocks.LocalDoguFetcher)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
 			client:             nil,
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
-			localReg:           localReg,
+			fetcher:            localDoguFetcher,
 		}
 
 		// when
@@ -80,7 +79,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		localReg.AssertExpectations(t)
+		localDoguFetcher.AssertExpectations(t)
 		recorder.AssertExpectations(t)
 		assert.Equal(t, Ignore, operation)
 	})
@@ -98,15 +97,15 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := mocks.NewEventRecorder(t)
 		recorder.On("Eventf", testDoguCr, v1.EventTypeWarning, operatorEventReason, mock.Anything, mock.Anything)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localReg := new(cesmocks.DoguRegistry)
-		localReg.On("Get", "ledogu").Return(localDogu, nil)
+		localDoguFetcher := new(mocks.LocalDoguFetcher)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
 			client:             nil,
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
-			localReg:           localReg,
+			fetcher:            localDoguFetcher,
 		}
 
 		// when
@@ -115,7 +114,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse major version")
-		localReg.AssertExpectations(t)
+		localDoguFetcher.AssertExpectations(t)
 		recorder.AssertExpectations(t)
 		assert.Equal(t, Ignore, operation)
 	})
