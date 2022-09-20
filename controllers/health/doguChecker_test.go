@@ -3,9 +3,9 @@ package health
 import (
 	"context"
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"testing"
 
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/assert"
@@ -36,29 +36,29 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 	operatorConfig.Namespace = testNamespace
 
 	t.Run("should succeed", func(t *testing.T) {
-		doguRegistry := &cesmocks.DoguRegistry{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		testDeployment := createDeployment("ldap", 1, 1)
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
 
 		ldapResource := readTestDataPostgresqlCr(t)
 		ldapResource.Namespace = testNamespace
-		sut := NewDoguChecker(myClient, doguRegistry)
+		sut := NewDoguChecker(myClient, localFetcher)
 
 		// when
 		err := sut.CheckWithResource(context.TODO(), ldapResource)
 
 		// then
 		require.NoError(t, err)
-		doguRegistry.AssertExpectations(t)
+		localFetcher.AssertExpectations(t)
 	})
 	t.Run("should fail because of unready replicas", func(t *testing.T) {
-		doguRegistry := &cesmocks.DoguRegistry{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		testDeployment := createDeployment("ldap", 1, 0)
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
 
 		ldapResource := readTestDataPostgresqlCr(t)
 		ldapResource.Namespace = testNamespace
-		sut := NewDoguChecker(myClient, doguRegistry)
+		sut := NewDoguChecker(myClient, localFetcher)
 
 		// when
 		err := sut.CheckWithResource(context.TODO(), ldapResource)
@@ -66,7 +66,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "dogu ldap appears unhealthy (desired replicas: 1, ready: 0)")
-		doguRegistry.AssertExpectations(t)
+		localFetcher.AssertExpectations(t)
 	})
 }
 
@@ -90,7 +90,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						+-m-> ☑️mandatory2
 		*/
 
-		doguRegistry := &cesmocks.DoguRegistry{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 
 		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 		mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -98,12 +98,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		optional2Dogu := readTestDataDogu(t, optional2Bytes)
 		mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-		doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-		doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-		doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-		doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-		doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+		localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+		localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+		localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+		localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+		localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+		localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
 		dependentDeployment := createDeployment("redmine", 1, 0)
@@ -118,14 +118,14 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 			Build()
 
-		sut := NewDoguChecker(myClient, doguRegistry)
+		sut := NewDoguChecker(myClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
 
 		// then
 		require.NoError(t, err)
-		doguRegistry.AssertExpectations(t)
+		localFetcher.AssertExpectations(t)
 	})
 
 	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
@@ -157,10 +157,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		}
 		testDogu3 := &core.Dogu{Name: "testDogu3"}
 
-		doguRegistry := &cesmocks.DoguRegistry{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 
-		doguRegistry.On("Get", "testDogu2").Once().Return(testDogu2, nil)
-		doguRegistry.On("Get", "testDogu3").Once().Return(testDogu3, nil)
+		localFetcher.On("FetchInstalled", "testDogu2").Once().Return(testDogu2, nil)
+		localFetcher.On("FetchInstalled", "testDogu3").Once().Return(testDogu3, nil)
 
 		dependentDeployment := createDeployment("testDogu", 1, 0)
 		dependencyDeployment1 := createDeployment("testDogu2", 1, 1)
@@ -171,14 +171,14 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2).
 			Build()
 
-		sut := NewDoguChecker(myClient, doguRegistry)
+		sut := NewDoguChecker(myClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(context.TODO(), testDogu, testNamespace)
 
 		// then
 		require.NoError(t, err)
-		doguRegistry.AssertExpectations(t)
+		localFetcher.AssertExpectations(t)
 	})
 
 	t.Run("should fail because of multiple reasons", func(t *testing.T) {
@@ -192,19 +192,19 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						+-m-> ❌️mandatory2
 		*/
 
-		doguRegistry := &cesmocks.DoguRegistry{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 
 		mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 		optional1Dogu := readTestDataDogu(t, optional1Bytes)
 		optional2Dogu := readTestDataDogu(t, optional2Bytes)
 		mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-		doguRegistry.On("Get", "postgresql").Return(nil, registryKeyNotFoundTestErr)
-		doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-		doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-		doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-		doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-		doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+		localFetcher.On("FetchInstalled", "postgresql").Return(nil, registryKeyNotFoundTestErr)
+		localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+		localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+		localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+		localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+		localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
 		dependentDeployment := createDeployment("redmine", 1, 0)
@@ -219,7 +219,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 			WithObjects(dependentDeployment, dependencyDeployment2, dependencyDeployment4, dependencyDeployment5).
 			Build()
 
-		sut := NewDoguChecker(myClient, doguRegistry)
+		sut := NewDoguChecker(myClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -230,7 +230,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		assert.Contains(t, err.Error(), "error getting registry key for postgresql")
 		assert.Contains(t, err.Error(), "dogu optional1 appears unhealthy")
 		assert.Contains(t, err.Error(), `dogu mandatory2 health check failed: deployments.apps "mandatory2" not found`)
-		doguRegistry.AssertExpectations(t)
+		localFetcher.AssertExpectations(t)
 	})
 
 	t.Run("on direct dependencies", func(t *testing.T) {
@@ -246,17 +246,17 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ☑️mandatory2
 				*/
 
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
-				doguRegistry.On("Get", "postgresql").Return(nil, registryKeyNotFoundTestErr)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -271,7 +271,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -280,7 +280,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "error getting registry key for postgresql")
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment does not exist", func(t *testing.T) {
 				/*
@@ -292,7 +292,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -300,11 +300,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -319,7 +319,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -329,7 +329,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "dogu postgresql health check failed")
 				assert.Contains(t, err.Error(), `deployments.apps "postgresql" not found`)
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment is not ready", func(t *testing.T) {
 				/*
@@ -341,18 +341,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -367,7 +367,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -376,7 +376,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "dogu postgresql appears unhealthy (desired replicas: 1, ready: 0)")
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 		})
 		t.Run("which are optional", func(t *testing.T) {
@@ -390,7 +390,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -398,12 +398,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -418,7 +418,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -427,7 +427,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "dogu optional1 appears unhealthy (desired replicas: 1, ready: 0)")
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should succeed when at least one optional dependency dogu is not installed", func(t *testing.T) {
 				/*
@@ -440,13 +440,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ~mandatory2~
 				*/
 
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -458,14 +458,14 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
 
 				// then
 				require.NoError(t, err)
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one optional dependency dogu is installed but deployment does not exist", func(t *testing.T) {
 				/*
@@ -477,7 +477,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -485,11 +485,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -504,7 +504,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -514,7 +514,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "dogu postgresql health check failed")
 				assert.Contains(t, err.Error(), `deployments.apps "postgresql" not found`)
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 		})
 	})
@@ -530,18 +530,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -556,7 +556,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -565,7 +565,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "error getting registry key for mandatory2")
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment does not exist", func(t *testing.T) {
 				/*
@@ -577,7 +577,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -585,12 +585,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -605,7 +605,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -615,7 +615,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "dogu mandatory2 health check failed")
 				assert.Contains(t, err.Error(), `deployments.apps "mandatory2" not found`)
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment is not ready", func(t *testing.T) {
 				/*
@@ -627,18 +627,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -653,7 +653,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -662,7 +662,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "dogu mandatory2 appears unhealthy (desired replicas: 1, ready: 0)")
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 		})
 		t.Run("which are optional", func(t *testing.T) {
@@ -676,18 +676,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ❌️optional2
 								+-m-> ☑️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -702,7 +702,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -711,7 +711,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "dogu optional2 appears unhealthy (desired replicas: 1, ready: 0)")
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one optional dependency dogu is installed but deployment does not exist", func(t *testing.T) {
 				/*
@@ -723,18 +723,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ❌️optional2
 								+-m-> ☑️mandatory2
 				*/
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(optional2Dogu, nil)
-				doguRegistry.On("Get", "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(optional2Dogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -749,7 +749,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment5).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
@@ -759,7 +759,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				assert.Contains(t, err.Error(), "1 error occurred")
 				assert.Contains(t, err.Error(), "dogu optional2 health check failed")
 				assert.Contains(t, err.Error(), `deployments.apps "optional2" not found`)
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should succeed when at least one optional dependency dogu is not installed", func(t *testing.T) {
 				/*
@@ -772,15 +772,15 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ~mandatory2~
 				*/
 
-				doguRegistry := &cesmocks.DoguRegistry{}
+				localFetcher := &mocks.LocalDoguFetcher{}
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
-				doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-				doguRegistry.On("Get", "mandatory1").Return(mandatory1Dogu, nil)
-				doguRegistry.On("Get", "optional1").Return(optional1Dogu, nil)
-				doguRegistry.On("Get", "optional2").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.On("FetchInstalled", "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.On("FetchInstalled", "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional1").Return(optional1Dogu, nil)
+				localFetcher.On("FetchInstalled", "optional2").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 				dependentDeployment := createDeployment("redmine", 1, 0)
@@ -793,14 +793,14 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3).
 					Build()
 
-				sut := NewDoguChecker(myClient, doguRegistry)
+				sut := NewDoguChecker(myClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(context.TODO(), redmineDogu, testNamespace)
 
 				// then
 				require.NoError(t, err)
-				doguRegistry.AssertExpectations(t)
+				localFetcher.AssertExpectations(t)
 			})
 
 		})

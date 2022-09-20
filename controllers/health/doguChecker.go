@@ -3,7 +3,6 @@ package health
 import (
 	"context"
 	"fmt"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -32,17 +31,23 @@ func (dhe *DoguHealthError) Error() string {
 	return fmt.Errorf("dogu failed a health check: %w", dhe.err).Error()
 }
 
+type localDoguFetcher interface {
+	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
+	// otherwise might be incompatible with K8s CES).
+	FetchInstalled(doguName string) (installedDogu *core.Dogu, err error)
+}
+
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(client client.Client, doguLocalRegistry registry.DoguRegistry) *doguChecker {
+func NewDoguChecker(client client.Client, localFetcher localDoguFetcher) *doguChecker {
 	return &doguChecker{
 		client:            client,
-		doguLocalRegistry: doguLocalRegistry,
+		doguLocalRegistry: localFetcher,
 	}
 }
 
 type doguChecker struct {
 	client            client.Client
-	doguLocalRegistry registry.DoguRegistry
+	doguLocalRegistry localDoguFetcher
 }
 
 // CheckWithResource returns nil if the dogu's replica exist and are ready. If the dogu is unhealthy an error of type
@@ -78,7 +83,7 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 		localDependencyDoguName := dependency.Name
 		objectKey := getObjectKeyForDoguAndNamespace(localDependencyDoguName, currentK8sNamespace)
 
-		dependencyDogu, err := dc.doguLocalRegistry.Get(localDependencyDoguName)
+		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName)
 		if err != nil {
 			err2 := fmt.Errorf("error getting registry key for %s: %w", localDependencyDoguName, err)
 			result = multierror.Append(result, err2)
@@ -108,7 +113,7 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 		localDependencyDoguName := dependency.Name
 		objectKey := getObjectKeyForDoguAndNamespace(localDependencyDoguName, currentK8sNamespace)
 
-		dependencyDogu, err := dc.doguLocalRegistry.Get(localDependencyDoguName)
+		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName)
 		if err != nil {
 			if optional && registry.IsKeyNotFoundError(err) {
 				// optional dogus may not be installed, so continue and do nothing

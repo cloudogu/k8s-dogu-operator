@@ -64,7 +64,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	rdf := cesregistry.NewResourceDoguFetcher(client, doguRemoteRegistry)
 
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
-	doguChecker := health.NewDoguChecker(client, doguLocalRegistry)
+	doguChecker := health.NewDoguChecker(client, df)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(client, imageRegistry, collectApplier, fileExtractor, serviceAccountCreator, cesRegistry)

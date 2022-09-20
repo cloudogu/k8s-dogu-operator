@@ -244,8 +244,8 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 	return result, nil
 }
 
-func checkUpgradeability(doguResource *k8sv1.Dogu, reg localDoguFetcher) (bool, error) {
-	fromDogu, err := reg.FetchInstalled(doguResource.Name)
+func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher localDoguFetcher) (bool, error) {
+	fromDogu, err := fetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
 		return false, err
 	}
