@@ -1,6 +1,7 @@
 package dependency
 
 import (
+	"context"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/hashicorp/go-multierror"
@@ -8,7 +9,7 @@ import (
 
 // DependencyValidator is responsible to validate the dependencies of a dogu
 type DependencyValidator interface {
-	ValidateAllDependencies(dogu *core.Dogu) error
+	ValidateAllDependencies(ctx context.Context, dogu *core.Dogu) error
 }
 
 // CompositeDependencyValidator is a composite validator responsible to validate the dogu and client dependencies of dogus.
@@ -33,11 +34,11 @@ func NewCompositeDependencyValidator(version *core.Version, doguRegistry registr
 
 // ValidateDependencies validates all kinds of dependencies for dogus. An error is returned when any invalid
 // dependencies were detected.
-func (dv *CompositeDependencyValidator) ValidateDependencies(dogu *core.Dogu) error {
+func (dv *CompositeDependencyValidator) ValidateDependencies(ctx context.Context, dogu *core.Dogu) error {
 	var result error
 
 	for _, validator := range dv.Validators {
-		err := validator.ValidateAllDependencies(dogu)
+		err := validator.ValidateAllDependencies(ctx, dogu)
 		if err != nil {
 			result = multierror.Append(result, err)
 		}

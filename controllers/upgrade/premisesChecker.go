@@ -20,7 +20,7 @@ type doguRecursiveHealthChecker interface {
 
 // dependencyValidator is used to check if dogu dependencies are installed
 type dependencyValidator interface {
-	ValidateDependencies(dogu *core.Dogu) error
+	ValidateDependencies(ctx context.Context, dogu *core.Dogu) error
 }
 
 type premisesChecker struct {
@@ -63,7 +63,7 @@ func (pc *premisesChecker) Check(ctx context.Context, doguResource *k8sv1.Dogu, 
 }
 
 func (pc *premisesChecker) checkDependencyDogusHealthy(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu) error {
-	err := pc.dependencyValidator.ValidateDependencies(localDogu)
+	err := pc.dependencyValidator.ValidateDependencies(ctx, localDogu)
 	if err != nil {
 		return err
 	}

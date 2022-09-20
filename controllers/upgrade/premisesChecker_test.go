@@ -148,17 +148,17 @@ type premiseMock struct {
 	mock.Mock
 }
 
-func (pm *premiseMock) ValidateDependencies(dogu *core.Dogu) error {
+func (pm *premiseMock) ValidateDependencies(_ context.Context, dogu *core.Dogu) error {
 	args := pm.Called(dogu)
 	return args.Error(0)
 }
 
-func (pm *premiseMock) CheckDependenciesRecursive(ctx context.Context, fromDogu *core.Dogu, currentK8sNamespace string) error {
+func (pm *premiseMock) CheckDependenciesRecursive(_ context.Context, fromDogu *core.Dogu, currentK8sNamespace string) error {
 	args := pm.Called(fromDogu, currentK8sNamespace)
 	return args.Error(0)
 }
 
-func (pm *premiseMock) CheckWithResource(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (pm *premiseMock) CheckWithResource(_ context.Context, doguResource *k8sv1.Dogu) error {
 	args := pm.Called(doguResource)
 	return args.Error(0)
 }

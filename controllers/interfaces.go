@@ -48,7 +48,7 @@ type doguRegistrator interface {
 
 // dependencyValidator is used to check if dogu dependencies are installed
 type dependencyValidator interface {
-	ValidateDependencies(dogu *cesappcore.Dogu) error
+	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
 // serviceAccountCreator is used to create service accounts for a given dogu

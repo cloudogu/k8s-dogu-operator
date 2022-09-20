@@ -132,7 +132,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 
 	logger.Info("Check dogu dependencies...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
-	err = m.dependencyValidator.ValidateDependencies(dogu)
+	err = m.dependencyValidator.ValidateDependencies(ctx, dogu)
 	if err != nil {
 		return err
 	}
