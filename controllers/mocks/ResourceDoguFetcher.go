@@ -54,8 +54,8 @@ type mockConstructorTestingTnewResourceDoguFetcher interface {
 	Cleanup(func())
 }
 
-// newResourceDoguFetcher creates a new instance of ResourceDoguFetcher. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newResourceDoguFetcher(t mockConstructorTestingTnewResourceDoguFetcher) *ResourceDoguFetcher {
+// NewResourceDoguFetcher creates a new instance of ResourceDoguFetcher. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewResourceDoguFetcher(t mockConstructorTestingTnewResourceDoguFetcher) *ResourceDoguFetcher {
 	mock := &ResourceDoguFetcher{}
 	mock.Mock.Test(t)
 
