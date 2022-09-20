@@ -154,13 +154,15 @@ var _ = ginkgo.BeforeSuite(func() {
 	upserter := resource.NewUpserter(k8sManager.GetClient(), limitPatcher)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
-	doguFetcher := cesregistry.NewLocalDoguFetcher(&EtcdDoguRegistry)
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(&EtcdDoguRegistry)
+	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sManager.GetClient(), &DoguRemoteRegistryMock)
 
 	installManager := &doguInstallManager{
 		client:                k8sManager.GetClient(),
 		resourceUpserter:      upserter,
 		doguRemoteRegistry:    &DoguRemoteRegistryMock,
 		doguLocalRegistry:     &EtcdDoguRegistry,
+		resourceDoguFetcher:   remoteDoguFetcher,
 		imageRegistry:         &ImageRegistryMock,
 		doguRegistrator:       doguRegistrator,
 		dependencyValidator:   dependencyValidator,
@@ -169,7 +171,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		collectApplier:        collectApplier,
 		fileExtractor:         fileExtract,
 		recorder:              eventRecorder,
-		doguFetcher:           doguFetcher,
+		localDoguFetcher:      localDoguFetcher,
 	}
 
 	deleteManager := &doguDeleteManager{
@@ -178,7 +180,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguRegistrator:       doguRegistrator,
 		serviceAccountRemover: serviceAccountRemover,
 		doguSecretHandler:     doguSecretHandler,
-		doguFetcher:           doguFetcher,
+		localDoguFetcher:      localDoguFetcher,
 	}
 
 	doguManager := &DoguManager{

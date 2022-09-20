@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"io"
 	"strings"
 
@@ -21,17 +22,26 @@ type commandExecutor interface {
 	ExecCommand(ctx context.Context, targetDogu string, namespace string, command *core.ExposedCommand, params []string) (*bytes.Buffer, error)
 }
 
+type localDoguFetcher interface {
+	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
+	// otherwise might be incompatible with K8s CES).
+	FetchInstalled(doguName string) (installedDogu *core.Dogu, err error)
+}
+
 // creator is the unit to handle the creation of service accounts
 type creator struct {
-	registry registry.Registry
-	executor commandExecutor
+	registry    registry.Registry
+	doguFetcher localDoguFetcher
+	executor    commandExecutor
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
 func NewCreator(registry registry.Registry, commandExecutor commandExecutor) *creator {
+	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &creator{
-		registry: registry,
-		executor: commandExecutor,
+		registry:    registry,
+		doguFetcher: localFetcher,
+		executor:    commandExecutor,
 	}
 }
 
@@ -68,7 +78,7 @@ func (c *creator) CreateAll(ctx context.Context, namespace string, dogu *core.Do
 			return fmt.Errorf("service account dogu is not enabled and not optional")
 		}
 
-		saDogu, err := doguRegistry.Get(serviceAccount.Type)
+		saDogu, err := c.doguFetcher.FetchInstalled(serviceAccount.Type)
 		if err != nil {
 			return fmt.Errorf("failed to get service account dogu.json: %w", err)
 		}

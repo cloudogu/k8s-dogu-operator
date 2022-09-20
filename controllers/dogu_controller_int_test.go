@@ -52,8 +52,9 @@ var _ = Describe("Dogu Controller", func() {
 	EtcdDoguRegistry = cesmocks.DoguRegistry{}
 	EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed"))
 	EtcdDoguRegistry.Mock.On("Get", "cas").Return(nil, fmt.Errorf("not installed"))
-	EtcdDoguRegistry.Mock.On("Get", "nginx").Return(nil, fmt.Errorf("not installed"))
 	EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
+	EtcdDoguRegistry.Mock.On("Get", "nginx-ingress").Return(nil, fmt.Errorf("not installed"))
+	EtcdDoguRegistry.Mock.On("Get", "nginx-static").Return(nil, fmt.Errorf("not installed"))
 	EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapDogu, nil)
 	EtcdDoguRegistry.Mock.On("Get", "redmine").Return(redmineDogu, nil)
 	EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)

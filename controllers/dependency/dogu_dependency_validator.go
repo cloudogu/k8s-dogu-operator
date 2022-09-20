@@ -82,7 +82,7 @@ func (dc *doguDependencyValidator) validateDoguDependencies(ctx context.Context,
 }
 
 func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, doguDependency core.Dependency, optional bool) error {
-	log.FromContext(ctx).Info("checking dogu dependency %s:%s", doguDependency.Name, doguDependency.Version)
+	log.FromContext(ctx).Info(fmt.Sprintf("checking dogu dependency %s:%s", doguDependency.Name, doguDependency.Version))
 
 	localDependency, err := dc.fetcher.FetchInstalled(doguDependency.Name)
 	if err != nil {
