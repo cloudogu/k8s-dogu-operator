@@ -74,7 +74,7 @@ func (dc *doguChecker) CheckDependenciesRecursive(ctx context.Context, localDogu
 func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *core.Dogu, currentK8sNamespace string) error {
 	var result *multierror.Error
 
-	for _, dependency := range localDogu.Dependencies {
+	for _, dependency := range localDogu.GetDependenciesOfType(core.DependencyTypeDogu) {
 		localDependencyDoguName := dependency.Name
 		objectKey := getObjectKeyForDoguAndNamespace(localDependencyDoguName, currentK8sNamespace)
 
@@ -104,7 +104,7 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 	const optional = true
 	var result *multierror.Error
 
-	for _, dependency := range localDogu.OptionalDependencies {
+	for _, dependency := range localDogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu) {
 		localDependencyDoguName := dependency.Name
 		objectKey := getObjectKeyForDoguAndNamespace(localDependencyDoguName, currentK8sNamespace)
 

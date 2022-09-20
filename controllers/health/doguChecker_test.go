@@ -2,6 +2,7 @@ package health
 
 import (
 	"context"
+	"github.com/cloudogu/cesapp-lib/core"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -126,6 +127,60 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		require.NoError(t, err)
 		doguRegistry.AssertExpectations(t)
 	})
+
+	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
+		/*
+			testDogu
+			+-m-> ☑ client1 (Client)
+			+-m-> ☑ package1 (Package)
+			+-m-> ☑ testDogu2 (Dogu)
+				  +-o-> ☑ client2 (Client)
+				  +-o-> ☑ package2 (Package)
+				  +-m-> ☑ testDogu3 (Dogu)
+		*/
+
+		testDogu := &core.Dogu{
+			Name: "testDogu",
+			Dependencies: []core.Dependency{
+				{Type: core.DependencyTypeClient, Name: "client1"},
+				{Type: core.DependencyTypePackage, Name: "package1"},
+				{Type: core.DependencyTypeDogu, Name: "testDogu2"},
+			},
+		}
+		testDogu2 := &core.Dogu{
+			Name: "testDogu2",
+			OptionalDependencies: []core.Dependency{
+				{Type: core.DependencyTypeClient, Name: "client2"},
+				{Type: core.DependencyTypePackage, Name: "package2"},
+				{Type: core.DependencyTypeDogu, Name: "testDogu3"},
+			},
+		}
+		testDogu3 := &core.Dogu{Name: "testDogu3"}
+
+		doguRegistry := &cesmocks.DoguRegistry{}
+
+		doguRegistry.On("Get", "testDogu2").Once().Return(testDogu2, nil)
+		doguRegistry.On("Get", "testDogu3").Once().Return(testDogu3, nil)
+
+		dependentDeployment := createDeployment("testDogu", 1, 0)
+		dependencyDeployment1 := createDeployment("testDogu2", 1, 1)
+		dependencyDeployment2 := createDeployment("testDogu3", 1, 1)
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2).
+			Build()
+
+		sut := NewDoguChecker(myClient, doguRegistry)
+
+		// when
+		err := sut.CheckDependenciesRecursive(context.TODO(), testDogu, testNamespace)
+
+		// then
+		require.NoError(t, err)
+		doguRegistry.AssertExpectations(t)
+	})
+
 	t.Run("should fail because of multiple reasons", func(t *testing.T) {
 		/*
 			redmine
