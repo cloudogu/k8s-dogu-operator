@@ -17,10 +17,12 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
+// localDoguFetcher abstracts the access to dogu structs from the local dogu registry.
 type localDoguFetcher struct {
 	doguLocalRegistry registry.DoguRegistry
 }
 
+// localDoguFetcher abstracts the access to dogu structs from either the remote dogu registry or from a local DevelopmentDoguMap.
 type resourceDoguFetcher struct {
 	client             client.Client
 	doguRemoteRegistry cesremote.Registry

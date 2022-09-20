@@ -137,13 +137,13 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 	t.Run("should fetch dogu from dogu development map", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
-		expectedDoguDevelopmentMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
+		expectedDevelopmentDoguMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
 
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(expectedDoguDevelopmentMap.ToConfigMap()).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(expectedDevelopmentDoguMap.ToConfigMap()).Build()
 		sut := NewResourceDoguFetcher(client, nil)
 
 		// when
-		fetchedDogu, doguDevelopmentMap, err := sut.FetchWithResource(ctx, doguCr)
+		fetchedDogu, DevelopmentDoguMap, err := sut.FetchWithResource(ctx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -180,7 +180,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 
 		assert.ElementsMatch(t, expectedDependencies, actualDependencies)
 		assert.ElementsMatch(t, expectedOptionalDependencies, actualOptionalDependencies)
-		assert.Equal(t, expectedDoguDevelopmentMap.Name, doguDevelopmentMap.Name)
+		assert.Equal(t, expectedDevelopmentDoguMap.Name, DevelopmentDoguMap.Name)
 	})
 	t.Run("should fetch dogu from remote registry", func(t *testing.T) {
 		// given
@@ -215,8 +215,8 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 
 		localRegDoguContextMock := new(mocks2.DoguRegistry)
 
-		redmineDoguDevelopmentMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(redmineDoguDevelopmentMap.ToConfigMap()).Build()
+		redmineDevelopmentDoguMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(redmineDevelopmentDoguMap.ToConfigMap()).Build()
 		sut := NewResourceDoguFetcher(client, nil)
 
 		// when
@@ -274,11 +274,11 @@ func Test_resourceDoguFetcher_getFromDevelopmentDoguMap(t *testing.T) {
 	t.Run("fail as config map contains invalid json", func(t *testing.T) {
 		// given
 		sut := NewResourceDoguFetcher(nil, nil)
-		redmineDoguDevelopmentMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
-		redmineDoguDevelopmentMap.Data["dogu.json"] = "invalid dogu json"
+		redmineDevelopmentDoguMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
+		redmineDevelopmentDoguMap.Data["dogu.json"] = "invalid dogu json"
 
 		// when
-		_, err := sut.getFromDevelopmentDoguMap(redmineDoguDevelopmentMap)
+		_, err := sut.getFromDevelopmentDoguMap(redmineDevelopmentDoguMap)
 
 		// given
 		require.Error(t, err)
