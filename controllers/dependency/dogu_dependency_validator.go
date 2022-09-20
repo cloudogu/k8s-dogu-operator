@@ -3,6 +3,7 @@ package dependency
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -38,7 +39,7 @@ type doguDependencyValidator struct {
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker
 func NewDoguDependencyValidator(localDoguRegistry registry.DoguRegistry) *doguDependencyValidator {
-	doguDependencyChecker := cesregistry.NewDoguFetcher(nil, localDoguRegistry, nil)
+	doguDependencyChecker := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 
 	return &doguDependencyValidator{
 		fetcher: doguDependencyChecker,

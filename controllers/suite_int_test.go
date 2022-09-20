@@ -154,7 +154,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	upserter := resource.NewUpserter(k8sManager.GetClient(), limitPatcher)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
-	doguFetcher := cesregistry.NewDoguFetcher(k8sManager.GetClient(), &EtcdDoguRegistry, &DoguRemoteRegistryMock)
+	doguFetcher := cesregistry.NewLocalDoguFetcher(&EtcdDoguRegistry)
 
 	installManager := &doguInstallManager{
 		client:                k8sManager.GetClient(),

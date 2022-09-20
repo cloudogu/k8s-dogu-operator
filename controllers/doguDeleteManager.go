@@ -3,11 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
@@ -25,7 +24,7 @@ const finalizerName = "dogu-finalizer"
 type doguDeleteManager struct {
 	client                client.Client
 	scheme                *runtime.Scheme
-	doguFetcher           doguFetcher
+	localDoguFetcher      localDoguFetcher
 	imageRegistry         imageRegistry
 	doguRegistrator       doguRegistrator
 	serviceAccountRemover serviceAccountRemover
@@ -33,12 +32,7 @@ type doguDeleteManager struct {
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*doguDeleteManager, error) {
-	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
-	}
-
+func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry) (*doguDeleteManager, error) {
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
 
 	restConfig := ctrl.GetConfigOrDie()
@@ -51,7 +45,7 @@ func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorC
 	return &doguDeleteManager{
 		client:                client,
 		scheme:                client.Scheme(),
-		doguFetcher:           cesreg.NewDoguFetcher(client, cesRegistry.DoguRegistry(), doguRemoteRegistry),
+		localDoguFetcher:      cesreg.NewLocalDoguFetcher(cesRegistry.DoguRegistry()),
 		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
 		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor),
 	}, nil
@@ -67,7 +61,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, err := m.doguFetcher.FetchInstalled(doguResource.Name)
+	dogu, err := m.localDoguFetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
 		logger.Error(err, "failed to fetch installed dogu ")
 	}

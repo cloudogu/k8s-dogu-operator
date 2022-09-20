@@ -16,7 +16,7 @@ import (
 
 var ctx = context.Background()
 
-func Test_doguFetcher_FetchInstalled(t *testing.T) {
+func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 	t.Run("should succeed and return installed dogu", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
@@ -25,8 +25,7 @@ func Test_doguFetcher_FetchInstalled(t *testing.T) {
 		localRegDoguContextMock := new(mocks2.DoguRegistry)
 		localRegDoguContextMock.On("Get", "redmine").Return(dogu, nil)
 
-		client := &mocks.Client{}
-		sut := NewDoguFetcher(client, localRegDoguContextMock, nil)
+		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 
 		// when
 		installedDogu, err := sut.FetchInstalled(doguCr.Name)
@@ -43,8 +42,7 @@ func Test_doguFetcher_FetchInstalled(t *testing.T) {
 		localRegDoguContextMock := new(mocks2.DoguRegistry)
 		localRegDoguContextMock.On("Get", "redmine").Return(nil, assert.AnError)
 
-		client := &mocks.Client{}
-		sut := NewDoguFetcher(client, localRegDoguContextMock, nil)
+		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 
 		// when
 		_, err := sut.FetchInstalled(doguCr.Name)
@@ -68,8 +66,7 @@ func Test_doguFetcher_FetchInstalled(t *testing.T) {
 		localRegDoguContextMock := new(mocks2.DoguRegistry)
 		localRegDoguContextMock.On("Get", "redmine").Return(dogu, nil)
 
-		client := &mocks.Client{}
-		sut := NewDoguFetcher(client, localRegDoguContextMock, nil)
+		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 
 		// when
 		installedDogu, err := sut.FetchInstalled(doguCr.Name)
@@ -107,9 +104,7 @@ func Test_doguFetcher_FetchInstalled(t *testing.T) {
 
 		localRegDoguContextMock := new(mocks2.DoguRegistry)
 		localRegDoguContextMock.On("Get", "redmine").Return(dogu, nil)
-
-		client := &mocks.Client{}
-		sut := NewDoguFetcher(client, localRegDoguContextMock, nil)
+		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 
 		// when
 		installedDogu, err := sut.FetchInstalled(doguCr.Name)
@@ -121,7 +116,7 @@ func Test_doguFetcher_FetchInstalled(t *testing.T) {
 	})
 }
 
-func Test_doguFetcher_FetchFromResource(t *testing.T) {
+func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 	t.Run("should fail to retrieve dogu development map", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
@@ -129,7 +124,7 @@ func Test_doguFetcher_FetchFromResource(t *testing.T) {
 		remoteDoguRegistry := new(mocks3.Registry)
 		client := &mocks.Client{}
 		client.On("Get", ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(assert.AnError)
-		sut := NewDoguFetcher(client, nil, remoteDoguRegistry)
+		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
 
 		// when
 		_, _, err := sut.FetchWithResource(ctx, doguCr)
@@ -145,7 +140,7 @@ func Test_doguFetcher_FetchFromResource(t *testing.T) {
 		expectedDoguDevelopmentMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(expectedDoguDevelopmentMap.ToConfigMap()).Build()
-		sut := NewDoguFetcher(client, nil, nil)
+		sut := NewResourceDoguFetcher(client, nil)
 
 		// when
 		fetchedDogu, doguDevelopmentMap, err := sut.FetchWithResource(ctx, doguCr)
@@ -196,7 +191,7 @@ func Test_doguFetcher_FetchFromResource(t *testing.T) {
 		remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(dogu, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
-		sut := NewDoguFetcher(client, nil, remoteDoguRegistry)
+		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
 
 		// when
 		fetchedDogu, cleanup, err := sut.FetchWithResource(ctx, doguCr)
@@ -222,7 +217,7 @@ func Test_doguFetcher_FetchFromResource(t *testing.T) {
 
 		redmineDoguDevelopmentMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(redmineDoguDevelopmentMap.ToConfigMap()).Build()
-		sut := NewDoguFetcher(client, localRegDoguContextMock, nil)
+		sut := NewResourceDoguFetcher(client, nil)
 
 		// when
 		fetchedDogu, _, err := sut.FetchWithResource(ctx, doguCr)
@@ -263,7 +258,7 @@ func Test_doguFetcher_FetchFromResource(t *testing.T) {
 		remoteRegMock.On("GetVersion", "official/redmine", "4.2.3-10").Return(dogu, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
-		sut := NewDoguFetcher(client, nil, remoteRegMock)
+		sut := NewResourceDoguFetcher(client, remoteRegMock)
 
 		// when
 		fetchedDogu, _, err := sut.FetchWithResource(ctx, doguCr)
@@ -275,10 +270,10 @@ func Test_doguFetcher_FetchFromResource(t *testing.T) {
 	})
 }
 
-func Test_doguFetcher_getFromDevelopmentDoguMap(t *testing.T) {
+func Test_resourceDoguFetcher_getFromDevelopmentDoguMap(t *testing.T) {
 	t.Run("fail as config map contains invalid json", func(t *testing.T) {
 		// given
-		sut := NewDoguFetcher(nil, nil, nil)
+		sut := NewResourceDoguFetcher(nil, nil)
 		redmineDoguDevelopmentMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
 		redmineDoguDevelopmentMap.Data["dogu.json"] = "invalid dogu json"
 
@@ -299,7 +294,7 @@ func Test_doguFetcher_getDoguFromRemoteRegistry(t *testing.T) {
 		remoteDoguRegistry := new(mocks3.Registry)
 		remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
 
-		sut := NewDoguFetcher(nil, nil, remoteDoguRegistry)
+		sut := NewResourceDoguFetcher(nil, remoteDoguRegistry)
 
 		// when
 		_, err := sut.getDoguFromRemoteRegistry(doguCr)

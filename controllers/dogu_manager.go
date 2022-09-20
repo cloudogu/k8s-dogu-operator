@@ -44,7 +44,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, err
 	}
 
-	deleteManager, err := NewDoguDeleteManager(client, operatorConfig, cesRegistry)
+	deleteManager, err := NewDoguDeleteManager(client, cesRegistry)
 	if err != nil {
 		return nil, err
 	}

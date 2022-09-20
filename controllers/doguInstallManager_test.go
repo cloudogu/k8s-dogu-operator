@@ -30,7 +30,8 @@ import (
 
 type doguInstallManagerWithMocks struct {
 	installManager            *doguInstallManager
-	doguFetcher               *mocks.DoguFetcher
+	localDoguFetcher          *mocks.LocalDoguFetcher
+	resourceDoguFetcher       *mocks.ResourceDoguFetcher
 	imageRegistryMock         *mocks.ImageRegistry
 	doguRegistratorMock       *mocks.DoguRegistrator
 	dependencyValidatorMock   *mocks.DependencyValidator
@@ -53,7 +54,8 @@ func (d *doguInstallManagerWithMocks) AssertMocks(t *testing.T) {
 		d.doguSecretHandlerMock,
 		d.applierMock,
 		d.fileExtractorMock,
-		d.doguFetcher,
+		d.localDoguFetcher,
+		d.resourceDoguFetcher,
 		d.recorder,
 		d.resourceUpserter,
 	)
@@ -73,7 +75,8 @@ func getDoguInstallManagerWithMocks(scheme *runtime.Scheme) doguInstallManagerWi
 	mockedApplier := &mocks.Applier{}
 	fileExtract := &mocks.FileExtractor{}
 	eventRecorderMock := &mocks.EventRecorder{}
-	doguFetcher := &mocks.DoguFetcher{}
+	localDoguFetcher := &mocks.LocalDoguFetcher{}
+	resourceDoguFetcher := &mocks.ResourceDoguFetcher{}
 	collectApplier := resource.NewCollectApplier(mockedApplier)
 
 	doguInstallManager := &doguInstallManager{
@@ -81,7 +84,8 @@ func getDoguInstallManagerWithMocks(scheme *runtime.Scheme) doguInstallManagerWi
 		recorder:              eventRecorderMock,
 		imageRegistry:         imageRegistry,
 		doguRegistrator:       doguRegistrator,
-		doguFetcher:           doguFetcher,
+		localDoguFetcher:      localDoguFetcher,
+		resourceDoguFetcher:   resourceDoguFetcher,
 		dependencyValidator:   dependencyValidator,
 		serviceAccountCreator: serviceAccountCreator,
 		doguSecretHandler:     doguSecretHandler,
@@ -94,7 +98,8 @@ func getDoguInstallManagerWithMocks(scheme *runtime.Scheme) doguInstallManagerWi
 		installManager:            doguInstallManager,
 		client:                    k8sClient,
 		recorder:                  eventRecorderMock,
-		doguFetcher:               doguFetcher,
+		localDoguFetcher:          localDoguFetcher,
+		resourceDoguFetcher:       resourceDoguFetcher,
 		imageRegistryMock:         imageRegistry,
 		doguRegistratorMock:       doguRegistrator,
 		dependencyValidatorMock:   dependencyValidator,
@@ -174,7 +179,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
 
-		managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
@@ -207,7 +212,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		developmentDoguMap := k8sv1.DevelopmentDoguMap(*ldapDevelopmentDoguMap)
 
 		ldapDescriptorCm := readTestDataLdapDescriptor(t)
-		managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, &developmentDoguMap, nil)
+		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, &developmentDoguMap, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
@@ -243,7 +248,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
-		managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(assert.AnError)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
@@ -263,7 +268,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
-		managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
@@ -285,7 +290,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
-		managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(assert.AnError)
@@ -309,7 +314,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
-		managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
@@ -348,7 +353,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
-		managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(nil, nil, assert.AnError)
+		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(nil, nil, assert.AnError)
 
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
@@ -366,7 +371,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
-		managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
@@ -393,7 +398,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			// given
 			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
-			managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
+			managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
@@ -423,7 +428,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			// given
 			managerWithMocks := getDoguInstallManagerWithMocks(getTestScheme())
 			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
-			managerWithMocks.doguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
+			managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)

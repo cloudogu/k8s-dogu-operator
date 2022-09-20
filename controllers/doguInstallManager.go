@@ -38,7 +38,8 @@ type doguInstallManager struct {
 	recorder              record.EventRecorder
 	doguRemoteRegistry    cesremote.Registry
 	doguLocalRegistry     cesregistry.DoguRegistry
-	doguFetcher           doguFetcher
+	localDoguFetcher      localDoguFetcher
+	resourceDoguFetcher   resourceDoguFetcher
 	imageRegistry         imageRegistry
 	doguRegistrator       doguRegistrator
 	dependencyValidator   dependencyValidator
@@ -62,7 +63,8 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
 
-	doguFetcher := reg.NewDoguFetcher(client, cesRegistry.DoguRegistry(), doguRemoteRegistry)
+	localDoguFetcher := reg.NewLocalDoguFetcher(cesRegistry.DoguRegistry())
+	resourceDoguFetcher := reg.NewResourceDoguFetcher(client, doguRemoteRegistry)
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(cesRegistry)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
@@ -88,7 +90,8 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	return &doguInstallManager{
 		client:                client,
 		recorder:              eventRecorder,
-		doguFetcher:           doguFetcher,
+		localDoguFetcher:      localDoguFetcher,
+		resourceDoguFetcher:   resourceDoguFetcher,
 		imageRegistry:         imageRegistry,
 		doguRegistrator:       doguRegistrator,
 		dependencyValidator:   dependencyValidator,
@@ -123,7 +126,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, developmentDoguMap, err := m.doguFetcher.FetchWithResource(ctx, doguResource)
+	dogu, developmentDoguMap, err := m.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
 		return err
 	}

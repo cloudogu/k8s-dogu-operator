@@ -60,7 +60,8 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
 
-	doguFetcher := cesregistry.NewDoguFetcher(client, doguLocalRegistry, doguRemoteRegistry)
+	df := cesregistry.NewLocalDoguFetcher(doguLocalRegistry)
+	rdf := cesregistry.NewResourceDoguFetcher(client, doguRemoteRegistry)
 
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, doguLocalRegistry)
 	doguChecker := health.NewDoguChecker(client, doguLocalRegistry)
@@ -69,12 +70,13 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	upgradeExecutor := upgrade.NewUpgradeExecutor(client, imageRegistry, collectApplier, fileExtractor, serviceAccountCreator, cesRegistry)
 
 	return &doguUpgradeManager{
-		client:          client,
-		scheme:          scheme,
-		eventRecorder:   eventRecorder,
-		doguFetcher:     doguFetcher,
-		premisesChecker: premisesChecker,
-		upgradeExecutor: upgradeExecutor,
+		client:              client,
+		scheme:              scheme,
+		eventRecorder:       eventRecorder,
+		localDoguFetcher:    df,
+		resourceDoguFetcher: rdf,
+		premisesChecker:     premisesChecker,
+		upgradeExecutor:     upgradeExecutor,
 	}, nil
 }
 
@@ -84,9 +86,10 @@ type doguUpgradeManager struct {
 	scheme        *runtime.Scheme
 	eventRecorder record.EventRecorder
 	// upgrade business
-	premisesChecker premisesChecker
-	doguFetcher     doguFetcher
-	upgradeExecutor upgradeExecutor
+	premisesChecker     premisesChecker
+	localDoguFetcher    localDoguFetcher
+	resourceDoguFetcher resourceDoguFetcher
+	upgradeExecutor     upgradeExecutor
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
@@ -125,13 +128,13 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 }
 
 func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
-	fromDogu, err := dum.doguFetcher.FetchInstalled(doguResource.Name)
+	fromDogu, err := dum.localDoguFetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting installed dogu for upgrade: %s", err)
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
 	}
 
-	toDogu, developmentDoguMap, err := dum.doguFetcher.FetchWithResource(ctx, doguResource)
+	toDogu, developmentDoguMap, err := dum.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
 		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting remote dogu for upgrade: %s", err)
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
