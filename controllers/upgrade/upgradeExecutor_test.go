@@ -6,6 +6,8 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	regmock "github.com/cloudogu/cesapp-lib/registry/mocks"
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -71,7 +73,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		registrator := mocks.NewDoguRegistrator(t)
 		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
-		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil, nil)
+		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
@@ -99,8 +101,335 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
+		assert.Equal(t, "installed", update.Status.Status)
 		// mocks will be asserted during t.CleanUp
 	})
+	t.Run("should fail during resource upgrade", func(t *testing.T) {
+		// given
+		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDogu.Dependencies = []core.Dependency{{
+			Type: core.DependencyTypeDogu,
+			Name: "dependencyDogu",
+		}}
+
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		dependentDeployment := createTestDeployment("redmine")
+		dependencyDeployment := createTestDeployment("dependency-dogu")
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			Build()
+
+		registrator := mocks.NewDoguRegistrator(t)
+		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil)
+		imageRegMock := mocks.NewImageRegistry(t)
+		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
+		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
+		fileEx := mocks.NewFileExtractor(t)
+		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, nil)
+		applier := mocks.NewCollectApplier(t)
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
+		var emptyCustomK8sResource map[string]string
+		applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(deployment, nil)
+		upserter := mocks.NewResourceUpserter(t)
+		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(assert.AnError)
+
+		sut := &upgradeExecutor{
+			client:                myClient,
+			imageRegistry:         imageRegMock,
+			collectApplier:        applier,
+			fileExtractor:         fileEx,
+			serviceAccountCreator: saCreator,
+			doguRegistrator:       registrator,
+			resourceUpserter:      upserter,
+		}
+
+		// when
+		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
+		assert.Equal(t, "upgrading", update.Status.Status)
+		// mocks will be asserted during t.CleanUp
+	})
+	t.Run("should fail during resource application", func(t *testing.T) {
+		// given
+		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDogu.Dependencies = []core.Dependency{{
+			Type: core.DependencyTypeDogu,
+			Name: "dependencyDogu",
+		}}
+
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		dependentDeployment := createTestDeployment("redmine")
+		dependencyDeployment := createTestDeployment("dependency-dogu")
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			Build()
+
+		registrator := mocks.NewDoguRegistrator(t)
+		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil)
+		imageRegMock := mocks.NewImageRegistry(t)
+		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
+		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
+		fileEx := mocks.NewFileExtractor(t)
+		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, nil)
+		applier := mocks.NewCollectApplier(t)
+		var emptyCustomK8sResource map[string]string
+		applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, assert.AnError)
+		upserter := mocks.NewResourceUpserter(t)
+
+		sut := &upgradeExecutor{
+			client:                myClient,
+			imageRegistry:         imageRegMock,
+			collectApplier:        applier,
+			fileExtractor:         fileEx,
+			serviceAccountCreator: saCreator,
+			doguRegistrator:       registrator,
+			resourceUpserter:      upserter,
+		}
+
+		// when
+		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
+		assert.Equal(t, "upgrading", update.Status.Status)
+		// mocks will be asserted during t.CleanUp
+	})
+	t.Run("should fail during K8s resource extraction", func(t *testing.T) {
+		// given
+		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDogu.Dependencies = []core.Dependency{{
+			Type: core.DependencyTypeDogu,
+			Name: "dependencyDogu",
+		}}
+
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		dependentDeployment := createTestDeployment("redmine")
+		dependencyDeployment := createTestDeployment("dependency-dogu")
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			Build()
+
+		registrator := mocks.NewDoguRegistrator(t)
+		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil)
+		imageRegMock := mocks.NewImageRegistry(t)
+		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
+		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
+		fileEx := mocks.NewFileExtractor(t)
+		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, assert.AnError)
+		applier := mocks.NewCollectApplier(t)
+		upserter := mocks.NewResourceUpserter(t)
+
+		sut := &upgradeExecutor{
+			client:                myClient,
+			imageRegistry:         imageRegMock,
+			collectApplier:        applier,
+			fileExtractor:         fileEx,
+			serviceAccountCreator: saCreator,
+			doguRegistrator:       registrator,
+			resourceUpserter:      upserter,
+		}
+
+		// when
+		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
+		assert.Equal(t, "upgrading", update.Status.Status)
+		// mocks will be asserted during t.CleanUp
+	})
+	t.Run("should fail during image pull", func(t *testing.T) {
+		// given
+		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDogu.Dependencies = []core.Dependency{{
+			Type: core.DependencyTypeDogu,
+			Name: "dependencyDogu",
+		}}
+
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		dependentDeployment := createTestDeployment("redmine")
+		dependencyDeployment := createTestDeployment("dependency-dogu")
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			Build()
+
+		registrator := mocks.NewDoguRegistrator(t)
+		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil)
+		imageRegMock := mocks.NewImageRegistry(t)
+		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(nil, assert.AnError)
+		fileEx := mocks.NewFileExtractor(t)
+		applier := mocks.NewCollectApplier(t)
+		upserter := mocks.NewResourceUpserter(t)
+
+		sut := &upgradeExecutor{
+			client:                myClient,
+			imageRegistry:         imageRegMock,
+			collectApplier:        applier,
+			fileExtractor:         fileEx,
+			serviceAccountCreator: saCreator,
+			doguRegistrator:       registrator,
+			resourceUpserter:      upserter,
+		}
+
+		// when
+		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
+		assert.Equal(t, "upgrading", update.Status.Status)
+		// mocks will be asserted during t.CleanUp
+	})
+	t.Run("should fail during SA creation", func(t *testing.T) {
+		// given
+		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDogu.Dependencies = []core.Dependency{{
+			Type: core.DependencyTypeDogu,
+			Name: "dependencyDogu",
+		}}
+
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		dependentDeployment := createTestDeployment("redmine")
+		dependencyDeployment := createTestDeployment("dependency-dogu")
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			Build()
+
+		registrator := mocks.NewDoguRegistrator(t)
+		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(assert.AnError)
+		imageRegMock := mocks.NewImageRegistry(t)
+		fileEx := mocks.NewFileExtractor(t)
+		applier := mocks.NewCollectApplier(t)
+		upserter := mocks.NewResourceUpserter(t)
+
+		sut := &upgradeExecutor{
+			client:                myClient,
+			imageRegistry:         imageRegMock,
+			collectApplier:        applier,
+			fileExtractor:         fileEx,
+			serviceAccountCreator: saCreator,
+			doguRegistrator:       registrator,
+			resourceUpserter:      upserter,
+		}
+
+		// when
+		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
+		assert.Equal(t, "upgrading", update.Status.Status)
+		// mocks will be asserted during t.CleanUp
+	})
+	t.Run("should fail for etcd error", func(t *testing.T) {
+		// given
+		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDogu.Dependencies = []core.Dependency{{
+			Type: core.DependencyTypeDogu,
+			Name: "dependencyDogu",
+		}}
+
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		dependentDeployment := createTestDeployment("redmine")
+		dependencyDeployment := createTestDeployment("dependency-dogu")
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			Build()
+
+		registrator := mocks.NewDoguRegistrator(t)
+		registrator.On("RegisterDoguVersion", toDogu).Return(assert.AnError)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		imageRegMock := mocks.NewImageRegistry(t)
+		fileEx := mocks.NewFileExtractor(t)
+		applier := mocks.NewCollectApplier(t)
+		upserter := mocks.NewResourceUpserter(t)
+
+		sut := &upgradeExecutor{
+			client:                myClient,
+			imageRegistry:         imageRegMock,
+			collectApplier:        applier,
+			fileExtractor:         fileEx,
+			serviceAccountCreator: saCreator,
+			doguRegistrator:       registrator,
+			resourceUpserter:      upserter,
+		}
+
+		// when
+		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
+		assert.Equal(t, "upgrading", update.Status.Status)
+		// mocks will be asserted during t.CleanUp
+	})
+}
+
+func getUpdateDoguResource(t *testing.T, myClient client.Client, doguObjKey client.ObjectKey) *v1.Dogu {
+	t.Helper()
+
+	updatedDoguResource := &v1.Dogu{}
+	err := myClient.Get(testCtx, doguObjKey, updatedDoguResource)
+	require.NoError(t, err)
+
+	return updatedDoguResource
 }
 
 func Test_registerUpgradedDoguVersion(t *testing.T) {
