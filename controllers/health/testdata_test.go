@@ -14,9 +14,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-//go:embed testdata/redmine-cr.yaml
-var redmineCrBytes []byte
-
 //go:embed testdata/redmine-dogu.json
 var redmineBytes []byte
 
@@ -66,7 +63,7 @@ func getTestScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "dogu.cloudogu.com",
+		Group:   "k8s.cloudogu.com",
 		Version: "v1",
 		Kind:    "dogu",
 	}, &corev1.Dogu{})

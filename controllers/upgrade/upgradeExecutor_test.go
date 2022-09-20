@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
+	regmock "github.com/cloudogu/cesapp-lib/registry/mocks"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/go-logr/logr"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,21 +19,99 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const redmineUpgradeVersion = "4.2.3-11"
+
 var testCtx = context.TODO()
 
+func TestNewUpgradeExecutor(t *testing.T) {
+	t.Run("should return a valid object", func(t *testing.T) {
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			Build()
+		imageRegMock := mocks.NewImageRegistry(t)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		fileEx := mocks.NewFileExtractor(t)
+		applier := mocks.NewCollectApplier(t)
+		doguRegistry := new(regmock.DoguRegistry)
+		mockRegistry := new(regmock.Registry)
+		mockRegistry.On("DoguRegistry").Return(doguRegistry, nil)
+
+		// when
+		actual := NewUpgradeExecutor(myClient, imageRegMock, applier, fileEx, saCreator, mockRegistry)
+
+		// then
+		require.NotNil(t, actual)
+		assert.IsType(t, &upgradeExecutor{}, actual)
+	})
+}
+
 func Test_upgradeExecutor_Upgrade(t *testing.T) {
-	// todo implement
+
+	t.Run("should succeed", func(t *testing.T) {
+		// given
+		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDogu.Dependencies = []core.Dependency{{
+			Type: core.DependencyTypeDogu,
+			Name: "dependencyDogu",
+		}}
+
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		dependentDeployment := createTestDeployment("redmine")
+		dependencyDeployment := createTestDeployment("dependency-dogu")
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			Build()
+
+		registrator := mocks.NewDoguRegistrator(t)
+		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil, nil)
+		imageRegMock := mocks.NewImageRegistry(t)
+		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
+		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
+		fileEx := mocks.NewFileExtractor(t)
+		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, nil)
+		applier := mocks.NewCollectApplier(t)
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
+		var emptyCustomK8sResource map[string]string
+		applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(deployment, nil)
+		upserter := mocks.NewResourceUpserter(t)
+		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(nil)
+
+		sut := &upgradeExecutor{
+			client:                myClient,
+			imageRegistry:         imageRegMock,
+			collectApplier:        applier,
+			fileExtractor:         fileEx,
+			serviceAccountCreator: saCreator,
+			doguRegistrator:       registrator,
+			resourceUpserter:      upserter,
+		}
+
+		// when
+		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+
+		// then
+		require.NoError(t, err)
+		// mocks will be asserted during t.CleanUp
+	})
 }
 
 func Test_registerUpgradedDoguVersion(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
+		toDoguCr.Spec.Version = redmineUpgradeVersion
 
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
-		doguRegistryMock := new(mocks.DoguRegistry)
-		registryMock := new(mocks.Registry)
+		toDogu.Version = redmineUpgradeVersion
+		doguRegistryMock := new(regmock.DoguRegistry)
+		registryMock := new(regmock.Registry)
 		registryMock.On("DoguRegistry").Return(doguRegistryMock)
 		doguRegistryMock.On("IsEnabled", toDogu.GetSimpleName()).Return(true, nil)
 		doguRegistryMock.On("Register", toDogu).Return(nil)
@@ -51,12 +129,12 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 	})
 	t.Run("should fail", func(t *testing.T) {
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
+		toDoguCr.Spec.Version = redmineUpgradeVersion
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
+		toDogu.Version = redmineUpgradeVersion
 
-		doguRegistryMock := new(mocks.DoguRegistry)
-		registryMock := new(mocks.Registry)
+		doguRegistryMock := new(regmock.DoguRegistry)
+		registryMock := new(regmock.Registry)
 		registryMock.On("DoguRegistry").Return(doguRegistryMock)
 		doguRegistryMock.On("IsEnabled", toDogu.GetSimpleName()).Return(false, nil)
 
@@ -77,10 +155,10 @@ func Test_registerNewServiceAccount(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
+		toDogu.Version = redmineUpgradeVersion
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
-		saCreator := new(saCreatorMock)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDoguCr.Namespace, toDogu).Return(nil)
 
 		// when
@@ -93,10 +171,10 @@ func Test_registerNewServiceAccount(t *testing.T) {
 	t.Run("should fail", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
+		toDogu.Version = redmineUpgradeVersion
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
-		saCreator := new(saCreatorMock)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDoguCr.Namespace, toDogu).Return(assert.AnError)
 
 		// when
@@ -109,16 +187,12 @@ func Test_registerNewServiceAccount(t *testing.T) {
 	})
 }
 
-type saCreatorMock struct {
-	mock.Mock
-}
-
 func Test_upgradeExecutor_pullUpgradeImage(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
-		imagePuller := new(imagePullMock)
+		toDogu.Version = redmineUpgradeVersion
+		imagePuller := mocks.NewImageRegistry(t)
 		doguImage := toDogu.Image + ":" + toDogu.Version
 
 		imagePuller.On("PullImageConfig", testCtx, doguImage).Return(&imagev1.ConfigFile{}, nil)
@@ -133,8 +207,8 @@ func Test_upgradeExecutor_pullUpgradeImage(t *testing.T) {
 	t.Run("should fail", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
-		imagePuller := new(imagePullMock)
+		toDogu.Version = redmineUpgradeVersion
+		imagePuller := mocks.NewImageRegistry(t)
 		doguImage := toDogu.Image + ":" + toDogu.Version
 		var noConfigFile *imagev1.ConfigFile
 
@@ -153,10 +227,10 @@ func Test_extractCustomK8sResources(t *testing.T) {
 	t.Run("should return custom K8s resources", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
+		toDogu.Version = redmineUpgradeVersion
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
-		extractor := new(fileExtractorMock)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		extractor := mocks.NewFileExtractor(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
 		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(fakeResources, nil)
@@ -171,10 +245,10 @@ func Test_extractCustomK8sResources(t *testing.T) {
 	t.Run("should return no custom K8s resources", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
+		toDogu.Version = redmineUpgradeVersion
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
-		extractor := new(fileExtractorMock)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		extractor := mocks.NewFileExtractor(t)
 		var emptyResourcesAreValidToo map[string]string
 		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(emptyResourcesAreValidToo, nil)
 
@@ -188,10 +262,10 @@ func Test_extractCustomK8sResources(t *testing.T) {
 	t.Run("should fail", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
+		toDogu.Version = redmineUpgradeVersion
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
-		extractor := new(fileExtractorMock)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		extractor := mocks.NewFileExtractor(t)
 		var nilMap map[string]string
 		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(nilMap, assert.AnError)
 
@@ -208,10 +282,10 @@ func Test_applyCustomK8sResources(t *testing.T) {
 	t.Run("should apply K8s resources and return deployment", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
+		toDogu.Version = redmineUpgradeVersion
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
-		collectApplier := new(collectApplyMock)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		collectApplier := mocks.NewCollectApplier(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
 		fakeDeployment := createTestDeployment("redmine")
@@ -227,10 +301,10 @@ func Test_applyCustomK8sResources(t *testing.T) {
 	t.Run("should fail", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = "4.2.3-11"
+		toDogu.Version = redmineUpgradeVersion
 		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = "4.2.3-11"
-		collectApplier := new(collectApplyMock)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		collectApplier := mocks.NewCollectApplier(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
 		var noDeployment *appsv1.Deployment
@@ -242,13 +316,6 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to apply custom K8s resources: assert.AnError")
-	})
-}
-
-func Test_createDoguResources(t *testing.T) {
-	t.Run("should succeed", func(t *testing.T) {
-		// integration of dogu resource creation goes here
-		// todo implement
 	})
 }
 
@@ -264,36 +331,4 @@ func createTestDeployment(doguName string) *appsv1.Deployment {
 		},
 		Status: appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
 	}
-}
-
-func (s *saCreatorMock) CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
-	args := s.Called(ctx, namespace, dogu)
-	return args.Error(0)
-}
-
-type imagePullMock struct {
-	mock.Mock
-}
-
-func (i *imagePullMock) PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error) {
-	args := i.Called(ctx, image)
-	return args.Get(0).(*imagev1.ConfigFile), args.Error(1)
-}
-
-type fileExtractorMock struct {
-	mock.Mock
-}
-
-func (f *fileExtractorMock) ExtractK8sResourcesFromContainer(ctx context.Context, resource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
-	args := f.Called(ctx, resource, dogu)
-	return args.Get(0).(map[string]string), args.Error(1)
-}
-
-type collectApplyMock struct {
-	mock.Mock
-}
-
-func (c *collectApplyMock) CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
-	args := c.Called(logger, customK8sResources, doguResource)
-	return args.Get(0).(*appsv1.Deployment), args.Error(1)
 }

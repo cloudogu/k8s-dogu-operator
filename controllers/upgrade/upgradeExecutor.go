@@ -6,16 +6,15 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 
-	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type imageRegistry interface {
@@ -33,14 +32,14 @@ type serviceAccountCreator interface {
 	CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error
 }
 
-// doguRegistrator is used to register dogus
 type doguRegistrator interface {
+	// RegisterDoguVersion registers a certain dogu in a CES instance.
 	RegisterDoguVersion(dogu *core.Dogu) error
 }
 
 type collectApplier interface {
 	// CollectApply applies the given resources to the K8s cluster but filters and collects deployments.
-	CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error)
+	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error)
 }
 
 type resourceUpserter interface {
@@ -158,8 +157,7 @@ func extractCustomK8sResources(ctx context.Context, extractor fileExtractor, toD
 }
 
 func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) (*appsv1.Deployment, error) {
-	logger := log.FromContext(ctx)
-	resources, err := collectApplier.CollectApply(logger, customK8sResources, toDoguResource)
+	resources, err := collectApplier.CollectApply(ctx, customK8sResources, toDoguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply custom K8s resources: %w", err)
 	}
@@ -173,26 +171,5 @@ func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguR
 		return fmt.Errorf("failed to update dogu resources: %w", err)
 	}
 
-	return nil
-}
-
-func (ue *upgradeExecutor) createServiceAccounts(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
-	err := ue.serviceAccountCreator.CreateAll(ctx, toDoguResource.Namespace, toDogu)
-	if err != nil {
-		return fmt.Errorf("failed to create service accounts: %w", err)
-	}
-
-	return nil
-}
-
-func (ue *upgradeExecutor) applyCustomK8sResources(customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
-	if len(customK8sResources) == 0 {
-		return nil, nil
-	}
-
-	return nil, nil
-}
-
-func (ue *upgradeExecutor) handleCustomK8sResources(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
 	return nil
 }

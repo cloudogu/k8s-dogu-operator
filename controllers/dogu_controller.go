@@ -3,8 +3,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"strings"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -233,7 +234,8 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 	}
 
 	result, err := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, upgradeError, func(dogu *k8sv1.Dogu) {
-		// todo make the state transition more clear
+		// revert to Installed in case of requeueing after an error so that a upgrade
+		// can be tried again.
 		doguResource.Status.Status = k8sv1.DoguStatusInstalled
 	})
 	if err != nil {

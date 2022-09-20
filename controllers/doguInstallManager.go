@@ -18,7 +18,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 
-	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -170,7 +169,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
 	}
 
-	customDeployment, err := m.applyCustomK8sResources(logger, customK8sResources, doguResource)
+	customDeployment, err := m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
 	if err != nil {
 		return err
 	}
@@ -198,8 +197,8 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	return nil
 }
 
-func (m *doguInstallManager) applyCustomK8sResources(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
-	return m.collectApplier.CollectApply(logger, customK8sResources, doguResource)
+func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
+	return m.collectApplier.CollectApply(ctx, customK8sResources, doguResource)
 }
 
 func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile, patchingDeployment *appsv1.Deployment) error {

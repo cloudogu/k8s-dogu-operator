@@ -66,7 +66,7 @@ func getTestScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "dogu.cloudogu.com",
+		Group:   "k8s.cloudogu.com",
 		Version: "v1",
 		Kind:    "dogu",
 	}, &k8sv1.Dogu{})

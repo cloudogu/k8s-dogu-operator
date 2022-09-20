@@ -1,13 +1,15 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/go-logr/logr"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
 
@@ -29,7 +31,8 @@ func NewCollectApplier(applier applier) *collectApplier {
 
 // CollectApply applies the given resource but filters deployment resources and returns them so that they can be
 // applied later.
-func (ca *collectApplier) CollectApply(logger logr.Logger, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
+func (ca *collectApplier) CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
+	logger := log.FromContext(ctx)
 	if len(customK8sResources) == 0 {
 		logger.Info("No custom K8s resources found")
 		return nil, nil
