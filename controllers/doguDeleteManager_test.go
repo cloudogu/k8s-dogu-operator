@@ -6,6 +6,7 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	client3 "github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -150,6 +151,27 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to update dogu status")
 		managerWithMocks.AssertMocks(t)
+	})
+
+	t.Run("failure during fetching local dogu should not interrupt the delete routine", func(t *testing.T) {
+		// given
+		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
+		managerWithMocks := getDoguDeleteManagerWithMocks()
+
+		keyNotFoundErr := client3.Error{Code: client3.ErrorCodeKeyNotFound}
+		managerWithMocks.doguFetcherMock.On("FetchInstalled", "ldap").Return(nil, keyNotFoundErr)
+		managerWithMocks.deleteManager.client = client
+
+		// when
+		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		managerWithMocks.AssertMocks(t)
+		deletedDogu := k8sv1.Dogu{}
+		err = client.Get(ctx, client2.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		require.NoError(t, err)
+		assert.Empty(t, deletedDogu.Finalizers)
 	})
 
 	t.Run("failure during service account removal should not interrupt the delete routine", func(t *testing.T) {

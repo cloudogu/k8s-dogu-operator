@@ -72,16 +72,18 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		logger.Error(err, "failed to fetch installed dogu ")
 	}
 
-	logger.Info("Delete service accounts...")
-	err = m.serviceAccountRemover.RemoveAll(ctx, doguResource.Namespace, dogu)
-	if err != nil {
-		logger.Error(err, "failed to remove service accounts")
-	}
+	if dogu != nil {
+		logger.Info("Delete service accounts...")
+		err = m.serviceAccountRemover.RemoveAll(ctx, doguResource.Namespace, dogu)
+		if err != nil {
+			logger.Error(err, "failed to remove service accounts")
+		}
 
-	logger.Info("Unregister dogu...")
-	err = m.doguRegistrator.UnregisterDogu(doguResource.Name)
-	if err != nil {
-		logger.Error(err, "failed to unregister dogu")
+		logger.Info("Unregister dogu...")
+		err = m.doguRegistrator.UnregisterDogu(doguResource.Name)
+		if err != nil {
+			logger.Error(err, "failed to unregister dogu")
+		}
 	}
 
 	logger.Info("Remove finalizer...")
