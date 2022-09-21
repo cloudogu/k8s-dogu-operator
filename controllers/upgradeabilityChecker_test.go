@@ -69,4 +69,35 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, actual)
 	})
+	t.Run("should fails for unparsable fromDogu Version", func(t *testing.T) {
+		// given
+		upgradeVersion := "1.2.3-4"
+
+		fromDogu := readTestDataDogu(t, redmineBytes)
+		fromDogu.Version = "ö#a.b.c.-.-.d.e.-..f.g--¹"
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = upgradeVersion
+		sut := &upgradeChecker{}
+
+		// when
+		_, err := sut.IsUpgradeable(fromDogu, toDogu, false)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "could not check upgradeability of local dogu")
+	})
+	t.Run("should fails for unparsable toDogu Version", func(t *testing.T) {
+		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = "ö#a.b.c.-.-.d.e.-..f.g--¹"
+		sut := &upgradeChecker{}
+
+		// when
+		_, err := sut.IsUpgradeable(fromDogu, toDogu, false)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "could not check upgradeability of remote dogu")
+	})
 }
