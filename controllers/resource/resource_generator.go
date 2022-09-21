@@ -67,38 +67,8 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 
 	labels := map[string]string{"dogu": doguResource.Name}
 	deployment.ObjectMeta.Labels = labels
-	deployment.Spec = appsv1.DeploymentSpec{
-		Selector: &metav1.LabelSelector{MatchLabels: labels},
-		Strategy: appsv1.DeploymentStrategy{
-			Type: "Recreate",
-		},
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: labels,
-			},
-			Spec: corev1.PodSpec{
-				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
-				Hostname:         doguResource.Name,
-				Volumes:          volumes,
-				Containers: []corev1.Container{{
-					LivenessProbe:   livenessProbe,
-					StartupProbe:    startupProbe,
-					Name:            doguResource.Name,
-					Image:           dogu.Image + ":" + dogu.Version,
-					ImagePullPolicy: pullPolicy,
-					VolumeMounts:    volumeMounts,
-					Env: []corev1.EnvVar{
-						{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
-						{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{
-								FieldPath: "metadata.name",
-							},
-						}},
-					},
-				}},
-			},
-		},
-	}
+
+	deployment.Spec = buildDeploymentSpec(doguResource, dogu, labels, volumes, livenessProbe, startupProbe, pullPolicy, volumeMounts)
 
 	fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
 
@@ -129,6 +99,52 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 	}
 
 	return deployment, nil
+}
+
+func buildDeploymentSpec(
+	doguResource *k8sv1.Dogu,
+	dogu *core.Dogu,
+	labels map[string]string,
+	volumes []corev1.Volume,
+	livenessProbe *corev1.Probe,
+	startupProbe *corev1.Probe,
+	pullPolicy corev1.PullPolicy,
+	volumeMounts []corev1.VolumeMount,
+) appsv1.DeploymentSpec {
+	image := dogu.Image + ":" + dogu.Version
+
+	return appsv1.DeploymentSpec{
+		Selector: &metav1.LabelSelector{MatchLabels: labels},
+		Strategy: appsv1.DeploymentStrategy{
+			Type: "Recreate",
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: labels,
+			},
+			Spec: corev1.PodSpec{
+				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
+				Hostname:         doguResource.Name,
+				Volumes:          volumes,
+				Containers: []corev1.Container{{
+					LivenessProbe:   livenessProbe,
+					StartupProbe:    startupProbe,
+					Name:            doguResource.Name,
+					Image:           image,
+					ImagePullPolicy: pullPolicy,
+					VolumeMounts:    volumeMounts,
+					Env: []corev1.EnvVar{
+						{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
+						{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.name",
+							},
+						}},
+					},
+				}},
+			},
+		},
+	}
 }
 
 func applyValuesFromCustomDeployment(desiredDeployment *appsv1.Deployment, patchingDeployment *appsv1.Deployment) {
