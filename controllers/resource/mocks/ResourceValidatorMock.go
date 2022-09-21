@@ -34,8 +34,8 @@ type mockConstructorTestingTnewResourceValidator interface {
 	Cleanup(func())
 }
 
-// newResourceValidator creates a new instance of ResourceValidatorMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newResourceValidator(t mockConstructorTestingTnewResourceValidator) *ResourceValidatorMock {
+// NewResourceValidator creates a new instance of ResourceValidatorMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewResourceValidator(t mockConstructorTestingTnewResourceValidator) *ResourceValidatorMock {
 	mock := &ResourceValidatorMock{}
 	mock.Mock.Test(t)
 

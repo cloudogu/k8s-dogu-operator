@@ -116,8 +116,8 @@ type mockConstructorTestingTnewDoguResourceGenerator interface {
 	Cleanup(func())
 }
 
-// newDoguResourceGenerator creates a new instance of DoguResourceGenerator. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newDoguResourceGenerator(t mockConstructorTestingTnewDoguResourceGenerator) *DoguResourceGenerator {
+// NewDoguResourceGenerator creates a new instance of DoguResourceGenerator. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewDoguResourceGenerator(t mockConstructorTestingTnewDoguResourceGenerator) *DoguResourceGenerator {
 	mock := &DoguResourceGenerator{}
 	mock.Mock.Test(t)
 
