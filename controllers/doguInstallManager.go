@@ -70,13 +70,9 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	upserter := resource.NewUpserter(client, limitPatcher)
 
 	fileExtract := newPodFileExtractor(client, restConfig, clientSet)
-	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
+	applier, _, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
-	}
-	err = k8sv1.AddToScheme(scheme)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add applier scheme to dogu CRD scheme handling: %w", err)
 	}
 
 	doguRegistrator := reg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator)

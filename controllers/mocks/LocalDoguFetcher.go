@@ -40,8 +40,8 @@ type mockConstructorTestingTnewLocalDoguFetcher interface {
 	Cleanup(func())
 }
 
-// newLocalDoguFetcher creates a new instance of LocalDoguFetcher. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newLocalDoguFetcher(t mockConstructorTestingTnewLocalDoguFetcher) *LocalDoguFetcher {
+// NewLocalDoguFetcher creates a new instance of LocalDoguFetcher. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewLocalDoguFetcher(t mockConstructorTestingTnewLocalDoguFetcher) *LocalDoguFetcher {
 	mock := &LocalDoguFetcher{}
 	mock.Mock.Test(t)
 

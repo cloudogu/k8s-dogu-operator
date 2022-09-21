@@ -42,18 +42,13 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	if err != nil {
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
-	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
+	applier, _, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
 	}
 	collectApplier := resource.NewCollectApplier(applier)
 
 	fileExtractor := newPodFileExtractor(client, restConfig, clientSet)
-
-	err = k8sv1.AddToScheme(scheme)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add applier scheme to dogu CRD scheme handling: %w", err)
-	}
 
 	doguLocalRegistry := cesRegistry.DoguRegistry()
 
@@ -71,7 +66,6 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 
 	return &doguUpgradeManager{
 		client:              client,
-		scheme:              scheme,
 		eventRecorder:       eventRecorder,
 		localDoguFetcher:    df,
 		resourceDoguFetcher: rdf,

@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var ctx = context.TODO()
+var testCtx = context.TODO()
 
 func Test_evaluateRequiredOperation(t *testing.T) {
 	t.Run("installed should return upgrade", func(t *testing.T) {
@@ -42,7 +42,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(ctx, testDoguCr)
+		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
 
 		// then
 		require.NoError(t, err)
@@ -75,7 +75,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(ctx, testDoguCr)
+		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
 
 		// then
 		require.NoError(t, err)
@@ -109,7 +109,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(ctx, testDoguCr)
+		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
 
 		// then
 		require.Error(t, err)

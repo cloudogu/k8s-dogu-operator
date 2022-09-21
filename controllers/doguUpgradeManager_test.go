@@ -1,14 +1,16 @@
 package controllers
 
 import (
-	"context"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/mock"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,10 +32,6 @@ var deploymentTypeMeta = metav1.TypeMeta{
 	APIVersion: "apps/v1",
 	Kind:       "Deployment",
 }
-
-var textCtx = context.TODO()
-
-var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
 
 func createTestRestConfig() *rest.Config {
 	return &rest.Config{}
@@ -103,105 +101,16 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 	})
 }
 
-// func Test_doguUpgradeManager_checkDependencyDogusHealthy(t *testing.T) {
-// 	// override default controller method to retrieve a kube config
-// 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-// 	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-// 	ctrl.GetConfigOrDie = createTestRestConfig
-//
-// 	operatorConfig := &config.OperatorConfig{}
-// 	operatorConfig.Namespace = testNamespace
-//
-// 	t.Run("should succeed when all dogu dependencies are in a healthy state", func(t *testing.T) {
-// 		redmineCr := readTestDataRedmineCr(t)
-//
-// 		doguRegistry := &cesmocks.DoguRegistry{}
-// 		cesRegistry := &cesmocks.Registry{}
-// 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-//
-// 		redmineDogu := readTestDataRedmineDogu(t)
-// 		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
-// 		nginxDogu := readTestDataDogu(t, nginxBytes)
-// 		casDogu := readTestDataDogu(t, casBytes)
-// 		postfixDogu := readTestDataDogu(t, postfixBytes)
-// 		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-// 		doguRegistry.On("Get", "nginx").Return(nginxDogu, nil)
-// 		doguRegistry.On("Get", "cas").Return(casDogu, nil)
-// 		doguRegistry.On("Get", "postfix").Return(postfixDogu, nil)
-//
-// 		dependentDeployment := createDeployment("redmine", 1, 0)
-// 		dependencyDeployment1 := createReadyDeployment("postgresql")
-// 		dependencyDeployment2 := createReadyDeployment("nginx")
-// 		dependencyDeployment3 := createReadyDeployment("cas")
-// 		dependencyDeployment4 := createReadyDeployment("postfix")
-//
-// 		myClient := fake.NewClientBuilder().
-// 			WithScheme(getTestScheme()).
-// 			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
-// 			Build()
-//
-// 		ldapResource := readTestDataLdapCr(t)
-// 		ldapResource.Namespace = testNamespace
-// 		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
-// 		dependencyValidatorMock := &mocks.DependencyValidator{}
-// 		dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
-// 		sut.dependencyValidator = dependencyValidatorMock
-//
-// 		// when
-// 		err := sut.checkDependencyDogusHealthy(context.TODO(), redmineCr, redmineDogu)
-//
-// 		// then
-// 		require.NoError(t, err)
-// 		cesRegistry.AssertExpectations(t)
-// 		doguRegistry.AssertExpectations(t)
-// 		dependencyValidatorMock.AssertExpectations(t)
-// 	})
-// 	t.Run("should fail when at least one dependency dogus is unhealthy", func(t *testing.T) {
-// 		redmineCr := readTestDataRedmineCr(t)
-//
-// 		doguRegistry := &cesmocks.DoguRegistry{}
-// 		cesRegistry := &cesmocks.Registry{}
-// 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-//
-// 		redmineDogu := readTestDataRedmineDogu(t)
-// 		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
-// 		nginxDogu := readTestDataDogu(t, nginxBytes)
-// 		casDogu := readTestDataDogu(t, casBytes)
-// 		postfixDogu := readTestDataDogu(t, postfixBytes)
-// 		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-// 		doguRegistry.On("Get", "nginx").Return(nginxDogu, nil)
-// 		doguRegistry.On("Get", "cas").Return(casDogu, nil)
-// 		doguRegistry.On("Get", "postfix").Return(postfixDogu, nil)
-//
-// 		dependentDeployment := createDeployment("redmine", 1, 0)
-// 		dependencyDeployment1 := createReadyDeployment("postgresql")
-// 		dependencyDeployment2 := createReadyDeployment("nginx")
-// 		dependencyDeployment3 := createReadyDeployment("cas")
-// 		dependencyDeployment4 := createDeployment("postfix", 1, 0) // boom
-//
-// 		myClient := fake.NewClientBuilder().
-// 			WithScheme(getTestScheme()).
-// 			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
-// 			Build()
-//
-// 		ldapResource := readTestDataLdapCr(t)
-// 		ldapResource.Namespace = testNamespace
-// 		sut, _ := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
-// 		dependencyValidatorMock := &mocks.DependencyValidator{}
-// 		dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
-// 		sut.dependencyValidator = dependencyValidatorMock
-//
-// 		// when
-// 		err := sut.checkDependencyDogusHealthy(context.TODO(), redmineCr, redmineDogu)
-//
-// 		// then
-// 		require.Error(t, err)
-// 		assert.Contains(t, err.Error(), "dogu failed a health check: dogu postfix appears unhealthy (desired replicas: 1, ready: 0)")
-// 		cesRegistry.AssertExpectations(t)
-// 		doguRegistry.AssertExpectations(t)
-// 		dependencyValidatorMock.AssertExpectations(t)
-// 	})
-// }
+func newTestDoguUpgradeManager(client client.Client, recorder record.EventRecorder, ldf localDoguFetcher, rdf resourceDoguFetcher, pc premisesChecker, ue upgradeExecutor) *doguUpgradeManager {
+	return &doguUpgradeManager{
+		client:              client,
+		eventRecorder:       recorder,
+		localDoguFetcher:    ldf,
+		resourceDoguFetcher: rdf,
+		premisesChecker:     pc,
+		upgradeExecutor:     ue,
+	}
+}
 
 func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	// override default controller method to retrieve a kube config
@@ -212,37 +121,32 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	operatorConfig := &config.OperatorConfig{}
 	operatorConfig.Namespace = testNamespace
 
-	t.Run("should succeed when also the namespace should be changed", func(t *testing.T) {
+	t.Run("should succeed on regular upgrade from the remote registry", func(t *testing.T) {
 		// given
 		redmineCr := readTestDataRedmineCr(t)
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		redmineDogu := readTestDataRedmineDogu(t)
-		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
-		casDogu := readTestDataDogu(t, casBytes)
-		nginxDogu := readTestDataDogu(t, nginxBytes)
-		postfixDogu := readTestDataDogu(t, postfixBytes)
-
+		redmineDoguInstalled := readTestDataRedmineDogu(t)
 		redmineDoguUpgrade := readTestDataRedmineDogu(t)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		doguRegistry := new(cesmocks.DoguRegistry)
-		doguRegistry.On("Get", "redmine").Return(redmineDogu, nil)
-		doguRegistry.On("Get", "postgresql").Return(postgresqlDogu, nil)
-		doguRegistry.On("Get", "cas").Return(casDogu, nil)
-		doguRegistry.On("Get", "nginx-ingress").Return(nginxDogu, nil) // rewritten from
-		doguRegistry.On("Get", "nginx-static").Return(nginxDogu, nil)  // dogu fetcher
-		doguRegistry.On("Get", "postfix").Return(postfixDogu, nil)
-
-		cesRegistry := new(cesmocks.Registry)
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 		recorderMock := mocks.NewEventRecorder(t)
-		recorderMock.On("Event", mock.Anything, corev1.EventTypeNormal, UpgradeEventReason, "Checking premises...")
-		recorderMock.On("Eventf", mock.Anything, corev1.EventTypeNormal, UpgradeEventReason, "Executing upgrade from %s to %s...", mock.Anything)
+		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, UpgradeEventReason, "Checking premises...")
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, UpgradeEventReason, "Executing upgrade from %s to %s...", mock.Anything)
+
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher.On("FetchInstalled", "redmine").Return(redmineDoguInstalled, nil)
+
 		resourceFetcher := mocks.NewResourceDoguFetcher(t)
-		resourceFetcher.On("FetchWithResource", ctx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
+		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
+
+		premChecker := mocks.NewPremisesChecker(t)
+		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
+
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguUpgrade).Return(nil)
 
 		deplRedmine := createReadyDeployment("redmine")
 		deplPostgres := createReadyDeployment("postgresql")
@@ -253,61 +157,264 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
+			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
-		sut, _ := NewDoguUpgradeManager(clientMock, operatorConfig, cesRegistry, recorderMock)
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
-		err := sut.Upgrade(ctx, redmineCr)
+		err := sut.Upgrade(testCtx, redmineCr)
 
 		// then
 		require.NoError(t, err)
-		doguRegistry.AssertExpectations(t)
-		cesRegistry.AssertExpectations(t)
-		// the other mocks assert their expectations during t.CleanUp()
+		// any other mocks assert their expectations during t.CleanUp()
 	})
-	t.Run("should fail and record error event", func(t *testing.T) {
+	t.Run("should succeed on upgrade from a self-developed dogu", func(t *testing.T) {
 		// given
 		redmineCr := readTestDataRedmineCr(t)
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		redmineDogu := readTestDataRedmineDogu(t)
+		redmineDoguInstalled := readTestDataRedmineDogu(t)
 		redmineDoguUpgrade := readTestDataRedmineDogu(t)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		doguRegistry := new(cesmocks.DoguRegistry)
-		doguRegistry.On("Get", "redmine").Return(redmineDogu, nil)
-		doguRegistry.On("Get", "postgresql").Return(nil, registryKeyNotFoundTestErr)
-		doguRegistry.On("Get", "cas").Return(nil, registryKeyNotFoundTestErr)
-		doguRegistry.On("Get", "postfix").Return(nil, registryKeyNotFoundTestErr)
-
-		cesRegistry := new(cesmocks.Registry)
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 		recorderMock := mocks.NewEventRecorder(t)
+		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, UpgradeEventReason, "Checking premises...")
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, UpgradeEventReason, "Executing upgrade from %s to %s...", mock.Anything)
+
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher.On("FetchInstalled", "redmine").Return(redmineDoguInstalled, nil)
+
+		devDoguMap := &v1.DevelopmentDoguMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      redmineCr.GetObjectKey().Name,
+				Namespace: redmineCr.GetObjectKey().Namespace,
+			},
+		}
 		resourceFetcher := mocks.NewResourceDoguFetcher(t)
-		resourceFetcher.On("FetchWithResource", textCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
+		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, devDoguMap, nil)
+
+		premChecker := mocks.NewPremisesChecker(t)
+		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
+
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguUpgrade).Return(nil)
 
 		deplRedmine := createReadyDeployment("redmine")
+		deplPostgres := createReadyDeployment("postgresql")
+		deplCas := createReadyDeployment("cas")
+		deplNginx1 := createReadyDeployment("nginx-ingress")
+		deplNginx2 := createReadyDeployment("nginx-static")
+		deplPostfix := createReadyDeployment("postfix")
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(deplRedmine).
+			WithObjects(devDoguMap.ToConfigMap(), redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
+		preErr := clientMock.Get(testCtx, redmineCr.GetObjectKey(), devDoguMap.ToConfigMap())
+		assert.False(t, errors.IsNotFound(preErr))
 
-		sut, _ := NewDoguUpgradeManager(clientMock, operatorConfig, cesRegistry, recorderMock)
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
-		err := sut.Upgrade(ctx, redmineCr)
+		err := sut.Upgrade(testCtx, redmineCr)
+
+		// then
+		require.NoError(t, err)
+		expectedToBeDeleted := devDoguMap.ToConfigMap()
+		postErr := clientMock.Get(testCtx, redmineCr.GetObjectKey(), expectedToBeDeleted)
+		assert.True(t, errors.IsNotFound(postErr))
+		// any other mocks assert their expectations during t.CleanUp()
+	})
+	t.Run("should fail during upgrading redmine and record the error event", func(t *testing.T) {
+		// given
+		redmineCr := readTestDataRedmineCr(t)
+		upgradeVersion := "4.2.3-11"
+		redmineCr.Spec.Version = upgradeVersion
+		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
+
+		redmineDoguInstalled := readTestDataRedmineDogu(t)
+		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguUpgrade.Version = upgradeVersion
+
+		recorderMock := mocks.NewEventRecorder(t)
+		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, UpgradeEventReason, "Checking premises...")
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, UpgradeEventReason, "Executing upgrade from %s to %s...", []interface{}{"4.2.3-10", "4.2.3-11"})
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeWarning, ErrorOnFailedUpgradeEventReason, "Error during upgrade: %s", mock.Anything)
+
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher.On("FetchInstalled", "redmine").Return(redmineDoguInstalled, nil)
+
+		resourceFetcher := mocks.NewResourceDoguFetcher(t)
+		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
+
+		premChecker := mocks.NewPremisesChecker(t)
+		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
+
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguUpgrade).Return(assert.AnError)
+
+		deplRedmine := createReadyDeployment("redmine")
+		deplPostgres := createReadyDeployment("postgresql")
+		deplCas := createReadyDeployment("cas")
+		deplNginx1 := createReadyDeployment("nginx-ingress")
+		deplNginx2 := createReadyDeployment("nginx-static")
+		deplPostfix := createReadyDeployment("postfix")
+
+		clientMock := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
+			Build()
+
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut.resourceDoguFetcher = resourceFetcher
+
+		// when
+		err := sut.Upgrade(testCtx, redmineCr)
 
 		// then
 		require.Error(t, err)
-		doguRegistry.AssertExpectations(t)
-		cesRegistry.AssertExpectations(t)
-		// the other mocks assert their expectations during t.CleanUp()
+		assert.ErrorIs(t, err, assert.AnError)
+		// any other mocks assert their expectations during t.CleanUp()
+	})
+	t.Run("should fail during premises check and record the error event", func(t *testing.T) {
+		// given
+		redmineCr := readTestDataRedmineCr(t)
+		upgradeVersion := "4.2.3-11"
+		redmineCr.Spec.Version = upgradeVersion
+		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
+
+		redmineDoguInstalled := readTestDataRedmineDogu(t)
+		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguUpgrade.Version = upgradeVersion
+
+		recorderMock := mocks.NewEventRecorder(t)
+		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, UpgradeEventReason, "Checking premises...")
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeWarning, ErrorOnFailedPremisesUpgradeEventReason, "Checking premises failed: %s", mock.Anything)
+
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher.On("FetchInstalled", "redmine").Return(redmineDoguInstalled, nil)
+
+		resourceFetcher := mocks.NewResourceDoguFetcher(t)
+		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
+
+		premChecker := mocks.NewPremisesChecker(t)
+		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(assert.AnError)
+
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+
+		deplRedmine := createReadyDeployment("redmine")
+		deplPostgres := createReadyDeployment("postgresql")
+		deplCas := createReadyDeployment("cas")
+		deplNginx1 := createReadyDeployment("nginx-ingress")
+		deplNginx2 := createReadyDeployment("nginx-static")
+		deplPostfix := createReadyDeployment("postfix")
+
+		clientMock := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
+			Build()
+
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut.resourceDoguFetcher = resourceFetcher
+
+		// when
+		err := sut.Upgrade(testCtx, redmineCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		// any other mocks assert their expectations during t.CleanUp()
+	})
+	t.Run("should fail during fetching remote redmine dogu and record the error event", func(t *testing.T) {
+		// given
+		redmineCr := readTestDataRedmineCr(t)
+		upgradeVersion := "4.2.3-11"
+		redmineCr.Spec.Version = upgradeVersion
+		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
+
+		redmineDoguInstalled := readTestDataRedmineDogu(t)
+		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguUpgrade.Version = upgradeVersion
+
+		recorderMock := mocks.NewEventRecorder(t)
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeWarning, ErrorOnFailedUpgradeEventReason, "Error getting remote dogu for upgrade: %s", mock.Anything)
+
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher.On("FetchInstalled", "redmine").Return(redmineDoguInstalled, nil)
+
+		resourceFetcher := mocks.NewResourceDoguFetcher(t)
+		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(nil, nil, assert.AnError)
+
+		premChecker := mocks.NewPremisesChecker(t)
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+
+		deplRedmine := createReadyDeployment("redmine")
+		deplPostgres := createReadyDeployment("postgresql")
+		deplCas := createReadyDeployment("cas")
+		deplNginx1 := createReadyDeployment("nginx-ingress")
+		deplNginx2 := createReadyDeployment("nginx-static")
+		deplPostfix := createReadyDeployment("postfix")
+
+		clientMock := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
+			Build()
+
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut.resourceDoguFetcher = resourceFetcher
+
+		// when
+		err := sut.Upgrade(testCtx, redmineCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		// any other mocks assert their expectations during t.CleanUp()
+	})
+	t.Run("should fail during fetching installed redmine and record the error event", func(t *testing.T) {
+		// given
+		redmineCr := readTestDataRedmineCr(t)
+		upgradeVersion := "4.2.3-11"
+		redmineCr.Spec.Version = upgradeVersion
+		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
+
+		recorderMock := mocks.NewEventRecorder(t)
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeWarning, ErrorOnFailedUpgradeEventReason, "Error getting installed dogu for upgrade: %s", mock.Anything)
+
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher.On("FetchInstalled", "redmine").Return(nil, assert.AnError)
+
+		resourceFetcher := mocks.NewResourceDoguFetcher(t)
+
+		premChecker := mocks.NewPremisesChecker(t)
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+
+		deplRedmine := createReadyDeployment("redmine")
+		deplPostgres := createReadyDeployment("postgresql")
+		deplCas := createReadyDeployment("cas")
+		deplNginx1 := createReadyDeployment("nginx-ingress")
+		deplNginx2 := createReadyDeployment("nginx-static")
+		deplPostfix := createReadyDeployment("postfix")
+
+		clientMock := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
+			Build()
+
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut.resourceDoguFetcher = resourceFetcher
+
+		// when
+		err := sut.Upgrade(testCtx, redmineCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		// any other mocks assert their expectations during t.CleanUp()
 	})
 }
