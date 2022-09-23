@@ -97,7 +97,6 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "premises check failed")
 		assert.Contains(t, err.Error(), "CheckWithResource")
 		mockedChecker.AssertExpectations(t)
 	})
@@ -117,7 +116,6 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "premises check failed")
 		assert.Contains(t, err.Error(), "ValidateDependencies")
 		mockedChecker.AssertExpectations(t)
 	})
@@ -138,7 +136,6 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "premises check failed")
 		assert.Contains(t, err.Error(), "CheckDependenciesRecursive")
 		mockedChecker.AssertExpectations(t)
 	})

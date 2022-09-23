@@ -41,22 +41,20 @@ func NewPremisesChecker(depValidator dependencyValidator, healthChecker doguHeal
 // Check tests if upgrade premises are valid and returns nil. Otherwise an error is returned to cancel the dogu upgrade
 // early.
 func (pc *premisesChecker) Check(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu, remoteDogu *core.Dogu) error {
-	const premErrMsg = "premises check failed: %w"
-
 	err := pc.doguHealthChecker.CheckWithResource(ctx, doguResource)
 	if err != nil {
-		return fmt.Errorf(premErrMsg, err)
+		return err
 	}
 
 	err = pc.checkDependencyDogusHealthy(ctx, doguResource, localDogu)
 	if err != nil {
-		return fmt.Errorf(premErrMsg, err)
+		return err
 	}
 
 	changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
 	err = checkDoguIdentity(localDogu, remoteDogu, changeNamespace)
 	if err != nil {
-		return fmt.Errorf(premErrMsg, err)
+		return err
 	}
 
 	return nil
