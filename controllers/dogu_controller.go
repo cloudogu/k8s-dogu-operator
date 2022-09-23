@@ -239,8 +239,7 @@ func (cp doguResourceChangeDebugPredicate) Update(e event.UpdateEvent) bool {
 func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	var eventFilter predicate.Predicate
 	eventFilter = predicate.GenerationChangedPredicate{}
-	// TODO set only when LOG_LEVEL is set to debug
-	if true {
+	if logging.CurrentLogLevel == logrus.DebugLevel {
 		recorder := mgr.GetEventRecorderFor(k8sDoguOperatorFieldManagerName)
 		eventFilter = doguResourceChangeDebugPredicate{recorder: recorder}
 	}

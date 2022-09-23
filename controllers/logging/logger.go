@@ -21,6 +21,8 @@ const (
 	debugLevel
 )
 
+var CurrentLogLevel = logrus.WarnLevel
+
 type libraryLogger struct {
 	logger logr.LogSink
 	name   string
@@ -90,6 +92,8 @@ func ConfigureLogger() error {
 	logrusLog := logrus.New()
 	logrusLog.SetFormatter(&logrus.TextFormatter{})
 	logrusLog.SetLevel(level)
+
+	CurrentLogLevel = level
 
 	// convert logrus logger to logr logger
 	logrusLogrLogger := logrusr.New(logrusLog)
