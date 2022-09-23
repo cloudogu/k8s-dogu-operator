@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -132,6 +134,26 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "failed to get development dogu map: failed to get development dogu map for dogu redmine")
+		mock.AssertExpectationsForObjects(t, client, remoteDoguRegistry)
+	})
+	t.Run("should fail on missing dogu development map and missing remote dogu", func(t *testing.T) {
+		// given
+		doguCr := readTestDataRedmineCr(t)
+		resourceNotFoundErr := errors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, doguCr.GetDevelopmentDoguMapKey().Name)
+
+		client := &mocks.Client{}
+		client.On("Get", ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
+
+		remoteDoguRegistry := new(mocks3.Registry)
+		remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
+		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
+
+		// when
+		_, _, err := sut.FetchWithResource(ctx, doguCr)
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to get dogu from remote or cache")
 		mock.AssertExpectationsForObjects(t, client, remoteDoguRegistry)
 	})
 	t.Run("should fetch dogu from dogu development map", func(t *testing.T) {
