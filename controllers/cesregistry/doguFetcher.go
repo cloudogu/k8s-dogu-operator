@@ -64,6 +64,9 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 	if developmentDoguMap == nil {
 		log.FromContext(ctx).Info("Fetching dogu from remote dogu registry...")
 		dogu, err := rdf.getDoguFromRemoteRegistry(doguResource)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get dogu from remote or cache: %w", err)
+		}
 
 		patchedDogu := replaceK8sIncompatibleDoguDependencies(dogu)
 		return patchedDogu, nil, err

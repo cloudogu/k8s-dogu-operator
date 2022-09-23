@@ -12,7 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const namespaceLogLevel = "LOG_LEVEL"
+const logLevelEnvVar = "LOG_LEVEL"
 
 const (
 	errorLevel int = iota
@@ -21,7 +21,7 @@ const (
 	debugLevel
 )
 
-var CurrentLogLevel = logrus.WarnLevel
+var CurrentLogLevel = logrus.ErrorLevel
 
 type libraryLogger struct {
 	logger logr.LogSink
@@ -69,14 +69,14 @@ func (ll *libraryLogger) Errorf(format string, args ...interface{}) {
 }
 
 func getLogLevelFromEnv() (logrus.Level, error) {
-	logLevel, found := os.LookupEnv(namespaceLogLevel)
+	logLevel, found := os.LookupEnv(logLevelEnvVar)
 	if !found {
 		return logrus.ErrorLevel, nil
 	}
 
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
-		return logrus.ErrorLevel, fmt.Errorf("value of log environment variable [%s] is not a valid log level: %w", namespaceLogLevel, err)
+		return logrus.ErrorLevel, fmt.Errorf("value of log environment variable [%s] is not a valid log level: %w", logLevelEnvVar, err)
 	}
 
 	return level, nil
