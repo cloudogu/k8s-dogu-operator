@@ -45,6 +45,8 @@ const (
 	ErrorOnRequeueEventReason = "ErrRequeue"
 )
 
+const handleRequeueErrMsg = "failed to handle requeue: %w"
+
 const (
 	Install operation = iota
 	Upgrade
@@ -145,7 +147,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		})
 		if handleErr != nil {
 			r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the installation.")
-			return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", handleErr)
+			return ctrl.Result{}, fmt.Errorf(handleRequeueErrMsg, handleErr)
 		}
 
 		return result, nil
@@ -167,7 +169,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		})
 		if handleErr != nil {
 			r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the deinstallation.")
-			return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", handleErr)
+			return ctrl.Result{}, fmt.Errorf(handleRequeueErrMsg, handleErr)
 		}
 
 		return result, nil
@@ -276,7 +278,7 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 	})
 	if handleErr != nil {
 		r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the dogu upgrade.")
-		return ctrl.Result{}, fmt.Errorf("failed to handle requeue: %w", handleErr)
+		return ctrl.Result{}, fmt.Errorf(handleRequeueErrMsg, handleErr)
 	}
 
 	return result, nil
