@@ -126,7 +126,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	requiredOperation, err := r.evaluateRequiredOperation(ctx, doguResource)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to evaluate required operation: %w", err)
+		return requeueWithError(fmt.Errorf("failed to evaluate required operation: %w", err))
 	}
 	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s", doguResource.Namespace, doguResource.Name, requiredOperation.toString()))
 
@@ -147,10 +147,10 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		})
 		if handleErr != nil {
 			r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the installation.")
-			return ctrl.Result{}, fmt.Errorf(handleRequeueErrMsg, handleErr)
+			return requeueWithError(fmt.Errorf(handleRequeueErrMsg, handleErr))
 		}
 
-		return result, nil
+		return requeueOrFinishOperation(result)
 	case Upgrade:
 		return r.performUpgradeOperation(ctx, doguResource)
 	case Delete:
@@ -169,14 +169,14 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		})
 		if handleErr != nil {
 			r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the deinstallation.")
-			return ctrl.Result{}, fmt.Errorf(handleRequeueErrMsg, handleErr)
+			return requeueWithError(fmt.Errorf(handleRequeueErrMsg, handleErr))
 		}
 
-		return result, nil
+		return requeueOrFinishOperation(result)
 	case Ignore:
-		return ctrl.Result{}, nil
+		return finishOperation()
 	default:
-		return ctrl.Result{}, nil
+		return finishOperation()
 	}
 }
 
@@ -213,6 +213,91 @@ func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguReso
 		logger.Info(fmt.Sprintf("Found unknown operation for dogu status: %s", doguResource.Status.Status))
 		return Ignore, nil
 	}
+}
+
+// SetupWithManager sets up the controller with the manager.
+func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	var eventFilter predicate.Predicate
+	eventFilter = predicate.GenerationChangedPredicate{}
+	if logging.CurrentLogLevel == logrus.DebugLevel {
+		recorder := mgr.GetEventRecorderFor(k8sDoguOperatorFieldManagerName)
+		eventFilter = doguResourceChangeDebugPredicate{recorder: recorder}
+	}
+
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&k8sv1.Dogu{}).
+		// Since we don't want to process dogus with same spec we use a generation change predicate
+		// as a filter to reduce the reconcile calls.
+		// The predicate implements a function that will be invoked of every update event that
+		// the k8s api will fire. On writing the objects spec field the k8s api
+		// increments the generation field. The function compares this field from the old
+		// and new dogu resource. If they are equal the reconcile loop will not be called.
+		WithEventFilter(eventFilter).
+		Complete(r)
+}
+
+func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	upgradeError := r.doguManager.Upgrade(ctx, doguResource)
+	contextMessageOnError := fmt.Sprintf("failed to upgrade dogu %s", doguResource.Name)
+
+	if upgradeError != nil {
+		printError := strings.Replace(upgradeError.Error(), "\n", "", -1)
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnFailedUpgradeEventReason, "Dogu upgrade failed. Reason: %s.", printError)
+	} else {
+		r.recorder.Event(doguResource, v1.EventTypeNormal, UpgradeEventReason, "Dogu upgrade successful.")
+	}
+
+	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, upgradeError, func(dogu *k8sv1.Dogu) {
+		// revert to Installed in case of requeueing after an error so that a upgrade
+		// can be tried again.
+		doguResource.Status.Status = k8sv1.DoguStatusInstalled
+	})
+	if handleErr != nil {
+		r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the dogu upgrade.")
+		return requeueWithError(fmt.Errorf(handleRequeueErrMsg, handleErr))
+	}
+
+	return requeueOrFinishOperation(result)
+}
+
+func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher localDoguFetcher) (bool, error) {
+	fromDogu, err := fetcher.FetchInstalled(doguResource.Name)
+	if err != nil {
+		return false, err
+	}
+
+	checker := &upgradeChecker{}
+	toDogu := &core.Dogu{Name: doguResource.Spec.Name, Version: doguResource.Spec.Version}
+
+	return checker.IsUpgradeable(fromDogu, toDogu, doguResource.Spec.UpgradeConfig.ForceUpgrade)
+}
+
+// requeueWithError is a syntax sugar function to express that every non-nil error will result in a requeue
+// operation.
+//
+// Use requeueOrFinishOperation() if the reconciler should requeue the operation because of the result instead of an
+// error.
+// Use finishOperation() if the reconciler should not requeue the operation.
+func requeueWithError(err error) (ctrl.Result, error) {
+	return ctrl.Result{}, err
+}
+
+// requeueOrFinishOperation is a syntax sugar function to express that the there is no error to handle but the result
+// controls whether the current operation should be finished or requeued.
+//
+// Use requeueWithError() if the reconciler should requeue the operation because of a non-nil error.
+// Use finishOperation() if the reconciler should not requeue the operation.
+func requeueOrFinishOperation(result ctrl.Result) (ctrl.Result, error) {
+	return result, nil
+}
+
+// finishOperation is a syntax sugar function to express that the current operation should be finished and not be
+// requeued. This can happen if the operation was successful or even if an unhandleable error occurred which prevents
+// requeueing.
+//
+// Use requeueOrFinishOperation() or requeueWithError() if the reconciler should requeue the operation.
+func finishOperation() (ctrl.Result, error) {
+	return ctrl.Result{}, nil
 }
 
 type doguResourceChangeDebugPredicate struct {
@@ -258,61 +343,4 @@ func buildResourceDiff(objOld client.Object, objNew client.Object) (string, clie
 	diff := cmp.Diff(aOld, aNew)
 
 	return strings.ReplaceAll(diff, "\u00a0", " "), objectInQuestion
-}
-
-// SetupWithManager sets up the controller with the manager.
-func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	var eventFilter predicate.Predicate
-	eventFilter = predicate.GenerationChangedPredicate{}
-	if logging.CurrentLogLevel == logrus.DebugLevel {
-		recorder := mgr.GetEventRecorderFor(k8sDoguOperatorFieldManagerName)
-		eventFilter = doguResourceChangeDebugPredicate{recorder: recorder}
-	}
-
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&k8sv1.Dogu{}).
-		// Since we don't want to process dogus with same spec we use a generation change predicate
-		// as a filter to reduce the reconcile calls.
-		// The predicate implements a function that will be invoked of every update event that
-		// the k8s api will fire. On writing the objects spec field the k8s api
-		// increments the generation field. The function compares this field from the old
-		// and new dogu resource. If they are equal the reconcile loop will not be called.
-		WithEventFilter(eventFilter).
-		Complete(r)
-}
-
-func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
-	upgradeError := r.doguManager.Upgrade(ctx, doguResource)
-	contextMessageOnError := fmt.Sprintf("failed to upgrade dogu %s", doguResource.Name)
-
-	if upgradeError != nil {
-		printError := strings.Replace(upgradeError.Error(), "\n", "", -1)
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnFailedUpgradeEventReason, "Dogu upgrade failed. Reason: %s.", printError)
-	} else {
-		r.recorder.Event(doguResource, v1.EventTypeNormal, UpgradeEventReason, "Dogu upgrade successful.")
-	}
-
-	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, upgradeError, func(dogu *k8sv1.Dogu) {
-		// revert to Installed in case of requeueing after an error so that a upgrade
-		// can be tried again.
-		doguResource.Status.Status = k8sv1.DoguStatusInstalled
-	})
-	if handleErr != nil {
-		r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the dogu upgrade.")
-		return ctrl.Result{}, fmt.Errorf(handleRequeueErrMsg, handleErr)
-	}
-
-	return result, nil
-}
-
-func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher localDoguFetcher) (bool, error) {
-	fromDogu, err := fetcher.FetchInstalled(doguResource.Name)
-	if err != nil {
-		return false, err
-	}
-
-	checker := &upgradeChecker{}
-	toDogu := &core.Dogu{Name: doguResource.Spec.Name, Version: doguResource.Spec.Version}
-
-	return checker.IsUpgradeable(fromDogu, toDogu, doguResource.Spec.UpgradeConfig.ForceUpgrade)
 }

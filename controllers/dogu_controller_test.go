@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -268,4 +268,29 @@ func Test_buildResourceDiff(t *testing.T) {
 				"buildResourceDiff(%v, %v)", tt.args.objOld, tt.args.objNew)
 		})
 	}
+}
+
+func Test_finishOperation(t *testing.T) {
+	result, err := finishOperation()
+
+	assert.Empty(t, result)
+	assert.Nil(t, err)
+}
+
+func Test_requeueOrFinishOperation(t *testing.T) {
+	input := ctrl.Result{
+		Requeue: true,
+	}
+
+	result, err := requeueOrFinishOperation(input)
+
+	assert.Equal(t, input, result)
+	assert.Nil(t, err)
+}
+
+func Test_requeueWithError(t *testing.T) {
+	result, err := requeueWithError(assert.AnError)
+
+	assert.Empty(t, result)
+	assert.Same(t, assert.AnError, err)
 }
