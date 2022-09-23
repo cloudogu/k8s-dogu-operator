@@ -83,12 +83,12 @@ func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) err
 
 // Upgrade upgrades a dogu resource.
 func (m *DoguManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Starting upgrade of %s.", doguResource.Name)
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Starting upgrade...")
 	return m.upgradeManager.Upgrade(ctx, doguResource)
 }
 
 // Delete deletes a dogu resource.
 func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, DeinstallEventReason, "Starting deinstallation of the %s dogu.", doguResource.Name)
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, DeinstallEventReason, "Starting deinstallation...")
 	return m.deleteManager.Delete(ctx, doguResource)
 }

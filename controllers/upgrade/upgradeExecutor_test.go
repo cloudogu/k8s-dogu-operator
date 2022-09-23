@@ -6,8 +6,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	regmock "github.com/cloudogu/cesapp-lib/registry/mocks"
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -48,7 +46,6 @@ func TestNewUpgradeExecutor(t *testing.T) {
 }
 
 func Test_upgradeExecutor_Upgrade(t *testing.T) {
-
 	t.Run("should succeed", func(t *testing.T) {
 		// given
 		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
@@ -101,8 +98,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
-		assert.Equal(t, "installed", update.Status.Status)
 		// mocks will be asserted during t.CleanUp
 	})
 	t.Run("should fail during resource upgrade", func(t *testing.T) {
@@ -158,8 +153,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
-		assert.Equal(t, "upgrading", update.Status.Status)
 		// mocks will be asserted during t.CleanUp
 	})
 	t.Run("should fail during resource application", func(t *testing.T) {
@@ -213,8 +206,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
-		assert.Equal(t, "upgrading", update.Status.Status)
 		// mocks will be asserted during t.CleanUp
 	})
 	t.Run("should fail during K8s resource extraction", func(t *testing.T) {
@@ -266,8 +257,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
-		assert.Equal(t, "upgrading", update.Status.Status)
 		// mocks will be asserted during t.CleanUp
 	})
 	t.Run("should fail during image pull", func(t *testing.T) {
@@ -317,8 +306,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
-		assert.Equal(t, "upgrading", update.Status.Status)
 		// mocks will be asserted during t.CleanUp
 	})
 	t.Run("should fail during SA creation", func(t *testing.T) {
@@ -367,8 +354,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
-		assert.Equal(t, "upgrading", update.Status.Status)
 		// mocks will be asserted during t.CleanUp
 	})
 	t.Run("should fail for etcd error", func(t *testing.T) {
@@ -416,20 +401,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		update := getUpdateDoguResource(t, myClient, toDoguResource.GetObjectKey())
-		assert.Equal(t, "upgrading", update.Status.Status)
 		// mocks will be asserted during t.CleanUp
 	})
-}
-
-func getUpdateDoguResource(t *testing.T, myClient client.Client, doguObjKey client.ObjectKey) *v1.Dogu {
-	t.Helper()
-
-	updatedDoguResource := &v1.Dogu{}
-	err := myClient.Get(testCtx, doguObjKey, updatedDoguResource)
-	require.NoError(t, err)
-
-	return updatedDoguResource
 }
 
 func Test_registerUpgradedDoguVersion(t *testing.T) {
