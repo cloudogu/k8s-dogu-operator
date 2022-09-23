@@ -2,21 +2,23 @@ package controllers
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fake2 "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
-	"time"
 )
 
 type myRequeueableError struct{}
@@ -32,7 +34,7 @@ func (mre myRequeueableError) Error() string {
 func TestDoguRequeueHandler_Handle(t *testing.T) {
 	namespace := "namespace"
 
-	t.Run("handle nil error", func(t *testing.T) {
+	t.Run("handle no error at all", func(t *testing.T) {
 		// given
 		scheme := getTestScheme()
 		doguResource := &k8sv1.Dogu{

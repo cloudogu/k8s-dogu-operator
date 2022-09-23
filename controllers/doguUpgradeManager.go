@@ -87,6 +87,11 @@ type doguUpgradeManager struct {
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	err := doguResource.ChangeState(ctx, dum.client, k8sv1.DoguStatusUpgrading)
+	if err != nil {
+		return err
+	}
+
 	upgradeDoguName := doguResource.Spec.Name
 	upgradeDoguVersion := doguResource.Spec.Version
 
@@ -110,9 +115,15 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	}
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
 
+	err = doguResource.ChangeState(ctx, dum.client, k8sv1.DoguStatusInstalled)
+	if err != nil {
+		return err
+	}
+
 	if developmentDoguMap != nil {
 		err = developmentDoguMap.DeleteFromCluster(ctx, dum.client)
 		if err != nil {
+			// an error during deleting the developmentDoguMap is not critical so we change the dogu state as installed earlier
 			dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error during upgrade: %s", err)
 			return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 		}

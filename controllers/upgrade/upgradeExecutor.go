@@ -75,12 +75,7 @@ func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, colle
 }
 
 func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
-	err := toDoguResource.ChangeState(ctx, ue.client, k8sv1.DoguStatusUpgrading)
-	if err != nil {
-		return err
-	}
-
-	err = registerUpgradedDoguVersion(ue.doguRegistrator, toDogu)
+	err := registerUpgradedDoguVersion(ue.doguRegistrator, toDogu)
 	if err != nil {
 		return err
 	}
@@ -107,11 +102,6 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	err = updateDoguResources(ctx, ue.resourceUpserter, toDoguResource, toDogu, imageConfigFile, customDeployment)
-	if err != nil {
-		return err
-	}
-
-	err = toDoguResource.ChangeState(ctx, ue.client, k8sv1.DoguStatusInstalled)
 	if err != nil {
 		return err
 	}
