@@ -23,6 +23,27 @@ type dependencyValidator interface {
 	ValidateDependencies(ctx context.Context, dogu *core.Dogu) error
 }
 
+type requeueablePremisesError struct {
+	wrapped error
+}
+
+// Unwrap returns the next error in the error chain.
+// If there is no next error, Unwrap returns nil.
+func (r *requeueablePremisesError) Unwrap() error {
+	return r.wrapped
+}
+
+// Error returns the string representation of an error.
+func (r *requeueablePremisesError) Error() string {
+	return r.wrapped.Error()
+}
+
+// Requeue is a interface marker method that always returns true when the error should produce a requeue for the
+// current dogu resource operation.
+func (r *requeueablePremisesError) Requeue() bool {
+	return true
+}
+
 type premisesChecker struct {
 	dependencyValidator        dependencyValidator
 	doguHealthChecker          doguHealthChecker
@@ -43,16 +64,17 @@ func NewPremisesChecker(depValidator dependencyValidator, healthChecker doguHeal
 func (pc *premisesChecker) Check(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu, remoteDogu *core.Dogu) error {
 	err := pc.doguHealthChecker.CheckWithResource(ctx, doguResource)
 	if err != nil {
-		return err
+		return &requeueablePremisesError{wrapped: err}
 	}
 
 	err = pc.checkDependencyDogusHealthy(ctx, doguResource, localDogu)
 	if err != nil {
-		return err
+		return &requeueablePremisesError{wrapped: err}
 	}
 
 	changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
 	err = checkDoguIdentity(localDogu, remoteDogu, changeNamespace)
+	// this error is most probably unrequeueable
 	if err != nil {
 		return err
 	}

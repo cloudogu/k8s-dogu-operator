@@ -3,6 +3,7 @@ package upgrade
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -101,6 +102,9 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "dogus must have the same name")
+		// there is no assert.IsNoType() assertion so we test it by negative type assertion
+		_, ok := err.(*requeueablePremisesError)
+		assert.False(t, ok)
 		mockedChecker.AssertExpectations(t)
 	})
 	t.Run("should fail when dependency validator fails", func(t *testing.T) {
@@ -119,6 +123,10 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "CheckWithResource")
+		assert.IsType(t, &requeueablePremisesError{}, err)
+		// prove that the above negative type assertion works by positive type assertion
+		_, ok := err.(*requeueablePremisesError)
+		assert.True(t, ok)
 		mockedChecker.AssertExpectations(t)
 	})
 	t.Run("should fail when dogu health check fails", func(t *testing.T) {
@@ -138,6 +146,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "ValidateDependencies")
+		assert.IsType(t, &requeueablePremisesError{}, err)
 		mockedChecker.AssertExpectations(t)
 	})
 	t.Run("should fail when dogu dependency health check fails", func(t *testing.T) {
@@ -158,6 +167,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "CheckDependenciesRecursive")
+		assert.IsType(t, &requeueablePremisesError{}, err)
 		mockedChecker.AssertExpectations(t)
 	})
 }
@@ -179,4 +189,30 @@ func (pm *premiseMock) CheckDependenciesRecursive(_ context.Context, fromDogu *c
 func (pm *premiseMock) CheckWithResource(_ context.Context, doguResource *k8sv1.Dogu) error {
 	args := pm.Called(doguResource)
 	return args.Error(0)
+}
+
+func Test_requeueablePremisesError(t *testing.T) {
+	assert.Error(t, &requeueablePremisesError{})
+}
+
+func Test_requeueablePremisesError_Error(t *testing.T) {
+	sut := &requeueablePremisesError{assert.AnError}
+	assert.Equal(t, assert.AnError.Error(), sut.Error())
+}
+
+func Test_requeueablePremisesError_Requeue(t *testing.T) {
+	sut := &requeueablePremisesError{assert.AnError}
+	assert.True(t, sut.Requeue())
+}
+
+func Test_requeueablePremisesError_Unwrap(t *testing.T) {
+	sut := &requeueablePremisesError{assert.AnError}
+
+	actual := sut.Unwrap()
+
+	assert.Same(t, assert.AnError, actual)
+	expectedWrap := fmt.Errorf("%w", assert.AnError)
+	actualWrap := fmt.Errorf("%w", sut)
+	assert.NotSame(t, expectedWrap, actualWrap)
+	assert.Equal(t, expectedWrap.Error(), actualWrap.Error())
 }
