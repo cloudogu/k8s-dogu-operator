@@ -82,6 +82,27 @@ func Test_premisesChecker_Check(t *testing.T) {
 		require.NoError(t, err)
 		mockedChecker.AssertExpectations(t)
 	})
+	t.Run("should fail when dogu identity check fails", func(t *testing.T) {
+		fromDoguResource := readTestDataRedmineCr(t)
+		fromDogu := readTestDataDogu(t, redmineBytes)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Name = "somethingdifferent"
+
+		mockedChecker := new(premiseMock)
+		mockedChecker.On("CheckWithResource", fromDoguResource).Return(nil)
+		mockedChecker.On("ValidateDependencies", fromDogu).Return(nil)
+		mockedChecker.On("CheckDependenciesRecursive", fromDogu, fromDoguResource.Namespace).Return(nil)
+
+		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
+
+		// when
+		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "dogus must have the same name")
+		mockedChecker.AssertExpectations(t)
+	})
 	t.Run("should fail when dependency validator fails", func(t *testing.T) {
 		fromDoguResource := readTestDataRedmineCr(t)
 		fromDogu := readTestDataDogu(t, redmineBytes)
