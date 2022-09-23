@@ -211,8 +211,40 @@ func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguReso
 	}
 }
 
+type doguResourceChangeDebugPredicate struct {
+	predicate.Funcs
+	recorder record.EventRecorder
+}
+
+// Update implements default UpdateEvent filter for validating generation change.
+func (cp doguResourceChangeDebugPredicate) Update(e event.UpdateEvent) bool {
+
+	if e.ObjectOld == nil {
+		ctrl.Log.Error(nil, "Update event has no old object to update", "event", e)
+		return false
+	}
+
+	objectDiff := diff.ObjectDiff(e.ObjectOld, e.ObjectNew)
+	cp.recorder.Event(e.ObjectNew, v1.EventTypeNormal, "???", objectDiff)
+
+	if e.ObjectNew == nil {
+		ctrl.Log.Error(nil, "Update event has no new object for update", "event", e)
+		return false
+	}
+
+	return e.ObjectNew.GetGeneration() != e.ObjectOld.GetGeneration()
+}
+
 // SetupWithManager sets up the controller with the manager.
 func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	var eventFilter predicate.Predicate
+	eventFilter = predicate.GenerationChangedPredicate{}
+	// TODO set only when LOG_LEVEL is set to debug
+	if true {
+		recorder := mgr.GetEventRecorderFor(k8sDoguOperatorFieldManagerName)
+		eventFilter = doguResourceChangeDebugPredicate{recorder: recorder}
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&k8sv1.Dogu{}).
 		// Since we don't want to process dogus with same spec we use a generation change predicate
@@ -221,7 +253,7 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// the k8s api will fire. On writing the objects spec field the k8s api
 		// increments the generation field. The function compares this field from the old
 		// and new dogu resource. If they are equal the reconcile loop will not be called.
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		WithEventFilter(eventFilter).
 		Complete(r)
 }
 

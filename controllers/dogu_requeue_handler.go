@@ -109,6 +109,7 @@ func getAllErrorsFromChain(err error) []error {
 		return []error{err}
 	}
 
+	// TODO implement test
 	return multiError.Errors
 }
 
