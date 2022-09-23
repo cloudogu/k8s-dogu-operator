@@ -338,7 +338,7 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageCon
 // created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
 // (see K8s-service-discovery).
 func (r *resourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*corev1.Service, error) {
-	exposedServices := []*corev1.Service{}
+	exposedServices := make([]*corev1.Service, 0)
 
 	for _, exposedPort := range dogu.ExposedPorts {
 		ipSingleStackPolicy := corev1.IPFamilyPolicySingleStack

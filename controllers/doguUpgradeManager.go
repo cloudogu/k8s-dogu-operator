@@ -142,7 +142,7 @@ func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv1.Dogu, msg string)
 }
 
 func (dum *doguUpgradeManager) normalEventf(doguResource *k8sv1.Dogu, msg string, msgArg ...interface{}) {
-	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, UpgradeEventReason, msg, msgArg)
+	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, UpgradeEventReason, msg, msgArg...)
 }
 
 func (dum *doguUpgradeManager) errorEventf(doguResource *k8sv1.Dogu, reason, msg string, err error) {

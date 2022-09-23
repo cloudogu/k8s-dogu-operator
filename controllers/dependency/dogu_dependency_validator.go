@@ -100,24 +100,27 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 	}
 
 	// it does not count as an error if no version is specified as the field is optional
-	if doguDependency.Version != "" {
-		localDependencyVersion, err := core.ParseVersion(localDependency.Version)
-		if err != nil {
-			return errors.Wrapf(err, "failed to parse version of dependency %s", localDependency.Name)
-		}
-
-		comparator, err := core.ParseVersionComparator(doguDependency.Version)
-		if err != nil {
-			return errors.Wrapf(err, "failed to parse ParseVersionComparator of version %s for doguDependency %s", doguDependency.Version, doguDependency.Name)
-		}
-
-		allows, err := comparator.Allows(localDependencyVersion)
-		if err != nil {
-			return errors.Wrapf(err, "An error occurred when comparing the versions")
-		}
-		if !allows {
-			return errors.Errorf("%s parsed Version does not fulfill version requirement of %s dogu %s", localDependency.Version, doguDependency.Version, doguDependency.Name)
-		}
+	if doguDependency.Version == "" {
+		return nil
 	}
+
+	localDependencyVersion, err := core.ParseVersion(localDependency.Version)
+	if err != nil {
+		return errors.Wrapf(err, "failed to parse version of dependency %s", localDependency.Name)
+	}
+
+	comparator, err := core.ParseVersionComparator(doguDependency.Version)
+	if err != nil {
+		return errors.Wrapf(err, "failed to parse ParseVersionComparator of version %s for doguDependency %s", doguDependency.Version, doguDependency.Name)
+	}
+
+	allows, err := comparator.Allows(localDependencyVersion)
+	if err != nil {
+		return errors.Wrapf(err, "An error occurred when comparing the versions")
+	}
+	if !allows {
+		return errors.Errorf("%s parsed Version does not fulfill version requirement of %s dogu %s", localDependency.Version, doguDependency.Version, doguDependency.Name)
+	}
+
 	return nil
 }

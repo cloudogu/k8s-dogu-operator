@@ -134,19 +134,29 @@ func (u *upserter) upsertDoguPVC(ctx context.Context, doguResource *k8sv1.Dogu) 
 		return fmt.Errorf("failed to generate pvc: %w", err)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}, newPVC, &longhornPVCValidator{})
-	if err != nil {
+	existingPVC := &v1.PersistentVolumeClaim{}
+
+	err = u.client.Get(ctx, doguResource.GetObjectKey(), existingPVC)
+	if err != nil && !apierrors.IsNotFound(err) {
 		return err
+	}
+
+	// Only create a PVC but do not update it (for now) because updating immutable PVCs is tough
+	if apierrors.IsNotFound(err) {
+		err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}, newPVC, &longhornPVCValidator{})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKey, resourceType client.Object, newResource client.Object, val resourceValidator) error {
+func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKey, resourceType client.Object, upsertResource client.Object, val resourceValidator) error {
 	if resourceType == nil {
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
 	}
-	ok, type1, type2 := sameTypes(resourceType, newResource)
+	ok, type1, type2 := sameResourceTypes(resourceType, upsertResource)
 	if !ok {
 		return fmt.Errorf("incompatible types provided (%s != %s)", type1, type2)
 	}
@@ -157,10 +167,10 @@ func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKe
 	}
 
 	if apierrors.IsNotFound(err) {
-		return u.client.Create(ctx, newResource)
+		return u.client.Create(ctx, upsertResource)
 	}
 
-	// use resourceType here because it origins from the cluster state while newResource was artificially created so
+	// use resourceType here because it origins from the cluster state while upsertResource was artificially created so
 	// it does not contain any useful metadata.
 	ownerRef := metav1.GetControllerOf(resourceType)
 	if ownerRef != nil && val != nil {
@@ -171,7 +181,7 @@ func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKe
 		// update existing resource either way
 	}
 
-	return u.client.Update(ctx, newResource)
+	return u.client.Update(ctx, upsertResource)
 }
 
 type longhornPVCValidator struct{}
@@ -208,7 +218,7 @@ func (v *longhornPVCValidator) Validate(ctx context.Context, doguName string, re
 	return nil
 }
 
-func sameTypes(resourceType client.Object, newResource client.Object) (bool, string, string) {
+func sameResourceTypes(resourceType client.Object, newResource client.Object) (bool, string, string) {
 	if reflect.TypeOf(resourceType).AssignableTo(reflect.TypeOf(newResource)) {
 		return true, "", ""
 	}

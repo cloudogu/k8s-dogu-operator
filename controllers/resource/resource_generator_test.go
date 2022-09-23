@@ -331,3 +331,18 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to set controller reference:")
 	})
 }
+
+func Test_createLivenessProbe(t *testing.T) {
+	t.Run("should should return nil for a dogu without tcp probes", func(t *testing.T) {
+		dogu := readLdapDogu(t)
+		dogu.HealthChecks = []core.HealthCheck{{
+			Type: "http",
+		}}
+
+		// when
+		actual := createLivenessProbe(dogu)
+
+		// then
+		require.Nil(t, actual)
+	})
+}
