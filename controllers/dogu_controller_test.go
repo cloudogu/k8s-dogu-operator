@@ -5,13 +5,18 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
 var testCtx = context.TODO()
@@ -157,4 +162,110 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 	// 	require.NoError(t, err)
 	// 	assert.Equal(t, Ignore, operation)
 	// })
+}
+
+func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
+	oldDoguResource := &k8sv1.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Generation: 123456789},
+		Spec:       k8sv1.DoguSpec{Name: "ns/dogu", Version: "1.2.3-4"}}
+	newDoguResource := &k8sv1.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Generation: 987654321},
+		Spec:       k8sv1.DoguSpec{Name: "ns/dogu", Version: "1.2.3-5"}}
+
+	t.Run("should should return false for dogu installation", func(t *testing.T) {
+		recorder := mocks.NewEventRecorder(t)
+		recorder.On("Event", newDoguResource, "Normal", "Debug", mock.Anything)
+		sut := doguResourceChangeDebugPredicate{recorder: recorder}
+
+		// when
+		actual := sut.Update(event.UpdateEvent{
+			ObjectOld: nil,
+			ObjectNew: newDoguResource,
+		})
+
+		// then
+		require.False(t, actual)
+	})
+	t.Run("should should return false for dogu deletion", func(t *testing.T) {
+		recorder := mocks.NewEventRecorder(t)
+		recorder.On("Event", oldDoguResource, "Normal", "Debug", mock.Anything)
+		sut := doguResourceChangeDebugPredicate{recorder: recorder}
+
+		// when
+		actual := sut.Update(event.UpdateEvent{
+			ObjectOld: oldDoguResource,
+			ObjectNew: nil,
+		})
+
+		// then
+		require.False(t, actual)
+	})
+	t.Run("should should return true for dogu upgrade", func(t *testing.T) {
+		recorder := mocks.NewEventRecorder(t)
+		recorder.On("Event", newDoguResource, "Normal", "Debug", mock.Anything)
+		sut := doguResourceChangeDebugPredicate{recorder: recorder}
+
+		// when
+		actual := sut.Update(event.UpdateEvent{
+			ObjectOld: oldDoguResource,
+			ObjectNew: newDoguResource,
+		})
+
+		// then
+		require.True(t, actual)
+	})
+	t.Run("should should return false for no dogu change", func(t *testing.T) {
+		recorder := mocks.NewEventRecorder(t)
+		recorder.On("Event", oldDoguResource, "Normal", "Debug", mock.Anything)
+		sut := doguResourceChangeDebugPredicate{recorder: recorder}
+
+		// when
+		actual := sut.Update(event.UpdateEvent{
+			ObjectOld: oldDoguResource,
+			ObjectNew: oldDoguResource,
+		})
+
+		// then
+		require.False(t, actual)
+	})
+}
+
+func Test_buildResourceDiff(t *testing.T) {
+	oldDoguResource := &k8sv1.Dogu{Spec: k8sv1.DoguSpec{Name: "ns/dogu", Version: "1.2.3-4"}}
+	newDoguResource := &k8sv1.Dogu{Spec: k8sv1.DoguSpec{Name: "ns/dogu", Version: "1.2.3-5"}}
+
+	type args struct {
+		objOld client.Object
+		objNew client.Object
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "create-diff",
+			args: args{objOld: nil, objNew: newDoguResource},
+			want: "  any(\n+ \t&v1.Dogu{Spec: v1.DoguSpec{Name: \"ns/dogu\", Version: \"1.2.3-5\"}},\n  )\n",
+		},
+		{
+			name: "upgrade-diff",
+			args: args{objOld: oldDoguResource, objNew: newDoguResource},
+			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:          \"ns/dogu\",\n- \t\tVersion:       \"1.2.3-4\",\n+ \t\tVersion:       \"1.2.3-5\",\n  \t\tUpgradeConfig: {},\n  \t},\n  \tStatus: {},\n  }\n",
+		},
+		{
+			name: "delete-diff",
+			args: args{objOld: oldDoguResource, objNew: nil},
+			want: "  any(\n- \t&v1.Dogu{Spec: v1.DoguSpec{Name: \"ns/dogu\", Version: \"1.2.3-4\"}},\n  )\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, _ := buildResourceDiff(tt.args.objOld, tt.args.objNew)
+			assert.Equalf(t,
+				tt.want,
+				result,
+				"buildResourceDiff(%v, %v)", tt.args.objOld, tt.args.objNew)
+		})
+	}
 }

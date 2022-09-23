@@ -12,9 +12,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -223,13 +223,13 @@ type doguResourceChangeDebugPredicate struct {
 // Update implements default UpdateEvent filter for validating generation change.
 func (cp doguResourceChangeDebugPredicate) Update(e event.UpdateEvent) bool {
 
+	objectDiff, objectInQuestion := buildResourceDiff(e.ObjectOld, e.ObjectNew)
+	cp.recorder.Event(objectInQuestion, v1.EventTypeNormal, "Debug", objectDiff)
+
 	if e.ObjectOld == nil {
 		ctrl.Log.Error(nil, "Update event has no old object to update", "event", e)
 		return false
 	}
-
-	objectDiff := diff.ObjectDiff(e.ObjectOld, e.ObjectNew)
-	cp.recorder.Event(e.ObjectNew, v1.EventTypeNormal, "???", objectDiff)
 
 	if e.ObjectNew == nil {
 		ctrl.Log.Error(nil, "Update event has no new object for update", "event", e)
@@ -237,6 +237,27 @@ func (cp doguResourceChangeDebugPredicate) Update(e event.UpdateEvent) bool {
 	}
 
 	return e.ObjectNew.GetGeneration() != e.ObjectOld.GetGeneration()
+}
+
+func buildResourceDiff(objOld client.Object, objNew client.Object) (string, client.Object) {
+	var aOld client.Object
+	var aNew client.Object
+
+	// both values can be nil during creation or deletion (though not at the same time)
+	// take care to provide a proper diff in any of these cases
+	var objectInQuestion client.Object
+	if objOld != nil {
+		aOld = objOld
+		objectInQuestion = aOld
+	}
+	if objNew != nil {
+		aNew = objNew
+		objectInQuestion = aNew
+	}
+
+	diff := cmp.Diff(aOld, aNew)
+
+	return strings.ReplaceAll(diff, "\u00a0", " "), objectInQuestion
 }
 
 // SetupWithManager sets up the controller with the manager.
