@@ -15,6 +15,8 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: controller-manager
+        app.kubernetes.io/name: k8s-dogu-operator
+        app: ces
     spec:
       securityContext:
         runAsNonRoot: true
