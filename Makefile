@@ -25,7 +25,7 @@ K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
 PRE_COMPILE=generate
 
 K8S_RESOURCE_TEMP_FOLDER ?= $(TARGET_DIR)
-K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy
+K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy template-log-level
 
 include build/make/k8s-controller.mk
 
@@ -65,6 +65,11 @@ setup-etcd-port-forward:
 template-stage:
 	@echo "Setting STAGE env in deployment to ${STAGE}!"
 	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"STAGE\").value)=\"${STAGE}\"" $(K8S_RESOURCE_TEMP_YAML)
+
+.PHONY: template-log-level
+template-log-level:
+	@echo "Setting LOG_LEVEL env in deployment to ${LOG_LEVEL}!"
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"LOG_LEVEL\").value)=\"${LOG_LEVEL}\"" $(K8S_RESOURCE_TEMP_YAML)
 
 .PHONY: template-dev-only-image-pull-policy
 template-dev-only-image-pull-policy:
