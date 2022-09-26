@@ -12,8 +12,8 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 		// given
 		upgradeVersion := "4.2.3-11"
 
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
+		fromDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		toDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		toDogu.Version = upgradeVersion
 		sut := &upgradeChecker{}
 
@@ -28,8 +28,8 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 		// given
 		actuallyDowngradeVersion := "1.2.3-4"
 
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
+		fromDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		toDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		toDogu.Version = actuallyDowngradeVersion
 		sut := &upgradeChecker{}
 
@@ -42,8 +42,8 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 	})
 	t.Run("should succeed but return false for equal versions", func(t *testing.T) {
 		// given
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
+		fromDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		toDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		sut := &upgradeChecker{}
 
 		// when
@@ -57,8 +57,8 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 		// given
 		upgradeVersion := "1.2.3-4"
 
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
+		fromDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		toDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		toDogu.Version = upgradeVersion
 		sut := &upgradeChecker{}
 
@@ -73,9 +73,9 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 		// given
 		upgradeVersion := "1.2.3-4"
 
-		fromDogu := readTestDataDogu(t, redmineBytes)
+		fromDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		fromDogu.Version = "ö#a.b.c.-.-.d.e.-..f.g--¹"
-		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		toDogu.Version = upgradeVersion
 		sut := &upgradeChecker{}
 
@@ -88,8 +88,8 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 	})
 	t.Run("should fails for unparsable toDogu Version", func(t *testing.T) {
 		// given
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
+		fromDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		toDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		toDogu.Version = "ö#a.b.c.-.-.d.e.-..f.g--¹"
 		sut := &upgradeChecker{}
 

@@ -28,11 +28,11 @@ import (
 
 var _ = Describe("Dogu Controller", func() {
 	t := &testing.T{}
-	ldapCr := readTestDataLdapCr(t)
-	redmineCr := readTestDataRedmineCr(t)
-	imageConfig := readTestDataImageConfig(t)
-	ldapDogu := readTestDataLdapDogu(t)
-	redmineDogu := readTestDataRedmineDogu(t)
+	ldapCr := readDoguCr(t, ldapCrBytes)
+	redmineCr := readDoguCr(t, redmineCrBytes)
+	imageConfig := readImageConfig(t, imageConfigBytes)
+	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+	redmineDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""

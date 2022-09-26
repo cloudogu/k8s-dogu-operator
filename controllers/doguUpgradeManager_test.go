@@ -123,13 +123,13 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 	t.Run("should succeed on regular upgrade from the remote registry", func(t *testing.T) {
 		// given
-		redmineCr := readTestDataRedmineCr(t)
+		redmineCr := readDoguCr(t, redmineCrBytes)
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		redmineDoguInstalled := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguInstalled := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
 		recorderMock := mocks.NewEventRecorder(t)
@@ -172,13 +172,13 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	})
 	t.Run("should succeed on upgrade from a self-developed dogu", func(t *testing.T) {
 		// given
-		redmineCr := readTestDataRedmineCr(t)
+		redmineCr := readDoguCr(t, redmineCrBytes)
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		redmineDoguInstalled := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguInstalled := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
 		recorderMock := mocks.NewEventRecorder(t)
@@ -232,13 +232,13 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during upgrading redmine and record the error event", func(t *testing.T) {
 		// given
-		redmineCr := readTestDataRedmineCr(t)
+		redmineCr := readDoguCr(t, redmineCrBytes)
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		redmineDoguInstalled := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguInstalled := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
 		recorderMock := mocks.NewEventRecorder(t)
@@ -283,13 +283,13 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during premises check and record the error event", func(t *testing.T) {
 		// given
-		redmineCr := readTestDataRedmineCr(t)
+		redmineCr := readDoguCr(t, redmineCrBytes)
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		redmineDoguInstalled := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguInstalled := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
 		recorderMock := mocks.NewEventRecorder(t)
@@ -332,13 +332,13 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during fetching remote redmine dogu and record the error event", func(t *testing.T) {
 		// given
-		redmineCr := readTestDataRedmineCr(t)
+		redmineCr := readDoguCr(t, redmineCrBytes)
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		redmineDoguInstalled := readTestDataRedmineDogu(t)
-		redmineDoguUpgrade := readTestDataRedmineDogu(t)
+		redmineDoguInstalled := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
 		recorderMock := mocks.NewEventRecorder(t)
@@ -378,7 +378,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during fetching installed redmine and record the error event", func(t *testing.T) {
 		// given
-		redmineCr := readTestDataRedmineCr(t)
+		redmineCr := readDoguCr(t, redmineCrBytes)
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true

@@ -20,84 +20,40 @@ import (
 var redmineCrBytes []byte
 
 //go:embed testdata/redmine-dogu.json
-var redmineBytes []byte
+var redmineDoguDescriptorBytes []byte
 
 //go:embed testdata/ldap-cr.yaml
 var ldapCrBytes []byte
 
+//go:embed testdata/ldap-dogu.json
+var ldapDoguDescriptorBytes []byte
+
+//go:embed testdata/ldap-descriptor-cm.yaml
+var ldapDoguDevelopmentMapBytes []byte
+
+//go:embed testdata/ldap-dogu-upgrade.json
+var ldapUpgradeDoguDescriptorBytes []byte
+
 //go:embed testdata/image-config.json
 var imageConfigBytes []byte
 
-//go:embed testdata/ldap-descriptor-cm.yaml
-var ldapDescriptorBytes []byte
-
-//go:embed testdata/ldap-dogu.json
-var ldapBytes []byte
-
-//go:embed testdata/postgresql-dogu.json
-var postgresqlBytes []byte
-
-//go:embed testdata/simple-postfix-dogu.json
-var postfixBytes []byte
-
-//go:embed testdata/simple-nginx-dogu.json
-var nginxBytes []byte
-
-//go:embed testdata/simple-cas-dogu.json
-var casBytes []byte
-
-func readTestDataLdapCr(t *testing.T) *corev1.Dogu {
+func readDoguCr(t *testing.T, bytes []byte) *corev1.Dogu {
 	t.Helper()
 
-	ldapCr := &corev1.Dogu{}
-	err := yaml.Unmarshal(ldapCrBytes, ldapCr)
+	doguCr := &corev1.Dogu{}
+	err := yaml.Unmarshal(bytes, doguCr)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	return ldapCr
+	return doguCr
 }
 
-func readTestDataLdapDogu(t *testing.T) *core.Dogu {
-	t.Helper()
-
-	return readTestDataDogu(t, ldapBytes)
-}
-func readTestDataLdapDescriptor(t *testing.T) *v1.ConfigMap {
-	t.Helper()
-
-	ldapDescriptor := &v1.ConfigMap{}
-	err := yaml.Unmarshal(ldapDescriptorBytes, ldapDescriptor)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return ldapDescriptor
-}
-
-func readTestDataRedmineCr(t *testing.T) *corev1.Dogu {
-	t.Helper()
-
-	redmineCr := &corev1.Dogu{}
-	err := yaml.Unmarshal(redmineCrBytes, redmineCr)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return redmineCr
-}
-
-func readTestDataRedmineDogu(t *testing.T) *core.Dogu {
-	t.Helper()
-
-	return readTestDataDogu(t, redmineBytes)
-}
-
-func readTestDataImageConfig(t *testing.T) *imagev1.ConfigFile {
+func readImageConfig(t *testing.T, bytes []byte) *imagev1.ConfigFile {
 	t.Helper()
 
 	imageConfig := &imagev1.ConfigFile{}
-	err := json.Unmarshal(imageConfigBytes, imageConfig)
+	err := json.Unmarshal(bytes, imageConfig)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -105,7 +61,7 @@ func readTestDataImageConfig(t *testing.T) *imagev1.ConfigFile {
 	return imageConfig
 }
 
-func readTestDataDogu(t *testing.T, doguBytes []byte) *core.Dogu {
+func readDoguDescriptor(t *testing.T, doguBytes []byte) *core.Dogu {
 	t.Helper()
 
 	dogu := &core.Dogu{}
@@ -115,6 +71,19 @@ func readTestDataDogu(t *testing.T, doguBytes []byte) *core.Dogu {
 	}
 
 	return dogu
+}
+
+func readDoguDevelopmentMap(t *testing.T, devMapBytes []byte) *corev1.DevelopmentDoguMap {
+	t.Helper()
+
+	descriptorCM := &v1.ConfigMap{}
+	err := yaml.Unmarshal(devMapBytes, descriptorCM)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	doguDevMap := corev1.DevelopmentDoguMap(*descriptorCM)
+	return &doguDevMap
 }
 
 func getTestScheme() *runtime.Scheme {

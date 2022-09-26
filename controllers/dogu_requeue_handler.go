@@ -80,7 +80,7 @@ func (d *doguRequeueHandler) handleRequeue(ctx context.Context, contextMessage s
 		return ctrl.Result{}, err
 	}
 
-	log.FromContext(ctx).Error(err, fmt.Sprintf("%s: requeue in %s seconds", contextMessage, requeueTime))
+	log.FromContext(ctx).Error(err, fmt.Sprintf("%s: requeue in %s seconds because of: %s", contextMessage, requeueTime, originalErr.Error()))
 
 	return result, nil
 

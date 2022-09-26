@@ -117,8 +117,8 @@ func TestNewDoguDeleteManager(t *testing.T) {
 func Test_doguDeleteManager_Delete(t *testing.T) {
 	scheme := getTestScheme()
 	ctx := context.Background()
-	ldapCr := readTestDataLdapCr(t)
-	ldapDogu := readTestDataLdapDogu(t)
+	ldapCr := readDoguCr(t, ldapCrBytes)
+	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 
 	t.Run("successfully delete a dogu", func(t *testing.T) {
 		// given

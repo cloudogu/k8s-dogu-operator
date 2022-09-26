@@ -112,11 +112,11 @@ func getDoguInstallManagerWithMocks(scheme *runtime.Scheme) doguInstallManagerWi
 }
 
 func getDoguInstallManagerTestData(t *testing.T) (*k8sv1.Dogu, *core.Dogu, *corev1.ConfigMap, *imagev1.ConfigFile) {
-	ldapCr := readTestDataLdapCr(t)
-	ldapDogu := readTestDataLdapDogu(t)
-	ldapDoguDescriptor := readTestDataLdapDescriptor(t)
-	imageConfig := readTestDataImageConfig(t)
-	return ldapCr, ldapDogu, ldapDoguDescriptor, imageConfig
+	ldapCr := readDoguCr(t, ldapCrBytes)
+	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+	ldapDoguDescriptor := readDoguDevelopmentMap(t, ldapDoguDevelopmentMapBytes)
+	imageConfig := readImageConfig(t, imageConfigBytes)
+	return ldapCr, ldapDogu, ldapDoguDescriptor.ToConfigMap(), imageConfig
 }
 
 func TestNewDoguInstallManager(t *testing.T) {
@@ -211,7 +211,6 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		ldapCr, ldapDogu, ldapDevelopmentDoguMap, imageConfig := getDoguInstallManagerTestData(t)
 		developmentDoguMap := k8sv1.DevelopmentDoguMap(*ldapDevelopmentDoguMap)
 
-		ldapDescriptorCm := readTestDataLdapDescriptor(t)
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, &developmentDoguMap, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -221,7 +220,6 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		yamlResult := make(map[string]string, 0)
 		managerWithMocks.fileExtractorMock.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
-		_ = managerWithMocks.installManager.client.Create(ctx, ldapDescriptorCm)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapDevelopmentDoguMap)
 
 		managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")

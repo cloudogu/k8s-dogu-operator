@@ -182,7 +182,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguResource *k8sv1.Dogu) (operation, error) {
 	logger := log.FromContext(ctx)
-	if !doguResource.DeletionTimestamp.IsZero() {
+	if doguResource.DeletionTimestamp != nil && !doguResource.DeletionTimestamp.IsZero() {
 		return Delete, nil
 	}
 
