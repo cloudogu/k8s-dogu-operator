@@ -141,11 +141,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 			// then
 			assert.NotNil(t, remoteConfig)
 			assert.Equal(t, "https://dogu.cloudogu.com/api/v2/", remoteConfig.Endpoint)
-			if tt.stage == StageProduction {
-				assert.Equal(t, "/home/nonroot", remoteConfig.CacheDir)
-			} else {
-				assert.Equal(t, ".", remoteConfig.CacheDir)
-			}
+			assert.Equal(t, "/tmp/dogu-registry-cache", remoteConfig.CacheDir)
 		})
 	}
 }
