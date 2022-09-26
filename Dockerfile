@@ -21,8 +21,10 @@ COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 
-# Copy .git files as the build process builds the current commit id into the binary via ldflags
-COPY .git .git
+# Copy .git files as the build process builds the current commit id into the binary via ldflags.
+# We removed this entry as changes in the repository makes all cached layers invalid leading to rebuilding all layers.
+# TODO resolve COMMIT_ID
+#COPY .git .git
 
 # Copy build files
 COPY build build
