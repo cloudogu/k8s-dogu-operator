@@ -121,6 +121,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)
 	doguConfigurationContext.On("RemoveAll", mock.Anything).Return(nil)
+	doguConfigurationContext.On("Get", "/pod_limit/cpu").Return("1", nil)
+	doguConfigurationContext.On("Get", "/pod_limit/memory").Return("1", nil)
+	doguConfigurationContext.On("Get", "/pod_limit/ephemeral_storage").Return("1", nil)
 
 	globalConfigurationContext := &cesmocks.ConfigurationContext{}
 	globalConfigurationContext.On("Get", "key_provider").Return("", nil)
@@ -191,6 +194,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
 	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, &ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
+
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,
 		eventRecorder:       eventRecorder,

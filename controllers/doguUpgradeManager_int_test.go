@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -35,8 +36,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	// configure image configuration mock
 	imageConfig := readImageConfig(t, imageConfigBytes)
-	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil)
-	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "name:vers2").Return(imageConfig, nil)
 
 	// configure mocks for installed ldap version
 	ldapFromCr := readDoguCr(t, ldapCrBytes)
@@ -44,17 +43,22 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	ldapFromCr.Namespace = namespace
 	ldapFromDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 	ldapFromDoguLookupKey := types.NamespacedName{Name: ldapFromCr.Name, Namespace: namespace}
-	DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapFromDoguDescriptor, nil)
+	DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Once().Return(ldapFromDoguDescriptor, nil)
 	EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(false, nil)
 	EtcdDoguRegistry.Mock.On("Register", ldapFromDoguDescriptor).Once().Return(nil)
 	EtcdDoguRegistry.Mock.On("Enable", ldapFromDoguDescriptor).Once().Return(nil)
-	EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapFromDoguDescriptor, nil)
+	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.48-4").Return(imageConfig, nil)
+	EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapFromDoguDescriptor, nil)
 
 	// configure mocks for upgraded ldap version
 	ldapToDoguDescriptor := readDoguDescriptor(t, ldapUpgradeDoguDescriptorBytes)
-	// todo ldapToVersion := ldapToDoguDescriptor.Version
-	DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Return(ldapToDoguDescriptor, nil)
+	ldapToVersion := ldapToDoguDescriptor.Version
+	DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(ldapToDoguDescriptor, nil)
 	EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(true, nil)
+	EtcdDoguRegistry.Mock.On("Register", ldapToDoguDescriptor).Once().Return(nil)
+	EtcdDoguRegistry.Mock.On("Enable", ldapToDoguDescriptor).Once().Return(nil)
+	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil)
+	EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapToDoguDescriptor, nil)
 
 	Context("DoguUpgradeManager", func() {
 		testCtx := context.TODO()
@@ -88,34 +92,31 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			secretLookupKey := types.NamespacedName{Name: ldapFromDoguLookupKey.Name + "-private", Namespace: ldapFromDoguLookupKey.Namespace}
 			Eventually(getObjectFromCluster(testCtx, &v1.Secret{}, secretLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
 
-			// todo: does not work the deployment still only shows 0 replicas when upgrading dogu in the next step
 			By("Patch Deployment to contain at least one healthy replica")
 			Expect(func() bool {
 				deployment.Status.Replicas = 1
 				deployment.Status.ReadyReplicas = 1
-				err := k8sClient.Update(testCtx, deployment)
+				err := k8sClient.Status().Update(testCtx, deployment)
 				return err == nil
 			}()).To(BeTrue())
 
-			// todo call upgrade manager
-			//By("Update dogu crd with new version")
-			//Expect(func() bool {
-			//	fmt.Printf("%+v\n", installedLdapDoguCr)
-			//	installedLdapDoguCr.Spec.Version = ldapToVersion
-			//	err := k8sClient.Update(testCtx, installedLdapDoguCr)
-			//	return err == nil
-			//}()).To(BeTrue())
-			//
-			//By("Check new image in deployment")
-			//Eventually(func() bool {
-			//	deploymentAfterUpgrading := new(appsv1.Deployment)
-			//	ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, ldapFromDoguLookupKey)
-			//	return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
-			//}, TimeoutInterval, PollingInterval).Should(BeTrue())
-			//
-			//Expect(DoguRemoteRegistryMock.AssertExpectations(t)).To(BeTrue())
-			//Expect(ImageRegistryMock.AssertExpectations(t)).To(BeTrue())
-			//Expect(EtcdDoguRegistry.AssertExpectations(t)).To(BeTrue())
+			By("Update dogu crd with new version")
+			Expect(func() bool {
+				installedLdapDoguCr.Spec.Version = ldapToVersion
+				err := k8sClient.Update(testCtx, installedLdapDoguCr)
+				return err == nil
+			}()).To(BeTrue())
+
+			By("Check new image in deployment")
+			Eventually(func() bool {
+				deploymentAfterUpgrading := new(appsv1.Deployment)
+				ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, ldapFromDoguLookupKey)
+				return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			Expect(DoguRemoteRegistryMock.AssertExpectations(t)).To(BeTrue())
+			Expect(ImageRegistryMock.AssertExpectations(t)).To(BeTrue())
+			Expect(EtcdDoguRegistry.AssertExpectations(t)).To(BeTrue())
 		})
 	})
 })
