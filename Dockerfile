@@ -30,6 +30,8 @@ COPY controllers/ controllers/
 COPY build build
 COPY Makefile Makefile
 
+RUN mkdir /tmp/dogu-registry-cache
+
 # Build
 RUN go mod vendor
 RUN make compile-generic
@@ -43,6 +45,8 @@ LABEL maintainer="hello@cloudogu.com" \
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .
+COPY --from=builder --chown=65532:65532 /tmp/dogu-registry-cache /tmp/dogu-registry-cache
+
 # the linter has a problem with the valid colon-syntax
 # dockerfile_lint - ignore
 USER 65532:65532

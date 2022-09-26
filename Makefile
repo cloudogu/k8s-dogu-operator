@@ -29,6 +29,9 @@ K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-d
 
 include build/make/k8s-controller.mk
 
+.PHONY: build-boot
+build-boot: image-import k8s-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
+
 ##@ Controller specific targets
 
 .PHONY: manifests
@@ -65,6 +68,10 @@ template-stage:
 
 .PHONY: template-dev-only-image-pull-policy
 template-dev-only-image-pull-policy:
-	@if [[ ${STAGE} == "development" ]]; \
-		then echo "Setting pull policy to always for development stage!" && $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").imagePullPolicy)=\"Always\"" $(K8S_RESOURCE_TEMP_YAML); \
-	fi
+	@echo "Setting pull policy to always!"
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").imagePullPolicy)=\"Always\"" $(K8S_RESOURCE_TEMP_YAML)
+
+.PHONY: kill-operator-pod
+kill-operator-pod:
+	@echo "Restarting k8s-dogu-operator!"
+	@kubectl -n ${NAMESPACE} delete pods -l 'app.kubernetes.io/name=k8s-dogu-operator'
