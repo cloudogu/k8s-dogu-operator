@@ -7,14 +7,10 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"testing"
-
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -24,10 +20,30 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
+	"testing"
 )
 
-var _ = Describe("Dogu Controller", func() {
+type mockeryGinkgoLogger struct {
+}
+
+func (c mockeryGinkgoLogger) Logf(format string, args ...interface{}) {
+	_, _ = fmt.Fprintf(GinkgoWriter, strings.ReplaceAll(strings.ReplaceAll(format, "PASS", "\nPASS"), "FAIL", "\nFAIL"), args...)
+}
+
+func (c mockeryGinkgoLogger) Errorf(format string, args ...interface{}) {
+	_, _ = fmt.Fprintf(GinkgoWriter, format, args...)
+}
+
+func (c mockeryGinkgoLogger) FailNow() {
+	println("fail now")
+}
+
+var _ = Describe("Dogu Upgrade Tests", func() {
 	t := &testing.T{}
+	mockeryT := &mockeryGinkgoLogger{}
+
+	// Install testdata
 	ldapCr := readDoguCr(t, ldapCrBytes)
 	redmineCr := readDoguCr(t, redmineCrBytes)
 	imageConfig := readImageConfig(t, imageConfigBytes)
@@ -40,29 +56,41 @@ var _ = Describe("Dogu Controller", func() {
 
 	redmineCr.Namespace = "default"
 	redmineCr.ResourceVersion = ""
-	redmineDoguLookupKey := types.NamespacedName{Name: redmineCr.Name, Namespace: redmineCr.Namespace}
 
 	ctx := context.TODO()
-	ImageRegistryMock = mocks.ImageRegistry{}
-	ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-	DoguRemoteRegistryMock = cesremotemocks.Registry{}
-	DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil)
-	DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil)
 
-	EtcdDoguRegistry = cesmocks.DoguRegistry{}
-	EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed"))
-	EtcdDoguRegistry.Mock.On("Get", "cas").Return(nil, fmt.Errorf("not installed"))
-	EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
-	EtcdDoguRegistry.Mock.On("Get", "nginx-ingress").Return(nil, fmt.Errorf("not installed"))
-	EtcdDoguRegistry.Mock.On("Get", "nginx-static").Return(nil, fmt.Errorf("not installed"))
-	EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapDogu, nil)
-	EtcdDoguRegistry.Mock.On("Get", "redmine").Return(redmineDogu, nil)
-	EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
-	EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
-	EtcdDoguRegistry.Mock.On("Enable", mock.Anything).Return(nil)
-	EtcdDoguRegistry.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
+	// Upgrade testdata
+	namespace := "default"
+	ldapFromCr := readDoguCr(t, ldapCrBytes)
+	ldapFromCr.ResourceVersion = ""
+	ldapFromCr.Namespace = namespace
+	ldapFromDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+	ldapFromDoguLookupKey := types.NamespacedName{Name: ldapFromCr.Name, Namespace: namespace}
+	ldapToDoguDescriptor := readDoguDescriptor(t, ldapUpgradeDoguDescriptorBytes)
+	ldapToVersion := ldapToDoguDescriptor.Version
 
 	Context("Handle dogu resource", func() {
+		It("Setup mocks and test data", func() {
+			*ImageRegistryMock = mocks.ImageRegistry{}
+			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+			*DoguRemoteRegistryMock = cesremotemocks.Registry{}
+			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil)
+			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil)
+
+			*EtcdDoguRegistry = cesmocks.DoguRegistry{}
+			EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed"))
+			EtcdDoguRegistry.Mock.On("Get", "cas").Return(nil, fmt.Errorf("not installed"))
+			EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
+			EtcdDoguRegistry.Mock.On("Get", "nginx-ingress").Return(nil, fmt.Errorf("not installed"))
+			EtcdDoguRegistry.Mock.On("Get", "nginx-static").Return(nil, fmt.Errorf("not installed"))
+			EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapDogu, nil)
+			EtcdDoguRegistry.Mock.On("Get", "redmine").Return(redmineDogu, nil)
+			EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
+			EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
+			EtcdDoguRegistry.Mock.On("Enable", mock.Anything).Return(nil)
+			EtcdDoguRegistry.Mock.On("IsEnabled", mock.Anything).Return(false, nil)
+		})
+
 		It("Should install dogu in cluster", func() {
 			By("Creating dogu resource")
 			installDoguCrd(ctx, ldapCr)
@@ -147,7 +175,7 @@ var _ = Describe("Dogu Controller", func() {
 
 			By("Expect exposed service for service port 8888")
 			exposedService8888 := &corev1.Service{}
-			exposedService8888Name := fmt.Sprintf("%s-exposed-2222", ldapCr.Name)
+			exposedService8888Name := fmt.Sprintf("%s-exposed-8888", ldapCr.Name)
 			exposedService8888LookupKey := types.NamespacedName{Name: exposedService8888Name, Namespace: ldapCr.Namespace}
 
 			Eventually(func() bool {
@@ -156,11 +184,12 @@ var _ = Describe("Dogu Controller", func() {
 			}, PollingInterval, TimeoutInterval).Should(BeTrue())
 
 			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
-		})
 
-		It("Should delete dogu", func() {
-			By("Delete Dogu")
-			deleteDoguCrd(ctx, ldapCr, ldapDoguLookupKey)
+			By("Should delete dogu", func() {
+				deleteDoguCrd(ctx, ldapCr, ldapDoguLookupKey, true)
+				deleteObjectFromCluster(ctx, exposedService8888LookupKey, &corev1.Service{})
+				deleteObjectFromCluster(ctx, exposedService2222LookupKey, &corev1.Service{})
+			})
 		})
 
 		It("Should fail dogu installation as dependency is missing", func() {
@@ -171,7 +200,7 @@ var _ = Describe("Dogu Controller", func() {
 			createdDogu := &k8sv1.Dogu{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, redmineDoguLookupKey, createdDogu)
+				err := k8sClient.Get(ctx, redmineCr.GetObjectKey(), createdDogu)
 				if err != nil {
 					return false
 				}
@@ -200,16 +229,103 @@ var _ = Describe("Dogu Controller", func() {
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
 			By("Delete redmine dogu crd")
-			deleteDoguCrd(ctx, redmineCr, redmineDoguLookupKey)
+			deleteDoguCrd(ctx, redmineCr, redmineCr.GetObjectKey(), false)
+
+			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
 		})
+
+		It("Setup mocks and test data for upgrade", func() {
+			// create mocks
+			*DoguRemoteRegistryMock = cesremotemocks.Registry{}
+			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Once().Return(ldapFromDoguDescriptor, nil)
+			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(ldapToDoguDescriptor, nil)
+
+			*ImageRegistryMock = mocks.ImageRegistry{}
+			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.48-4").Return(imageConfig, nil)
+			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil)
+
+			*EtcdDoguRegistry = cesmocks.DoguRegistry{}
+			EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(false, nil)
+			EtcdDoguRegistry.Mock.On("Register", ldapFromDoguDescriptor).Once().Return(nil)
+			EtcdDoguRegistry.Mock.On("Enable", ldapFromDoguDescriptor).Once().Return(nil)
+			EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapFromDoguDescriptor, nil)
+
+			EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(true, nil)
+			EtcdDoguRegistry.Mock.On("Register", ldapToDoguDescriptor).Once().Return(nil)
+			EtcdDoguRegistry.Mock.On("Enable", ldapToDoguDescriptor).Once().Return(nil)
+			EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapToDoguDescriptor, nil)
+			EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
+		})
+
+		It("Should upgrade dogu in cluster", func() {
+			By("Install ldap dogu resource in version 2.4.48-4")
+			installDoguCrd(testCtx, ldapFromCr)
+
+			By("Expect created dogu")
+			installedLdapDoguCr := &k8sv1.Dogu{}
+			Eventually(func() bool {
+				err := k8sClient.Get(testCtx, ldapFromDoguLookupKey, installedLdapDoguCr)
+				if err != nil {
+					return false
+				}
+
+				finalizers := installedLdapDoguCr.Finalizers
+				if len(finalizers) == 1 && finalizers[0] == "dogu-finalizer" {
+					return true
+				}
+
+				return false
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			By("Wait for resources created deployment")
+			deployment := new(appsv1.Deployment)
+			Eventually(getObjectFromCluster(testCtx, deployment, ldapFromDoguLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
+			Eventually(getObjectFromCluster(testCtx, &corev1.Service{}, ldapFromDoguLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
+			Eventually(getObjectFromCluster(testCtx, &corev1.PersistentVolumeClaim{}, ldapFromDoguLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			secretLookupKey := types.NamespacedName{Name: ldapFromDoguLookupKey.Name + "-private", Namespace: ldapFromDoguLookupKey.Namespace}
+			Eventually(getObjectFromCluster(testCtx, &corev1.Secret{}, secretLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			By("Patch Deployment to contain at least one healthy replica")
+			Expect(func() bool {
+				deployment.Status.Replicas = 1
+				deployment.Status.ReadyReplicas = 1
+				err := k8sClient.Status().Update(testCtx, deployment)
+				return err == nil
+			}()).To(BeTrue())
+
+			By("Update dogu crd with new version")
+			Expect(func() bool {
+				installedLdapDoguCr.Spec.Version = ldapToVersion
+				err := k8sClient.Update(testCtx, installedLdapDoguCr)
+				return err == nil
+			}()).To(BeTrue())
+
+			By("Check new image in deployment")
+			Eventually(func() bool {
+				deploymentAfterUpgrading := new(appsv1.Deployment)
+				ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, ldapFromDoguLookupKey)
+				return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			deleteDoguCrd(ctx, installedLdapDoguCr, ldapFromDoguLookupKey, true)
+
+			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
+		})
+
 	})
+
 })
 
 func installDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu) {
 	Expect(k8sClient.Create(ctx, doguCr)).Should(Succeed())
 }
 
-func deleteDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.NamespacedName) {
+func deleteDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.NamespacedName, deleteAdditional bool) {
 	Expect(k8sClient.Delete(ctx, doguCr)).Should(Succeed())
 
 	dogu := &k8sv1.Dogu{}
@@ -217,6 +333,34 @@ func deleteDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.
 		err := k8sClient.Get(ctx, doguLookupKey, dogu)
 		return apierrors.IsNotFound(err)
 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
+	if !deleteAdditional {
+		return
+	}
+
+	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &appsv1.Deployment{})
+	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &corev1.Service{})
+	deleteObjectFromCluster(ctx, types.NamespacedName{Name: doguCr.GetPrivateVolumeName(), Namespace: doguCr.Namespace}, &corev1.Secret{})
+	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &corev1.PersistentVolumeClaim{})
+}
+
+func deleteObjectFromCluster(ctx context.Context, objectKey client.ObjectKey, deleteType client.Object) {
+	Eventually(func() bool {
+		ok := getObjectFromCluster(ctx, deleteType, objectKey)
+		fmt.Printf("NEUUUU: %v", deleteType)
+
+		if !ok {
+			return false
+		}
+
+		err := k8sClient.Delete(ctx, deleteType)
+		return err == nil
+	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+}
+
+func getObjectFromCluster(ctx context.Context, objectType client.Object, lookupKey types.NamespacedName) bool {
+	err := k8sClient.Get(ctx, lookupKey, objectType)
+	return err == nil
 }
 
 // verifyOwner checks if the objectmetadata has a specific owner. This method should be used to verify that a dogu is

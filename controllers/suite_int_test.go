@@ -49,13 +49,13 @@ var testEnv *envtest.Environment
 var cancel context.CancelFunc
 
 // Used in other integration tests
-var ImageRegistryMock mocks.ImageRegistry
+var ImageRegistryMock *mocks.ImageRegistry
 
 // Used in other integration tests
-var DoguRemoteRegistryMock cesremotemocks.Registry
+var DoguRemoteRegistryMock *cesremotemocks.Registry
 
 // Used in other integration tests
-var EtcdDoguRegistry cesmocks.DoguRegistry
+var EtcdDoguRegistry *cesmocks.DoguRegistry
 
 const TimeoutInterval = time.Second * 10
 const PollingInterval = time.Second * 1
@@ -118,6 +118,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClient = k8sManager.GetClient()
 	gomega.Expect(k8sClient).ToNot(gomega.BeNil())
 
+	DoguRemoteRegistryMock = &cesremotemocks.Registry{}
+	EtcdDoguRegistry = &cesmocks.DoguRegistry{}
+	ImageRegistryMock = &mocks.ImageRegistry{}
+
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)
 	doguConfigurationContext.On("RemoveAll", mock.Anything).Return(nil)
@@ -129,7 +133,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	globalConfigurationContext.On("Get", "key_provider").Return("", nil)
 
 	CesRegistryMock := &cesmocks.Registry{}
-	CesRegistryMock.On("DoguRegistry").Return(&EtcdDoguRegistry)
+	CesRegistryMock.On("DoguRegistry").Return(EtcdDoguRegistry)
 	CesRegistryMock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 	CesRegistryMock.On("GlobalConfig").Return(globalConfigurationContext)
 
@@ -141,7 +145,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, &EtcdDoguRegistry)
+	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, EtcdDoguRegistry)
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
 	serviceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
@@ -162,16 +166,16 @@ var _ = ginkgo.BeforeSuite(func() {
 	upserter := resource.NewUpserter(k8sClient, limitPatcher)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(&EtcdDoguRegistry)
-	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, &DoguRemoteRegistryMock)
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
+	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
 
 	installManager := &doguInstallManager{
 		client:                k8sClient,
 		resourceUpserter:      upserter,
-		doguRemoteRegistry:    &DoguRemoteRegistryMock,
-		doguLocalRegistry:     &EtcdDoguRegistry,
+		doguRemoteRegistry:    DoguRemoteRegistryMock,
+		doguLocalRegistry:     EtcdDoguRegistry,
 		resourceDoguFetcher:   remoteDoguFetcher,
-		imageRegistry:         &ImageRegistryMock,
+		imageRegistry:         ImageRegistryMock,
 		doguRegistrator:       doguRegistrator,
 		dependencyValidator:   dependencyValidator,
 		serviceAccountCreator: serviceAccountCreator,
@@ -184,7 +188,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	deleteManager := &doguDeleteManager{
 		client:                k8sClient,
-		imageRegistry:         &ImageRegistryMock,
+		imageRegistry:         ImageRegistryMock,
 		doguRegistrator:       doguRegistrator,
 		serviceAccountRemover: serviceAccountRemover,
 		doguSecretHandler:     doguSecretHandler,
@@ -193,7 +197,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, &ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,
@@ -212,7 +216,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		recorder:       eventRecorder,
 	}
 
-	reconciler, err := NewDoguReconciler(k8sClient, doguManager, eventRecorder, testNamespace, &EtcdDoguRegistry)
+	reconciler, err := NewDoguReconciler(k8sClient, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = reconciler.SetupWithManager(k8sManager)
