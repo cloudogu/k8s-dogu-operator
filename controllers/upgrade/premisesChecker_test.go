@@ -3,11 +3,8 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
 	"testing"
-
-	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,10 +65,10 @@ func Test_premisesChecker_Check(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
-		mockedChecker := new(premiseMock)
-		mockedChecker.On("CheckWithResource", fromDoguResource).Return(nil)
-		mockedChecker.On("ValidateDependencies", fromDogu).Return(nil)
-		mockedChecker.On("CheckDependenciesRecursive", fromDogu, fromDoguResource.Namespace).Return(nil)
+		mockedChecker := mocks.NewPremiseCheckerMock(t)
+		mockedChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
+		mockedChecker.On("ValidateDependencies", ctx, fromDogu).Return(nil)
+		mockedChecker.On("CheckDependenciesRecursive", ctx, fromDogu, fromDoguResource.Namespace).Return(nil)
 
 		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
 
@@ -80,7 +77,6 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		mockedChecker.AssertExpectations(t)
 	})
 	t.Run("should fail when dogu identity check fails", func(t *testing.T) {
 		fromDoguResource := readTestDataRedmineCr(t)
@@ -105,8 +101,8 @@ func Test_premisesChecker_Check(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
-		mockedChecker := new(premiseMock)
-		mockedChecker.On("CheckWithResource", fromDoguResource).Return(assert.AnError)
+		mockedChecker := mocks.NewPremiseCheckerMock(t)
+		mockedChecker.On("CheckWithResource", ctx, fromDoguResource).Return(assert.AnError)
 
 		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
 
@@ -119,16 +115,15 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// prove that the above negative type assertion works by positive type assertion
 		_, ok := err.(*requeueablePremisesError)
 		assert.True(t, ok)
-		mockedChecker.AssertExpectations(t)
 	})
 	t.Run("should fail when dogu health check fails", func(t *testing.T) {
 		fromDoguResource := readTestDataRedmineCr(t)
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
-		mockedChecker := new(premiseMock)
-		mockedChecker.On("CheckWithResource", fromDoguResource).Return(nil)
-		mockedChecker.On("ValidateDependencies", fromDogu).Return(assert.AnError)
+		mockedChecker := mocks.NewPremiseCheckerMock(t)
+		mockedChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
+		mockedChecker.On("ValidateDependencies", ctx, fromDogu).Return(assert.AnError)
 
 		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
 
@@ -138,17 +133,16 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 		assert.IsType(t, &requeueablePremisesError{}, err)
-		mockedChecker.AssertExpectations(t)
 	})
 	t.Run("should fail when dogu dependency health check fails", func(t *testing.T) {
 		fromDoguResource := readTestDataRedmineCr(t)
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
-		mockedChecker := new(premiseMock)
-		mockedChecker.On("CheckWithResource", fromDoguResource).Return(nil)
-		mockedChecker.On("ValidateDependencies", fromDogu).Return(nil)
-		mockedChecker.On("CheckDependenciesRecursive", fromDogu, fromDoguResource.Namespace).Return(assert.AnError)
+		mockedChecker := mocks.NewPremiseCheckerMock(t)
+		mockedChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
+		mockedChecker.On("ValidateDependencies", ctx, fromDogu).Return(nil)
+		mockedChecker.On("CheckDependenciesRecursive", ctx, fromDogu, fromDoguResource.Namespace).Return(assert.AnError)
 
 		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
 
@@ -158,27 +152,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 		assert.IsType(t, &requeueablePremisesError{}, err)
-		mockedChecker.AssertExpectations(t)
 	})
-}
-
-type premiseMock struct {
-	mock.Mock
-}
-
-func (pm *premiseMock) ValidateDependencies(_ context.Context, dogu *core.Dogu) error {
-	args := pm.Called(dogu)
-	return args.Error(0)
-}
-
-func (pm *premiseMock) CheckDependenciesRecursive(_ context.Context, fromDogu *core.Dogu, currentK8sNamespace string) error {
-	args := pm.Called(fromDogu, currentK8sNamespace)
-	return args.Error(0)
-}
-
-func (pm *premiseMock) CheckWithResource(_ context.Context, doguResource *k8sv1.Dogu) error {
-	args := pm.Called(doguResource)
-	return args.Error(0)
 }
 
 func Test_requeueablePremisesError(t *testing.T) {
