@@ -6,9 +6,10 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 )
 
-type upgradeChecker struct {
-}
+type upgradeChecker struct{}
 
+// IsUpgradeable determines if the given toDogu is an upgrade of the given fromDogu. The option forceUpgrade overrides
+// all checks always returns true.
 func (u *upgradeChecker) IsUpgradeable(fromDogu *core.Dogu, toDogu *core.Dogu, forceUpgrade bool) (bool, error) {
 	if forceUpgrade {
 		return true, nil
@@ -22,6 +23,7 @@ func (u *upgradeChecker) checkVersionBeforeUpgrade(fromDogu *core.Dogu, toDogu *
 	if err != nil {
 		return false, fmt.Errorf("could not check upgradeability of local dogu: %w", err)
 	}
+
 	remoteVersion, err := core.ParseVersion(toDogu.Version)
 	if err != nil {
 		return false, fmt.Errorf("could not check upgradeability of remote dogu: %w", err)

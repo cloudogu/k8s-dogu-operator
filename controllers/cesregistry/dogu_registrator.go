@@ -67,7 +67,7 @@ func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, doguResource *
 	return nil
 }
 
-// RegisterDoguVersion registers an upgrade of an existing dogu.dogu in a cluster. Use RegisterNewDogu() complete new
+// RegisterDoguVersion registers an upgrade of an existing dogu in a cluster. Use RegisterNewDogu() to complete new
 // dogu installations.
 func (c *CesDoguRegistrator) RegisterDoguVersion(dogu *core.Dogu) error {
 	enabled, err := c.doguRegistry.IsEnabled(dogu.GetSimpleName())
@@ -116,23 +116,22 @@ func (c *CesDoguRegistrator) addDoguToRegistry(dogu *core.Dogu) error {
 	return nil
 }
 
-// RegisterNewKeys creates a new key pair and registers it with the dogu in the registry. Any pre-existing keys will
+// registerNewKeys creates a new key pair and registers it with the dogu in the registry. Any pre-existing keys will
 // then no longer work.
 func (c *CesDoguRegistrator) registerNewKeys(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
-	const sharedErrMsg = "failed to register keys"
 	keyPair, err := c.createKeypair()
 	if err != nil {
-		return fmt.Errorf("%s: failed to create keypair: %w", sharedErrMsg, err)
+		return fmt.Errorf("failed to create keypair: %w", err)
 	}
 
 	err = c.writePublicKey(keyPair.Public(), dogu)
 	if err != nil {
-		return fmt.Errorf("%s: failed to write public key: %w", sharedErrMsg, err)
+		return fmt.Errorf("failed to write public key: %w", err)
 	}
 
 	err = c.writePrivateKey(ctx, keyPair.Private(), doguResource)
 	if err != nil {
-		return fmt.Errorf("%s: failed to write private key: %w", sharedErrMsg, err)
+		return fmt.Errorf("failed to write private key: %w", err)
 	}
 
 	return nil

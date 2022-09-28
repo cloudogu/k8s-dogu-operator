@@ -185,16 +185,19 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
-		yamlResult := make(map[string]string, 0)
+
+		yamlResult := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
 		managerWithMocks.fileExtractorMock.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
+		managerWithMocks.applierMock.On("ApplyWithOwner", mock.Anything, "", ldapCr).Return(nil)
 		managerWithMocks.resourceUpserter.On("ApplyDoguResource", ctx, ldapCr, ldapDogu, imageConfig, mock.Anything).Once().Return(nil)
 
 		managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
 		managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		managerWithMocks.recorder.On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
+		managerWithMocks.recorder.On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml")
 		managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 
 		// when

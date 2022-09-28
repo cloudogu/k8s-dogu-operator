@@ -197,7 +197,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock, eventRecorder)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,

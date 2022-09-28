@@ -61,7 +61,15 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	doguChecker := health.NewDoguChecker(client, df)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(client, imageRegistry, collectApplier, fileExtractor, serviceAccountCreator, cesRegistry)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(
+		client,
+		imageRegistry,
+		collectApplier,
+		fileExtractor,
+		serviceAccountCreator,
+		cesRegistry,
+		eventRecorder,
+	)
 
 	return &doguUpgradeManager{
 		client:              client,
@@ -101,14 +109,12 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	dum.normalEvent(doguResource, "Checking premises...")
 	err = dum.premisesChecker.Check(ctx, doguResource, fromDogu, toDogu)
 	if err != nil {
-		dum.errorEventf(doguResource, ErrorOnFailedPremisesUpgradeEventReason, "Checking premises failed: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed a premise check: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 
 	dum.normalEventf(doguResource, "Executing upgrade from %s to %s...", fromDogu.Version, toDogu.Version)
 	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, toDogu)
 	if err != nil {
-		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error during upgrade: %s", err)
 		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
@@ -121,8 +127,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	if developmentDoguMap != nil {
 		err = developmentDoguMap.DeleteFromCluster(ctx, dum.client)
 		if err != nil {
-			// an error during deleting the developmentDoguMap is not critical so we change the dogu state as installed earlier
-			dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error during upgrade: %s", err)
+			// an error during deleting the developmentDoguMap is not critical, so we change the dogu state as installed earlier
 			return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 		}
 	}
@@ -133,13 +138,11 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
 	fromDogu, err := dum.localDoguFetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
-		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting installed dogu for upgrade: %s", err)
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
 	}
 
 	toDogu, developmentDoguMap, err := dum.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
-		dum.errorEventf(doguResource, ErrorOnFailedUpgradeEventReason, "Error getting remote dogu for upgrade: %s", err)
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
 	}
 
@@ -147,13 +150,9 @@ func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResou
 }
 
 func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv1.Dogu, msg string) {
-	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, msg)
+	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, upgrade.UpgradeEventReason, msg)
 }
 
 func (dum *doguUpgradeManager) normalEventf(doguResource *k8sv1.Dogu, msg string, msgArg ...interface{}) {
-	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, UpgradeEventReason, msg, msgArg...)
-}
-
-func (dum *doguUpgradeManager) errorEventf(doguResource *k8sv1.Dogu, reason, msg string, err error) {
-	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, reason, msg, err.Error())
+	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, upgrade.UpgradeEventReason, msg, msgArg...)
 }

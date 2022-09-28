@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -83,7 +84,7 @@ func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) err
 
 // Upgrade upgrades a dogu resource.
 func (m *DoguManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, UpgradeEventReason, "Starting upgrade...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, upgrade.UpgradeEventReason, "Starting upgrade...")
 	return m.upgradeManager.Upgrade(ctx, doguResource)
 }
 

@@ -2,7 +2,6 @@ package upgrade
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -37,7 +36,7 @@ func Test_checkDoguIdentity(t *testing.T) {
 		// then
 		require.NoError(t, err)
 	})
-	t.Run("should fail for different dogu namespaces", func(t *testing.T) {
+	t.Run("should fail for different dogu names", func(t *testing.T) {
 		localDogu := readTestDataLdapDogu(t)
 		remoteDogu := readTestDataLdapDogu(t)
 		remoteDogu.Name = remoteDogu.GetNamespace() + "/test"
@@ -48,7 +47,7 @@ func Test_checkDoguIdentity(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, "dogus must have the same name (ldap=test)", err.Error())
 	})
-	t.Run("should fail for different dogu names", func(t *testing.T) {
+	t.Run("should fail for different dogu namespaces", func(t *testing.T) {
 		localDogu := readTestDataLdapDogu(t)
 		remoteDogu := readTestDataLdapDogu(t)
 		remoteDogu.Name = "different-ns/" + remoteDogu.GetSimpleName()
@@ -89,12 +88,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Name = "somethingdifferent"
 
-		mockedChecker := new(premiseMock)
-		mockedChecker.On("CheckWithResource", fromDoguResource).Return(nil)
-		mockedChecker.On("ValidateDependencies", fromDogu).Return(nil)
-		mockedChecker.On("CheckDependenciesRecursive", fromDogu, fromDoguResource.Namespace).Return(nil)
-
-		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
+		sut := NewPremisesChecker(nil, nil, nil)
 
 		// when
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
@@ -105,7 +99,6 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// there is no assert.IsNoType() assertion so we test it by negative type assertion
 		_, ok := err.(*requeueablePremisesError)
 		assert.False(t, ok)
-		mockedChecker.AssertExpectations(t)
 	})
 	t.Run("should fail when dependency validator fails", func(t *testing.T) {
 		fromDoguResource := readTestDataRedmineCr(t)
@@ -113,7 +106,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		toDogu := readTestDataDogu(t, redmineBytes)
 
 		mockedChecker := new(premiseMock)
-		mockedChecker.On("CheckWithResource", fromDoguResource).Return(errors.New("CheckWithResource"))
+		mockedChecker.On("CheckWithResource", fromDoguResource).Return(assert.AnError)
 
 		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
 
@@ -121,8 +114,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
 
 		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "CheckWithResource")
+		require.ErrorIs(t, err, assert.AnError)
 		assert.IsType(t, &requeueablePremisesError{}, err)
 		// prove that the above negative type assertion works by positive type assertion
 		_, ok := err.(*requeueablePremisesError)
@@ -136,7 +128,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		mockedChecker := new(premiseMock)
 		mockedChecker.On("CheckWithResource", fromDoguResource).Return(nil)
-		mockedChecker.On("ValidateDependencies", fromDogu).Return(errors.New("ValidateDependencies"))
+		mockedChecker.On("ValidateDependencies", fromDogu).Return(assert.AnError)
 
 		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
 
@@ -144,8 +136,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
 
 		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "ValidateDependencies")
+		require.ErrorIs(t, err, assert.AnError)
 		assert.IsType(t, &requeueablePremisesError{}, err)
 		mockedChecker.AssertExpectations(t)
 	})
@@ -157,7 +148,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		mockedChecker := new(premiseMock)
 		mockedChecker.On("CheckWithResource", fromDoguResource).Return(nil)
 		mockedChecker.On("ValidateDependencies", fromDogu).Return(nil)
-		mockedChecker.On("CheckDependenciesRecursive", fromDogu, fromDoguResource.Namespace).Return(errors.New("CheckDependenciesRecursive"))
+		mockedChecker.On("CheckDependenciesRecursive", fromDogu, fromDoguResource.Namespace).Return(assert.AnError)
 
 		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
 
@@ -165,8 +156,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
 
 		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "CheckDependenciesRecursive")
+		require.ErrorIs(t, err, assert.AnError)
 		assert.IsType(t, &requeueablePremisesError{}, err)
 		mockedChecker.AssertExpectations(t)
 	})

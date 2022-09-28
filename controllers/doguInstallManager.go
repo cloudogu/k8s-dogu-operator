@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
@@ -165,6 +166,9 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
 	}
 
+	if len(customK8sResources) > 0 {
+		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Applying/Updating custom dogu resources to the cluster: [%s]", upgrade.GetMapKeysAsString(customK8sResources))
+	}
 	customDeployment, err := m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
 	if err != nil {
 		return err

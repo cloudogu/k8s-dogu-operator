@@ -3,6 +3,9 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -15,6 +18,11 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	UpgradeEventReason              = "Upgrading"
+	ErrorOnFailedUpgradeEventReason = "ErrUpgrade"
 )
 
 type imageRegistry interface {
@@ -55,10 +63,19 @@ type upgradeExecutor struct {
 	serviceAccountCreator serviceAccountCreator
 	doguRegistrator       doguRegistrator
 	resourceUpserter      resourceUpserter
+	eventRecorder         record.EventRecorder
 }
 
-func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, collectApplier collectApplier, fileExtractor fileExtractor, serviceAccountCreator serviceAccountCreator, registry registry.Registry) *upgradeExecutor {
-
+// NewUpgradeExecutor creates a new upgrade executor.
+func NewUpgradeExecutor(
+	client client.Client,
+	imageRegistry imageRegistry,
+	collectApplier collectApplier,
+	fileExtractor fileExtractor,
+	serviceAccountCreator serviceAccountCreator,
+	registry registry.Registry,
+	eventRecorder record.EventRecorder,
+) *upgradeExecutor {
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, registry, nil)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
 	upserter := resource.NewUpserter(client, limitPatcher)
@@ -71,10 +88,13 @@ func NewUpgradeExecutor(client client.Client, imageRegistry imageRegistry, colle
 		serviceAccountCreator: serviceAccountCreator,
 		doguRegistrator:       doguRegistrator,
 		resourceUpserter:      upserter,
+		eventRecorder:         eventRecorder,
 	}
 }
 
+// Upgrade executes all necessary steps to update a dogu to a new version.
 func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
+	ue.normalEventf(toDoguResource, "Registering upgraded version %s in local dogu registry...", toDogu.Version)
 	err := registerUpgradedDoguVersion(ue.doguRegistrator, toDogu)
 	if err != nil {
 		return err
@@ -85,6 +105,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
+	ue.normalEventf(toDoguResource, "Pulling new image %s:%s...", toDogu.Image, toDogu.Version)
 	imageConfigFile, err := pullUpgradeImage(ctx, ue.imageRegistry, toDogu)
 	if err != nil {
 		return err
@@ -96,11 +117,15 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
+	if len(customK8sResources) > 0 {
+		ue.normalEventf(toDoguResource, "Applying/Updating custom dogu resources to the cluster: [%s]", GetMapKeysAsString(customK8sResources))
+	}
 	customDeployment, err := applyCustomK8sResources(ctx, ue.collectApplier, toDoguResource, customK8sResources)
 	if err != nil {
 		return err
 	}
 
+	ue.normalEventf(toDoguResource, "Upgrading resources for dogu in the cluster...")
 	err = updateDoguResources(ctx, ue.resourceUpserter, toDoguResource, toDogu, imageConfigFile, customDeployment)
 	if err != nil {
 		return err
@@ -162,4 +187,19 @@ func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguR
 	}
 
 	return nil
+}
+
+func (ue *upgradeExecutor) normalEventf(doguResource *k8sv1.Dogu, msg string, args ...interface{}) {
+	ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, UpgradeEventReason, msg, args...)
+}
+
+// GetMapKeysAsString returns the key of a map as a string in form: "key1, key2, key3".
+func GetMapKeysAsString(input map[string]string) string {
+	output := ""
+
+	for key := range input {
+		output = fmt.Sprintf("%s, %s", output, key)
+	}
+
+	return strings.TrimLeft(output, ", ")
 }

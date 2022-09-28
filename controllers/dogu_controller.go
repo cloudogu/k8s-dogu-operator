@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -30,11 +31,6 @@ const operatorEventReason = "OperationThresholding"
 const (
 	InstallEventReason        = "Installation"
 	ErrorOnInstallEventReason = "ErrInstallation"
-)
-const (
-	UpgradeEventReason                      = "Upgrading"
-	ErrorOnFailedPremisesUpgradeEventReason = "ErrUpgradePremises"
-	ErrorOnFailedUpgradeEventReason         = "ErrUpgrade"
 )
 const (
 	DeinstallEventReason      = "Deinstallation"
@@ -242,9 +238,9 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 
 	if upgradeError != nil {
 		printError := strings.Replace(upgradeError.Error(), "\n", "", -1)
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnFailedUpgradeEventReason, "Dogu upgrade failed. Reason: %s.", printError)
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, upgrade.ErrorOnFailedUpgradeEventReason, "Dogu upgrade failed. Reason: %s.", printError)
 	} else {
-		r.recorder.Event(doguResource, v1.EventTypeNormal, UpgradeEventReason, "Dogu upgrade successful.")
+		r.recorder.Event(doguResource, v1.EventTypeNormal, upgrade.UpgradeEventReason, "Dogu upgrade successful.")
 	}
 
 	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, upgradeError, func(dogu *k8sv1.Dogu) {

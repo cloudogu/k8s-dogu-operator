@@ -87,7 +87,7 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.NotNil(t, doguManager)
-		// mock.AssertExpectationsForObjects(t, cesRegistry, doguRegistry)
+		mock.AssertExpectationsForObjects(t, cesRegistry, doguRegistry)
 	})
 
 	t.Run("fail when creating client", func(t *testing.T) {

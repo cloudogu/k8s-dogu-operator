@@ -18,51 +18,50 @@ type upgradeManager interface {
 	// Upgrade upgrades a dogu resource.
 	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
+
 type deleteManager interface {
 	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
 type fileExtractor interface {
-	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings
+	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
 	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (map[string]string, error)
 }
 
-// doguSecretHandler is used to write potential secret from the setup.json registryConfigEncrypted
 type doguSecretHandler interface {
+	// WriteDoguSecretsToRegistry is used to write potential secret from the setup.json registryConfigEncrypted to the
+	// respective dogu configurations.
 	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
-// imageRegistry is used to pull container images
 type imageRegistry interface {
+	// PullImageConfig is used to pull the given container image.
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
 }
 
-// doguRegistrator is used to register dogus
 type doguRegistrator interface {
+	// RegisterNewDogu registers a new dogu in the local dogu registry.
 	RegisterNewDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) error
+	// RegisterDoguVersion registers a new version for an existing dogu in the dogu registry.
 	RegisterDoguVersion(dogu *cesappcore.Dogu) error
+	// UnregisterDogu removes a registration of a dogu from the local dogu registry.
 	UnregisterDogu(dogu string) error
 }
 
-// dependencyValidator is used to check if dogu dependencies are installed
 type dependencyValidator interface {
+	// ValidateDependencies is used to check if dogu dependencies are installed.
 	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-// serviceAccountCreator is used to create service accounts for a given dogu
 type serviceAccountCreator interface {
+	// CreateAll is used to create all necessary service accounts for the given dogu.
 	CreateAll(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
 }
 
-// serviceAccountRemover is used to remove service accounts for a given dogu
 type serviceAccountRemover interface {
+	// RemoveAll is used to remove all existing service accounts for the given dogu.
 	RemoveAll(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
-}
-
-// DoguSecretsHandler is used to write the encrypted secrets from the setup to the dogu config
-type DoguSecretsHandler interface {
-	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
 type collectApplier interface {
@@ -88,7 +87,7 @@ type resourceDoguFetcher interface {
 }
 
 type premisesChecker interface {
-	// Check checks if dogu premises are met before a dogu upgrade
+	// Check checks if dogu premises are met before a dogu upgrade.
 	Check(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
 }
 

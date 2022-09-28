@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"context"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -35,9 +36,10 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		doguRegistry := new(regmock.DoguRegistry)
 		mockRegistry := new(regmock.Registry)
 		mockRegistry.On("DoguRegistry").Return(doguRegistry, nil)
+		eventRecorder := mocks2.NewEventRecorder(t)
 
 		// when
-		actual := NewUpgradeExecutor(myClient, imageRegMock, applier, fileEx, saCreator, mockRegistry)
+		actual := NewUpgradeExecutor(myClient, imageRegMock, applier, fileEx, saCreator, mockRegistry, eventRecorder)
 
 		// then
 		require.NotNil(t, actual)
@@ -48,7 +50,6 @@ func TestNewUpgradeExecutor(t *testing.T) {
 func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -74,14 +75,22 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		imageRegMock := mocks.NewImageRegistry(t)
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
+
+		customK8sResource := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
 		fileEx := mocks.NewFileExtractor(t)
-		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, nil)
+		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(customK8sResource, nil)
 		applier := mocks.NewCollectApplier(t)
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
-		var emptyCustomK8sResource map[string]string
-		applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(deployment, nil)
+		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(deployment, nil)
+
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(nil)
+
+		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Upgrading resources for dogu in the cluster...")
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml")
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -91,6 +100,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
+			eventRecorder:         eventRecorder,
 		}
 
 		// when
@@ -102,7 +112,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during resource upgrade", func(t *testing.T) {
 		// given
-		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -137,6 +146,11 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(assert.AnError)
 
+		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Upgrading resources for dogu in the cluster...")
+
 		sut := &upgradeExecutor{
 			client:                myClient,
 			imageRegistry:         imageRegMock,
@@ -145,6 +159,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
+			eventRecorder:         eventRecorder,
 		}
 
 		// when
@@ -157,7 +172,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during resource application", func(t *testing.T) {
 		// given
-		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -190,6 +204,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, assert.AnError)
 		upserter := mocks.NewResourceUpserter(t)
 
+		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
+
 		sut := &upgradeExecutor{
 			client:                myClient,
 			imageRegistry:         imageRegMock,
@@ -198,6 +216,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
+			eventRecorder:         eventRecorder,
 		}
 
 		// when
@@ -210,7 +229,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during K8s resource extraction", func(t *testing.T) {
 		// given
-		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -241,6 +259,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
+		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
+
 		sut := &upgradeExecutor{
 			client:                myClient,
 			imageRegistry:         imageRegMock,
@@ -249,6 +271,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
+			eventRecorder:         eventRecorder,
 		}
 
 		// when
@@ -261,7 +284,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during image pull", func(t *testing.T) {
 		// given
-		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -290,6 +312,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
+		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
+
 		sut := &upgradeExecutor{
 			client:                myClient,
 			imageRegistry:         imageRegMock,
@@ -298,6 +324,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
+			eventRecorder:         eventRecorder,
 		}
 
 		// when
@@ -310,7 +337,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during SA creation", func(t *testing.T) {
 		// given
-		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -338,6 +364,9 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
+		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+
 		sut := &upgradeExecutor{
 			client:                myClient,
 			imageRegistry:         imageRegMock,
@@ -346,6 +375,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
+			eventRecorder:         eventRecorder,
 		}
 
 		// when
@@ -358,7 +388,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail for etcd error", func(t *testing.T) {
 		// given
-		// fromDogu := readTestDataDogu(t, redmineBytes) // v4.2.3-10
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -385,6 +414,9 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
+		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+
 		sut := &upgradeExecutor{
 			client:                myClient,
 			imageRegistry:         imageRegMock,
@@ -393,6 +425,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
+			eventRecorder:         eventRecorder,
 		}
 
 		// when
@@ -633,4 +666,21 @@ func createTestDeployment(doguName string) *appsv1.Deployment {
 		},
 		Status: appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
 	}
+}
+
+func Test_getMapKeysAsString(t *testing.T) {
+	t.Run("should return beautiful list", func(t *testing.T) {
+		// given
+		inputList := map[string]string{
+			"test.json":    "bytes and bytes",
+			"another.json": "even more bytes and bytes",
+		}
+
+		// when
+		output := GetMapKeysAsString(inputList)
+
+		// then
+		assert.Contains(t, output, "test.json")
+		assert.Contains(t, output, "another.json")
+	})
 }
