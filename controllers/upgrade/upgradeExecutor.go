@@ -3,9 +3,10 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
-	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -100,6 +101,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
+	ue.normalEventf(toDoguResource, "Registering optional service accounts...")
 	err = registerNewServiceAccount(ctx, ue.serviceAccountCreator, toDoguResource, toDogu)
 	if err != nil {
 		return err
@@ -111,6 +113,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
+	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
 	var customK8sResources map[string]string
 	customK8sResources, err = extractCustomK8sResources(ctx, ue.fileExtractor, toDoguResource, toDogu)
 	if err != nil {
@@ -125,7 +128,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	ue.normalEventf(toDoguResource, "Upgrading resources for dogu in the cluster...")
+	ue.normalEventf(toDoguResource, "Updating dogu resources in the cluster...")
 	err = updateDoguResources(ctx, ue.resourceUpserter, toDoguResource, toDogu, imageConfigFile, customDeployment)
 	if err != nil {
 		return err

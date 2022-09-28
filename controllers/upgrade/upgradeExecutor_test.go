@@ -2,8 +2,9 @@ package upgrade
 
 import (
 	"context"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"testing"
+
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	regmock "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -48,6 +49,9 @@ func TestNewUpgradeExecutor(t *testing.T) {
 }
 
 func Test_upgradeExecutor_Upgrade(t *testing.T) {
+	typeNormal := corev1.EventTypeNormal
+	upgradeEvent := UpgradeEventReason
+
 	t.Run("should succeed", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
@@ -87,10 +91,13 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(nil)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Upgrading resources for dogu in the cluster...")
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml")
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once()
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -147,9 +154,12 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(assert.AnError)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Upgrading resources for dogu in the cluster...")
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once()
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -197,16 +207,20 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		imageRegMock := mocks.NewImageRegistry(t)
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
+		customK8sResource := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
 		fileEx := mocks.NewFileExtractor(t)
-		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, nil)
+		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(customK8sResource, nil)
 		applier := mocks.NewCollectApplier(t)
-		var emptyCustomK8sResource map[string]string
-		applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, assert.AnError)
+		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(nil, assert.AnError)
 		upserter := mocks.NewResourceUpserter(t)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml").Once()
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -260,8 +274,11 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once()
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -313,8 +330,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11")
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11").Once()
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -365,7 +384,9 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once()
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -415,7 +436,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
-		eventRecorder.On("Eventf", toDoguResource, corev1.EventTypeNormal, UpgradeEventReason, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
+		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
 
 		sut := &upgradeExecutor{
 			client:                myClient,
