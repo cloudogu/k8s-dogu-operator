@@ -41,9 +41,14 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	if err != nil {
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
-	applier, _, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
+	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
+	}
+	// we need this as we add dogu resource owner-references to every custom object.
+	err = k8sv1.AddToScheme(scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
 	}
 	collectApplier := resource.NewCollectApplier(applier)
 

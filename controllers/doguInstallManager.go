@@ -71,9 +71,14 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	upserter := resource.NewUpserter(client, limitPatcher)
 
 	fileExtract := newPodFileExtractor(client, restConfig, clientSet)
-	applier, _, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
+	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
+	}
+	// we need this as we add dogu resource owner-references to every custom object.
+	err = k8sv1.AddToScheme(scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
 	}
 
 	doguRegistrator := reg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator)
@@ -167,7 +172,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	if len(customK8sResources) > 0 {
-		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Applying/Updating custom dogu resources to the cluster: [%s]", upgrade.GetMapKeysAsString(customK8sResources))
+		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", upgrade.GetMapKeysAsString(customK8sResources))
 	}
 	customDeployment, err := m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
 	if err != nil {
