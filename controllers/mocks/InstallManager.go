@@ -34,8 +34,8 @@ type newInstallManagerT interface {
 	Cleanup(func())
 }
 
-// newInstallManager creates a new instance of InstallManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newInstallManager(t newInstallManagerT) *InstallManager {
+// NewInstallManager creates a new instance of InstallManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewInstallManager(t newInstallManagerT) *InstallManager {
 	mock := &InstallManager{}
 	mock.Mock.Test(t)
 

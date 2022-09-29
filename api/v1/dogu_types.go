@@ -1,27 +1,14 @@
-/*
-Copyright 2022.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package v1
 
 import (
 	"context"
 	"fmt"
+	"time"
+
+	v1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -42,6 +29,19 @@ type DoguSpec struct {
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
 	Version string `json:"version,omitempty"`
+	// UpgradeConfig contains options to manipulate the upgrade process.
+	UpgradeConfig UpgradeConfig `json:"upgradeConfig,omitempty"`
+}
+
+// UpgradeConfig contains configuration hints for the dogu operator regarding aspects during the upgrade of dogus.
+type UpgradeConfig struct {
+	// AllowNamespaceSwitch lets a dogu switch its dogu namespace during an upgrade. The dogu must be technically the
+	// same dogu which did reside in a different namespace. The remote dogu's version must be equal to or greater than
+	// the version of the local dogu.
+	AllowNamespaceSwitch bool `json:"allowNamespaceSwitch,omitempty"`
+	// ForceUpgrade allows to install the same or even lower dogu version than already is installed. Please note, that
+	// possible data loss may occur by inappropriate dogu downgrading.
+	ForceUpgrade bool `json:"forceUpgrade,omitempty"`
 }
 
 // DoguStatus defines the observed state of a Dogu
@@ -91,12 +91,13 @@ func (ds *DoguStatus) ClearMessages() {
 const (
 	DoguStatusNotInstalled = ""
 	DoguStatusInstalling   = "installing"
+	DoguStatusUpgrading    = "upgrading"
 	DoguStatusDeleting     = "deleting"
 	DoguStatusInstalled    = "installed"
 )
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // Dogu is the Schema for the dogus API
 type Dogu struct {
@@ -108,26 +109,26 @@ type Dogu struct {
 }
 
 // GetDataVolumeName returns the data volume name for the dogu resource
-func (d Dogu) GetDataVolumeName() string {
+func (d *Dogu) GetDataVolumeName() string {
 	return d.Name + "-data"
 }
 
 // GetPrivateVolumeName returns the private volume name for the dogu resource
-func (d Dogu) GetPrivateVolumeName() string {
+func (d *Dogu) GetPrivateVolumeName() string {
 	return d.Name + "-private"
 }
 
 // GetObjectKey returns the object key with the actual name and namespace from the dogu resource
-func (d Dogu) GetObjectKey() *client.ObjectKey {
-	return &client.ObjectKey{
+func (d *Dogu) GetObjectKey() client.ObjectKey {
+	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name,
 	}
 }
 
-// GetDescriptorObjectKey returns the object key for the custom dogu descriptor with the actual name and namespace from
-// the dogu resource
-func (d Dogu) GetDescriptorObjectKey() client.ObjectKey {
+// GetDevelopmentDoguMapKey returns the object key for the custom dogu descriptor with the actual name and namespace
+// from the dogu resource.
+func (d *Dogu) GetDevelopmentDoguMapKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name + "-descriptor",
@@ -135,7 +136,7 @@ func (d Dogu) GetDescriptorObjectKey() client.ObjectKey {
 }
 
 // GetSecretObjectKey returns the object key for the config map containing values that should be encrypted for the dogu
-func (d Dogu) GetSecretObjectKey() client.ObjectKey {
+func (d *Dogu) GetSecretObjectKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name + "-secrets",
@@ -143,7 +144,7 @@ func (d Dogu) GetSecretObjectKey() client.ObjectKey {
 }
 
 // GetObjectMeta return the object meta with the actual name and namespace from the dogu resource
-func (d Dogu) GetObjectMeta() *metav1.ObjectMeta {
+func (d *Dogu) GetObjectMeta() *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
 		Namespace: d.Namespace,
 		Name:      d.Name,
@@ -160,7 +161,13 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	return nil
 }
 
-//+kubebuilder:object:root=true
+// ChangeState changes the state of this dogu resource and applies it to the cluster state.
+func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
+	d.Status.Status = newStatus
+	return client.Status().Update(ctx, d)
+}
+
+// +kubebuilder:object:root=true
 
 // DoguList contains a list of Dogu
 type DoguList struct {
@@ -171,4 +178,24 @@ type DoguList struct {
 
 func init() {
 	SchemeBuilder.Register(&Dogu{}, &DoguList{})
+}
+
+// DevelopmentDoguMap is a config map that is especially used to when developing a dogu. The map contains a custom
+// dogu.json in the data filed with the "dogu.json" identifier.
+type DevelopmentDoguMap v1.ConfigMap
+
+// DeleteFromCluster deletes this development config map from the cluster.
+func (ddm *DevelopmentDoguMap) DeleteFromCluster(ctx context.Context, client client.Client) error {
+	err := client.Delete(ctx, ddm.ToConfigMap())
+	if err != nil {
+		return fmt.Errorf("failed to delete custom dogu development map %s: %w", ddm.Name, err)
+	}
+
+	return nil
+}
+
+// ToConfigMap returns the development dogu map as config map pointer.
+func (ddm *DevelopmentDoguMap) ToConfigMap() *v1.ConfigMap {
+	configMap := v1.ConfigMap(*ddm)
+	return &configMap
 }

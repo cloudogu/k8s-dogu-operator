@@ -1,0 +1,18 @@
+{
+  "Name": "official/optional1",
+  "Version": "1.2.3-4",
+  "DisplayName": "Optional Dep 1",
+  "Image": "registry.cloudogu.com/official/optional1",
+  "Dependencies": [
+    {
+      "type": "dogu",
+      "name": "mandatory1"
+    }
+  ],
+  "OptionalDependencies": [
+    {
+      "type": "dogu",
+      "name": "optional2"
+    }
+  ]
+}

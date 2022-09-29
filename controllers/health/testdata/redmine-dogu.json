@@ -1,0 +1,32 @@
+{
+  "Name": "official/redmine",
+  "Version": "4.2.3-10",
+  "DisplayName": "Redmine",
+  "Description": "Redmine is a flexible project management web application",
+  "Image": "registry.cloudogu.com/official/redmine",
+  "Dependencies": [
+    {
+      "type": "dogu",
+      "name": "postgresql"
+    },
+    {
+      "type": "dogu",
+      "name": "mandatory1"
+    }
+  ],
+  "OptionalDependencies": [
+    {
+      "type": "dogu",
+      "name": "optional1"
+    }
+  ],
+  "HealthChecks": [
+    {
+      "Type": "tcp",
+      "Port": 3000
+    },
+    {
+      "Type": "state"
+    }
+  ]
+}

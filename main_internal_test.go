@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
+	"testing"
+
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
@@ -18,13 +21,12 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"os"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"testing"
 )
 
 type mockDefinition struct {
@@ -68,6 +70,13 @@ func Test_startDoguOperator(t *testing.T) {
 		return &rest.Config{}
 	}
 
+	// override default controller method to retrieve a kube config
+	oldGetConfigDelegate := ctrl.GetConfig
+	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+	ctrl.GetConfig = func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	}
+
 	// override default controller method to signal the setup handler
 	oldHandler := ctrl.SetupSignalHandler
 	defer func() { ctrl.SetupSignalHandler = oldHandler }()
@@ -81,28 +90,29 @@ func Test_startDoguOperator(t *testing.T) {
 
 	oldDoguManager := controllers.NewManager
 	defer func() { controllers.NewManager = oldDoguManager }()
-	controllers.NewManager = func(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry) (*controllers.DoguManager, error) {
+	controllers.NewManager = func(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*controllers.DoguManager, error) {
 		return &controllers.DoguManager{}, nil
 	}
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "dogu.cloudogu.com",
+		Group:   "k8s.cloudogu.com",
 		Version: "v1",
 		Kind:    "dogu",
 	}, &v1.Dogu{})
-	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	myClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	defaultMockDefinitions := map[string]mockDefinition{
 		"GetScheme":            {ReturnValue: scheme},
-		"GetClient":            {ReturnValue: client},
+		"GetClient":            {ReturnValue: myClient},
 		"Add":                  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 		"AddHealthzCheck":      {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
 		"AddReadyzCheck":       {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
 		"Start":                {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 		"GetControllerOptions": {ReturnValue: v1alpha1.ControllerConfigurationSpec{}},
 		"SetFields":            {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
+		"GetEventRecorderFor":  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 	}
 
 	t.Run("Error on missing namespace environment variable", func(t *testing.T) {

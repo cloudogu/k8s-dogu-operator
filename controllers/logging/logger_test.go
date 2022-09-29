@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging/mocks"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -23,7 +24,7 @@ func TestConfigureLogger(t *testing.T) {
 
 	t.Run("create logger with no log level set in env -> should use default", func(t *testing.T) {
 		// given
-		_ = os.Unsetenv(namespaceLogLevel)
+		_ = os.Unsetenv(logLevelEnvVar)
 
 		// when
 		err := ConfigureLogger()
@@ -31,10 +32,21 @@ func TestConfigureLogger(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 	})
+	t.Run("should not fail with empty string log level and return error level", func(t *testing.T) {
+		// given
+		t.Setenv(logLevelEnvVar, "")
+
+		// when
+		err := ConfigureLogger()
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, logrus.ErrorLevel, CurrentLogLevel)
+	})
 
 	t.Run("create logger with log level INFO", func(t *testing.T) {
 		// given
-		_ = os.Setenv(namespaceLogLevel, "INFO")
+		_ = os.Setenv(logLevelEnvVar, "INFO")
 
 		// when
 		err := ConfigureLogger()
@@ -46,7 +58,7 @@ func TestConfigureLogger(t *testing.T) {
 
 	t.Run("create logger with invalid log level TEST_LEVEL", func(t *testing.T) {
 		// given
-		_ = os.Setenv(namespaceLogLevel, "TEST_LEVEL")
+		_ = os.Setenv(logLevelEnvVar, "TEST_LEVEL")
 
 		// when
 		err := ConfigureLogger()

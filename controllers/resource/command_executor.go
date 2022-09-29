@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,29 +14,22 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-	"net/url"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// ErrorResourceState is returned when a specific resource (pod/dogu) is not ready yet.
-type ErrorResourceState struct {
+// ResourceStateError is returned when a specific resource (pod/dogu) is not ready yet.
+type ResourceStateError struct {
 	sourceError error
 	resource    metav1.Object
 }
 
 // Report returns the error in string representation
-func (e *ErrorResourceState) Error() string {
+func (e *ResourceStateError) Error() string {
 	return fmt.Sprintf("resource is not ready: %v, source error: %s", e.resource.GetName(), e.sourceError.Error())
 }
 
-// Report constructs a simple human readable message
-func (e *ErrorResourceState) Report() string {
-	return fmt.Sprintf("resource is not ready: %v", e.resource.GetName())
-}
-
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
-func (e *ErrorResourceState) Requeue() bool {
+func (e *ResourceStateError) Requeue() bool {
 	return true
 }
 
@@ -71,7 +67,7 @@ func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 	}
 
 	if !ce.allContainersReady(pod) {
-		return nil, &ErrorResourceState{
+		return nil, &ResourceStateError{
 			sourceError: fmt.Errorf("can't execute command in pod with status %v", pod.Status),
 			resource:    pod,
 		}
@@ -80,7 +76,7 @@ func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 	req := ce.getCreateExecRequest(pod, namespace, command, params)
 	exec, err := ce.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
-		return nil, &ErrorResourceState{
+		return nil, &ResourceStateError{
 			sourceError: fmt.Errorf("failed to create new spdy executor: %w", err),
 			resource:    pod,
 		}
@@ -93,7 +89,7 @@ func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 		Tty:    true,
 	})
 	if err != nil {
-		return nil, &ErrorResourceState{
+		return nil, &ResourceStateError{
 			sourceError: err,
 			resource:    pod,
 		}

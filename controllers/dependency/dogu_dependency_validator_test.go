@@ -1,6 +1,7 @@
 package dependency_test
 
 import (
+	"context"
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
@@ -21,6 +22,8 @@ func TestNewDoguDependencyValidator(t *testing.T) {
 }
 
 func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("error on not parsable mandatory dependency operation", func(t *testing.T) {
 		// given
 		redmineDogu := &core.Dogu{
@@ -46,7 +49,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 
 		// when
-		err := validator.ValidateAllDependencies(dogu)
+		err := validator.ValidateAllDependencies(ctx, dogu)
 
 		// then
 		require.Error(t, err)
@@ -78,7 +81,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 
 		// when
-		err := validator.ValidateAllDependencies(dogu)
+		err := validator.ValidateAllDependencies(ctx, dogu)
 
 		// then
 		require.Error(t, err)
@@ -110,7 +113,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 
 		// when
-		err := validator.ValidateAllDependencies(dogu)
+		err := validator.ValidateAllDependencies(ctx, dogu)
 
 		// then
 		require.Error(t, err)
@@ -142,7 +145,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 
 		// when
-		err := validator.ValidateAllDependencies(dogu)
+		err := validator.ValidateAllDependencies(ctx, dogu)
 
 		// then
 		require.NoError(t, err)

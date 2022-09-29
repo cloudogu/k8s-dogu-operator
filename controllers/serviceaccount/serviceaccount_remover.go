@@ -5,21 +5,25 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/hashicorp/go-multierror"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Remover removes a dogu's service account.
 type remover struct {
-	registry registry.Registry
-	executor commandExecutor
+	registry    registry.Registry
+	doguFetcher localDoguFetcher
+	executor    commandExecutor
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
 func NewRemover(registry registry.Registry, commandExecutor commandExecutor) *remover {
+	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &remover{
-		registry: registry,
-		executor: commandExecutor,
+		registry:    registry,
+		doguFetcher: localFetcher,
+		executor:    commandExecutor,
 	}
 }
 
@@ -55,7 +59,7 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 			continue
 		}
 
-		saDogu, err := doguRegistry.Get(serviceAccount.Type)
+		saDogu, err := r.doguFetcher.FetchInstalled(serviceAccount.Type)
 		if err != nil {
 			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to get service account dogu.json: %w", err))
 			continue
