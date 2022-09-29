@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp-lib/core"
@@ -70,7 +71,7 @@ func (ll *libraryLogger) Errorf(format string, args ...interface{}) {
 
 func getLogLevelFromEnv() (logrus.Level, error) {
 	logLevel, found := os.LookupEnv(logLevelEnvVar)
-	if !found {
+	if !found || strings.TrimSpace(logLevel) == "" {
 		return logrus.ErrorLevel, nil
 	}
 

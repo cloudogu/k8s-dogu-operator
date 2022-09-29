@@ -28,7 +28,9 @@ import (
 )
 
 var (
-	scheme               = runtime.NewScheme()
+	scheme = runtime.NewScheme()
+	// set up the logger before the actual logger is instantiated
+	// the logger will be replaced later-on with a more sophisticated instance
 	setupLog             = ctrl.Log.WithName("setup")
 	metricsAddr          string
 	enableLeaderElection bool
@@ -80,6 +82,9 @@ func startDoguOperator() error {
 	if err != nil {
 		return fmt.Errorf("failed to configure manager: %w", err)
 	}
+
+	// print starting info to stderr; we don't use the logger here because by default the level must be ERROR
+	println("Starting manager...")
 
 	return startK8sManager(k8sManager)
 }

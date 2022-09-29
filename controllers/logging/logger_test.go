@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging/mocks"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,6 +31,17 @@ func TestConfigureLogger(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
+	})
+	t.Run("should not fail with empty string log level and return error level", func(t *testing.T) {
+		// given
+		t.Setenv(logLevelEnvVar, "")
+
+		// when
+		err := ConfigureLogger()
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, logrus.ErrorLevel, CurrentLogLevel)
 	})
 
 	t.Run("create logger with log level INFO", func(t *testing.T) {

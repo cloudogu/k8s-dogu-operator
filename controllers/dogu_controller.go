@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -12,6 +11,7 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
