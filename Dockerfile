@@ -21,12 +21,16 @@ COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 
-# Copy .git files as the build process builds the current commit id into the binary via ldflags
-COPY .git .git
+# Copy .git files as the build process builds the current commit id into the binary via ldflags.
+# We removed this entry as changes in the repository makes all cached layers invalid leading to rebuilding all layers.
+# TODO resolve COMMIT_ID
+#COPY .git .git
 
 # Copy build files
 COPY build build
 COPY Makefile Makefile
+
+RUN mkdir /tmp/dogu-registry-cache
 
 # Build
 RUN go mod vendor
@@ -41,6 +45,8 @@ LABEL maintainer="hello@cloudogu.com" \
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .
+COPY --from=builder --chown=65532:65532 /tmp/dogu-registry-cache /tmp/dogu-registry-cache
+
 # the linter has a problem with the valid colon-syntax
 # dockerfile_lint - ignore
 USER 65532:65532

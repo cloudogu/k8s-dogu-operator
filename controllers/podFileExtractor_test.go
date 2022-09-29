@@ -32,8 +32,8 @@ var testContext = context.TODO()
 var testExecPodKey = newObjectKey(testNamespace, testPodContainerName)
 
 func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
-	ldapCr := readTestDataLdapCr(t)
-	ldapDogu := readTestDataLdapDogu(t)
+	ldapCr := readDoguCr(t, ldapCrBytes)
+	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(getTestScheme()).
 		Build()
@@ -160,10 +160,10 @@ func Test_defaultPodFinder_find(t *testing.T) {
 }
 
 func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
-	ldapCr := readTestDataLdapCr(t)
+	ldapCr := readDoguCr(t, ldapCrBytes)
 	// simulate dogu in a non-default namespace
 	ldapCr.Namespace = testNamespace
-	ldapDogu := readTestDataLdapDogu(t)
+	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 
 	t.Run("should fail with non-existing exec pod", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().

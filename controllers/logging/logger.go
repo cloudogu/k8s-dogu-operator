@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/cesapp-lib/core"
@@ -12,7 +13,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const namespaceLogLevel = "LOG_LEVEL"
+const logLevelEnvVar = "LOG_LEVEL"
 
 const (
 	errorLevel int = iota
@@ -20,6 +21,8 @@ const (
 	infoLevel
 	debugLevel
 )
+
+var CurrentLogLevel = logrus.ErrorLevel
 
 type libraryLogger struct {
 	logger logr.LogSink
@@ -67,14 +70,14 @@ func (ll *libraryLogger) Errorf(format string, args ...interface{}) {
 }
 
 func getLogLevelFromEnv() (logrus.Level, error) {
-	logLevel, found := os.LookupEnv(namespaceLogLevel)
-	if !found {
+	logLevel, found := os.LookupEnv(logLevelEnvVar)
+	if !found || strings.TrimSpace(logLevel) == "" {
 		return logrus.ErrorLevel, nil
 	}
 
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
-		return logrus.ErrorLevel, fmt.Errorf("value of log environment variable [%s] is not a valid log level: %w", namespaceLogLevel, err)
+		return logrus.ErrorLevel, fmt.Errorf("value of log environment variable [%s] is not a valid log level: %w", logLevelEnvVar, err)
 	}
 
 	return level, nil
@@ -90,6 +93,8 @@ func ConfigureLogger() error {
 	logrusLog := logrus.New()
 	logrusLog.SetFormatter(&logrus.TextFormatter{})
 	logrusLog.SetLevel(level)
+
+	CurrentLogLevel = level
 
 	// convert logrus logger to logr logger
 	logrusLogrLogger := logrusr.New(logrusLog)

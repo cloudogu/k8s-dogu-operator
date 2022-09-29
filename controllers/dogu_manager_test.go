@@ -2,6 +2,9 @@ package controllers
 
 import (
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"testing"
+
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -14,61 +17,60 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 func TestDoguManager_Delete(t *testing.T) {
 	// given
 	inputDogu := &k8sv1.Dogu{}
 	inputContext := context.Background()
-	deleteManager := &mocks.DeleteManager{}
+	deleteManager := mocks.NewDeleteManager(t)
 	deleteManager.On("Delete", inputContext, inputDogu).Return(nil)
 	eventRecorder := &mocks.EventRecorder{}
 	m := DoguManager{deleteManager: deleteManager, recorder: eventRecorder}
 
-	eventRecorder.On("Eventf", mock.Anything, corev1.EventTypeNormal, "Deinstallation", "Starting deinstallation of the %s dogu.", "")
+	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, "Deinstallation", "Starting deinstallation...")
 
 	// when
 	err := m.Delete(inputContext, inputDogu)
 
 	// then
 	assert.NoError(t, err)
-	mock.AssertExpectationsForObjects(t, deleteManager)
 }
 
 func TestDoguManager_Install(t *testing.T) {
 	// given
 	inputDogu := &k8sv1.Dogu{}
 	inputContext := context.Background()
-	installManager := &mocks.InstallManager{}
+	installManager := mocks.NewInstallManager(t)
 	installManager.On("Install", inputContext, inputDogu).Return(nil)
 	eventRecorder := &mocks.EventRecorder{}
 	m := DoguManager{installManager: installManager, recorder: eventRecorder}
 
-	eventRecorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
+	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
 
 	// when
 	err := m.Install(inputContext, inputDogu)
 
 	// then
 	assert.NoError(t, err)
-	mock.AssertExpectationsForObjects(t, installManager)
 }
 
 func TestDoguManager_Upgrade(t *testing.T) {
-	// todo change to real test when upgrade is implemented.
 	// given
 	inputDogu := &k8sv1.Dogu{}
 	inputContext := context.Background()
+	upgradeManager := mocks.NewUpgradeManager(t)
+	upgradeManager.On("Upgrade", inputContext, inputDogu).Return(nil)
 	eventRecorder := &mocks.EventRecorder{}
-	m := DoguManager{recorder: eventRecorder}
+	m := DoguManager{upgradeManager: upgradeManager, recorder: eventRecorder}
+
+	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, upgrade.UpgradeEventReason, "Starting upgrade...")
 
 	// when
 	err := m.Upgrade(inputContext, inputDogu)
 
 	// then
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "currently not implemented")
+	assert.NoError(t, err)
 }
 
 func TestNewDoguManager(t *testing.T) {

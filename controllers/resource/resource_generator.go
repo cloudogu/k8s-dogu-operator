@@ -2,6 +2,11 @@ package resource
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
@@ -15,8 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -27,16 +30,16 @@ const (
 const doguPodNamespace = "POD_NAMESPACE"
 const doguPodName = "POD_NAME"
 
-// ResourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
+// resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
-type ResourceGenerator struct {
+type resourceGenerator struct {
 	scheme           *runtime.Scheme
 	doguLimitPatcher limitPatcher
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher limitPatcher) *ResourceGenerator {
-	return &ResourceGenerator{scheme: scheme, doguLimitPatcher: limitPatcher}
+func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher limitPatcher) *resourceGenerator {
+	return &resourceGenerator{scheme: scheme, doguLimitPatcher: limitPatcher}
 }
 
 type limitPatcher interface {
@@ -46,10 +49,10 @@ type limitPatcher interface {
 	PatchDeployment(deployment *appsv1.Deployment, limits limit.DoguLimits) error
 }
 
-// GetDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
-func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
-	volumes := getVolumesForDogu(doguResource, dogu)
-	volumeMounts := getVolumeMountsForDogu(doguResource, dogu)
+// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
+func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
+	volumes := createVolumesForDogu(doguResource, dogu)
+	volumeMounts := createVolumeMountsForDogu(doguResource, dogu)
 	startupProbe := createStartupProbe(dogu)
 	livenessProbe := createLivenessProbe(dogu)
 
@@ -66,38 +69,8 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 
 	labels := map[string]string{"dogu": doguResource.Name}
 	deployment.ObjectMeta.Labels = labels
-	deployment.Spec = appsv1.DeploymentSpec{
-		Selector: &metav1.LabelSelector{MatchLabels: labels},
-		Strategy: appsv1.DeploymentStrategy{
-			Type: "Recreate",
-		},
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: labels,
-			},
-			Spec: corev1.PodSpec{
-				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
-				Hostname:         doguResource.Name,
-				Volumes:          volumes,
-				Containers: []corev1.Container{{
-					LivenessProbe:   livenessProbe,
-					StartupProbe:    startupProbe,
-					Name:            doguResource.Name,
-					Image:           dogu.Image + ":" + dogu.Version,
-					ImagePullPolicy: pullPolicy,
-					VolumeMounts:    volumeMounts,
-					Env: []corev1.EnvVar{
-						{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
-						{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{
-								FieldPath: "metadata.name",
-							},
-						}},
-					},
-				}},
-			},
-		},
-	}
+
+	deployment.Spec = buildDeploymentSpec(doguResource, dogu, labels, volumes, livenessProbe, startupProbe, pullPolicy, volumeMounts)
 
 	fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
 
@@ -130,40 +103,98 @@ func (r *ResourceGenerator) GetDoguDeployment(doguResource *k8sv1.Dogu, dogu *co
 	return deployment, nil
 }
 
+func buildDeploymentSpec(
+	doguResource *k8sv1.Dogu,
+	dogu *core.Dogu,
+	labels map[string]string,
+	volumes []corev1.Volume,
+	livenessProbe *corev1.Probe,
+	startupProbe *corev1.Probe,
+	pullPolicy corev1.PullPolicy,
+	volumeMounts []corev1.VolumeMount,
+) appsv1.DeploymentSpec {
+	image := dogu.Image + ":" + dogu.Version
+
+	return appsv1.DeploymentSpec{
+		Selector: &metav1.LabelSelector{MatchLabels: labels},
+		Strategy: appsv1.DeploymentStrategy{
+			Type: "Recreate",
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: labels,
+			},
+			Spec: corev1.PodSpec{
+				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
+				Hostname:         doguResource.Name,
+				Volumes:          volumes,
+				Containers: []corev1.Container{{
+					LivenessProbe:   livenessProbe,
+					StartupProbe:    startupProbe,
+					Name:            doguResource.Name,
+					Image:           image,
+					ImagePullPolicy: pullPolicy,
+					VolumeMounts:    volumeMounts,
+					Env: []corev1.EnvVar{
+						{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
+						{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.name",
+							},
+						}},
+					},
+				}},
+			},
+		},
+	}
+}
+
 func applyValuesFromCustomDeployment(desiredDeployment *appsv1.Deployment, patchingDeployment *appsv1.Deployment) {
 	logger := ctrl.Log
 
-	if patchingDeployment != nil {
-		if patchingDeployment.Spec.Template.Spec.ServiceAccountName != "" {
-			logger.Info("Found service account in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
-			desiredDeployment.Spec.Template.Spec.ServiceAccountName = patchingDeployment.Spec.Template.Spec.ServiceAccountName
+	if patchingDeployment == nil {
+		return
+	}
+
+	if patchingDeployment.Spec.Template.Spec.ServiceAccountName != "" {
+		logger.Info("Found service account in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
+		desiredDeployment.Spec.Template.Spec.ServiceAccountName = patchingDeployment.Spec.Template.Spec.ServiceAccountName
+	}
+
+	updateCustomVolumes(desiredDeployment, patchingDeployment)
+	updateCustomVolumeMounts(desiredDeployment, patchingDeployment)
+}
+
+func updateCustomVolumeMounts(desiredDeployment *appsv1.Deployment, patchingDeployment *appsv1.Deployment) {
+	if patchingDeployment.Spec.Template.Spec.Volumes != nil && len(patchingDeployment.Spec.Template.Spec.Volumes) > 0 {
+		ctrl.Log.Info("Found custom volumes in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
+		if desiredDeployment.Spec.Template.Spec.Volumes == nil {
+			desiredDeployment.Spec.Template.Spec.Volumes = []corev1.Volume{}
 		}
 
-		for i, containerGenerated := range desiredDeployment.Spec.Template.Spec.Containers {
-			for _, containerProvided := range patchingDeployment.Spec.Template.Spec.Containers {
-				if containerGenerated.Name == containerProvided.Name {
-					if containerProvided.VolumeMounts != nil && len(containerProvided.VolumeMounts) > 0 {
-						logger.Info("Found custom volume mounts in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
-						if containerGenerated.VolumeMounts == nil {
-							containerGenerated.VolumeMounts = []corev1.VolumeMount{}
-						}
+		desiredDeployment.Spec.Template.Spec.Volumes = append(desiredDeployment.Spec.Template.Spec.Volumes, patchingDeployment.Spec.Template.Spec.Volumes...)
+	}
+}
 
-						containerGenerated.VolumeMounts = append(containerGenerated.VolumeMounts, containerProvided.VolumeMounts...)
-						desiredDeployment.Spec.Template.Spec.Containers[i].VolumeMounts = containerGenerated.VolumeMounts
-					}
+func updateCustomVolumes(desiredDeployment, patchingDeployment *appsv1.Deployment) {
+	for i, containerGenerated := range desiredDeployment.Spec.Template.Spec.Containers {
+		for _, containerProvided := range patchingDeployment.Spec.Template.Spec.Containers {
+			if isContainerToReceiveVolumeMounts(containerGenerated, containerProvided) {
+				log.Log.Info("Found custom volume mounts in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
+				if containerGenerated.VolumeMounts == nil {
+					containerGenerated.VolumeMounts = []corev1.VolumeMount{}
 				}
-			}
-		}
 
-		if patchingDeployment.Spec.Template.Spec.Volumes != nil && len(patchingDeployment.Spec.Template.Spec.Volumes) > 0 {
-			logger.Info("Found custom volumes in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
-			if desiredDeployment.Spec.Template.Spec.Volumes == nil {
-				desiredDeployment.Spec.Template.Spec.Volumes = []corev1.Volume{}
+				containerGenerated.VolumeMounts = append(containerGenerated.VolumeMounts, containerProvided.VolumeMounts...)
+				desiredDeployment.Spec.Template.Spec.Containers[i].VolumeMounts = containerGenerated.VolumeMounts
 			}
-
-			desiredDeployment.Spec.Template.Spec.Volumes = append(desiredDeployment.Spec.Template.Spec.Volumes, patchingDeployment.Spec.Template.Spec.Volumes...)
 		}
 	}
+}
+
+func isContainerToReceiveVolumeMounts(containerGenerated, containerProvided corev1.Container) bool {
+	return containerGenerated.Name == containerProvided.Name &&
+		containerProvided.VolumeMounts != nil && len(containerProvided.VolumeMounts) > 0
 }
 
 func createLivenessProbe(dogu *core.Dogu) *corev1.Probe {
@@ -200,7 +231,7 @@ func createStartupProbe(dogu *core.Dogu) *corev1.Probe {
 	return nil
 }
 
-func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
+func createVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
 	nodeMasterVolume := corev1.Volume{
 		Name: nodeMasterFile,
 		VolumeSource: corev1.VolumeSource{
@@ -242,7 +273,7 @@ func getVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volum
 	return volumes
 }
 
-func getVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	doguVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      nodeMasterFile,
@@ -270,9 +301,11 @@ func getVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.
 	return doguVolumeMounts
 }
 
-// GetDoguService creates a new instance of a service with the given dogu custom resource and container image.
-// The container image is used to extract the exposed ports
-func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
+// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
+// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
+// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
+// the service ports to the created service.
+func (r *resourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      doguResource.Name,
@@ -312,13 +345,16 @@ func (r *ResourceGenerator) GetDoguService(doguResource *k8sv1.Dogu, imageConfig
 	return service, nil
 }
 
-// GetDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
-func (r *ResourceGenerator) GetDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Service, error) {
-	exposedServices := []corev1.Service{}
+// CreateDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
+// The created service is rather meant for cluster-external access. The given dogu provides the service ports to the
+// created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
+// (see K8s-service-discovery).
+func (r *resourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*corev1.Service, error) {
+	exposedServices := make([]*corev1.Service, 0)
 
 	for _, exposedPort := range dogu.ExposedPorts {
 		ipSingleStackPolicy := corev1.IPFamilyPolicySingleStack
-		exposedService := corev1.Service{
+		exposedService := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-exposed-%d", doguResource.Name, exposedPort.Host),
 				Namespace: doguResource.Namespace,
@@ -338,7 +374,7 @@ func (r *ResourceGenerator) GetDoguExposedServices(doguResource *k8sv1.Dogu, dog
 			},
 		}
 
-		err := ctrl.SetControllerReference(doguResource, &exposedService, r.scheme)
+		err := ctrl.SetControllerReference(doguResource, exposedService, r.scheme)
 		if err != nil {
 			return nil, wrapControllerReferenceError(err)
 		}
@@ -349,8 +385,8 @@ func (r *ResourceGenerator) GetDoguExposedServices(doguResource *k8sv1.Dogu, dog
 	return exposedServices, nil
 }
 
-// GetDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu
-func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
+// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu
+func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	doguPvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      doguResource.Name,
@@ -376,8 +412,8 @@ func (r *ResourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.Persis
 	return doguPvc, nil
 }
 
-// GetDoguSecret generates a secret with a given data map for the dogu
-func (r *ResourceGenerator) GetDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
+// CreateDoguSecret generates a secret with a given data map for the dogu
+func (r *resourceGenerator) CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Name:      doguResource.GetPrivateVolumeName(),
 		Namespace: doguResource.Namespace,

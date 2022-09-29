@@ -34,8 +34,8 @@ type newDeleteManagerT interface {
 	Cleanup(func())
 }
 
-// newDeleteManager creates a new instance of DeleteManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newDeleteManager(t newDeleteManagerT) *DeleteManager {
+// NewDeleteManager creates a new instance of DeleteManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewDeleteManager(t newDeleteManagerT) *DeleteManager {
 	mock := &DeleteManager{}
 	mock.Mock.Test(t)
 

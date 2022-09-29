@@ -56,8 +56,8 @@ type newLimitPatcherT interface {
 	Cleanup(func())
 }
 
-// newLimitPatcher creates a new instance of LimitPatcher. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newLimitPatcher(t newLimitPatcherT) *LimitPatcher {
+// NewLimitPatcher creates a new instance of LimitPatcher. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewLimitPatcher(t newLimitPatcherT) *LimitPatcher {
 	mock := &LimitPatcher{}
 	mock.Mock.Test(t)
 

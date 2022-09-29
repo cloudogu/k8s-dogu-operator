@@ -9,4 +9,4 @@ metadata:
     app: ces
 spec:
   name: official/ldap
-  version: 2.6.2-1
+  version: 2.6.2-2

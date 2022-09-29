@@ -1,0 +1,16 @@
+{
+  "Name": "official/postgresql",
+  "Version": "12.10-1",
+  "DisplayName": "PostgreSQL",
+  "Description": "PostgreSQL Database.",
+  "Image": "registry.cloudogu.com/official/postgresql",
+  "HealthChecks": [
+    {
+      "Type": "tcp",
+      "Port": 5432
+    },
+    {
+      "Type": "state"
+    }
+  ]
+}
