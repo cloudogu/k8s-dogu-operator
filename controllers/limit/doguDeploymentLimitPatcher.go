@@ -2,6 +2,7 @@ package limit
 
 import (
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/registry"
 	v12 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -26,7 +27,7 @@ func NewDoguDeploymentLimitPatcher(registry registry.Registry) *doguDeploymentLi
 	}
 }
 
-// RetrieveMemoryLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
+// RetrievePodLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
 func (d *doguDeploymentLimitPatcher) RetrievePodLimits(doguResource *v12.Dogu) (DoguLimits, error) {
 	doguRegistry := d.registry.DoguConfig(doguResource.Name)
 	doguLimitObject := DoguLimits{}

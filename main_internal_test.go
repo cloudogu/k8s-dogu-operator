@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
+	"testing"
+
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
@@ -19,13 +22,11 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"testing"
 )
 
 type mockDefinition struct {
@@ -96,7 +97,7 @@ func Test_startDoguOperator(t *testing.T) {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "dogu.cloudogu.com",
+		Group:   "k8s.cloudogu.com",
 		Version: "v1",
 		Kind:    "dogu",
 	}, &v1.Dogu{})

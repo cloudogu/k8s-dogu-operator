@@ -3,6 +3,7 @@
 package mocks
 
 import (
+	"context"
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -13,7 +14,7 @@ type DependencyValidator struct {
 }
 
 // ValidateDependencies provides a mock function with given fields: dogu
-func (_m *DependencyValidator) ValidateDependencies(dogu *core.Dogu) error {
+func (_m *DependencyValidator) ValidateDependencies(ctx context.Context, dogu *core.Dogu) error {
 	ret := _m.Called(dogu)
 
 	var r0 error

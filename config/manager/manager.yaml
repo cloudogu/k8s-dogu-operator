@@ -9,12 +9,16 @@ spec:
     matchLabels:
       control-plane: controller-manager
   replicas: 1
+  strategy:
+    type: Recreate
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: controller-manager
+        app.kubernetes.io/name: k8s-dogu-operator
+        app: ces
     spec:
       securityContext:
         runAsNonRoot: true
@@ -24,6 +28,8 @@ spec:
         env:
           - name: STAGE
             value: "production"
+          - name: LOG_LEVEL
+            value: "debug"
           - name: NAMESPACE
             valueFrom:
               fieldRef:

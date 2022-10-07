@@ -13,9 +13,9 @@ const (
 	StageDevelopment         = "development"
 	StageProduction          = "production"
 	StageEnvironmentVariable = "STAGE"
-	CacheDirProduction       = "/home/nonroot"
-	CacheDirDevelopment      = "."
 )
+
+const cacheDir = "/tmp/dogu-registry-cache"
 
 var Stage = StageProduction
 
@@ -170,14 +170,6 @@ func (o *OperatorConfig) GetRemoteConfiguration() *core.Remote {
 	// trim suffix 'dogus' or 'dogus/' to provide maximum compatibility with the old remote configuration of the operator
 	endpoint = strings.TrimSuffix(endpoint, "dogus/")
 	endpoint = strings.TrimSuffix(endpoint, "dogus")
-
-	var cacheDir string
-
-	if Stage == StageProduction {
-		cacheDir = CacheDirProduction
-	} else {
-		cacheDir = CacheDirDevelopment
-	}
 
 	return &core.Remote{
 		Endpoint: endpoint,

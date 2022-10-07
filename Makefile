@@ -1,6 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=0.11.0
+VERSION=0.12.0
 ## Image URL to use all building/pushing image targets
 IMAGE_DEV=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}:${VERSION}
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
@@ -25,9 +25,12 @@ K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
 PRE_COMPILE=generate
 
 K8S_RESOURCE_TEMP_FOLDER ?= $(TARGET_DIR)
-K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy
+K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy template-log-level
 
 include build/make/k8s-controller.mk
+
+.PHONY: build-boot
+build-boot: image-import k8s-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 ##@ Controller specific targets
 
@@ -63,8 +66,17 @@ template-stage:
 	@echo "Setting STAGE env in deployment to ${STAGE}!"
 	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"STAGE\").value)=\"${STAGE}\"" $(K8S_RESOURCE_TEMP_YAML)
 
+.PHONY: template-log-level
+template-log-level:
+	@echo "Setting LOG_LEVEL env in deployment to ${LOG_LEVEL}!"
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"LOG_LEVEL\").value)=\"${LOG_LEVEL}\"" $(K8S_RESOURCE_TEMP_YAML)
+
 .PHONY: template-dev-only-image-pull-policy
 template-dev-only-image-pull-policy:
-	@if [[ ${STAGE} == "development" ]]; \
-		then echo "Setting pull policy to always for development stage!" && $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").imagePullPolicy)=\"Always\"" $(K8S_RESOURCE_TEMP_YAML); \
-	fi
+	@echo "Setting pull policy to always!"
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").imagePullPolicy)=\"Always\"" $(K8S_RESOURCE_TEMP_YAML)
+
+.PHONY: kill-operator-pod
+kill-operator-pod:
+	@echo "Restarting k8s-dogu-operator!"
+	@kubectl -n ${NAMESPACE} delete pods -l 'app.kubernetes.io/name=k8s-dogu-operator'

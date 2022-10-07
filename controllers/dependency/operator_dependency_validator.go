@@ -5,6 +5,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const K8sDoguOperatorClientDependencyName = "k8s-dogu-operator"
@@ -23,7 +24,7 @@ func NewOperatorDependencyValidator(version *core.Version) *operatorDependencyVa
 
 // ValidateAllDependencies looks into all client dependencies (mandatory- and optional ones) and checks weather they're
 // all installed an that in the correct version
-func (odv *operatorDependencyValidator) ValidateAllDependencies(dogu *core.Dogu) error {
+func (odv *operatorDependencyValidator) ValidateAllDependencies(_ context.Context, dogu *core.Dogu) error {
 	var allProblems error
 
 	errMandatoryDependencies := odv.validateMandatoryDependencies(dogu)
