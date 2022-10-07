@@ -211,7 +211,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	supportManager := &doguSupportManager{
 		client:            k8sManager.GetClient(),
 		scheme:            k8sManager.GetScheme(),
-		doguRegistry:      &EtcdDoguRegistry,
+		doguRegistry:      EtcdDoguRegistry,
 		resourceGenerator: resourceGenerator,
 		eventRecorder:     eventRecorder,
 	}

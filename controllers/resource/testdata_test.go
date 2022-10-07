@@ -46,6 +46,12 @@ var expectedServiceBytes []byte
 //go:embed testdata/ldap_expectedExposedServices.yaml
 var expectedExposedServicesBytes []byte
 
+//go:embed testdata/ldap_expectedPodTemplate_support_on.yaml
+var expectedPodTemplateSupportOnBytes []byte
+
+//go:embed testdata/ldap_expectedPodTemplate_support_off.yaml
+var expectedPodTemplateSupportOffBytes []byte
+
 func readLdapDogu(t *testing.T) *core.Dogu {
 	t.Helper()
 
@@ -164,6 +170,30 @@ func readLdapDoguExpectedExposedServices(t *testing.T) []*v1.Service {
 	}
 
 	return *data
+}
+
+func readLdapDoguExpectedPodTemplateSupportOn(t *testing.T) *v1.PodTemplateSpec {
+	t.Helper()
+
+	data := &v1.PodTemplateSpec{}
+	err := yaml.Unmarshal(expectedPodTemplateSupportOnBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readLdapDoguExpectedPodTemplateSupportOff(t *testing.T) *v1.PodTemplateSpec {
+	t.Helper()
+
+	data := &v1.PodTemplateSpec{}
+	err := yaml.Unmarshal(expectedPodTemplateSupportOffBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
 }
 
 func getTestScheme() *runtime.Scheme {

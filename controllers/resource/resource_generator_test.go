@@ -347,25 +347,24 @@ func Test_createLivenessProbe(t *testing.T) {
 	})
 }
 
-
 func TestResourceGenerator_GetPodTemplate(t *testing.T) {
-	generator := getResourceGenerator()
+	generator := getResourceGenerator(t)
 
 	t.Run("return template with sleep command an no probes in support mode", func(t *testing.T) {
 		// when
-		template := generator.GetPodTemplate(ldapDoguResource, ldapDogu, true)
+		template := generator.GetPodTemplate(readLdapDoguResource(t), readLdapDogu(t), true)
 
 		// then
 		require.NotNil(t, template)
-		assert.Equal(t, expectedPodTemplateSupportOn, template)
+		assert.Equal(t, readLdapDoguExpectedPodTemplateSupportOn(t), template)
 	})
 
 	t.Run("return regular template with probes without support mode", func(t *testing.T) {
 		// when
-		template := generator.GetPodTemplate(ldapDoguResource, ldapDogu, false)
+		template := generator.GetPodTemplate(readLdapDoguResource(t), readLdapDogu(t), false)
 
 		// then
 		require.NotNil(t, template)
-		assert.Equal(t, expectedPodTemplateSupportOff, template)
+		assert.Equal(t, readLdapDoguExpectedPodTemplateSupportOff(t), template)
 	})
 }

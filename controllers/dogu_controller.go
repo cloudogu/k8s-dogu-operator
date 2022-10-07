@@ -188,7 +188,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 }
 
-func (r *doguReconciler) handleSupportFlag(ctx context.Context, doguResource *k8sv1.Dogu) (*reconcile.Result, error) {
+func (r *doguReconciler) handleSupportFlag(ctx context.Context, doguResource *k8sv1.Dogu) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	// Only recognise support mode if dogu is installed.
 	if doguResource.Status.Status == k8sv1.DoguStatusInstalled {

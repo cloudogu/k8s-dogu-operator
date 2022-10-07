@@ -29,7 +29,8 @@ type DoguSpec struct {
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
 	Version string `json:"version,omitempty"`
-	// SupportMode is a flag that indicates if a dogu is in the support mode.
+	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
+	// a crash loop).
 	SupportMode bool `json:"supportMode,omitempty"`
 	// UpgradeConfig contains options to manipulate the upgrade process.
 	UpgradeConfig UpgradeConfig `json:"upgradeConfig,omitempty"`

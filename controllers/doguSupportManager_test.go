@@ -136,8 +136,8 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 	t.Run("successfully update deployment", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(getTestScheme())
-		ldap := readTestDataLdapDogu(t)
-		ldapCr := readTestDataLdapCr(t)
+		ldap := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = "test"
 		ldapCr.Spec.SupportMode = true
 		sut.doguRegistryMock.On("Get", "ldap").Return(ldap, nil)
@@ -154,7 +154,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		sut.AssertMocks(t)
 
 		deployment = &appsv1.Deployment{}
-		err = sut.k8sClient.Get(context.TODO(), *ldapCr.GetObjectKey(), deployment)
+		err = sut.k8sClient.Get(context.TODO(), ldapCr.GetObjectKey(), deployment)
 		require.NoError(t, err)
 		assert.Greater(t, deployment.ResourceVersion, resourceVersion)
 	})
@@ -162,9 +162,9 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 	t.Run("error updating deployment of dogu", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(runtime.NewScheme())
-		ldapCr := readTestDataLdapCr(t)
+		ldap := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = "test"
-		ldap := readTestDataLdapDogu(t)
 		sut.doguRegistryMock.On("Get", "ldap").Return(ldap, nil)
 
 		// when
@@ -179,7 +179,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 	t.Run("error getting dogu descriptor", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(getTestScheme())
-		ldapCr := readTestDataLdapCr(t)
+		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = "test"
 		sut.doguRegistryMock.On("Get", "ldap").Return(nil, assert.AnError)
 
@@ -201,10 +201,10 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 	t.Run("return true on support mode change", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(getTestScheme())
-		ldapCr := readTestDataLdapCr(t)
+		ldap := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = "test"
 		ldapCr.Spec.SupportMode = true
-		ldap := readTestDataLdapDogu(t)
 		sut.doguRegistryMock.On("Get", "ldap").Return(ldap, nil)
 		sut.recorderMock.On("Eventf", ldapCr, "Normal", "Support", "Support flag changed to %t. Deployment updated.", true)
 
@@ -229,7 +229,7 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 	t.Run("error getting deployment from dogu", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(runtime.NewScheme())
-		ldapCr := readTestDataLdapCr(t)
+		ldapCr := readDoguCr(t, ldapCrBytes)
 
 		// when
 		_, err := sut.supportManager.HandleSupportFlag(context.TODO(), ldapCr)
@@ -243,7 +243,7 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 	t.Run("return false on no support mode change", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(getTestScheme())
-		ldapCr := readTestDataLdapCr(t)
+		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = "test"
 		ldapCr.Spec.SupportMode = false
 		sut.recorderMock.On("Event", ldapCr, "Normal", "Support", "Support flag did not change. Do nothing.")
@@ -269,7 +269,7 @@ func Test_doguSupportManager_HandleSupportFlag(t *testing.T) {
 	t.Run("error updating deployment", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(getTestScheme())
-		ldapCr := readTestDataLdapCr(t)
+		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = "test"
 		ldapCr.Spec.SupportMode = true
 		sut.doguRegistryMock.On("Get", "ldap").Return(nil, assert.AnError)

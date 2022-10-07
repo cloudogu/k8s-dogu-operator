@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
@@ -15,12 +16,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// podTemplateResourceGenerator is used to generate pod templates.
+type podTemplateResourceGenerator interface {
+	GetPodTemplate(*k8sv1.Dogu, *core.Dogu, bool) *corev1.PodTemplateSpec
+}
+
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
 	client            client.Client
 	scheme            *runtime.Scheme
 	doguRegistry      registry.DoguRegistry
-	resourceGenerator *resource.ResourceGenerator
+	resourceGenerator podTemplateResourceGenerator
 	eventRecorder     record.EventRecorder
 }
 
@@ -42,7 +48,7 @@ func (dsm *doguSupportManager) HandleSupportFlag(ctx context.Context, doguResour
 	logger := log.FromContext(ctx)
 
 	deployment := &appsv1.Deployment{}
-	err := dsm.client.Get(ctx, *doguResource.GetObjectKey(), deployment)
+	err := dsm.client.Get(ctx, doguResource.GetObjectKey(), deployment)
 	if err != nil {
 		return false, fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err)
 	}
