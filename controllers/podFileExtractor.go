@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"strings"
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,7 +65,7 @@ func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clien
 	}
 }
 
-// ExtractK8sResourcesFromContainer enumerates K8s resources and returns them in a map file->content. The map will be
+// ExtractK8sResourcesFromContainer enumerates K8s resources and returns them in a map filename->content. The map will be
 // empty if there are no files.
 func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
 	logger := log.FromContext(ctx)
@@ -118,6 +120,12 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 	}
 
 	return resultDocs, nil
+}
+
+// ExtractScriptResourcesFromContainer extracts a exposed command script from a dogu image and returns them in a map filename->content. The map will be
+// empty if there are no files.
+func (fe *podFileExtractor) ExtractScriptResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, exposedCommandFilter string) (map[string]string, error) {
+	return nil, nil
 }
 
 type defaultPodFinder struct {

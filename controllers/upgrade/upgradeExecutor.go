@@ -3,8 +3,8 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"strings"
 
+	"github.com/cloudogu/k8s-dogu-operator/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 
@@ -31,9 +31,14 @@ type imageRegistry interface {
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
 }
 
-type fileExtractor interface {
+type k8sFileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings
 	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error)
+}
+
+type upgradeScriptFileExtractor interface {
+	// ExtractScriptResourcesFromContainer extracts a script from a dogu image and returns them in a map filename->content.
+	ExtractScriptResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, exposedCommandFilter string) (map[string]string, error)
 }
 
 type serviceAccountCreator interface {
@@ -57,14 +62,15 @@ type resourceUpserter interface {
 }
 
 type upgradeExecutor struct {
-	client                client.Client
-	imageRegistry         imageRegistry
-	collectApplier        collectApplier
-	fileExtractor         fileExtractor
-	serviceAccountCreator serviceAccountCreator
-	doguRegistrator       doguRegistrator
-	resourceUpserter      resourceUpserter
-	eventRecorder         record.EventRecorder
+	client                     client.Client
+	imageRegistry              imageRegistry
+	collectApplier             collectApplier
+	k8sFileExtractor           k8sFileExtractor
+	upgradeScriptFileExtractor upgradeScriptFileExtractor
+	serviceAccountCreator      serviceAccountCreator
+	doguRegistrator            doguRegistrator
+	resourceUpserter           resourceUpserter
+	eventRecorder              record.EventRecorder
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
@@ -72,7 +78,8 @@ func NewUpgradeExecutor(
 	client client.Client,
 	imageRegistry imageRegistry,
 	collectApplier collectApplier,
-	fileExtractor fileExtractor,
+	k8sFileExtractor k8sFileExtractor,
+	upgradeScriptFileExtractor upgradeScriptFileExtractor,
 	serviceAccountCreator serviceAccountCreator,
 	registry registry.Registry,
 	eventRecorder record.EventRecorder,
@@ -82,14 +89,15 @@ func NewUpgradeExecutor(
 	upserter := resource.NewUpserter(client, limitPatcher)
 
 	return &upgradeExecutor{
-		client:                client,
-		imageRegistry:         imageRegistry,
-		collectApplier:        collectApplier,
-		fileExtractor:         fileExtractor,
-		serviceAccountCreator: serviceAccountCreator,
-		doguRegistrator:       doguRegistrator,
-		resourceUpserter:      upserter,
-		eventRecorder:         eventRecorder,
+		client:                     client,
+		imageRegistry:              imageRegistry,
+		collectApplier:             collectApplier,
+		k8sFileExtractor:           k8sFileExtractor,
+		upgradeScriptFileExtractor: upgradeScriptFileExtractor,
+		serviceAccountCreator:      serviceAccountCreator,
+		doguRegistrator:            doguRegistrator,
+		resourceUpserter:           upserter,
+		eventRecorder:              eventRecorder,
 	}
 }
 
@@ -115,13 +123,13 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 
 	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
 	var customK8sResources map[string]string
-	customK8sResources, err = extractCustomK8sResources(ctx, ue.fileExtractor, toDoguResource, toDogu)
+	customK8sResources, err = extractCustomK8sResources(ctx, ue.k8sFileExtractor, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
 
 	if len(customK8sResources) > 0 {
-		ue.normalEventf(toDoguResource, "Applying/Updating custom dogu resources to the cluster: [%s]", GetMapKeysAsString(customK8sResources))
+		ue.normalEventf(toDoguResource, "Applying/Updating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
 	}
 	customDeployment, err := applyCustomK8sResources(ctx, ue.collectApplier, toDoguResource, customK8sResources)
 	if err != nil {
@@ -165,7 +173,7 @@ func pullUpgradeImage(ctx context.Context, imgRegistry imageRegistry, toDogu *co
 	return configFile, nil
 }
 
-func extractCustomK8sResources(ctx context.Context, extractor fileExtractor, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) (map[string]string, error) {
+func extractCustomK8sResources(ctx context.Context, extractor k8sFileExtractor, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) (map[string]string, error) {
 	resources, err := extractor.ExtractK8sResourcesFromContainer(ctx, toDoguResource, toDogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract custom K8s resources: %w", err)
@@ -194,15 +202,4 @@ func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguR
 
 func (ue *upgradeExecutor) normalEventf(doguResource *k8sv1.Dogu, msg string, args ...interface{}) {
 	ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, UpgradeEventReason, msg, args...)
-}
-
-// GetMapKeysAsString returns the key of a map as a string in form: "key1, key2, key3".
-func GetMapKeysAsString(input map[string]string) string {
-	output := ""
-
-	for key := range input {
-		output = fmt.Sprintf("%s, %s", output, key)
-	}
-
-	return strings.TrimLeft(output, ", ")
 }

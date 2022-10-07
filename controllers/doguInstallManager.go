@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
@@ -18,6 +17,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
+	"github.com/cloudogu/k8s-dogu-operator/util"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -172,7 +172,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	if len(customK8sResources) > 0 {
-		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", upgrade.GetMapKeysAsString(customK8sResources))
+		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
 	}
 	customDeployment, err := m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
 	if err != nil {

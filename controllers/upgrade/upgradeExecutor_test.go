@@ -4,14 +4,15 @@ import (
 	"context"
 	"testing"
 
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	regmock "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/util"
+
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -32,7 +33,8 @@ func TestNewUpgradeExecutor(t *testing.T) {
 			Build()
 		imageRegMock := mocks.NewImageRegistry(t)
 		saCreator := mocks.NewServiceAccountCreator(t)
-		fileEx := mocks.NewFileExtractor(t)
+		k8sFileEx := mocks.NewFileExtractor(t)
+		scriptFileEx := mocks.NewUpgradeScriptFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
 		doguRegistry := new(regmock.DoguRegistry)
 		mockRegistry := new(regmock.Registry)
@@ -40,7 +42,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		eventRecorder := mocks2.NewEventRecorder(t)
 
 		// when
-		actual := NewUpgradeExecutor(myClient, imageRegMock, applier, fileEx, saCreator, mockRegistry, eventRecorder)
+		actual := NewUpgradeExecutor(myClient, imageRegMock, applier, k8sFileEx, scriptFileEx, saCreator, mockRegistry, eventRecorder)
 
 		// then
 		require.NotNil(t, actual)
@@ -81,8 +83,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
 
 		customK8sResource := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
-		fileEx := mocks.NewFileExtractor(t)
-		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(customK8sResource, nil)
+		k8sFileEx := mocks.NewFileExtractor(t)
+		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(customK8sResource, nil)
 		applier := mocks.NewCollectApplier(t)
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
 		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(deployment, nil)
@@ -103,7 +105,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			client:                myClient,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
-			fileExtractor:         fileEx,
+			k8sFileExtractor:      k8sFileEx,
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
@@ -144,8 +146,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		imageRegMock := mocks.NewImageRegistry(t)
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
-		fileEx := mocks.NewFileExtractor(t)
-		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, nil)
+		k8sFileEx := mocks.NewFileExtractor(t)
+		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, nil)
 		applier := mocks.NewCollectApplier(t)
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
 		var emptyCustomK8sResource map[string]string
@@ -165,7 +167,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			client:                myClient,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
-			fileExtractor:         fileEx,
+			k8sFileExtractor:      k8sFileEx,
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
@@ -208,8 +210,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
 		customK8sResource := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
-		fileEx := mocks.NewFileExtractor(t)
-		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(customK8sResource, nil)
+		k8sFileEx := mocks.NewFileExtractor(t)
+		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(customK8sResource, nil)
 		applier := mocks.NewCollectApplier(t)
 		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(nil, assert.AnError)
 		upserter := mocks.NewResourceUpserter(t)
@@ -226,7 +228,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			client:                myClient,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
-			fileExtractor:         fileEx,
+			k8sFileExtractor:      k8sFileEx,
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
@@ -268,8 +270,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		imageRegMock := mocks.NewImageRegistry(t)
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
-		fileEx := mocks.NewFileExtractor(t)
-		fileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, assert.AnError)
+		k8sFileEx := mocks.NewFileExtractor(t)
+		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, toDoguResource, toDogu).Return(nil, assert.AnError)
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
@@ -284,7 +286,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			client:                myClient,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
-			fileExtractor:         fileEx,
+			k8sFileExtractor:      k8sFileEx,
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
@@ -325,7 +327,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(nil, assert.AnError)
-		fileEx := mocks.NewFileExtractor(t)
+		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
@@ -339,7 +341,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			client:                myClient,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
-			fileExtractor:         fileEx,
+			k8sFileExtractor:      k8sFileEx,
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
@@ -379,7 +381,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(assert.AnError)
 		imageRegMock := mocks.NewImageRegistry(t)
-		fileEx := mocks.NewFileExtractor(t)
+		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
@@ -392,7 +394,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			client:                myClient,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
-			fileExtractor:         fileEx,
+			k8sFileExtractor:      k8sFileEx,
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
@@ -431,7 +433,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		registrator.On("RegisterDoguVersion", toDogu).Return(assert.AnError)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		imageRegMock := mocks.NewImageRegistry(t)
-		fileEx := mocks.NewFileExtractor(t)
+		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
@@ -442,7 +444,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			client:                myClient,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
-			fileExtractor:         fileEx,
+			k8sFileExtractor:      k8sFileEx,
 			serviceAccountCreator: saCreator,
 			doguRegistrator:       registrator,
 			resourceUpserter:      upserter,
@@ -698,7 +700,7 @@ func Test_getMapKeysAsString(t *testing.T) {
 		}
 
 		// when
-		output := GetMapKeysAsString(inputList)
+		output := util.GetMapKeysAsString(inputList)
 
 		// then
 		assert.Contains(t, output, "test.json")

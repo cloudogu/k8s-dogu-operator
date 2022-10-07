@@ -71,6 +71,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 		imageRegistry,
 		collectApplier,
 		fileExtractor,
+		fileExtractor,
 		serviceAccountCreator,
 		cesRegistry,
 		eventRecorder,
