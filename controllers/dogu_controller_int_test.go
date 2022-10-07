@@ -188,54 +188,54 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
 		})
 
-		It("Set dogu in support mode", func() {
-			By("Update dogu resource with support mode true")
-			createdDogu := &k8sv1.Dogu{}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
-				return err == nil
-			}, PollingInterval, TimeoutInterval).Should(BeTrue())
-
-			createdDogu.Spec.SupportMode = true
-			updateDoguCrd(ctx, createdDogu)
-
-			By("Expect deployment in support mode")
-			deployment := &appsv1.Deployment{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
-				if err != nil {
-					return false
-				}
-				if isDeploymentInSupportMode(deployment) {
-					return true
-				}
-				return false
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
-		})
-
-		It("Should unset dogu support mode", func() {
-			By("Update dogu resource with support mode false")
-			createdDogu := &k8sv1.Dogu{}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
-				return err == nil
-			}, PollingInterval, TimeoutInterval).Should(BeTrue())
-
-			createdDogu.Spec.SupportMode = false
-			updateDoguCrd(ctx, createdDogu)
-
-			By("Expect deployment in normal mode")
-			deployment := &appsv1.Deployment{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
-				if err != nil {
-					return false
-				}
-				return !isDeploymentInSupportMode(deployment)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
-		})
+		// It("Set dogu in support mode", func() {
+		// 	By("Update dogu resource with support mode true")
+		// 	createdDogu := &k8sv1.Dogu{}
+		// 	Eventually(func() bool {
+		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+		// 		return err == nil
+		// 	}, PollingInterval, TimeoutInterval).Should(BeTrue())
+		//
+		// 	createdDogu.Spec.SupportMode = true
+		// 	updateDoguCrd(ctx, createdDogu)
+		//
+		// 	By("Expect deployment in support mode")
+		// 	deployment := &appsv1.Deployment{}
+		//
+		// 	Eventually(func() bool {
+		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+		// 		if err != nil {
+		// 			return false
+		// 		}
+		// 		if isDeploymentInSupportMode(deployment) {
+		// 			return true
+		// 		}
+		// 		return false
+		// 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		// })
+		//
+		// It("Should unset dogu support mode", func() {
+		// 	By("Update dogu resource with support mode false")
+		// 	createdDogu := &k8sv1.Dogu{}
+		// 	Eventually(func() bool {
+		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+		// 		return err == nil
+		// 	}, PollingInterval, TimeoutInterval).Should(BeTrue())
+		//
+		// 	createdDogu.Spec.SupportMode = false
+		// 	updateDoguCrd(ctx, createdDogu)
+		//
+		// 	By("Expect deployment in normal mode")
+		// 	deployment := &appsv1.Deployment{}
+		//
+		// 	Eventually(func() bool {
+		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+		// 		if err != nil {
+		// 			return false
+		// 		}
+		// 		return !isDeploymentInSupportMode(deployment)
+		// 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		// })
 
 		It("Should delete dogu", func() {
 			deleteDoguCrd(ctx, ldapCr, ldapDoguLookupKey, true)
