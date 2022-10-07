@@ -30,6 +30,8 @@ import (
 
 const doguCustomK8sResourceDirectory = "/k8s/"
 
+// maxTries controls the maximum number of waiting intervals between requesting an exec pod and its actual
+// instantiation. The waiting time increases each time linearly.
 var maxTries = 20
 
 type podFileExtractor struct {
@@ -71,23 +73,11 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 	logger := log.FromContext(ctx)
 	currentNamespace := doguResource.ObjectMeta.Namespace
 
-	podspec, containerPodName, err := fe.createExecPodSpec(currentNamespace, doguResource, dogu)
+	containerPodName, cleanUpExecPod, err := fe.instantiateExecPod(ctx, currentNamespace, doguResource, dogu)
 	if err != nil {
-		return nil, fmt.Errorf("could not create pod for file extraction: %w", err)
+		return nil, err
 	}
-
-	logger.Info("Creating new exec pod " + containerPodName)
-	err = fe.k8sClient.Create(ctx, podspec)
-	if err != nil {
-		return nil, fmt.Errorf("could not create pod for file extraction: %w", err)
-	}
-	defer func() {
-		logger.Info("Cleaning up intermediate exec pod for dogu ", dogu.Name)
-		err = fe.k8sClient.Delete(ctx, podspec)
-		if err != nil {
-			logger.Error(fmt.Errorf("failed to delete custom dogu descriptor: %w", err), "Error while deleting intermediate ")
-		}
-	}()
+	defer cleanUpExecPod()
 
 	execPodKey := createExecPodObjectKey(currentNamespace, containerPodName)
 
@@ -125,7 +115,41 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 // ExtractScriptResourcesFromContainer extracts a exposed command script from a dogu image and returns them in a map filename->content. The map will be
 // empty if there are no files.
 func (fe *podFileExtractor) ExtractScriptResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, exposedCommandFilter string) (map[string]string, error) {
-	return nil, nil
+	logger := log.FromContext(ctx)
+	currentNamespace := doguResource.ObjectMeta.Namespace
+
+	scriptFileResult := make(map[string]string)
+	if !dogu.HasExposedCommand(exposedCommandFilter) {
+		logger.Info("not exposed command found", "exposedCommand", exposedCommandFilter)
+		return scriptFileResult, nil
+	}
+
+	scriptFile := dogu.GetExposedCommand(exposedCommandFilter).Command
+
+	containerPodName, cleanUpExecPod, err := fe.instantiateExecPod(ctx, currentNamespace, doguResource, dogu)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanUpExecPod()
+	execPodKey := createExecPodObjectKey(currentNamespace, containerPodName)
+
+	err = fe.podFinder.find(ctx, execPodKey)
+	if err != nil {
+		return nil, err
+	}
+
+	fileOutputOrErrMsg, err := fe.podExecutor.exec(execPodKey, "/bin/bash", "-c", "/bin/cat", scriptFile)
+	if err != nil {
+		return nil, fmt.Errorf("error while getting file %s: %s: %w", scriptFile, fileOutputOrErrMsg, err)
+	}
+
+	if strings.Contains(fileOutputOrErrMsg, "No such file or directory") {
+		return nil, fmt.Errorf("could not find exposed command %s", scriptFile)
+	}
+
+	scriptFileResult[scriptFile] = fileOutputOrErrMsg
+
+	return scriptFileResult, nil
 }
 
 type defaultPodFinder struct {
@@ -236,6 +260,31 @@ func (fe *podFileExtractor) createExecPodSpec(k8sNamespace string, doguResource 
 	}
 
 	return &podSpec, containerName, err
+}
+
+func (fe *podFileExtractor) instantiateExecPod(ctx context.Context, currentNamespace string, doguResource *k8sv1.Dogu, dogu *core.Dogu) (string, func(), error) {
+	logger := log.FromContext(ctx)
+
+	execPodSpec, containerPodName, err := fe.createExecPodSpec(currentNamespace, doguResource, dogu)
+	if err != nil {
+		return "", nil, fmt.Errorf("could not create pod for file extraction: %w", err)
+	}
+
+	logger.Info("Creating new exec pod " + containerPodName)
+	err = fe.k8sClient.Create(ctx, execPodSpec)
+	if err != nil {
+		return "", nil, fmt.Errorf("could not create pod for file extraction: %w", err)
+	}
+
+	cleanUp := func() {
+		logger.Info("Cleaning up intermediate exec pod for dogu ", dogu.Name)
+		err = fe.k8sClient.Delete(ctx, execPodSpec)
+		if err != nil {
+			logger.Error(fmt.Errorf("failed to delete custom dogu descriptor: %w", err), "Error while deleting intermediate ")
+		}
+	}
+
+	return containerPodName, cleanUp, nil
 }
 
 // podExec executes commands in a running K8s container

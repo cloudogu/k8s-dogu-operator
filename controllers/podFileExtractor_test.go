@@ -22,14 +22,15 @@ import (
 )
 
 const (
-	testNamespace              = "test-namespace"
-	testPodContainerNamePrefix = "ldap"
-	testPodContainerNameSuffix = "1q2w3e"
-	testPodContainerName       = testPodContainerNamePrefix + "-execpod-" + testPodContainerNameSuffix
+	testNamespace                  = "test-namespace"
+	testLdapPodContainerNamePrefix = "ldap"
+	testPodContainerNameSuffix     = "1q2w3e"
+	testLdapPodContainerName       = testLdapPodContainerNamePrefix + "-execpod-" + testPodContainerNameSuffix
 )
 
+var testLdapExecPodKey = newObjectKey(testNamespace, testLdapPodContainerName)
+
 var testContext = context.TODO()
-var testExecPodKey = newObjectKey(testNamespace, testPodContainerName)
 
 func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
 	ldapCr := readDoguCr(t, ldapCrBytes)
@@ -48,7 +49,7 @@ func Test_podFileExtractor_createExecPodSpec(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, testPodContainerName, containerName)
+		assert.Equal(t, testLdapPodContainerName, containerName)
 	})
 
 	t.Run("should create exec pod same name as container name", func(t *testing.T) {
@@ -77,13 +78,13 @@ func Test_defaultPodFinder_find(t *testing.T) {
 		podSpec := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      testPodContainerName,
+				Name:      testLdapPodContainerName,
 				Namespace: testNamespace,
 			},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:  testPodContainerName,
+						Name:  testLdapPodContainerName,
 						Image: "official/ldap:1.2.3",
 					},
 				},
@@ -100,7 +101,7 @@ func Test_defaultPodFinder_find(t *testing.T) {
 		defer func() { maxTries = 20 }()
 
 		// when
-		err := sut.find(testContext, testExecPodKey)
+		err := sut.find(testContext, testLdapExecPodKey)
 
 		// then
 		require.NoError(t, err)
@@ -109,13 +110,13 @@ func Test_defaultPodFinder_find(t *testing.T) {
 		podSpec := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      testPodContainerName,
+				Name:      testLdapPodContainerName,
 				Namespace: testNamespace,
 			},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:  testPodContainerName,
+						Name:  testLdapPodContainerName,
 						Image: "official/ldap:1.2.3",
 					},
 				},
@@ -132,12 +133,12 @@ func Test_defaultPodFinder_find(t *testing.T) {
 		defer func() { maxTries = 20 }()
 
 		// when
-		err := sut.find(testContext, testExecPodKey)
+		err := sut.find(testContext, testLdapExecPodKey)
 
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "did not come up in time")
-		assert.Contains(t, err.Error(), testPodContainerName)
+		assert.Contains(t, err.Error(), testLdapPodContainerName)
 		assert.Contains(t, err.Error(), "status Failed")
 	})
 	t.Run("should return expressive error for non-existing pod", func(t *testing.T) {
@@ -151,7 +152,7 @@ func Test_defaultPodFinder_find(t *testing.T) {
 		defer func() { maxTries = 20 }()
 
 		// when
-		err := sut.find(testContext, testExecPodKey)
+		err := sut.find(testContext, testLdapExecPodKey)
 
 		// then
 		require.Error(t, err)
@@ -171,7 +172,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		mockedPodFinder := &mockPodFinder{}
-		mockedPodFinder.On("find", testExecPodKey).Return(assert.AnError)
+		mockedPodFinder.On("find", testLdapExecPodKey).Return(assert.AnError)
 		mockedPodExecutor := &mockPodExecutor{}
 
 		sut := &podFileExtractor{
@@ -200,10 +201,10 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		mockedPodFinder := &mockPodFinder{}
-		mockedPodFinder.On("find", testExecPodKey).Return(nil)
+		mockedPodFinder.On("find", testLdapExecPodKey).Return(nil)
 		mockedPodExecutor := &mockPodExecutor{}
 		expectedLsCommand := []string{"/bin/bash", "-c", "/bin/ls /k8s/ || true"}
-		mockedPodExecutor.On("exec", testExecPodKey, expectedLsCommand).Return("", assert.AnError)
+		mockedPodExecutor.On("exec", testLdapExecPodKey, expectedLsCommand).Return("", assert.AnError)
 
 		sut := &podFileExtractor{
 			k8sClient:   fakeClient,
@@ -231,12 +232,12 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		mockedPodFinder := &mockPodFinder{}
-		mockedPodFinder.On("find", testExecPodKey).Return(nil)
+		mockedPodFinder.On("find", testLdapExecPodKey).Return(nil)
 		mockedPodExecutor := &mockPodExecutor{}
 		expectedLsCommand := []string{"/bin/bash", "-c", "/bin/ls /k8s/ || true"}
-		mockedPodExecutor.On("exec", testExecPodKey, expectedLsCommand).Return("test-k8s-resources.yaml", nil)
+		mockedPodExecutor.On("exec", testLdapExecPodKey, expectedLsCommand).Return("test-k8s-resources.yaml", nil)
 		expectedCatCommand := []string{"/bin/cat", "/k8s/test-k8s-resources.yaml"}
-		mockedPodExecutor.On("exec", testExecPodKey, expectedCatCommand).Return("resource { content : goes-here }", nil)
+		mockedPodExecutor.On("exec", testLdapExecPodKey, expectedCatCommand).Return("resource { content : goes-here }", nil)
 
 		sut := &podFileExtractor{
 			k8sClient:   fakeClient,
@@ -266,10 +267,10 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		mockedPodFinder := &mockPodFinder{}
-		mockedPodFinder.On("find", testExecPodKey).Return(nil)
+		mockedPodFinder.On("find", testLdapExecPodKey).Return(nil)
 		mockedPodExecutor := &mockPodExecutor{}
 		expectedLsCommand := []string{"/bin/bash", "-c", "/bin/ls /k8s/ || true"}
-		mockedPodExecutor.On("exec", testExecPodKey, expectedLsCommand).Return("No such file or directory", nil)
+		mockedPodExecutor.On("exec", testLdapExecPodKey, expectedLsCommand).Return("No such file or directory", nil)
 
 		sut := &podFileExtractor{
 			k8sClient:   fakeClient,
@@ -293,6 +294,126 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		mockedPodExecutor.AssertExpectations(t)
 	})
 
+}
+
+func Test_podFileExtractor_ExtractScriptResourcesFromContainer(t *testing.T) {
+	redmineCr := readDoguCr(t, redmineCrBytes)
+	// simulate dogu in a non-default namespace
+	redmineCr.Namespace = testNamespace
+	redmineDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+	redminePodContainerName := "redmine-execpod-" + testPodContainerNameSuffix
+	redmineExecPodKey := newObjectKey(testNamespace, redminePodContainerName)
+
+	t.Run("should return found script", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			Build()
+		clientset := fake2.NewSimpleClientset()
+		mockedPodFinder := &mockPodFinder{}
+		mockedPodFinder.On("find", redmineExecPodKey).Return(nil)
+		mockedPodExecutor := &mockPodExecutor{}
+		expectedCatCommand := []string{"/bin/bash", "-c", "/bin/cat", "/pre-upgrade.sh"}
+		scriptContent := "#!/bin/bash\necho hello world"
+		mockedPodExecutor.On("exec", redmineExecPodKey, expectedCatCommand).Return(scriptContent, nil)
+
+		sut := &podFileExtractor{
+			k8sClient:   fakeClient,
+			clientSet:   clientset,
+			suffixGen:   &testSuffixGenerator{},
+			podFinder:   mockedPodFinder,
+			podExecutor: mockedPodExecutor,
+		}
+		// decrease waiting time; must not be lower than 2
+		maxTries = 2
+		defer func() { maxTries = 20 }()
+
+		// when
+		actual, err := sut.ExtractScriptResourcesFromContainer(testContext, redmineCr, redmineDogu, "pre-upgrade")
+
+		// then
+		require.NoError(t, err)
+		expected := map[string]string{"/pre-upgrade.sh": scriptContent}
+		assert.Equal(t, expected, actual)
+		mockedPodFinder.AssertExpectations(t)
+		mockedPodExecutor.AssertExpectations(t)
+	})
+	t.Run("should return empty map on no pre-upgrade script", func(t *testing.T) {
+		// given
+		redmineDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDogu.ExposedCommands = nil
+		sut := &podFileExtractor{}
+
+		// when
+		actual, err := sut.ExtractScriptResourcesFromContainer(nil, redmineCr, redmineDogu, "pre-upgrade")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{}, actual)
+	})
+	t.Run("should fail on script error", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			Build()
+		clientset := fake2.NewSimpleClientset()
+		mockedPodFinder := &mockPodFinder{}
+		mockedPodFinder.On("find", redmineExecPodKey).Return(nil)
+		mockedPodExecutor := &mockPodExecutor{}
+		expectedCatCommand := []string{"/bin/bash", "-c", "/bin/cat", "/pre-upgrade.sh"}
+		mockedPodExecutor.On("exec", redmineExecPodKey, expectedCatCommand).Return("file not found", assert.AnError)
+
+		sut := &podFileExtractor{
+			k8sClient:   fakeClient,
+			clientSet:   clientset,
+			suffixGen:   &testSuffixGenerator{},
+			podFinder:   mockedPodFinder,
+			podExecutor: mockedPodExecutor,
+		}
+		// decrease waiting time; must not be lower than 2
+		maxTries = 2
+		defer func() { maxTries = 20 }()
+
+		// when
+		_, err := sut.ExtractScriptResourcesFromContainer(testContext, redmineCr, redmineDogu, "pre-upgrade")
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "error while getting file /pre-upgrade.sh")
+		assert.Contains(t, err.Error(), "file not found")
+		mockedPodFinder.AssertExpectations(t)
+		mockedPodExecutor.AssertExpectations(t)
+	})
+	t.Run("should fail on missing script", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			Build()
+		clientset := fake2.NewSimpleClientset()
+		mockedPodFinder := &mockPodFinder{}
+		mockedPodFinder.On("find", redmineExecPodKey).Return(nil)
+		mockedPodExecutor := &mockPodExecutor{}
+		expectedCatCommand := []string{"/bin/bash", "-c", "/bin/cat", "/pre-upgrade.sh"}
+		mockedPodExecutor.On("exec", redmineExecPodKey, expectedCatCommand).Return("No such file or directory", nil)
+
+		sut := &podFileExtractor{
+			k8sClient:   fakeClient,
+			clientSet:   clientset,
+			suffixGen:   &testSuffixGenerator{},
+			podFinder:   mockedPodFinder,
+			podExecutor: mockedPodExecutor,
+		}
+		// decrease waiting time; must not be lower than 2
+		maxTries = 2
+		defer func() { maxTries = 20 }()
+
+		// when
+		_, err := sut.ExtractScriptResourcesFromContainer(testContext, redmineCr, redmineDogu, "pre-upgrade")
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "could not find exposed command /pre-upgrade.sh")
+		mockedPodFinder.AssertExpectations(t)
+		mockedPodExecutor.AssertExpectations(t)
+	})
 }
 
 func Test_newPodFileExtractor(t *testing.T) {
@@ -319,7 +440,7 @@ func Test_createPodExecObjectKey(t *testing.T) {
 func Test_newPodExec(t *testing.T) {
 	t.Run("should return valid object", func(t *testing.T) {
 		// when
-		actual := newExecPod(&rest.Config{}, fake2.NewSimpleClientset(), testExecPodKey)
+		actual := newExecPod(&rest.Config{}, fake2.NewSimpleClientset(), testLdapExecPodKey)
 
 		// then
 		assert.NotEmpty(t, actual)
@@ -331,13 +452,13 @@ func Test_podExec_execCmd(t *testing.T) {
 		podSpec := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      testPodContainerName,
+				Name:      testLdapPodContainerName,
 				Namespace: testNamespace,
 			},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:  testPodContainerName,
+						Name:  testLdapPodContainerName,
 						Image: "official/ldap:1.2.3",
 					},
 				},
@@ -349,7 +470,7 @@ func Test_podExec_execCmd(t *testing.T) {
 		clientset.AddReactor("get", "v1/Pod", func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
 			return true, podSpec, nil
 		})
-		sut := newExecPod(&rest.Config{}, clientset, testExecPodKey)
+		sut := newExecPod(&rest.Config{}, clientset, testLdapExecPodKey)
 
 		// when
 		_, errOut, err := sut.execCmd([]string{"/bin/ls", "/k8s/"})
@@ -363,13 +484,13 @@ func Test_podExec_execCmd(t *testing.T) {
 		podSpec := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      testPodContainerName,
+				Name:      testLdapPodContainerName,
 				Namespace: testNamespace,
 			},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:  testPodContainerName,
+						Name:  testLdapPodContainerName,
 						Image: "official/ldap:1.2.3",
 					},
 				},
@@ -381,7 +502,7 @@ func Test_podExec_execCmd(t *testing.T) {
 		clientset.AddReactor("get", "v1/Pod", func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
 			return true, podSpec, nil
 		})
-		sut := newExecPod(&rest.Config{}, clientset, testExecPodKey)
+		sut := newExecPod(&rest.Config{}, clientset, testLdapExecPodKey)
 		mockedRestExecutor := &mockRestExecutor{}
 		mockedRestExecutor.On("Execute").Return(nil)
 		sut.restExecutor = mockedRestExecutor
@@ -401,7 +522,7 @@ func Test_defaultPodExecutor_exec(t *testing.T) {
 		sut := &defaultPodExecutor{&rest.Config{}, fake2.NewSimpleClientset()}
 
 		// when
-		actual, err := sut.exec(testExecPodKey, "/bin/false")
+		actual, err := sut.exec(testLdapExecPodKey, "/bin/false")
 
 		// then
 		require.Error(t, err)
