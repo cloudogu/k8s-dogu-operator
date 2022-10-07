@@ -156,9 +156,9 @@ func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResou
 }
 
 func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv1.Dogu, msg string) {
-	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, upgrade.UpgradeEventReason, msg)
+	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, upgrade.EventReason, msg)
 }
 
 func (dum *doguUpgradeManager) normalEventf(doguResource *k8sv1.Dogu, msg string, msgArg ...interface{}) {
-	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, upgrade.UpgradeEventReason, msg, msgArg...)
+	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, upgrade.EventReason, msg, msgArg...)
 }

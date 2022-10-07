@@ -66,7 +66,7 @@ func TestDoguManager_Upgrade(t *testing.T) {
 	eventRecorder := &mocks.EventRecorder{}
 	m := DoguManager{upgradeManager: upgradeManager, recorder: eventRecorder}
 
-	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, upgrade.UpgradeEventReason, "Starting upgrade...")
+	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, upgrade.EventReason, "Starting upgrade...")
 
 	// when
 	err := m.Upgrade(inputContext, inputDogu)

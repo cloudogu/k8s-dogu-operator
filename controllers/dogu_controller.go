@@ -240,7 +240,7 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 		printError := strings.Replace(upgradeError.Error(), "\n", "", -1)
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, upgrade.ErrorOnFailedUpgradeEventReason, "Dogu upgrade failed. Reason: %s.", printError)
 	} else {
-		r.recorder.Event(doguResource, v1.EventTypeNormal, upgrade.UpgradeEventReason, "Dogu upgrade successful.")
+		r.recorder.Event(doguResource, v1.EventTypeNormal, upgrade.EventReason, "Dogu upgrade successful.")
 	}
 
 	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, upgradeError, func(dogu *k8sv1.Dogu) {

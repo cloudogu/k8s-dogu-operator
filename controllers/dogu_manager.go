@@ -86,7 +86,7 @@ func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) err
 
 // Upgrade upgrades a dogu resource.
 func (m *DoguManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, upgrade.UpgradeEventReason, "Starting upgrade...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, upgrade.EventReason, "Starting upgrade...")
 	return m.upgradeManager.Upgrade(ctx, doguResource)
 }
 

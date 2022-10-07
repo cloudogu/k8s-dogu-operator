@@ -52,7 +52,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 
 func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	typeNormal := corev1.EventTypeNormal
-	upgradeEvent := UpgradeEventReason
+	upgradeEvent := EventReason
 
 	t.Run("should succeed", func(t *testing.T) {
 		// given

@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	UpgradeEventReason              = "Upgrading"
+	EventReason                     = "Upgrading"
 	ErrorOnFailedUpgradeEventReason = "ErrUpgrade"
 )
 
@@ -201,5 +201,5 @@ func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguR
 }
 
 func (ue *upgradeExecutor) normalEventf(doguResource *k8sv1.Dogu, msg string, args ...interface{}) {
-	ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, UpgradeEventReason, msg, args...)
+	ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, msg, args...)
 }
