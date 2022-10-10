@@ -17,19 +17,19 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// ResourceStateError is returned when a specific resource (pod/dogu) is not ready yet.
-type ResourceStateError struct {
+// stateError is returned when a specific resource (pod/dogu) is not ready yet.
+type stateError struct {
 	sourceError error
 	resource    metav1.Object
 }
 
 // Report returns the error in string representation
-func (e *ResourceStateError) Error() string {
+func (e *stateError) Error() string {
 	return fmt.Sprintf("resource is not ready: %v, source error: %s", e.resource.GetName(), e.sourceError.Error())
 }
 
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
-func (e *ResourceStateError) Requeue() bool {
+func (e *stateError) Requeue() bool {
 	return true
 }
 
@@ -67,7 +67,7 @@ func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 	}
 
 	if !ce.allContainersReady(pod) {
-		return nil, &ResourceStateError{
+		return nil, &stateError{
 			sourceError: fmt.Errorf("can't execute command in pod with status %v", pod.Status),
 			resource:    pod,
 		}
@@ -76,7 +76,7 @@ func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 	req := ce.getCreateExecRequest(pod, namespace, command, params)
 	exec, err := ce.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
-		return nil, &ResourceStateError{
+		return nil, &stateError{
 			sourceError: fmt.Errorf("failed to create new spdy executor: %w", err),
 			resource:    pod,
 		}
@@ -89,7 +89,7 @@ func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 		Tty:    true,
 	})
 	if err != nil {
-		return nil, &ResourceStateError{
+		return nil, &stateError{
 			sourceError: err,
 			resource:    pod,
 		}
