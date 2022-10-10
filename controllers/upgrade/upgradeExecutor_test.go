@@ -698,6 +698,22 @@ func Test_extractUpgradeScripts(t *testing.T) {
 		expectedScripts["/pre-upgrade.sh"] = "#!/bin/bash"
 		assert.Equal(t, expectedScripts, extractedScripts)
 	})
+	t.Run("should fail during pre-upgrade script extraction", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDoguCr := readTestDataRedmineCr(t)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		scriptExtractor := mocks.NewUpgradeScriptFileExtractor(t)
+		scriptExtractor.On("ExtractScriptResourcesFromContainer", testCtx, toDoguCr, toDogu, exposedCommandPreUpgrade).Return(nil, assert.AnError)
+
+		// when
+		_, err := extractUpgradeScripts(testCtx, scriptExtractor, toDoguCr, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to extract pre-upgrade script")
+	})
 }
 
 func createTestDeployment(doguName string) *appsv1.Deployment {
