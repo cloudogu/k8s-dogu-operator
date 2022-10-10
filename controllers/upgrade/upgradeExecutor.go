@@ -197,7 +197,11 @@ func extractCustomK8sResources(ctx context.Context, extractor k8sFileExtractor, 
 }
 
 func extractUpgradeScripts(ctx context.Context, extractor upgradeScriptFileExtractor, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
-	return nil, nil
+	preUpgradeScripts, err := extractor.ExtractScriptResourcesFromContainer(ctx, doguResource, dogu, exposedCommandPreUpgrade)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract pre-upgrade script: %w", err)
+	}
+	return preUpgradeScripts, nil
 }
 
 func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) (*appsv1.Deployment, error) {

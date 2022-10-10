@@ -678,12 +678,25 @@ func Test_applyCustomK8sResources(t *testing.T) {
 }
 
 func Test_extractUpgradeScripts(t *testing.T) {
-	t.Run("should do something", func(t *testing.T) {
+	t.Run("should return pre-upgrade script", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDoguCr := readTestDataRedmineCr(t)
+		toDoguCr.Spec.Version = redmineUpgradeVersion
+		fakeScripts := make(map[string]string, 0)
+		fakeScripts["/pre-upgrade.sh"] = "#!/bin/bash"
+		scriptExtractor := mocks.NewUpgradeScriptFileExtractor(t)
+		scriptExtractor.On("ExtractScriptResourcesFromContainer", testCtx, toDoguCr, toDogu, exposedCommandPreUpgrade).Return(fakeScripts, nil)
+
 		// when
+		extractedScripts, err := extractUpgradeScripts(testCtx, scriptExtractor, toDoguCr, toDogu)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "", actual)
+		expectedScripts := make(map[string]string, 0)
+		expectedScripts["/pre-upgrade.sh"] = "#!/bin/bash"
+		assert.Equal(t, expectedScripts, extractedScripts)
 	})
 }
 
