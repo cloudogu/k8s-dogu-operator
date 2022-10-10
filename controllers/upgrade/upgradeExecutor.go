@@ -3,6 +3,8 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/cloudogu/k8s-dogu-operator/util"
 	corev1 "k8s.io/api/core/v1"
@@ -211,6 +213,38 @@ func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier,
 	}
 
 	return resources, nil
+}
+
+func (ue *upgradeExecutor) applyUpgradeScripts(ctx context.Context, upgradeScripts map[string]string, toDoguResource *k8sv1.Dogu) error {
+	_, err := ue.findDoguPod(ctx, toDoguResource)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ue *upgradeExecutor) findDoguPod(ctx context.Context, toDoguResource *k8sv1.Dogu) (*corev1.Pod, error) {
+	doguName := toDoguResource.Name
+	doguPods := &corev1.PodList{}
+	podSelector := client.MatchingLabelsSelector{}
+	requirement, err := labels.NewRequirement("dogu", selection.Equals, []string{doguName})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pod selector for dogu %s: %w", doguName, err)
+	}
+	podSelector.Add(*requirement)
+	opts := &client.ListOptions{
+		LabelSelector: podSelector,
+	}
+	err = ue.client.List(ctx, doguPods,
+		opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod list for dogu %s: %w", doguName, err)
+	}
+
+	if len(doguPods.Items) == 0 {
+		return nil, fmt.Errorf("could not find pod for dogu %s", doguName)
+	}
+	return &doguPods.Items[0], nil
 }
 
 func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
