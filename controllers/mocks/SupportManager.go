@@ -15,8 +15,8 @@ type SupportManager struct {
 	mock.Mock
 }
 
-// HandleSupportFlag provides a mock function with given fields: ctx, doguResource
-func (_m *SupportManager) HandleSupportFlag(ctx context.Context, doguResource *v1.Dogu) (bool, error) {
+// HandleSupportMode provides a mock function with given fields: ctx, doguResource
+func (_m *SupportManager) HandleSupportMode(ctx context.Context, doguResource *v1.Dogu) (bool, error) {
 	ret := _m.Called(ctx, doguResource)
 
 	var r0 bool

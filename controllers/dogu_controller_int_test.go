@@ -188,54 +188,54 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
 		})
 
-		// It("Set dogu in support mode", func() {
-		// 	By("Update dogu resource with support mode true")
-		// 	createdDogu := &k8sv1.Dogu{}
-		// 	Eventually(func() bool {
-		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
-		// 		return err == nil
-		// 	}, PollingInterval, TimeoutInterval).Should(BeTrue())
-		//
-		// 	createdDogu.Spec.SupportMode = true
-		// 	updateDoguCrd(ctx, createdDogu)
-		//
-		// 	By("Expect deployment in support mode")
-		// 	deployment := &appsv1.Deployment{}
-		//
-		// 	Eventually(func() bool {
-		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
-		// 		if err != nil {
-		// 			return false
-		// 		}
-		// 		if isDeploymentInSupportMode(deployment) {
-		// 			return true
-		// 		}
-		// 		return false
-		// 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
-		// })
-		//
-		// It("Should unset dogu support mode", func() {
-		// 	By("Update dogu resource with support mode false")
-		// 	createdDogu := &k8sv1.Dogu{}
-		// 	Eventually(func() bool {
-		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
-		// 		return err == nil
-		// 	}, PollingInterval, TimeoutInterval).Should(BeTrue())
-		//
-		// 	createdDogu.Spec.SupportMode = false
-		// 	updateDoguCrd(ctx, createdDogu)
-		//
-		// 	By("Expect deployment in normal mode")
-		// 	deployment := &appsv1.Deployment{}
-		//
-		// 	Eventually(func() bool {
-		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
-		// 		if err != nil {
-		// 			return false
-		// 		}
-		// 		return !isDeploymentInSupportMode(deployment)
-		// 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
-		// })
+		It("Set dogu in support mode", func() {
+			By("Update dogu resource with support mode true")
+			createdDogu := &k8sv1.Dogu{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				return err == nil
+			}, PollingInterval, TimeoutInterval).Should(BeTrue())
+
+			createdDogu.Spec.SupportMode = true
+			updateDoguCrd(ctx, createdDogu)
+
+			By("Expect deployment in support mode")
+			deployment := &appsv1.Deployment{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				if err != nil {
+					return false
+				}
+				if isDeploymentInSupportMode(deployment) {
+					return true
+				}
+				return false
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		})
+
+		It("Should unset dogu support mode", func() {
+			By("Update dogu resource with support mode false")
+			createdDogu := &k8sv1.Dogu{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				return err == nil
+			}, PollingInterval, TimeoutInterval).Should(BeTrue())
+
+			createdDogu.Spec.SupportMode = false
+			updateDoguCrd(ctx, createdDogu)
+
+			By("Expect deployment in normal mode")
+			deployment := &appsv1.Deployment{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				if err != nil {
+					return false
+				}
+				return !isDeploymentInSupportMode(deployment)
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		})
 
 		It("Should delete dogu", func() {
 			deleteDoguCrd(ctx, ldapCr, ldapDoguLookupKey, true)
@@ -368,52 +368,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
 	})
-
 })
-
-func isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
-	container := deployment.Spec.Template.Spec.Containers[0]
-	envVars := container.Env
-	envVarFound := false
-	for _, env := range envVars {
-		if env.Name == "SUPPORT_MODE" && env.Value == "true" {
-			envVarFound = true
-		}
-	}
-
-	if hasSleepCommand(container) && hasNoProbes(container) && envVarFound {
-		return true
-	}
-
-	return false
-}
-
-func hasSleepCommand(container corev1.Container) bool {
-	command := container.Command
-	if len(command) != 3 {
-		return false
-	}
-	if command[0] != "/bin/bash" || command[1] != "-c" || command[2] != "--" {
-		return false
-	}
-	args := container.Args
-	if len(args) != 1 {
-		return false
-	}
-	if args[0] != "while true; do sleep 5; done;" {
-		return false
-	}
-
-	return true
-}
-
-func hasNoProbes(container corev1.Container) bool {
-	if container.StartupProbe == nil && container.LivenessProbe == nil && container.ReadinessProbe == nil {
-		return true
-	}
-
-	return false
-}
 
 func installDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu) {
 	Expect(k8sClient.Create(ctx, doguCr)).Should(Succeed())

@@ -25,8 +25,8 @@ type deleteManager interface {
 }
 
 type supportManager interface {
-	// HandleSupportFlag handles the support flag in the dogu spec.
-	HandleSupportFlag(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error)
+	// HandleSupportMode handles the support flag in the dogu spec.
+	HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error)
 }
 
 type fileExtractor interface {

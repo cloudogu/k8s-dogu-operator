@@ -19,18 +19,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestDoguManager_HandleSupportFlag(t *testing.T) {
+func TestDoguManager_HandleSupportMode(t *testing.T) {
 	// given
 	dogu := &k8sv1.Dogu{}
 	supportManagerMock := &mocks.SupportManager{}
 	eventRecorderMock := &mocks.EventRecorder{}
 	manager := DoguManager{supportManager: supportManagerMock, recorder: eventRecorderMock}
 
-	supportManagerMock.On("HandleSupportFlag", mock.Anything, mock.Anything).Return(true, nil)
+	supportManagerMock.On("HandleSupportMode", mock.Anything, mock.Anything).Return(true, nil)
 	eventRecorderMock.On("Event", dogu, corev1.EventTypeNormal, "Support", "Starting support handler...")
 
 	// when
-	result, err := manager.HandleSupportFlag(context.TODO(), dogu)
+	result, err := manager.HandleSupportMode(context.TODO(), dogu)
 
 	// then
 	require.NoError(t, err)
