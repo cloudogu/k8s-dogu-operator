@@ -26,6 +26,10 @@ const (
 	ErrorOnFailedUpgradeEventReason = "ErrUpgrade"
 )
 
+const (
+	exposedCommandPreUpgrade = "pre-upgrade"
+)
+
 type imageRegistry interface {
 	// PullImageConfig pulls a given container image by name.
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
@@ -128,6 +132,16 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
+	ue.normalEventf(toDoguResource, "Extracting optional upgrade scripts...")
+
+	upgradeScripts, err := extractUpgradeScripts(ctx, ue.upgradeScriptFileExtractor, toDoguResource, toDogu)
+	if err != nil {
+		return err
+	}
+	if upgradeScripts != nil {
+		// todo delete me
+	}
+
 	if len(customK8sResources) > 0 {
 		ue.normalEventf(toDoguResource, "Applying/Updating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
 	}
@@ -180,6 +194,10 @@ func extractCustomK8sResources(ctx context.Context, extractor k8sFileExtractor, 
 	}
 
 	return resources, nil
+}
+
+func extractUpgradeScripts(ctx context.Context, extractor upgradeScriptFileExtractor, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
+	return nil, nil
 }
 
 func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) (*appsv1.Deployment, error) {

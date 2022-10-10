@@ -677,6 +677,16 @@ func Test_applyCustomK8sResources(t *testing.T) {
 	})
 }
 
+func Test_extractUpgradeScripts(t *testing.T) {
+	t.Run("should do something", func(t *testing.T) {
+		// when
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "", actual)
+	})
+}
+
 func createTestDeployment(doguName string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		TypeMeta: deploymentTypeMeta,
