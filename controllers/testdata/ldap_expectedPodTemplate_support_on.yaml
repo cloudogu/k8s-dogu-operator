@@ -12,7 +12,7 @@ spec:
         - --
       env:
         - name: POD_NAMESPACE
-          value: ecosystem
+          value: test
         - name: POD_NAME
           valueFrom:
             fieldRef:

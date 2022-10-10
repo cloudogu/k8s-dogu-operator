@@ -16,9 +16,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const SupportModeEnvVar = "SUPPORT_MODE"
+
 // podTemplateResourceGenerator is used to generate pod templates.
 type podTemplateResourceGenerator interface {
-	GetPodTemplate(*k8sv1.Dogu, *core.Dogu, bool) *corev1.PodTemplateSpec
+	GetPodTemplate(*k8sv1.Dogu, *core.Dogu) *corev1.PodTemplateSpec
 }
 
 // doguSupportManager is used to handle the support mode for dogus.
@@ -75,7 +77,12 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
 	}
 
-	deployment.Spec.Template = *dsm.resourceGenerator.GetPodTemplate(doguResource, dogu, doguResource.Spec.SupportMode)
+	podTemplate := dsm.resourceGenerator.GetPodTemplate(doguResource, dogu)
+	if doguResource.Spec.SupportMode {
+		setDoguPodTemplateInSupportMode(doguResource, podTemplate)
+	}
+
+	deployment.Spec.Template = *podTemplate
 	err = dsm.client.Update(ctx, deployment)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu deployment %s: %w", doguResource.Name, err)
@@ -84,11 +91,27 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 	return nil
 }
 
+func setDoguPodTemplateInSupportMode(doguResource *k8sv1.Dogu, template *corev1.PodTemplateSpec) *corev1.PodTemplateSpec {
+	for index := range template.Spec.Containers {
+		container := &template.Spec.Containers[index]
+		if container.Name == doguResource.Name {
+			container.LivenessProbe = nil
+			container.ReadinessProbe = nil
+			container.StartupProbe = nil
+			container.Command = []string{"/bin/bash", "-c", "--"}
+			container.Args = []string{"while true; do sleep 5; done;"}
+			container.Env = append(container.Env, corev1.EnvVar{Name: SupportModeEnvVar, Value: "true"})
+		}
+	}
+
+	return template
+}
+
 func isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
 	for _, container := range deployment.Spec.Template.Spec.Containers {
 		envVars := container.Env
 		for _, env := range envVars {
-			if env.Name == resource.SupportModeEnvVar && env.Value == "true" {
+			if env.Name == SupportModeEnvVar && env.Value == "true" {
 				return true
 			}
 		}

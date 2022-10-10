@@ -23,11 +23,10 @@ import (
 )
 
 const (
-	cesLabel          = "ces"
-	nodeMasterFile    = "node-master-file"
-	doguPodNamespace  = "POD_NAMESPACE"
-	doguPodName       = "POD_NAME"
-	SupportModeEnvVar = "SUPPORT_MODE"
+	cesLabel         = "ces"
+	nodeMasterFile   = "node-master-file"
+	doguPodNamespace = "POD_NAMESPACE"
+	doguPodName      = "POD_NAME"
 )
 
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
@@ -49,66 +48,9 @@ type limitPatcher interface {
 	PatchDeployment(deployment *appsv1.Deployment, limits limit.DoguLimits) error
 }
 
-func (r *resourceGenerator) getDoguLabels(doguResource *k8sv1.Dogu) map[string]string {
-	return map[string]string{"dogu": doguResource.Name}
-}
-
-// GetPodTemplate returns a pod template for the given dogu. If the support mode flag is set to true, the pod template
-// receives a custom command which turns the pod to a sleep infinity mode.
-func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu, supportMode bool) *corev1.PodTemplateSpec {
-	volumes := createVolumesForDogu(doguResource, dogu)
-	volumeMounts := createVolumeMountsForDogu(doguResource, dogu)
-	envVars := []corev1.EnvVar{
-		{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
-		{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "metadata.name",
-			},
-		}}}
-	var startupProbe *corev1.Probe
-	var livenessProbe *corev1.Probe
-	var command []string
-	var args []string
-	if !supportMode {
-		startupProbe = createStartupProbe(dogu)
-		livenessProbe = createLivenessProbe(dogu)
-	} else {
-		command = []string{"/bin/bash", "-c", "--"}
-		args = []string{"while true; do sleep 5; done;"}
-		envVars = append(envVars, corev1.EnvVar{Name: SupportModeEnvVar, Value: "true"})
-	}
-
-	pullPolicy := corev1.PullIfNotPresent
-	if config.Stage == config.StageDevelopment {
-		pullPolicy = corev1.PullAlways
-	}
-
-	return &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: r.getDoguLabels(doguResource),
-		},
-		Spec: corev1.PodSpec{
-			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
-			Hostname:         doguResource.Name,
-			Volumes:          volumes,
-			Containers: []corev1.Container{{
-				Command:         command,
-				Args:            args,
-				LivenessProbe:   livenessProbe,
-				StartupProbe:    startupProbe,
-				Name:            doguResource.Name,
-				Image:           dogu.Image + ":" + dogu.Version,
-				ImagePullPolicy: pullPolicy,
-				VolumeMounts:    volumeMounts,
-				Env:             envVars,
-			}},
-		},
-	}
-}
-
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource
 func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
-	podTemplate := r.GetPodTemplate(doguResource, dogu, false)
+	podTemplate := r.GetPodTemplate(doguResource, dogu)
 
 	// Create deployment
 	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
@@ -150,6 +92,55 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 	}
 
 	return deployment, nil
+}
+
+// GetPodTemplate returns a pod template for the given dogu.
+func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu) *corev1.PodTemplateSpec {
+	volumes := createVolumesForDogu(doguResource, dogu)
+	volumeMounts := createVolumeMountsForDogu(doguResource, dogu)
+	envVars := []corev1.EnvVar{
+		{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
+		{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.name",
+			},
+		}}}
+	var startupProbe *corev1.Probe
+	var livenessProbe *corev1.Probe
+	var command []string
+	var args []string
+	startupProbe = createStartupProbe(dogu)
+	livenessProbe = createLivenessProbe(dogu)
+	pullPolicy := corev1.PullIfNotPresent
+	if config.Stage == config.StageDevelopment {
+		pullPolicy = corev1.PullAlways
+	}
+
+	return &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: getDoguLabels(doguResource),
+		},
+		Spec: corev1.PodSpec{
+			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
+			Hostname:         doguResource.Name,
+			Volumes:          volumes,
+			Containers: []corev1.Container{{
+				Command:         command,
+				Args:            args,
+				LivenessProbe:   livenessProbe,
+				StartupProbe:    startupProbe,
+				Name:            doguResource.Name,
+				Image:           dogu.Image + ":" + dogu.Version,
+				ImagePullPolicy: pullPolicy,
+				VolumeMounts:    volumeMounts,
+				Env:             envVars,
+			}},
+		},
+	}
+}
+
+func getDoguLabels(doguResource *k8sv1.Dogu) map[string]string {
+	return map[string]string{"dogu": doguResource.Name}
 }
 
 func buildDeploymentSpec(labels map[string]string, podTemplate *corev1.PodTemplateSpec) appsv1.DeploymentSpec {

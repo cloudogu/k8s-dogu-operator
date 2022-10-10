@@ -153,6 +153,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		err = sut.k8sClient.Get(testCtx, ldapCr.GetObjectKey(), deployment)
 		require.NoError(t, err)
 		assert.Greater(t, deployment.ResourceVersion, resourceVersion)
+		assert.Equal(t, *readLdapDoguExpectedPodTemplateSupportOn(t), deployment.Spec.Template)
 	})
 
 	t.Run("error getting dogu descriptor", func(t *testing.T) {

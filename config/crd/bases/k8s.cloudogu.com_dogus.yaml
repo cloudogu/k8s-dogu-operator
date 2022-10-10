@@ -39,8 +39,8 @@ spec:
                 description: Name of the dogu (e.g. official/ldap)
                 type: string
               supportMode:
-                description: SupportMode is a flag that indicates if a dogu is in
-                  the support mode.
+                description: SupportMode indicates whether the dogu should be restarted
+                  in the support mode (f. e. to recover manually from a crash loop).
                 type: boolean
               upgradeConfig:
                 description: UpgradeConfig contains options to manipulate the upgrade
