@@ -3,8 +3,6 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/cloudogu/k8s-dogu-operator/util"
 	corev1 "k8s.io/api/core/v1"
@@ -32,43 +30,9 @@ const (
 	exposedCommandPreUpgrade = "pre-upgrade"
 )
 
-type imageRegistry interface {
-	// PullImageConfig pulls a given container image by name.
-	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
-}
-
-type k8sFileExtractor interface {
-	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings
-	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error)
-}
-
-type upgradeScriptFileExtractor interface {
-	// ExtractScriptResourcesFromContainer extracts a script from a dogu image and returns them in a map filename->content.
-	ExtractScriptResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, exposedCommandFilter string) (map[string]string, error)
-}
-
-type serviceAccountCreator interface {
-	// CreateAll creates K8s services accounts for a dogu
-	CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error
-}
-
-type doguRegistrator interface {
-	// RegisterDoguVersion registers a certain dogu in a CES instance.
-	RegisterDoguVersion(dogu *core.Dogu) error
-}
-
-type collectApplier interface {
-	// CollectApply applies the given resources to the K8s cluster but filters and collects deployments.
-	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error)
-}
-
-type resourceUpserter interface {
-	// ApplyDoguResource generates K8s resources from a given dogu and creates/updates them in the cluster.
-	ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error
-}
-
 type upgradeExecutor struct {
 	client                     client.Client
+	eventRecorder              record.EventRecorder
 	imageRegistry              imageRegistry
 	collectApplier             collectApplier
 	k8sFileExtractor           k8sFileExtractor
@@ -76,19 +40,18 @@ type upgradeExecutor struct {
 	serviceAccountCreator      serviceAccountCreator
 	doguRegistrator            doguRegistrator
 	resourceUpserter           resourceUpserter
-	eventRecorder              record.EventRecorder
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
 func NewUpgradeExecutor(
 	client client.Client,
+	eventRecorder record.EventRecorder,
 	imageRegistry imageRegistry,
 	collectApplier collectApplier,
 	k8sFileExtractor k8sFileExtractor,
 	upgradeScriptFileExtractor upgradeScriptFileExtractor,
 	serviceAccountCreator serviceAccountCreator,
 	registry registry.Registry,
-	eventRecorder record.EventRecorder,
 ) *upgradeExecutor {
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, registry, nil)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
@@ -96,6 +59,7 @@ func NewUpgradeExecutor(
 
 	return &upgradeExecutor{
 		client:                     client,
+		eventRecorder:              eventRecorder,
 		imageRegistry:              imageRegistry,
 		collectApplier:             collectApplier,
 		k8sFileExtractor:           k8sFileExtractor,
@@ -103,7 +67,6 @@ func NewUpgradeExecutor(
 		serviceAccountCreator:      serviceAccountCreator,
 		doguRegistrator:            doguRegistrator,
 		resourceUpserter:           upserter,
-		eventRecorder:              eventRecorder,
 	}
 }
 
@@ -216,35 +179,9 @@ func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier,
 }
 
 func (ue *upgradeExecutor) applyUpgradeScripts(ctx context.Context, upgradeScripts map[string]string, toDoguResource *k8sv1.Dogu) error {
-	_, err := ue.findDoguPod(ctx, toDoguResource)
-	if err != nil {
-		return err
-	}
+	// TODO re-use commandExecutor here
+
 	return nil
-}
-
-func (ue *upgradeExecutor) findDoguPod(ctx context.Context, toDoguResource *k8sv1.Dogu) (*corev1.Pod, error) {
-	doguName := toDoguResource.Name
-	doguPods := &corev1.PodList{}
-	podSelector := client.MatchingLabelsSelector{}
-	requirement, err := labels.NewRequirement("dogu", selection.Equals, []string{doguName})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pod selector for dogu %s: %w", doguName, err)
-	}
-	podSelector.Add(*requirement)
-	opts := &client.ListOptions{
-		LabelSelector: podSelector,
-	}
-	err = ue.client.List(ctx, doguPods,
-		opts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pod list for dogu %s: %w", doguName, err)
-	}
-
-	if len(doguPods.Items) == 0 {
-		return nil, fmt.Errorf("could not find pod for dogu %s", doguName)
-	}
-	return &doguPods.Items[0], nil
 }
 
 func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
