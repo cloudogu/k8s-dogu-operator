@@ -234,6 +234,21 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		sut.AssertMocks(t)
 	})
 
+	t.Run("return false and no error when no deployment ist found", func(t *testing.T) {
+		// given
+		sut := getDoguSupportManagerWithMocks(getTestScheme())
+		ldapCr := readDoguCr(t, ldapCrBytes)
+		sut.recorderMock.On("Eventf", ldapCr, "Warning", "Support", "No deployment found for dogu %s", "ldap")
+
+		// when
+		result, err := sut.supportManager.HandleSupportMode(testCtx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, result)
+		sut.AssertMocks(t)
+	})
+
 	t.Run("return false on no support mode change", func(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(getTestScheme())

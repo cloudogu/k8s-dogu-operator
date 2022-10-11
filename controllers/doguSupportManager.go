@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +52,10 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 	deployment := &appsv1.Deployment{}
 	err := dsm.client.Get(ctx, doguResource.GetObjectKey(), deployment)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			dsm.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, SupportEventReason, "No deployment found for dogu %s", doguResource.Name)
+			return false, nil
+		}
 		return false, fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err)
 	}
 

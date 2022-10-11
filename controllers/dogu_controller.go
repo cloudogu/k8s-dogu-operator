@@ -238,18 +238,20 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8sv1.Dogu, operationName string,
-	operationVerb string, successReason string, errorReason string, requeueDoguStatus string,
+func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8sv1.Dogu,
+	eventProperties operationEventProperties, requeueDoguStatus string,
 	operation func(context.Context, *k8sv1.Dogu) error) (ctrl.Result, error) {
+
 	operationError := operation(ctx, doguResource)
-	contextMessageOnError := fmt.Sprintf("failed to %s dogu %s", operationVerb, doguResource.Name)
+	contextMessageOnError := fmt.Sprintf("failed to %s dogu %s", eventProperties.operationVerb, doguResource.Name)
 
 	if operationError != nil {
 		printError := strings.ReplaceAll(operationError.Error(), "\n", "")
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, errorReason, "%s failed. Reason: %s.",
-			operationName, printError)
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, eventProperties.errorReason,
+			"%s failed. Reason: %s.", eventProperties.operationName, printError)
 	} else {
-		r.recorder.Eventf(doguResource, v1.EventTypeNormal, successReason, "%s successful.", operationName)
+		r.recorder.Eventf(doguResource, v1.EventTypeNormal, eventProperties.successReason, "%s successful.",
+			eventProperties.operationName)
 	}
 
 	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, operationError,
@@ -258,28 +260,52 @@ func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8s
 		})
 	if handleErr != nil {
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason,
-			"Failed to requeue the %s.", strings.ToLower(operationName))
+			"Failed to requeue the %s.", strings.ToLower(eventProperties.operationName))
 		return requeueWithError(fmt.Errorf(handleRequeueErrMsg, handleErr))
 	}
 
 	return requeueOrFinishOperation(result)
 }
 
+type operationEventProperties struct {
+	successReason string
+	errorReason   string
+	operationName string
+	operationVerb string
+}
+
 func (r *doguReconciler) performInstallOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
-	return r.performOperation(ctx, doguResource, "Installation", "install", InstallEventReason,
-		ErrorOnInstallEventReason, k8sv1.DoguStatusNotInstalled, r.doguManager.Install)
+	installOperationEventProps := operationEventProperties{
+		successReason: InstallEventReason,
+		errorReason:   ErrorOnInstallEventReason,
+		operationName: "Installation",
+		operationVerb: "install",
+	}
+	return r.performOperation(ctx, doguResource, installOperationEventProps, k8sv1.DoguStatusNotInstalled,
+		r.doguManager.Install)
 }
 
 func (r *doguReconciler) performDeleteOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
-	return r.performOperation(ctx, doguResource, "Deinstallation", "delete",
-		DeinstallEventReason, ErrorDeinstallEventReason, k8sv1.DoguStatusInstalled, r.doguManager.Delete)
+	deleteOperationEventProps := operationEventProperties{
+		successReason: DeinstallEventReason,
+		errorReason:   ErrorDeinstallEventReason,
+		operationName: "Deinstallation",
+		operationVerb: "delete",
+	}
+	return r.performOperation(ctx, doguResource, deleteOperationEventProps, k8sv1.DoguStatusInstalled,
+		r.doguManager.Delete)
 }
 
 func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	upgradeOperationEventProps := operationEventProperties{
+		successReason: upgrade.UpgradeEventReason,
+		errorReason:   upgrade.ErrorOnFailedUpgradeEventReason,
+		operationName: "Upgrade",
+		operationVerb: "upgrade",
+	}
 	// revert to Installed in case of requeueing after an error so that a upgrade
 	// can be tried again.
-	return r.performOperation(ctx, doguResource, "Upgrade", "upgrade",
-		upgrade.UpgradeEventReason, upgrade.ErrorOnFailedUpgradeEventReason, k8sv1.DoguStatusInstalled,
+	return r.performOperation(ctx, doguResource, upgradeOperationEventProps, k8sv1.DoguStatusInstalled,
 		r.doguManager.Upgrade)
 }
 
