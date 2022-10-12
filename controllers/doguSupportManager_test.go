@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"testing"
+
 	regmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
@@ -16,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 const namespace = "test"
@@ -282,7 +283,6 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		ldapCr.Spec.SupportMode = true
 		sut.doguRegistryMock.On("Get", "ldap").Return(nil, assert.AnError)
 
-		// add deployment
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
