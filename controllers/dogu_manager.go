@@ -25,6 +25,7 @@ type DoguManager struct {
 	installManager installManager
 	upgradeManager upgradeManager
 	deleteManager  deleteManager
+	supportManager supportManager
 	recorder       record.EventRecorder
 }
 
@@ -50,11 +51,14 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, err
 	}
 
+	supportManager := NewDoguSupportManager(client, cesRegistry, eventRecorder)
+
 	return &DoguManager{
 		scheme:         client.Scheme(),
 		installManager: installManager,
 		upgradeManager: upgradeManager,
 		deleteManager:  deleteManager,
+		supportManager: supportManager,
 		recorder:       eventRecorder,
 	}, nil
 }
@@ -92,4 +96,10 @@ func (m *DoguManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) err
 func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, DeinstallEventReason, "Starting deinstallation...")
 	return m.deleteManager.Delete(ctx, doguResource)
+}
+
+// HandleSupportMode handles the support flag in the dogu spec.
+func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, SupportEventReason, "Starting support handler...")
+	return m.supportManager.HandleSupportMode(ctx, doguResource)
 }

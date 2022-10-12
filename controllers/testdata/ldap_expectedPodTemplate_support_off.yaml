@@ -1,0 +1,62 @@
+metadata:
+  creationTimestamp: null
+  labels:
+    dogu: ldap
+spec:
+  containers:
+    - env:
+        - name: POD_NAMESPACE
+          value: ecosystem
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+      image: registry.cloudogu.com/official/ldap:2.4.48-4
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 389
+        timeoutSeconds: 1
+      name: ldap
+      resources: {}
+      startupProbe:
+        exec:
+          command:
+            - bash
+            - -c
+            - '[[ $(doguctl state) == "ready" ]]'
+        failureThreshold: 3
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+      volumeMounts:
+        - mountPath: /etc/ces/node_master
+          name: node-master-file
+          readOnly: true
+          subPath: node_master
+        - mountPath: /private
+          name: ldap-private
+          readOnly: true
+        - mountPath: /var/lib/openldap
+          name: ldap-data
+          subPath: db
+        - mountPath: /etc/openldap/slapd.d
+          name: ldap-data
+          subPath: config
+  hostname: ldap
+  imagePullSecrets:
+    - name: k8s-dogu-operator-docker-registry
+  volumes:
+    - configMap:
+        name: node-master-file
+      name: node-master-file
+    - name: ldap-private
+      secret:
+        defaultMode: 484
+        secretName: ldap-private
+    - name: ldap-data
+      persistentVolumeClaim:
+        claimName: ldap

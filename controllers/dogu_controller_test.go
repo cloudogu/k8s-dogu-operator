@@ -251,7 +251,7 @@ func Test_buildResourceDiff(t *testing.T) {
 		{
 			name: "upgrade-diff",
 			args: args{objOld: oldDoguResource, objNew: newDoguResource},
-			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:          \"ns/dogu\",\n- \t\tVersion:       \"1.2.3-4\",\n+ \t\tVersion:       \"1.2.3-5\",\n  \t\tUpgradeConfig: {},\n  \t},\n  \tStatus: {},\n  }\n",
+			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:          \"ns/dogu\",\n- \t\tVersion:       \"1.2.3-4\",\n+ \t\tVersion:       \"1.2.3-5\",\n  \t\tSupportMode:   false,\n  \t\tUpgradeConfig: {},\n  \t},\n  \tStatus: {},\n  }\n",
 		},
 		{
 			name: "delete-diff",
