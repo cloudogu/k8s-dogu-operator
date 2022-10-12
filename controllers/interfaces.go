@@ -24,6 +24,11 @@ type deleteManager interface {
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
 }
 
+type supportManager interface {
+	// HandleSupportMode handles the support flag in the dogu spec.
+	HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error)
+}
+
 type fileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
 	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (map[string]string, error)

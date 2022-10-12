@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#43] Dogu resource has now a support mode, which leads the dogu pods to a freeze but running state.
+  This is useful in cases where the dogu is in a restart loop. See [support mode](docs/operations/dogu_support_mode_en.md)
+  for more information.
 
 ## [v0.12.0] - 2022-09-29
 ### Added
