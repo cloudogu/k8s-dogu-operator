@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -16,6 +19,13 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
+
+var shebangRegex, _ = regexp.Compile("#!(.+)")
+
+type ShellCommand struct {
+	command string
+	args    []string
+}
 
 // stateError is returned when a specific resource (pod/dogu) is not ready yet.
 type stateError struct {
@@ -126,4 +136,35 @@ func (ce *exposedCommandExecutor) getTargetDoguPod(ctx context.Context, targetDo
 	}
 
 	return &pods.Items[0], nil
+}
+
+func runUpgradeScript(cmd ShellCommand) {
+	interpreter, err := findShellInterpreter(cmd.command)
+	if err != nil {
+
+	}
+
+	_, err = executeScript(interpreter, cmd)
+	if err != nil {
+
+	}
+}
+
+func executeScript(shellInterpreter []string, command ShellCommand) (string, error) {
+	output := ""
+
+	return output, nil
+}
+
+func findShellInterpreter(script string) ([]string, error) {
+	ok := shebangRegex.Match([]byte(script))
+	if !ok {
+		return nil, fmt.Errorf("could not find shell interpreter in script %s", script)
+	}
+
+	submatch := shebangRegex.FindStringSubmatch(script)
+	shebangLine := submatch[1]
+	shellInterpreterAndArgs := strings.Split(shebangLine, " ")
+
+	return shellInterpreterAndArgs, nil
 }

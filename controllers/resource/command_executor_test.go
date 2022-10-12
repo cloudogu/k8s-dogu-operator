@@ -146,3 +146,26 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		assert.Contains(t, err.Error(), assert.AnError.Error())
 	})
 }
+
+func Test_findShellInterpreter(t *testing.T) {
+	t.Run("should return bash shebang in simple script", func(t *testing.T) {
+		script := "#!/usr/bin/bash\n\necho 'test'\n"
+
+		// when
+		actual, err := findShellInterpreter(script)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"/usr/bin/bash"}, actual)
+	})
+	t.Run("should return bash shebang in more complex script", func(t *testing.T) {
+		script := "#!/usr/bin/env bash\n\necho 'test'\n"
+
+		// when
+		actual, err := findShellInterpreter(script)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"/usr/bin/env", "bash"}, actual)
+	})
+}

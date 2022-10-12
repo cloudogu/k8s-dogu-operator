@@ -286,6 +286,11 @@ func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []core
 			ReadOnly:  true,
 			MountPath: "/private",
 		},
+		{
+			Name:      "upgrade-reservation",
+			ReadOnly:  false,
+			MountPath: "/tmp/upgrade",
+		},
 	}
 
 	for _, doguVolume := range dogu.Volumes {

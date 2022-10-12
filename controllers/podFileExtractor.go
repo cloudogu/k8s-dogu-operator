@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 
