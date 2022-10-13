@@ -7,6 +7,7 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type installManager interface {
@@ -25,8 +26,8 @@ type deleteManager interface {
 }
 
 type fileExtractor interface {
-	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
-	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (map[string]string, error)
+	// ExtractK8sResourcesFromContainer copies a file from stdout into a map of strings.
+	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, execpod execPod) (map[string]string, error)
 }
 
 type doguSecretHandler interface {
@@ -94,4 +95,15 @@ type premisesChecker interface {
 type upgradeExecutor interface {
 	// Upgrade executes the actual dogu upgrade.
 	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *cesappcore.Dogu) error
+}
+
+type execPod interface {
+	// Create adds a new exec pod to the cluster.
+	Create(ctx context.Context) error
+	// Delete deletes the exec pod from the cluster.
+	Delete(ctx context.Context) error
+	// PodName returns the name of the pod.
+	PodName() string
+	// ObjectKey returns the execPod's K8s object key.
+	ObjectKey() *client.ObjectKey
 }

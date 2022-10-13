@@ -31,15 +31,14 @@ const (
 )
 
 type upgradeExecutor struct {
-	client                     client.Client
-	eventRecorder              record.EventRecorder
-	imageRegistry              imageRegistry
-	collectApplier             collectApplier
-	k8sFileExtractor           k8sFileExtractor
-	upgradeScriptFileExtractor upgradeScriptFileExtractor
-	serviceAccountCreator      serviceAccountCreator
-	doguRegistrator            doguRegistrator
-	resourceUpserter           resourceUpserter
+	client                client.Client
+	eventRecorder         record.EventRecorder
+	imageRegistry         imageRegistry
+	collectApplier        collectApplier
+	k8sFileExtractor      k8sFileExtractor
+	serviceAccountCreator serviceAccountCreator
+	doguRegistrator       doguRegistrator
+	resourceUpserter      resourceUpserter
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
@@ -49,7 +48,6 @@ func NewUpgradeExecutor(
 	imageRegistry imageRegistry,
 	collectApplier collectApplier,
 	k8sFileExtractor k8sFileExtractor,
-	upgradeScriptFileExtractor upgradeScriptFileExtractor,
 	serviceAccountCreator serviceAccountCreator,
 	registry registry.Registry,
 ) *upgradeExecutor {
@@ -58,15 +56,14 @@ func NewUpgradeExecutor(
 	upserter := resource.NewUpserter(client, limitPatcher)
 
 	return &upgradeExecutor{
-		client:                     client,
-		eventRecorder:              eventRecorder,
-		imageRegistry:              imageRegistry,
-		collectApplier:             collectApplier,
-		k8sFileExtractor:           k8sFileExtractor,
-		upgradeScriptFileExtractor: upgradeScriptFileExtractor,
-		serviceAccountCreator:      serviceAccountCreator,
-		doguRegistrator:            doguRegistrator,
-		resourceUpserter:           upserter,
+		client:                client,
+		eventRecorder:         eventRecorder,
+		imageRegistry:         imageRegistry,
+		collectApplier:        collectApplier,
+		k8sFileExtractor:      k8sFileExtractor,
+		serviceAccountCreator: serviceAccountCreator,
+		doguRegistrator:       doguRegistrator,
+		resourceUpserter:      upserter,
 	}
 }
 
@@ -104,7 +101,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 	if upgradeScripts != nil {
-		// todo delete me
+
 	}
 
 	if len(customK8sResources) > 0 {
@@ -159,14 +156,6 @@ func extractCustomK8sResources(ctx context.Context, extractor k8sFileExtractor, 
 	}
 
 	return resources, nil
-}
-
-func extractUpgradeScripts(ctx context.Context, extractor upgradeScriptFileExtractor, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error) {
-	preUpgradeScripts, err := extractor.ExtractScriptResourcesFromContainer(ctx, doguResource, dogu, exposedCommandPreUpgrade)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract pre-upgrade script: %w", err)
-	}
-	return preUpgradeScripts, nil
 }
 
 func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) (*appsv1.Deployment, error) {

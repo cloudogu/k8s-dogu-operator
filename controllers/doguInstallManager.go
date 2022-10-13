@@ -165,7 +165,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	if err != nil {
 		return fmt.Errorf("failed to pull image config: %w", err)
 	}
-
+	// todo do we really have everytime we instantiate a dogu an execpod? i think not
 	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromContainer(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)

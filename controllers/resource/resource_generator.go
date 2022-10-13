@@ -27,6 +27,8 @@ const (
 	nodeMasterFile = "node-master-file"
 )
 
+const doguReservedPath = "/tmp/dogu-reserved"
+
 const doguPodNamespace = "POD_NAMESPACE"
 const doguPodName = "POD_NAME"
 
@@ -287,9 +289,9 @@ func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []core
 			MountPath: "/private",
 		},
 		{
-			Name:      "upgrade-reservation",
+			Name:      "dogu-reserved",
 			ReadOnly:  false,
-			MountPath: "/tmp/upgrade",
+			MountPath: doguReservedPath,
 		},
 	}
 
