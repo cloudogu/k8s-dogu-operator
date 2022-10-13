@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"io"
 	"strings"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -19,7 +21,7 @@ import (
 
 // commandExecutor is used to execute command in a dogu
 type commandExecutor interface {
-	ExecCommand(ctx context.Context, targetDogu string, namespace string, command *core.ExposedCommand, params []string) (*bytes.Buffer, error)
+	ExecCommand(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
 }
 
 type localDoguFetcher interface {
@@ -112,7 +114,7 @@ func (c *creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguCon
 }
 
 func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
-	createCommand, err := getCommand(saDogu, "service-account-create")
+	createCommand, err := getExposedCommand(saDogu, "service-account-create")
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +123,8 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
 
-	buffer, err := c.executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, createCommand, args)
+	command := &resource.ShellCommand{Command: createCommand.Command, Args: args}
+	buffer, err := c.executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, command)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}
@@ -173,7 +176,7 @@ func (c *creator) writeServiceAccounts(doguConfig registry.ConfigurationContext,
 	return nil
 }
 
-func getCommand(dogu *core.Dogu, command string) (*core.ExposedCommand, error) {
+func getExposedCommand(dogu *core.Dogu, command string) (*core.ExposedCommand, error) {
 	for _, cmd := range dogu.ExposedCommands {
 		if cmd.Name == command {
 			return &core.ExposedCommand{

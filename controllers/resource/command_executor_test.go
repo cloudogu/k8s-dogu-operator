@@ -49,12 +49,16 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 	labels["dogu"] = "postgresql"
 	readyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}, Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady}}}}
 	unreadyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-	command := &core.ExposedCommand{
+	exposedCommand := &core.ExposedCommand{
 		Name:        "create-sa-command",
 		Description: "desc",
 		Command:     "/create-sa.sh",
 	}
-	params := []string{"ro"}
+	params := []string{"ro", "redmine"}
+	command := &ShellCommand{
+		Command: exposedCommand.Command,
+		Args:    params,
+	}
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		return &fakeExecutor{method: method, url: url}, nil
@@ -82,7 +86,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command, params)
+		buffer, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command)
 
 		// then
 		require.NoError(t, err)
@@ -97,7 +101,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil, nil)
+		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil)
 
 		// then
 		require.Error(t, err)
@@ -111,7 +115,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil, nil)
+		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil)
 
 		// then
 		require.Error(t, err)
@@ -125,7 +129,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command, params)
+		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command)
 
 		// then
 		require.Error(t, err)
@@ -139,33 +143,10 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command, params)
+		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command)
 
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), assert.AnError.Error())
-	})
-}
-
-func Test_findShellInterpreter(t *testing.T) {
-	t.Run("should return bash shebang in simple script", func(t *testing.T) {
-		script := "#!/usr/bin/bash\n\necho 'test'\n"
-
-		// when
-		actual, err := findShellInterpreter(script)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, []string{"/usr/bin/bash"}, actual)
-	})
-	t.Run("should return bash shebang in more complex script", func(t *testing.T) {
-		script := "#!/usr/bin/env bash\n\necho 'test'\n"
-
-		// when
-		actual, err := findShellInterpreter(script)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, []string{"/usr/bin/env", "bash"}, actual)
 	})
 }

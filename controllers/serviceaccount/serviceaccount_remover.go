@@ -3,9 +3,13 @@ package serviceaccount
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
+
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+
 	"github.com/hashicorp/go-multierror"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -82,7 +86,7 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 }
 
 func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) error {
-	removeCommand, err := getCommand(saDogu, "service-account-remove")
+	removeCommand, err := getExposedCommand(saDogu, "service-account-remove")
 	if err != nil {
 		return err
 	}
@@ -90,7 +94,9 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	var args []string
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
-	_, err = r.executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, removeCommand, args)
+
+	command := &resource.ShellCommand{Command: removeCommand.Command, Args: args}
+	_, err = r.executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, command)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}

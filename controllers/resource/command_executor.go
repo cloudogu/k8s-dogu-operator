@@ -6,10 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"regexp"
-	"strings"
-
-	"github.com/cloudogu/cesapp-lib/core"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,11 +16,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var shebangRegex, _ = regexp.Compile("#!(.+)")
-
+// ShellCommand represents all necessary arguments to execute a command inside a container.
 type ShellCommand struct {
-	command string
-	args    []string
+	// Command states the actual executable that is supposed to be executed in the container.
+	Command string
+	// Args contains any parameters, switches etc. that the command needs to run properly.
+	Args []string
 }
 
 // stateError is returned when a specific resource (pod/dogu) is not ready yet.
@@ -70,7 +67,7 @@ func (ce *exposedCommandExecutor) allContainersReady(pod *corev1.Pod) bool {
 
 // ExecCommand execs an exposed command in the first found pod of a dogu
 func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu string, namespace string,
-	command *core.ExposedCommand, params []string) (*bytes.Buffer, error) {
+	command *ShellCommand) (*bytes.Buffer, error) {
 	pod, err := ce.getTargetDoguPod(ctx, targetDogu, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", targetDogu, err)
@@ -83,7 +80,7 @@ func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 		}
 	}
 
-	req := ce.getCreateExecRequest(pod, namespace, command, params)
+	req := ce.getCreateExecRequest(pod, namespace, command)
 	exec, err := ce.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
 		return nil, &stateError{
@@ -109,14 +106,14 @@ func (ce *exposedCommandExecutor) ExecCommand(ctx context.Context, targetDogu st
 }
 
 func (ce *exposedCommandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace string,
-	createCommand *core.ExposedCommand, params []string) *rest.Request {
+	command *ShellCommand) *rest.Request {
 	return ce.CoreV1RestClient.Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(namespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
-			Command: append([]string{createCommand.Command}, params...),
+			Command: append([]string{command.Command}, command.Args...),
 			Stdin:   false,
 			Stdout:  true,
 			Stderr:  true,
@@ -136,35 +133,4 @@ func (ce *exposedCommandExecutor) getTargetDoguPod(ctx context.Context, targetDo
 	}
 
 	return &pods.Items[0], nil
-}
-
-func runUpgradeScript(cmd ShellCommand) {
-	interpreter, err := findShellInterpreter(cmd.command)
-	if err != nil {
-
-	}
-
-	_, err = executeScript(interpreter, cmd)
-	if err != nil {
-
-	}
-}
-
-func executeScript(shellInterpreter []string, command ShellCommand) (string, error) {
-	output := ""
-
-	return output, nil
-}
-
-func findShellInterpreter(script string) ([]string, error) {
-	ok := shebangRegex.Match([]byte(script))
-	if !ok {
-		return nil, fmt.Errorf("could not find shell interpreter in script %s", script)
-	}
-
-	submatch := shebangRegex.FindStringSubmatch(script)
-	shebangLine := submatch[1]
-	shellInterpreterAndArgs := strings.Split(shebangLine, " ")
-
-	return shellInterpreterAndArgs, nil
 }
