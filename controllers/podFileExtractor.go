@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -43,7 +43,7 @@ func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clien
 
 // ExtractK8sResourcesFromContainer enumerates K8s resources and returns them in a map filename->content. The map will be
 // empty if there are no files.
-func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, k8sExecPod execPod) (map[string]string, error) {
+func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod util.ExecPod) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 
 	fileList, err := fe.podExecutor.exec(k8sExecPod.ObjectKey(), "/bin/bash", "-c", "/bin/ls /k8s/ || true")
@@ -82,7 +82,7 @@ func (pe *defaultPodExecutor) exec(execPodKey *client.ObjectKey, cmdArgs ...stri
 
 	out, _, err := execPod.execCmd(cmdArgs)
 	if err != nil {
-		return "", fmt.Errorf("could not enumerate K8s resources in execPod %s with command '%s': %w",
+		return "", fmt.Errorf("could not enumerate K8s resources in ExecPod %s with command '%s': %w",
 			execPodKey.Name, strings.Join(cmdArgs, " "), err)
 	}
 

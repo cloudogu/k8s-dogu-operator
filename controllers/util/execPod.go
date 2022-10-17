@@ -1,4 +1,4 @@
-package resource
+package util
 
 import (
 	"context"
@@ -6,19 +6,31 @@ import (
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/util/rand"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+// ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
+type ExecPod interface {
+	// Create adds a new exec pod to the cluster.
+	Create(ctx context.Context) error
+	// Delete deletes the exec pod from the cluster.
+	Delete(ctx context.Context) error
+	// PodName returns the name of the pod.
+	PodName() string
+	// ObjectKey returns the ExecPod's K8s object key.
+	ObjectKey() *client.ObjectKey
+}
 
 // maxTries controls the maximum number of waiting intervals between requesting an exec pod and its actual
 // instantiation. The waiting time linearly increases each iteration.
@@ -30,34 +42,32 @@ type suffixGenerator interface {
 }
 
 // ExecPod provides features to handle files from a dogu image.
-type ExecPod struct {
+type execPod struct {
 	client       client.Client
 	suffixGen    suffixGenerator
-	k8sNamespace string
 	doguResource *k8sv1.Dogu
 	dogu         *core.Dogu
 	podName      string
 	deleteSpec   *corev1.Pod
 }
 
-func NewExecPod(k8sNamespace string, doguResource *k8sv1.Dogu, dogu *core.Dogu, client client.Client) *ExecPod {
+func NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu, client client.Client) *execPod {
 	suffixGen := &defaultSufficeGenerator{}
-	return &ExecPod{
+	return &execPod{
 		client:       client,
 		suffixGen:    suffixGen,
-		k8sNamespace: k8sNamespace,
 		doguResource: doguResource,
 		dogu:         dogu,
 	}
 }
 
 // Create adds a new exec pod to the cluster.
-func (ep *ExecPod) Create(ctx context.Context) error {
+func (ep *execPod) Create(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	ep.podName = generatePodName(ep.dogu, ep.suffixGen)
 
-	execPodSpec, err := ep.createPod(ep.k8sNamespace, ep.podName)
+	execPodSpec, err := ep.createPod(ep.doguResource.Namespace, ep.podName)
 	if err != nil {
 		return err
 	}
@@ -80,7 +90,7 @@ func generatePodName(dogu *core.Dogu, generator suffixGenerator) string {
 	return fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", generator.String(6))
 }
 
-func (ep *ExecPod) createPod(k8sNamespace string, containerName string) (*corev1.Pod, error) {
+func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1.Pod, error) {
 	image := ep.dogu.Image + ":" + ep.dogu.Version
 	// command is of no importance because the pod will be killed after success
 	doNothingCommand := []string{"/bin/sleep", "60"}
@@ -121,7 +131,7 @@ func (ep *ExecPod) createPod(k8sNamespace string, containerName string) (*corev1
 	return podSpec, nil
 }
 
-func (ep *ExecPod) waitForPodToSpawn(ctx context.Context) error {
+func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	execPodKey := ep.ObjectKey()
@@ -159,7 +169,7 @@ func (ep *ExecPod) waitForPodToSpawn(ctx context.Context) error {
 }
 
 // Delete deletes the exec pod from the cluster.
-func (ep *ExecPod) Delete(ctx context.Context) error {
+func (ep *execPod) Delete(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Cleaning up exec pod ", ep.podName)
@@ -177,13 +187,13 @@ func (ep *ExecPod) Delete(ctx context.Context) error {
 }
 
 // PodName returns the name of the created exec pod resource.
-func (ep *ExecPod) PodName() string {
+func (ep *execPod) PodName() string {
 	return ep.podName
 }
 
-func (ep *ExecPod) ObjectKey() *client.ObjectKey {
+func (ep *execPod) ObjectKey() *client.ObjectKey {
 	return &client.ObjectKey{
-		Namespace: ep.k8sNamespace,
+		Namespace: ep.doguResource.Namespace,
 		Name:      ep.podName,
 	}
 }

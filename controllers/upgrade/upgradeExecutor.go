@@ -4,10 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cloudogu/k8s-dogu-operator/util"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 
@@ -15,9 +11,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -26,16 +25,12 @@ const (
 	ErrorOnFailedUpgradeEventReason = "ErrUpgrade"
 )
 
-const (
-	exposedCommandPreUpgrade = "pre-upgrade"
-)
-
 type upgradeExecutor struct {
 	client                client.Client
 	eventRecorder         record.EventRecorder
 	imageRegistry         imageRegistry
 	collectApplier        collectApplier
-	k8sFileExtractor      k8sFileExtractor
+	k8sFileExtractor      fileExtractor
 	serviceAccountCreator serviceAccountCreator
 	doguRegistrator       doguRegistrator
 	resourceUpserter      resourceUpserter
@@ -47,7 +42,7 @@ func NewUpgradeExecutor(
 	eventRecorder record.EventRecorder,
 	imageRegistry imageRegistry,
 	collectApplier collectApplier,
-	k8sFileExtractor k8sFileExtractor,
+	k8sFileExtractor fileExtractor,
 	serviceAccountCreator serviceAccountCreator,
 	registry registry.Registry,
 ) *upgradeExecutor {
@@ -88,21 +83,16 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
+	var execPod util.ExecPod
 	var customK8sResources map[string]string
-	customK8sResources, err = extractCustomK8sResources(ctx, ue.k8sFileExtractor, toDoguResource, toDogu)
+	customK8sResources, err = extractCustomK8sResources(ctx, ue.k8sFileExtractor, execPod)
 	if err != nil {
 		return err
 	}
 
 	ue.normalEventf(toDoguResource, "Extracting optional upgrade scripts...")
 
-	upgradeScripts, err := extractUpgradeScripts(ctx, ue.upgradeScriptFileExtractor, toDoguResource, toDogu)
-	if err != nil {
-		return err
-	}
-	if upgradeScripts != nil {
-
-	}
+	// to do run pre-upgrade here
 
 	if len(customK8sResources) > 0 {
 		ue.normalEventf(toDoguResource, "Applying/Updating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
@@ -149,8 +139,8 @@ func pullUpgradeImage(ctx context.Context, imgRegistry imageRegistry, toDogu *co
 	return configFile, nil
 }
 
-func extractCustomK8sResources(ctx context.Context, extractor k8sFileExtractor, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) (map[string]string, error) {
-	resources, err := extractor.ExtractK8sResourcesFromContainer(ctx, toDoguResource, toDogu)
+func extractCustomK8sResources(ctx context.Context, extractor fileExtractor, execPod util.ExecPod) (map[string]string, error) {
+	resources, err := extractor.ExtractK8sResourcesFromContainer(ctx, execPod)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract custom K8s resources: %w", err)
 	}

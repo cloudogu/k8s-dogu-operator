@@ -49,6 +49,9 @@ spec:
             - mountPath: /etc/openldap/slapd.d
               name: ldap-data
               subPath: config
+            - mountPath: /tmp/dogu-reserved
+              name: dogu-reserved
+              readOnly: false
           livenessProbe:
             failureThreshold: 3
             periodSeconds: 10

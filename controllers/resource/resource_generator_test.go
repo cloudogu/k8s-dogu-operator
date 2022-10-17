@@ -7,9 +7,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -19,6 +16,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/yaml"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 )
 
 func getResourceGenerator(t *testing.T) *resourceGenerator {
@@ -58,10 +59,18 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		actualVolumeMounts := actualDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, readLdapDoguExpectedDeployment(t), actualDeployment)
+		expectedDeployment := readLdapDoguExpectedDeployment(t)
+		expectedVolumeMounts := expectedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
+		assert.ElementsMatch(t, expectedVolumeMounts, actualVolumeMounts)
+		// avoid test fail due to sequence changes in the volume mount section by setting the same nil value
+		actualDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+		expectedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+
+		assert.Equal(t, expectedDeployment, actualDeployment)
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
@@ -96,13 +105,21 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		}
 
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, deployment)
+		actualVolumeMounts := actualDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
 
 		bytes, _ := yaml.Marshal(actualDeployment)
 		fmt.Println(string(bytes))
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, readLdapDoguExpectedCustomDeployment(t), actualDeployment)
+		expectedCustomDeployment := readLdapDoguExpectedCustomDeployment(t)
+		expectedVolumeMounts := expectedCustomDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
+		assert.ElementsMatch(t, expectedVolumeMounts, actualVolumeMounts)
+		// avoid test fail due to sequence changes in the volume mount section by setting the same nil value
+		actualDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+		expectedCustomDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+
+		assert.Equal(t, expectedCustomDeployment, actualDeployment)
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
@@ -118,10 +135,18 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 		// when
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		actualVolumeMounts := actualDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, readLdapDoguExpectedDevelopDeployment(t), actualDeployment)
+		expectedCustomDeployment := readLdapDoguExpectedDevelopDeployment(t)
+		expectedVolumeMounts := expectedCustomDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
+		assert.ElementsMatch(t, expectedVolumeMounts, actualVolumeMounts)
+		// avoid test fail due to sequence changes in the volume mount section by setting the same nil value
+		actualDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+		expectedCustomDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+
+		assert.Equal(t, expectedCustomDeployment, actualDeployment)
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 

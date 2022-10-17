@@ -8,11 +8,6 @@ import (
 	regmock "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/util"
-
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -20,6 +15,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 )
 
 const redmineUpgradeVersion = "4.2.3-11"
@@ -34,7 +34,6 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		imageRegMock := mocks.NewImageRegistry(t)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		k8sFileEx := mocks.NewFileExtractor(t)
-		scriptFileEx := mocks.NewUpgradeScriptFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
 		doguRegistry := new(regmock.DoguRegistry)
 		mockRegistry := new(regmock.Registry)
@@ -42,7 +41,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		eventRecorder := mocks2.NewEventRecorder(t)
 
 		// when
-		actual := NewUpgradeExecutor(myClient, imageRegMock, applier, k8sFileEx, scriptFileEx, saCreator, mockRegistry, eventRecorder)
+		actual := NewUpgradeExecutor(myClient, eventRecorder, imageRegMock, applier, k8sFileEx, saCreator, mockRegistry)
 
 		// then
 		require.NotNil(t, actual)
@@ -591,10 +590,10 @@ func Test_extractCustomK8sResources(t *testing.T) {
 		extractor := mocks.NewFileExtractor(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
-		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(fakeResources, nil)
+		extractor.On("ExtractK8sResourcesFromContainer", testCtx, mock.Anything).Return(fakeResources, nil)
 
 		// when
-		resources, err := extractCustomK8sResources(testCtx, extractor, toDoguCr, toDogu)
+		resources, err := extractCustomK8sResources(testCtx, extractor, nil)
 
 		// then
 		require.NoError(t, err)
@@ -608,10 +607,10 @@ func Test_extractCustomK8sResources(t *testing.T) {
 		toDoguCr.Spec.Version = redmineUpgradeVersion
 		extractor := mocks.NewFileExtractor(t)
 		var emptyResourcesAreValidToo map[string]string
-		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(emptyResourcesAreValidToo, nil)
+		extractor.On("ExtractK8sResourcesFromContainer", testCtx, mock.Anything).Return(emptyResourcesAreValidToo, nil)
 
 		// when
-		resources, err := extractCustomK8sResources(testCtx, extractor, toDoguCr, toDogu)
+		resources, err := extractCustomK8sResources(testCtx, extractor, nil)
 
 		// then
 		require.NoError(t, err)
@@ -625,10 +624,10 @@ func Test_extractCustomK8sResources(t *testing.T) {
 		toDoguCr.Spec.Version = redmineUpgradeVersion
 		extractor := mocks.NewFileExtractor(t)
 		var nilMap map[string]string
-		extractor.On("ExtractK8sResourcesFromContainer", testCtx, toDoguCr, toDogu).Return(nilMap, assert.AnError)
+		extractor.On("ExtractK8sResourcesFromContainer", testCtx, mock.Anything).Return(nilMap, assert.AnError)
 
 		// when
-		_, err := extractCustomK8sResources(testCtx, extractor, toDoguCr, toDogu)
+		_, err := extractCustomK8sResources(testCtx, extractor, nil)
 
 		// then
 		require.Error(t, err)
@@ -674,45 +673,6 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to apply custom K8s resources: assert.AnError")
-	})
-}
-
-func Test_extractUpgradeScripts(t *testing.T) {
-	t.Run("should return pre-upgrade script", func(t *testing.T) {
-		// given
-		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = redmineUpgradeVersion
-		fakeScripts := make(map[string]string, 0)
-		fakeScripts["/pre-upgrade.sh"] = "#!/bin/bash"
-		scriptExtractor := mocks.NewUpgradeScriptFileExtractor(t)
-		scriptExtractor.On("ExtractScriptResourcesFromContainer", testCtx, toDoguCr, toDogu, exposedCommandPreUpgrade).Return(fakeScripts, nil)
-
-		// when
-		extractedScripts, err := extractUpgradeScripts(testCtx, scriptExtractor, toDoguCr, toDogu)
-
-		// then
-		require.NoError(t, err)
-		expectedScripts := make(map[string]string, 0)
-		expectedScripts["/pre-upgrade.sh"] = "#!/bin/bash"
-		assert.Equal(t, expectedScripts, extractedScripts)
-	})
-	t.Run("should fail during pre-upgrade script extraction", func(t *testing.T) {
-		// given
-		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguCr := readTestDataRedmineCr(t)
-		toDoguCr.Spec.Version = redmineUpgradeVersion
-		scriptExtractor := mocks.NewUpgradeScriptFileExtractor(t)
-		scriptExtractor.On("ExtractScriptResourcesFromContainer", testCtx, toDoguCr, toDogu, exposedCommandPreUpgrade).Return(nil, assert.AnError)
-
-		// when
-		_, err := extractUpgradeScripts(testCtx, scriptExtractor, toDoguCr, toDogu)
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to extract pre-upgrade script")
 	})
 }
 

@@ -17,7 +17,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
-	"github.com/cloudogu/k8s-dogu-operator/util"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,6 +48,7 @@ type doguInstallManager struct {
 	fileExtractor         fileExtractor
 	collectApplier        collectApplier
 	resourceUpserter      resourceUpserter
+	execPodFactory        execPodFactory
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
@@ -101,6 +102,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		fileExtractor:         fileExtract,
 		collectApplier:        collectApplier,
 		resourceUpserter:      upserter,
+		execPodFactory:        &defaultExecPodFactory{},
 	}, nil
 }
 
@@ -165,10 +167,21 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	if err != nil {
 		return fmt.Errorf("failed to pull image config: %w", err)
 	}
-	// todo do we really have everytime we instantiate a dogu an execpod? i think not
-	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromContainer(ctx, doguResource, dogu)
+
+	anExecPod := m.execPodFactory.NewExecPod(doguResource, dogu, m.client)
+	err = anExecPod.Create(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
+	}
+
+	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromContainer(ctx, anExecPod)
 	if err != nil {
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
+	}
+
+	err = anExecPod.Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
 	}
 
 	if len(customK8sResources) > 0 {
@@ -213,4 +226,11 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	return nil
+}
+
+type defaultExecPodFactory struct{}
+
+// NewExecPod creates a new ExecPod during the operation run-time.
+func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, client client.Client) util.ExecPod {
+	return util.NewExecPod(doguResource, dogu, client)
 }

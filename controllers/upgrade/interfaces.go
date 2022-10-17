@@ -4,9 +4,13 @@ import (
 	"context"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
 type imageRegistry interface {
@@ -14,14 +18,9 @@ type imageRegistry interface {
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
 }
 
-type k8sFileExtractor interface {
-	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings
-	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (map[string]string, error)
-}
-
-type upgradeScriptFileExtractor interface {
-	// ExtractScriptResourcesFromContainer extracts a script from a dogu image and returns them in a map filename->content.
-	ExtractScriptResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, exposedCommandFilter string) (map[string]string, error)
+type fileExtractor interface {
+	// ExtractK8sResourcesFromContainer copies a file from stdout into a map of strings.
+	ExtractK8sResourcesFromContainer(ctx context.Context, execpod util.ExecPod) (map[string]string, error)
 }
 
 type serviceAccountCreator interface {
