@@ -8,10 +8,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +16,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 )
 
 const (
@@ -27,7 +28,10 @@ const (
 	nodeMasterFile = "node-master-file"
 )
 
-const doguReservedPath = "/tmp/dogu-reserved"
+const (
+	DoguReservedVolume = "dogu-reserved"
+	DoguReservedPath   = "/tmp/dogu-reserved"
+)
 
 const doguPodNamespace = "POD_NAMESPACE"
 const doguPodName = "POD_NAME"
@@ -255,9 +259,21 @@ func createVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Vo
 		},
 	}
 
+	// always reserve a volume for upgrade script actions, even if the dogu has no state because upgrade scripts
+	// do not always rely on a dogu state (f. e. checks on upgradability)
+	doguReservedVolume := corev1.Volume{
+		Name: DoguReservedVolume,
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: doguResource.Name,
+			},
+		},
+	}
+
 	volumes := []corev1.Volume{
 		nodeMasterVolume,
 		privateVolume,
+		doguReservedVolume,
 	}
 
 	if len(dogu.Volumes) > 0 {
@@ -289,9 +305,9 @@ func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []core
 			MountPath: "/private",
 		},
 		{
-			Name:      "dogu-reserved",
+			Name:      DoguReservedVolume,
 			ReadOnly:  false,
-			MountPath: doguReservedPath,
+			MountPath: DoguReservedPath,
 		},
 	}
 
