@@ -65,14 +65,31 @@ func (ce *commandExecutor) allContainersReady(pod *corev1.Pod) bool {
 	return false
 }
 
-// ExecCommand execs a command in the first found pod of a dogu
-func (ce *commandExecutor) ExecCommand(ctx context.Context, targetDogu string, namespace string,
+// ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
+// that can be selected by a K8s label.
+func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string,
 	command *ShellCommand) (*bytes.Buffer, error) {
 	pod, err := ce.getTargetDoguPod(ctx, targetDogu, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", targetDogu, err)
 	}
 
+	return ce.execCommand(pod, namespace, command)
+}
+
+// ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
+// identified by its pod name.
+func (ce *commandExecutor) ExecCommandForPod(ctx context.Context, targetPod string, namespace string,
+	command *ShellCommand) (*bytes.Buffer, error) {
+	pod, err := ce.getPodByName(ctx, targetPod, namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod %s: %w", targetPod, err)
+	}
+
+	return ce.execCommand(pod, namespace, command)
+}
+
+func (ce *commandExecutor) execCommand(pod *corev1.Pod, namespace string, command *ShellCommand) (*bytes.Buffer, error) {
 	if !ce.allContainersReady(pod) {
 		return nil, &stateError{
 			sourceError: fmt.Errorf("can't execute command in pod with status %v", pod.Status),
@@ -133,4 +150,8 @@ func (ce *commandExecutor) getTargetDoguPod(ctx context.Context, targetDogu stri
 	}
 
 	return &pods.Items[0], nil
+}
+
+func (ce *commandExecutor) getPodByName(ctx context.Context, podName string, namespace string) (*corev1.Pod, error) {
+	return ce.Client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 }

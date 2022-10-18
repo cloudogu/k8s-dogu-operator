@@ -125,7 +125,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -308,7 +308,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(nil, assert.AnError)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(nil, assert.AnError)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -343,7 +343,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		invalidBuffer := bytes.NewBufferString("username:user:invalid\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(invalidBuffer, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(invalidBuffer, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -379,7 +379,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -417,7 +417,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -455,7 +455,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -494,7 +494,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -534,7 +534,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		buf := bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommand", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)

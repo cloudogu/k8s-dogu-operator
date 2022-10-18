@@ -21,7 +21,7 @@ import (
 
 // commandExecutor is used to execute command in a dogu
 type commandExecutor interface {
-	ExecCommand(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
 }
 
 type localDoguFetcher interface {
@@ -124,7 +124,7 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, consumerDogu.GetSimpleName())
 
 	command := &resource.ShellCommand{Command: createCommand.Command, Args: args}
-	buffer, err := c.executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, command)
+	buffer, err := c.executor.ExecCommandForDogu(ctx, saDogu.GetSimpleName(), namespace, command)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}

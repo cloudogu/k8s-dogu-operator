@@ -17,7 +17,7 @@ type CommandExecutor struct {
 }
 
 // ExecCommand provides a mock function with given fields: ctx, targetDogu, namespace, command
-func (_m *CommandExecutor) ExecCommand(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error) {
+func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error) {
 	ret := _m.Called(ctx, targetDogu, namespace, command)
 
 	var r0 *bytes.Buffer

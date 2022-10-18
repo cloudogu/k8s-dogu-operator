@@ -86,7 +86,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command)
+		buffer, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", command)
 
 		// then
 		require.NoError(t, err)
@@ -101,7 +101,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", nil)
 
 		// then
 		require.Error(t, err)
@@ -115,7 +115,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", nil)
 
 		// then
 		require.Error(t, err)
@@ -129,7 +129,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", command)
 
 		// then
 		require.Error(t, err)
@@ -143,7 +143,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", command)
 
 		// then
 		require.Error(t, err)

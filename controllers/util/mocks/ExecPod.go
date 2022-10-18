@@ -44,32 +44,25 @@ func (_m *ExecPod) Delete(ctx context.Context) error {
 	return r0
 }
 
-// Exec provides a mock function with given fields: cmd
-func (_m *ExecPod) Exec(cmd *resource.ShellCommand) (string, string, error) {
-	ret := _m.Called(cmd)
+// Exec provides a mock function with given fields: ctx, cmd
+func (_m *ExecPod) Exec(ctx context.Context, cmd *resource.ShellCommand) (string, error) {
+	ret := _m.Called(ctx, cmd)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(*resource.ShellCommand) string); ok {
-		r0 = rf(cmd)
+	if rf, ok := ret.Get(0).(func(context.Context, *resource.ShellCommand) string); ok {
+		r0 = rf(ctx, cmd)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	var r1 string
-	if rf, ok := ret.Get(1).(func(*resource.ShellCommand) string); ok {
-		r1 = rf(cmd)
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *resource.ShellCommand) error); ok {
+		r1 = rf(ctx, cmd)
 	} else {
-		r1 = ret.Get(1).(string)
+		r1 = ret.Error(1)
 	}
 
-	var r2 error
-	if rf, ok := ret.Get(2).(func(*resource.ShellCommand) error); ok {
-		r2 = rf(cmd)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // ObjectKey provides a mock function with given fields:

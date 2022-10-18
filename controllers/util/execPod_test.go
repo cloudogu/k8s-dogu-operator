@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -19,8 +19,10 @@ import (
 )
 
 const testNamespace = "ecosystem"
-const podName = "le-test-pod-name"
+const podName = "test-execpod-123abc"
 const containerName = "ldap"
+
+var testCtx = context.TODO()
 
 func Test_defaultSufficeGenerator_String(t *testing.T) {
 	actual := (&defaultSufficeGenerator{}).String(6)
@@ -86,18 +88,22 @@ func Test_execPod_Exec(t *testing.T) {
 		cmd := &resource.ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
 		mockExec := mocks.NewCommandExecutor(t)
 		outBuf := bytes.NewBufferString("")
-		errBuf := bytes.NewBufferString("oh noez!")
-		mockExec.On("ExecCmd", cmd).Return(outBuf, errBuf, assert.AnError)
-		sut := &execPod{client: fakeClient, doguResource: ldapDoguResource, dogu: ldapDogu, executor: mockExec}
+		mockExec.On("ExecCommandForPod", testCtx, podName, testNamespace, cmd).Return(outBuf, assert.AnError)
+		sut := &execPod{
+			client:       fakeClient,
+			doguResource: ldapDoguResource,
+			dogu:         ldapDogu,
+			podName:      podName,
+			executor:     mockExec,
+		}
 
 		// when
-		actualOut, actualErrOut, err := sut.Exec(cmd)
+		actualOut, err := sut.Exec(testCtx, cmd)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.Empty(t, actualOut)
-		assert.Equal(t, "oh noez!", actualErrOut)
 	})
 	t.Run("should be successful", func(t *testing.T) {
 		// given
@@ -109,59 +115,20 @@ func Test_execPod_Exec(t *testing.T) {
 		cmd := &resource.ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
 		mockExec := mocks.NewCommandExecutor(t)
 		outBuf := bytes.NewBufferString("possibly some output goes here")
-		errBuf := bytes.NewBufferString("")
-		mockExec.On("ExecCmd", cmd).Return(outBuf, errBuf, nil)
-		sut := &execPod{client: fakeClient, doguResource: ldapDoguResource, dogu: ldapDogu, executor: mockExec}
+		mockExec.On("ExecCommandForPod", testCtx, podName, testNamespace, cmd).Return(outBuf, nil)
+		sut := &execPod{
+			client:       fakeClient,
+			doguResource: ldapDoguResource,
+			dogu:         ldapDogu,
+			podName:      podName,
+			executor:     mockExec,
+		}
 
 		// when
-		actualOut, actualErrOut, err := sut.Exec(cmd)
+		actualOut, err := sut.Exec(testCtx, cmd)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "possibly some output goes here", actualOut)
-		assert.Equal(t, "", actualErrOut)
-	})
-}
-
-func Test_commandExecutor_ExecCmd(t *testing.T) {
-	command := &resource.ShellCommand{
-		Command: "/bin/ls",
-		Args:    []string{"/home"},
-	}
-	t.Run("should run command with error on failed container", func(t *testing.T) {
-		// given
-		runner := mocks.NewRunner(t)
-		runner.On("Run").Return(createStreams(), assert.AnError)
-		runner.On("SetCommand", command).Return()
-		commandExecutor := defaultCommandExecutor{runner: runner}
-
-		// when
-		_, _, err := commandExecutor.ExecCmd(command)
-
-		// then
-		require.Error(t, err)
-	})
-	t.Run("should run successfully", func(t *testing.T) {
-		// given
-		stream := genericclioptions.IOStreams{
-			Out:    bytes.NewBufferString("hallo"),
-			ErrOut: &bytes.Buffer{},
-		}
-		runner := mocks.NewRunner(t)
-		runner.On("Run").Return(stream, nil)
-		runner.On("SetCommand", command).Return()
-		commandExecutor := defaultCommandExecutor{runner: runner}
-		command := resource.ShellCommand{
-			Command: "/bin/ls",
-			Args:    []string{"/home"},
-		}
-
-		// when
-		actual, actualErr, err := commandExecutor.ExecCmd(&command)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, "hallo", actual.String())
-		assert.Equal(t, "", actualErr.String())
 	})
 }

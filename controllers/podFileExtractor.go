@@ -38,7 +38,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 		Command: "/bin/bash",
 		Args:    []string{"-c", "/bin/ls /k8s/ || true"},
 	}
-	fileList, _, err := k8sExecPod.Exec(&lsCommand)
+	fileList, err := k8sExecPod.Exec(ctx, &lsCommand)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 			Command: "/bin/cat",
 			Args:    []string{trimmedFile},
 		}
-		fileContent, _, err := k8sExecPod.Exec(&catCommand)
+		fileContent, err := k8sExecPod.Exec(ctx, &catCommand)
 		if err != nil {
 			return nil, err
 		}

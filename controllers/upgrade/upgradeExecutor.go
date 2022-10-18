@@ -3,6 +3,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
+
 	"k8s.io/client-go/rest"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -93,15 +94,17 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 	defer execPod.Delete(ctx)
+
+	err = ue.applyUpgradeScripts(ctx, toDoguResource, toDogu, execPod)
+	if err != nil {
+		return err
+	}
+
 	var customK8sResources map[string]string
 	customK8sResources, err = extractCustomK8sResources(ctx, ue.k8sFileExtractor, execPod)
 	if err != nil {
 		return err
 	}
-
-	ue.normalEventf(toDoguResource, "Extracting optional upgrade scripts...")
-
-	// to do run pre-upgrade here
 
 	if len(customK8sResources) > 0 {
 		ue.normalEventf(toDoguResource, "Applying/Updating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
@@ -166,9 +169,41 @@ func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier,
 	return resources, nil
 }
 
-func (ue *upgradeExecutor) applyUpgradeScripts(ctx context.Context, upgradeScripts map[string]string, toDoguResource *k8sv1.Dogu) error {
-	// TODO re-use commandExecutor here
+func (ue *upgradeExecutor) applyUpgradeScripts(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, execPod util.ExecPod) error {
+	ue.normalEventf(toDoguResource, "Copying optional upgrade scripts...")
+	err := copyPreUpgradeScriptToOlderDogu(ctx, execPod, toDogu)
+	if err != nil {
+		return err
+	}
 
+	ue.normalEventf(toDoguResource, "Applying optional upgrade scripts...")
+	err = ue.applyPreUpgradeScriptToOlderDogu()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func copyPreUpgradeScriptToOlderDogu(ctx context.Context, execPod util.ExecPod, toDogu *core.Dogu) error {
+	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
+		return nil
+	}
+
+	preUpgradeScriptPath := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
+	const copyCmd = "/bin/cp"
+	copyArgs := []string{preUpgradeScriptPath.Command, resource.DoguReservedPath}
+	copyPreUpgradeScriptCmd := &resource.ShellCommand{Command: copyCmd, Args: copyArgs}
+
+	out, err := execPod.Exec(ctx, copyPreUpgradeScriptCmd)
+	if err != nil {
+		return fmt.Errorf("failed to execute file copy for %s %s, stdout: %s:  %w", copyCmd, copyArgs, out, err)
+	}
+
+	return nil
+}
+
+func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu() error {
 	return nil
 }
 
