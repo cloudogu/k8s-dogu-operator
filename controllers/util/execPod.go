@@ -63,6 +63,7 @@ type execPod struct {
 	deleteSpec   *corev1.Pod
 }
 
+// NewExecPod creates a new ExecPod that enables command execution towards a pod.
 func NewExecPod(client client.Client, restConfig rest.Config, doguResource *k8sv1.Dogu, dogu *core.Dogu, podName string) (*execPod, error) {
 	// restConfig is not a pointer because we modify it here
 	restConfig.APIPath = "/api"
@@ -82,7 +83,7 @@ func NewExecPod(client client.Client, restConfig rest.Config, doguResource *k8sv
 	}, nil
 }
 
-// Create adds a new exec pod to the cluster.
+// Create adds a new exec pod to the cluster. It waits synchronously until the K8s pod resource exists.
 func (ep *execPod) Create(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
@@ -103,10 +104,6 @@ func (ep *execPod) Create(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func generatePodName(dogu *core.Dogu, generator suffixGenerator) string {
-	return fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", generator.String(6))
 }
 
 func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1.Pod, error) {
@@ -224,6 +221,7 @@ func (ep *execPod) PodName() string {
 	return ep.podName
 }
 
+// ObjectKey returns an execPod's K8s object key.
 func (ep *execPod) ObjectKey() *client.ObjectKey {
 	return &client.ObjectKey{
 		Namespace: ep.doguResource.Namespace,
@@ -231,6 +229,7 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 	}
 }
 
+// Exec executes the given ShellCommand and returns any output to stdOut and stdErr.
 func (ep *execPod) Exec(cmd *resource.ShellCommand) (stdOut string, errOut string, err error) {
 	outBytes, errOutBytes, err := ep.executor.ExecCmd(cmd)
 	return outBytes.String(), errOutBytes.String(), err
@@ -238,6 +237,7 @@ func (ep *execPod) Exec(cmd *resource.ShellCommand) (stdOut string, errOut strin
 
 // commandExecutor provides the functionality to execute a shell command in a pod.
 type commandExecutor interface {
+	// ExecCmd executes the given ShellCommand.
 	ExecCmd(cmd *resource.ShellCommand) (out, errOut *bytes.Buffer, err error)
 }
 
@@ -245,6 +245,7 @@ type defaultCommandExecutor struct {
 	runner runner
 }
 
+// NewCommandExecutor creates a new command executor.
 func NewCommandExecutor(podName string, containerName string, namespace string, restConfig *rest.Config) (*defaultCommandExecutor, error) {
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
@@ -276,7 +277,9 @@ func NewCommandExecutor(podName string, containerName string, namespace string, 
 }
 
 type runner interface {
+	// Run executes a command that was provided by SetCommand()
 	Run() (genericclioptions.IOStreams, error)
+	// SetCommand fills a ShellCommand during run-time in order to execute it afterwards.
 	SetCommand(command *resource.ShellCommand)
 }
 
@@ -284,11 +287,13 @@ type runWrapper struct {
 	*exec.ExecOptions
 }
 
+// Run executes a command that was provided by SetCommand()
 func (r *runWrapper) Run() (genericclioptions.IOStreams, error) {
 	err := r.ExecOptions.Run()
 	return r.IOStreams, err
 }
 
+// SetCommand fills a ShellCommand during run-time in order to execute it afterwards.
 func (r *runWrapper) SetCommand(command *resource.ShellCommand) {
 	r.Command = append([]string{command.Command}, command.Args...)
 }
@@ -323,6 +328,7 @@ func sleep(logger logr.Logger, sleepIntervalInSec int) {
 
 type defaultSufficeGenerator struct{}
 
+// String returns a pod suffix of fixed length.
 func (sg *defaultSufficeGenerator) String(suffixLength int) string {
 	return rand.String(suffixLength)
 }
@@ -333,6 +339,7 @@ type defaultExecPodFactory struct {
 	suffixGen suffixGenerator
 }
 
+// NewExecPodFactory creates a new ExecPodFactory.
 func NewExecPodFactory(client client.Client, config *rest.Config) *defaultExecPodFactory {
 	return &defaultExecPodFactory{
 		client:    client,
@@ -345,4 +352,8 @@ func NewExecPodFactory(client client.Client, config *rest.Config) *defaultExecPo
 func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error) {
 	podName := generatePodName(dogu, epf.suffixGen)
 	return NewExecPod(epf.client, *epf.config, doguResource, dogu, podName)
+}
+
+func generatePodName(dogu *core.Dogu, generator suffixGenerator) string {
+	return fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", generator.String(6))
 }
