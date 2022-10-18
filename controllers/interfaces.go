@@ -10,7 +10,6 @@ import (
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type installManager interface {
@@ -101,5 +100,5 @@ type fileExtractor interface {
 }
 
 type execPodFactory interface {
-	NewExecPod(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, client client.Client) util.ExecPod
+	NewExecPod(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (util.ExecPod, error)
 }

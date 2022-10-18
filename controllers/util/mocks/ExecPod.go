@@ -5,7 +5,9 @@ package mocks
 import (
 	context "context"
 
+	resource "github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	mock "github.com/stretchr/testify/mock"
+
 	types "k8s.io/apimachinery/pkg/types"
 )
 
@@ -40,6 +42,27 @@ func (_m *ExecPod) Delete(ctx context.Context) error {
 	}
 
 	return r0
+}
+
+// Exec provides a mock function with given fields: cmd
+func (_m *ExecPod) Exec(cmd *resource.ShellCommand) (string, error) {
+	ret := _m.Called(cmd)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(*resource.ShellCommand) string); ok {
+		r0 = rf(cmd)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*resource.ShellCommand) error); ok {
+		r1 = rf(cmd)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // ObjectKey provides a mock function with given fields:

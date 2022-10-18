@@ -3,6 +3,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/rest"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -34,11 +35,13 @@ type upgradeExecutor struct {
 	serviceAccountCreator serviceAccountCreator
 	doguRegistrator       doguRegistrator
 	resourceUpserter      resourceUpserter
+	execPodFactory        execPodFactory
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
 func NewUpgradeExecutor(
 	client client.Client,
+	config *rest.Config,
 	eventRecorder record.EventRecorder,
 	imageRegistry imageRegistry,
 	collectApplier collectApplier,
@@ -59,6 +62,7 @@ func NewUpgradeExecutor(
 		serviceAccountCreator: serviceAccountCreator,
 		doguRegistrator:       doguRegistrator,
 		resourceUpserter:      upserter,
+		execPodFactory:        util.NewExecPodFactory(client, config),
 	}
 }
 
@@ -83,7 +87,12 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
-	var execPod util.ExecPod
+	execPod, _ := ue.execPodFactory.NewExecPod(toDoguResource, toDogu)
+	err = execPod.Create(ctx)
+	if err != nil {
+		return err
+	}
+	defer execPod.Delete(ctx)
 	var customK8sResources map[string]string
 	customK8sResources, err = extractCustomK8sResources(ctx, ue.k8sFileExtractor, execPod)
 	if err != nil {

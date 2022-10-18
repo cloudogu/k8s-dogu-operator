@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
@@ -102,7 +101,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		fileExtractor:         fileExtract,
 		collectApplier:        collectApplier,
 		resourceUpserter:      upserter,
-		execPodFactory:        &defaultExecPodFactory{},
+		execPodFactory:        util.NewExecPodFactory(client, restConfig),
 	}, nil
 }
 
@@ -168,18 +167,18 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to pull image config: %w", err)
 	}
 
-	anExecPod := m.execPodFactory.NewExecPod(doguResource, dogu, m.client)
+	anExecPod, _ := m.execPodFactory.NewExecPod(doguResource, dogu)
 	err = anExecPod.Create(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
 	}
+	defer anExecPod.Delete(ctx)
 
 	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromContainer(ctx, anExecPod)
 	if err != nil {
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
 	}
 
-	err = anExecPod.Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
 	}
@@ -226,11 +225,4 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	return nil
-}
-
-type defaultExecPodFactory struct{}
-
-// NewExecPod creates a new ExecPod during the operation run-time.
-func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, client client.Client) util.ExecPod {
-	return util.NewExecPod(doguResource, dogu, client)
 }

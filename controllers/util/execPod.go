@@ -1,8 +1,18 @@
 package util
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/kubectl/pkg/cmd/exec"
+	"k8s.io/kubectl/pkg/scheme"
+	"strings"
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -31,6 +41,8 @@ type ExecPod interface {
 	PodName() string
 	// ObjectKey returns the ExecPod's K8s object key.
 	ObjectKey() *client.ObjectKey
+	// Exec runs the provided command in this execPod
+	Exec(cmd *resource.ShellCommand) (stdOut string, err error)
 }
 
 // maxTries controls the maximum number of waiting intervals between requesting an exec pod and its actual
@@ -45,21 +57,36 @@ type suffixGenerator interface {
 // ExecPod provides features to handle files from a dogu image.
 type execPod struct {
 	client       client.Client
+	restConfig   *rest.Config
+	clientset    kubernetes.Interface
+	restExecutor exec.RemoteExecutor
 	suffixGen    suffixGenerator
+
 	doguResource *k8sv1.Dogu
 	dogu         *core.Dogu
 	podName      string
 	deleteSpec   *corev1.Pod
 }
 
-func NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu, client client.Client) *execPod {
+func NewExecPod(client client.Client, config rest.Config, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*execPod, error) {
+	config.APIPath = "/api"
+	config.GroupVersion = &schema.GroupVersion{Version: "v1"}
+	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs}
+
 	suffixGen := &defaultSufficeGenerator{}
+	clientset, err := kubernetes.NewForConfig(&config)
+	if err != nil {
+		return nil, err
+	}
 	return &execPod{
 		client:       client,
+		restConfig:   &config,
+		clientset:    clientset,
+		restExecutor: &exec.DefaultRemoteExecutor{},
 		suffixGen:    suffixGen,
 		doguResource: doguResource,
 		dogu:         dogu,
-	}
+	}, nil
 }
 
 // Create adds a new exec pod to the cluster.
@@ -74,7 +101,7 @@ func (ep *execPod) Create(ctx context.Context) error {
 	}
 
 	logger.Info("Creating new exec pod " + ep.podName)
-	err = ep.client.Create(ctx, execPodSpec)
+	ep.deleteSpec, err = ep.clientset.CoreV1().Pods("").Create(ctx, execPodSpec, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -213,6 +240,54 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 	}
 }
 
+func (ep *execPod) Exec(cmd *resource.ShellCommand) (stdOut string, err error) {
+	out, _, err := ep.execCmd(cmd)
+	if err != nil {
+		return "", fmt.Errorf("could not enumerate K8s resources in ExecPod %s with command '%s %s': %w",
+			ep.ObjectKey(), cmd.Command, strings.Join(cmd.Args, " "), err)
+	}
+
+	return out.String(), nil
+}
+
+// execCmd executes arbitrary commands in a pod container.
+func (ep *execPod) execCmd(cmd *resource.ShellCommand) (out *bytes.Buffer, errOut *bytes.Buffer, err error) {
+	in := &bytes.Buffer{}
+	out = &bytes.Buffer{}
+	errOut = &bytes.Buffer{}
+
+	ioStreams := genericclioptions.IOStreams{
+		In:     in,
+		Out:    out,
+		ErrOut: errOut,
+	}
+
+	options := &exec.ExecOptions{
+		StreamOptions: exec.StreamOptions{
+			Namespace:       ep.doguResource.Namespace,
+			PodName:         ep.podName,
+			ContainerName:   ep.podName,
+			Stdin:           true,
+			TTY:             false,
+			Quiet:           false,
+			InterruptParent: nil,
+			IOStreams:       ioStreams,
+		},
+		Command:       append([]string{cmd.Command}, cmd.Args...),
+		Executor:      ep.restExecutor,
+		PodClient:     ep.clientset.CoreV1(),
+		GetPodTimeout: 0,
+		Config:        ep.restConfig,
+	}
+
+	err = options.Run()
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not run exec operation: %w", err)
+	}
+
+	return out, errOut, nil
+}
+
 func sleep(logger logr.Logger, sleepIntervalInSec int) {
 	logger.Info(fmt.Sprintf("Exec pod not found. Trying again in %d second(s)", sleepIntervalInSec))
 	time.Sleep(time.Duration(sleepIntervalInSec) * time.Second) // linear rising backoff
@@ -222,4 +297,21 @@ type defaultSufficeGenerator struct{}
 
 func (sg *defaultSufficeGenerator) String(suffixLength int) string {
 	return rand.String(suffixLength)
+}
+
+type defaultExecPodFactory struct {
+	client client.Client
+	config *rest.Config
+}
+
+func NewExecPodFactory(client client.Client, config *rest.Config) *defaultExecPodFactory {
+	return &defaultExecPodFactory{
+		client: client,
+		config: config,
+	}
+}
+
+// NewExecPod creates a new ExecPod during the operation run-time.
+func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error) {
+	return NewExecPod(epf.client, *epf.config, doguResource, dogu)
 }

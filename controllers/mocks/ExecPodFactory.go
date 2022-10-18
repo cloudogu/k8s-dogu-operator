@@ -3,10 +3,7 @@
 package mocks
 
 import (
-	client "sigs.k8s.io/controller-runtime/pkg/client"
-
 	core "github.com/cloudogu/cesapp-lib/core"
-
 	mock "github.com/stretchr/testify/mock"
 
 	util "github.com/cloudogu/k8s-dogu-operator/controllers/util"
@@ -19,20 +16,27 @@ type ExecPodFactory struct {
 	mock.Mock
 }
 
-// NewExecPod provides a mock function with given fields: doguResource, dogu, _a2
-func (_m *ExecPodFactory) NewExecPod(doguResource *v1.Dogu, dogu *core.Dogu, _a2 client.Client) util.ExecPod {
-	ret := _m.Called(doguResource, dogu, _a2)
+// NewExecPod provides a mock function with given fields: doguResource, dogu
+func (_m *ExecPodFactory) NewExecPod(doguResource *v1.Dogu, dogu *core.Dogu) (util.ExecPod, error) {
+	ret := _m.Called(doguResource, dogu)
 
 	var r0 util.ExecPod
-	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu, client.Client) util.ExecPod); ok {
-		r0 = rf(doguResource, dogu, _a2)
+	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) util.ExecPod); ok {
+		r0 = rf(doguResource, dogu)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(util.ExecPod)
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*v1.Dogu, *core.Dogu) error); ok {
+		r1 = rf(doguResource, dogu)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 type mockConstructorTestingTNewExecPodFactory interface {

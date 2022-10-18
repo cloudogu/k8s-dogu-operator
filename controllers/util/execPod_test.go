@@ -1,6 +1,11 @@
 package util
 
 import (
+	"github.com/stretchr/testify/mock"
+	"io"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,4 +72,30 @@ func Test_exexPod_createPod(t *testing.T) {
 		require.Len(t, actual.Spec.Containers, 1)
 		assert.Equal(t, actual.Spec.Containers[0].Image, ldapDogu.Image+":"+ldapDogu.Version)
 	})
+}
+
+func Test_executor_execCmd(t *testing.T) {
+	t.Run("should run command with error on failed container", func(t *testing.T) {
+		t.Fail()
+	})
+	t.Run("should run successfully", func(t *testing.T) {
+	})
+}
+
+func Test_ExecPod_Exec(t *testing.T) {
+	t.Run("should fail with arbitrary error", func(t *testing.T) {
+
+	})
+	t.Run("should be successful", func(t *testing.T) {
+
+	})
+}
+
+type mockRestExecutor struct {
+	mock.Mock
+}
+
+func (m *mockRestExecutor) Execute(string, *url.URL, *rest.Config, io.Reader, io.Writer, io.Writer, bool, remotecommand.TerminalSizeQueue) error {
+	args := m.Called()
+	return args.Error(0)
 }

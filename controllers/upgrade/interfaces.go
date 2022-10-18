@@ -2,7 +2,6 @@ package upgrade
 
 import (
 	"context"
-
 	"github.com/cloudogu/cesapp-lib/core"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
@@ -41,4 +40,8 @@ type collectApplier interface {
 type resourceUpserter interface {
 	// ApplyDoguResource generates K8s resources from a given dogu and creates/updates them in the cluster.
 	ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error
+}
+
+type execPodFactory interface {
+	NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (util.ExecPod, error)
 }
