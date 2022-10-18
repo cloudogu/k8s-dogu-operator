@@ -2,19 +2,16 @@ package util
 
 import (
 	"bytes"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
-	"github.com/stretchr/testify/mock"
-	"io"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/remotecommand"
-	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -49,7 +46,7 @@ func TestExecPod_ObjectKey(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func Test_exexPod_createPod(t *testing.T) {
+func Test_execPod_createPod(t *testing.T) {
 	ldapDogu := readLdapDogu(t)
 	ldapDoguResource := readLdapDoguResource(t)
 	fakeClient := fake.NewClientBuilder().
@@ -78,7 +75,55 @@ func Test_exexPod_createPod(t *testing.T) {
 	})
 }
 
-func Test_commandExecutor_execCmd(t *testing.T) {
+func Test_execPod_Exec(t *testing.T) {
+	t.Run("should fail with arbitrary error", func(t *testing.T) {
+		// given
+		ldapDogu := readLdapDogu(t)
+		ldapDoguResource := readLdapDoguResource(t)
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			Build()
+		cmd := &resource.ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
+		mockExec := mocks.NewCommandExecutor(t)
+		outBuf := bytes.NewBufferString("")
+		errBuf := bytes.NewBufferString("oh noez!")
+		mockExec.On("ExecCmd", cmd).Return(outBuf, errBuf, assert.AnError)
+		sut := &execPod{client: fakeClient, doguResource: ldapDoguResource, dogu: ldapDogu, executor: mockExec}
+
+		// when
+		actualOut, actualErrOut, err := sut.Exec(cmd)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, actualOut)
+		assert.Equal(t, "oh noez!", actualErrOut)
+	})
+	t.Run("should be successful", func(t *testing.T) {
+		// given
+		ldapDogu := readLdapDogu(t)
+		ldapDoguResource := readLdapDoguResource(t)
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			Build()
+		cmd := &resource.ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
+		mockExec := mocks.NewCommandExecutor(t)
+		outBuf := bytes.NewBufferString("possibly some output goes here")
+		errBuf := bytes.NewBufferString("")
+		mockExec.On("ExecCmd", cmd).Return(outBuf, errBuf, nil)
+		sut := &execPod{client: fakeClient, doguResource: ldapDoguResource, dogu: ldapDogu, executor: mockExec}
+
+		// when
+		actualOut, actualErrOut, err := sut.Exec(cmd)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "possibly some output goes here", actualOut)
+		assert.Equal(t, "", actualErrOut)
+	})
+}
+
+func Test_commandExecutor_ExecCmd(t *testing.T) {
 	command := &resource.ShellCommand{
 		Command: "/bin/ls",
 		Args:    []string{"/home"},
@@ -91,7 +136,7 @@ func Test_commandExecutor_execCmd(t *testing.T) {
 		commandExecutor := defaultCommandExecutor{runner: runner}
 
 		// when
-		_, _, err := commandExecutor.execCmd(command)
+		_, _, err := commandExecutor.ExecCmd(command)
 
 		// then
 		require.Error(t, err)
@@ -112,27 +157,11 @@ func Test_commandExecutor_execCmd(t *testing.T) {
 		}
 
 		// when
-		actual, actualErr, err := commandExecutor.execCmd(&command)
+		actual, actualErr, err := commandExecutor.ExecCmd(&command)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "hallo", actual.String())
 		assert.Equal(t, "", actualErr.String())
 	})
-}
-
-func Test_ExecPod_Exec(t *testing.T) {
-	t.Run("should fail with arbitrary error", func(t *testing.T) {
-	})
-	t.Run("should be successful", func(t *testing.T) {
-	})
-}
-
-type mockRestExecutor struct {
-	mock.Mock
-}
-
-func (m *mockRestExecutor) Execute(string, *url.URL, *rest.Config, io.Reader, io.Writer, io.Writer, bool, remotecommand.TerminalSizeQueue) error {
-	args := m.Called()
-	return args.Error(0)
 }

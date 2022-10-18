@@ -14,8 +14,8 @@ type CommandExecutor struct {
 	mock.Mock
 }
 
-// execCmd provides a mock function with given fields: cmd
-func (_m *CommandExecutor) execCmd(cmd *resource.ShellCommand) (*bytes.Buffer, *bytes.Buffer, error) {
+// ExecCmd provides a mock function with given fields: cmd
+func (_m *CommandExecutor) ExecCmd(cmd *resource.ShellCommand) (*bytes.Buffer, *bytes.Buffer, error) {
 	ret := _m.Called(cmd)
 
 	var r0 *bytes.Buffer

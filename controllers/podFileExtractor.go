@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"strings"
 
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	"k8s.io/client-go/kubernetes"
@@ -38,7 +38,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 		Command: "/bin/bash",
 		Args:    []string{"-c", "/bin/ls /k8s/ || true"},
 	}
-	fileList, err := k8sExecPod.Exec(&lsCommand)
+	fileList, _, err := k8sExecPod.Exec(&lsCommand)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 			Command: "/bin/cat",
 			Args:    []string{trimmedFile},
 		}
-		fileContent, err := k8sExecPod.Exec(&catCommand)
+		fileContent, _, err := k8sExecPod.Exec(&catCommand)
 		if err != nil {
 			return nil, err
 		}
