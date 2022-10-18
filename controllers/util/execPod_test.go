@@ -1,8 +1,12 @@
 package util
 
 import (
+	"bytes"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
 	"github.com/stretchr/testify/mock"
 	"io"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"net/url"
@@ -18,6 +22,8 @@ import (
 )
 
 const testNamespace = "ecosystem"
+const podName = "le-test-pod-name"
+const containerName = "ldap"
 
 func Test_defaultSufficeGenerator_String(t *testing.T) {
 	actual := (&defaultSufficeGenerator{}).String(6)
@@ -26,7 +32,6 @@ func Test_defaultSufficeGenerator_String(t *testing.T) {
 
 func TestExecPod_ObjectKey(t *testing.T) {
 	// given
-	const podName = "le-test-pod-name"
 	inputResource := &k8sv1.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Name: "le-dogu", Namespace: testNamespace},
 	}
@@ -51,7 +56,6 @@ func Test_exexPod_createPod(t *testing.T) {
 		WithScheme(getTestScheme()).
 		Build()
 	sut := &execPod{client: fakeClient, doguResource: ldapDoguResource, dogu: ldapDogu}
-	const containerName = "ldap"
 
 	t.Run("should create exec pod same name as container name", func(t *testing.T) {
 		// when
@@ -74,20 +78,53 @@ func Test_exexPod_createPod(t *testing.T) {
 	})
 }
 
-func Test_executor_execCmd(t *testing.T) {
+func Test_commandExecutor_execCmd(t *testing.T) {
+	command := &resource.ShellCommand{
+		Command: "/bin/ls",
+		Args:    []string{"/home"},
+	}
 	t.Run("should run command with error on failed container", func(t *testing.T) {
-		t.Fail()
+		// given
+		runner := mocks.NewRunner(t)
+		runner.On("Run").Return(createStreams(), assert.AnError)
+		runner.On("SetCommand", command).Return()
+		commandExecutor := defaultCommandExecutor{runner: runner}
+
+		// when
+		_, _, err := commandExecutor.execCmd(command)
+
+		// then
+		require.Error(t, err)
 	})
 	t.Run("should run successfully", func(t *testing.T) {
+		// given
+		stream := genericclioptions.IOStreams{
+			Out:    bytes.NewBufferString("hallo"),
+			ErrOut: &bytes.Buffer{},
+		}
+		runner := mocks.NewRunner(t)
+		runner.On("Run").Return(stream, nil)
+		runner.On("SetCommand", command).Return()
+		commandExecutor := defaultCommandExecutor{runner: runner}
+		command := resource.ShellCommand{
+			Command: "/bin/ls",
+			Args:    []string{"/home"},
+		}
+
+		// when
+		actual, actualErr, err := commandExecutor.execCmd(&command)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "hallo", actual.String())
+		assert.Equal(t, "", actualErr.String())
 	})
 }
 
 func Test_ExecPod_Exec(t *testing.T) {
 	t.Run("should fail with arbitrary error", func(t *testing.T) {
-
 	})
 	t.Run("should be successful", func(t *testing.T) {
-
 	})
 }
 
