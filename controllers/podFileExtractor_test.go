@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"testing"
 
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	utilmocks "github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
 
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ const (
 	testLdapPodContainerName       = testLdapPodContainerNamePrefix + "-execpod-" + testPodContainerNameSuffix
 )
 
-var testLdapExecPodKey = newObjectKey(testNamespace, testLdapPodContainerName)
+var testLsShellCommand = &resource.ShellCommand{Command: "/bin/bash", Args: []string{"-c", "/bin/ls /k8s/ || true"}}
 
 var testContext = context.TODO()
 
@@ -37,11 +38,9 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			WithScheme(getTestScheme()).
 			Build()
 		clientset := fake2.NewSimpleClientset()
-		mockedPodExecutor := &mockPodExecutor{}
-		expectedLsCommand := []string{"/bin/bash", "-c", "/bin/ls /k8s/ || true"}
-		mockedPodExecutor.On("exec", testLdapExecPodKey, expectedLsCommand).Return("", assert.AnError)
+
 		execPod := utilmocks.NewExecPod(t)
-		execPod.On("ObjectKey").Return(ldapExecPodKey)
+		execPod.On("Exec", testCtx, testLsShellCommand).Return("uh oh", assert.AnError)
 
 		sut := &podFileExtractor{
 			k8sClient: fakeClient,
@@ -54,20 +53,17 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Nil(t, actual)
-		mockedPodExecutor.AssertExpectations(t)
 	})
 	t.Run("should run successfully with file output", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			Build()
 		clientset := fake2.NewSimpleClientset()
-		mockedPodExecutor := &mockPodExecutor{}
-		expectedLsCommand := []string{"/bin/bash", "-c", "/bin/ls /k8s/ || true"}
-		mockedPodExecutor.On("exec", testLdapExecPodKey, expectedLsCommand).Return("test-k8s-resources.yaml", nil)
-		expectedCatCommand := []string{"/bin/cat", "/k8s/test-k8s-resources.yaml"}
-		mockedPodExecutor.On("exec", testLdapExecPodKey, expectedCatCommand).Return("resource { content : goes-here }", nil)
 		execPod := utilmocks.NewExecPod(t)
 		execPod.On("ObjectKey").Return(ldapExecPodKey)
+		execPod.On("Exec", testCtx, testLsShellCommand).Return("test-k8s-resources.yaml", nil)
+		expectedCatCommand := resource.ShellCommand{Command: "/bin/cat", Args: []string{"/k8s/test-k8s-resources.yaml"}}
+		execPod.On("Exec", testCtx, expectedCatCommand).Return("resource { content : goes-here }", nil)
 
 		sut := &podFileExtractor{
 			k8sClient: fakeClient,
@@ -82,7 +78,6 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		expectedFileMap := make(map[string]string)
 		expectedFileMap["/k8s/test-k8s-resources.yaml"] = "resource { content : goes-here }"
 		assert.Equal(t, expectedFileMap, actual)
-		mockedPodExecutor.AssertExpectations(t)
 	})
 	t.Run("should run successfully without file output", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().
@@ -90,9 +85,9 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		expectedLsCommand := []string{"/bin/bash", "-c", "/bin/ls /k8s/ || true"}
-		mockedPodExecutor.On("exec", testLdapExecPodKey, expectedLsCommand).Return("No such file or directory", nil)
 		execPod := utilmocks.NewExecPod(t)
 		execPod.On("ObjectKey").Return(ldapExecPodKey)
+		execPod.On("Exec", testCtx, expectedLsCommand).Return("No such file or directory", nil)
 
 		sut := &podFileExtractor{
 			k8sClient: fakeClient,
@@ -120,11 +115,4 @@ func Test_newPodFileExtractor(t *testing.T) {
 		// then
 		assert.Implements(t, (*fileExtractor)(nil), actual)
 	})
-}
-
-func newObjectKey(namespace, name string) *client.ObjectKey {
-	return &client.ObjectKey{
-		Namespace: namespace,
-		Name:      name,
-	}
 }

@@ -87,6 +87,9 @@ spec:
           secret:
             defaultMode: 484
             secretName: ldap-private
+        - name: dogu-reserved
+          persistentVolumeClaim:
+            claimName: ldap
         - name: ldap-data
           persistentVolumeClaim:
             claimName: ldap
