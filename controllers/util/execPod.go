@@ -9,6 +9,7 @@ import (
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -116,11 +117,25 @@ func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1
 					Image:           image,
 					Command:         doNothingCommand,
 					ImagePullPolicy: pullPolicy,
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      resource.DoguReservedVolume,
+						ReadOnly:  false,
+						MountPath: resource.DoguReservedPath,
+					}},
 				},
 			},
 			ImagePullSecrets: []corev1.LocalObjectReference{
 				{Name: "k8s-dogu-operator-docker-registry"},
 			},
+			Volumes: []corev1.Volume{{
+				Name: resource.DoguReservedVolume,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: ep.doguResource.Name,
+						ReadOnly:  false,
+					},
+				},
+			}},
 		},
 	}
 
