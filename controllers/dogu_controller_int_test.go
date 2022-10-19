@@ -7,10 +7,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	"strings"
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -20,8 +19,11 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"testing"
+
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 )
 
 type mockeryGinkgoLogger struct {
@@ -93,7 +95,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Should install dogu in cluster", func() {
 			By("Creating dogu resource")
-			installDoguCrd(ctx, ldapCr)
+			installDoguCr(ctx, ldapCr)
 
 			By("Expect created dogu")
 			createdDogu := &k8sv1.Dogu{}
@@ -186,7 +188,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
 
 			By("Should delete dogu", func() {
-				deleteDoguCrd(ctx, ldapCr, ldapDoguLookupKey, true)
+				deleteDoguCr(ctx, ldapCr, ldapDoguLookupKey, true)
 				deleteObjectFromCluster(ctx, exposedService8888LookupKey, &corev1.Service{})
 				deleteObjectFromCluster(ctx, exposedService2222LookupKey, &corev1.Service{})
 			})
@@ -194,7 +196,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Should fail dogu installation as dependency is missing", func() {
 			By("Creating redmine dogu resource")
-			installDoguCrd(ctx, redmineCr)
+			installDoguCr(ctx, redmineCr)
 
 			By("Check for failed installation and check events of dogu resource")
 			createdDogu := &k8sv1.Dogu{}
@@ -229,7 +231,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
 			By("Delete redmine dogu crd")
-			deleteDoguCrd(ctx, redmineCr, redmineCr.GetObjectKey(), false)
+			deleteDoguCr(ctx, redmineCr, redmineCr.GetObjectKey(), false)
 
 			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
@@ -261,7 +263,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Should upgrade dogu in cluster", func() {
 			By("Install ldap dogu resource in version 2.4.48-4")
-			installDoguCrd(testCtx, ldapFromCr)
+			installDoguCr(testCtx, ldapFromCr)
 
 			By("Expect created dogu")
 			installedLdapDoguCr := &k8sv1.Dogu{}
@@ -310,22 +312,20 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
-			deleteDoguCrd(ctx, installedLdapDoguCr, ldapFromDoguLookupKey, true)
+			deleteDoguCr(ctx, installedLdapDoguCr, ldapFromDoguLookupKey, true)
 
 			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
 		})
-
 	})
-
 })
 
-func installDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu) {
+func installDoguCr(ctx context.Context, doguCr *k8sv1.Dogu) {
 	Expect(k8sClient.Create(ctx, doguCr)).Should(Succeed())
 }
 
-func deleteDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.NamespacedName, deleteAdditional bool) {
+func deleteDoguCr(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.NamespacedName, deleteAdditional bool) {
 	Expect(k8sClient.Delete(ctx, doguCr)).Should(Succeed())
 
 	dogu := &k8sv1.Dogu{}

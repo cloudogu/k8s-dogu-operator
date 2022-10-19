@@ -52,13 +52,11 @@ var testEnv *envtest.Environment
 var cancel context.CancelFunc
 
 // Used in other integration tests
-var ImageRegistryMock *mocks.ImageRegistry
-
-// Used in other integration tests
-var DoguRemoteRegistryMock *cesremotemocks.Registry
-
-// Used in other integration tests
-var EtcdDoguRegistry *cesmocks.DoguRegistry
+var (
+	ImageRegistryMock      *mocks.ImageRegistry
+	DoguRemoteRegistryMock *cesremotemocks.Registry
+	EtcdDoguRegistry       *cesmocks.DoguRegistry
+)
 
 const TimeoutInterval = time.Second * 10
 const PollingInterval = time.Second * 1
