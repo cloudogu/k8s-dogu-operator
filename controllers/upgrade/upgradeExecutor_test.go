@@ -38,6 +38,7 @@ var (
 	copyCmd1 = resource.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
 	mkdirCmd = resource.NewShellCommand("/bin/mkdir", "-p", "/")
 	copyCmd2 = resource.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
+	execCmd  = resource.NewShellCommand("/pre-upgrade.sh", "4.2.3-10", "4.2.3-11")
 )
 
 func TestNewUpgradeExecutor(t *testing.T) {
@@ -70,6 +71,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 	t.Run("should succeed", func(t *testing.T) {
 		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -106,7 +108,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		mockExecutor := mocks.NewCommandDoguExecutor(t)
 		mockExecutor.
 			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, execCmd).Once().Return(bytes.NewBufferString(""), nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -145,7 +148,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		}
 
 		// when
-		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
 
 		// then
 		require.NoError(t, err)
@@ -153,6 +156,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during K8s resource application", func(t *testing.T) {
 		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -187,7 +191,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		mockExecutor := mocks.NewCommandDoguExecutor(t)
 		mockExecutor.
 			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, execCmd).Once().Return(bytes.NewBufferString(""), nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, assert.AnError)
@@ -218,15 +223,16 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		}
 
 		// when
-		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 	})
 
-	t.Run("should fail during resource upgrade", func(t *testing.T) {
+	t.Run("should fail during resource update", func(t *testing.T) {
 		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -261,7 +267,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		mockExecutor := mocks.NewCommandDoguExecutor(t)
 		mockExecutor.
 			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, execCmd).Once().Return(bytes.NewBufferString(""), nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
@@ -299,7 +306,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		}
 
 		// when
-		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
 
 		// then
 		require.Error(t, err)
@@ -308,6 +315,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during pre-upgrade script application", func(t *testing.T) {
 		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -367,7 +375,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		}
 
 		// when
-		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
 
 		// then
 		require.Error(t, err)
@@ -377,6 +385,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during K8s resource extraction", func(t *testing.T) {
 		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -431,7 +440,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		}
 
 		// when
-		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
 
 		// then
 		require.Error(t, err)
@@ -440,6 +449,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during image pull", func(t *testing.T) {
 		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -486,7 +496,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		}
 
 		// when
-		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
 
 		// then
 		require.Error(t, err)
@@ -495,6 +505,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail during SA creation", func(t *testing.T) {
 		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -539,7 +550,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		}
 
 		// when
-		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
 
 		// then
 		require.Error(t, err)
@@ -548,6 +559,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	})
 	t.Run("should fail for etcd error", func(t *testing.T) {
 		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		toDogu.Dependencies = []core.Dependency{{
@@ -589,7 +601,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		}
 
 		// when
-		err := sut.Upgrade(testCtx, toDoguResource, toDogu)
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
 
 		// then
 		require.Error(t, err)
@@ -820,13 +832,14 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		toDoguResource := &k8sv1.Dogu{}
 		mockExecPod := utilMocks.NewExecPod(t)
 
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.ExposedCommands = []core.ExposedCommand{}
 
 		upgradeExecutor := upgradeExecutor{}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.NoError(t, err)
@@ -834,6 +847,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 	t.Run("should fail if copy from pod to pod fails", func(t *testing.T) {
 		// given
 		toDoguResource := &k8sv1.Dogu{}
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		mockExecPod := utilMocks.NewExecPod(t)
 		copy1 := resource.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
@@ -847,7 +861,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.Error(t, err)
@@ -856,8 +870,11 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 	})
 	t.Run("should fail if upgrade dir creation fails", func(t *testing.T) {
 		// given
-		toDoguResource := readTestDataRedmineCr(t)
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
 		mockExecPod := utilMocks.NewExecPod(t)
 		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 
@@ -875,7 +892,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.Error(t, err)
@@ -884,8 +901,11 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 	})
 	t.Run("should fail if copy to original dir fails", func(t *testing.T) {
 		// given
-		toDoguResource := readTestDataRedmineCr(t)
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
 		mockExecPod := utilMocks.NewExecPod(t)
 		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 
@@ -904,7 +924,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.Error(t, err)
@@ -913,15 +933,19 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		toDoguResource := readTestDataRedmineCr(t)
+		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
 		mockExecPod := utilMocks.NewExecPod(t)
 		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 
 		mockExecutor := mocks.NewCommandDoguExecutor(t)
 		mockExecutor.
 			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, execCmd).Once().Return(bytes.NewBufferString(""), nil)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
@@ -933,7 +957,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.NoError(t, err)

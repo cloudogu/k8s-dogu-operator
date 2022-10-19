@@ -91,7 +91,7 @@ type premisesChecker interface {
 
 type upgradeExecutor interface {
 	// Upgrade executes the actual dogu upgrade.
-	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *cesappcore.Dogu) error
+	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *cesappcore.Dogu) error
 }
 
 type fileExtractor interface {

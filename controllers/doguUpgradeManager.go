@@ -120,7 +120,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	}
 
 	dum.normalEventf(doguResource, "Executing upgrade from %s to %s...", fromDogu.Version, toDogu.Version)
-	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, toDogu)
+	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, fromDogu, toDogu)
 	if err != nil {
 		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}

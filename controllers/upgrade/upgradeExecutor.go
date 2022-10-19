@@ -66,7 +66,7 @@ func NewUpgradeExecutor(client client.Client, config *rest.Config, clientSet kub
 }
 
 // Upgrade executes all necessary steps to update a dogu to a new version.
-func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu) error {
+func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
 	ue.normalEventf(toDoguResource, "Registering upgraded version %s in local dogu registry...", toDogu.Version)
 	err := registerUpgradedDoguVersion(ue.doguRegistrator, toDogu)
 	if err != nil {
@@ -93,7 +93,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 	defer execPod.Delete(ctx)
 
-	err = ue.applyUpgradeScripts(ctx, toDoguResource, toDogu, execPod)
+	err = ue.applyUpgradeScripts(ctx, toDoguResource, fromDogu, toDogu, execPod)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier,
 	return resources, nil
 }
 
-func (ue *upgradeExecutor) applyUpgradeScripts(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, execPod util.ExecPod) error {
+func (ue *upgradeExecutor) applyUpgradeScripts(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu, execPod util.ExecPod) error {
 	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
 		return nil
 	}
@@ -186,7 +186,7 @@ func (ue *upgradeExecutor) applyUpgradeScripts(ctx context.Context, toDoguResour
 	}
 
 	ue.normalEventf(toDoguResource, "Applying optional upgrade scripts...")
-	err = ue.applyPreUpgradeScriptToOlderDogu(ctx, toDoguResource, preUpgradeScriptCmd)
+	err = ue.applyPreUpgradeScriptToOlderDogu(ctx, fromDogu, toDoguResource, preUpgradeScriptCmd)
 	if err != nil {
 		return err
 	}
@@ -210,13 +210,22 @@ func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod util.ExecPod,
 	return nil
 }
 
-func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
+func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, fromDogu *core.Dogu, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
 	// possibly create the necessary directory structure for the following copy action
 	err := ue.createMissingUpgradeDirs(ctx, toDoguResource, preUpgradeCmd)
 	if err != nil {
 		return err
 	}
 
+	err = ue.copyPreUpgradeScriptToDoguReserved(ctx, toDoguResource, preUpgradeCmd)
+	if err != nil {
+		return err
+	}
+
+	return ue.executePreUpgradeScript(ctx, fromDogu, toDoguResource, preUpgradeCmd)
+}
+
+func (ue *upgradeExecutor) copyPreUpgradeScriptToDoguReserved(ctx context.Context, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
 	preUpgradeBackCopyCmd := getPreUpgradeBackCopyCmd(preUpgradeCmd)
 
 	// the name of the dogu being upgrade must not change over the course of an installation.
@@ -227,8 +236,6 @@ func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context,
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeBackCopyCmd, outBuf, err)
 	}
-
-	// todo finally run the actual pre-upgrade command
 
 	return nil
 }
@@ -243,16 +250,28 @@ func getPreUpgradeBackCopyCmd(preUpgradeCmd *core.ExposedCommand) *resource.Shel
 func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, toDoguResource *k8sv1.Dogu, cmd *core.ExposedCommand) error {
 	baseDir, _ := filepath.Split(cmd.Command)
 
-	mkdirCmd := &resource.ShellCommand{
-		Command: "/bin/mkdir",
-		Args:    []string{"-p", baseDir},
-	}
-
+	mkdirCmd := resource.NewShellCommand("/bin/mkdir", "-p", baseDir)
 	nameOfTheDoguBeingUpgraded := toDoguResource.Name
+
 	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, nameOfTheDoguBeingUpgraded, toDoguResource.Namespace, mkdirCmd)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", mkdirCmd, outBuf, err)
 	}
+
+	return nil
+}
+
+func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromDogu *core.Dogu, toDoguResource *k8sv1.Dogu, cmd *core.ExposedCommand) error {
+	// the previous steps took great lengths to copy the pre-upgrade script to the original place so we can finally
+	// execute it as described by the dogu.json.
+	preUpgradeCmd := resource.NewShellCommand(cmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
+
+	nameOfTheDoguBeingUpgraded := toDoguResource.Name
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, nameOfTheDoguBeingUpgraded, toDoguResource.Namespace, preUpgradeCmd)
+	if err != nil {
+		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeCmd, outBuf, err)
+	}
+
 	return nil
 }
 
