@@ -26,6 +26,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/onsi/ginkgo"
@@ -170,9 +171,11 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
+	execPodFactory := util.NewExecPodFactory(k8sClient, cfg)
 
 	installManager := &doguInstallManager{
 		client:                k8sClient,
+		recorder:              eventRecorder,
 		resourceUpserter:      upserter,
 		doguRemoteRegistry:    DoguRemoteRegistryMock,
 		doguLocalRegistry:     EtcdDoguRegistry,
@@ -184,8 +187,8 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguSecretHandler:     doguSecretHandler,
 		collectApplier:        collectApplier,
 		fileExtractor:         fileExtract,
-		recorder:              eventRecorder,
 		localDoguFetcher:      localDoguFetcher,
+		execPodFactory:        execPodFactory,
 	}
 
 	deleteManager := &doguDeleteManager{

@@ -8,6 +8,7 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+
 	client3 "github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -39,8 +40,7 @@ func (d *doguDeleteManagerWithMocks) AssertMocks(t *testing.T) {
 }
 
 func getDoguDeleteManagerWithMocks() doguDeleteManagerWithMocks {
-	scheme := getTestScheme()
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+	k8sClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 	imageRegistry := &mocks.ImageRegistry{}
 	doguRegistrator := &mocks.DoguRegistrator{}
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
@@ -48,7 +48,6 @@ func getDoguDeleteManagerWithMocks() doguDeleteManagerWithMocks {
 
 	doguDeleteManager := &doguDeleteManager{
 		client:                k8sClient,
-		scheme:                scheme,
 		localDoguFetcher:      doguFetcher,
 		imageRegistry:         imageRegistry,
 		doguRegistrator:       doguRegistrator,
