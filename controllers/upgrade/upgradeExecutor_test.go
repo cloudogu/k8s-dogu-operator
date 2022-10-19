@@ -931,6 +931,39 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to execute '/bin/cp /tmp/dogu-reserved/pre-upgrade.sh /pre-upgrade.sh': output: 'oops'")
 	})
+	t.Run("should fail during pre-upgrade execution", func(t *testing.T) {
+		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+		mockExecPod := utilMocks.NewExecPod(t)
+		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+
+		mockExecutor := mocks.NewCommandDoguExecutor(t)
+		mockExecutor.
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, execCmd).Once().Return(bytes.NewBufferString("uhoh"), assert.AnError)
+
+		eventRecorder := mocks2.NewEventRecorder(t)
+		typeNormal := corev1.EventTypeNormal
+		upgradeEvent := EventReason
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional upgrade scripts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional upgrade scripts...").Once()
+
+		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
+
+		// when
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to execute '/pre-upgrade.sh 4.2.3-10 4.2.3-11': output: 'uhoh'")
+	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
 		fromDogu := readTestDataDogu(t, redmineBytes)
