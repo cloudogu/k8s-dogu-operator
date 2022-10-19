@@ -43,7 +43,7 @@ type upgradeExecutor struct {
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
-func NewUpgradeExecutor(client client.Client, config *rest.Config, clientSet *kubernetes.Clientset, eventRecorder record.EventRecorder, imageRegistry imageRegistry, collectApplier collectApplier, k8sFileExtractor fileExtractor, serviceAccountCreator serviceAccountCreator, registry registry.Registry) *upgradeExecutor {
+func NewUpgradeExecutor(client client.Client, config *rest.Config, clientSet kubernetes.Interface, eventRecorder record.EventRecorder, imageRegistry imageRegistry, collectApplier collectApplier, k8sFileExtractor fileExtractor, serviceAccountCreator serviceAccountCreator, registry registry.Registry) *upgradeExecutor {
 	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, nil)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
 	upserter := resource.NewUpserter(client, limitPatcher)

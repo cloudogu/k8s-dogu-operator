@@ -20,6 +20,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fake2 "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -42,9 +43,10 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		mockRegistry := new(regmock.Registry)
 		mockRegistry.On("DoguRegistry").Return(doguRegistry, nil)
 		eventRecorder := mocks2.NewEventRecorder(t)
+		clientset := fake2.NewSimpleClientset()
 
 		// when
-		actual := NewUpgradeExecutor(myClient, testRestConfig, nil, eventRecorder, imageRegMock, applier, k8sFileEx, saCreator, mockRegistry)
+		actual := NewUpgradeExecutor(myClient, testRestConfig, clientset, eventRecorder, imageRegMock, applier, k8sFileEx, saCreator, mockRegistry)
 
 		// then
 		require.NotNil(t, actual)
