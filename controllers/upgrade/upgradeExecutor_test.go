@@ -1,7 +1,10 @@
 package upgrade
 
 import (
+	"bytes"
 	"context"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -726,6 +729,143 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to apply custom K8s resources: assert.AnError")
+	})
+}
+
+func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
+	t.Run("should be successful if no pre-upgrade exposed command", func(t *testing.T) {
+		// given
+		toDoguResource := &k8sv1.Dogu{}
+		mockExecPod := utilMocks.NewExecPod(t)
+
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.ExposedCommands = []core.ExposedCommand{}
+
+		upgradeExecutor := upgradeExecutor{}
+
+		// when
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+
+		// then
+		require.NoError(t, err)
+	})
+	t.Run("should fail if copy from pod to pod fails", func(t *testing.T) {
+		// given
+		toDoguResource := &k8sv1.Dogu{}
+		toDogu := readTestDataDogu(t, redmineBytes)
+		mockExecPod := utilMocks.NewExecPod(t)
+		copy1 := resource.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
+		mockExecPod.On("Exec", testCtx, copy1).Once().Return("oopsie woopsie", assert.AnError)
+
+		eventRecorder := mocks2.NewEventRecorder(t)
+		typeNormal := corev1.EventTypeNormal
+		upgradeEvent := EventReason
+		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional upgrade scripts...").Once()
+
+		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder}
+
+		// when
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to execute '/bin/cp /pre-upgrade.sh /tmp/dogu-reserved' in execpod, stdout: 'oopsie woopsie'")
+	})
+	t.Run("should fail if upgrade dir creation fails", func(t *testing.T) {
+		// given
+		toDoguResource := readTestDataRedmineCr(t)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		mockExecPod := utilMocks.NewExecPod(t)
+		copyCmd1 := resource.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
+		mockExecPod.
+			On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+
+		mkdirCmd := resource.NewShellCommand("/bin/mkdir", "-p", "/")
+		mockExecutor := mocks.NewCommandDoguExecutor(t)
+		mockExecutor.
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
+
+		eventRecorder := mocks2.NewEventRecorder(t)
+		typeNormal := corev1.EventTypeNormal
+		upgradeEvent := EventReason
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional upgrade scripts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional upgrade scripts...").Once()
+
+		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
+
+		// when
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to execute '/bin/mkdir -p /': output: 'oops'")
+	})
+	t.Run("should fail if copy to original dir fails", func(t *testing.T) {
+		// given
+		toDoguResource := readTestDataRedmineCr(t)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		mockExecPod := utilMocks.NewExecPod(t)
+		copyCmd1 := resource.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
+		mockExecPod.
+			On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+
+		mkdirCmd := resource.NewShellCommand("/bin/mkdir", "-p", "/")
+		copyCmd2 := resource.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
+		mockExecutor := mocks.NewCommandDoguExecutor(t)
+		mockExecutor.
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
+
+		eventRecorder := mocks2.NewEventRecorder(t)
+		typeNormal := corev1.EventTypeNormal
+		upgradeEvent := EventReason
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional upgrade scripts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional upgrade scripts...").Once()
+
+		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
+
+		// when
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "failed to execute '/bin/cp /tmp/dogu-reserved/pre-upgrade.sh /pre-upgrade.sh': output: 'oops'")
+	})
+	t.Run("should succeed", func(t *testing.T) {
+		// given
+		toDoguResource := readTestDataRedmineCr(t)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		mockExecPod := utilMocks.NewExecPod(t)
+		copyCmd1 := resource.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
+		mockExecPod.
+			On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+
+		mkdirCmd := resource.NewShellCommand("/bin/mkdir", "-p", "/")
+		copyCmd2 := resource.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
+		mockExecutor := mocks.NewCommandDoguExecutor(t)
+		mockExecutor.
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil)
+
+		eventRecorder := mocks2.NewEventRecorder(t)
+		typeNormal := corev1.EventTypeNormal
+		upgradeEvent := EventReason
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional upgrade scripts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional upgrade scripts...").Once()
+
+		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
+
+		// when
+		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, toDogu, mockExecPod)
+
+		// then
+		require.NoError(t, err)
 	})
 }
 

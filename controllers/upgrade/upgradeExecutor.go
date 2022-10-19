@@ -204,7 +204,7 @@ func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod util.ExecPod,
 
 	out, err := execPod.Exec(ctx, copyPreUpgradeScriptCmd)
 	if err != nil {
-		return fmt.Errorf("failed to execute '%s' in execpod, stdout: %s:  %w", copyPreUpgradeScriptCmd.String(), out, err)
+		return fmt.Errorf("failed to execute '%s' in execpod, stdout: '%s':  %w", copyPreUpgradeScriptCmd.String(), out, err)
 	}
 
 	return nil
@@ -225,7 +225,7 @@ func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context,
 	// example: /dogu-reserved/myscript.sh to /resource/myscript.sh
 	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, nameOfTheDoguBeingUpgraded, toDoguResource.Namespace, preUpgradeBackCopyCmd)
 	if err != nil {
-		return fmt.Errorf("failed to copy pre-upgrade script back to original dir: output: '%s': %w", outBuf, err)
+		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeBackCopyCmd, outBuf, err)
 	}
 
 	// todo finally run the actual pre-upgrade command
@@ -244,7 +244,7 @@ func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, toDoguR
 	baseDir, _ := filepath.Split(cmd.Command)
 
 	mkdirCmd := &resource.ShellCommand{
-		Command: "mkdir",
+		Command: "/bin/mkdir",
 		Args:    []string{"-p", baseDir},
 	}
 
