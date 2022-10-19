@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +23,16 @@ type ShellCommand struct {
 	Command string
 	// Args contains any parameters, switches etc. that the command needs to run properly.
 	Args []string
+}
+
+// NewShellCommand creates a new ShellCommand. While the command is mandatory, there can be zero to n command arguments.
+func NewShellCommand(command string, args ...string) *ShellCommand {
+	return &ShellCommand{Command: command, Args: args}
+}
+
+func (sc *ShellCommand) String() string {
+	result := []string{sc.Command}
+	return strings.Join(append(result, sc.Args...), " ")
 }
 
 // stateError is returned when a specific resource (pod/dogu) is not ready yet.
@@ -50,7 +61,8 @@ type commandExecutor struct {
 // NewCommandExecutor creates a new instance of NewCommandExecutor
 func NewCommandExecutor(client kubernetes.Interface, coreV1RestClient rest.Interface) *commandExecutor {
 	return &commandExecutor{
-		Client:                 client,
+		Client: client,
+		// the rest client COULD be generated from the client but makes harder to test, so we source it additionally
 		CoreV1RestClient:       coreV1RestClient,
 		CommandExecutorCreator: remotecommand.NewSPDYExecutor,
 	}
@@ -139,6 +151,7 @@ func (ce *commandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace strin
 }
 
 func (ce *commandExecutor) getTargetDoguPod(ctx context.Context, targetDogu string, namespace string) (*corev1.Pod, error) {
+	// the pod selection must be revised if dogus are horizontally scalable by adding more pods with the same image.
 	listOptions := metav1.ListOptions{LabelSelector: "dogu=" + targetDogu}
 	pods, err := ce.Client.CoreV1().Pods(namespace).List(ctx, listOptions)
 	if err != nil {

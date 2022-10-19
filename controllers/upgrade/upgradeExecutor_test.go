@@ -44,7 +44,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		eventRecorder := mocks2.NewEventRecorder(t)
 
 		// when
-		actual := NewUpgradeExecutor(myClient, testRestConfig, eventRecorder, imageRegMock, applier, k8sFileEx, saCreator, mockRegistry)
+		actual := NewUpgradeExecutor(myClient, testRestConfig, nil, eventRecorder, imageRegMock, applier, k8sFileEx, saCreator, mockRegistry)
 
 		// then
 		require.NotNil(t, actual)

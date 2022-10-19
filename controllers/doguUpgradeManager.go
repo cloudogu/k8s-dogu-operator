@@ -69,6 +69,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	upgradeExecutor := upgrade.NewUpgradeExecutor(
 		client,
 		restConfig,
+		clientSet,
 		eventRecorder,
 		imageRegistry,
 		collectApplier,

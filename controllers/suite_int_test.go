@@ -6,8 +6,6 @@ package controllers
 import (
 	"context"
 	_ "embed"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,10 +18,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/onsi/ginkgo"
@@ -194,10 +194,10 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguSecretHandler:     doguSecretHandler,
 		localDoguFetcher:      localDoguFetcher,
 	}
-
+	// TODO fix integration tests
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock, eventRecorder)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, ImageRegistryMock, nil, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock, eventRecorder)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,

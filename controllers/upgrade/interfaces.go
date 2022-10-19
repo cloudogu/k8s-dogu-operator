@@ -1,16 +1,17 @@
 package upgrade
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/cloudogu/cesapp-lib/core"
 
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
-
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
 type imageRegistry interface {
@@ -45,4 +46,10 @@ type resourceUpserter interface {
 
 type execPodFactory interface {
 	NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (util.ExecPod, error)
+}
+
+// commandDoguExecutor is used to execute commands in a dogu.
+type commandDoguExecutor interface {
+	// ExecCommandForDogu executes a command on a dogu identified by a label dogu=${doguname} and the K8s namespace.
+	ExecCommandForDogu(ctx context.Context, doguName string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
 }
