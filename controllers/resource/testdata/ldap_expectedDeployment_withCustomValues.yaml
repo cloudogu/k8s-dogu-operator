@@ -60,6 +60,9 @@ spec:
             - mountPath: /private
               name: ldap-private
               readOnly: true
+            - mountPath: /tmp/dogu-reserved
+              name: dogu-reserved
+              readOnly: false
             - mountPath: /var/lib/openldap
               name: ldap-data
               subPath: db
@@ -69,9 +72,6 @@ spec:
             - mountPath: /my/host/path/test.txt
               name: myTestMount
               subPath: test.txt
-            - mountPath: /tmp/dogu-reserved
-              name: dogu-reserved
-              readOnly: false
       hostname: ldap
       imagePullSecrets:
         - name: k8s-dogu-operator-docker-registry
