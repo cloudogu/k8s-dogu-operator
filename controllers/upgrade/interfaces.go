@@ -45,7 +45,8 @@ type resourceUpserter interface {
 }
 
 type execPodFactory interface {
-	NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (util.ExecPod, error)
+	// NewExecPod creates a new ExecPod.
+	NewExecPod(execPodFactoryMode util.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (util.ExecPod, error)
 }
 
 // commandDoguExecutor is used to execute commands in a dogu.

@@ -28,6 +28,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	utilmocks "github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
 )
 
@@ -210,7 +211,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		execPod := utilmocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Return(nil)
 		execPod.On("Delete", testCtx).Return(nil)
-		managerWithMocks.execPodFactory.On("NewExecPod", ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+		managerWithMocks.execPodFactory.On("NewExecPod", util.ExecPodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 		// when
 		err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -247,7 +248,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		execPod := utilmocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Return(nil)
 		execPod.On("Delete", testCtx).Return(nil)
-		managerWithMocks.execPodFactory.On("NewExecPod", ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+		managerWithMocks.execPodFactory.On("NewExecPod", util.ExecPodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 		// when
 		err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -437,7 +438,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			execPod := utilmocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Return(nil)
 			execPod.On("Delete", testCtx).Return(nil)
-			managerWithMocks.execPodFactory.On("NewExecPod", ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+			managerWithMocks.execPodFactory.On("NewExecPod", util.ExecPodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 			// when
 			err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -469,7 +470,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			execPod := utilmocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Return(nil)
 			execPod.On("Delete", testCtx).Return(nil)
-			managerWithMocks.execPodFactory.On("NewExecPod", ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+			managerWithMocks.execPodFactory.On("NewExecPod", util.ExecPodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 			managerWithMocks.resourceUpserter.On("ApplyDoguResource", ctx, ldapCr, ldapDogu, imageConfig, mock.Anything).Once().Return(assert.AnError) // boom
 

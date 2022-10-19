@@ -168,7 +168,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to pull image config: %w", err)
 	}
 
-	anExecPod, _ := m.execPodFactory.NewExecPod(doguResource, dogu)
+	anExecPod, _ := m.execPodFactory.NewExecPod(0, doguResource, dogu)
 	err = anExecPod.Create(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create ExecPod %s: %w", anExecPod.ObjectKey().Name, err)

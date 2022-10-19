@@ -132,7 +132,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", util.ExecPodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -208,7 +208,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", util.ExecPodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -290,7 +290,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", util.ExecPodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -348,7 +348,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", util.ExecPodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
@@ -426,7 +426,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", util.ExecPodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,

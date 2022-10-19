@@ -8,10 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -58,7 +60,7 @@ func Test_execPod_createPod(t *testing.T) {
 
 	t.Run("should create exec pod same name as container name", func(t *testing.T) {
 		// when
-		actual, err := sut.createPod(testNamespace, containerName)
+		actual, err := sut.createPod(testCtx, testNamespace, containerName)
 
 		// then
 		require.NoError(t, err)
@@ -68,7 +70,7 @@ func Test_execPod_createPod(t *testing.T) {
 
 	t.Run("should create exec pod from dogu image", func(t *testing.T) {
 		// when
-		actual, err := sut.createPod(testNamespace, containerName)
+		actual, err := sut.createPod(testCtx, testNamespace, containerName)
 
 		// then
 		require.NoError(t, err)
@@ -131,4 +133,72 @@ func Test_execPod_Exec(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "possibly some output goes here", actualOut)
 	})
+}
+
+func Test_execPod_createVolumes(t *testing.T) {
+	t.Run("should return no volume resources for an install execPod", func(t *testing.T) {
+		// given
+		sut := &execPod{factoryMode: ExecPodVolumeModeInstall}
+
+		// when
+		actualMounts, actualVolumes := sut.createVolumes(testCtx)
+
+		// then
+		assert.Nil(t, actualMounts)
+		assert.Nil(t, actualVolumes)
+	})
+	t.Run("should return volume resources for an upgrade execPod", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		sut := &execPod{factoryMode: ExecPodVolumeModeUpgrade, doguResource: ldapDoguResource}
+
+		// when
+		actualMounts, actualVolumes := sut.createVolumes(testCtx)
+
+		// then
+		assert.NotEmpty(t, actualMounts)
+		assert.Equal(t, "dogu-reserved", actualMounts[0].Name)
+		assert.Equal(t, "/tmp/dogu-reserved", actualMounts[0].MountPath)
+		assert.False(t, actualMounts[0].ReadOnly)
+
+		assert.NotEmpty(t, actualVolumes)
+		assert.Equal(t, "dogu-reserved", actualVolumes[0].Name)
+		assert.Equal(t, "ldap", actualVolumes[0].VolumeSource.PersistentVolumeClaim.ClaimName)
+		assert.False(t, actualVolumes[0].VolumeSource.PersistentVolumeClaim.ReadOnly)
+	})
+}
+
+func Test_generatePodName(t *testing.T) {
+	suffixGen := mocks.NewSuffixGenerator(t)
+	suffixGen.On("String", 6).Return("abc123")
+	dogu := &core.Dogu{Name: "official/ldap"}
+
+	actual := generatePodName(dogu, suffixGen)
+
+	assert.Equal(t, "ldap-execpod-abc123", actual)
+}
+
+func TestNewExecPodFactory(t *testing.T) {
+	actual := NewExecPodFactory(nil, nil)
+	assert.NotNil(t, actual)
+}
+
+func Test_defaultExecPodFactory_NewExecPod(t *testing.T) {
+	suffixGen := mocks.NewSuffixGenerator(t)
+	suffixGen.On("String", 6).Return("abc123")
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(getTestScheme()).
+		Build()
+	restConfig := &rest.Config{}
+	dogu := &core.Dogu{Name: "official/ldap"}
+
+	sut := NewExecPodFactory(fakeClient, restConfig)
+	sut.suffixGen = suffixGen
+
+	// when
+	pod, err := sut.NewExecPod(ExecPodVolumeModeInstall, nil, dogu)
+
+	// then
+	require.NoError(t, err)
+	assert.NotNil(t, pod)
 }

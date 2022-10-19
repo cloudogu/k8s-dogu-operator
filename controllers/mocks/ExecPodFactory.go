@@ -16,13 +16,13 @@ type ExecPodFactory struct {
 	mock.Mock
 }
 
-// NewExecPod provides a mock function with given fields: doguResource, dogu
-func (_m *ExecPodFactory) NewExecPod(doguResource *v1.Dogu, dogu *core.Dogu) (util.ExecPod, error) {
-	ret := _m.Called(doguResource, dogu)
+// NewExecPod provides a mock function with given fields: execPodFactoryMode, doguResource, dogu
+func (_m *ExecPodFactory) NewExecPod(execPodFactoryMode util.ExecPodVolumeMode, doguResource *v1.Dogu, dogu *core.Dogu) (util.ExecPod, error) {
+	ret := _m.Called(execPodFactoryMode, doguResource, dogu)
 
 	var r0 util.ExecPod
-	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) util.ExecPod); ok {
-		r0 = rf(doguResource, dogu)
+	if rf, ok := ret.Get(0).(func(util.ExecPodVolumeMode, *v1.Dogu, *core.Dogu) util.ExecPod); ok {
+		r0 = rf(execPodFactoryMode, doguResource, dogu)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(util.ExecPod)
@@ -30,8 +30,8 @@ func (_m *ExecPodFactory) NewExecPod(doguResource *v1.Dogu, dogu *core.Dogu) (ut
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*v1.Dogu, *core.Dogu) error); ok {
-		r1 = rf(doguResource, dogu)
+	if rf, ok := ret.Get(1).(func(util.ExecPodVolumeMode, *v1.Dogu, *core.Dogu) error); ok {
+		r1 = rf(execPodFactoryMode, doguResource, dogu)
 	} else {
 		r1 = ret.Error(1)
 	}
