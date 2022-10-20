@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -119,14 +118,15 @@ func (ce *commandExecutor) execCommand(pod *corev1.Pod, namespace string, comman
 	}
 
 	buffer := bytes.NewBuffer([]byte{})
+	bufferErr := bytes.NewBuffer([]byte{})
 	err = exec.Stream(remotecommand.StreamOptions{
 		Stdout: buffer,
-		Stderr: os.Stderr,
-		Tty:    true,
+		Stderr: bufferErr,
+		Tty:    false,
 	})
 	if err != nil {
 		return nil, &stateError{
-			sourceError: err,
+			sourceError: fmt.Errorf("out: '%s': errOut: '%s': %w", buffer, bufferErr, err),
 			resource:    pod,
 		}
 	}
@@ -146,7 +146,7 @@ func (ce *commandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace strin
 			Stdin:   false,
 			Stdout:  true,
 			Stderr:  true,
-			TTY:     true,
+			TTY:     false,
 		}, scheme.ParameterCodec)
 }
 

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
@@ -34,11 +35,11 @@ func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clien
 func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod util.ExecPod) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 
-	lsCommand := resource.ShellCommand{
-		Command: "/bin/bash",
-		Args:    []string{"-c", "/bin/ls /k8s/ || true"},
-	}
-	fileList, err := k8sExecPod.Exec(ctx, &lsCommand)
+	lsCommand := resource.NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")
+	fileList, err := k8sExecPod.Exec(ctx, lsCommand)
+
+	logger.Info(fmt.Sprintf("ExecPod file list results in '%s'", fileList))
+
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +54,8 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 		trimmedFile := doguCustomK8sResourceDirectory + strings.TrimSpace(file)
 		logger.Info("Reading k8s resource " + trimmedFile)
 
-		catCommand := resource.ShellCommand{
-			Command: "/bin/cat",
-			Args:    []string{trimmedFile},
-		}
-		fileContent, err := k8sExecPod.Exec(ctx, &catCommand)
+		catCommand := resource.NewShellCommand("/bin/cat", trimmedFile)
+		fileContent, err := k8sExecPod.Exec(ctx, catCommand)
 		if err != nil {
 			return nil, err
 		}
