@@ -146,7 +146,8 @@ func (ce *commandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace strin
 			Stdin:   false,
 			Stdout:  true,
 			Stderr:  true,
-			TTY:     false,
+			// Note: if the TTY is set to true shell commands may emit ANSI codes into the stdout
+			TTY: false,
 		}, scheme.ParameterCodec)
 }
 
