@@ -93,6 +93,7 @@ func (ep *execPod) Create(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	ep.deleteSpec = execPodSpec
 
 	logger.Info("Creating new exec pod " + ep.podName)
 	err = ep.client.Create(ctx, execPodSpec)
