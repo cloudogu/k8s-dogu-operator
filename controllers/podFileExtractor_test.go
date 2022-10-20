@@ -19,8 +19,7 @@ const (
 	testNamespace = "test-namespace"
 )
 
-var testLsShellCommand = &resource.ShellCommand{Command: "/bin/bash", Args: []string{"-c", "/bin/ls /k8s/ || true"}}
-
+var testLsShellCommand = resource.NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")
 var testContext = context.TODO()
 
 func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
