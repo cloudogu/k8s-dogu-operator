@@ -162,17 +162,16 @@ func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []c
 		return nil, nil
 	case ExecPodVolumeModeUpgrade:
 		volumeMounts := []corev1.VolumeMount{{
-			Name:      resource.DoguReservedVolume,
+			Name:      ep.doguResource.GetReservedVolumeName(),
 			ReadOnly:  false,
 			MountPath: resource.DoguReservedPath,
 		}}
 
 		volumes := []corev1.Volume{{
-			Name: "dogu-reserved",
+			Name: ep.doguResource.GetReservedVolumeName(),
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: ep.doguResource.Name,
-					ReadOnly:  false,
+					ClaimName: ep.doguResource.GetReservedPVCName(),
 				},
 			},
 		}}

@@ -37,6 +37,7 @@ type doguResourceGenerator interface {
 	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error)
 	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*v1.Service, error)
 	CreateDoguPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
+	CreateReservedPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
 	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*v1.Service, error)
 }
 
@@ -70,7 +71,7 @@ func (u *upserter) ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Do
 		return err
 	}
 
-	err = u.upsertDoguPVC(ctx, doguResource)
+	err = u.upsertDoguPVCs(ctx, doguResource, dogu)
 	if err != nil {
 		return err
 	}
@@ -128,25 +129,36 @@ func (u *upserter) upsertDoguExposedServices(ctx context.Context, doguResource *
 	return collectedErrs
 }
 
-func (u *upserter) upsertDoguPVC(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	newPVC, err := u.generator.CreateDoguPVC(doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to generate pvc: %w", err)
-	}
-
-	existingPVC := &v1.PersistentVolumeClaim{}
-
-	err = u.client.Get(ctx, doguResource.GetObjectKey(), existingPVC)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return err
-	}
-
-	// Only create a PVC but do not update it (for now) because updating immutable PVCs is tough
-	if apierrors.IsNotFound(err) {
-		err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}, newPVC, &longhornPVCValidator{})
+func (u *upserter) upsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+	if len(dogu.Volumes) > 0 {
+		newPVC, err := u.generator.CreateDoguPVC(doguResource)
 		if err != nil {
+			return fmt.Errorf("failed to generate pvc: %w", err)
+		}
+
+		existingPVC := &v1.PersistentVolumeClaim{}
+
+		err = u.client.Get(ctx, doguResource.GetObjectKey(), existingPVC)
+		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
+
+		objectKey := client.ObjectKey{Name: newPVC.Name, Namespace: newPVC.Namespace}
+		// Only create a PVC but do not update it (for now) because updating immutable PVCs is tough
+		if apierrors.IsNotFound(err) {
+			err = u.updateOrInsert(ctx, objectKey, &v1.PersistentVolumeClaim{}, newPVC, &longhornPVCValidator{})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	newReservedPVC, err := u.generator.CreateReservedPVC(doguResource)
+
+	objectKey := client.ObjectKey{Name: newReservedPVC.Name, Namespace: newReservedPVC.Namespace}
+	err = u.updateOrInsert(ctx, objectKey, &v1.PersistentVolumeClaim{}, newReservedPVC, &longhornPVCValidator{})
+	if err != nil {
+		return err
 	}
 
 	return nil

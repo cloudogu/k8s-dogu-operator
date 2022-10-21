@@ -30,8 +30,7 @@ const (
 )
 
 const (
-	DoguReservedVolume = "dogu-reserved"
-	DoguReservedPath   = "/tmp/dogu-reserved"
+	DoguReservedPath = "/tmp/dogu-reserved"
 )
 
 const doguPodNamespace = "POD_NAMESPACE"
@@ -263,10 +262,10 @@ func createVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Vo
 	// always reserve a volume for upgrade script actions, even if the dogu has no state because upgrade scripts
 	// do not always rely on a dogu state (f. e. checks on upgradability)
 	doguReservedVolume := corev1.Volume{
-		Name: DoguReservedVolume,
+		Name: doguResource.GetReservedVolumeName(),
 		VolumeSource: corev1.VolumeSource{
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: doguResource.Name,
+				ClaimName: doguResource.GetReservedPVCName(),
 			},
 		},
 	}
@@ -306,7 +305,7 @@ func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []core
 			MountPath: "/private",
 		},
 		{
-			Name:      DoguReservedVolume,
+			Name:      doguResource.GetReservedVolumeName(),
 			ReadOnly:  false,
 			MountPath: DoguReservedPath,
 		},
@@ -409,31 +408,41 @@ func (r *resourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, 
 	return exposedServices, nil
 }
 
-// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu
+// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
 func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
-	doguPvc := &corev1.PersistentVolumeClaim{
+	return r.createPVC(doguResource.Name, doguResource, resource.MustParse("5Gi"))
+}
+
+// CreateReservedPVC creates a persistent volume claim with a 10Mi storage for the given dogu.
+// Used for example for upgrade operations.
+func (r *resourceGenerator) CreateReservedPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
+	return r.createPVC(doguResource.GetReservedPVCName(), doguResource, resource.MustParse("10Mi"))
+}
+
+func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv1.Dogu, size resource.Quantity) (*corev1.PersistentVolumeClaim, error) {
+	doguReservedPvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguResource.Name,
+			Name:      pvcName,
 			Namespace: doguResource.Namespace,
 		},
 	}
 
-	doguPvc.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
-	doguPvc.Spec = corev1.PersistentVolumeClaimSpec{
+	doguReservedPvc.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
+	doguReservedPvc.Spec = corev1.PersistentVolumeClaimSpec{
 		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceStorage: resource.MustParse("5Gi"),
+				corev1.ResourceStorage: size,
 			},
 		},
 	}
 
-	err := ctrl.SetControllerReference(doguResource, doguPvc, r.scheme)
+	err := ctrl.SetControllerReference(doguResource, doguReservedPvc, r.scheme)
 	if err != nil {
 		return nil, wrapControllerReferenceError(err)
 	}
 
-	return doguPvc, nil
+	return doguReservedPvc, nil
 }
 
 // CreateDoguSecret generates a secret with a given data map for the dogu
