@@ -86,7 +86,10 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
-	execPod, _ := ue.execPodFactory.NewExecPod(util.ExecPodVolumeModeUpgrade, toDoguResource, toDogu)
+	execPod, err := ue.execPodFactory.NewExecPod(util.ExecPodVolumeModeUpgrade, toDoguResource, toDogu)
+	if err != nil {
+		return err
+	}
 	err = execPod.Create(ctx)
 	if err != nil {
 		return err
