@@ -12,9 +12,10 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
 	_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
 	_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
+	_ = os.Unsetenv("DOGU_REGISTRY_URLSCHEMA")
 	_ = os.Unsetenv("DOCKER_REGISTRY")
 
-	expectedNamespace := "myNamepsace"
+	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
 		Endpoint: "myEndpoint",
 		Username: "myUsername",
@@ -72,6 +73,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	})
 
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
+	t.Setenv("DOGU_REGISTRY_URLSCHEMA", "")
 	t.Run("Error on missing docker registry data var", func(t *testing.T) {
 		// when
 		operatorConfig, err := NewOperatorConfig("0.0.0")
@@ -102,6 +104,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 		name          string
 		inputEndpoint string
 		stage         string
+		urlSchema     string
 	}{
 		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction},
 		{name: "get remote configuration with correct url and development mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageDevelopment},
@@ -110,17 +113,19 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	}
 
 	t.Setenv(envVarNamespace, "test")
-	t.Setenv("DOGU_REGISTRY_ENDPOINT", "myEndpoint")
-	t.Setenv("DOGU_REGISTRY_USERNAME", "user")
-	t.Setenv("DOGU_REGISTRY_PASSWORD", "password")
-	t.Setenv("DOCKER_REGISTRY", `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`)
+	t.Setenv(envVarDoguRegistryEndpoint, "myEndpoint")
+	t.Setenv(envVarDoguRegistryUsername, "user")
+	t.Setenv(envVarDoguRegistryPassword, "password")
+	t.Setenv(envVarDoguRegistryURLSchema, "")
+	t.Setenv(envVarDockerRegistry, `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`)
 
 	defer func() {
 		_ = os.Unsetenv(envVarNamespace)
-		_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
-		_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
-		_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
-		_ = os.Unsetenv("DOCKER_REGISTRY")
+		_ = os.Unsetenv(envVarDoguRegistryEndpoint)
+		_ = os.Unsetenv(envVarDoguRegistryUsername)
+		_ = os.Unsetenv(envVarDoguRegistryPassword)
+		_ = os.Unsetenv(envVarDoguRegistryURLSchema)
+		_ = os.Unsetenv(envVarDockerRegistry)
 	}()
 
 	for _, tt := range tests {
@@ -133,7 +138,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 
 			o, err := NewOperatorConfig("1.0.0")
 			require.NoError(t, err)
-			o.DoguRegistry = DoguRegistryData{Endpoint: tt.inputEndpoint}
+			o.DoguRegistry = DoguRegistryData{Endpoint: tt.inputEndpoint, URLSchema: tt.urlSchema}
 
 			// when
 			remoteConfig := o.GetRemoteConfiguration()
@@ -142,6 +147,55 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 			assert.NotNil(t, remoteConfig)
 			assert.Equal(t, "https://dogu.cloudogu.com/api/v2/", remoteConfig.Endpoint)
 			assert.Equal(t, "/tmp/dogu-registry-cache", remoteConfig.CacheDir)
+			assert.Equal(t, "default", remoteConfig.URLSchema)
+		})
+	}
+}
+
+func TestOperatorConfig_GetRemoteConfigurationWithIndexURLSchema(t *testing.T) {
+	tests := []struct {
+		name          string
+		inputEndpoint string
+		stage         string
+		urlSchema     string
+	}{
+		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, urlSchema: "index"},
+	}
+
+	t.Setenv(envVarNamespace, "test")
+	t.Setenv(envVarDoguRegistryEndpoint, "myEndpoint")
+	t.Setenv(envVarDoguRegistryUsername, "user")
+	t.Setenv(envVarDoguRegistryPassword, "password")
+	t.Setenv(envVarDoguRegistryURLSchema, "index")
+	t.Setenv(envVarDockerRegistry, `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`)
+
+	defer func() {
+		_ = os.Unsetenv(envVarNamespace)
+		_ = os.Unsetenv(envVarDoguRegistryEndpoint)
+		_ = os.Unsetenv(envVarDoguRegistryUsername)
+		_ = os.Unsetenv(envVarDoguRegistryPassword)
+		_ = os.Unsetenv(envVarDoguRegistryURLSchema)
+		_ = os.Unsetenv(envVarDockerRegistry)
+	}()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// given
+			t.Setenv(StageEnvironmentVariable, tt.stage)
+			defer func() {
+				_ = os.Unsetenv(StageEnvironmentVariable)
+			}()
+
+			o, err := NewOperatorConfig("1.0.0")
+			require.NoError(t, err)
+			o.DoguRegistry = DoguRegistryData{Endpoint: tt.inputEndpoint, URLSchema: tt.urlSchema}
+
+			// when
+			remoteConfig := o.GetRemoteConfiguration()
+
+			// then
+			assert.NotNil(t, remoteConfig)
+			assert.Equal(t, "index", remoteConfig.URLSchema)
 		})
 	}
 }
