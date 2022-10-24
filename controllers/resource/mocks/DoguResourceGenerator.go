@@ -111,13 +111,36 @@ func (_m *DoguResourceGenerator) CreateDoguService(doguResource *v1.Dogu, imageC
 	return r0, r1
 }
 
-type mockConstructorTestingTnewDoguResourceGenerator interface {
+// CreateReservedPVC provides a mock function with given fields: doguResource
+func (_m *DoguResourceGenerator) CreateReservedPVC(doguResource *v1.Dogu) (*corev1.PersistentVolumeClaim, error) {
+	ret := _m.Called(doguResource)
+
+	var r0 *corev1.PersistentVolumeClaim
+	if rf, ok := ret.Get(0).(func(*v1.Dogu) *corev1.PersistentVolumeClaim); ok {
+		r0 = rf(doguResource)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*corev1.PersistentVolumeClaim)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*v1.Dogu) error); ok {
+		r1 = rf(doguResource)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+type mockConstructorTestingTNewDoguResourceGenerator interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewDoguResourceGenerator creates a new instance of DoguResourceGenerator. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDoguResourceGenerator(t mockConstructorTestingTnewDoguResourceGenerator) *DoguResourceGenerator {
+func NewDoguResourceGenerator(t mockConstructorTestingTNewDoguResourceGenerator) *DoguResourceGenerator {
 	mock := &DoguResourceGenerator{}
 	mock.Mock.Test(t)
 

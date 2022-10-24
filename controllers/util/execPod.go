@@ -57,9 +57,9 @@ type commandExecutor interface {
 
 // execPod provides features to handle files from a dogu image.
 type execPod struct {
-	client      client.Client
-	executor    commandExecutor
-	factoryMode ExecPodVolumeMode
+	client     client.Client
+	executor   commandExecutor
+	volumeMode ExecPodVolumeMode
 
 	doguResource *k8sv1.Dogu
 	dogu         *core.Dogu
@@ -78,7 +78,7 @@ func NewExecPod(client client.Client, restConfig *rest.Config, factoryMode ExecP
 	return &execPod{
 		client:       client,
 		executor:     executor,
-		factoryMode:  factoryMode,
+		volumeMode:   factoryMode,
 		doguResource: doguResource,
 		dogu:         dogu,
 		podName:      podName,
@@ -157,7 +157,7 @@ func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, container
 func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []corev1.Volume) {
 	logger := log.FromContext(ctx)
 
-	switch ep.factoryMode {
+	switch ep.volumeMode {
 	case ExecPodVolumeModeInstall:
 		return nil, nil
 	case ExecPodVolumeModeUpgrade:
@@ -177,7 +177,7 @@ func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []c
 		}}
 		return volumeMounts, volumes
 	}
-	logger.Info("ExecPod is about to be created without volumes because of unexpected factory mode %d", ep.factoryMode)
+	logger.Info("ExecPod is about to be created without volumes because of unexpected factory mode %d", ep.volumeMode)
 	return nil, nil
 }
 

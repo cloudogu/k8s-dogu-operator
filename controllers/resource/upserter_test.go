@@ -273,7 +273,8 @@ func Test_upserter_ApplyDoguResource(t *testing.T) {
 		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(readLdapDoguExpectedDeployment(t), nil)
 		generator.On("CreateDoguService", doguResource, imageConfig).Return(readLdapDoguExpectedService(t), nil)
 		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(readLdapDoguExpectedExposedServices(t), nil)
-		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedPVC(t), nil)
+		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedDoguPVC(t), nil)
+		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
@@ -414,23 +415,24 @@ func Test_upserter_upsertDoguExposedServices(t *testing.T) {
 	})
 }
 
-func Test_upserter_upsertDoguPVC(t *testing.T) {
+func Test_upserter_upsertDoguPVCs(t *testing.T) {
 	t.Run("fail when upserting a pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
+		dogu := readLdapDogu(t)
 
 		client := &apiMocks.Client{}
 		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedPVC(t), nil)
+		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedDoguPVC(t), nil)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
 		}
 
 		// when
-		err := upserter.upsertDoguPVC(context.Background(), doguResource)
+		err := upserter.upsertDoguPVCs(context.Background(), doguResource, dogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)

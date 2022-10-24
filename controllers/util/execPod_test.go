@@ -138,7 +138,7 @@ func Test_execPod_Exec(t *testing.T) {
 func Test_execPod_createVolumes(t *testing.T) {
 	t.Run("should return no volume resources for an install execPod", func(t *testing.T) {
 		// given
-		sut := &execPod{factoryMode: ExecPodVolumeModeInstall}
+		sut := &execPod{volumeMode: ExecPodVolumeModeInstall}
 
 		// when
 		actualMounts, actualVolumes := sut.createVolumes(testCtx)
@@ -150,20 +150,20 @@ func Test_execPod_createVolumes(t *testing.T) {
 	t.Run("should return volume resources for an upgrade execPod", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
-		sut := &execPod{factoryMode: ExecPodVolumeModeUpgrade, doguResource: ldapDoguResource}
+		sut := &execPod{volumeMode: ExecPodVolumeModeUpgrade, doguResource: ldapDoguResource}
 
 		// when
 		actualMounts, actualVolumes := sut.createVolumes(testCtx)
 
 		// then
 		assert.NotEmpty(t, actualMounts)
-		assert.Equal(t, "dogu-reserved", actualMounts[0].Name)
+		assert.Equal(t, "ldap-reserved", actualMounts[0].Name)
 		assert.Equal(t, "/tmp/dogu-reserved", actualMounts[0].MountPath)
 		assert.False(t, actualMounts[0].ReadOnly)
 
 		assert.NotEmpty(t, actualVolumes)
-		assert.Equal(t, "dogu-reserved", actualVolumes[0].Name)
-		assert.Equal(t, "ldap", actualVolumes[0].VolumeSource.PersistentVolumeClaim.ClaimName)
+		assert.Equal(t, "ldap-reserved", actualVolumes[0].Name)
+		assert.Equal(t, "ldap-reserved", actualVolumes[0].VolumeSource.PersistentVolumeClaim.ClaimName)
 		assert.False(t, actualVolumes[0].VolumeSource.PersistentVolumeClaim.ReadOnly)
 	})
 }

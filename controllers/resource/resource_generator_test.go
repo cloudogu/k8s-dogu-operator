@@ -281,7 +281,7 @@ func TestResourceGenerator_GetDoguPVC(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, readLdapDoguExpectedPVC(t), actualPVC)
+		assert.Equal(t, readLdapDoguExpectedDoguPVC(t), actualPVC)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {

@@ -61,7 +61,7 @@ spec:
               name: ldap-private
               readOnly: true
             - mountPath: /tmp/dogu-reserved
-              name: dogu-reserved
+              name: ldap-reserved
               readOnly: false
             - mountPath: /var/lib/openldap
               name: ldap-data
@@ -87,9 +87,9 @@ spec:
           secret:
             defaultMode: 484
             secretName: ldap-private
-        - name: dogu-reserved
+        - name: ldap-reserved
           persistentVolumeClaim:
-            claimName: ldap
+            claimName: ldap-reserved
         - name: ldap-data
           persistentVolumeClaim:
             claimName: ldap
