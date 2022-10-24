@@ -3,6 +3,9 @@ package util
 import (
 	"bytes"
 	"context"
+	apiMocks "github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
+	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,6 +51,51 @@ func TestExecPod_ObjectKey(t *testing.T) {
 		Name:      podName,
 	}
 	assert.Equal(t, expected, actual)
+}
+
+func Test_execPod_Create(t *testing.T) {
+	ldapDogu := readLdapDogu(t)
+	ldapDoguResource := readLdapDoguResource(t)
+
+	t.Run("should fail", func(t *testing.T) {
+		// given
+		mockClient := &apiMocks.Client{}
+		mockClient.
+			On("Create", context.Background(), mock.Anything).Once().Return(assert.AnError).
+			On("Scheme").Once().Return(getTestScheme())
+
+		sut := &execPod{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
+
+		// when
+		err := sut.Create(context.Background())
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+	t.Run("should succeed", func(t *testing.T) {
+		// given
+		mockClient := &apiMocks.Client{}
+		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
+		clientGetFn := func(args mock.Arguments) {
+			pod := args[2].(*corev1.Pod)
+			pod.Status.Phase = corev1.PodRunning
+		}
+		mockClient.
+			On("Create", context.Background(), mock.Anything).Once().Return(nil).
+			On("Scheme").Once().Return(getTestScheme()).
+			On("Get", context.Background(), objectKey, mock.Anything).Run(clientGetFn).Return(nil)
+
+		sut := &execPod{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
+
+		// when
+		err := sut.Create(context.Background())
+
+		require.NoError(t, err)
+		// then
+		assert.Equal(t, podName, sut.deleteSpec.ObjectMeta.Name)
+		assert.Equal(t, "ecosystem", sut.deleteSpec.ObjectMeta.Namespace)
+	})
 }
 
 func Test_execPod_createPod(t *testing.T) {
@@ -165,6 +213,39 @@ func Test_execPod_createVolumes(t *testing.T) {
 		assert.Equal(t, "ldap-reserved", actualVolumes[0].Name)
 		assert.Equal(t, "ldap-reserved", actualVolumes[0].VolumeSource.PersistentVolumeClaim.ClaimName)
 		assert.False(t, actualVolumes[0].VolumeSource.PersistentVolumeClaim.ReadOnly)
+	})
+}
+
+func Test_execPod_Delete(t *testing.T) {
+	t.Run("should fail", func(t *testing.T) {
+		// given
+		mockClient := &apiMocks.Client{}
+		mockClient.
+			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(assert.AnError)
+
+		sut := &execPod{client: mockClient, deleteSpec: &corev1.Pod{}}
+
+		// when
+		err := sut.Delete(context.Background())
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to delete custom dogu descriptor")
+	})
+	t.Run("should succeed", func(t *testing.T) {
+		// given
+		mockClient := &apiMocks.Client{}
+		mockClient.
+			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(nil)
+
+		sut := &execPod{client: mockClient, deleteSpec: &corev1.Pod{}}
+
+		// when
+		err := sut.Delete(context.Background())
+
+		// then
+		require.NoError(t, err)
 	})
 }
 
