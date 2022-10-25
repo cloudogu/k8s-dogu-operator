@@ -7,6 +7,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"strings"
 	"testing"
 
@@ -156,18 +157,34 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(ldapCr.Name + "-private").To(Equal(secret.Name))
 			Expect(ldapCr.Namespace).To(Equal(secret.Namespace))
 
-			By("Expect created pvc")
-			pvc := &corev1.PersistentVolumeClaim{}
+			By("Expect created dogu pvc")
+			doguPvc := &corev1.PersistentVolumeClaim{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, pvc)
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, doguPvc)
 				if err != nil {
 					return false
 				}
-				return verifyOwner(createdDogu.Name, pvc.ObjectMeta)
+				return verifyOwner(createdDogu.Name, doguPvc.ObjectMeta)
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
-			Expect(ldapCr.Name).To(Equal(pvc.Name))
-			Expect(ldapCr.Namespace).To(Equal(pvc.Namespace))
+			Expect(ldapCr.Name).To(Equal(doguPvc.Name))
+			Expect(ldapCr.Namespace).To(Equal(doguPvc.Namespace))
+			Expect(resource.MustParse("5Gi")).To(Equal(*doguPvc.Spec.Resources.Requests.Storage()))
+
+			By("Expect created reserved pvc")
+			reservedLookupKey := types.NamespacedName{Name: ldapCr.Name + "-reserved", Namespace: ldapCr.Namespace}
+			reservedPvc := &corev1.PersistentVolumeClaim{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, reservedLookupKey, reservedPvc)
+				if err != nil {
+					return false
+				}
+				return verifyOwner(createdDogu.Name, reservedPvc.ObjectMeta)
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			Expect(ldapCr.Name + "-reserved").To(Equal(reservedPvc.Name))
+			Expect(ldapCr.Namespace).To(Equal(reservedPvc.Namespace))
+			Expect(resource.MustParse("10Mi")).To(Equal(*reservedPvc.Spec.Resources.Requests.Storage()))
 
 			By("Expect exposed service for service port 2222")
 			exposedService2222 := &corev1.Service{}
