@@ -83,7 +83,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 						Containers: []corev1.Container{
 							{Name: ldapDoguResource.Name, VolumeMounts: []corev1.VolumeMount{
 								{Name: "myTestMount", MountPath: "/my/host/path/test.txt", SubPath: "test.txt"},
-							}},
+							}, StartupProbe: &corev1.Probe{FailureThreshold: int32(60)}},
 						},
 						Volumes: []corev1.Volume{
 							{Name: "myTestVolume", VolumeSource: corev1.VolumeSource{

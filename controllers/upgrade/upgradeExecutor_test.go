@@ -1027,3 +1027,61 @@ func Test_getMapKeysAsString(t *testing.T) {
 		assert.Contains(t, output, "another.json")
 	})
 }
+
+func Test_increaseStartupProbeTimeoutForUpdate(t *testing.T) {
+	t.Run("should create new deployment with upgrade startup probe if nil deployment is provided", func(t *testing.T) {
+		// given
+		expectedDeployment := createTestDeploymentWithStartupProbe("ldap", 60)
+
+		// when
+		result := increaseStartupProbeTimeoutForUpdate("ldap", nil)
+
+		// then
+		require.NotNil(t, result)
+		require.Equal(t, expectedDeployment, result)
+	})
+
+	t.Run("should edit existing startup probe threshold for same container name", func(t *testing.T) {
+		// given
+		expectedDeployment := createTestDeploymentWithStartupProbe("ldap", 60)
+		patchDeployment := createTestDeploymentWithStartupProbe("ldap", 3)
+
+		// when
+		result := increaseStartupProbeTimeoutForUpdate("ldap", patchDeployment)
+
+		// then
+		require.NotNil(t, result)
+		require.NotEqual(t, 3, result.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold)
+		require.Equal(t, expectedDeployment, result)
+	})
+
+	t.Run("add whole container if no one matches", func(t *testing.T) {
+		// given
+		patchDeployment := createTestDeploymentWithStartupProbe("ldap", 3)
+
+		// when
+		result := increaseStartupProbeTimeoutForUpdate("ldap-side-bmw", patchDeployment)
+
+		// then
+		require.NotNil(t, result)
+		require.Equal(t, 2, len(result.Spec.Template.Spec.Containers))
+	})
+}
+
+func createTestDeploymentWithStartupProbe(containerName string, threshold int32) *appsv1.Deployment {
+	container := corev1.Container{
+		Name: containerName,
+		StartupProbe: &corev1.Probe{
+			FailureThreshold: threshold,
+		},
+	}
+	return &appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{container},
+				},
+			},
+		},
+	}
+}
