@@ -339,11 +339,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			setExecPodRunning(ctx, "ldap")
 
 			By("Check new image in deployment")
+			deploymentAfterUpgrading := new(appsv1.Deployment)
 			Eventually(func() bool {
-				deploymentAfterUpgrading := new(appsv1.Deployment)
 				ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, ldapFromDoguLookupKey)
 				return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			By("Check startup probe failure threshold in deployment")
+			Expect(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold).To(Equal(int32(60)))
 
 			deleteDoguCr(ctx, installedLdapDoguCr, ldapFromDoguLookupKey, true)
 

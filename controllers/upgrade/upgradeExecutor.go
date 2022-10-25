@@ -29,6 +29,8 @@ const (
 	ErrorOnFailedUpgradeEventReason = "ErrUpgrade"
 )
 
+const upgradeFailureThreshold = int32(60)
+
 type upgradeExecutor struct {
 	client                client.Client
 	eventRecorder         record.EventRecorder
@@ -106,13 +108,49 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
+	// change startup probe timeout to 10 min
+	customDeployment = increaseStartupProbeTimeoutForUpdate(toDoguResource.Name, customDeployment)
+
 	ue.normalEventf(toDoguResource, "Updating dogu resources in the cluster...")
 	err = updateDoguResources(ctx, ue.resourceUpserter, toDoguResource, toDogu, imageConfigFile, customDeployment)
 	if err != nil {
 		return err
 	}
 
+	// change readiness probe back after post-upgrade
+
 	return nil
+}
+
+func increaseStartupProbeTimeoutForUpdate(containerName string, customDeployment *appsv1.Deployment) *appsv1.Deployment {
+	container := corev1.Container{
+		Name: containerName,
+		StartupProbe: &corev1.Probe{
+			FailureThreshold: upgradeFailureThreshold,
+		},
+	}
+	if customDeployment == nil {
+		customDeployment = &appsv1.Deployment{
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{container},
+					},
+				},
+			},
+		}
+		return customDeployment
+	}
+
+	for _, container := range customDeployment.Spec.Template.Spec.Containers {
+		if container.Name == containerName {
+			container.StartupProbe.FailureThreshold = upgradeFailureThreshold
+			return customDeployment
+		}
+	}
+
+	customDeployment.Spec.Template.Spec.Containers = append(customDeployment.Spec.Template.Spec.Containers, container)
+	return customDeployment
 }
 
 func registerUpgradedDoguVersion(cesreg doguRegistrator, toDogu *core.Dogu) error {
