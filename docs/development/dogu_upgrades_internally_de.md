@@ -1,3 +1,32 @@
+# Dogu-Upgrades
+
+Ein Dogu-Upgrade verläuft in folgenden Schritten:
+
+1. Das Image von DoguV2 wird gepullt.
+2. Das Pre-Upgrade-Skript von DoguV2 wird in DoguV1 kopiert und ausgeführt
+3. DoguV1 wird heruntergefahren
+4. DoguV2 wird hochgefahren und wartet zunächst mit eigentlichem Start
+5. Das Post-Upgrade-Skript von DoguV2 wird ausgeführt
+6. DoguV2 setzt seine Startroutine fort
+
+## Pre-Upgrade
+
+Im Gegensatz zum herkömmlichen CES ist es nicht so einfach möglich von einem Image Dateien in einen laufenden Container
+zu kopieren und dort auszuführen. Ad Hoc ein Volume zu mounten würde einen Neustart des Containers verursachen.
+Dies gilt zu verhindern, da die eigentliche Anwendung ebenfalls laufen muss. Bei z.B. Dogus wie Easyredmine würde dies
+unnötig Zeit in Anspruch nehmen. 
+
+Für das Kopieren der benötigten Skripte werde bei der Installation eines jeden Dogus Volumes von (10Mb) erzeugt.
+Diese Volumes werden ebenfalls von einem Pod eingebunden, der bei der Upgrade-Routine folgende Dinge macht:
+1. Image mit Sleep infinity starten
+2. Kopieren des Pre-Upgrade-Skriptes in das Dogu-Volume
+
+Nach Beendigung dieser Aktion kann der Dogu-Operator einen Exec-Befehl auf dem Dogu ausführen und somit das Skript starten.
+Dabei wird die Startup-Probe auf 10 Minuten erhöht um Neustarts bei langen Upgrade-Routinen (z. B. Migrationen) zu verhindern.
+
+
+
+## Notizen
 
 /*
 

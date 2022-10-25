@@ -38,7 +38,9 @@ spec:
 
 ## Pre-Upgrade-Skripte
 
-To Do PUS
+Für das Pre-Upgrade-Skript wird während des Upgrade-Prozesses ein Pod gestartet.
+Dieser verwendet das aktualisierte Image des Dogus und kopiert nur das Skript in den alten Container.
+Ein dafür vorgesehenes Volume wird bereits bei der Installation angelegt.
 
 ## Upgrade-Sonderfälle
 
