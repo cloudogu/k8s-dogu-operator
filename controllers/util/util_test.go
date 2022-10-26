@@ -1,6 +1,9 @@
 package util
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestGetMapKeysAsString(t *testing.T) {
 	type args struct {
@@ -18,9 +21,29 @@ func TestGetMapKeysAsString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetMapKeysAsString(tt.args.input); got != tt.want {
+			wandSplit := strings.Split(strings.ReplaceAll(tt.want, " ", ""), ",")
+			got := GetMapKeysAsString(tt.args.input)
+			resultSplit := strings.Split(strings.ReplaceAll(got, " ", ""), ",")
+
+			if len(wandSplit) != len(resultSplit) {
 				t.Errorf("GetMapKeysAsString() = %v, want %v", got, tt.want)
+			}
+
+			for _, want := range wandSplit {
+				if !containsInSlice(resultSplit, want) {
+					t.Errorf("GetMapKeysAsString() = %v, want %v", got, tt.want)
+				}
 			}
 		})
 	}
+}
+
+func containsInSlice(slice []string, s string) bool {
+	for _, e := range slice {
+		if e == s {
+			return true
+		}
+	}
+
+	return false
 }

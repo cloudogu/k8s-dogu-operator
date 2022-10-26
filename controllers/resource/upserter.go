@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -157,8 +158,9 @@ func (u *upserter) upsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 
 func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv1.Dogu) error {
 	existingPVC := &v1.PersistentVolumeClaim{}
+	pvcObjectKey := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
 
-	err := u.client.Get(ctx, doguResource.GetObjectKey(), existingPVC)
+	err := u.client.Get(ctx, pvcObjectKey, existingPVC)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
