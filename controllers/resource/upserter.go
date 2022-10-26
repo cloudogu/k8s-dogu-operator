@@ -85,7 +85,7 @@ func (u *upserter) upsertDoguDeployment(ctx context.Context, doguResource *k8sv1
 		return fmt.Errorf("failed to generate deployment: %w", err)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}, newDeployment, noValidator)
+	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &appsv1.Deployment{}, newDeployment, noValidator)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (u *upserter) upsertDoguService(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to generate service: %w", err)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.Service{}, newService, noValidator)
+	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newService, noValidator)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (u *upserter) upsertDoguExposedServices(ctx context.Context, doguResource *
 	var collectedErrs error
 
 	for _, newExposedService := range newExposedServices {
-		err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.Service{}, newExposedService, noValidator)
+		err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newExposedService, noValidator)
 		if err != nil {
 			err2 := fmt.Errorf("failed to upsert exposed service %s: %w", newExposedService.ObjectMeta.Name, err)
 			collectedErrs = multierror.Append(collectedErrs, err2)
@@ -136,20 +136,9 @@ func (u *upserter) upsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 			return fmt.Errorf("failed to generate pvc: %w", err)
 		}
 
-		existingPVC := &v1.PersistentVolumeClaim{}
-
-		err = u.client.Get(ctx, doguResource.GetObjectKey(), existingPVC)
-		if err != nil && !apierrors.IsNotFound(err) {
+		err = u.upsertPVC(ctx, newPVC, doguResource)
+		if err != nil {
 			return err
-		}
-
-		objectKey := client.ObjectKey{Name: newPVC.Name, Namespace: newPVC.Namespace}
-		// Only create a PVC but do not update it (for now) because updating immutable PVCs is tough
-		if apierrors.IsNotFound(err) {
-			err = u.updateOrInsert(ctx, objectKey, &v1.PersistentVolumeClaim{}, newPVC, &longhornPVCValidator{})
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -158,8 +147,7 @@ func (u *upserter) upsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 		return err
 	}
 
-	objectKey := client.ObjectKey{Name: newReservedPVC.Name, Namespace: newReservedPVC.Namespace}
-	err = u.updateOrInsert(ctx, objectKey, &v1.PersistentVolumeClaim{}, newReservedPVC, &longhornPVCValidator{})
+	err = u.upsertPVC(ctx, newReservedPVC, doguResource)
 	if err != nil {
 		return err
 	}
@@ -167,7 +155,28 @@ func (u *upserter) upsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 	return nil
 }
 
-func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKey, resourceType client.Object, upsertResource client.Object, val resourceValidator) error {
+func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv1.Dogu) error {
+	existingPVC := &v1.PersistentVolumeClaim{}
+
+	err := u.client.Get(ctx, doguResource.GetObjectKey(), existingPVC)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	objectKey := client.ObjectKey{Name: pvc.Name, Namespace: pvc.Namespace}
+	// Only create a PVC but do not update it (for now) because updating immutable PVCs is tough
+	if apierrors.IsNotFound(err) {
+		err = u.updateOrInsert(ctx, doguResource.Name, objectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (u *upserter) updateOrInsert(ctx context.Context, doguName string, objectKey client.ObjectKey,
+	resourceType client.Object, upsertResource client.Object, val resourceValidator) error {
 	if resourceType == nil {
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
 	}
@@ -189,7 +198,7 @@ func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKe
 	// it does not contain any useful metadata.
 	ownerRef := metav1.GetControllerOf(resourceType)
 	if ownerRef != nil && val != nil {
-		err = val.Validate(ctx, objectKey.Name, resourceType)
+		err = val.Validate(ctx, doguName, resourceType)
 		if err != nil {
 			return err
 		}
