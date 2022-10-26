@@ -36,6 +36,12 @@ const (
 	DeinstallEventReason      = "Deinstallation"
 	ErrorDeinstallEventReason = "ErrDeinstallation"
 )
+
+const (
+	SupportEventReason        = "Support"
+	ErrorOnSupportEventReason = "ErrSupport"
+)
+
 const (
 	RequeueEventReason        = "Requeue"
 	ErrorOnRequeueEventReason = "ErrRequeue"
@@ -80,6 +86,8 @@ type manager interface {
 	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
 	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
+	// HandleSupportMode handles the support flag in the dogu spec.
+	HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error)
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
@@ -120,6 +128,13 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
 
+	if doguResource.Status.Status != k8sv1.DoguStatusNotInstalled {
+		supportResult, err := r.handleSupportMode(ctx, doguResource)
+		if supportResult != nil {
+			return *supportResult, err
+		}
+	}
+
 	requiredOperation, err := r.evaluateRequiredOperation(ctx, doguResource)
 	if err != nil {
 		return requeueWithError(fmt.Errorf("failed to evaluate required operation: %w", err))
@@ -128,52 +143,43 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	switch requiredOperation {
 	case Install:
-		installError := r.doguManager.Install(ctx, doguResource)
-		contextMessageOnError := fmt.Sprintf("failed to install dogu %s", doguResource.Name)
-
-		if installError != nil {
-			printError := strings.Replace(installError.Error(), "\n", "", -1)
-			r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnInstallEventReason, "Installation failed. Reason: %s.", printError)
-		} else {
-			r.recorder.Event(doguResource, v1.EventTypeNormal, InstallEventReason, "Installation successful.")
-		}
-
-		result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, installError, func(dogu *k8sv1.Dogu) {
-			doguResource.Status.Status = k8sv1.DoguStatusNotInstalled
-		})
-		if handleErr != nil {
-			r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the installation.")
-			return requeueWithError(fmt.Errorf(handleRequeueErrMsg, handleErr))
-		}
-
-		return requeueOrFinishOperation(result)
+		return r.performInstallOperation(ctx, doguResource)
 	case Upgrade:
 		return r.performUpgradeOperation(ctx, doguResource)
 	case Delete:
-		deleteError := r.doguManager.Delete(ctx, doguResource)
-		contextMessageOnError := fmt.Sprintf("failed to delete dogu %s", doguResource.Name)
-
-		if deleteError != nil {
-			printError := strings.Replace(deleteError.Error(), "\n", "", -1)
-			r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorDeinstallEventReason, "Deinstallation failed. Reason: %s.", printError)
-		} else {
-			r.recorder.Event(doguResource, v1.EventTypeNormal, DeinstallEventReason, "Deinstallation successful.")
-		}
-
-		result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, deleteError, func(dogu *k8sv1.Dogu) {
-			doguResource.Status.Status = k8sv1.DoguStatusInstalled
-		})
-		if handleErr != nil {
-			r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the deinstallation.")
-			return requeueWithError(fmt.Errorf(handleRequeueErrMsg, handleErr))
-		}
-
-		return requeueOrFinishOperation(result)
+		return r.performDeleteOperation(ctx, doguResource)
 	case Ignore:
 		return finishOperation()
 	default:
 		return finishOperation()
 	}
+}
+
+func (r *doguReconciler) handleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (*ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	logger.Info(fmt.Sprintf("Handling support flag for dogu %s", doguResource.Name))
+	supportModeChanged, err := r.doguManager.HandleSupportMode(ctx, doguResource)
+	if err != nil {
+		printError := strings.ReplaceAll(err.Error(), "\n", "")
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnSupportEventReason, "Handling of support mode failed.", printError)
+		return &ctrl.Result{}, fmt.Errorf("failed to handle support mode: %w", err)
+	}
+
+	// Do not care about other operations if the mode has changed. Data changes with activated support mode won't and shouldn't be processed.
+	logger.Info(fmt.Sprintf("Check if support mode changed for dogu %s", doguResource.Name))
+	if supportModeChanged {
+		r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode has changed. Ignoring other events.")
+		return &ctrl.Result{}, nil
+	}
+
+	// Do not care about other operations if the support mode is currently active.
+	if doguResource.Spec.SupportMode {
+		logger.Info(fmt.Sprintf("Support mode is currently active for dogu %s", doguResource.Name))
+		r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode is active. Ignoring other events.")
+		return &ctrl.Result{}, nil
+	}
+
+	return nil, nil
 }
 
 func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguResource *k8sv1.Dogu) (operation, error) {
@@ -232,28 +238,75 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
-	upgradeError := r.doguManager.Upgrade(ctx, doguResource)
-	contextMessageOnError := fmt.Sprintf("failed to upgrade dogu %s", doguResource.Name)
+func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8sv1.Dogu,
+	eventProperties operationEventProperties, requeueDoguStatus string,
+	operation func(context.Context, *k8sv1.Dogu) error) (ctrl.Result, error) {
 
-	if upgradeError != nil {
-		printError := strings.Replace(upgradeError.Error(), "\n", "", -1)
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, upgrade.ErrorOnFailedUpgradeEventReason, "Dogu upgrade failed. Reason: %s.", printError)
+	operationError := operation(ctx, doguResource)
+	contextMessageOnError := fmt.Sprintf("failed to %s dogu %s", eventProperties.operationVerb, doguResource.Name)
+
+	if operationError != nil {
+		printError := strings.ReplaceAll(operationError.Error(), "\n", "")
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, eventProperties.errorReason,
+			"%s failed. Reason: %s.", eventProperties.operationName, printError)
 	} else {
-		r.recorder.Event(doguResource, v1.EventTypeNormal, upgrade.EventReason, "Dogu upgrade successful.")
+		r.recorder.Eventf(doguResource, v1.EventTypeNormal, eventProperties.successReason, "%s successful.",
+			eventProperties.operationName)
 	}
 
-	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, upgradeError, func(dogu *k8sv1.Dogu) {
-		// revert to Installed in case of requeueing after an error so that a upgrade
-		// can be tried again.
-		doguResource.Status.Status = k8sv1.DoguStatusInstalled
-	})
+	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, operationError,
+		func(dogu *k8sv1.Dogu) {
+			doguResource.Status.Status = requeueDoguStatus
+		})
 	if handleErr != nil {
-		r.recorder.Event(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason, "Failed to requeue the dogu upgrade.")
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason,
+			"Failed to requeue the %s.", strings.ToLower(eventProperties.operationName))
 		return requeueWithError(fmt.Errorf(handleRequeueErrMsg, handleErr))
 	}
 
 	return requeueOrFinishOperation(result)
+}
+
+type operationEventProperties struct {
+	successReason string
+	errorReason   string
+	operationName string
+	operationVerb string
+}
+
+func (r *doguReconciler) performInstallOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	installOperationEventProps := operationEventProperties{
+		successReason: InstallEventReason,
+		errorReason:   ErrorOnInstallEventReason,
+		operationName: "Installation",
+		operationVerb: "install",
+	}
+	return r.performOperation(ctx, doguResource, installOperationEventProps, k8sv1.DoguStatusNotInstalled,
+		r.doguManager.Install)
+}
+
+func (r *doguReconciler) performDeleteOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	deleteOperationEventProps := operationEventProperties{
+		successReason: DeinstallEventReason,
+		errorReason:   ErrorDeinstallEventReason,
+		operationName: "Deinstallation",
+		operationVerb: "delete",
+	}
+	return r.performOperation(ctx, doguResource, deleteOperationEventProps, k8sv1.DoguStatusInstalled,
+		r.doguManager.Delete)
+}
+
+func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	upgradeOperationEventProps := operationEventProperties{
+		successReason: upgrade.EventReason,
+		errorReason:   upgrade.ErrorOnFailedUpgradeEventReason,
+		operationName: "Upgrade",
+		operationVerb: "upgrade",
+	}
+	// revert to Installed in case of requeueing after an error so that a upgrade
+	// can be tried again.
+	return r.performOperation(ctx, doguResource, upgradeOperationEventProps, k8sv1.DoguStatusInstalled,
+		r.doguManager.Upgrade)
 }
 
 func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher localDoguFetcher) (bool, error) {

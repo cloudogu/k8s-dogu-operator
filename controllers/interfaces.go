@@ -2,12 +2,10 @@ package controllers
 
 import (
 	"context"
-
-	cesappcore "github.com/cloudogu/cesapp-lib/core"
-
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -25,6 +23,21 @@ type upgradeManager interface {
 type deleteManager interface {
 	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
+}
+
+type supportManager interface {
+	// HandleSupportMode handles the support flag in the dogu spec.
+	HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error)
+}
+
+type fileExtractor interface {
+	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
+	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod util.ExecPod) (map[string]string, error)
+}
+
+type execPodFactory interface {
+	// NewExecPod creates a new ExecPod.
+	NewExecPod(execPodFactoryMode util.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (util.ExecPod, error)
 }
 
 type doguSecretHandler interface {
@@ -91,15 +104,5 @@ type premisesChecker interface {
 
 type upgradeExecutor interface {
 	// Upgrade executes the actual dogu upgrade.
-	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *cesappcore.Dogu) error
-}
-
-type fileExtractor interface {
-	// ExtractK8sResourcesFromContainer copies a file from stdout into a map of strings.
-	ExtractK8sResourcesFromContainer(ctx context.Context, execpod util.ExecPod) (map[string]string, error)
-}
-
-type execPodFactory interface {
-	// NewExecPod creates a new ExecPod.
-	NewExecPod(execPodFactoryMode util.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (util.ExecPod, error)
+	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
 }
