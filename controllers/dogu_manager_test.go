@@ -2,13 +2,15 @@ package controllers
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -83,7 +85,7 @@ func TestDoguManager_Upgrade(t *testing.T) {
 	eventRecorder := &mocks.EventRecorder{}
 	m := DoguManager{upgradeManager: upgradeManager, recorder: eventRecorder}
 
-	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, upgrade.UpgradeEventReason, "Starting upgrade...")
+	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, upgrade.EventReason, "Starting upgrade...")
 
 	// when
 	err := m.Upgrade(inputContext, inputDogu)

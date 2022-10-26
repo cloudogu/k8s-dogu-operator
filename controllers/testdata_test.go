@@ -104,18 +104,6 @@ func readLdapDoguExpectedPodTemplateSupportOn(t *testing.T) *v1.PodTemplateSpec 
 	return data
 }
 
-func readLdapDoguExpectedPodTemplateSupportOff(t *testing.T) *v1.PodTemplateSpec {
-	t.Helper()
-
-	data := &v1.PodTemplateSpec{}
-	err := yaml.Unmarshal(expectedPodTemplateSupportOffBytes, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return data
-}
-
 func getTestScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 

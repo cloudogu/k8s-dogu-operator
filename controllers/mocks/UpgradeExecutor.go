@@ -18,7 +18,7 @@ type UpgradeExecutor struct {
 }
 
 // Upgrade provides a mock function with given fields: ctx, toDoguResource, toDogu
-func (_m *UpgradeExecutor) Upgrade(ctx context.Context, toDoguResource *v1.Dogu, toDogu *core.Dogu) error {
+func (_m *UpgradeExecutor) Upgrade(ctx context.Context, toDoguResource *v1.Dogu, fromDogu *core.Dogu, toDogu *core.Dogu) error {
 	ret := _m.Called(ctx, toDoguResource, toDogu)
 
 	var r0 error

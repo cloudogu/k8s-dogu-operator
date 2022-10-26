@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -31,7 +32,12 @@ type supportManager interface {
 
 type fileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
-	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (map[string]string, error)
+	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod util.ExecPod) (map[string]string, error)
+}
+
+type execPodFactory interface {
+	// NewExecPod creates a new ExecPod.
+	NewExecPod(execPodFactoryMode util.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (util.ExecPod, error)
 }
 
 type doguSecretHandler interface {
@@ -98,5 +104,5 @@ type premisesChecker interface {
 
 type upgradeExecutor interface {
 	// Upgrade executes the actual dogu upgrade.
-	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *cesappcore.Dogu) error
+	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
 }

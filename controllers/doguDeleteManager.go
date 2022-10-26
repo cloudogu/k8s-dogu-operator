@@ -10,7 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
-	"k8s.io/apimachinery/pkg/runtime"
+
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,7 +23,6 @@ const finalizerName = "dogu-finalizer"
 // doguDeleteManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguDeleteManager struct {
 	client                client.Client
-	scheme                *runtime.Scheme
 	localDoguFetcher      localDoguFetcher
 	imageRegistry         imageRegistry
 	doguRegistrator       doguRegistrator
@@ -44,7 +43,6 @@ func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry
 
 	return &doguDeleteManager{
 		client:                client,
-		scheme:                client.Scheme(),
 		localDoguFetcher:      cesreg.NewLocalDoguFetcher(cesRegistry.DoguRegistry()),
 		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
 		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor),
