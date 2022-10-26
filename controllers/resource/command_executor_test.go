@@ -56,10 +56,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		Command:     "/create-sa.sh",
 	}
 	params := []string{"ro", "redmine"}
-	command := &ShellCommand{
-		Command: exposedCommand.Command,
-		Args:    params,
-	}
+	command := NewShellCommand(exposedCommand.Command, params...)
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		return &fakeExecutor{method: method, url: url}, nil
@@ -190,10 +187,7 @@ func TestShellCommand_String(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &ShellCommand{
-				Command: tt.fields.Command,
-				Args:    tt.fields.Args,
-			}
+			sc := NewShellCommand(tt.fields.Command, tt.fields.Args...)
 			assert.Equalf(t, tt.want, sc.String(), "String()")
 		})
 	}

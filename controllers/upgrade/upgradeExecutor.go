@@ -45,7 +45,17 @@ type upgradeExecutor struct {
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
-func NewUpgradeExecutor(client client.Client, config *rest.Config, clientSet kubernetes.Interface, eventRecorder record.EventRecorder, imageRegistry imageRegistry, collectApplier collectApplier, k8sFileExtractor fileExtractor, serviceAccountCreator serviceAccountCreator, registry registry.Registry) *upgradeExecutor {
+func NewUpgradeExecutor(
+	client client.Client,
+	config *rest.Config,
+	clientSet kubernetes.Interface,
+	eventRecorder record.EventRecorder,
+	imageRegistry imageRegistry,
+	collectApplier collectApplier,
+	k8sFileExtractor fileExtractor,
+	serviceAccountCreator serviceAccountCreator,
+	registry registry.Registry,
+) *upgradeExecutor {
 	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, nil)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
 	upserter := resource.NewUpserter(client, limitPatcher)
@@ -96,7 +106,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	if err != nil {
 		return err
 	}
-	defer execPod.Delete(ctx)
+	defer deleteExecPod(ctx, execPod, ue.eventRecorder, toDoguResource)
 
 	err = ue.applyUpgradeScripts(ctx, toDoguResource, fromDogu, toDogu, execPod)
 	if err != nil {
@@ -292,9 +302,8 @@ func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, toDoguR
 	baseDir, _ := filepath.Split(cmd.Command)
 
 	mkdirCmd := resource.NewShellCommand("/bin/mkdir", "-p", baseDir)
-	nameOfTheDoguBeingUpgraded := toDoguResource.Name
 
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, nameOfTheDoguBeingUpgraded, toDoguResource.Namespace, mkdirCmd)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource.Name, toDoguResource.Namespace, mkdirCmd)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", mkdirCmd, outBuf, err)
 	}
@@ -307,8 +316,7 @@ func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromDogu
 	// execute it as described by the dogu.json.
 	preUpgradeCmd := resource.NewShellCommand(cmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
 
-	nameOfTheDoguBeingUpgraded := toDoguResource.Name
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, nameOfTheDoguBeingUpgraded, toDoguResource.Namespace, preUpgradeCmd)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource.Name, toDoguResource.Namespace, preUpgradeCmd)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeCmd, outBuf, err)
 	}
@@ -327,4 +335,11 @@ func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguR
 
 func (ue *upgradeExecutor) normalEventf(doguResource *k8sv1.Dogu, msg string, args ...interface{}) {
 	ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, msg, args...)
+}
+
+func deleteExecPod(ctx context.Context, execPod util.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
+	err := execPod.Delete(ctx)
+	if err != nil {
+		recorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)
+	}
 }

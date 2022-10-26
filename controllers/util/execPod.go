@@ -12,7 +12,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -196,8 +195,8 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 
 		err := ep.client.Get(ctx, *execPodKey, &lePod)
 		if err != nil {
-			logger.Error(err, "Error while finding exec pod "+containerPodName+". Will try again.")
-			sleep(logger, i)
+			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again in %d second(s).", containerPodName, i))
+			sleep(i)
 			continue
 		}
 
@@ -209,8 +208,8 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 		case corev1.PodFailed, corev1.PodSucceeded:
 			return fmt.Errorf("quitting dogu installation because exec pod %s failed with status %s or did not come up in time", containerPodName, leStatus)
 		default:
-			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v", containerPodName, leStatus))
-			sleep(logger, i)
+			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again in %d second(s).", containerPodName, leStatus, i))
+			sleep(i)
 			continue
 		}
 	}
@@ -225,12 +224,11 @@ func (ep *execPod) Delete(ctx context.Context) error {
 	logger.Info("Cleaning up exec pod ", ep.podName)
 	err := ep.client.Delete(ctx, ep.deleteSpec)
 	if err != nil {
-		err2 := fmt.Errorf("failed to delete custom dogu descriptor: %w", err)
 		if !errors.IsNotFound(err) {
-			return err2
+			return fmt.Errorf("failed to delete execPod %s: %w", ep.podName, err)
 		}
 
-		logger.Error(err2, "Error deleting execPod ")
+		logger.Error(err, fmt.Sprintf("Could not find execPod %s for deletion", ep.podName))
 	}
 
 	return nil
@@ -255,8 +253,7 @@ func (ep *execPod) Exec(ctx context.Context, cmd *resource.ShellCommand) (string
 	return out.String(), err
 }
 
-func sleep(logger logr.Logger, sleepIntervalInSec int) {
-	logger.Info(fmt.Sprintf("Exec pod not found. Trying again in %d second(s)", sleepIntervalInSec))
+func sleep(sleepIntervalInSec int) {
 	time.Sleep(time.Duration(sleepIntervalInSec) * time.Second) // linear rising backoff
 }
 

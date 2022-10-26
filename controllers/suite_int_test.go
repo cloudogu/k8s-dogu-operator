@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	fake2 "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -200,7 +200,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	clientSet := fake2.NewSimpleClientset()
+	clientSet := fake.NewSimpleClientset()
 	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, cfg, clientSet, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
 
 	upgradeManager := &doguUpgradeManager{

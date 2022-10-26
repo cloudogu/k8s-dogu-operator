@@ -177,15 +177,11 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	if err != nil {
 		return fmt.Errorf("failed to create ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
 	}
-	defer anExecPod.Delete(ctx)
+	defer deleteExecPod(ctx, anExecPod, m.recorder, doguResource)
 
 	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromContainer(ctx, anExecPod)
 	if err != nil {
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to delete ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
 	}
 
 	if len(customK8sResources) > 0 {
@@ -230,4 +226,11 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	return nil
+}
+
+func deleteExecPod(ctx context.Context, execPod util.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
+	err := execPod.Delete(ctx)
+	if err != nil {
+		recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)
+	}
 }

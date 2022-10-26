@@ -154,6 +154,9 @@ func (u *upserter) upsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 	}
 
 	newReservedPVC, err := u.generator.CreateReservedPVC(doguResource)
+	if err != nil {
+		return err
+	}
 
 	objectKey := client.ObjectKey{Name: newReservedPVC.Name, Namespace: newReservedPVC.Namespace}
 	err = u.updateOrInsert(ctx, objectKey, &v1.PersistentVolumeClaim{}, newReservedPVC, &longhornPVCValidator{})

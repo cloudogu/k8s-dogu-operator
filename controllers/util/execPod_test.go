@@ -59,7 +59,7 @@ func Test_execPod_Create(t *testing.T) {
 
 	t.Run("should fail", func(t *testing.T) {
 		// given
-		mockClient := &apiMocks.Client{}
+		mockClient := apiMocks.NewClient(t)
 		mockClient.
 			On("Create", context.Background(), mock.Anything).Once().Return(assert.AnError).
 			On("Scheme").Once().Return(getTestScheme())
@@ -75,7 +75,7 @@ func Test_execPod_Create(t *testing.T) {
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		mockClient := &apiMocks.Client{}
+		mockClient := apiMocks.NewClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		clientGetFn := func(args mock.Arguments) {
 			pod := args[2].(*corev1.Pod)
@@ -219,11 +219,11 @@ func Test_execPod_createVolumes(t *testing.T) {
 func Test_execPod_Delete(t *testing.T) {
 	t.Run("should fail", func(t *testing.T) {
 		// given
-		mockClient := &apiMocks.Client{}
+		mockClient := apiMocks.NewClient(t)
 		mockClient.
 			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(assert.AnError)
 
-		sut := &execPod{client: mockClient, deleteSpec: &corev1.Pod{}}
+		sut := &execPod{podName: podName, client: mockClient, deleteSpec: &corev1.Pod{}}
 
 		// when
 		err := sut.Delete(context.Background())
@@ -231,11 +231,11 @@ func Test_execPod_Delete(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to delete custom dogu descriptor")
+		assert.ErrorContains(t, err, "failed to delete execPod "+podName)
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		mockClient := &apiMocks.Client{}
+		mockClient := apiMocks.NewClient(t)
 		mockClient.
 			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(nil)
 

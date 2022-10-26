@@ -438,15 +438,15 @@ func (r *resourceGenerator) CreateReservedPVC(doguResource *k8sv1.Dogu) (*corev1
 }
 
 func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv1.Dogu, size resource.Quantity) (*corev1.PersistentVolumeClaim, error) {
-	doguReservedPvc := &corev1.PersistentVolumeClaim{
+	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,
 			Namespace: doguResource.Namespace,
 		},
 	}
 
-	doguReservedPvc.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
-	doguReservedPvc.Spec = corev1.PersistentVolumeClaimSpec{
+	pvc.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
+	pvc.Spec = corev1.PersistentVolumeClaimSpec{
 		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
@@ -455,12 +455,12 @@ func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv1.Dogu, 
 		},
 	}
 
-	err := ctrl.SetControllerReference(doguResource, doguReservedPvc, r.scheme)
+	err := ctrl.SetControllerReference(doguResource, pvc, r.scheme)
 	if err != nil {
 		return nil, wrapControllerReferenceError(err)
 	}
 
-	return doguReservedPvc, nil
+	return pvc, nil
 }
 
 // CreateDoguSecret generates a secret with a given data map for the dogu
