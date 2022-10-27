@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Make dogu registry URL schema configurable; #48
+- [#48] Make dogu registry URL schema configurable.
+- [#47] Execute Dogu pre-upgrade scripts in upgrade process. See [dogu upgrades](docs/operations/dogu_upgrades_en.md).
 
 ## [v0.13.0] - 2022-10-12
 ### Added

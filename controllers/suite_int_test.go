@@ -6,12 +6,12 @@ package controllers
 import (
 	"context"
 	_ "embed"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -20,10 +20,13 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/onsi/ginkgo"
@@ -49,13 +52,11 @@ var testEnv *envtest.Environment
 var cancel context.CancelFunc
 
 // Used in other integration tests
-var ImageRegistryMock *mocks.ImageRegistry
-
-// Used in other integration tests
-var DoguRemoteRegistryMock *cesremotemocks.Registry
-
-// Used in other integration tests
-var EtcdDoguRegistry *cesmocks.DoguRegistry
+var (
+	ImageRegistryMock      *mocks.ImageRegistry
+	DoguRemoteRegistryMock *cesremotemocks.Registry
+	EtcdDoguRegistry       *cesmocks.DoguRegistry
+)
 
 const TimeoutInterval = time.Second * 10
 const PollingInterval = time.Second * 1
@@ -168,9 +169,11 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
+	execPodFactory := util.NewExecPodFactory(k8sClient, cfg)
 
 	installManager := &doguInstallManager{
 		client:                k8sClient,
+		recorder:              eventRecorder,
 		resourceUpserter:      upserter,
 		doguRemoteRegistry:    DoguRemoteRegistryMock,
 		doguLocalRegistry:     EtcdDoguRegistry,
@@ -182,8 +185,8 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguSecretHandler:     doguSecretHandler,
 		collectApplier:        collectApplier,
 		fileExtractor:         fileExtract,
-		recorder:              eventRecorder,
 		localDoguFetcher:      localDoguFetcher,
+		execPodFactory:        execPodFactory,
 	}
 
 	deleteManager := &doguDeleteManager{
@@ -197,7 +200,8 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock, eventRecorder)
+	clientSet := fake.NewSimpleClientset()
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, cfg, clientSet, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,

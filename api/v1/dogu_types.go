@@ -121,6 +121,16 @@ func (d *Dogu) GetPrivateVolumeName() string {
 	return d.Name + "-private"
 }
 
+// GetReservedVolumeName returns the reserved (e.g. for upgrades) volume name for the dogu resource.
+func (d *Dogu) GetReservedVolumeName() string {
+	return d.Name + "-reserved"
+}
+
+// GetReservedPVCName returns the reserved (e.g. for upgrades) PVC name for the dogu resource.
+func (d *Dogu) GetReservedPVCName() string {
+	return d.Name + "-reserved"
+}
+
 // GetObjectKey returns the object key with the actual name and namespace from the dogu resource
 func (d *Dogu) GetObjectKey() client.ObjectKey {
 	return client.ObjectKey{

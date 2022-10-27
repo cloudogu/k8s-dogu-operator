@@ -17,6 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,13 +63,15 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	var exposedService8888LookupKey types.NamespacedName
 
 	// Upgrade testdata
-	namespace := "default"
+	upgradeNamespace := "upgrade"
 	ldapFromCr := readDoguCr(t, ldapCrBytes)
 	ldapFromCr.ResourceVersion = ""
-	ldapFromCr.Namespace = namespace
+	ldapFromCr.Namespace = upgradeNamespace
 	ldapFromDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorBytes)
-	ldapFromDoguLookupKey := types.NamespacedName{Name: ldapFromCr.Name, Namespace: namespace}
+	ldapFromDoguDescriptor.Name = upgradeNamespace + "/ldap"
+	ldapFromDoguLookupKey := types.NamespacedName{Name: ldapFromCr.Name, Namespace: upgradeNamespace}
 	ldapToDoguDescriptor := readDoguDescriptor(t, ldapUpgradeDoguDescriptorBytes)
+	ldapToDoguDescriptor.Name = upgradeNamespace + "/ldap"
 	ldapToVersion := ldapToDoguDescriptor.Version
 
 	Context("Handle dogu resource", func() {
@@ -95,7 +98,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Should install dogu in cluster", func() {
 			By("Creating dogu resource")
-			installDoguCrd(ctx, ldapCr)
+			installDoguCr(ctx, ldapCr)
 
 			By("Expect created dogu")
 			createdDogu := &k8sv1.Dogu{}
@@ -111,6 +114,8 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}
 				return false
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			setExecPodRunning(ctx, "ldap")
 
 			By("Expect created deployment")
 			deployment := &appsv1.Deployment{}
@@ -152,18 +157,34 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(ldapCr.Name + "-private").To(Equal(secret.Name))
 			Expect(ldapCr.Namespace).To(Equal(secret.Namespace))
 
-			By("Expect created pvc")
-			pvc := &corev1.PersistentVolumeClaim{}
+			By("Expect created dogu pvc")
+			doguPvc := &corev1.PersistentVolumeClaim{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, pvc)
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, doguPvc)
 				if err != nil {
 					return false
 				}
-				return verifyOwner(createdDogu.Name, pvc.ObjectMeta)
+				return verifyOwner(createdDogu.Name, doguPvc.ObjectMeta)
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
-			Expect(ldapCr.Name).To(Equal(pvc.Name))
-			Expect(ldapCr.Namespace).To(Equal(pvc.Namespace))
+			Expect(ldapCr.Name).To(Equal(doguPvc.Name))
+			Expect(ldapCr.Namespace).To(Equal(doguPvc.Namespace))
+			Expect(resource.MustParse("5Gi")).To(Equal(*doguPvc.Spec.Resources.Requests.Storage()))
+
+			By("Expect created reserved pvc")
+			reservedLookupKey := types.NamespacedName{Name: ldapCr.Name + "-reserved", Namespace: ldapCr.Namespace}
+			reservedPvc := &corev1.PersistentVolumeClaim{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, reservedLookupKey, reservedPvc)
+				if err != nil {
+					return false
+				}
+				return verifyOwner(createdDogu.Name, reservedPvc.ObjectMeta)
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			Expect(ldapCr.Name + "-reserved").To(Equal(reservedPvc.Name))
+			Expect(ldapCr.Namespace).To(Equal(reservedPvc.Namespace))
+			Expect(resource.MustParse("10Mi")).To(Equal(*reservedPvc.Spec.Resources.Requests.Storage()))
 
 			By("Expect exposed service for service port 2222")
 			exposedService2222 := &corev1.Service{}
@@ -197,7 +218,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}, PollingInterval, TimeoutInterval).Should(BeTrue())
 
 			createdDogu.Spec.SupportMode = true
-			updateDoguCrd(ctx, createdDogu)
+			updateDoguCr(ctx, createdDogu)
 
 			By("Expect deployment in support mode")
 			deployment := &appsv1.Deployment{}
@@ -223,7 +244,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}, PollingInterval, TimeoutInterval).Should(BeTrue())
 
 			createdDogu.Spec.SupportMode = false
-			updateDoguCrd(ctx, createdDogu)
+			updateDoguCr(ctx, createdDogu)
 
 			By("Expect deployment in normal mode")
 			deployment := &appsv1.Deployment{}
@@ -238,7 +259,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		})
 
 		It("Should delete dogu", func() {
-			deleteDoguCrd(ctx, ldapCr, ldapDoguLookupKey, true)
+			deleteDoguCr(ctx, ldapCr, ldapDoguLookupKey, true)
 			deleteObjectFromCluster(ctx, exposedService8888LookupKey, &corev1.Service{})
 			deleteObjectFromCluster(ctx, exposedService2222LookupKey, &corev1.Service{})
 		})
@@ -246,7 +267,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	It("Should fail dogu installation as dependency is missing", func() {
 		By("Creating redmine dogu resource")
-		installDoguCrd(ctx, redmineCr)
+		installDoguCr(ctx, redmineCr)
 
 		By("Check for failed installation and check events of dogu resource")
 		createdDogu := &k8sv1.Dogu{}
@@ -281,7 +302,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
 		By("Delete redmine dogu crd")
-		deleteDoguCrd(ctx, redmineCr, redmineCr.GetObjectKey(), false)
+		deleteDoguCr(ctx, redmineCr, redmineCr.GetObjectKey(), false)
 
 		Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
@@ -312,8 +333,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	})
 
 	It("Should upgrade dogu in cluster", func() {
+		namespace := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: upgradeNamespace, Namespace: upgradeNamespace}}
+		_ = k8sClient.Create(ctx, namespace)
+
 		By("Install ldap dogu resource in version 2.4.48-4")
-		installDoguCrd(testCtx, ldapFromCr)
+		installDoguCr(testCtx, ldapFromCr)
 
 		By("Expect created dogu")
 		installedLdapDoguCr := &k8sv1.Dogu{}
@@ -331,14 +355,18 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			return false
 		}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
+		setExecPodRunning(ctx, "ldap")
+
 		By("Wait for resources created deployment")
 		deployment := new(appsv1.Deployment)
-		Eventually(getObjectFromCluster(testCtx, deployment, ldapFromDoguLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
-		Eventually(getObjectFromCluster(testCtx, &corev1.Service{}, ldapFromDoguLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
-		Eventually(getObjectFromCluster(testCtx, &corev1.PersistentVolumeClaim{}, ldapFromDoguLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
+		Eventually(func() bool { return getObjectFromCluster(testCtx, deployment, ldapFromDoguLookupKey) }, TimeoutInterval, PollingInterval).Should(BeTrue())
+		Eventually(func() bool { return getObjectFromCluster(testCtx, &corev1.Service{}, ldapFromDoguLookupKey) }, TimeoutInterval, PollingInterval).Should(BeTrue())
+		Eventually(func() bool {
+			return getObjectFromCluster(testCtx, &corev1.PersistentVolumeClaim{}, ldapFromDoguLookupKey)
+		}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
 		secretLookupKey := types.NamespacedName{Name: ldapFromDoguLookupKey.Name + "-private", Namespace: ldapFromDoguLookupKey.Namespace}
-		Eventually(getObjectFromCluster(testCtx, &corev1.Secret{}, secretLookupKey), TimeoutInterval, PollingInterval).Should(BeTrue())
+		Eventually(func() bool { return getObjectFromCluster(testCtx, &corev1.Secret{}, secretLookupKey) }, TimeoutInterval, PollingInterval).Should(BeTrue())
 
 		By("Patch Deployment to contain at least one healthy replica")
 		Expect(func() bool {
@@ -350,19 +378,26 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		By("Update dogu crd with new version")
 		Expect(func() bool {
+			return getObjectFromCluster(ctx, installedLdapDoguCr, ldapFromDoguLookupKey)
+		}()).To(BeTrue())
+		Expect(func() bool {
 			installedLdapDoguCr.Spec.Version = ldapToVersion
 			err := k8sClient.Update(testCtx, installedLdapDoguCr)
 			return err == nil
 		}()).To(BeTrue())
 
+		setExecPodRunning(ctx, "ldap")
+
 		By("Check new image in deployment")
+		deploymentAfterUpgrading := new(appsv1.Deployment)
 		Eventually(func() bool {
-			deploymentAfterUpgrading := new(appsv1.Deployment)
 			ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, ldapFromDoguLookupKey)
 			return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
 		}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		By("Check startup probe failure threshold in deployment")
+		Expect(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold).To(Equal(int32(60)))
 
-		deleteDoguCrd(ctx, installedLdapDoguCr, ldapFromDoguLookupKey, true)
+		deleteDoguCr(ctx, installedLdapDoguCr, ldapFromDoguLookupKey, true)
 
 		Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
@@ -370,15 +405,40 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	})
 })
 
-func installDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu) {
+// setExecPodRunning can be necessary because the environment has no controllers to really start the pods,
+// therefore the dogu controller waits until timeout.
+func setExecPodRunning(ctx context.Context, doguName string) {
+	By("Simulate ExecPod is running")
+	podList := &corev1.PodList{}
+
+	Eventually(func() bool {
+		err := k8sClient.List(ctx, podList)
+		if err != nil {
+			return false
+		}
+		for _, pod := range podList.Items {
+			if strings.Contains(pod.Name, doguName+"-execpod") && pod.Status.Phase != corev1.PodRunning {
+				pod.Status.Phase = corev1.PodRunning
+				err := k8sClient.Status().Update(ctx, &pod)
+				if err != nil {
+					return false
+				}
+				return true
+			}
+		}
+		return false
+	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+}
+
+func installDoguCr(ctx context.Context, doguCr *k8sv1.Dogu) {
 	Expect(k8sClient.Create(ctx, doguCr)).Should(Succeed())
 }
 
-func updateDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu) {
+func updateDoguCr(ctx context.Context, doguCr *k8sv1.Dogu) {
 	Expect(k8sClient.Update(ctx, doguCr)).Should(Succeed())
 }
 
-func deleteDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.NamespacedName, deleteAdditional bool) {
+func deleteDoguCr(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.NamespacedName, deleteAdditional bool) {
 	Expect(k8sClient.Delete(ctx, doguCr)).Should(Succeed())
 
 	dogu := &k8sv1.Dogu{}
@@ -391,6 +451,8 @@ func deleteDoguCrd(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.
 		return
 	}
 
+	// For now, this is obsolete because our pseudocluster cannot delete stuff.
+	// We will keep it here anyway, for when we migrate these tests to a real cluster.
 	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &appsv1.Deployment{})
 	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &corev1.Service{})
 	deleteObjectFromCluster(ctx, types.NamespacedName{Name: doguCr.GetPrivateVolumeName(), Namespace: doguCr.Namespace}, &corev1.Secret{})

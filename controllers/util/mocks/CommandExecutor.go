@@ -16,7 +16,7 @@ type CommandExecutor struct {
 	mock.Mock
 }
 
-// ExecCommand provides a mock function with given fields: ctx, targetDogu, namespace, command
+// ExecCommandForDogu provides a mock function with given fields: ctx, targetDogu, namespace, command
 func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error) {
 	ret := _m.Called(ctx, targetDogu, namespace, command)
 
@@ -32,6 +32,29 @@ func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, targetDogu st
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, string, *resource.ShellCommand) error); ok {
 		r1 = rf(ctx, targetDogu, namespace, command)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ExecCommandForPod provides a mock function with given fields: ctx, podName, namespace, command
+func (_m *CommandExecutor) ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error) {
+	ret := _m.Called(ctx, podName, namespace, command)
+
+	var r0 *bytes.Buffer
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, *resource.ShellCommand) *bytes.Buffer); ok {
+		r0 = rf(ctx, podName, namespace, command)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*bytes.Buffer)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, *resource.ShellCommand) error); ok {
+		r1 = rf(ctx, podName, namespace, command)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -241,12 +241,14 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8sv1.Dogu,
 	eventProperties operationEventProperties, requeueDoguStatus string,
 	operation func(context.Context, *k8sv1.Dogu) error) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
 
 	operationError := operation(ctx, doguResource)
 	contextMessageOnError := fmt.Sprintf("failed to %s dogu %s", eventProperties.operationVerb, doguResource.Name)
 
 	if operationError != nil {
 		printError := strings.ReplaceAll(operationError.Error(), "\n", "")
+		logger.Error(operationError, fmt.Sprintf("%s failed", eventProperties.operationName))
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, eventProperties.errorReason,
 			"%s failed. Reason: %s.", eventProperties.operationName, printError)
 	} else {
@@ -298,7 +300,7 @@ func (r *doguReconciler) performDeleteOperation(ctx context.Context, doguResourc
 
 func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
 	upgradeOperationEventProps := operationEventProperties{
-		successReason: upgrade.UpgradeEventReason,
+		successReason: upgrade.EventReason,
 		errorReason:   upgrade.ErrorOnFailedUpgradeEventReason,
 		operationName: "Upgrade",
 		operationVerb: "upgrade",

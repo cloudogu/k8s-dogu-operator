@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +16,8 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/cloudogu/cesapp-lib/core"
 )
 
 type fakeExecutor struct {
@@ -49,12 +50,13 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 	labels["dogu"] = "postgresql"
 	readyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}, Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady}}}}
 	unreadyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-	command := &core.ExposedCommand{
+	exposedCommand := &core.ExposedCommand{
 		Name:        "create-sa-command",
 		Description: "desc",
 		Command:     "/create-sa.sh",
 	}
-	params := []string{"ro"}
+	params := []string{"ro", "redmine"}
+	command := NewShellCommand(exposedCommand.Command, params...)
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		return &fakeExecutor{method: method, url: url}, nil
@@ -82,7 +84,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command, params)
+		buffer, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", command)
 
 		// then
 		require.NoError(t, err)
@@ -97,7 +99,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil, nil)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", nil)
 
 		// then
 		require.Error(t, err)
@@ -111,7 +113,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", nil, nil)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", nil)
 
 		// then
 		require.Error(t, err)
@@ -125,7 +127,7 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command, params)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", command)
 
 		// then
 		require.Error(t, err)
@@ -139,10 +141,54 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommand(ctx, "postgresql", "test", command, params)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", command)
 
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), assert.AnError.Error())
 	})
+}
+
+func TestNewShellCommand(t *testing.T) {
+	t.Run("should return simple command without args", func(t *testing.T) {
+		actual := NewShellCommand("/bin/ls")
+
+		expected := &ShellCommand{Command: "/bin/ls"}
+		assert.Equal(t, expected, actual)
+	})
+	t.Run("should return command 1 arg", func(t *testing.T) {
+		actual := NewShellCommand("/bin/ls", "/tmp/")
+
+		expected := &ShellCommand{Command: "/bin/ls", Args: []string{"/tmp/"}}
+		assert.Equal(t, expected, actual)
+	})
+	t.Run("should return command multiple args", func(t *testing.T) {
+		actual := NewShellCommand("/bin/ls", []string{"arg1", "arg2", "arg3"}...)
+
+		expected := &ShellCommand{Command: "/bin/ls", Args: []string{"arg1", "arg2", "arg3"}}
+		assert.Equal(t, expected, actual)
+	})
+}
+
+func TestShellCommand_String(t *testing.T) {
+	type fields struct {
+		Command string
+		Args    []string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{"return command", fields{"/bin/ls", nil}, "/bin/ls"},
+		{"return command", fields{"/bin/ls", []string{}}, "/bin/ls"},
+		{"return command and 1 arg", fields{"/bin/ls", []string{"/tmp"}}, "/bin/ls /tmp"},
+		{"return command and multiple args", fields{"/bin/ls", []string{"/tmp", "/dir2"}}, "/bin/ls /tmp /dir2"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := NewShellCommand(tt.fields.Command, tt.fields.Args...)
+			assert.Equalf(t, tt.want, sc.String(), "String()")
+		})
+	}
 }

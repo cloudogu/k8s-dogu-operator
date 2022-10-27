@@ -63,14 +63,14 @@ func getDoguSupportManagerWithMocks(scheme *runtime.Scheme) doguSupportManagerWi
 
 func TestNewDoguSupportManager(t *testing.T) {
 	// given
-	client := fake.NewClientBuilder().Build()
+	k8sClient := fake.NewClientBuilder().Build()
 	cesRegistry := &regmocks.Registry{}
 	doguRegistry := &regmocks.DoguRegistry{}
 	cesRegistry.On("DoguRegistry").Return(doguRegistry)
 	recorder := &controllermocks.EventRecorder{}
 
 	// when
-	manager := NewDoguSupportManager(client, cesRegistry, recorder)
+	manager := NewDoguSupportManager(k8sClient, cesRegistry, recorder)
 
 	// then
 	require.NotNil(t, manager)
