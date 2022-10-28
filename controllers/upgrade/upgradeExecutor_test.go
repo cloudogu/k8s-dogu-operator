@@ -839,7 +839,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.NoError(t, err)
@@ -861,7 +861,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.Error(t, err)
@@ -892,7 +892,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.Error(t, err)
@@ -924,7 +924,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.Error(t, err)
@@ -957,7 +957,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.Error(t, err)
@@ -990,7 +990,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
 
 		// when
-		err := upgradeExecutor.applyUpgradeScripts(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
 
 		// then
 		require.NoError(t, err)
