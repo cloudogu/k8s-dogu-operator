@@ -190,7 +190,6 @@ func (o *OperatorConfig) GetRemoteConfiguration() *core.Remote {
 		Endpoint:  endpoint,
 		CacheDir:  cacheDir,
 		URLSchema: urlSchema,
-		Insecure:  true,
 	}
 }
 
