@@ -12,9 +12,10 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
 	_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
 	_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
+	_ = os.Unsetenv("DOGU_REGISTRY_URLSCHEMA")
 	_ = os.Unsetenv("DOCKER_REGISTRY")
 
-	expectedNamespace := "myNamepsace"
+	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
 		Endpoint: "myEndpoint",
 		Username: "myUsername",
@@ -72,6 +73,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	})
 
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
+	t.Setenv("DOGU_REGISTRY_URLSCHEMA", "")
 	t.Run("Error on missing docker registry data var", func(t *testing.T) {
 		// when
 		operatorConfig, err := NewOperatorConfig("0.0.0")
@@ -102,28 +104,32 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 		name          string
 		inputEndpoint string
 		stage         string
+		urlSchemaEnv  string
+		wantUrlSchema string
 	}{
-		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction},
-		{name: "get remote configuration with correct url and development mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageDevelopment},
-		{name: "get remote configuration with 'dogus' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", stage: StageProduction},
-		{name: "get remote configuration with 'dogus/' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus/", stage: StageProduction},
+		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "default", urlSchemaEnv: ""},
+		{name: "get remote configuration with correct url and development mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageDevelopment, wantUrlSchema: "default", urlSchemaEnv: "invalid"},
+		{name: "get remote configuration with 'dogus' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", stage: StageProduction, wantUrlSchema: "default", urlSchemaEnv: "default"},
+		{name: "get remote configuration with 'dogus/' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus/", stage: StageProduction, wantUrlSchema: "default", urlSchemaEnv: "default"},
+		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "index", urlSchemaEnv: "index"},
 	}
 
 	t.Setenv(envVarNamespace, "test")
-	t.Setenv("DOGU_REGISTRY_ENDPOINT", "myEndpoint")
-	t.Setenv("DOGU_REGISTRY_USERNAME", "user")
-	t.Setenv("DOGU_REGISTRY_PASSWORD", "password")
-	t.Setenv("DOCKER_REGISTRY", `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`)
+	t.Setenv(envVarDoguRegistryEndpoint, "myEndpoint")
+	t.Setenv(envVarDoguRegistryUsername, "user")
+	t.Setenv(envVarDoguRegistryPassword, "password")
+	t.Setenv(envVarDockerRegistry, `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`)
 
 	defer func() {
 		_ = os.Unsetenv(envVarNamespace)
-		_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
-		_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
-		_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
-		_ = os.Unsetenv("DOCKER_REGISTRY")
+		_ = os.Unsetenv(envVarDoguRegistryEndpoint)
+		_ = os.Unsetenv(envVarDoguRegistryUsername)
+		_ = os.Unsetenv(envVarDoguRegistryPassword)
+		_ = os.Unsetenv(envVarDockerRegistry)
 	}()
 
 	for _, tt := range tests {
+		t.Setenv(envVarDoguRegistryURLSchema, tt.urlSchemaEnv)
 		t.Run(tt.name, func(t *testing.T) {
 			// given
 			t.Setenv(StageEnvironmentVariable, tt.stage)
@@ -133,7 +139,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 
 			o, err := NewOperatorConfig("1.0.0")
 			require.NoError(t, err)
-			o.DoguRegistry = DoguRegistryData{Endpoint: tt.inputEndpoint}
+			o.DoguRegistry = DoguRegistryData{Endpoint: tt.inputEndpoint, URLSchema: tt.urlSchemaEnv}
 
 			// when
 			remoteConfig := o.GetRemoteConfiguration()
@@ -142,6 +148,8 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 			assert.NotNil(t, remoteConfig)
 			assert.Equal(t, "https://dogu.cloudogu.com/api/v2/", remoteConfig.Endpoint)
 			assert.Equal(t, "/tmp/dogu-registry-cache", remoteConfig.CacheDir)
+			assert.Equal(t, tt.wantUrlSchema, remoteConfig.URLSchema)
+			_ = os.Unsetenv(envVarDoguRegistryURLSchema)
 		})
 	}
 }

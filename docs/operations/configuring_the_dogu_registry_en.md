@@ -24,14 +24,14 @@ Password: mypassword
 ## Create Dogu Registry Secret
 
 The secret containing the Dogu registry data must be created under the name `k8s-dogu-operator-dogu-registry`. The
-Registry data is stored as literals encrypted in the Secret. A correct secret can be created with `kubectl` as follows
-as follows:
+Registry data is stored as literals encrypted in the Secret. A correct secret can be created with `kubectl` as follows:
 
 ```bash
 kubectl --namespace <cesNamespace> create secret generic k8s-dogu-operator-dogu-registry \
 --from-literal=endpoint="https://my-registry.com/api/v2" \
 --from-literal=username="myusername" \
---from-literal=password="mypassword"
+--from-literal=password="mypassword" \
+--from-literal=urlschema="default"
 ```
 
 After that the `k8s-dogu-operator` can be [installed](installing_operator_into_cluster_en.md) as usual.
