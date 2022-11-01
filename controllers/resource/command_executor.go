@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,6 +52,10 @@ func (e *stateError) Requeue() bool {
 	return true
 }
 
+// maxTries controls the maximum number of waiting intervals between tries when getting an error that is recoverable
+// during command execution.
+var maxTries = 5
+
 // commandExecutor is the unit to execute commands in a dogu
 type commandExecutor struct {
 	Client                 kubernetes.Interface `json:"client"`
@@ -85,7 +91,7 @@ func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, targetDogu st
 		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", targetDogu, err)
 	}
 
-	return ce.execCommand(pod, namespace, command)
+	return ce.execCommand(ctx, pod, namespace, command)
 }
 
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
@@ -97,10 +103,12 @@ func (ce *commandExecutor) ExecCommandForPod(ctx context.Context, targetPod stri
 		return nil, fmt.Errorf("failed to get pod %s: %w", targetPod, err)
 	}
 
-	return ce.execCommand(pod, namespace, command)
+	return ce.execCommand(ctx, pod, namespace, command)
 }
 
-func (ce *commandExecutor) execCommand(pod *corev1.Pod, namespace string, command *ShellCommand) (*bytes.Buffer, error) {
+func (ce *commandExecutor) execCommand(ctx context.Context, pod *corev1.Pod, namespace string, command *ShellCommand) (*bytes.Buffer, error) {
+	logger := log.FromContext(ctx)
+
 	if !ce.allContainersReady(pod) {
 		return nil, &stateError{
 			sourceError: fmt.Errorf("can't execute command in pod with status %v", pod.Status),
@@ -119,19 +127,34 @@ func (ce *commandExecutor) execCommand(pod *corev1.Pod, namespace string, comman
 
 	buffer := bytes.NewBuffer([]byte{})
 	bufferErr := bytes.NewBuffer([]byte{})
-	err = exec.Stream(remotecommand.StreamOptions{
-		Stdout: buffer,
-		Stderr: bufferErr,
-		Tty:    false,
-	})
-	if err != nil {
-		return nil, &stateError{
-			sourceError: fmt.Errorf("out: '%s': errOut: '%s': %w", buffer, bufferErr, err),
-			resource:    pod,
+	for i := 1; i <= maxTries; i++ {
+		err = exec.Stream(remotecommand.StreamOptions{
+			Stdout: buffer,
+			Stderr: bufferErr,
+			Tty:    false,
+		})
+		if err != nil {
+			if strings.Contains(err.Error(), "error dialing backend: EOF") {
+				logger.Error(err, fmt.Sprintf("Error executing '%s' in pod %s. Trying again in %d second(s).", command, pod.Name, i))
+				sleep(i)
+				continue
+			}
+			return nil, &stateError{
+				sourceError: fmt.Errorf("out: '%s': errOut: '%s': %w", buffer, bufferErr, err),
+				resource:    pod,
+			}
 		}
+
+		return buffer, nil
 	}
 
-	return buffer, nil
+	return nil, &stateError{
+		sourceError: fmt.Errorf("quitting command execution because of too many errors; out: '%a': errOut: '%s': %w", buffer, bufferErr, err),
+	}
+}
+
+func sleep(sleepIntervalInSec int) {
+	time.Sleep(time.Duration(sleepIntervalInSec) * time.Second) // linear rising backoff
 }
 
 func (ce *commandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace string,
