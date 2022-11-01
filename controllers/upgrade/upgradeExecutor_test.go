@@ -84,8 +84,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -171,8 +171,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -247,8 +247,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -330,8 +330,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -419,8 +419,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -489,8 +489,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -552,8 +552,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -616,8 +616,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -672,8 +672,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -726,8 +726,8 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
-		dependentDeployment := createTestDeployment("redmine")
-		dependencyDeployment := createTestDeployment("dependency-dogu")
+		dependentDeployment := createTestDeployment("redmine", "")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "")
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -951,7 +951,7 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		collectApplier := mocks.NewCollectApplier(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
-		fakeDeployment := createTestDeployment("redmine")
+		fakeDeployment := createTestDeployment("redmine", "")
 		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(fakeDeployment, nil)
 
 		// when
@@ -1222,12 +1222,12 @@ func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
 	})
 }
 
-func createTestDeployment(doguName string) *appsv1.Deployment {
+func createTestDeployment(doguName string, namespace string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		TypeMeta: deploymentTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      doguName,
-			Namespace: testNamespace,
+			Namespace: namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: "somethingNonEmptyToo"}},

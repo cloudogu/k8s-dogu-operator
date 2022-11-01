@@ -149,7 +149,7 @@ func (ce *commandExecutor) execCommand(ctx context.Context, pod *corev1.Pod, nam
 	}
 
 	return nil, &stateError{
-		sourceError: fmt.Errorf("quitting command execution because of too many errors; out: '%a': errOut: '%s': %w", buffer, bufferErr, err),
+		sourceError: fmt.Errorf("quitting command execution because of too many errors; out: '%s': errOut: '%s': %w", buffer, bufferErr, err),
 	}
 }
 
