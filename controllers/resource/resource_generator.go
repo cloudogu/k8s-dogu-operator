@@ -115,7 +115,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 	var livenessProbe *corev1.Probe
 	var command []string
 	var args []string
-	startupProbe = createStartupProbe(dogu)
+	startupProbe = CreateStartupProbe(dogu)
 	livenessProbe = createLivenessProbe(dogu)
 	pullPolicy := corev1.PullIfNotPresent
 	if config.Stage == config.StageDevelopment {
@@ -238,7 +238,7 @@ func createLivenessProbe(dogu *core.Dogu) *corev1.Probe {
 	return nil
 }
 
-func createStartupProbe(dogu *core.Dogu) *corev1.Probe {
+func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
 	for _, healthCheck := range dogu.HealthChecks {
 		if healthCheck.Type == "state" {
 			return &corev1.Probe{

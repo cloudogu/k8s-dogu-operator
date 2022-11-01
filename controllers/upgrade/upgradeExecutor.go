@@ -132,7 +132,10 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	// change readiness probe back after post-upgrade
+	err = revertStartupProbeAfterUpdate(ctx, toDoguResource, toDogu, ue.client)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -166,6 +169,30 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, customDeployment
 
 	customDeployment.Spec.Template.Spec.Containers = append(customDeployment.Spec.Template.Spec.Containers, container)
 	return customDeployment
+}
+
+func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, client client.Client) error {
+	originalStartupProbe := resource.CreateStartupProbe(toDogu)
+
+	deployment := &appsv1.Deployment{}
+	err := client.Get(ctx, toDoguResource.GetObjectKey(), deployment)
+	if err != nil {
+		return err
+	}
+
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		if container.Name == toDoguResource.Name {
+			container.StartupProbe = originalStartupProbe
+			break
+		}
+	}
+
+	err = client.Update(ctx, deployment)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func registerUpgradedDoguVersion(cesreg doguRegistrator, toDogu *core.Dogu) error {
