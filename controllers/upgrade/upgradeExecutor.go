@@ -180,9 +180,9 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	for _, container := range deployment.Spec.Template.Spec.Containers {
+	for i, container := range deployment.Spec.Template.Spec.Containers {
 		if container.Name == toDoguResource.Name {
-			container.StartupProbe = originalStartupProbe
+			deployment.Spec.Template.Spec.Containers[i].StartupProbe = originalStartupProbe
 			break
 		}
 	}

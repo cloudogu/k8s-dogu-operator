@@ -158,6 +158,94 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		require.NoError(t, err)
 		// mocks will be asserted during t.CleanUp
 	})
+	t.Run("should fail during revert startup probe", func(t *testing.T) {
+		// given
+		fromDogu := readTestDataDogu(t, redmineBytes)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDogu.Version = redmineUpgradeVersion
+		toDogu.Dependencies = []core.Dependency{{
+			Type: core.DependencyTypeDogu,
+			Name: "dependencyDogu",
+		}}
+
+		toDoguResource := readTestDataRedmineCr(t)
+		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		dependentDeployment := createTestDeployment("redmine", "namespace-causing-failure")
+		dependencyDeployment := createTestDeployment("dependency-dogu", "namespace-causing-failure")
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			Build()
+
+		registrator := mocks.NewDoguRegistrator(t)
+		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		saCreator := mocks.NewServiceAccountCreator(t)
+		saCreator.On("CreateAll", testCtx, toDoguResource.Namespace, toDogu).Return(nil)
+		imageRegMock := mocks.NewImageRegistry(t)
+		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
+		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
+
+		customK8sResource := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
+
+		execPod := utilMocks.NewExecPod(t)
+		execPod.On("Create", testCtx).Once().Return(nil)
+		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+		execPod.On("Delete", testCtx).Once().Return(nil)
+
+		mockExecutor := mocks.NewCommandDoguExecutor(t)
+		mockExecutor.
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, preUpgradeCmd).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, postUpgradeCmd).Once().Return(bytes.NewBufferString(""), nil)
+
+		k8sFileEx := mocks.NewFileExtractor(t)
+		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
+		applier := mocks.NewCollectApplier(t)
+		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
+		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(deployment, nil)
+
+		upserter := mocks.NewResourceUpserter(t)
+		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(nil)
+
+		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder.
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Pulling new image %s:%s...", "registry.cloudogu.com/official/redmine", "4.2.3-11").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional pre-upgrade scripts...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once()
+
+		execPodFactory := mocks.NewExecPodFactory(t)
+		execPodFactory.On("NewExecPod", util.ExecPodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+
+		sut := &upgradeExecutor{
+			client:                myClient,
+			imageRegistry:         imageRegMock,
+			collectApplier:        applier,
+			k8sFileExtractor:      k8sFileEx,
+			serviceAccountCreator: saCreator,
+			doguRegistrator:       registrator,
+			resourceUpserter:      upserter,
+			eventRecorder:         eventRecorder,
+			execPodFactory:        execPodFactory,
+			doguCommandExecutor:   mockExecutor,
+		}
+
+		// when
+		err := sut.Upgrade(testCtx, toDoguResource, fromDogu, toDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "deployments.apps \"redmine\" not found")
+		// mocks will be asserted during t.CleanUp
+	})
 	t.Run("should fail during K8s resource application", func(t *testing.T) {
 		// given
 		fromDogu := readTestDataDogu(t, redmineBytes)
@@ -1290,6 +1378,48 @@ func Test_increaseStartupProbeTimeoutForUpdate(t *testing.T) {
 		// then
 		require.NotNil(t, result)
 		require.Equal(t, 2, len(result.Spec.Template.Spec.Containers))
+	})
+}
+
+func Test_revertStartupProbeAfterUpdate(t *testing.T) {
+	t.Run("should fail because deployment cannot be found", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDoguResource := readTestDataRedmineCr(t)
+		myClient := fake.NewClientBuilder().Build()
+
+		// when
+		err := revertStartupProbeAfterUpdate(testCtx, toDoguResource, toDogu, myClient)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "deployments.apps \"redmine\" not found")
+	})
+	t.Run("should successfully update startup probes", func(t *testing.T) {
+		// given
+		toDogu := readTestDataDogu(t, redmineBytes)
+		toDoguResource := readTestDataRedmineCr(t)
+		deployment := createTestDeployment("redmine", "")
+		deployment.Spec.Template.Spec.Containers = []corev1.Container{{
+			Name: toDoguResource.Name,
+			StartupProbe: &corev1.Probe{
+				FailureThreshold: int32(100),
+			},
+		}}
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, deployment).
+			Build()
+
+		// when
+		err := revertStartupProbeAfterUpdate(testCtx, toDoguResource, toDogu, myClient)
+
+		// then
+		require.NoError(t, err)
+		actualDeployment := &appsv1.Deployment{}
+		err = myClient.Get(testCtx, toDoguResource.GetObjectKey(), actualDeployment)
+		require.NoError(t, err)
+		assert.Equal(t, int32(3), actualDeployment.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold)
 	})
 }
 
