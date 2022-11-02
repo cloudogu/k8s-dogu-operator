@@ -90,9 +90,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
 			EtcdDoguRegistry.Mock.On("Get", "nginx-ingress").Return(nil, fmt.Errorf("not installed"))
 			EtcdDoguRegistry.Mock.On("Get", "nginx-static").Return(nil, fmt.Errorf("not installed"))
-			EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapDogu, nil)
-			EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapDogu, nil)
-			EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapDogu, nil)
+			EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapDogu, nil)
 			EtcdDoguRegistry.Mock.On("Get", "redmine").Return(redmineDogu, nil)
 			EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
 			EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
@@ -327,12 +325,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(false, nil)
 		EtcdDoguRegistry.Mock.On("Register", ldapFromDoguDescriptor).Once().Return(nil)
 		EtcdDoguRegistry.Mock.On("Enable", ldapFromDoguDescriptor).Once().Return(nil)
-		EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapFromDoguDescriptor, nil)
+		EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapFromDoguDescriptor, nil)
 
 		EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(true, nil)
 		EtcdDoguRegistry.Mock.On("Register", ldapToDoguDescriptor).Once().Return(nil)
 		EtcdDoguRegistry.Mock.On("Enable", ldapToDoguDescriptor).Once().Return(nil)
-		EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapToDoguDescriptor, nil)
 		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
 
 		CommandExecutor.
@@ -341,7 +338,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")).Return(&bytes.Buffer{}, nil).
 			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1")).Return(&bytes.Buffer{}, nil).
 			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1")).Run(func(args mock.Arguments) {
-			fmt.Printf("ExecCommandForDogu args: %v", args)
+			deploymentAfterUpgrading := new(appsv1.Deployment)
+			Eventually(func() bool {
+				ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, ldapFromDoguLookupKey)
+				return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			By("Check startup probe failure threshold in deployment")
+			Expect(int32(60)).To(Equal(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold))
 		}).Return(&bytes.Buffer{}, nil)
 	})
 
@@ -403,16 +406,16 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		By("Check new image in deployment")
 		deploymentAfterUpgrading := new(appsv1.Deployment)
-		Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
 		Eventually(func() bool {
 			ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, ldapFromDoguLookupKey)
 			return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
 		}, TimeoutInterval, PollingInterval).Should(BeTrue())
 		By("Check startup probe failure threshold in deployment")
-		Expect(int32(60)).To(Equal(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold))
+		Expect(int32(3)).To(Equal(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold))
 
 		deleteDoguCr(ctx, installedLdapDoguCr, ldapFromDoguLookupKey, true)
 
+		Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
