@@ -44,7 +44,7 @@ func (f *fakeFailExecutor) Stream(_ remotecommand.StreamOptions) error {
 	return assert.AnError
 }
 
-func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
+func TestExposedCommandExecutor_ExecCommandForDogu(t *testing.T) {
 	ctx := context.TODO()
 	labels := map[string]string{}
 	labels["dogu"] = "postgresql"
@@ -142,6 +142,111 @@ func TestExposedCommandExecutor_ExecCommand(t *testing.T) {
 
 		// when
 		_, err := commandExecutor.ExecCommandForDogu(ctx, "postgresql", "test", command)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), assert.AnError.Error())
+	})
+}
+
+func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
+	ctx := context.TODO()
+	labels := map[string]string{}
+	labels["dogu"] = "postgresql"
+	readyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}, Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady}}}}
+	unreadyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
+	exposedCommand := &core.ExposedCommand{
+		Name:        "create-sa-command",
+		Description: "desc",
+		Command:     "/create-sa.sh",
+	}
+	params := []string{"ro", "redmine"}
+	command := NewShellCommand(exposedCommand.Command, params...)
+
+	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+		return &fakeExecutor{method: method, url: url}, nil
+	}
+	fakeErrorInitNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+		return nil, assert.AnError
+	}
+	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+		return &fakeFailExecutor{method: method, url: url}, nil
+	}
+
+	oldConfigFunc := config.GetConfigOrDie
+	ctrl.GetConfigOrDie = func() *rest.Config {
+		return nil
+	}
+	defer func() {
+		ctrl.GetConfigOrDie = oldConfigFunc
+	}()
+
+	t.Run("success", func(t *testing.T) {
+		// given
+		client := testclient.NewSimpleClientset(&readyPod)
+		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
+		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		expectedBuffer := bytes.NewBufferString("username:user")
+
+		// when
+		buffer, err := commandExecutor.ExecCommandForPod(ctx, "postgresql", "test", command)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, buffer)
+		assert.Equal(t, expectedBuffer, buffer)
+	})
+
+	t.Run("found no pods", func(t *testing.T) {
+		// given
+		client := testclient.NewSimpleClientset()
+		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
+		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+
+		// when
+		_, err := commandExecutor.ExecCommandForPod(ctx, "postgresql", "test", nil)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get pod postgresql")
+	})
+
+	t.Run("pod is not ready", func(t *testing.T) {
+		// given
+		client := testclient.NewSimpleClientset(&unreadyPod)
+		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
+		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+
+		// when
+		_, err := commandExecutor.ExecCommandForPod(ctx, "postgresql", "test", nil)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "can't execute command in pod with status")
+	})
+
+	t.Run("failed to create spdy", func(t *testing.T) {
+		// given
+		client := testclient.NewSimpleClientset(&readyPod)
+		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
+		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
+
+		// when
+		_, err := commandExecutor.ExecCommandForPod(ctx, "postgresql", "test", command)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create new spdy executor")
+	})
+
+	t.Run("failed to exec stream", func(t *testing.T) {
+		// given
+		client := testclient.NewSimpleClientset(&readyPod)
+		commandExecutor := NewCommandExecutor(client, &fake.RESTClient{})
+		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
+
+		// when
+		_, err := commandExecutor.ExecCommandForPod(ctx, "postgresql", "test", command)
 
 		// then
 		require.Error(t, err)
