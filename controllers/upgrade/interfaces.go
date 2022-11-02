@@ -49,8 +49,10 @@ type execPodFactory interface {
 	NewExecPod(execPodFactoryMode util.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (util.ExecPod, error)
 }
 
-// commandDoguExecutor is used to execute commands in a dogu.
-type commandDoguExecutor interface {
-	// ExecCommandForDogu executes a command on a dogu identified by a label dogu=${doguname} and the K8s namespace.
-	ExecCommandForDogu(ctx context.Context, doguName string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
+// commandExecutor is used to execute commands in pods and dogus
+type commandExecutor interface {
+	// ExecCommandForDogu executes a command in a dogu.
+	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
+	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
+	ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
 }

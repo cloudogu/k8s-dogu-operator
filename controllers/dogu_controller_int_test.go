@@ -4,6 +4,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	cesresource "github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -88,7 +90,9 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
 			EtcdDoguRegistry.Mock.On("Get", "nginx-ingress").Return(nil, fmt.Errorf("not installed"))
 			EtcdDoguRegistry.Mock.On("Get", "nginx-static").Return(nil, fmt.Errorf("not installed"))
-			EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapDogu, nil)
+			EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapDogu, nil)
+			EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapDogu, nil)
+			EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapDogu, nil)
 			EtcdDoguRegistry.Mock.On("Get", "redmine").Return(redmineDogu, nil)
 			EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil)
 			EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil)
@@ -328,8 +332,17 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(true, nil)
 		EtcdDoguRegistry.Mock.On("Register", ldapToDoguDescriptor).Once().Return(nil)
 		EtcdDoguRegistry.Mock.On("Enable", ldapToDoguDescriptor).Once().Return(nil)
-		EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapToDoguDescriptor, nil)
+		EtcdDoguRegistry.Mock.On("Get", "ldap").Once().Return(ldapToDoguDescriptor, nil)
 		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
+
+		CommandExecutor.
+			On("ExecCommandForPod", mock.Anything, mock.Anything, "upgrade", cesresource.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/bin/mkdir", "-p", "/")).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1")).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1")).Run(func(args mock.Arguments) {
+			fmt.Printf("ExecCommandForDogu args: %v", args)
+		}).Return(&bytes.Buffer{}, nil)
 	})
 
 	It("Should upgrade dogu in cluster", func() {
@@ -390,12 +403,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		By("Check new image in deployment")
 		deploymentAfterUpgrading := new(appsv1.Deployment)
+		Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
 		Eventually(func() bool {
 			ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, ldapFromDoguLookupKey)
 			return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, ldapToVersion)
 		}, TimeoutInterval, PollingInterval).Should(BeTrue())
 		By("Check startup probe failure threshold in deployment")
-		Expect(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold).To(Equal(int32(60)))
+		Expect(int32(60)).To(Equal(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold))
 
 		deleteDoguCr(ctx, installedLdapDoguCr, ldapFromDoguLookupKey, true)
 

@@ -102,7 +102,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		fileExtractor:         fileExtract,
 		collectApplier:        collectApplier,
 		resourceUpserter:      upserter,
-		execPodFactory:        util.NewExecPodFactory(client, restConfig),
+		execPodFactory:        util.NewExecPodFactory(client, restConfig, executor),
 	}, nil
 }
 

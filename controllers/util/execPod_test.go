@@ -6,6 +6,7 @@ import (
 	apiMocks "github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
 	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
+	fake2 "k8s.io/client-go/kubernetes/fake"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -260,7 +261,7 @@ func Test_generatePodName(t *testing.T) {
 }
 
 func TestNewExecPodFactory(t *testing.T) {
-	actual := NewExecPodFactory(nil, nil)
+	actual := NewExecPodFactory(nil, nil, nil)
 	assert.NotNil(t, actual)
 }
 
@@ -270,10 +271,12 @@ func Test_defaultExecPodFactory_NewExecPod(t *testing.T) {
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(getTestScheme()).
 		Build()
+	clientSet := fake2.NewSimpleClientset()
 	restConfig := &rest.Config{}
+	commandExecutor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
 	dogu := &core.Dogu{Name: "official/ldap"}
 
-	sut := NewExecPodFactory(fakeClient, restConfig)
+	sut := NewExecPodFactory(fakeClient, restConfig, commandExecutor)
 	sut.suffixGen = suffixGen
 
 	// when

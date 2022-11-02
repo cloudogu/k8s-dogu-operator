@@ -69,6 +69,16 @@
       "Name": "service-account-remove",
       "Description": "Removes a service account",
       "Command": "/srv/openldap/remove-sa.sh"
+    },
+    {
+      "Name": "pre-upgrade",
+      "Description": "Executes the script in this dogu before the upgrade",
+      "Command": "/pre-upgrade.sh"
+    },
+    {
+      "Name": "post-upgrade",
+      "Description": "Executes the script in this dogu after the upgrade",
+      "Command": "/post-upgrade.sh"
     }
   ],
   "HealthChecks": [

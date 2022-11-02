@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -41,14 +40,14 @@ type upgradeExecutor struct {
 	doguRegistrator       doguRegistrator
 	resourceUpserter      resourceUpserter
 	execPodFactory        execPodFactory
-	doguCommandExecutor   commandDoguExecutor
+	doguCommandExecutor   commandExecutor
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
 func NewUpgradeExecutor(
 	client client.Client,
 	config *rest.Config,
-	clientSet kubernetes.Interface,
+	commandExecutor commandExecutor,
 	eventRecorder record.EventRecorder,
 	imageRegistry imageRegistry,
 	collectApplier collectApplier,
@@ -60,9 +59,6 @@ func NewUpgradeExecutor(
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
 	upserter := resource.NewUpserter(client, limitPatcher)
 
-	restClient := clientSet.CoreV1().RESTClient()
-	commandExecutor := resource.NewCommandExecutor(clientSet, restClient)
-
 	return &upgradeExecutor{
 		client:                client,
 		eventRecorder:         eventRecorder,
@@ -72,7 +68,7 @@ func NewUpgradeExecutor(
 		serviceAccountCreator: serviceAccountCreator,
 		doguRegistrator:       doguReg,
 		resourceUpserter:      upserter,
-		execPodFactory:        util.NewExecPodFactory(client, config),
+		execPodFactory:        util.NewExecPodFactory(client, config, commandExecutor),
 		doguCommandExecutor:   commandExecutor,
 	}
 }

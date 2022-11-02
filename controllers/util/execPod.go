@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +45,7 @@ type suffixGenerator interface {
 	String(length int) string
 }
 
-// commandExecutor is used to execute command in a dogu
+// commandExecutor is used to execute commands in pods and dogus
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
 	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
@@ -67,13 +66,14 @@ type execPod struct {
 }
 
 // NewExecPod creates a new ExecPod that enables command execution towards a pod.
-func NewExecPod(client client.Client, restConfig *rest.Config, factoryMode ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu, podName string) (*execPod, error) {
-	clientSet, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return nil, err
-	}
-	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
-
+func NewExecPod(
+	client client.Client,
+	executor commandExecutor,
+	factoryMode ExecPodVolumeMode,
+	doguResource *k8sv1.Dogu,
+	dogu *core.Dogu,
+	podName string,
+) (*execPod, error) {
 	return &execPod{
 		client:       client,
 		executor:     executor,
@@ -276,24 +276,26 @@ const (
 )
 
 type defaultExecPodFactory struct {
-	client    client.Client
-	config    *rest.Config
-	suffixGen suffixGenerator
+	client          client.Client
+	config          *rest.Config
+	commandExecutor commandExecutor
+	suffixGen       suffixGenerator
 }
 
 // NewExecPodFactory creates a new ExecPodFactory.
-func NewExecPodFactory(client client.Client, config *rest.Config) *defaultExecPodFactory {
+func NewExecPodFactory(client client.Client, config *rest.Config, executor commandExecutor) *defaultExecPodFactory {
 	return &defaultExecPodFactory{
-		client:    client,
-		config:    config,
-		suffixGen: &defaultSufficeGenerator{},
+		client:          client,
+		config:          config,
+		commandExecutor: executor,
+		suffixGen:       &defaultSufficeGenerator{},
 	}
 }
 
 // NewExecPod creates a new ExecPod during the operation run-time.
 func (epf *defaultExecPodFactory) NewExecPod(execPodFactoryMode ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error) {
 	podName := generatePodName(dogu, epf.suffixGen)
-	return NewExecPod(epf.client, epf.config, execPodFactoryMode, doguResource, dogu, podName)
+	return NewExecPod(epf.client, epf.commandExecutor, execPodFactoryMode, doguResource, dogu, podName)
 }
 
 func generatePodName(dogu *core.Dogu, generator suffixGenerator) string {
