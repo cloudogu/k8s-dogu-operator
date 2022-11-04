@@ -201,7 +201,7 @@ func registerUpgradedDoguVersion(cesreg doguRegistrator, toDogu *core.Dogu) erro
 }
 
 func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCreator, resource *k8sv1.Dogu, toDogu *core.Dogu) error {
-	err := saCreator.CreateAll(ctx, resource.Namespace, toDogu)
+	err := saCreator.CreateAll(ctx, resource, toDogu)
 	if err != nil {
 		if err != nil {
 			return fmt.Errorf("failed to register service accounts: %w", err)
@@ -289,28 +289,28 @@ func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod util.ExecPod,
 }
 
 func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, fromDogu *core.Dogu, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
+	pod, err := getPodNameForFromDogu(ctx, ue.client, fromDogu)
+
 	// possibly create the necessary directory structure for the following copy action
-	err := ue.createMissingUpgradeDirs(ctx, toDoguResource, preUpgradeCmd)
+	err = ue.createMissingUpgradeDirs(ctx, pod, preUpgradeCmd)
 	if err != nil {
 		return err
 	}
 
-	err = ue.copyPreUpgradeScriptToDoguReserved(ctx, toDoguResource, preUpgradeCmd)
+	err = ue.copyPreUpgradeScriptToDoguReserved(ctx, pod, preUpgradeCmd)
 	if err != nil {
 		return err
 	}
 
-	return ue.executePreUpgradeScript(ctx, fromDogu, toDoguResource, preUpgradeCmd)
+	return ue.executePreUpgradeScript(ctx, pod, preUpgradeCmd, fromDogu.Version, toDoguResource.Spec.Version)
 }
 
-func (ue *upgradeExecutor) copyPreUpgradeScriptToDoguReserved(ctx context.Context, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
+func (ue *upgradeExecutor) copyPreUpgradeScriptToDoguReserved(ctx context.Context, pod *corev1.Pod, preUpgradeCmd *core.ExposedCommand) error {
 	preUpgradeBackCopyCmd := getPreUpgradeBackCopyCmd(preUpgradeCmd)
 
-	// the name of the dogu being upgrade must not change over the course of an installation.
-	nameOfTheDoguBeingUpgraded := toDoguResource.Name
 	// copy the file back to the directory where it resided in the upgrade image
 	// example: /dogu-reserved/myscript.sh to /resource/myscript.sh
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, nameOfTheDoguBeingUpgraded, toDoguResource.Namespace, preUpgradeBackCopyCmd)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, pod, preUpgradeBackCopyCmd, resource.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeBackCopyCmd, outBuf, err)
 	}
@@ -325,12 +325,12 @@ func getPreUpgradeBackCopyCmd(preUpgradeCmd *core.ExposedCommand) *resource.Shel
 	return resource.NewShellCommand("/bin/cp", filePathInDoguReserved, preUpgradeCmd.Command)
 }
 
-func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, toDoguResource *k8sv1.Dogu, cmd *core.ExposedCommand) error {
+func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, pod *corev1.Pod, cmd *core.ExposedCommand) error {
 	baseDir, _ := filepath.Split(cmd.Command)
 
 	mkdirCmd := resource.NewShellCommand("/bin/mkdir", "-p", baseDir)
 
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource.Name, toDoguResource.Namespace, mkdirCmd)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, pod, mkdirCmd, resource.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", mkdirCmd, outBuf, err)
 	}
@@ -338,17 +338,26 @@ func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, toDoguR
 	return nil
 }
 
-func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromDogu *core.Dogu, toDoguResource *k8sv1.Dogu, cmd *core.ExposedCommand) error {
+func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion string, toVersion string) error {
 	// the previous steps took great lengths to copy the pre-upgrade script to the original place so we can finally
 	// execute it as described by the dogu.json.
-	preUpgradeCmd := resource.NewShellCommand(cmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
+	preUpgradeCmd := resource.NewShellCommand(cmd.Command, fromVersion, toVersion)
 
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource.Name, toDoguResource.Namespace, preUpgradeCmd)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, resource.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeCmd, outBuf, err)
 	}
 
 	return nil
+}
+
+func getPodNameForFromDogu(ctx context.Context, cli client.Client, dogu *core.Dogu) (*corev1.Pod, error) {
+	fromDoguLabels := map[string]string{
+		k8sv1.DoguLabelName:    dogu.GetSimpleName(),
+		k8sv1.DoguLabelVersion: dogu.Version,
+	}
+
+	return k8sv1.GetPodForLabels(ctx, cli, fromDoguLabels)
 }
 
 func (ue *upgradeExecutor) applyPostUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
@@ -363,7 +372,9 @@ func (ue *upgradeExecutor) applyPostUpgradeScript(ctx context.Context, toDoguRes
 
 func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *core.Dogu, postUpgradeCmd *core.ExposedCommand) error {
 	postUpgradeShellCmd := resource.NewShellCommand(postUpgradeCmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource.Name, toDoguResource.Namespace, postUpgradeShellCmd, resource.ContainersStarted)
+	// time.Sleep(time.Duration(60) * time.Second)
+
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource, postUpgradeShellCmd, resource.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", postUpgradeShellCmd, outBuf, err)
 	}

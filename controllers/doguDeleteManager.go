@@ -39,13 +39,13 @@ func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry
 	if err != nil {
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
-	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
+	executor := resource.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
 
 	return &doguDeleteManager{
 		client:                client,
 		localDoguFetcher:      cesreg.NewLocalDoguFetcher(cesRegistry.DoguRegistry()),
 		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor),
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor, client),
 	}, nil
 }
 

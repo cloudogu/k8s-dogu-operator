@@ -273,7 +273,7 @@ func Test_defaultExecPodFactory_NewExecPod(t *testing.T) {
 		Build()
 	clientSet := fake2.NewSimpleClientset()
 	restConfig := &rest.Config{}
-	commandExecutor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
+	commandExecutor := resource.NewCommandExecutor(cli, clientSet, clientSet.CoreV1().RESTClient())
 	dogu := &core.Dogu{Name: "official/ldap"}
 
 	sut := NewExecPodFactory(fakeClient, restConfig, commandExecutor)

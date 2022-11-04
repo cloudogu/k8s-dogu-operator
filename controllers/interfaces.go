@@ -67,7 +67,7 @@ type dependencyValidator interface {
 
 type serviceAccountCreator interface {
 	// CreateAll is used to create all necessary service accounts for the given dogu.
-	CreateAll(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
+	CreateAll(ctx context.Context, saResource *k8sv1.Dogu, dogu *cesappcore.Dogu) error
 }
 
 type serviceAccountRemover interface {

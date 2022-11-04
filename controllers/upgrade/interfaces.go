@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/cloudogu/cesapp-lib/core"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -26,7 +28,7 @@ type fileExtractor interface {
 
 type serviceAccountCreator interface {
 	// CreateAll creates K8s services accounts for a dogu
-	CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error
+	CreateAll(ctx context.Context, saResource *k8sv1.Dogu, dogu *core.Dogu) error
 }
 
 type doguRegistrator interface {
@@ -52,7 +54,7 @@ type execPodFactory interface {
 // commandExecutor is used to execute commands in pods and dogus
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, resource *k8sv1.Dogu, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
+	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 }

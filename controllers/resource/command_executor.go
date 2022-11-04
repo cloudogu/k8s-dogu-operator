@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/go-logr/logr"
 	"net/url"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,16 +72,18 @@ const (
 
 // commandExecutor is the unit to execute commands in a dogu
 type commandExecutor struct {
-	Client                 kubernetes.Interface `json:"client"`
-	CoreV1RestClient       rest.Interface       `json:"coreV1RestClient"`
+	Client                 client.Client
+	ClientSet              kubernetes.Interface
+	CoreV1RestClient       rest.Interface
 	CommandExecutorCreator func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error)
 }
 
 // NewCommandExecutor creates a new instance of NewCommandExecutor
-func NewCommandExecutor(client kubernetes.Interface, coreV1RestClient rest.Interface) *commandExecutor {
+func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) *commandExecutor {
 	return &commandExecutor{
-		Client: client,
-		// the rest client COULD be generated from the client but makes harder to test, so we source it additionally
+		Client:    cli,
+		ClientSet: clientSet,
+		// the rest clientSet COULD be generated from the clientSet but makes harder to test, so we source it additionally
 		CoreV1RestClient:       coreV1RestClient,
 		CommandExecutorCreator: remotecommand.NewSPDYExecutor,
 	}
@@ -86,43 +91,24 @@ func NewCommandExecutor(client kubernetes.Interface, coreV1RestClient rest.Inter
 
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
-func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string,
-	command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
-	pod, err := ce.getTargetDoguPod(ctx, targetDogu, namespace)
+func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
+	pod, err := resource.GetPod(ctx, ce.Client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", targetDogu, err)
+		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", resource.Name, err)
 	}
 
-	return ce.execCommand(ctx, pod, namespace, command, expectedStatus)
+	return ce.ExecCommandForPod(ctx, pod, command, expectedStatus)
 }
 
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
 // identified by its pod name.
-func (ce *commandExecutor) ExecCommandForPod(ctx context.Context, targetPod string, namespace string,
-	command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
-	pod, err := ce.getPodByName(ctx, targetPod, namespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pod %s: %w", targetPod, err)
-	}
-
-	return ce.execCommand(ctx, pod, namespace, command, expectedStatus)
-}
-
-func (ce *commandExecutor) execCommand(
-	ctx context.Context,
-	pod *corev1.Pod,
-	namespace string,
-	command *ShellCommand,
-	expectedStatus PodStatus,
-) (*bytes.Buffer, error) {
-	logger := log.FromContext(ctx)
-
-	err := ce.waitForPodToHaveExpectedStatus(ctx, pod, namespace, command, expectedStatus, logger)
+func (ce *commandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
+	err := ce.waitForPodToHaveExpectedStatus(ctx, pod, command, expectedStatus)
 	if err != nil {
 		return nil, err
 	}
 
-	req := ce.getCreateExecRequest(pod, namespace, command)
+	req := ce.getCreateExecRequest(pod, command)
 	exec, err := ce.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
 		return nil, &stateError{
@@ -169,24 +155,15 @@ func (ce *commandExecutor) streamCommandToPod(
 	}
 }
 
-func (ce *commandExecutor) waitForPodToHaveExpectedStatus(
-	ctx context.Context,
-	pod *corev1.Pod,
-	namespace string,
-	command *ShellCommand,
-	expectedStatus PodStatus,
-	logger logr.Logger,
-) error {
+func (ce *commandExecutor) waitForPodToHaveExpectedStatus(ctx context.Context, pod *corev1.Pod, command *ShellCommand, expected PodStatus) error {
+	logger := log.FromContext(ctx)
 	var err error
 	for i := 1; i <= maxTries; i++ {
-		pod, err = ce.Client.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		pod, err = ce.ClientSet.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
-			return &stateError{
-				sourceError: err,
-				resource:    pod,
-			}
+			return err
 		}
-		hasExpectedStatus, err := podHasStatus(pod, expectedStatus)
+		hasExpectedStatus, err := podHasStatus(pod, expected)
 		if err != nil {
 			return err
 		}
@@ -201,11 +178,11 @@ func (ce *commandExecutor) waitForPodToHaveExpectedStatus(
 		}
 		return nil
 	}
-	return fmt.Errorf("waited too long for pod to have expected status: %w", err)
+	return fmt.Errorf("waited too long for pod %s to have expected status %s: %w", pod.Name, expected, err)
 }
 
-func podHasStatus(pod *corev1.Pod, status PodStatus) (bool, *stateError) {
-	switch status {
+func podHasStatus(pod *corev1.Pod, expected PodStatus) (bool, *stateError) {
+	switch expected {
 	case ContainersStarted:
 		return pod.Status.Phase == corev1.PodRunning, nil
 	case PodReady:
@@ -217,7 +194,7 @@ func podHasStatus(pod *corev1.Pod, status PodStatus) (bool, *stateError) {
 		return false, nil
 	default:
 		return false, &stateError{
-			sourceError: fmt.Errorf("unsupported status expectation"),
+			sourceError: fmt.Errorf("unsupported expected expectation"),
 			resource:    pod,
 		}
 	}
@@ -227,12 +204,11 @@ func sleep(sleepIntervalInSec int) {
 	time.Sleep(time.Duration(sleepIntervalInSec) * time.Second) // linear rising backoff
 }
 
-func (ce *commandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace string,
-	command *ShellCommand) *rest.Request {
+func (ce *commandExecutor) getCreateExecRequest(pod *corev1.Pod, command *ShellCommand) *rest.Request {
 	return ce.CoreV1RestClient.Post().
 		Resource("pods").
 		Name(pod.Name).
-		Namespace(namespace).
+		Namespace(pod.Namespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Command: append([]string{command.Command}, command.Args...),
@@ -242,23 +218,4 @@ func (ce *commandExecutor) getCreateExecRequest(pod *corev1.Pod, namespace strin
 			// Note: if the TTY is set to true shell commands may emit ANSI codes into the stdout
 			TTY: false,
 		}, scheme.ParameterCodec)
-}
-
-func (ce *commandExecutor) getTargetDoguPod(ctx context.Context, targetDogu string, namespace string) (*corev1.Pod, error) {
-	// the pod selection must be revised if dogus are horizontally scalable by adding more pods with the same image.
-	listOptions := metav1.ListOptions{LabelSelector: "dogu=" + targetDogu}
-	pods, err := ce.Client.CoreV1().Pods(namespace).List(ctx, listOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pods: %w", err)
-	}
-
-	if len(pods.Items) == 0 {
-		return nil, fmt.Errorf("found no pods for dogu %s", targetDogu)
-	}
-
-	return &pods.Items[0], nil
-}
-
-func (ce *commandExecutor) getPodByName(ctx context.Context, podName string, namespace string) (*corev1.Pod, error) {
-	return ce.Client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 }

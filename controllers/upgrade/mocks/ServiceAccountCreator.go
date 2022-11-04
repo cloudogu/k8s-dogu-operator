@@ -4,6 +4,7 @@ package mocks
 
 import (
 	context "context"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
@@ -15,12 +16,12 @@ type ServiceAccountCreator struct {
 }
 
 // CreateAll provides a mock function with given fields: ctx, namespace, dogu
-func (_m *ServiceAccountCreator) CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
-	ret := _m.Called(ctx, namespace, dogu)
+func (_m *ServiceAccountCreator) CreateAll(ctx context.Context, saResource *k8sv1.Dogu, dogu *core.Dogu) error {
+	ret := _m.Called(ctx, saResource, dogu)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, string, *core.Dogu) error); ok {
-		r0 = rf(ctx, namespace, dogu)
+		r0 = rf(ctx, saResource, dogu)
 	} else {
 		r0 = ret.Error(0)
 	}

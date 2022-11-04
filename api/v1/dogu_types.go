@@ -23,6 +23,13 @@ const (
 	RequeueTimeMaxRequeueTime = time.Hour * 6
 )
 
+const (
+	// DoguLabelName is used to select a dogu pod by name.
+	DoguLabelName = "dogu.name"
+	// DoguLabelVersion is used to select a dogu pod by version.
+	DoguLabelVersion = "dogu.version"
+)
+
 // DoguSpec defines the desired state of a Dogu
 type DoguSpec struct {
 	// Name of the dogu (e.g. official/ldap)
@@ -178,6 +185,19 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
 	d.Status.Status = newStatus
 	return client.Status().Update(ctx, d)
+}
+
+// GetPodLabels returns labels that select a pod being associated with this dogu.
+func (d *Dogu) GetPodLabels() client.MatchingLabels {
+	return map[string]string{
+		DoguLabelName:    d.Name,
+		DoguLabelVersion: d.Spec.Version,
+	}
+}
+
+// GetPod returns a pod for this dogu. An error is returned if either no pod or more than one pod is found.
+func (d *Dogu) GetPod(ctx context.Context, cli client.Client) (*v1.Pod, error) {
+	return GetPodForLabels(ctx, cli, d.GetPodLabels())
 }
 
 // +kubebuilder:object:root=true

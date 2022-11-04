@@ -5,23 +5,32 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"io"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+
+	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/cesapp/v5/config"
 	"github.com/cloudogu/cesapp/v5/keys"
-	"github.com/pkg/errors"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // commandExecutor is used to execute command in a dogu
 type commandExecutor interface {
-	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
+	// ExecCommandForDogu executes a command in the pod of a given dogu. The expectedStatus decides which state the
+	// pod must have in order to successfully execute the command.
+	ExecCommandForDogu(ctx context.Context, doguResource *v1.Dogu, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
+	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
+	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 }
 
 type localDoguFetcher interface {
@@ -48,7 +57,7 @@ func NewCreator(registry registry.Registry, commandExecutor commandExecutor) *cr
 }
 
 // CreateAll creates all service accounts for a given dogu. Existing service accounts will be skipped.
-func (c *creator) CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
+func (c *creator) CreateAll(ctx context.Context, saResource *v1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
@@ -85,7 +94,7 @@ func (c *creator) CreateAll(ctx context.Context, namespace string, dogu *core.Do
 			return fmt.Errorf("failed to get service account dogu.json: %w", err)
 		}
 
-		saCreds, err := c.executeCommand(ctx, dogu, saDogu, namespace, serviceAccount)
+		saCreds, err := c.executeCommand(ctx, dogu, saDogu, saResource, serviceAccount)
 		if err != nil {
 			return fmt.Errorf("failed to execute service account create command: %w", err)
 		}
@@ -113,7 +122,7 @@ func (c *creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguCon
 	return nil
 }
 
-func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
+func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saResource *v1.Dogu, serviceAccount core.ServiceAccount) (map[string]string, error) {
 	createCommand, err := getExposedCommand(saDogu, "service-account-create")
 	if err != nil {
 		return nil, err
@@ -124,7 +133,7 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, consumerDogu.GetSimpleName())
 
 	command := &resource.ShellCommand{Command: createCommand.Command, Args: args}
-	buffer, err := c.executor.ExecCommandForDogu(ctx, saDogu.GetSimpleName(), namespace, command, resource.PodReady)
+	buffer, err := c.executor.ExecCommandForDogu(ctx, saResource, command, resource.PodReady)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}

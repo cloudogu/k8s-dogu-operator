@@ -48,9 +48,9 @@ type suffixGenerator interface {
 // commandExecutor is used to execute commands in pods and dogus
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, resource *k8sv1.Dogu, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
+	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 }
 
 // execPod provides features to handle files from a dogu image.
@@ -185,7 +185,6 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 
 	execPodKey := ep.ObjectKey()
 
-	lePod := corev1.Pod{}
 	containerPodName := execPodKey.Name
 
 	for i := 1; i <= maxTries; i++ {
@@ -193,7 +192,7 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 			return fmt.Errorf("quitting dogu installation because exec pod %s could not be found", containerPodName)
 		}
 
-		err := ep.client.Get(ctx, *execPodKey, &lePod)
+		lePod, err := ep.getPod(ctx)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again in %d second(s).", containerPodName, i))
 			sleep(i)
@@ -215,6 +214,13 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 	}
 
 	return fmt.Errorf("unexpected loop end while finding exec pod %s", containerPodName)
+}
+
+func (ep *execPod) getPod(ctx context.Context) (*corev1.Pod, error) {
+	lePod := &corev1.Pod{}
+	err := ep.client.Get(ctx, *ep.ObjectKey(), lePod)
+
+	return lePod, err
 }
 
 // Delete deletes the exec pod from the cluster.
@@ -249,7 +255,13 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 
 // Exec executes the given ShellCommand and returns any output to stdOut and stdErr.
 func (ep *execPod) Exec(ctx context.Context, cmd *resource.ShellCommand) (string, error) {
-	out, err := ep.executor.ExecCommandForPod(ctx, ep.podName, ep.doguResource.Namespace, cmd, resource.ContainersStarted)
+	pod, err := ep.getPod(ctx)
+	if err != nil {
+		return "", fmt.Errorf("could not get pod: %w", err)
+	}
+
+	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, resource.ContainersStarted)
+
 	return out.String(), err
 }
 
