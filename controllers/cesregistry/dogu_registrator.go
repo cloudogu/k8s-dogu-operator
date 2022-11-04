@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/keys"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/cesapp/v5/keys"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/pkg/errors"

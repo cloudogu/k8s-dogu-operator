@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#48] Make dogu registry URL schema configurable.
 - [#47] Execute Dogu pre-upgrade scripts in upgrade process. See [dogu upgrades](docs/operations/dogu_upgrades_en.md).
 
+### Removed
+- [#52] Remove cesapp dependency and use cesapp-lib.
+
 ## [v0.13.0] - 2022-10-12
 ### Added
 - [#43] Dogu resource has now a support mode, which leads the dogu pods to a freeze but running state.
