@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"net/url"
+	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,9 +17,9 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	"github.com/cloudogu/cesapp-lib/core"
 )
+
+const commandOutput = "username:user"
 
 type fakeExecutor struct {
 	method string
@@ -32,7 +33,7 @@ type fakeFailExecutor struct {
 
 func (f *fakeExecutor) Stream(options remotecommand.StreamOptions) error {
 	if options.Stdout != nil {
-		buf := bytes.NewBufferString("username:user")
+		buf := bytes.NewBufferString(commandOutput)
 		if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
 			return err
 		}
@@ -44,19 +45,27 @@ func (f *fakeFailExecutor) Stream(_ remotecommand.StreamOptions) error {
 	return assert.AnError
 }
 
-func TestExposedCommandExecutor_ExecCommandForDogu(t *testing.T) {
+func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 	ctx := context.TODO()
-	labels := map[string]string{}
-	labels["dogu"] = "postgresql"
-	readyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}, Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady}}}}
-	unreadyPod := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "postgresql", Namespace: "test", Labels: labels}}
-	exposedCommand := &core.ExposedCommand{
-		Name:        "create-sa-command",
-		Description: "desc",
-		Command:     "/create-sa.sh",
+	doguResource := readLdapDoguResource(t)
+	readyPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}}}
+	unreadyPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionFalse}}}}
+	runningPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
 	}
-	params := []string{"ro", "redmine"}
-	command := NewShellCommand(exposedCommand.Command, params...)
+	notRunningPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
+		Status:     corev1.PodStatus{Phase: corev1.PodPending},
+	}
+	command := NewShellCommand("ls", "-l")
+	originalMaxTries := maxTries
+	defer func() { maxTries = originalMaxTries }()
+	maxTries = 2
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		return &fakeExecutor{method: method, url: url}, nil
@@ -76,15 +85,39 @@ func TestExposedCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		ctrl.GetConfigOrDie = oldConfigFunc
 	}()
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("success with expected status ContainersStarted", func(t *testing.T) {
 		// given
-		client := testclient.NewSimpleClientset(&readyPod)
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, runningPod).
+			Build()
+		clientSet := testclient.NewSimpleClientset(runningPod)
+		commandExecutor := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
+		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		expectedBuffer := bytes.NewBufferString(commandOutput)
+
+		// when
+		buffer, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, ContainersStarted)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, buffer)
+		assert.Equal(t, expectedBuffer, buffer)
+	})
+
+	t.Run("success with expected status PodReady", func(t *testing.T) {
+		// given
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, readyPod).
+			Build()
+		clientSet := testclient.NewSimpleClientset(readyPod)
+		commandExecutor := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := commandExecutor.ExecCommandForDogu(ctx, doguRessource, command)
+		buffer, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.NoError(t, err)
@@ -94,40 +127,67 @@ func TestExposedCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 	t.Run("found no pods", func(t *testing.T) {
 		// given
+		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset()
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguRessource, nil)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, "")
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "found no pods for dogu postgresql")
+		assert.Contains(t, err.Error(), "found no pods for labels map[dogu.name:ldap dogu.version:2.4.48-4]")
 	})
 
 	t.Run("pod is not ready", func(t *testing.T) {
 		// given
-		client := testclient.NewSimpleClientset(&unreadyPod)
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, unreadyPod).
+			Build()
+		client := testclient.NewSimpleClientset(unreadyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguRessource, nil)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, PodReady)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "can't execute command in pod with status")
+		assert.Contains(t, err.Error(), "waited too long for pod ldap-xyz to have expected status ready")
+	})
+
+	t.Run("pod is not running", func(t *testing.T) {
+		// given
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, notRunningPod).
+			Build()
+		client := testclient.NewSimpleClientset(notRunningPod)
+		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+
+		// when
+		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, ContainersStarted)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "waited too long for pod ldap-xyz to have expected status started")
 	})
 
 	t.Run("failed to create spdy", func(t *testing.T) {
 		// given
-		client := testclient.NewSimpleClientset(&readyPod)
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, readyPod).
+			Build()
+		client := testclient.NewSimpleClientset(readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguRessource, command)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -136,12 +196,16 @@ func TestExposedCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 	t.Run("failed to exec stream", func(t *testing.T) {
 		// given
-		client := testclient.NewSimpleClientset(&readyPod)
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, readyPod).
+			Build()
+		client := testclient.NewSimpleClientset(readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguRessource, command)
+		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -149,7 +213,7 @@ func TestExposedCommandExecutor_ExecCommandForDogu(t *testing.T) {
 	})
 }
 
-func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
+/*func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 	ctx := context.TODO()
 	labels := map[string]string{}
 	labels["dogu"] = "postgresql"
@@ -183,6 +247,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		// given
+		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(&readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
@@ -199,6 +264,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 
 	t.Run("found no pods", func(t *testing.T) {
 		// given
+		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset()
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
@@ -227,6 +293,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 
 	t.Run("failed to create spdy", func(t *testing.T) {
 		// given
+		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(&readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
@@ -241,6 +308,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 
 	t.Run("failed to exec stream", func(t *testing.T) {
 		// given
+		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(&readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
@@ -252,7 +320,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), assert.AnError.Error())
 	})
-}
+}*/
 
 func TestNewShellCommand(t *testing.T) {
 	t.Run("should return simple command without args", func(t *testing.T) {

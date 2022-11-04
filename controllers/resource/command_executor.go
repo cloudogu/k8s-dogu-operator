@@ -163,16 +163,16 @@ func (ce *commandExecutor) waitForPodToHaveExpectedStatus(ctx context.Context, p
 		if err != nil {
 			return err
 		}
-		hasExpectedStatus, err := podHasStatus(pod, expected)
-		if err != nil {
-			return err
+		hasExpectedStatus, err2 := podHasStatus(pod, expected)
+		if err2 != nil {
+			return err2
 		}
 		if !hasExpectedStatus {
 			err = &stateError{
 				sourceError: fmt.Errorf("can't execute command '%s' in pod with status %v", command, pod.Status),
 				resource:    pod,
 			}
-			logger.Error(err, fmt.Sprintf("Pod does not have expected status. Trying again in %d second(s).", i))
+			logger.Error(err2, fmt.Sprintf("Pod does not have expected status. Trying again in %d second(s).", i))
 			sleep(i)
 			continue
 		}
