@@ -3,12 +3,6 @@ package controllers
 import (
 	"testing"
 
-	regmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	controllermocks "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -18,6 +12,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	regmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	controllermocks "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 )
 
 const namespace = "test"
@@ -88,10 +89,10 @@ func Test_doguSupportManager_supportModeChanged(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"return false for already set flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: true}}, true}, false},
+		{"return false for already set true flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: true}}, true}, false},
 		{"return true for flag being unset", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: true}}, false}, true},
-		{"return false for already set flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: false}}, false}, false},
-		{"return true for newly set flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: false}}, true}, true},
+		{"return false for already set false flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: false}}, false}, false},
+		{"return true for newly set false flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: false}}, true}, true},
 	}
 	// when then
 	for _, tt := range tests {

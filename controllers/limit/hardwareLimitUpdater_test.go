@@ -2,8 +2,9 @@ package limit
 
 import (
 	"context"
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"testing"
+	"time"
+
 	coreosclient "github.com/coreos/etcd/client"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
@@ -15,8 +16,9 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
-	"time"
+
+	"github.com/cloudogu/cesapp-lib/registry/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
 func TestNewHardwareLimitUpdater(t *testing.T) {
@@ -100,28 +102,6 @@ func getTestDeployments() (*appsv1.Deployment, *appsv1.Deployment, *appsv1.Deplo
 }
 
 func Test_hardwareLimitUpdater_Start(t *testing.T) {
-	t.Run("run start and send done to context", func(t *testing.T) { // given
-		regMock := &mocks.Registry{}
-		watchContextMock := &mocks.WatchConfigurationContext{}
-		regMock.On("RootConfig").Return(watchContextMock, nil)
-		watchContextMock.On("Watch", mock.Anything, triggerSyncEtcdKeyFullPath, false, mock.Anything).Return()
-
-		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
-		hardwareUpdater := &hardwareLimitUpdater{
-			client:   clientMock,
-			registry: regMock,
-		}
-
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Millisecond*50)
-
-		// when
-		err := hardwareUpdater.Start(ctx)
-		cancelFunc()
-
-		// then
-		require.NoError(t, err)
-	})
-
 	t.Run("run start and send done to context", func(t *testing.T) { // given
 		regMock := &mocks.Registry{}
 		watchContextMock := &mocks.WatchConfigurationContext{}
