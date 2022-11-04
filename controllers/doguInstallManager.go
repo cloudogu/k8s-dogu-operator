@@ -86,7 +86,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
 
 	executor := resource.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
+	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor, client)
 	collectApplier := resource.NewCollectApplier(applier)
 
 	return &doguInstallManager{
@@ -156,7 +156,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 
 	logger.Info("Create service accounts...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
-	err = m.serviceAccountCreator.CreateAll(ctx, doguResource, dogu)
+	err = m.serviceAccountCreator.CreateAll(ctx, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create service accounts: %w", err)
 	}

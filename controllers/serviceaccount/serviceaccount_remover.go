@@ -36,7 +36,7 @@ func NewRemover(registry registry.Registry, commandExecutor commandExecutor, cli
 }
 
 // RemoveAll removes all service accounts for a given dogu
-func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
+func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	var allProblems error
@@ -73,9 +73,12 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 			continue
 		}
 
-		saDoguPod, err := r.getPodForSADogu(ctx, saDogu, namespace)
+		serviceAccountPod, err := getPodForServiceAccountDogu(ctx, r.client, saDogu)
+		if err != nil {
+			return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
+		}
 
-		err = r.executeCommand(ctx, dogu, saDogu, saDoguPod, serviceAccount)
+		err = r.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
 		if err != nil {
 			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to execute service account remove command: %w", err))
 			continue
@@ -108,15 +111,4 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	}
 
 	return nil
-}
-
-func (r *remover) getPodForSADogu(ctx context.Context, saDogu *core.Dogu, namespace string) (*v1.Pod, error) {
-	objectKey := client.ObjectKey{
-		Namespace: namespace,
-		Name:      saDogu.GetSimpleName(),
-	}
-	pod := &v1.Pod{}
-
-	err := r.client.Get(ctx, objectKey, pod)
-	return pod, err
 }

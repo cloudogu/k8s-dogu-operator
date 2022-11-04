@@ -912,7 +912,7 @@ func Test_registerNewServiceAccount(t *testing.T) {
 		saCreator.On("CreateAll", testCtx, toDoguCr.Namespace, toDogu).Return(nil)
 
 		// when
-		err := registerNewServiceAccount(testCtx, saCreator, toDoguCr, toDogu)
+		err := registerNewServiceAccount(testCtx, saCreator, toDogu)
 
 		// then
 		require.NoError(t, err)
@@ -928,7 +928,7 @@ func Test_registerNewServiceAccount(t *testing.T) {
 		saCreator.On("CreateAll", testCtx, toDoguCr.Namespace, toDogu).Return(assert.AnError)
 
 		// when
-		err := registerNewServiceAccount(testCtx, saCreator, toDoguCr, toDogu)
+		err := registerNewServiceAccount(testCtx, saCreator, toDogu)
 
 		// then
 		require.Error(t, err)

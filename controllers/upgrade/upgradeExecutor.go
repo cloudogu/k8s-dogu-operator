@@ -82,7 +82,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	ue.normalEventf(toDoguResource, "Registering optional service accounts...")
-	err = registerNewServiceAccount(ctx, ue.serviceAccountCreator, toDoguResource, toDogu)
+	err = registerNewServiceAccount(ctx, ue.serviceAccountCreator, toDogu)
 	if err != nil {
 		return err
 	}
@@ -200,8 +200,8 @@ func registerUpgradedDoguVersion(cesreg doguRegistrator, toDogu *core.Dogu) erro
 	return nil
 }
 
-func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCreator, resource *k8sv1.Dogu, toDogu *core.Dogu) error {
-	err := saCreator.CreateAll(ctx, resource, toDogu)
+func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCreator, toDogu *core.Dogu) error {
+	err := saCreator.CreateAll(ctx, toDogu)
 	if err != nil {
 		if err != nil {
 			return fmt.Errorf("failed to register service accounts: %w", err)

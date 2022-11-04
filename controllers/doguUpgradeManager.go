@@ -57,7 +57,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	doguLocalRegistry := cesRegistry.DoguRegistry()
 
 	executor := resource.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
+	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor, client)
 
 	df := cesregistry.NewLocalDoguFetcher(doguLocalRegistry)
 	rdf := cesregistry.NewResourceDoguFetcher(client, doguRemoteRegistry)

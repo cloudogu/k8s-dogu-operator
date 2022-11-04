@@ -66,7 +66,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 
 	if dogu != nil {
 		logger.Info("Delete service accounts...")
-		err = m.serviceAccountRemover.RemoveAll(ctx, doguResource.Namespace, dogu)
+		err = m.serviceAccountRemover.RemoveAll(ctx, dogu)
 		if err != nil {
 			logger.Error(err, "failed to remove service accounts")
 		}

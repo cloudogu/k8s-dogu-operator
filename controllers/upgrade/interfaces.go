@@ -28,7 +28,7 @@ type fileExtractor interface {
 
 type serviceAccountCreator interface {
 	// CreateAll creates K8s services accounts for a dogu
-	CreateAll(ctx context.Context, saResource *k8sv1.Dogu, dogu *core.Dogu) error
+	CreateAll(ctx context.Context, dogu *core.Dogu) error
 }
 
 type doguRegistrator interface {

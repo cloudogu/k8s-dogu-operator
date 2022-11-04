@@ -16,7 +16,7 @@ type ServiceAccountRemover struct {
 }
 
 // RemoveServiceAccounts provides a mock function with given fields: ctx, namespace, dogu
-func (_m *ServiceAccountRemover) RemoveAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
+func (_m *ServiceAccountRemover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	ret := _m.Called(ctx, namespace, dogu)
 
 	var r0 error
