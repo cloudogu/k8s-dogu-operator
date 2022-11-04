@@ -21,7 +21,8 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        dogu: ldap
+        dogu.name: ldap
+        dogu.version: 2.4.48-4
     spec:
       containers:
         - image: registry.cloudogu.com/official/ldap:2.4.48-4

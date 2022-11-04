@@ -1,7 +1,8 @@
 metadata:
   creationTimestamp: null
   labels:
-    dogu: ldap
+    dogu.name: ldap
+    dogu.version: 2.4.48-4
 spec:
   containers:
     - args:
@@ -22,7 +23,7 @@ spec:
       image: registry.cloudogu.com/official/ldap:2.4.48-4
       imagePullPolicy: IfNotPresent
       name: ldap
-      resources: {}
+      resources: { }
       volumeMounts:
         - mountPath: /etc/ces/node_master
           name: node-master-file
