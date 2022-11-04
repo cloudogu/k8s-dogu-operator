@@ -136,7 +136,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -152,7 +152,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		serviceAccountCreator := creator{registry: registry}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -170,7 +170,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		serviceAccountCreator := creator{registry: registry}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -190,7 +190,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		serviceAccountCreator := creator{registry: registry}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -212,7 +212,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		serviceAccountCreator := creator{registry: registry}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptorOptional)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptorOptional)
 
 		// then
 		require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		serviceAccountCreator := creator{registry: registry}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -259,7 +259,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -287,7 +287,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -319,7 +319,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -354,7 +354,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -390,7 +390,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -428,7 +428,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -466,7 +466,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -505,7 +505,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -545,7 +545,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineCr.Namespace, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(ctx, redmineCr, redmineDescriptor)
 
 		// then
 		require.Error(t, err)

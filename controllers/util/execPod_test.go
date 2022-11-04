@@ -3,16 +3,17 @@ package util
 import (
 	"bytes"
 	"context"
-	apiMocks "github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
+	"testing"
+
 	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
 	fake2 "k8s.io/client-go/kubernetes/fake"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	apiMocks "github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
 
@@ -273,7 +274,7 @@ func Test_defaultExecPodFactory_NewExecPod(t *testing.T) {
 		Build()
 	clientSet := fake2.NewSimpleClientset()
 	restConfig := &rest.Config{}
-	commandExecutor := resource.NewCommandExecutor(cli, clientSet, clientSet.CoreV1().RESTClient())
+	commandExecutor := resource.NewCommandExecutor(fakeClient, clientSet, clientSet.CoreV1().RESTClient())
 	dogu := &core.Dogu{Name: "official/ldap"}
 
 	sut := NewExecPodFactory(fakeClient, restConfig, commandExecutor)
