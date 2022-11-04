@@ -48,9 +48,9 @@ type suffixGenerator interface {
 // commandExecutor is used to execute commands in pods and dogus
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
+	ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 }
 
 // execPod provides features to handle files from a dogu image.
@@ -249,7 +249,7 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 
 // Exec executes the given ShellCommand and returns any output to stdOut and stdErr.
 func (ep *execPod) Exec(ctx context.Context, cmd *resource.ShellCommand) (string, error) {
-	out, err := ep.executor.ExecCommandForPod(ctx, ep.podName, ep.doguResource.Namespace, cmd)
+	out, err := ep.executor.ExecCommandForPod(ctx, ep.podName, ep.doguResource.Namespace, cmd, resource.ContainersStarted)
 	return out.String(), err
 }
 

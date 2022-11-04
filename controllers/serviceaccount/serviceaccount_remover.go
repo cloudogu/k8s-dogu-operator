@@ -96,7 +96,7 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, consumerDogu.GetSimpleName())
 
 	command := &resource.ShellCommand{Command: removeCommand.Command, Args: args}
-	_, err = r.executor.ExecCommandForDogu(ctx, saDogu.GetSimpleName(), namespace, command)
+	_, err = r.executor.ExecCommandForDogu(ctx, saDogu.GetSimpleName(), namespace, command, resource.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}

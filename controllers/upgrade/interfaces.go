@@ -52,7 +52,7 @@ type execPodFactory interface {
 // commandExecutor is used to execute commands in pods and dogus
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
+	ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
 }

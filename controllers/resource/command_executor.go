@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/go-logr/logr"
 	"net/url"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
@@ -36,7 +37,7 @@ func (sc *ShellCommand) String() string {
 	return strings.Join(append(result, sc.Args...), " ")
 }
 
-// stateError is returned when a specific resource (pod/dogu) is not ready yet.
+// stateError is returned when a specific resource (pod/dogu) does not meet the requirements for the exec.
 type stateError struct {
 	sourceError error
 	resource    metav1.Object
@@ -44,7 +45,7 @@ type stateError struct {
 
 // Report returns the error in string representation
 func (e *stateError) Error() string {
-	return fmt.Sprintf("resource is not ready: %v, source error: %s", e.resource.GetName(), e.sourceError.Error())
+	return fmt.Sprintf("resource does not meet requirements for exec: %v, source error: %s", e.resource.GetName(), e.sourceError.Error())
 }
 
 // Requeue determines if the current dogu operation should be requeue when this error was responsible for its failure
@@ -54,7 +55,17 @@ func (e *stateError) Requeue() bool {
 
 // maxTries controls the maximum number of waiting intervals between tries when getting an error that is recoverable
 // during command execution.
-var maxTries = 5
+var maxTries = 20
+
+// PodStatus describes a state in the lifecycle of a pod.
+type PodStatus string
+
+const (
+	// ContainersStarted means that all containers of a pod were started.
+	ContainersStarted PodStatus = "started"
+	// PodReady means that the readiness probe of the pod has succeeded.
+	PodReady PodStatus = "ready"
+)
 
 // commandExecutor is the unit to execute commands in a dogu
 type commandExecutor struct {
@@ -73,47 +84,42 @@ func NewCommandExecutor(client kubernetes.Interface, coreV1RestClient rest.Inter
 	}
 }
 
-func (ce *commandExecutor) allContainersReady(pod *corev1.Pod) bool {
-	for _, condition := range pod.Status.Conditions {
-		if condition.Type == corev1.ContainersReady {
-			return true
-		}
-	}
-	return false
-}
-
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
 func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string,
-	command *ShellCommand) (*bytes.Buffer, error) {
+	command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
 	pod, err := ce.getTargetDoguPod(ctx, targetDogu, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", targetDogu, err)
 	}
 
-	return ce.execCommand(ctx, pod, namespace, command)
+	return ce.execCommand(ctx, pod, namespace, command, expectedStatus)
 }
 
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
 // identified by its pod name.
 func (ce *commandExecutor) ExecCommandForPod(ctx context.Context, targetPod string, namespace string,
-	command *ShellCommand) (*bytes.Buffer, error) {
+	command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
 	pod, err := ce.getPodByName(ctx, targetPod, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod %s: %w", targetPod, err)
 	}
 
-	return ce.execCommand(ctx, pod, namespace, command)
+	return ce.execCommand(ctx, pod, namespace, command, expectedStatus)
 }
 
-func (ce *commandExecutor) execCommand(ctx context.Context, pod *corev1.Pod, namespace string, command *ShellCommand) (*bytes.Buffer, error) {
+func (ce *commandExecutor) execCommand(
+	ctx context.Context,
+	pod *corev1.Pod,
+	namespace string,
+	command *ShellCommand,
+	expectedStatus PodStatus,
+) (*bytes.Buffer, error) {
 	logger := log.FromContext(ctx)
 
-	if !ce.allContainersReady(pod) {
-		return nil, &stateError{
-			sourceError: fmt.Errorf("can't execute command in pod with status %v", pod.Status),
-			resource:    pod,
-		}
+	err := ce.waitForPodToHaveExpectedStatus(ctx, pod, namespace, command, expectedStatus, logger)
+	if err != nil {
+		return nil, err
 	}
 
 	req := ce.getCreateExecRequest(pod, namespace, command)
@@ -125,6 +131,18 @@ func (ce *commandExecutor) execCommand(ctx context.Context, pod *corev1.Pod, nam
 		}
 	}
 
+	return ce.streamCommandToPod(ctx, exec, command, pod)
+}
+
+func (ce *commandExecutor) streamCommandToPod(
+	ctx context.Context,
+	exec remotecommand.Executor,
+	command *ShellCommand,
+	pod *corev1.Pod,
+) (*bytes.Buffer, error) {
+	logger := log.FromContext(ctx)
+
+	var err error
 	buffer := bytes.NewBuffer([]byte{})
 	bufferErr := bytes.NewBuffer([]byte{})
 	for i := 1; i <= maxTries; i++ {
@@ -139,10 +157,7 @@ func (ce *commandExecutor) execCommand(ctx context.Context, pod *corev1.Pod, nam
 				sleep(i)
 				continue
 			}
-			return nil, &stateError{
-				sourceError: fmt.Errorf("out: '%s': errOut: '%s': %w", buffer, bufferErr, err),
-				resource:    pod,
-			}
+			return nil, fmt.Errorf("exec failed for pod: %s out: '%s': errOut: '%s': %w", pod.Name, buffer, bufferErr, err)
 		}
 
 		return buffer, nil
@@ -150,6 +165,61 @@ func (ce *commandExecutor) execCommand(ctx context.Context, pod *corev1.Pod, nam
 
 	return nil, &stateError{
 		sourceError: fmt.Errorf("quitting command execution because of too many errors; out: '%s': errOut: '%s': %w", buffer, bufferErr, err),
+		resource:    pod,
+	}
+}
+
+func (ce *commandExecutor) waitForPodToHaveExpectedStatus(
+	ctx context.Context,
+	pod *corev1.Pod,
+	namespace string,
+	command *ShellCommand,
+	expectedStatus PodStatus,
+	logger logr.Logger,
+) error {
+	var err error
+	for i := 1; i <= maxTries; i++ {
+		pod, err = ce.Client.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return &stateError{
+				sourceError: err,
+				resource:    pod,
+			}
+		}
+		hasExpectedStatus, err := podHasStatus(pod, expectedStatus)
+		if err != nil {
+			return err
+		}
+		if !hasExpectedStatus {
+			err = &stateError{
+				sourceError: fmt.Errorf("can't execute command '%s' in pod with status %v", command, pod.Status),
+				resource:    pod,
+			}
+			logger.Error(err, fmt.Sprintf("Pod does not have expected status. Trying again in %d second(s).", i))
+			sleep(i)
+			continue
+		}
+		return nil
+	}
+	return fmt.Errorf("waited too long for pod to have expected status: %w", err)
+}
+
+func podHasStatus(pod *corev1.Pod, status PodStatus) (bool, *stateError) {
+	switch status {
+	case ContainersStarted:
+		return pod.Status.Phase == corev1.PodRunning, nil
+	case PodReady:
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == corev1.ContainersReady && condition.Status == corev1.ConditionTrue {
+				return true, nil
+			}
+		}
+		return false, nil
+	default:
+		return false, &stateError{
+			sourceError: fmt.Errorf("unsupported status expectation"),
+			resource:    pod,
+		}
 	}
 }
 
