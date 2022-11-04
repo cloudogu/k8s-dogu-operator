@@ -2,11 +2,11 @@ package health
 
 import (
 	"context"
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"testing"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+
 	"github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,6 +16,8 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
 
 const testNamespace = "test-namespace"
@@ -131,10 +133,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
 		/*
 			testDogu
-			+-m-> ☑ client1 (ClientSet)
+			+-m-> ☑ client1 (Client)
 			+-m-> ☑ package1 (Package)
 			+-m-> ☑ testDogu2 (Dogu)
-				  +-o-> ☑ client2 (ClientSet)
+				  +-o-> ☑ client2 (Client)
 				  +-o-> ☑ package2 (Package)
 				  +-m-> ☑ testDogu3 (Dogu)
 		*/
