@@ -91,7 +91,17 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
 func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
-	pod, err := resource.GetPod(ctx, ce.Client)
+	logger := log.FromContext(ctx)
+	pod := &corev1.Pod{}
+	err := util.OnErrorRetryAlways(maxTries, func() error {
+		var err error
+		pod, err = resource.GetPod(ctx, ce.Client)
+		if err != nil {
+			logger.Info(fmt.Sprintf("Failed to get pod. Trying again: %s", err.Error()))
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", resource.Name, err)
 	}

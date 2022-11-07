@@ -65,7 +65,10 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 		Namespace: doguResource.Namespace,
 	}}
 
-	labels := map[string]string{"dogu": doguResource.Name}
+	labels := doguResource.GetPodLabels()
+	// Don't use the dogu.version label in deployment since it cannot be updated in the spec.
+	// Version labels only get applied to pods to discern them during an upgrade.
+	delete(labels, k8sv1.DoguLabelVersion)
 	deployment.ObjectMeta.Labels = labels
 
 	deployment.Spec = buildDeploymentSpec(labels, podTemplate)

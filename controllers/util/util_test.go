@@ -1,8 +1,12 @@
 package util
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestGetMapKeysAsString(t *testing.T) {
@@ -46,4 +50,36 @@ func containsInSlice(slice []string, s string) bool {
 	}
 
 	return false
+}
+
+func Test_OnErrorRetryAlways(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
+		// given
+		maxTries := 2
+		fn := func() error {
+			println(fmt.Sprintf("Current time: %s", time.Now()))
+			return nil
+		}
+
+		// when
+		err := OnErrorRetryAlways(maxTries, fn)
+
+		// then
+		require.NoError(t, err)
+	})
+	t.Run("should fail", func(t *testing.T) {
+		// given
+		maxTries := 2
+		fn := func() error {
+			println(fmt.Sprintf("Current time: %s", time.Now()))
+			return assert.AnError
+		}
+
+		// when
+		err := OnErrorRetryAlways(maxTries, fn)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
 }
