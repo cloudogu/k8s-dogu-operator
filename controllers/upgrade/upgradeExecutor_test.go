@@ -182,7 +182,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -267,7 +267,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -340,7 +340,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -420,7 +420,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -889,7 +889,7 @@ func Test_registerNewServiceAccount(t *testing.T) {
 		toDoguCr := readTestDataRedmineCr(t)
 		toDoguCr.Spec.Version = redmineUpgradeVersion
 		saCreator := mocks.NewServiceAccountCreator(t)
-		saCreator.On("CreateAll", testCtx, toDoguCr.Namespace, toDogu).Return(nil)
+		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 
 		// when
 		err := registerNewServiceAccount(testCtx, saCreator, toDogu)
@@ -905,7 +905,7 @@ func Test_registerNewServiceAccount(t *testing.T) {
 		toDoguCr := readTestDataRedmineCr(t)
 		toDoguCr.Spec.Version = redmineUpgradeVersion
 		saCreator := mocks.NewServiceAccountCreator(t)
-		saCreator.On("CreateAll", testCtx, toDoguCr.Namespace, toDogu).Return(assert.AnError)
+		saCreator.On("CreateAll", testCtx, toDogu).Return(assert.AnError)
 
 		// when
 		err := registerNewServiceAccount(testCtx, saCreator, toDogu)
@@ -1049,7 +1049,12 @@ func Test_applyCustomK8sResources(t *testing.T) {
 	})
 }
 
-func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
+func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
+	doguResource := readTestDataRedmineCr(t)
+	redmineOldPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "redmine-old-x1y2z3", Labels: doguResource.GetPodLabels()},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
+	}
 	t.Run("should be successful if no pre-upgrade exposed command", func(t *testing.T) {
 		// given
 		toDoguResource := &k8sv1.Dogu{}
@@ -1095,7 +1100,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		// given
 		cli := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects().
+			WithObjects(redmineOldPod).
 			Build()
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
@@ -1107,7 +1112,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, resource.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
@@ -1134,7 +1139,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		// given
 		cli := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects().
+			WithObjects(redmineOldPod).
 			Build()
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
@@ -1146,8 +1151,8 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, resource.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, resource.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
@@ -1174,7 +1179,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		// given
 		cli := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects().
+			WithObjects(redmineOldPod).
 			Build()
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
@@ -1186,9 +1191,9 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, preUpgradeCmd).Once().Return(bytes.NewBufferString("uhoh"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, resource.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, resource.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, resource.PodReady).Once().Return(bytes.NewBufferString("uhoh"), assert.AnError)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
@@ -1215,7 +1220,7 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 		// given
 		cli := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects().
+			WithObjects(redmineOldPod).
 			Build()
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
@@ -1227,9 +1232,9 @@ func Test_upgradeExecutor_applyUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, mkdirCmd).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, copyCmd2).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, preUpgradeCmd).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, resource.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, resource.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, resource.PodReady).Once().Return(bytes.NewBufferString(""), nil)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
@@ -1278,7 +1283,7 @@ func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
 		toDogu := readTestDataDogu(t, redmineBytes)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource.Name, toDoguResource.Namespace, postUpgradeCmd).Once().Return(bytes.NewBufferString("oof"), assert.AnError)
+		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, resource.ContainersStarted).Once().Return(bytes.NewBufferString("oof"), assert.AnError)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
@@ -1304,7 +1309,7 @@ func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.On("ExecCommandForDogu", testCtx, "redmine", toDoguResource.Namespace, postUpgradeCmd).Once().Return(bytes.NewBufferString(""), nil)
+		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, resource.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal

@@ -130,17 +130,23 @@ func Test_execPod_createPod(t *testing.T) {
 }
 
 func Test_execPod_Exec(t *testing.T) {
+	runningExecPod := &corev1.Pod{
+		TypeMeta:   metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-execpod-123abc", Namespace: testNamespace},
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+	}
 	t.Run("should fail with arbitrary error", func(t *testing.T) {
 		// given
 		ldapDogu := readLdapDogu(t)
 		ldapDoguResource := readLdapDoguResource(t)
 		fakeClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
+			WithObjects(runningExecPod).
 			Build()
 		cmd := &resource.ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
 		mockExec := mocks.NewCommandExecutor(t)
 		outBuf := bytes.NewBufferString("")
-		mockExec.On("ExecCommandForPod", testCtx, podName, testNamespace, cmd).Return(outBuf, assert.AnError)
+		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, resource.ContainersStarted).Return(outBuf, assert.AnError)
 		sut := &execPod{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
@@ -163,11 +169,12 @@ func Test_execPod_Exec(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 		fakeClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
+			WithObjects(runningExecPod).
 			Build()
 		cmd := &resource.ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
 		mockExec := mocks.NewCommandExecutor(t)
 		outBuf := bytes.NewBufferString("possibly some output goes here")
-		mockExec.On("ExecCommandForPod", testCtx, podName, testNamespace, cmd).Return(outBuf, nil)
+		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, resource.ContainersStarted).Return(outBuf, nil)
 		sut := &execPod{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
