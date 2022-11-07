@@ -330,9 +330,17 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, doguConfig, registry, doguRegistry, localFetcher, commandExecutorMock)
 	})
 
-	t.Run("failed to delete sa credentials from dogu config", func(t *testing.T) {
+	t.Run("failed to delete SA credentials from dogu config", func(t *testing.T) {
 		// given
 		ctx := context.TODO()
+		readyPostgresPod := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
+			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
+		}
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(readyPostgresPod).
+			Build()
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 		doguConfig.Mock.On("DeleteRecursive", "sa-postgresql").Return(assert.AnError)
@@ -347,11 +355,16 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresRemoveCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForDogu", mock.Anything, "postgresql", "test", postgresCreateSAShellCmd).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPostgresPod, postgresCreateSAShellCmd, resource.PodReady).Return(nil, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
-		serviceAccountCreator := remover{registry: registry, doguFetcher: localFetcher, executor: commandExecutorMock}
+		serviceAccountCreator := remover{
+			client:      cli,
+			registry:    registry,
+			doguFetcher: localFetcher,
+			executor:    commandExecutorMock,
+		}
 
 		// when
 		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
