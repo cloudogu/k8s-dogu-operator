@@ -5,7 +5,8 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: smeagol
+    dogu.name: smeagol
+    dogu.version: 1.6.2-2
     app: ces
 spec:
   name: official/smeagol

@@ -5,7 +5,8 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: cas
+    dogu.name: cas
+    dogu.version: 6.5.5-4
     app: ces
 spec:
   name: official/cas

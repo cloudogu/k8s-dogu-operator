@@ -5,7 +5,8 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: ldap-mapper
+    dogu.name: ldap-mapper
+    dogu.version: 1.3.0
     app: ces
 spec:
   name: official/ldap-mapper

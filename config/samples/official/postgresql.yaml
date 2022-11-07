@@ -5,7 +5,8 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: postgresql
+    dogu.name: postgresql
+    dogu.version: 12.10-1
     app: ces
 spec:
   name: official/postgresql

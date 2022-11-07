@@ -17,8 +17,8 @@ import (
 //go:embed testdata/redmine-dogu.json
 var redmineBytes []byte
 
-//go:embed testdata/postgresql-cr.yaml
-var postgresqlCrBytes []byte
+//go:embed testdata/ldap-cr.yaml
+var ldapCrBytes []byte
 
 //go:embed testdata/postgresql-dogu.json
 var postgresqlBytes []byte
@@ -38,13 +38,13 @@ var optional2Bytes []byte
 func readTestDataPostgresqlCr(t *testing.T) *corev1.Dogu {
 	t.Helper()
 
-	PostgresqlCr := &corev1.Dogu{}
-	err := yaml.Unmarshal(postgresqlCrBytes, PostgresqlCr)
+	ldapCr := &corev1.Dogu{}
+	err := yaml.Unmarshal(ldapCrBytes, ldapCr)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	return PostgresqlCr
+	return ldapCr
 }
 
 func readTestDataDogu(t *testing.T, doguBytes []byte) *core.Dogu {

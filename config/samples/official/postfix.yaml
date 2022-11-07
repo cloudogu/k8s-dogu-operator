@@ -5,7 +5,8 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: postfix
+    dogu.name: postfix
+    dogu.version: 3.6.4-3
     app: ces
 spec:
   name: official/postfix

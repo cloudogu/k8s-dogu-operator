@@ -5,7 +5,8 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: cockpit
+    dogu.name: cockpit
+    dogu.version: 2.0.2-5
     app: ces
 spec:
   name: official/cockpit
