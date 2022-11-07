@@ -19,14 +19,19 @@ func GetMapKeysAsString(input map[string]string) string {
 	return strings.TrimLeft(output, ", ")
 }
 
-func OnErrorRetry(maxTries int, retriable func(error) bool, fn func() error) error {
-	return retry.OnError(wait.Backoff{
+func OnErrorRetry(maxTries int, retriable func(error) bool, workload func() error) error {
+	err := retry.OnError(wait.Backoff{
 		Duration: 1500 * time.Millisecond,
 		Factor:   1.5,
 		Jitter:   0,
 		Steps:    maxTries,
 		Cap:      3 * time.Minute,
-	}, retriable, fn)
+	}, retriable, workload)
+
+	if retriable(err) {
+		return fmt.Errorf("the maximum number of retries was reached: %w", err)
+	}
+	return err
 }
 
 func OnErrorRetryAlways(maxTries int, fn func() error) error {
