@@ -199,17 +199,11 @@ func (c *creator) writeServiceAccounts(doguConfig registry.ConfigurationContext,
 }
 
 func getExposedCommand(dogu *core.Dogu, command string) (*core.ExposedCommand, error) {
-	for _, cmd := range dogu.ExposedCommands {
-		if cmd.Name == command {
-			return &core.ExposedCommand{
-				Name:        cmd.Name,
-				Description: cmd.Description,
-				Command:     cmd.Command,
-			}, nil
-		}
+	if !dogu.HasExposedCommand(command) {
+		return nil, fmt.Errorf("service account dogu %s does not expose %s command", dogu.GetSimpleName(), command)
 	}
 
-	return nil, fmt.Errorf("service account dogu %s does not expose %s command", dogu.GetSimpleName(), command)
+	return dogu.GetExposedCommand(command), nil
 }
 
 func (c *creator) isOptionalServiceAccount(dogu *core.Dogu, sa string) bool {

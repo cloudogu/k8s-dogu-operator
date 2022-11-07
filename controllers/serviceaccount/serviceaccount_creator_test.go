@@ -53,6 +53,10 @@ var postgresqlDescriptor = &core.Dogu{}
 var postgresqlCrBytes []byte
 var postgresqlCr = &k8sv1.Dogu{}
 
+//go:embed testdata/cas-cr.yaml
+var casCrBytes []byte
+var casCr = &k8sv1.Dogu{}
+
 //go:embed testdata/invalid-sa-dogu.json
 var invalidPostgresqlDescriptorBytes []byte
 var invalidPostgresqlDescriptor = &core.Dogu{}
@@ -99,6 +103,11 @@ func init() {
 	}
 
 	err = yaml.Unmarshal(postgresqlCrBytes, postgresqlCr)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(casCrBytes, casCr)
 	if err != nil {
 		panic(err)
 	}
