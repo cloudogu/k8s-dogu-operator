@@ -171,6 +171,8 @@ github.com/cloudogu/cesapp-lib v0.0.0-20221103160135-0b23d917a516 h1:BENt9ENEMQA
 github.com/cloudogu/cesapp-lib v0.0.0-20221103160135-0b23d917a516/go.mod h1:gASp3qQx1rBsHTUgi3G1Ac6dctu08cEhrLDPv6zs7Xo=
 github.com/cloudogu/cesapp-lib v0.0.0-20221104090709-6701396733af h1:crF9VYjmYPKSW2ho+/dHGevNCqRO54vs/iYmWyVhmt4=
 github.com/cloudogu/cesapp-lib v0.0.0-20221104090709-6701396733af/go.mod h1:gASp3qQx1rBsHTUgi3G1Ac6dctu08cEhrLDPv6zs7Xo=
+github.com/cloudogu/cesapp-lib v0.8.0 h1:Vu/iG+mjk2QuEMHYWydYHDg973PytANYYU6IVrkzp38=
+github.com/cloudogu/cesapp-lib v0.8.0/go.mod h1:gASp3qQx1rBsHTUgi3G1Ac6dctu08cEhrLDPv6zs7Xo=
 github.com/cloudogu/k8s-apply-lib v0.4.0 h1:4jYj0gTDSvW0qs9d5yM5w8aOsMu5Sx+PBCwJwa5sMss=
 github.com/cloudogu/k8s-apply-lib v0.4.0/go.mod h1:WHCe588o8e1vzNdLGV6N4E0g7BarbPXPpW4y8U0/lxE=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
