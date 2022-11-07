@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 
@@ -184,19 +183,13 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	execPodKey := ep.ObjectKey()
-
 	containerPodName := execPodKey.Name
 
-	for i := 1; i <= maxTries; i++ {
-		if i >= maxTries {
-			return fmt.Errorf("quitting dogu installation because exec pod %s could not be found", containerPodName)
-		}
-
+	err := k8sv1.OnErrorRetry(maxTries, k8sv1.TestableRetryFunc, func() error {
 		lePod, err := ep.getPod(ctx)
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again in %d second(s).", containerPodName, i))
-			sleep(i)
-			continue
+			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again...", containerPodName))
+			return &k8sv1.TestableRetrierError{Err: err}
 		}
 
 		leStatus := lePod.Status.Phase
@@ -207,13 +200,15 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 		case corev1.PodFailed, corev1.PodSucceeded:
 			return fmt.Errorf("quitting dogu installation because exec pod %s failed with status %s or did not come up in time", containerPodName, leStatus)
 		default:
-			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again in %d second(s).", containerPodName, leStatus, i))
-			sleep(i)
-			continue
+			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again...", containerPodName, leStatus))
+			return &k8sv1.TestableRetrierError{Err: fmt.Errorf("found exec pod %s but with status phase %+v", containerPodName, leStatus)}
 		}
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for exec pod %s to spawn: %w", containerPodName, err)
 	}
 
-	return fmt.Errorf("unexpected loop end while finding exec pod %s", containerPodName)
+	return nil
 }
 
 func (ep *execPod) getPod(ctx context.Context) (*corev1.Pod, error) {
@@ -263,10 +258,6 @@ func (ep *execPod) Exec(ctx context.Context, cmd *resource.ShellCommand) (string
 	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, resource.ContainersStarted)
 
 	return out.String(), err
-}
-
-func sleep(sleepIntervalInSec int) {
-	time.Sleep(time.Duration(sleepIntervalInSec) * time.Second) // linear rising backoff
 }
 
 type defaultSufficeGenerator struct{}

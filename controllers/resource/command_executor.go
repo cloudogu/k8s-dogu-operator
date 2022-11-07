@@ -92,7 +92,7 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
 	logger := log.FromContext(ctx)
 	pod := &corev1.Pod{}
-	err := v1.OnErrorRetryAlways(maxTries, func() error {
+	err := v1.OnErrorRetry(maxTries, v1.AlwaysRetryFunc, func() error {
 		var err error
 		pod, err = resource.GetPod(ctx, ce.Client)
 		if err != nil {
