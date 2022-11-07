@@ -290,6 +290,9 @@ func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod util.ExecPod,
 
 func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, fromDogu *core.Dogu, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
 	pod, err := getPodNameForFromDogu(ctx, ue.client, fromDogu)
+	if err != nil {
+		return fmt.Errorf("failed to find pod for dogu %s:%s : %w", fromDogu.GetSimpleName(), fromDogu.Version, err)
+	}
 
 	// possibly create the necessary directory structure for the following copy action
 	err = ue.createMissingUpgradeDirs(ctx, pod, preUpgradeCmd)
