@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,7 +92,7 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
 	logger := log.FromContext(ctx)
 	pod := &corev1.Pod{}
-	err := util.OnErrorRetryAlways(maxTries, func() error {
+	err := v1.OnErrorRetryAlways(maxTries, func() error {
 		var err error
 		pod, err = resource.GetPod(ctx, ce.Client)
 		if err != nil {
@@ -140,7 +139,7 @@ func (ce *commandExecutor) streamCommandToPod(
 	var err error
 	buffer := bytes.NewBuffer([]byte{})
 	bufferErr := bytes.NewBuffer([]byte{})
-	err = util.OnErrorRetry(maxTries, func(err error) bool {
+	err = v1.OnErrorRetry(maxTries, func(err error) bool {
 		return strings.Contains(err.Error(), "error dialing backend: EOF")
 	}, func() error {
 		err = exec.Stream(remotecommand.StreamOptions{
@@ -167,7 +166,7 @@ func (ce *commandExecutor) streamCommandToPod(
 
 func (ce *commandExecutor) waitForPodToHaveExpectedStatus(pod *corev1.Pod, expected PodStatus) error {
 	var err error
-	err = util.OnErrorRetry(maxTries, func(err error) bool {
+	err = v1.OnErrorRetry(maxTries, func(err error) bool {
 		_, ok := err.(*unexpectedStatusError)
 		return ok
 	}, func() error {
