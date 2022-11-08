@@ -1,7 +1,7 @@
 metadata:
   creationTimestamp: null
   labels:
-    dogu: ldap
+    dogu.name: ldap
   name: ldap
   namespace: ecosystem
   ownerReferences:
@@ -14,7 +14,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      dogu: ldap
+      dogu.name: ldap
   strategy:
     type: Recreate
   template:

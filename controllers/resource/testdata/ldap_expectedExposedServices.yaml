@@ -2,7 +2,7 @@
     creationTimestamp: null
     labels:
       app: ces
-      dogu: ldap
+      dogu.name: ldap
     name: ldap-exposed-2222
     namespace: ecosystem
     ownerReferences:
@@ -22,7 +22,7 @@
         protocol: TCP
         targetPort: 2222
     selector:
-      dogu: ldap
+      dogu.name: ldap
     type: LoadBalancer
   status:
     loadBalancer: { }
@@ -30,7 +30,7 @@
     creationTimestamp: null
     labels:
       app: ces
-      dogu: ldap
+      dogu.name: ldap
     name: ldap-exposed-8888
     namespace: ecosystem
     ownerReferences:
@@ -50,7 +50,7 @@
         protocol: TCP
         targetPort: 8888
     selector:
-      dogu: ldap
+      dogu.name: ldap
     type: LoadBalancer
   status:
     loadBalancer: { }
