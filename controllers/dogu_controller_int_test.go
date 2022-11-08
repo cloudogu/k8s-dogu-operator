@@ -336,11 +336,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
 
 		CommandExecutor.
-			On("ExecCommandForPod", mock.Anything, mock.Anything, "upgrade", exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", exec.NewShellCommand("/bin/mkdir", "-p", "/")).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", exec.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1")).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1")).Run(func(args mock.Arguments) {
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved"), exec.ContainersStarted).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/mkdir", "-p", "/"), exec.ContainersStarted).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh"), exec.ContainersStarted).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), exec.PodReady).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, upgradeLdapFromCr, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), exec.ContainersStarted).Run(func(args mock.Arguments) {
 			defer GinkgoRecover()
 			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 60)
 			assertRessourceStatus(upgradeLdapFromDoguLookupKey, "upgrading")
@@ -433,10 +433,13 @@ func assertRessourceStatus(ressourceLookupKey types.NamespacedName, expectedStat
 func assertNewDeploymentVersionWithStartupProbe(doguLookupKey types.NamespacedName, doguVersion string, expectedStartupProbe int) {
 	By("Check new image in deployment")
 	deploymentAfterUpgrading := new(appsv1.Deployment)
-	Eventually(func() bool {
+	Eventually(func() string {
 		ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, doguLookupKey)
-		return ok && strings.Contains(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image, doguVersion)
-	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		if ok {
+			return deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image
+		}
+		return "resource not found"
+	}, TimeoutInterval, PollingInterval).Should(ContainSubstring(doguVersion))
 
 	By("Check startup probe failure threshold in deployment")
 	Expect(int32(expectedStartupProbe)).To(Equal(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold))

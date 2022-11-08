@@ -6,6 +6,7 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,7 +25,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/onsi/ginkgo"
@@ -168,7 +168,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
-	execPodFactory := util.NewExecPodFactory(k8sClient, cfg, CommandExecutor)
+	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutor)
 
 	installManager := &doguInstallManager{
 		client:                k8sClient,
