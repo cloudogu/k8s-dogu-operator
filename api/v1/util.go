@@ -41,7 +41,7 @@ func OnErrorRetry(maxTries int, retriable func(error) bool, workload func() erro
 		Cap:      3 * time.Minute,
 	}, retriable, workload)
 
-	if retriable(err) {
+	if err != nil && retriable(err) {
 		return fmt.Errorf("the maximum number of retries was reached: %w", err)
 	}
 	return err
