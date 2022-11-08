@@ -11,8 +11,8 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount/mocks"
 
 	"github.com/hashicorp/go-multierror"
@@ -62,10 +62,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresRemoveCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresRemoveCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, resource.PodReady).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -111,11 +111,11 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		casRemoveSAShellCmd := &resource.ShellCommand{Command: casRemoveCmd.Command, Args: []string{"redmine"}}
+		casRemoveSAShellCmd := &exec.ShellCommand{Command: casRemoveCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", ctx, readyCasPod, casRemoveSAShellCmd, resource.PodReady).Return(nil, nil)
+			On("ExecCommandForPod", ctx, readyCasPod, casRemoveSAShellCmd, exec.PodReady).Return(nil, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "cas").Return(casDescriptor, nil)
@@ -310,11 +310,11 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			On("DoguConfig", "redmine").Return(doguConfig).
 			On("DoguRegistry").Return(doguRegistry)
 
-		postgresRemoveSAShellCmd := &resource.ShellCommand{Command: postgresRemoveCmd.Command, Args: []string{"redmine"}}
+		postgresRemoveSAShellCmd := &exec.ShellCommand{Command: postgresRemoveCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", ctx, readyPostgresPod, postgresRemoveSAShellCmd, resource.PodReady).Return(nil, assert.AnError)
+			On("ExecCommandForPod", ctx, readyPostgresPod, postgresRemoveSAShellCmd, exec.PodReady).Return(nil, assert.AnError)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -352,10 +352,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		postgresCreateSAShellCmd := &resource.ShellCommand{Command: postgresRemoveCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresRemoveCmd.Command, Args: []string{"redmine"}}
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPostgresPod, postgresCreateSAShellCmd, resource.PodReady).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPostgresPod, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
 
 		localFetcher := &mocks2.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)

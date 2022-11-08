@@ -8,6 +8,7 @@ import (
 	cesreg "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -52,11 +53,11 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	}
 	collectApplier := resource.NewCollectApplier(applier)
 
-	fileExtractor := newPodFileExtractor(client, restConfig, clientSet)
+	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 
 	doguLocalRegistry := cesRegistry.DoguRegistry()
 
-	executor := resource.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
+	executor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
 	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor, client)
 
 	df := cesregistry.NewLocalDoguFetcher(doguLocalRegistry)

@@ -8,11 +8,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	cesresource "github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"strings"
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -23,8 +21,13 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"testing"
+
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 )
 
 type mockeryGinkgoLogger struct {
@@ -333,11 +336,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
 
 		CommandExecutor.
-			On("ExecCommandForPod", mock.Anything, mock.Anything, "upgrade", cesresource.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/bin/mkdir", "-p", "/")).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1")).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", cesresource.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1")).Run(func(args mock.Arguments) {
+			On("ExecCommandForPod", mock.Anything, mock.Anything, "upgrade", exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", exec.NewShellCommand("/bin/mkdir", "-p", "/")).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", exec.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1")).Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, "ldap", "upgrade", exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1")).Run(func(args mock.Arguments) {
 			defer GinkgoRecover()
 			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 60)
 			assertRessourceStatus(upgradeLdapFromDoguLookupKey, "upgrading")
@@ -442,7 +445,7 @@ func assertNewDeploymentVersionWithStartupProbe(doguLookupKey types.NamespacedNa
 // setExecPodRunning can be necessary because the environment has no controllers to really start the pods,
 // therefore the dogu controller waits until timeout.
 func setExecPodRunning(ctx context.Context, doguName string) {
-	By("Simulate ExecPod is running")
+	By("Simulate ExecPodMock is running")
 	podList := &corev1.PodList{}
 
 	Eventually(func() bool {

@@ -1,7 +1,6 @@
-package util
+package exec
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -21,42 +20,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
-type ExecPod interface {
-	// Create adds a new exec pod to the cluster.
-	Create(ctx context.Context) error
-	// Delete deletes the exec pod from the cluster.
-	Delete(ctx context.Context) error
-	// PodName returns the name of the pod.
-	PodName() string
-	// ObjectKey returns the ExecPod's K8s object key.
-	ObjectKey() *client.ObjectKey
-	// Exec runs the provided command in this execPod
-	Exec(ctx context.Context, cmd *resource.ShellCommand) (out string, err error)
-}
-
-// maxTries controls the maximum number of waiting intervals between requesting an exec pod and its actual
-// instantiation. The waiting time linearly increases each iteration.
-var maxTries = 20
-
-type suffixGenerator interface {
-	// String returns a random suffix string with the given length
-	String(length int) string
-}
-
-// commandExecutor is used to execute commands in pods and dogus
-type commandExecutor interface {
-	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, resource *k8sv1.Dogu, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
-	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
-}
-
 // execPod provides features to handle files from a dogu image.
 type execPod struct {
 	client     client.Client
 	executor   commandExecutor
-	volumeMode ExecPodVolumeMode
+	volumeMode PodVolumeMode
 
 	doguResource *k8sv1.Dogu
 	dogu         *core.Dogu
@@ -68,7 +36,7 @@ type execPod struct {
 func NewExecPod(
 	client client.Client,
 	executor commandExecutor,
-	factoryMode ExecPodVolumeMode,
+	factoryMode PodVolumeMode,
 	doguResource *k8sv1.Dogu,
 	dogu *core.Dogu,
 	podName string,
@@ -156,9 +124,9 @@ func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []c
 	logger := log.FromContext(ctx)
 
 	switch ep.volumeMode {
-	case ExecPodVolumeModeInstall:
+	case PodVolumeModeInstall:
 		return nil, nil
-	case ExecPodVolumeModeUpgrade:
+	case PodVolumeModeUpgrade:
 		volumeMounts := []corev1.VolumeMount{{
 			Name:      ep.doguResource.GetReservedVolumeName(),
 			ReadOnly:  false,
@@ -175,7 +143,7 @@ func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []c
 		}}
 		return volumeMounts, volumes
 	}
-	logger.Info("ExecPod is about to be created without volumes because of unexpected factory mode %d", ep.volumeMode)
+	logger.Info("ExecPodMock is about to be created without volumes because of unexpected factory mode %d", ep.volumeMode)
 	return nil, nil
 }
 
@@ -249,13 +217,13 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 }
 
 // Exec executes the given ShellCommand and returns any output to stdOut and stdErr.
-func (ep *execPod) Exec(ctx context.Context, cmd *resource.ShellCommand) (string, error) {
+func (ep *execPod) Exec(ctx context.Context, cmd *ShellCommand) (string, error) {
 	pod, err := ep.getPod(ctx)
 	if err != nil {
 		return "", fmt.Errorf("could not get pod: %w", err)
 	}
 
-	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, resource.ContainersStarted)
+	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, ContainersStarted)
 
 	return out.String(), err
 }
@@ -267,15 +235,15 @@ func (sg *defaultSufficeGenerator) String(suffixLength int) string {
 	return rand.String(suffixLength)
 }
 
-// ExecPodVolumeMode indicates whether to mount a dogu's PVC (which only makes sense when the dogu was already
+// PodVolumeMode indicates whether to mount a dogu's PVC (which only makes sense when the dogu was already
 // installed).
-type ExecPodVolumeMode int
+type PodVolumeMode int
 
 const (
-	// ExecPodVolumeModeInstall indicates to not mount a dogu's PVC.
-	ExecPodVolumeModeInstall ExecPodVolumeMode = iota
-	// ExecPodVolumeModeUpgrade indicates to mount a dogu's PVC.
-	ExecPodVolumeModeUpgrade
+	// PodVolumeModeInstall indicates to not mount a dogu's PVC.
+	PodVolumeModeInstall PodVolumeMode = iota
+	// PodVolumeModeUpgrade indicates to mount a dogu's PVC.
+	PodVolumeModeUpgrade
 )
 
 type defaultExecPodFactory struct {
@@ -296,7 +264,7 @@ func NewExecPodFactory(client client.Client, config *rest.Config, executor comma
 }
 
 // NewExecPod creates a new ExecPod during the operation run-time.
-func (epf *defaultExecPodFactory) NewExecPod(execPodFactoryMode ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error) {
+func (epf *defaultExecPodFactory) NewExecPod(execPodFactoryMode PodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error) {
 	podName := generatePodName(dogu, epf.suffixGen)
 	return NewExecPod(epf.client, epf.commandExecutor, execPodFactoryMode, doguResource, dogu, podName)
 }

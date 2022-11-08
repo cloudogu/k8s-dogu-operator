@@ -133,10 +133,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
 		/*
 			testDogu
-			+-m-> ☑ client1 (Client)
+			+-m-> ☑ client1 (client)
 			+-m-> ☑ package1 (Package)
 			+-m-> ☑ testDogu2 (Dogu)
-				  +-o-> ☑ client2 (Client)
+				  +-o-> ☑ client2 (client)
 				  +-o-> ☑ package2 (Package)
 				  +-m-> ☑ testDogu3 (Dogu)
 		*/

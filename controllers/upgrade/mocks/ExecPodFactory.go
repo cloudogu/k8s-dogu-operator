@@ -4,9 +4,8 @@ package mocks
 
 import (
 	core "github.com/cloudogu/cesapp-lib/core"
+	exec "github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	mock "github.com/stretchr/testify/mock"
-
-	util "github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
@@ -17,20 +16,20 @@ type ExecPodFactory struct {
 }
 
 // NewExecPod provides a mock function with given fields: execPodFactoryMode, doguResource, dogu
-func (_m *ExecPodFactory) NewExecPod(execPodFactoryMode util.ExecPodVolumeMode, doguResource *v1.Dogu, dogu *core.Dogu) (util.ExecPod, error) {
+func (_m *ExecPodFactory) NewExecPod(execPodFactoryMode exec.PodVolumeMode, doguResource *v1.Dogu, dogu *core.Dogu) (exec.ExecPod, error) {
 	ret := _m.Called(execPodFactoryMode, doguResource, dogu)
 
-	var r0 util.ExecPod
-	if rf, ok := ret.Get(0).(func(util.ExecPodVolumeMode, *v1.Dogu, *core.Dogu) util.ExecPod); ok {
+	var r0 exec.ExecPod
+	if rf, ok := ret.Get(0).(func(exec.PodVolumeMode, *v1.Dogu, *core.Dogu) exec.ExecPod); ok {
 		r0 = rf(execPodFactoryMode, doguResource, dogu)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(util.ExecPod)
+			r0 = ret.Get(0).(exec.ExecPod)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(util.ExecPodVolumeMode, *v1.Dogu, *core.Dogu) error); ok {
+	if rf, ok := ret.Get(1).(func(exec.PodVolumeMode, *v1.Dogu, *core.Dogu) error); ok {
 		r1 = rf(execPodFactoryMode, doguResource, dogu)
 	} else {
 		r1 = ret.Error(1)

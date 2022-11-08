@@ -3,13 +3,12 @@ package controllers
 import (
 	"context"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 )
 
 type installManager interface {
@@ -34,12 +33,12 @@ type supportManager interface {
 
 type fileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
-	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod util.ExecPod) (map[string]string, error)
+	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod exec.ExecPod) (map[string]string, error)
 }
 
 type execPodFactory interface {
-	// NewExecPod creates a new ExecPod.
-	NewExecPod(execPodFactoryMode util.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (util.ExecPod, error)
+	// NewExecPod creates a new ExecPodMock.
+	NewExecPod(execPodFactoryMode exec.PodVolumeMode, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (exec.ExecPod, error)
 }
 
 type doguSecretHandler interface {

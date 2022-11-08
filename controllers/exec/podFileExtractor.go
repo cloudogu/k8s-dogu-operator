@@ -1,12 +1,9 @@
-package controllers
+package exec
 
 import (
 	"context"
 	"fmt"
 	"strings"
-
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -22,7 +19,8 @@ type podFileExtractor struct {
 	clientSet kubernetes.Interface
 }
 
-func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clientSet kubernetes.Interface) *podFileExtractor {
+// NewPodFileExtractor creates a new pod file extractor that fetches files from a pod's container.
+func NewPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clientSet kubernetes.Interface) *podFileExtractor {
 	return &podFileExtractor{
 		k8sClient: k8sClient,
 		config:    restConfig,
@@ -32,10 +30,10 @@ func newPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clien
 
 // ExtractK8sResourcesFromContainer enumerates K8s resources and returns them in a map filename->content. The map will be
 // empty if there are no files.
-func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod util.ExecPod) (map[string]string, error) {
+func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod ExecPod) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 
-	lsCommand := resource.NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")
+	lsCommand := NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")
 	fileList, err := k8sExecPod.Exec(ctx, lsCommand)
 
 	logger.Info(fmt.Sprintf("ExecPod file list results in '%s'", fileList))
@@ -54,7 +52,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 		trimmedFile := doguCustomK8sResourceDirectory + strings.TrimSpace(file)
 		logger.Info("Reading k8s resource " + trimmedFile)
 
-		catCommand := resource.NewShellCommand("/bin/cat", trimmedFile)
+		catCommand := NewShellCommand("/bin/cat", trimmedFile)
 		fileContent, err := k8sExecPod.Exec(ctx, catCommand)
 		if err != nil {
 			return nil, err

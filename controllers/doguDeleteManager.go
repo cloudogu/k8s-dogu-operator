@@ -7,6 +7,7 @@ import (
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
@@ -39,7 +40,7 @@ func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry
 	if err != nil {
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
-	executor := resource.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
+	executor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
 
 	return &doguDeleteManager{
 		client:                client,

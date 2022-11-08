@@ -1,4 +1,4 @@
-package resource
+package exec
 
 import (
 	"bytes"
@@ -96,7 +96,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		clientSet := testclient.NewSimpleClientset(runningPod)
 		commandExecutor := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString(commandOutput)
 
 		// when
@@ -116,7 +116,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		clientSet := testclient.NewSimpleClientset(readyPod)
 		commandExecutor := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
@@ -133,7 +133,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset()
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, "")
@@ -151,7 +151,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		client := testclient.NewSimpleClientset(unreadyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, PodReady)
@@ -171,7 +171,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		client := testclient.NewSimpleClientset(notRunningPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, ContainersStarted)
@@ -191,7 +191,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		client := testclient.NewSimpleClientset(readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, PodReady)
@@ -209,7 +209,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		client := testclient.NewSimpleClientset(readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, PodReady)
@@ -264,7 +264,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 			Build()
 		clientSet := testclient.NewSimpleClientset(readyPod)
 		commandExecutor := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
@@ -280,7 +280,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset()
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForPod(ctx, readyPod, &ShellCommand{}, PodReady)
@@ -297,7 +297,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 			Build()
 		client := testclient.NewSimpleClientset(unreadyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForPod(ctx, unreadyPod, nil, PodReady)
@@ -311,7 +311,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeErrorInitNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForPod(ctx, readyPod, command, PodReady)
@@ -326,7 +326,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(readyPod)
 		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.CommandExecutorCreator = fakeErrorStreamNewSPDYExecutor
+		commandExecutor.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
 		_, err := commandExecutor.ExecCommandForPod(ctx, readyPod, command, PodReady)

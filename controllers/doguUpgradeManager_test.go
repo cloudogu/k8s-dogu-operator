@@ -115,6 +115,8 @@ func newTestDoguUpgradeManager(client client.Client, recorder record.EventRecord
 	}
 }
 
+const testNamespace = "test-namespace"
+
 func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie

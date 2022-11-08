@@ -12,12 +12,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -29,9 +29,9 @@ import (
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in the pod of a given dogu. The expectedStatus decides which state the
 	// pod must have in order to successfully execute the command.
-	ExecCommandForDogu(ctx context.Context, doguResource *v1.Dogu, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, doguResource *v1.Dogu, command *exec.ShellCommand, expectedStatus exec.PodStatus) (*bytes.Buffer, error)
 	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error)
+	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *exec.ShellCommand, expectedStatus exec.PodStatus) (*bytes.Buffer, error)
 }
 
 type localDoguFetcher interface {
@@ -145,8 +145,8 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
 
-	command := &resource.ShellCommand{Command: createCommand.Command, Args: args}
-	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, resource.PodReady)
+	command := &exec.ShellCommand{Command: createCommand.Command, Args: args}
+	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}

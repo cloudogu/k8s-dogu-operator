@@ -1,4 +1,4 @@
-package util
+package exec
 
 import (
 	"bytes"
@@ -14,8 +14,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	apiMocks "github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util/mocks"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -143,10 +141,10 @@ func Test_execPod_Exec(t *testing.T) {
 			WithScheme(getTestScheme()).
 			WithObjects(runningExecPod).
 			Build()
-		cmd := &resource.ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
-		mockExec := mocks.NewCommandExecutor(t)
+		cmd := &ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
+		mockExec := NewCommandExecutorMock(t)
 		outBuf := bytes.NewBufferString("")
-		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, resource.ContainersStarted).Return(outBuf, assert.AnError)
+		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, ContainersStarted).Return(outBuf, assert.AnError)
 		sut := &execPod{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
@@ -171,10 +169,10 @@ func Test_execPod_Exec(t *testing.T) {
 			WithScheme(getTestScheme()).
 			WithObjects(runningExecPod).
 			Build()
-		cmd := &resource.ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
-		mockExec := mocks.NewCommandExecutor(t)
+		cmd := &ShellCommand{Command: "/bin/ls", Args: []string{"-lahF"}}
+		mockExec := NewCommandExecutorMock(t)
 		outBuf := bytes.NewBufferString("possibly some output goes here")
-		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, resource.ContainersStarted).Return(outBuf, nil)
+		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, ContainersStarted).Return(outBuf, nil)
 		sut := &execPod{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
@@ -195,7 +193,7 @@ func Test_execPod_Exec(t *testing.T) {
 func Test_execPod_createVolumes(t *testing.T) {
 	t.Run("should return no volume resources for an install execPod", func(t *testing.T) {
 		// given
-		sut := &execPod{volumeMode: ExecPodVolumeModeInstall}
+		sut := &execPod{volumeMode: PodVolumeModeInstall}
 
 		// when
 		actualMounts, actualVolumes := sut.createVolumes(testCtx)
@@ -207,7 +205,7 @@ func Test_execPod_createVolumes(t *testing.T) {
 	t.Run("should return volume resources for an upgrade execPod", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
-		sut := &execPod{volumeMode: ExecPodVolumeModeUpgrade, doguResource: ldapDoguResource}
+		sut := &execPod{volumeMode: PodVolumeModeUpgrade, doguResource: ldapDoguResource}
 
 		// when
 		actualMounts, actualVolumes := sut.createVolumes(testCtx)
@@ -259,7 +257,7 @@ func Test_execPod_Delete(t *testing.T) {
 }
 
 func Test_generatePodName(t *testing.T) {
-	suffixGen := mocks.NewSuffixGenerator(t)
+	suffixGen := NewSuffixGeneratorMock(t)
 	suffixGen.On("String", 6).Return("abc123")
 	dogu := &core.Dogu{Name: "official/ldap"}
 
@@ -274,21 +272,21 @@ func TestNewExecPodFactory(t *testing.T) {
 }
 
 func Test_defaultExecPodFactory_NewExecPod(t *testing.T) {
-	suffixGen := mocks.NewSuffixGenerator(t)
+	suffixGen := NewSuffixGeneratorMock(t)
 	suffixGen.On("String", 6).Return("abc123")
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(getTestScheme()).
 		Build()
 	clientSet := fake2.NewSimpleClientset()
 	restConfig := &rest.Config{}
-	commandExecutor := resource.NewCommandExecutor(fakeClient, clientSet, clientSet.CoreV1().RESTClient())
+	commandExec := NewCommandExecutor(fakeClient, clientSet, clientSet.CoreV1().RESTClient())
 	dogu := &core.Dogu{Name: "official/ldap"}
 
-	sut := NewExecPodFactory(fakeClient, restConfig, commandExecutor)
+	sut := NewExecPodFactory(fakeClient, restConfig, commandExec)
 	sut.suffixGen = suffixGen
 
 	// when
-	pod, err := sut.NewExecPod(ExecPodVolumeModeInstall, nil, dogu)
+	pod, err := sut.NewExecPod(PodVolumeModeInstall, nil, dogu)
 
 	// then
 	require.NoError(t, err)

@@ -10,7 +10,7 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	resource "github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
@@ -21,11 +21,11 @@ type CommandExecutor struct {
 }
 
 // ExecCommandForDogu provides a mock function with given fields: ctx, _a1, command, expectedStatus
-func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, _a1 *v1.Dogu, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error) {
+func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, _a1 *v1.Dogu, command *exec.ShellCommand, expectedStatus exec.PodStatus) (*bytes.Buffer, error) {
 	ret := _m.Called(ctx, _a1, command, expectedStatus)
 
 	var r0 *bytes.Buffer
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, *resource.ShellCommand, resource.PodStatus) *bytes.Buffer); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, *exec.ShellCommand, exec.PodStatus) *bytes.Buffer); ok {
 		r0 = rf(ctx, _a1, command, expectedStatus)
 	} else {
 		if ret.Get(0) != nil {
@@ -34,7 +34,7 @@ func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, _a1 *v1.Dogu,
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *v1.Dogu, *resource.ShellCommand, resource.PodStatus) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.Dogu, *exec.ShellCommand, exec.PodStatus) error); ok {
 		r1 = rf(ctx, _a1, command, expectedStatus)
 	} else {
 		r1 = ret.Error(1)
@@ -44,11 +44,11 @@ func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, _a1 *v1.Dogu,
 }
 
 // ExecCommandForPod provides a mock function with given fields: ctx, pod, command, expectedStatus
-func (_m *CommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *resource.ShellCommand, expectedStatus resource.PodStatus) (*bytes.Buffer, error) {
+func (_m *CommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *exec.ShellCommand, expectedStatus exec.PodStatus) (*bytes.Buffer, error) {
 	ret := _m.Called(ctx, pod, command, expectedStatus)
 
 	var r0 *bytes.Buffer
-	if rf, ok := ret.Get(0).(func(context.Context, *corev1.Pod, *resource.ShellCommand, resource.PodStatus) *bytes.Buffer); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *corev1.Pod, *exec.ShellCommand, exec.PodStatus) *bytes.Buffer); ok {
 		r0 = rf(ctx, pod, command, expectedStatus)
 	} else {
 		if ret.Get(0) != nil {
@@ -57,7 +57,7 @@ func (_m *CommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Po
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *corev1.Pod, *resource.ShellCommand, resource.PodStatus) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *corev1.Pod, *exec.ShellCommand, exec.PodStatus) error); ok {
 		r1 = rf(ctx, pod, command, expectedStatus)
 	} else {
 		r1 = ret.Error(1)

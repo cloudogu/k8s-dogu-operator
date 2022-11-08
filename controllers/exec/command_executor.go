@@ -1,4 +1,4 @@
-package resource
+package exec
 
 import (
 	"bytes"
@@ -69,32 +69,32 @@ const (
 )
 
 // commandExecutor is the unit to execute commands in a dogu
-type commandExecutor struct {
-	Client                 client.Client
-	ClientSet              kubernetes.Interface
-	CoreV1RestClient       rest.Interface
-	CommandExecutorCreator func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error)
+type defaultCommandExecutor struct {
+	client                 client.Client
+	clientSet              kubernetes.Interface
+	coreV1RestClient       rest.Interface
+	commandExecutorCreator func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error)
 }
 
 // NewCommandExecutor creates a new instance of NewCommandExecutor
-func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) *commandExecutor {
-	return &commandExecutor{
-		Client:    cli,
-		ClientSet: clientSet,
+func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) *defaultCommandExecutor {
+	return &defaultCommandExecutor{
+		client:    cli,
+		clientSet: clientSet,
 		// the rest clientSet COULD be generated from the clientSet but makes harder to test, so we source it additionally
-		CoreV1RestClient:       coreV1RestClient,
-		CommandExecutorCreator: remotecommand.NewSPDYExecutor,
+		coreV1RestClient:       coreV1RestClient,
+		commandExecutorCreator: remotecommand.NewSPDYExecutor,
 	}
 }
 
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
-func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
+func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
 	logger := log.FromContext(ctx)
 	pod := &corev1.Pod{}
 	err := v1.OnErrorRetry(maxTries, v1.AlwaysRetryFunc, func() error {
 		var err error
-		pod, err = resource.GetPod(ctx, ce.Client)
+		pod, err = resource.GetPod(ctx, ce.client)
 		if err != nil {
 			logger.Info(fmt.Sprintf("Failed to get pod. Trying again: %s", err.Error()))
 			return err
@@ -110,14 +110,14 @@ func (ce *commandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.
 
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
 // identified by its pod name.
-func (ce *commandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
+func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
 	err := ce.waitForPodToHaveExpectedStatus(pod, expectedStatus)
 	if err != nil {
 		return nil, fmt.Errorf("an error occurred while waiting for pod %s to have status %s: %w", pod.Name, expectedStatus, err)
 	}
 
 	req := ce.getCreateExecRequest(pod, command)
-	exec, err := ce.CommandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
+	exec, err := ce.commandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
 		return nil, &stateError{
 			sourceError: fmt.Errorf("failed to create new spdy executor: %w", err),
@@ -128,7 +128,7 @@ func (ce *commandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Po
 	return ce.streamCommandToPod(ctx, exec, command, pod)
 }
 
-func (ce *commandExecutor) streamCommandToPod(
+func (ce *defaultCommandExecutor) streamCommandToPod(
 	ctx context.Context,
 	exec remotecommand.Executor,
 	command *ShellCommand,
@@ -164,7 +164,7 @@ func (ce *commandExecutor) streamCommandToPod(
 	return buffer, nil
 }
 
-func (ce *commandExecutor) waitForPodToHaveExpectedStatus(pod *corev1.Pod, expected PodStatus) error {
+func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(pod *corev1.Pod, expected PodStatus) error {
 	var err error
 	err = v1.OnErrorRetry(maxTries, func(err error) bool {
 		_, ok := err.(*unexpectedStatusError)
@@ -203,8 +203,8 @@ func podHasStatus(pod *corev1.Pod, expected PodStatus) error {
 	return &unexpectedStatusError{expected: expected}
 }
 
-func (ce *commandExecutor) getCreateExecRequest(pod *corev1.Pod, command *ShellCommand) *rest.Request {
-	return ce.CoreV1RestClient.Post().
+func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command *ShellCommand) *rest.Request {
+	return ce.coreV1RestClient.Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(pod.Namespace).
