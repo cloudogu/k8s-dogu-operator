@@ -295,3 +295,10 @@ func Test_requeueWithError(t *testing.T) {
 	assert.Empty(t, result)
 	assert.Same(t, assert.AnError, err)
 }
+
+func Test_operation_toString(t *testing.T) {
+	assert.Equal(t, "Install", Install.toString())
+	assert.Equal(t, "Upgrade", Upgrade.toString())
+	assert.Equal(t, "Delete", Delete.toString())
+	assert.Equal(t, "Ignore", Ignore.toString())
+}
