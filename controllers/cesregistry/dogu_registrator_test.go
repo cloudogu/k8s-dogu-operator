@@ -3,12 +3,10 @@ package cesregistry
 import (
 	"context"
 	_ "embed"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry/mocks"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -16,6 +14,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
 func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
@@ -76,7 +78,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to check if dogu is already installed and enabled")
+		assert.ErrorContains(t, err, "failed to check if dogu is already installed and enabled")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 
@@ -113,7 +115,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to register dogu")
+		assert.ErrorContains(t, err, "failed to register dogu")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 
@@ -134,7 +136,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to enable dogu")
+		assert.ErrorContains(t, err, "failed to enable dogu")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 
@@ -158,7 +160,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to get key provider")
+		assert.ErrorContains(t, err, "failed to get key provider")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, globalConfigMock)
 	})
 
@@ -185,7 +187,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to write")
+		assert.ErrorContains(t, err, "failed to write")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
 	})
 
@@ -215,7 +217,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to generate secret")
+		assert.ErrorContains(t, err, "failed to generate secret")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
 	})
 
@@ -244,7 +246,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create secret")
+		assert.ErrorContains(t, err, "failed to create secret")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
 	})
 }
@@ -289,7 +291,7 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to check if dogu is already installed and enabled")
+		assert.ErrorContains(t, err, "failed to check if dogu is already installed and enabled")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 }
@@ -334,7 +336,7 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to remove dogu config")
+		assert.ErrorContains(t, err, "failed to remove dogu config")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 
@@ -357,7 +359,7 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to unregister dogu")
+		assert.ErrorContains(t, err, "failed to unregister dogu")
 		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 }

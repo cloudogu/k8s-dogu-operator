@@ -187,7 +187,7 @@ func TestNewDoguManager(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, doguManager)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set default key provider")
+		assert.ErrorContains(t, err, "failed to set default key provider")
 		mock.AssertExpectationsForObjects(t, cesRegistry, globalConfig)
 	})
 }

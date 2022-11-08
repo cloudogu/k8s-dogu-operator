@@ -187,7 +187,7 @@ kind: DeploymentStrategy`
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "resource application failed for file aResourceYamlFile")
+		assert.ErrorContains(t, err, "resource application failed for file aResourceYamlFile")
 		assert.ErrorIs(t, err, assert.AnError)
 	})
 	t.Run("should fail with more than 1 deployments", func(t *testing.T) {
@@ -213,7 +213,7 @@ metadata:
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "expected exactly one Deployment but found 2 - not sure how to continue")
+		assert.ErrorContains(t, err, "expected exactly one Deployment but found 2 - not sure how to continue")
 	})
 	t.Run("should succeed without given resources being applied", func(t *testing.T) {
 		inputResource := make(map[string]string, 0)

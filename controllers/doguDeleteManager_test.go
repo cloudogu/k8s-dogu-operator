@@ -149,7 +149,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to update dogu status")
+		assert.ErrorContains(t, err, "failed to update dogu status")
 		managerWithMocks.AssertMocks(t)
 	})
 

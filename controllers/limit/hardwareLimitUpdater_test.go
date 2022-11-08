@@ -45,7 +45,7 @@ func TestNewHardwareLimitUpdater(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "parse \"http://etcd.(!)//=)!%(?=(.svc.cluster.local:4001\": invalid URL escape \"%(\"")
+		assert.ErrorContains(t, err, "parse \"http://etcd.(!)//=)!%(?=(.svc.cluster.local:4001\": invalid URL escape \"%(\"")
 		assert.Nil(t, updater)
 	})
 }
@@ -217,7 +217,7 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get installed dogus from the cluster: failed to list dogus in namespace")
+		assert.ErrorContains(t, err, "failed to get installed dogus from the cluster: failed to list dogus in namespace")
 	})
 
 	t.Run("trigger fail on retrieving dogu deployments", func(t *testing.T) {

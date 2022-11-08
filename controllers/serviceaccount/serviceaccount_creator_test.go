@@ -192,7 +192,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to check if service account already exists")
+		assert.ErrorContains(t, err, "failed to check if service account already exists")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry)
 	})
 	t.Run("service account already exists", func(t *testing.T) {
@@ -230,7 +230,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to check if dogu postgresql is enabled")
+		assert.ErrorContains(t, err, "failed to check if dogu postgresql is enabled")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
 	t.Run("service account is optional", func(t *testing.T) {
@@ -271,7 +271,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "service account dogu is not enabled and not optional")
+		assert.ErrorContains(t, err, "service account dogu is not enabled and not optional")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, registry)
 	})
 	t.Run("fail to get dogu.json from service account dogu", func(t *testing.T) {
@@ -299,7 +299,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to get service account dogu.json")
+		assert.ErrorContains(t, err, "failed to get service account dogu.json")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, localFetcher, registry)
 	})
 	t.Run("service account dogu does not expose service-account-create command", func(t *testing.T) {
@@ -327,7 +327,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "service account dogu postgresql does not expose service-account-create command")
+		assert.ErrorContains(t, err, "service account dogu postgresql does not expose service-account-create command")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, localFetcher, registry)
 	})
 	t.Run("fail to exec command", func(t *testing.T) {
@@ -361,7 +361,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to execute command")
+		assert.ErrorContains(t, err, "failed to execute command")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, localFetcher, registry, commandExecutorMock)
 	})
 	t.Run("fail on invalid executor output", func(t *testing.T) {
@@ -396,7 +396,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid output from service account command on dogu")
+		assert.ErrorContains(t, err, "invalid output from service account command on dogu")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, localFetcher, registry, commandExecutorMock)
 	})
 	t.Run("fail to get key_provider", func(t *testing.T) {
@@ -434,7 +434,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to get key provider")
+		assert.ErrorContains(t, err, "failed to get key provider")
 		mock.AssertExpectationsForObjects(t, doguConfig, globalConfig, doguRegistry, localFetcher, registry, commandExecutorMock)
 	})
 	t.Run("fail to create key_provider", func(t *testing.T) {
@@ -472,7 +472,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create keyprovider")
+		assert.ErrorContains(t, err, "failed to create keyprovider")
 		mock.AssertExpectationsForObjects(t, doguConfig, globalConfig, doguRegistry, localFetcher, registry, commandExecutorMock)
 	})
 	t.Run("fail to get dogu public key", func(t *testing.T) {
@@ -512,7 +512,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to get dogu public key")
+		assert.ErrorContains(t, err, "failed to get dogu public key")
 		mock.AssertExpectationsForObjects(t, doguConfig, globalConfig, doguRegistry, localFetcher, registry, commandExecutorMock)
 	})
 	t.Run("fail to read public key from string", func(t *testing.T) {
@@ -551,7 +551,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to read public key from string")
+		assert.ErrorContains(t, err, "failed to read public key from string")
 		mock.AssertExpectationsForObjects(t, doguConfig, globalConfig, doguRegistry, localFetcher, registry, commandExecutorMock)
 	})
 	t.Run("fail to set service account value", func(t *testing.T) {
@@ -593,7 +593,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set encrypted sa value of key")
+		assert.ErrorContains(t, err, "failed to set encrypted sa value of key")
 		mock.AssertExpectationsForObjects(t, doguConfig, globalConfig, doguRegistry, localFetcher, registry, commandExecutorMock)
 	})
 }

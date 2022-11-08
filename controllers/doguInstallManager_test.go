@@ -325,7 +325,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to write dogu secrets from setup")
+		assert.ErrorContains(t, err, "failed to write dogu secrets from setup")
 		managerWithMocks.AssertMocks(t)
 	})
 
@@ -351,7 +351,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to create service accounts")
+		assert.ErrorContains(t, err, "failed to create service accounts")
 		managerWithMocks.AssertMocks(t)
 	})
 
@@ -365,7 +365,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
+		assert.ErrorContains(t, err, "not found")
 		managerWithMocks.AssertMocks(t)
 	})
 
@@ -482,7 +482,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 			// then
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "failed to create dogu resources: failed to create resource(s) for dogu official/ldap")
+			assert.ErrorContains(t, err, "failed to create dogu resources: failed to create resource(s) for dogu official/ldap")
 			assert.ErrorIs(t, err, assert.AnError)
 			managerWithMocks.AssertMocks(t)
 		})

@@ -111,7 +111,7 @@ func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resour
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
 // identified by its pod name.
 func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error) {
-	err := ce.waitForPodToHaveExpectedStatus(pod, expectedStatus)
+	err := ce.waitForPodToHaveExpectedStatus(ctx, pod, expectedStatus)
 	if err != nil {
 		return nil, fmt.Errorf("an error occurred while waiting for pod %s to have status %s: %w", pod.Name, expectedStatus, err)
 	}
@@ -164,12 +164,16 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	return buffer, nil
 }
 
-func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(pod *corev1.Pod, expected PodStatus) error {
+func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(ctx context.Context, pod *corev1.Pod, expected PodStatus) error {
 	var err error
 	err = v1.OnErrorRetry(maxTries, func(err error) bool {
 		_, ok := err.(*unexpectedStatusError)
 		return ok
 	}, func() error {
+		pod, err = ce.clientSet.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
 		return podHasStatus(pod, expected)
 	})
 

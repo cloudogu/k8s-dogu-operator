@@ -155,7 +155,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to check if service account already exists")
+		assert.ErrorContains(t, err, "failed to check if service account already exists")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry)
 	})
 
@@ -198,7 +198,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to check if dogu postgresql is enabled")
+		assert.ErrorContains(t, err, "failed to check if dogu postgresql is enabled")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry, doguRegistry)
 	})
 
@@ -247,7 +247,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get service account dogu.json")
+		assert.ErrorContains(t, err, "failed to get service account dogu.json")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry, localFetcher, doguRegistry)
 	})
 
@@ -326,7 +326,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to execute service account remove command")
+		assert.ErrorContains(t, err, "failed to execute service account remove command")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry, doguRegistry, localFetcher, commandExecutorMock)
 	})
 
@@ -371,7 +371,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to remove service account from config")
+		assert.ErrorContains(t, err, "failed to remove service account from config")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry, doguRegistry, localFetcher, commandExecutorMock)
 	})
 }

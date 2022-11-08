@@ -173,7 +173,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get dogu descriptor of dogu ldap")
+		assert.ErrorContains(t, err, "failed to get dogu descriptor of dogu ldap")
 		sut.AssertMocks(t)
 	})
 
@@ -189,7 +189,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to update dogu deployment ldap")
+		assert.ErrorContains(t, err, "failed to update dogu deployment ldap")
 		sut.AssertMocks(t)
 	})
 }
@@ -232,7 +232,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get deployment of dogu ldap")
+		assert.ErrorContains(t, err, "failed to get deployment of dogu ldap")
 		sut.AssertMocks(t)
 	})
 
@@ -297,7 +297,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get dogu descriptor of dogu ldap")
+		assert.ErrorContains(t, err, "failed to get dogu descriptor of dogu ldap")
 		sut.AssertMocks(t)
 	})
 }

@@ -95,12 +95,12 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			WithObjects(doguResource, runningPod).
 			Build()
 		clientSet := testclient.NewSimpleClientset(runningPod)
-		commandExecutor := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
+		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString(commandOutput)
 
 		// when
-		buffer, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, ContainersStarted)
+		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, ContainersStarted)
 
 		// then
 		require.NoError(t, err)
@@ -115,12 +115,12 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			WithObjects(doguResource, readyPod).
 			Build()
 		clientSet := testclient.NewSimpleClientset(readyPod)
-		commandExecutor := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
+		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.NoError(t, err)
@@ -132,15 +132,15 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset()
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, "")
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, "")
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "found no pods for labels map[dogu.name:ldap dogu.version:2.4.48-4]")
+		assert.ErrorContains(t, err, "found no pods for labels map[dogu.name:ldap dogu.version:2.4.48-4]")
 	})
 
 	t.Run("pod is not ready", func(t *testing.T) {
@@ -150,11 +150,11 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			WithObjects(doguResource, unreadyPod).
 			Build()
 		client := testclient.NewSimpleClientset(unreadyPod)
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -170,11 +170,11 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			WithObjects(doguResource, notRunningPod).
 			Build()
 		client := testclient.NewSimpleClientset(notRunningPod)
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, nil, ContainersStarted)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, ContainersStarted)
 
 		// then
 		require.Error(t, err)
@@ -190,15 +190,15 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			WithObjects(doguResource, readyPod).
 			Build()
 		client := testclient.NewSimpleClientset(readyPod)
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create new spdy executor")
+		assert.ErrorContains(t, err, "failed to create new spdy executor")
 	})
 
 	t.Run("failed to exec stream", func(t *testing.T) {
@@ -208,15 +208,15 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			WithObjects(doguResource, readyPod).
 			Build()
 		client := testclient.NewSimpleClientset(readyPod)
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), assert.AnError.Error())
+		assert.ErrorContains(t, err, assert.AnError.Error())
 	})
 }
 
@@ -263,12 +263,12 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 			WithObjects(doguResource, readyPod).
 			Build()
 		clientSet := testclient.NewSimpleClientset(readyPod)
-		commandExecutor := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
+		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := commandExecutor.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		buffer, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
 
 		// then
 		require.NoError(t, err)
@@ -279,15 +279,15 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset()
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForPod(ctx, readyPod, &ShellCommand{}, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, &ShellCommand{}, PodReady)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `pods "ldap-xyz" not found`)
+		assert.ErrorContains(t, err, `pods "ldap-xyz" not found`)
 	})
 	t.Run("pod is not ready", func(t *testing.T) {
 		// given
@@ -296,44 +296,44 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 			WithObjects(doguResource, unreadyPod).
 			Build()
 		client := testclient.NewSimpleClientset(unreadyPod)
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForPod(ctx, unreadyPod, nil, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, unreadyPod, nil, PodReady)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "waited too long for pod ldap-xyz to have expected status ready")
+		assert.ErrorContains(t, err, "an error occurred while waiting for pod ldap-xyz to have status ready")
 	})
 	t.Run("failed to create spdy", func(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(readyPod)
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create new spdy executor")
+		assert.ErrorContains(t, err, "failed to create new spdy executor")
 	})
 
 	t.Run("failed to exec stream", func(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(readyPod)
-		commandExecutor := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		commandExecutor.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), assert.AnError.Error())
+		assert.ErrorContains(t, err, assert.AnError.Error())
 	})
 }
 

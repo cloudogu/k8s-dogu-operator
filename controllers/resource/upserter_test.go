@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	apiMocks "github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +15,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	apiMocks "github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 )
 
 func TestNewUpserter(t *testing.T) {
@@ -45,7 +46,7 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unsupported validation object (expected: PVC)")
+		assert.ErrorContains(t, err, "unsupported validation object (expected: PVC)")
 	})
 
 	t.Run("error on missing beta longhorn annotation", func(t *testing.T) {
@@ -63,7 +64,7 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "pvc for dogu [name] is not valid as annotation [volume.beta.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
+		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as annotation [volume.beta.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
 	})
 	t.Run("error on missing default longhorn annotation", func(t *testing.T) {
 		// given
@@ -83,7 +84,7 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "pvc for dogu [name] is not valid as annotation [volume.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
+		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as annotation [volume.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
 	})
 
 	t.Run("error on missing dogu label", func(t *testing.T) {
@@ -105,7 +106,7 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "pvc for dogu [name] is not valid as pvc does not contain label [dogu] with value [name]")
+		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as pvc does not contain label [dogu] with value [name]")
 	})
 
 	t.Run("error on missing dogu label", func(t *testing.T) {
@@ -129,7 +130,7 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "pvc for dogu [name] is not valid as pvc has invalid storage class: the storage class must be [longhorn]")
+		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as pvc has invalid storage class: the storage class must be [longhorn]")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -179,7 +180,7 @@ func Test_upserter_ApplyDoguResource(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to generate deployment")
+		assert.ErrorContains(t, err, "failed to generate deployment")
 		// mock assert happens during cleanup
 	})
 
@@ -204,7 +205,7 @@ func Test_upserter_ApplyDoguResource(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to generate service")
+		assert.ErrorContains(t, err, "failed to generate service")
 		// mock assert happens during cleanup
 	})
 
@@ -230,7 +231,7 @@ func Test_upserter_ApplyDoguResource(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to generate exposed services")
+		assert.ErrorContains(t, err, "failed to generate exposed services")
 		// mock assert happens during cleanup
 	})
 
@@ -257,7 +258,7 @@ func Test_upserter_ApplyDoguResource(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to generate pvc")
+		assert.ErrorContains(t, err, "failed to generate pvc")
 		// mock assert happens during cleanup
 	})
 
@@ -300,7 +301,7 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "upsert type must be a valid pointer to an K8s resource")
+		assert.ErrorContains(t, err, "upsert type must be a valid pointer to an K8s resource")
 	})
 	t.Run("should fail on incompatible input types", func(t *testing.T) {
 		// given
@@ -314,7 +315,7 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "incompatible types provided (*Deployment != *Service)")
+		assert.ErrorContains(t, err, "incompatible types provided (*Deployment != *Service)")
 	})
 	t.Run("update existing pcv when no controller reference is set and fail on validation", func(t *testing.T) {
 		// given
