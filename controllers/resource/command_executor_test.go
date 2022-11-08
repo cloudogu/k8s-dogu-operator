@@ -68,7 +68,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 	command := NewShellCommand("ls", "-l")
 	originalMaxTries := maxTries
 	defer func() { maxTries = originalMaxTries }()
-	maxTries = 2
+	maxTries = 1
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		return &fakeExecutor{method: method, url: url}, nil
@@ -158,7 +158,9 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "waited too long for pod ldap-xyz to have expected status ready")
+		assert.ErrorContains(t, err, "an error occurred while waiting for pod ldap-xyz to have status ready")
+		assert.ErrorContains(t, err, "the maximum number of retries was reached")
+		assert.ErrorContains(t, err, "expected status ready not fulfilled")
 	})
 
 	t.Run("pod is not running", func(t *testing.T) {
@@ -176,7 +178,9 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "waited too long for pod ldap-xyz to have expected status started")
+		assert.ErrorContains(t, err, "an error occurred while waiting for pod ldap-xyz to have status started")
+		assert.ErrorContains(t, err, "the maximum number of retries was reached")
+		assert.ErrorContains(t, err, "expected status started not fulfilled")
 	})
 
 	t.Run("failed to create spdy", func(t *testing.T) {
@@ -221,7 +225,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 	doguResource := readLdapDoguResource(t)
 	originalMaxTries := maxTries
 	defer func() { maxTries = originalMaxTries }()
-	maxTries = 2
+	maxTries = 1
 
 	readyPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
@@ -279,7 +283,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		commandExecutor.CommandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := commandExecutor.ExecCommandForPod(ctx, readyPod, nil, PodReady)
+		_, err := commandExecutor.ExecCommandForPod(ctx, readyPod, &ShellCommand{}, PodReady)
 
 		// then
 		require.Error(t, err)
