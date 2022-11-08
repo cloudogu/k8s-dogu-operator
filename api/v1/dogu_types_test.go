@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
 )
 
 var testDogu = &v1.Dogu{
@@ -161,4 +162,27 @@ func TestDogu_GetPrivateVolumeName(t *testing.T) {
 	actual := testDogu.GetPrivateVolumeName()
 
 	assert.Equal(t, "dogu-private", actual)
+}
+
+func TestCesMatchingLabels_Add(t *testing.T) {
+	t.Run("should add to empty object", func(t *testing.T) {
+		input := v1.CesMatchingLabels{"key": "value"}
+		// when
+		actual := v1.CesMatchingLabels{}.Add(input)
+
+		// then
+		require.NotEmpty(t, actual)
+		expected := v1.CesMatchingLabels{"key": "value"}
+		assert.Equal(t, expected, actual)
+	})
+	t.Run("should add to filed object", func(t *testing.T) {
+		input := v1.CesMatchingLabels{"key2": "value2"}
+		// when
+		actual := v1.CesMatchingLabels{"key": "value"}.Add(input)
+
+		// then
+		require.NotEmpty(t, actual)
+		expected := v1.CesMatchingLabels{"key": "value", "key2": "value2"}
+		assert.Equal(t, expected, actual)
+	})
 }

@@ -9,11 +9,11 @@ import (
 )
 
 // GetPodForLabels returns a pod for the given dogu labels. An error is returned if either no pod or more than one pod is found.
-func GetPodForLabels(ctx context.Context, cli client.Client, doguLabels client.MatchingLabels) (*v1.Pod, error) {
+func GetPodForLabels(ctx context.Context, cli client.Client, doguLabels CesMatchingLabels) (*v1.Pod, error) {
 	// note for future improvement:
 	// this pod's selection must be revised if dogus are horizontally scalable by adding more pods with the same image.
 	pods := &v1.PodList{}
-	err := cli.List(ctx, pods, doguLabels)
+	err := cli.List(ctx, pods, client.MatchingLabels(doguLabels))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pods: %w", err)
 	}

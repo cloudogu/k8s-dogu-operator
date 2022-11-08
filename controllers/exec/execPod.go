@@ -79,7 +79,8 @@ func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, container
 	image := ep.dogu.Image + ":" + ep.dogu.Version
 	// command is of no importance because the pod will be killed after success
 	doNothingCommand := []string{"/bin/sleep", "60"}
-	labels := map[string]string{"app": "ces", "dogu": containerName}
+	// set app name for completeness's sake so all generated resource can be selected (and possibly cleaned up) with our ces label.
+	appLabels := resource.GetAppLabel()
 
 	pullPolicy := corev1.PullIfNotPresent
 	if config.Stage == config.StageDevelopment {
@@ -93,7 +94,7 @@ func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, container
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        containerName,
 			Namespace:   k8sNamespace,
-			Labels:      labels,
+			Labels:      appLabels,
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{

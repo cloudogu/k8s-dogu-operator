@@ -90,6 +90,11 @@ func getTestScheme() *runtime.Scheme {
 		Version: "v1",
 		Kind:    "Pod",
 	}, &v1.Pod{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "PodList",
+	}, &v1.PodList{})
 
 	return scheme
 }

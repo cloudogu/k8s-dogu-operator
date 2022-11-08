@@ -1,6 +1,7 @@
 metadata:
   creationTimestamp: null
   labels:
+    app: ces
     dogu.name: ldap
     dogu.version: 2.4.48-4
 spec:

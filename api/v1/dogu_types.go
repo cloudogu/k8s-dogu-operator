@@ -188,16 +188,24 @@ func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus 
 }
 
 // GetPodLabels returns labels that select a pod being associated with this dogu.
-func (d *Dogu) GetPodLabels() client.MatchingLabels {
+func (d *Dogu) GetPodLabels() CesMatchingLabels {
 	return map[string]string{
 		DoguLabelName:    d.Name,
 		DoguLabelVersion: d.Spec.Version,
 	}
 }
 
+// GetDoguNameLabel returns labels that select any resource being associated with this dogu.
+func (d *Dogu) GetDoguNameLabel() CesMatchingLabels {
+	return map[string]string{
+		DoguLabelName: d.Name,
+	}
+}
+
 // GetPod returns a pod for this dogu. An error is returned if either no pod or more than one pod is found.
 func (d *Dogu) GetPod(ctx context.Context, cli client.Client) (*v1.Pod, error) {
-	return GetPodForLabels(ctx, cli, d.GetPodLabels())
+	labels := d.GetPodLabels()
+	return GetPodForLabels(ctx, cli, labels)
 }
 
 // +kubebuilder:object:root=true
@@ -231,4 +239,21 @@ func (ddm *DevelopmentDoguMap) DeleteFromCluster(ctx context.Context, client cli
 func (ddm *DevelopmentDoguMap) ToConfigMap() *v1.ConfigMap {
 	configMap := v1.ConfigMap(*ddm)
 	return &configMap
+}
+
+// CesMatchingLabels provides a convenient way to handle multiple labels for resource selection.
+type CesMatchingLabels client.MatchingLabels
+
+// Add takes the currently existing labels from this object and returns a sum of all provided labels as a new object.
+func (cml CesMatchingLabels) Add(moreLabels CesMatchingLabels) CesMatchingLabels {
+	result := CesMatchingLabels{}
+	for key, value := range cml {
+		result[key] = value
+	}
+
+	for key, value := range moreLabels {
+		result[key] = value
+	}
+
+	return result
 }
