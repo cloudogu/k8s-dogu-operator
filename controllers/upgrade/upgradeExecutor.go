@@ -29,7 +29,9 @@ const (
 	ErrorOnFailedUpgradeEventReason = "ErrUpgrade"
 )
 
-const upgradeFailureThreshold = int32(60)
+// upgradeStartupProbeFailureThresholdRetries contains the number of times how often a startup probe may fail. This
+// value will be multiplied with 10 seconds for each timeout so that f. i. 60 timeouts lead to a threshold of 10 minutes.
+const upgradeStartupProbeFailureThresholdRetries = int32(60)
 
 type upgradeExecutor struct {
 	client                client.Client
@@ -115,7 +117,6 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	// change startup probe timeout to 10 min
 	customDeployment = increaseStartupProbeTimeoutForUpdate(toDoguResource.Name, customDeployment)
 
 	ue.normalEventf(toDoguResource, "Updating dogu resources in the cluster...")
@@ -129,6 +130,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return fmt.Errorf("post-upgrade failed :%w", err)
 	}
 
+	ue.normalEventf(toDoguResource, "Reverting to original startup probe values...")
 	err = revertStartupProbeAfterUpdate(ctx, toDoguResource, toDogu, ue.client)
 	if err != nil {
 		return err
@@ -141,7 +143,7 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, customDeployment
 	container := corev1.Container{
 		Name: containerName,
 		StartupProbe: &corev1.Probe{
-			FailureThreshold: upgradeFailureThreshold,
+			FailureThreshold: upgradeStartupProbeFailureThresholdRetries,
 		},
 	}
 	if customDeployment == nil {
@@ -159,7 +161,7 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, customDeployment
 
 	for _, container := range customDeployment.Spec.Template.Spec.Containers {
 		if container.Name == containerName {
-			container.StartupProbe.FailureThreshold = upgradeFailureThreshold
+			container.StartupProbe.FailureThreshold = upgradeStartupProbeFailureThresholdRetries
 			return customDeployment
 		}
 	}
