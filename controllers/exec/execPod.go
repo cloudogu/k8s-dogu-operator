@@ -156,22 +156,22 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 	containerPodName := execPodKey.Name
 
 	err := retry.OnErrorRetry(maxTries, retry.TestableRetryFunc, func() error {
-		lePod, err := ep.getPod(ctx)
+		pod, err := ep.getPod(ctx)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again...", containerPodName))
 			return &retry.TestableRetrierError{Err: err}
 		}
 
-		leStatus := lePod.Status.Phase
-		switch leStatus {
+		podStatus := pod.Status.Phase
+		switch podStatus {
 		case corev1.PodRunning:
 			logger.Info("Found a ready exec pod " + containerPodName)
 			return nil
 		case corev1.PodFailed, corev1.PodSucceeded:
-			return fmt.Errorf("quitting dogu installation because exec pod %s failed with status %s or did not come up in time", containerPodName, leStatus)
+			return fmt.Errorf("quitting dogu installation because exec pod %s failed with status %s or did not come up in time", containerPodName, podStatus)
 		default:
-			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again...", containerPodName, leStatus))
-			return &retry.TestableRetrierError{Err: fmt.Errorf("found exec pod %s but with status phase %+v", containerPodName, leStatus)}
+			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again...", containerPodName, podStatus))
+			return &retry.TestableRetrierError{Err: fmt.Errorf("found exec pod %s but with status phase %+v", containerPodName, podStatus)}
 		}
 	})
 	if err != nil {
@@ -182,10 +182,10 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 }
 
 func (ep *execPod) getPod(ctx context.Context) (*corev1.Pod, error) {
-	lePod := &corev1.Pod{}
-	err := ep.client.Get(ctx, *ep.ObjectKey(), lePod)
+	pod := &corev1.Pod{}
+	err := ep.client.Get(ctx, *ep.ObjectKey(), pod)
 
-	return lePod, err
+	return pod, err
 }
 
 // Delete deletes the exec pod from the cluster.
