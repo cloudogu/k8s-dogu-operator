@@ -40,3 +40,18 @@ func Test_OnErrorRetry(t *testing.T) {
 		assert.ErrorIs(t, err, assert.AnError)
 	})
 }
+
+func TestTestableRetrierError(t *testing.T) {
+	sut := new(TestableRetrierError)
+	sut.Err = assert.AnError
+	require.Error(t, sut)
+	assert.ErrorContains(t, sut, assert.AnError.Error())
+}
+
+func Test_TestableRetryFunc(t *testing.T) {
+	assert.False(t, TestableRetryFunc(nil))
+	assert.False(t, TestableRetryFunc(assert.AnError))
+	retrierErr := new(TestableRetrierError)
+	retrierErr.Err = assert.AnError
+	assert.True(t, TestableRetryFunc(retrierErr))
+}
