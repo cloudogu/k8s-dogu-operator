@@ -380,7 +380,6 @@ func (ue *upgradeExecutor) applyPostUpgradeScript(ctx context.Context, toDoguRes
 
 func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *core.Dogu, postUpgradeCmd *core.ExposedCommand) error {
 	postUpgradeShellCmd := exec.NewShellCommand(postUpgradeCmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
-	// time.Sleep(time.Duration(60) * time.Second)
 
 	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource, postUpgradeShellCmd, exec.ContainersStarted)
 	if err != nil {
