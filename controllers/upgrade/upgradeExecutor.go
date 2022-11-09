@@ -255,10 +255,11 @@ func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier,
 }
 
 func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu, execPod exec.ExecPod) error {
-	preUpgradeScriptCmd := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
-	if preUpgradeScriptCmd == nil {
+	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
 		return nil
 	}
+
+	preUpgradeScriptCmd := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
 
 	ue.normalEventf(toDoguResource, "Copying optional pre-upgrade scripts...")
 	err := copyPreUpgradeScriptFromPodToPod(ctx, execPod, preUpgradeScriptCmd)
@@ -367,10 +368,11 @@ func getPodNameForFromDogu(ctx context.Context, cli client.Client, dogu *core.Do
 }
 
 func (ue *upgradeExecutor) applyPostUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
-	postUpgradeCmd := toDogu.GetExposedCommand(core.ExposedCommandPostUpgrade)
-	if postUpgradeCmd == nil {
+	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
 		return nil
 	}
+
+	postUpgradeCmd := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
 
 	ue.normalEventf(toDoguResource, "Applying optional post-upgrade scripts...")
 	return ue.executePostUpgradeScript(ctx, toDoguResource, fromDogu, postUpgradeCmd)
