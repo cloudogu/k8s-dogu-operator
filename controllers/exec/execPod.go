@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -154,11 +155,11 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 	execPodKey := ep.ObjectKey()
 	containerPodName := execPodKey.Name
 
-	err := k8sv1.OnErrorRetry(maxTries, k8sv1.TestableRetryFunc, func() error {
+	err := retry.OnErrorRetry(maxTries, retry.TestableRetryFunc, func() error {
 		lePod, err := ep.getPod(ctx)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again...", containerPodName))
-			return &k8sv1.TestableRetrierError{Err: err}
+			return &retry.TestableRetrierError{Err: err}
 		}
 
 		leStatus := lePod.Status.Phase
@@ -170,7 +171,7 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 			return fmt.Errorf("quitting dogu installation because exec pod %s failed with status %s or did not come up in time", containerPodName, leStatus)
 		default:
 			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again...", containerPodName, leStatus))
-			return &k8sv1.TestableRetrierError{Err: fmt.Errorf("found exec pod %s but with status phase %+v", containerPodName, leStatus)}
+			return &retry.TestableRetrierError{Err: fmt.Errorf("found exec pod %s but with status phase %+v", containerPodName, leStatus)}
 		}
 	})
 	if err != nil {

@@ -107,7 +107,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 
 	err = ue.applyPreUpgradeScript(ctx, toDoguResource, fromDogu, toDogu, execPod)
 	if err != nil {
-		return err
+		return fmt.Errorf("pre-upgrade failed :%w", err)
 	}
 
 	customDeployment, err := ue.applyCustomK8sScripts(ctx, toDoguResource, execPod)
@@ -126,7 +126,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 
 	err = ue.applyPostUpgradeScript(ctx, toDoguResource, fromDogu, toDogu)
 	if err != nil {
-		return err
+		return fmt.Errorf("post-upgrade failed :%w", err)
 	}
 
 	err = revertStartupProbeAfterUpdate(ctx, toDoguResource, toDogu, ue.client)

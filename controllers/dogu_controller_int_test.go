@@ -69,15 +69,17 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	// Upgrade testdata
 	upgradeNamespace := "upgrade"
-	upgradeLdapFromCr := readDoguCr(t, ldapCrBytes)
-	upgradeLdapFromCr.ResourceVersion = ""
-	upgradeLdapFromCr.Namespace = upgradeNamespace
-	upgradeLdapFromDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorBytes)
-	upgradeLdapFromDoguDescriptor.Name = upgradeNamespace + "/ldap"
-	upgradeLdapFromDoguLookupKey := types.NamespacedName{Name: upgradeLdapFromCr.Name, Namespace: upgradeNamespace}
 	upgradeLdapToDoguDescriptor := readDoguDescriptor(t, ldapUpgradeDoguDescriptorBytes)
 	upgradeLdapToDoguDescriptor.Name = upgradeNamespace + "/ldap"
 	ldapToVersion := upgradeLdapToDoguDescriptor.Version
+
+	upgradeLdapFromCr := readDoguCr(t, ldapCrBytes)
+	upgradeLdapFromCr.ResourceVersion = ""
+	upgradeLdapFromCr.Namespace = upgradeNamespace
+
+	upgradeLdapFromDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+	upgradeLdapFromDoguDescriptor.Name = upgradeNamespace + "/ldap"
+	upgradeLdapFromDoguLookupKey := types.NamespacedName{Name: upgradeLdapFromCr.Name, Namespace: upgradeNamespace}
 
 	Context("Handle dogu resource", func() {
 		It("Setup mocks and test data", func() {
@@ -336,11 +338,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
 
 		CommandExecutor.
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved"), exec.ContainersStarted).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/mkdir", "-p", "/"), exec.ContainersStarted).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh"), exec.ContainersStarted).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), exec.PodReady).Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, upgradeLdapFromCr, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), exec.ContainersStarted).Run(func(args mock.Arguments) {
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved"), exec.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/mkdir", "-p", "/"), exec.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh"), exec.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), exec.PodReady).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), exec.ContainersStarted).Once().Run(func(args mock.Arguments) {
 			defer GinkgoRecover()
 			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 60)
 			assertRessourceStatus(upgradeLdapFromDoguLookupKey, "upgrading")
@@ -393,23 +395,28 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			return err == nil
 		}()).To(BeTrue())
 
-		By("Update dogu crd with new version")
+		By("Update dogu resource with new version")
 		Expect(func() bool {
 			return getObjectFromCluster(ctx, installedLdapDoguCr, upgradeLdapFromDoguLookupKey)
 		}()).To(BeTrue())
+
+		upgradedLdapDoguCr := installedLdapDoguCr
+		oldPodLabels := upgradedLdapDoguCr.GetPodLabels()
 		Expect(func() bool {
-			installedLdapDoguCr.Spec.Version = ldapToVersion
-			err := k8sClient.Update(testCtx, installedLdapDoguCr)
+			upgradedLdapDoguCr.Spec.Version = ldapToVersion
+			err := k8sClient.Update(testCtx, upgradedLdapDoguCr)
 			return err == nil
 		}()).To(BeTrue())
 
+		// key take away: We must take all unmocked pod interactions in our own hands because here is no deployment controller
 		setExecPodRunning(ctx, "ldap")
+		createDoguPod(ctx, upgradedLdapDoguCr, oldPodLabels)
 
 		assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 3)
 
 		assertRessourceStatus(upgradeLdapFromDoguLookupKey, "installed")
 
-		deleteDoguCr(ctx, installedLdapDoguCr, upgradeLdapFromDoguLookupKey, true)
+		deleteDoguCr(ctx, upgradedLdapDoguCr, upgradeLdapFromDoguLookupKey, true)
 
 		Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
@@ -448,7 +455,7 @@ func assertNewDeploymentVersionWithStartupProbe(doguLookupKey types.NamespacedNa
 // setExecPodRunning can be necessary because the environment has no controllers to really start the pods,
 // therefore the dogu controller waits until timeout.
 func setExecPodRunning(ctx context.Context, doguName string) {
-	By("Simulate ExecPodMock is running")
+	By("Simulate ExecPod is running")
 	podList := &corev1.PodList{}
 
 	Eventually(func() bool {
@@ -468,6 +475,25 @@ func setExecPodRunning(ctx context.Context, doguName string) {
 		}
 		return false
 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+}
+
+// createDoguPod can be necessary because the environment has no controllers to really create the pods,
+// therefore the dogu controller waits until timeout.
+func createDoguPod(ctx context.Context, doguCr *k8sv1.Dogu, podLabels k8sv1.CesMatchingLabels) {
+	By("Simulate dogu pod creation by deployment controller")
+	doguPod := &corev1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      doguCr.Name,
+			Namespace: doguCr.Namespace,
+			Labels:    podLabels,
+		},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "asdf", Image: "ldap-image"}}},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning,
+			Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}},
+		},
+	}
+
+	Expect(k8sClient.Create(ctx, doguPod)).Should(Succeed())
 }
 
 func installDoguCr(ctx context.Context, doguCr *k8sv1.Dogu) {
