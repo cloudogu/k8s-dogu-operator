@@ -5,7 +5,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: nexus
+    dogu.name: nexus
     app: ces
 spec:
   name: official/nexus

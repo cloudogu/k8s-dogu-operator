@@ -1,6 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=0.13.0
+VERSION=0.14.0
 ## Image URL to use all building/pushing image targets
 IMAGE_DEV=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}:${VERSION}
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
@@ -59,7 +59,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: setup-etcd-port-forward
 setup-etcd-port-forward:
-	kubectl port-forward etcd-0 4001:2379 &
+	kubectl -n ${NAMESPACE} port-forward etcd-0 4001:2379 &
 
 .PHONY: template-stage
 template-stage:

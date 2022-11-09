@@ -2,20 +2,22 @@ package health
 
 import (
 	"context"
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"testing"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/coreos/etcd/client"
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/client/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
 
 const testNamespace = "test-namespace"
@@ -40,7 +42,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		testDeployment := createDeployment("ldap", 1, 1)
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
 
-		ldapResource := readTestDataPostgresqlCr(t)
+		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
 		sut := NewDoguChecker(myClient, localFetcher)
 
@@ -56,7 +58,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		testDeployment := createDeployment("ldap", 1, 0)
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
 
-		ldapResource := readTestDataPostgresqlCr(t)
+		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
 		sut := NewDoguChecker(myClient, localFetcher)
 
@@ -65,7 +67,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "dogu ldap appears unhealthy (desired replicas: 1, ready: 0)")
+		assert.ErrorContains(t, err, "dogu ldap appears unhealthy (desired replicas: 1, ready: 0)")
 		localFetcher.AssertExpectations(t)
 	})
 }
@@ -131,10 +133,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
 		/*
 			testDogu
-			+-m-> ☑ client1 (Client)
+			+-m-> ☑ client1 (client)
 			+-m-> ☑ package1 (Package)
 			+-m-> ☑ testDogu2 (Dogu)
-				  +-o-> ☑ client2 (Client)
+				  +-o-> ☑ client2 (client)
 				  +-o-> ☑ package2 (Package)
 				  +-m-> ☑ testDogu3 (Dogu)
 		*/
@@ -226,10 +228,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "3 errors occurred")
-		assert.Contains(t, err.Error(), "error getting registry key for postgresql")
-		assert.Contains(t, err.Error(), "dogu optional1 appears unhealthy")
-		assert.Contains(t, err.Error(), `dogu mandatory2 health check failed: deployments.apps "mandatory2" not found`)
+		assert.ErrorContains(t, err, "3 errors occurred")
+		assert.ErrorContains(t, err, "error getting registry key for postgresql")
+		assert.ErrorContains(t, err, "dogu optional1 appears unhealthy")
+		assert.ErrorContains(t, err, `dogu mandatory2 health check failed: deployments.apps "mandatory2" not found`)
 		localFetcher.AssertExpectations(t)
 	})
 
@@ -278,8 +280,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "error getting registry key for postgresql")
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "error getting registry key for postgresql")
 				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment does not exist", func(t *testing.T) {
@@ -326,9 +328,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "dogu postgresql health check failed")
-				assert.Contains(t, err.Error(), `deployments.apps "postgresql" not found`)
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "dogu postgresql health check failed")
+				assert.ErrorContains(t, err, `deployments.apps "postgresql" not found`)
 				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment is not ready", func(t *testing.T) {
@@ -374,8 +376,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "dogu postgresql appears unhealthy (desired replicas: 1, ready: 0)")
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "dogu postgresql appears unhealthy (desired replicas: 1, ready: 0)")
 				localFetcher.AssertExpectations(t)
 			})
 		})
@@ -425,8 +427,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "dogu optional1 appears unhealthy (desired replicas: 1, ready: 0)")
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "dogu optional1 appears unhealthy (desired replicas: 1, ready: 0)")
 				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should succeed when at least one optional dependency dogu is not installed", func(t *testing.T) {
@@ -511,9 +513,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "dogu postgresql health check failed")
-				assert.Contains(t, err.Error(), `deployments.apps "postgresql" not found`)
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "dogu postgresql health check failed")
+				assert.ErrorContains(t, err, `deployments.apps "postgresql" not found`)
 				localFetcher.AssertExpectations(t)
 			})
 		})
@@ -563,8 +565,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "error getting registry key for mandatory2")
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "error getting registry key for mandatory2")
 				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment does not exist", func(t *testing.T) {
@@ -612,9 +614,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "dogu mandatory2 health check failed")
-				assert.Contains(t, err.Error(), `deployments.apps "mandatory2" not found`)
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "dogu mandatory2 health check failed")
+				assert.ErrorContains(t, err, `deployments.apps "mandatory2" not found`)
 				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment is not ready", func(t *testing.T) {
@@ -660,8 +662,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "dogu mandatory2 appears unhealthy (desired replicas: 1, ready: 0)")
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "dogu mandatory2 appears unhealthy (desired replicas: 1, ready: 0)")
 				localFetcher.AssertExpectations(t)
 			})
 		})
@@ -709,8 +711,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "dogu optional2 appears unhealthy (desired replicas: 1, ready: 0)")
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "dogu optional2 appears unhealthy (desired replicas: 1, ready: 0)")
 				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should fail when at least one optional dependency dogu is installed but deployment does not exist", func(t *testing.T) {
@@ -756,9 +758,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// then
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "1 error occurred")
-				assert.Contains(t, err.Error(), "dogu optional2 health check failed")
-				assert.Contains(t, err.Error(), `deployments.apps "optional2" not found`)
+				assert.ErrorContains(t, err, "1 error occurred")
+				assert.ErrorContains(t, err, "dogu optional2 health check failed")
+				assert.ErrorContains(t, err, `deployments.apps "optional2" not found`)
 				localFetcher.AssertExpectations(t)
 			})
 			t.Run("should succeed when at least one optional dependency dogu is not installed", func(t *testing.T) {

@@ -7,12 +7,13 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
 	"github.com/google/go-containerregistry/pkg/crane"
 	craneRegistry "github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
 )
 
 func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
@@ -32,7 +33,7 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 		_, err := imageRegistry.PullImageConfig(context.Background(), "wrong url")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error pulling image")
+		assert.ErrorContains(t, err, "error pulling image")
 	})
 }
 

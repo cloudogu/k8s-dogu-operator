@@ -19,7 +19,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: postfix
+    dogu.name: postfix
     app: ces
 spec:
   name: official/postfix
@@ -54,7 +54,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: postfix
+    dogu.name: postfix
     app: ces
 spec:
   name: official/postfix

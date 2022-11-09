@@ -8,6 +8,7 @@ import (
 	cesreg "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -52,12 +53,12 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	}
 	collectApplier := resource.NewCollectApplier(applier)
 
-	fileExtractor := newPodFileExtractor(client, restConfig, clientSet)
+	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 
 	doguLocalRegistry := cesRegistry.DoguRegistry()
 
-	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
+	executor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
+	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor, client)
 
 	df := cesregistry.NewLocalDoguFetcher(doguLocalRegistry)
 	rdf := cesregistry.NewResourceDoguFetcher(client, doguRemoteRegistry)
@@ -68,12 +69,14 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(
 		client,
+		restConfig,
+		executor,
+		eventRecorder,
 		imageRegistry,
 		collectApplier,
 		fileExtractor,
 		serviceAccountCreator,
 		cesRegistry,
-		eventRecorder,
 	)
 
 	return &doguUpgradeManager{
@@ -118,7 +121,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	}
 
 	dum.normalEventf(doguResource, "Executing upgrade from %s to %s...", fromDogu.Version, toDogu.Version)
-	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, toDogu)
+	err = dum.upgradeExecutor.Upgrade(ctx, doguResource, fromDogu, toDogu)
 	if err != nil {
 		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
@@ -155,9 +158,9 @@ func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResou
 }
 
 func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv1.Dogu, msg string) {
-	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, upgrade.UpgradeEventReason, msg)
+	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, upgrade.EventReason, msg)
 }
 
 func (dum *doguUpgradeManager) normalEventf(doguResource *k8sv1.Dogu, msg string, msgArg ...interface{}) {
-	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, upgrade.UpgradeEventReason, msg, msgArg...)
+	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, upgrade.EventReason, msg, msgArg...)
 }

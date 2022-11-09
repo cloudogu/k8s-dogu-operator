@@ -34,8 +34,11 @@ var expectedCustomDeploymentBytes []byte
 //go:embed testdata/ldap_expectedDeployment_Development.yaml
 var expectedDeploymentDevelopBytes []byte
 
-//go:embed testdata/ldap_expectedPVC.yaml
-var expectedPVCBytes []byte
+//go:embed testdata/ldap_expectedDoguPVC.yaml
+var expectedDoguPVCBytes []byte
+
+//go:embed testdata/ldap_expectedReservedPVC.yaml
+var expectedReservedPVCBytes []byte
 
 //go:embed testdata/ldap_expectedSecret.yaml
 var expectedSecretBytes []byte
@@ -118,11 +121,23 @@ func readLdapDoguExpectedDevelopDeployment(t *testing.T) *appsv1.Deployment {
 	return data
 }
 
-func readLdapDoguExpectedPVC(t *testing.T) *v1.PersistentVolumeClaim {
+func readLdapDoguExpectedDoguPVC(t *testing.T) *v1.PersistentVolumeClaim {
 	t.Helper()
 
 	data := &v1.PersistentVolumeClaim{}
-	err := yaml.Unmarshal(expectedPVCBytes, data)
+	err := yaml.Unmarshal(expectedDoguPVCBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readLdapDoguExpectedReservedPVC(t *testing.T) interface{} {
+	t.Helper()
+
+	data := &v1.PersistentVolumeClaim{}
+	err := yaml.Unmarshal(expectedReservedPVCBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -209,6 +224,11 @@ func getTestScheme() *runtime.Scheme {
 		Version: "v1",
 		Kind:    "Pod",
 	}, &v1.Pod{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "PodList",
+	}, &v1.PodList{})
 
 	return scheme
 }

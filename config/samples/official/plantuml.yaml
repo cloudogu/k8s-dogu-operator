@@ -5,7 +5,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: plantuml
+    dogu.name: plantuml
     app: ces
 spec:
   name: official/plantuml

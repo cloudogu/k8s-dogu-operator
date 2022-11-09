@@ -1,15 +1,17 @@
 package limit
 
 import (
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
+
+	"github.com/cloudogu/cesapp-lib/registry/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
 func TestNewDoguDeploymentLimitPatcher(t *testing.T) {
@@ -158,7 +160,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "given deployment cannot be patched, no containers are defined, at least one container is required")
+		assert.ErrorContains(t, err, "given deployment cannot be patched, no containers are defined, at least one container is required")
 	})
 
 	t.Run("receives error when patching memory limits", func(t *testing.T) {
@@ -180,7 +182,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse memory request quantity")
+		assert.ErrorContains(t, err, "failed to parse memory request quantity")
 	})
 
 	t.Run("receives error when patching cpu limits", func(t *testing.T) {
@@ -202,7 +204,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse cpu request quantity")
+		assert.ErrorContains(t, err, "failed to parse cpu request quantity")
 	})
 
 	t.Run("receives error when patching storageEphemeral limits", func(t *testing.T) {
@@ -224,7 +226,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse storageEphemeral request quantity")
+		assert.ErrorContains(t, err, "failed to parse storageEphemeral request quantity")
 	})
 
 	t.Run("successful patch resources with one limit", func(t *testing.T) {

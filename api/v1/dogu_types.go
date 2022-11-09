@@ -23,6 +23,13 @@ const (
 	RequeueTimeMaxRequeueTime = time.Hour * 6
 )
 
+const (
+	// DoguLabelName is used to select a dogu pod by name.
+	DoguLabelName = "dogu.name"
+	// DoguLabelVersion is used to select a dogu pod by version.
+	DoguLabelVersion = "dogu.version"
+)
+
 // DoguSpec defines the desired state of a Dogu
 type DoguSpec struct {
 	// Name of the dogu (e.g. official/ldap)
@@ -121,6 +128,16 @@ func (d *Dogu) GetPrivateVolumeName() string {
 	return d.Name + "-private"
 }
 
+// GetReservedVolumeName returns the reserved (e.g. for upgrades) volume name for the dogu resource.
+func (d *Dogu) GetReservedVolumeName() string {
+	return d.Name + "-reserved"
+}
+
+// GetReservedPVCName returns the reserved (e.g. for upgrades) PVC name for the dogu resource.
+func (d *Dogu) GetReservedPVCName() string {
+	return d.Name + "-reserved"
+}
+
 // GetObjectKey returns the object key with the actual name and namespace from the dogu resource
 func (d *Dogu) GetObjectKey() client.ObjectKey {
 	return client.ObjectKey{
@@ -154,7 +171,7 @@ func (d *Dogu) GetObjectMeta() *metav1.ObjectMeta {
 	}
 }
 
-// Update removes all messages from the message log
+// Update updates the dogu's status property in the cluster state.
 func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	updateError := client.Status().Update(ctx, d)
 	if updateError != nil {
@@ -167,7 +184,28 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 // ChangeState changes the state of this dogu resource and applies it to the cluster state.
 func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
 	d.Status.Status = newStatus
-	return client.Status().Update(ctx, d)
+	return d.Update(ctx, client)
+}
+
+// GetPodLabels returns labels that select a pod being associated with this dogu.
+func (d *Dogu) GetPodLabels() CesMatchingLabels {
+	return map[string]string{
+		DoguLabelName:    d.Name,
+		DoguLabelVersion: d.Spec.Version,
+	}
+}
+
+// GetDoguNameLabel returns labels that select any resource being associated with this dogu.
+func (d *Dogu) GetDoguNameLabel() CesMatchingLabels {
+	return map[string]string{
+		DoguLabelName: d.Name,
+	}
+}
+
+// GetPod returns a pod for this dogu. An error is returned if either no pod or more than one pod is found.
+func (d *Dogu) GetPod(ctx context.Context, cli client.Client) (*v1.Pod, error) {
+	labels := d.GetPodLabels()
+	return GetPodForLabels(ctx, cli, labels)
 }
 
 // +kubebuilder:object:root=true
@@ -201,4 +239,21 @@ func (ddm *DevelopmentDoguMap) DeleteFromCluster(ctx context.Context, client cli
 func (ddm *DevelopmentDoguMap) ToConfigMap() *v1.ConfigMap {
 	configMap := v1.ConfigMap(*ddm)
 	return &configMap
+}
+
+// CesMatchingLabels provides a convenient way to handle multiple labels for resource selection.
+type CesMatchingLabels client.MatchingLabels
+
+// Add takes the currently existing labels from this object and returns a sum of all provided labels as a new object.
+func (cml CesMatchingLabels) Add(moreLabels CesMatchingLabels) CesMatchingLabels {
+	result := CesMatchingLabels{}
+	for key, value := range cml {
+		result[key] = value
+	}
+
+	for key, value := range moreLabels {
+		result[key] = value
+	}
+
+	return result
 }

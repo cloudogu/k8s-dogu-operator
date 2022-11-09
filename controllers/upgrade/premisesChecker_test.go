@@ -3,8 +3,9 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
 	"testing"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -91,7 +92,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "dogus must have the same name")
+		assert.ErrorContains(t, err, "dogus must have the same name")
 		// there is no assert.IsNoType() assertion so we test it by negative type assertion
 		_, ok := err.(*requeueablePremisesError)
 		assert.False(t, ok)

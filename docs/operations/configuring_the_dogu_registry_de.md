@@ -31,7 +31,8 @@ folgendermaßen angelegt werden:
 kubectl --namespace <cesNamespace> create secret generic k8s-dogu-operator-dogu-registry \
 --from-literal=endpoint="https://my-registry.com/api/v2" \
 --from-literal=username="myusername" \
---from-literal=password="mypassword"
+--from-literal=password="mypassword" \
+--from-literal=urlschema="default"
 ```
 
 Im Anschluss kann der `k8s-dogu-operator` wie gewohnt [installiert werden](installing_operator_into_cluster_de.md).

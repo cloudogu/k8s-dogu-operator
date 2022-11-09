@@ -2,8 +2,8 @@ metadata:
   creationTimestamp: null
   labels:
     app: ces
-    dogu: ldap
-  name: ldap
+    dogu.name: ldap
+  name: ldap-reserved
   namespace: ecosystem
   ownerReferences:
     - apiVersion: k8s.cloudogu.com/v1
@@ -17,5 +17,5 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 5Gi
+      storage: 10Mi
 status: { }

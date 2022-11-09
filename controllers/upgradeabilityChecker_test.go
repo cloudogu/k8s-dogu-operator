@@ -84,7 +84,7 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "could not check upgradeability of local dogu")
+		assert.ErrorContains(t, err, "could not check upgradeability of local dogu")
 	})
 	t.Run("should fails for unparsable toDogu Version", func(t *testing.T) {
 		// given
@@ -98,6 +98,6 @@ func Test_upgradeabilityChecker_Check(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "could not check upgradeability of remote dogu")
+		assert.ErrorContains(t, err, "could not check upgradeability of remote dogu")
 	})
 }

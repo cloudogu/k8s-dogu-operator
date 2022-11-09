@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -118,7 +119,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse major version")
+		assert.ErrorContains(t, err, "failed to parse major version")
 		localDoguFetcher.AssertExpectations(t)
 		recorder.AssertExpectations(t)
 		assert.Equal(t, Ignore, operation)
@@ -293,4 +294,11 @@ func Test_requeueWithError(t *testing.T) {
 
 	assert.Empty(t, result)
 	assert.Same(t, assert.AnError, err)
+}
+
+func Test_operation_toString(t *testing.T) {
+	assert.Equal(t, "Install", Install.toString())
+	assert.Equal(t, "Upgrade", Upgrade.toString())
+	assert.Equal(t, "Delete", Delete.toString())
+	assert.Equal(t, "Ignore", Ignore.toString())
 }

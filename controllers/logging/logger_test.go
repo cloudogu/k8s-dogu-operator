@@ -4,12 +4,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/logging/mocks"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/logging/mocks"
 )
 
 func TestConfigureLogger(t *testing.T) {
@@ -65,7 +66,7 @@ func TestConfigureLogger(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "value of log environment variable [LOG_LEVEL] is not a valid log level")
+		assert.ErrorContains(t, err, "value of log environment variable [LOG_LEVEL] is not a valid log level")
 	})
 }
 

@@ -5,21 +5,33 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+
 	"io"
 	"strings"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/cesapp/v5/config"
-	"github.com/cloudogu/cesapp/v5/keys"
-	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/keys"
+	"github.com/cloudogu/cesapp-lib/registry"
+
+	"github.com/pkg/errors"
 )
 
 // commandExecutor is used to execute command in a dogu
 type commandExecutor interface {
-	ExecCommand(ctx context.Context, targetDogu string, namespace string, command *core.ExposedCommand, params []string) (*bytes.Buffer, error)
+	// ExecCommandForDogu executes a command in the pod of a given dogu. The expectedStatus decides which state the
+	// pod must have in order to successfully execute the command.
+	ExecCommandForDogu(ctx context.Context, doguResource *v1.Dogu, command *exec.ShellCommand, expectedStatus exec.PodStatus) (*bytes.Buffer, error)
+	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
+	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *exec.ShellCommand, expectedStatus exec.PodStatus) (*bytes.Buffer, error)
 }
 
 type localDoguFetcher interface {
@@ -30,15 +42,17 @@ type localDoguFetcher interface {
 
 // creator is the unit to handle the creation of service accounts
 type creator struct {
+	client      client.Client
 	registry    registry.Registry
 	doguFetcher localDoguFetcher
 	executor    commandExecutor
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(registry registry.Registry, commandExecutor commandExecutor) *creator {
+func NewCreator(registry registry.Registry, commandExecutor commandExecutor, client client.Client) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &creator{
+		client:      client,
 		registry:    registry,
 		doguFetcher: localFetcher,
 		executor:    commandExecutor,
@@ -46,7 +60,7 @@ func NewCreator(registry registry.Registry, commandExecutor commandExecutor) *cr
 }
 
 // CreateAll creates all service accounts for a given dogu. Existing service accounts will be skipped.
-func (c *creator) CreateAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
+func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
@@ -83,7 +97,12 @@ func (c *creator) CreateAll(ctx context.Context, namespace string, dogu *core.Do
 			return fmt.Errorf("failed to get service account dogu.json: %w", err)
 		}
 
-		saCreds, err := c.executeCommand(ctx, dogu, saDogu, namespace, serviceAccount)
+		serviceAccountPod, err := getPodForServiceAccountDogu(ctx, c.client, saDogu)
+		if err != nil {
+			return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
+		}
+
+		saCreds, err := c.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
 		if err != nil {
 			return fmt.Errorf("failed to execute service account create command: %w", err)
 		}
@@ -95,6 +114,11 @@ func (c *creator) CreateAll(ctx context.Context, namespace string, dogu *core.Do
 	}
 
 	return nil
+}
+
+func getPodForServiceAccountDogu(ctx context.Context, client client.Client, saDogu *core.Dogu) (*corev1.Pod, error) {
+	versionlessDoguLabel := map[string]string{v1.DoguLabelName: saDogu.GetSimpleName()}
+	return v1.GetPodForLabels(ctx, client, versionlessDoguLabel)
 }
 
 func (c *creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguConfig registry.ConfigurationContext, credentials map[string]string) error {
@@ -111,8 +135,8 @@ func (c *creator) saveServiceAccount(serviceAccount core.ServiceAccount, doguCon
 	return nil
 }
 
-func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) (map[string]string, error) {
-	createCommand, err := getCommand(saDogu, "service-account-create")
+func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saPod *corev1.Pod, serviceAccount core.ServiceAccount) (map[string]string, error) {
+	createCommand, err := getExposedCommand(saDogu, "service-account-create")
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +145,8 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
 
-	buffer, err := c.executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, createCommand, args)
+	command := &exec.ShellCommand{Command: createCommand.Command, Args: args}
+	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}
@@ -139,7 +164,7 @@ func (c *creator) getPublicKey(doguConfig registry.ConfigurationContext) (*keys.
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key provider: %w", err)
 	}
-	keyProvider, err := keys.NewKeyProvider(config.Keys{Type: keyProviderStr})
+	keyProvider, err := keys.NewKeyProvider(keyProviderStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyprovider: %w", err)
 	}
@@ -173,18 +198,12 @@ func (c *creator) writeServiceAccounts(doguConfig registry.ConfigurationContext,
 	return nil
 }
 
-func getCommand(dogu *core.Dogu, command string) (*core.ExposedCommand, error) {
-	for _, cmd := range dogu.ExposedCommands {
-		if cmd.Name == command {
-			return &core.ExposedCommand{
-				Name:        cmd.Name,
-				Description: cmd.Description,
-				Command:     cmd.Command,
-			}, nil
-		}
+func getExposedCommand(dogu *core.Dogu, command string) (*core.ExposedCommand, error) {
+	if !dogu.HasExposedCommand(command) {
+		return nil, fmt.Errorf("service account dogu %s does not expose %s command", dogu.GetSimpleName(), command)
 	}
 
-	return nil, fmt.Errorf("service account dogu %s does not expose %s command", dogu.GetSimpleName(), command)
+	return dogu.GetExposedCommand(command), nil
 }
 
 func (c *creator) isOptionalServiceAccount(dogu *core.Dogu, sa string) bool {

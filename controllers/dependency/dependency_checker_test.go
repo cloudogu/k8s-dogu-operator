@@ -2,13 +2,15 @@ package dependency_test
 
 import (
 	"fmt"
-	"github.com/cloudogu/cesapp-lib/core"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
-	"testing"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 )
 
 type validatorCheckerSuccess struct {
@@ -66,7 +68,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		assert.True(t, checkerOne.called)
 		assert.True(t, checkerTwo.called)
 		assert.True(t, checkerThree.called)
-		assert.Contains(t, err.Error(), "some error")
+		assert.ErrorContains(t, err, "some error")
 	})
 }
 

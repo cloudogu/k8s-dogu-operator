@@ -49,6 +49,12 @@ spec:
               secretKeyRef:
                 name: k8s-dogu-operator-dogu-registry
                 key: password
+          - name: DOGU_REGISTRY_URLSCHEMA
+            valueFrom:
+              secretKeyRef:
+                name: k8s-dogu-operator-dogu-registry
+                key: urlschema
+                optional: true
           - name: DOCKER_REGISTRY
             valueFrom:
               secretKeyRef:

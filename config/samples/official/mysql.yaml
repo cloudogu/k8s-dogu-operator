@@ -5,7 +5,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: mysql
+    dogu.name: mysql
     app: ces
 spec:
   name: official/mysql

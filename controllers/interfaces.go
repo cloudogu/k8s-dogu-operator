@@ -3,10 +3,12 @@ package controllers
 import (
 	"context"
 
-	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
+
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 )
 
 type installManager interface {
@@ -31,7 +33,12 @@ type supportManager interface {
 
 type fileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
-	ExtractK8sResourcesFromContainer(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (map[string]string, error)
+	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod exec.ExecPod) (map[string]string, error)
+}
+
+type execPodFactory interface {
+	// NewExecPod creates a new ExecPod.
+	NewExecPod(execPodFactoryMode exec.PodVolumeMode, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (exec.ExecPod, error)
 }
 
 type doguSecretHandler interface {
@@ -61,12 +68,12 @@ type dependencyValidator interface {
 
 type serviceAccountCreator interface {
 	// CreateAll is used to create all necessary service accounts for the given dogu.
-	CreateAll(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
+	CreateAll(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
 type serviceAccountRemover interface {
 	// RemoveAll is used to remove all existing service accounts for the given dogu.
-	RemoveAll(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
+	RemoveAll(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
 type collectApplier interface {
@@ -98,5 +105,5 @@ type premisesChecker interface {
 
 type upgradeExecutor interface {
 	// Upgrade executes the actual dogu upgrade.
-	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *cesappcore.Dogu) error
+	Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
 }

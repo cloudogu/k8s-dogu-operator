@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -37,6 +38,7 @@ type doguResourceGenerator interface {
 	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error)
 	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*v1.Service, error)
 	CreateDoguPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
+	CreateReservedPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
 	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*v1.Service, error)
 }
 
@@ -70,7 +72,7 @@ func (u *upserter) ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Do
 		return err
 	}
 
-	err = u.upsertDoguPVC(ctx, doguResource)
+	err = u.upsertDoguPVCs(ctx, doguResource, dogu)
 	if err != nil {
 		return err
 	}
@@ -84,7 +86,7 @@ func (u *upserter) upsertDoguDeployment(ctx context.Context, doguResource *k8sv1
 		return fmt.Errorf("failed to generate deployment: %w", err)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}, newDeployment, noValidator)
+	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &appsv1.Deployment{}, newDeployment, noValidator)
 	if err != nil {
 		return err
 	}
@@ -98,7 +100,7 @@ func (u *upserter) upsertDoguService(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to generate service: %w", err)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.Service{}, newService, noValidator)
+	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newService, noValidator)
 	if err != nil {
 		return err
 	}
@@ -118,7 +120,7 @@ func (u *upserter) upsertDoguExposedServices(ctx context.Context, doguResource *
 	var collectedErrs error
 
 	for _, newExposedService := range newExposedServices {
-		err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.Service{}, newExposedService, noValidator)
+		err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newExposedService, noValidator)
 		if err != nil {
 			err2 := fmt.Errorf("failed to upsert exposed service %s: %w", newExposedService.ObjectMeta.Name, err)
 			collectedErrs = multierror.Append(collectedErrs, err2)
@@ -128,22 +130,45 @@ func (u *upserter) upsertDoguExposedServices(ctx context.Context, doguResource *
 	return collectedErrs
 }
 
-func (u *upserter) upsertDoguPVC(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	newPVC, err := u.generator.CreateDoguPVC(doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to generate pvc: %w", err)
+func (u *upserter) upsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+	if len(dogu.Volumes) > 0 {
+		newPVC, err := u.generator.CreateDoguPVC(doguResource)
+		if err != nil {
+			return fmt.Errorf("failed to generate pvc: %w", err)
+		}
+
+		err = u.upsertPVC(ctx, newPVC, doguResource)
+		if err != nil {
+			return err
+		}
 	}
 
-	existingPVC := &v1.PersistentVolumeClaim{}
+	newReservedPVC, err := u.generator.CreateReservedPVC(doguResource)
+	if err != nil {
+		return err
+	}
 
-	err = u.client.Get(ctx, doguResource.GetObjectKey(), existingPVC)
+	err = u.upsertPVC(ctx, newReservedPVC, doguResource)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv1.Dogu) error {
+	existingPVC := &v1.PersistentVolumeClaim{}
+	pvcObjectKey := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
+
+	err := u.client.Get(ctx, pvcObjectKey, existingPVC)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
+	objectKey := client.ObjectKey{Name: pvc.Name, Namespace: pvc.Namespace}
 	// Only create a PVC but do not update it (for now) because updating immutable PVCs is tough
 	if apierrors.IsNotFound(err) {
-		err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}, newPVC, &longhornPVCValidator{})
+		err = u.updateOrInsert(ctx, doguResource.Name, objectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
 		if err != nil {
 			return err
 		}
@@ -152,7 +177,8 @@ func (u *upserter) upsertDoguPVC(ctx context.Context, doguResource *k8sv1.Dogu) 
 	return nil
 }
 
-func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKey, resourceType client.Object, upsertResource client.Object, val resourceValidator) error {
+func (u *upserter) updateOrInsert(ctx context.Context, doguName string, objectKey client.ObjectKey,
+	resourceType client.Object, upsertResource client.Object, val resourceValidator) error {
 	if resourceType == nil {
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
 	}
@@ -174,7 +200,7 @@ func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKe
 	// it does not contain any useful metadata.
 	ownerRef := metav1.GetControllerOf(resourceType)
 	if ownerRef != nil && val != nil {
-		err = val.Validate(ctx, objectKey.Name, resourceType)
+		err = val.Validate(ctx, doguName, resourceType)
 		if err != nil {
 			return err
 		}

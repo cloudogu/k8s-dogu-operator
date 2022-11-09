@@ -7,10 +7,11 @@ import (
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
-	"k8s.io/apimachinery/pkg/runtime"
+
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,7 +24,6 @@ const finalizerName = "dogu-finalizer"
 // doguDeleteManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguDeleteManager struct {
 	client                client.Client
-	scheme                *runtime.Scheme
 	localDoguFetcher      localDoguFetcher
 	imageRegistry         imageRegistry
 	doguRegistrator       doguRegistrator
@@ -40,14 +40,13 @@ func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry
 	if err != nil {
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}
-	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
+	executor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
 
 	return &doguDeleteManager{
 		client:                client,
-		scheme:                client.Scheme(),
 		localDoguFetcher:      cesreg.NewLocalDoguFetcher(cesRegistry.DoguRegistry()),
 		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor),
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor, client),
 	}, nil
 }
 
@@ -68,7 +67,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 
 	if dogu != nil {
 		logger.Info("Delete service accounts...")
-		err = m.serviceAccountRemover.RemoveAll(ctx, doguResource.Namespace, dogu)
+		err = m.serviceAccountRemover.RemoveAll(ctx, dogu)
 		if err != nil {
 			logger.Error(err, "failed to remove service accounts")
 		}
