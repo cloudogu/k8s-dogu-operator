@@ -14,7 +14,7 @@ kind: Dogu
 metadata:
   name: my-dogu
   labels:
-    dogu: my-dogu
+    dogu.name: my-dogu
     app: ces
 spec:
   name: official/my-dogu
@@ -29,18 +29,23 @@ kind: Dogu
 metadata:
   name: my-dogu
   labels:
-    dogu: my-dogu
+    dogu.name: my-dogu
     app: ces
 spec:
   name: official/my-dogu
   version: 1.2.3-5
 ```
 
-## Pre-Upgrade-Skripte
+## Pre-Upgrade-Skript
 
 Für das Pre-Upgrade-Skript wird während des Upgrade-Prozesses ein Pod gestartet.
 Dieser verwendet das aktualisierte Image des Dogus und kopiert nur das Skript in den alten Container.
 Ein dafür vorgesehenes Volume wird bereits bei der Installation angelegt.
+
+## Post-Upgrade-Skript
+
+Das Post-Upgrade-Skript wird am Ende des Upgrade-Prozesses im neuen Dogu ausgeführt.  
+Danach ist das Upgrade abgeschlossen.
 
 ## Upgrade-Sonderfälle
 
