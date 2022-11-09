@@ -15,9 +15,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"testing"
+	"time"
 )
 
 func TestNewHardwareLimitUpdater(t *testing.T) {

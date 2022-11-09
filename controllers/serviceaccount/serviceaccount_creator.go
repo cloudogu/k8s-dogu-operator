@@ -10,9 +10,8 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -22,8 +21,8 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/keys"
 	"github.com/cloudogu/cesapp-lib/registry"
+
 	"github.com/pkg/errors"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // commandExecutor is used to execute command in a dogu

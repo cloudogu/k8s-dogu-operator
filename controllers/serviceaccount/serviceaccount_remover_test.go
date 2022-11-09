@@ -21,6 +21,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewRemover(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+
+		// when
+		result := NewRemover(registryMock, nil, nil)
+
+		// then
+		require.NotNil(t, result)
+	})
+}
+
 func TestRemover_RemoveServiceAccounts(t *testing.T) {
 	var postgresRemoveCmd core.ExposedCommand
 	for _, command := range postgresqlDescriptor.ExposedCommands {
@@ -248,6 +263,35 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get service account dogu.json")
+		mock.AssertExpectationsForObjects(t, doguConfig, registry, localFetcher, doguRegistry)
+	})
+
+	t.Run("failed to get service account producer pod", func(t *testing.T) {
+		// given
+		ctx := context.TODO()
+		doguConfig := &cesmocks.ConfigurationContext{}
+		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
+
+		doguRegistry := &cesmocks.DoguRegistry{}
+		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+
+		registry := &cesmocks.Registry{}
+		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
+		registry.Mock.On("DoguRegistry").Return(doguRegistry)
+
+		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		cliWithoutReadyPod := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			Build()
+		serviceAccountCreator := remover{client: cliWithoutReadyPod, registry: registry, doguFetcher: localFetcher}
+
+		// when
+		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "could not find service account producer pod postgresql")
 		mock.AssertExpectationsForObjects(t, doguConfig, registry, localFetcher, doguRegistry)
 	})
 

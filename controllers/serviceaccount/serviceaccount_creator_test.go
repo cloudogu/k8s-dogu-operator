@@ -113,6 +113,21 @@ func init() {
 	}
 }
 
+func TestNewCreator(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+
+		// when
+		result := NewCreator(registryMock, nil, nil)
+
+		// then
+		assert.NotNil(t, result)
+	})
+}
+
 func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	validPubKey := "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApbhnnaIIXCADt0V7UCM7\nZfBEhpEeB5LTlvISkPQ91g+l06/soWFD65ba0PcZbIeKFqr7vkMB0nDNxX1p8PGv\nVJdUmwdB7U/bQlnO6c1DoY10g29O7itDfk92RCKeU5Vks9uRQ5ayZMjxEuahg2BW\nua72wi3GCiwLa9FZxGIP3hcYB21O6PfpxXsQYR8o3HULgL1ppDpuLv4fk/+jD31Z\n9ACoWOg6upyyNUsiA3hS9Kn1p3scVgsIN2jSSpxW42NvMo6KQY1Zo0N4Aw/mqySd\n+zdKytLqFto1t0gCbTCFPNMIObhWYXmAe26+h1b1xUI8ymsrXklwJVn0I77j9MM1\nHQIDAQAB\n-----END PUBLIC KEY-----"
 	invalidPubKey := "-----BEGIN PUBLIC KEY-----\nHQIDAQAB\n-----END PUBLIC KEY-----"
@@ -302,6 +317,41 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to get service account dogu.json")
 		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, localFetcher, registry)
 	})
+
+	t.Run("fail to get service account producer pod", func(t *testing.T) {
+		// given
+		doguRegistry := &cesmocks.DoguRegistry{}
+		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+
+		doguConfig := &cesmocks.ConfigurationContext{}
+		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
+
+		registry := &cesmocks.Registry{}
+		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
+		registry.Mock.On("DoguRegistry").Return(doguRegistry)
+
+		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		cliWithoutReadyPod := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			Build()
+
+		serviceAccountCreator := creator{
+			client:      cliWithoutReadyPod,
+			registry:    registry,
+			doguFetcher: localFetcher,
+		}
+
+		// when
+		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "could not find service account producer pod postgresql")
+		mock.AssertExpectationsForObjects(t, doguConfig, doguRegistry, localFetcher, registry)
+
+	})
+
 	t.Run("service account dogu does not expose service-account-create command", func(t *testing.T) {
 		// given
 		doguRegistry := &cesmocks.DoguRegistry{}
@@ -648,4 +698,31 @@ func getTestScheme() *runtime.Scheme {
 	}, &v1.PodList{})
 
 	return scheme
+}
+
+func Test_creator_containsDependency(t *testing.T) {
+	t.Run("return false if dependency slice is nil", func(t *testing.T) {
+		// given
+		saCreator := &creator{}
+
+		// when
+		result := saCreator.containsDependency(nil, "test")
+
+		// then
+		require.False(t, result)
+	})
+}
+
+func Test_creator_isOptionalServiceAccount(t *testing.T) {
+	t.Run("should return false if sa is not in optional and mandatory dependencies", func(t *testing.T) {
+		// given
+		saCreator := &creator{}
+		dogu := &core.Dogu{}
+
+		// when
+		result := saCreator.isOptionalServiceAccount(dogu, "account")
+
+		// then
+		require.False(t, result)
+	})
 }
