@@ -171,7 +171,7 @@ func (d *Dogu) GetObjectMeta() *metav1.ObjectMeta {
 	}
 }
 
-// Update removes all messages from the message log
+// Update updates the dogu's status property in the cluster state.
 func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	updateError := client.Status().Update(ctx, d)
 	if updateError != nil {
@@ -184,7 +184,7 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 // ChangeState changes the state of this dogu resource and applies it to the cluster state.
 func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
 	d.Status.Status = newStatus
-	return client.Status().Update(ctx, d)
+	return d.Update(ctx, client)
 }
 
 // GetPodLabels returns labels that select a pod being associated with this dogu.
