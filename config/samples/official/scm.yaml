@@ -6,7 +6,6 @@ metadata:
     test: dev
   labels:
     dogu.name: scm
-    dogu.version: 2.38.1-1
     app: ces
 spec:
   name: testing/scm

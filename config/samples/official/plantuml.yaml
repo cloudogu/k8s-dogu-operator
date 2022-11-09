@@ -6,7 +6,6 @@ metadata:
     test: dev
   labels:
     dogu.name: plantuml
-    dogu.version: 2022.4-1
     app: ces
 spec:
   name: official/plantuml

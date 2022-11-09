@@ -6,7 +6,6 @@ metadata:
     test: dev
   labels:
     dogu.name: sonar
-    dogu.version: 8.9.8-2
     app: ces
 spec:
   name: official/sonar
