@@ -38,6 +38,7 @@ var (
 	copyCmd2       = exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
 	preUpgradeCmd  = exec.NewShellCommand("/pre-upgrade.sh", "4.2.3-10", "4.2.3-11")
 	postUpgradeCmd = exec.NewShellCommand("/post-upgrade.sh", "4.2.3-10", "4.2.3-11")
+	mockCmdOutput  = bytes.NewBufferString("")
 )
 
 func TestNewUpgradeExecutor(t *testing.T) {
@@ -116,10 +117,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -200,10 +201,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -283,9 +284,9 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, assert.AnError)
@@ -356,9 +357,9 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
@@ -438,9 +439,9 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString("ouch"), assert.AnError)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
@@ -1149,7 +1150,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
@@ -1189,8 +1190,8 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(bytes.NewBufferString("uhoh"), assert.AnError)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
@@ -1230,9 +1231,9 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(bytes.NewBufferString(""), nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
@@ -1307,7 +1308,7 @@ func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString(""), nil)
+		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
 		eventRecorder := mocks2.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
