@@ -20,9 +20,10 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/keys"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/cesapp/v5/config"
-	"github.com/cloudogu/cesapp/v5/keys"
+	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // commandExecutor is used to execute command in a dogu
@@ -164,7 +165,7 @@ func (c *creator) getPublicKey(doguConfig registry.ConfigurationContext) (*keys.
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key provider: %w", err)
 	}
-	keyProvider, err := keys.NewKeyProvider(config.Keys{Type: keyProviderStr})
+	keyProvider, err := keys.NewKeyProvider(keyProviderStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyprovider: %w", err)
 	}

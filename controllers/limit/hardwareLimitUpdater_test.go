@@ -2,14 +2,13 @@ package limit
 
 import (
 	"context"
-	"testing"
-	"time"
-
-	coreosclient "github.com/coreos/etcd/client"
+	"github.com/cloudogu/cesapp-lib/registry/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	coreosclient "go.etcd.io/etcd/client/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
