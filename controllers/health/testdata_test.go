@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
 //go:embed testdata/redmine-dogu.json
@@ -35,7 +36,7 @@ var optional1Bytes []byte
 //go:embed testdata/optional2-dogu.json
 var optional2Bytes []byte
 
-func readTestDataPostgresqlCr(t *testing.T) *corev1.Dogu {
+func readTestDataLdapCr(t *testing.T) *corev1.Dogu {
 	t.Helper()
 
 	ldapCr := &corev1.Dogu{}

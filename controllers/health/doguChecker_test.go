@@ -42,7 +42,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		testDeployment := createDeployment("ldap", 1, 1)
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
 
-		ldapResource := readTestDataPostgresqlCr(t)
+		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
 		sut := NewDoguChecker(myClient, localFetcher)
 
@@ -58,7 +58,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		testDeployment := createDeployment("ldap", 1, 0)
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
 
-		ldapResource := readTestDataPostgresqlCr(t)
+		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
 		sut := NewDoguChecker(myClient, localFetcher)
 
