@@ -6,7 +6,6 @@ metadata:
     test: dev
   labels:
     dogu.name: nexus
-    dogu.version: 3.40.1-2
     app: ces
 spec:
   name: official/nexus
