@@ -37,7 +37,7 @@ type fileExtractor interface {
 }
 
 type execPodFactory interface {
-	// NewExecPod creates a new ExecPodMock.
+	// NewExecPod creates a new ExecPod.
 	NewExecPod(execPodFactoryMode exec.PodVolumeMode, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (exec.ExecPod, error)
 }
 

@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -145,7 +145,7 @@ func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []c
 		}}
 		return volumeMounts, volumes
 	}
-	logger.Info("ExecPodMock is about to be created without volumes because of unexpected factory mode %d", ep.volumeMode)
+	logger.Info("ExecPod is about to be created without volumes because of unexpected factory mode %d", ep.volumeMode)
 	return nil, nil
 }
 
