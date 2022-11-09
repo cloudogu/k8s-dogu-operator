@@ -1,7 +1,9 @@
 metadata:
   creationTimestamp: null
   labels:
-    dogu: ldap
+    app: ces
+    dogu.name: ldap
+    dogu.version: 2.4.48-4
 spec:
   containers:
     - env:
@@ -21,7 +23,7 @@ spec:
           port: 389
         timeoutSeconds: 1
       name: ldap
-      resources: {}
+      resources: { }
       startupProbe:
         exec:
           command:

@@ -4,9 +4,10 @@
 # Allow only resources
 !go.*
 !api/**/*
-!controllers/
-!vendor/**/*
 !build/**/*
+!controllers/
 !hack/**/*.go
+!retry/
+!vendor/**/*
 !Makefile
 !.git/**/*

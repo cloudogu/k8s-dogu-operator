@@ -5,20 +5,21 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
 //go:embed testdata/redmine-dogu.json
 var redmineBytes []byte
 
-//go:embed testdata/postgresql-cr.yaml
-var postgresqlCrBytes []byte
+//go:embed testdata/ldap-cr.yaml
+var ldapCrBytes []byte
 
 //go:embed testdata/postgresql-dogu.json
 var postgresqlBytes []byte
@@ -35,16 +36,16 @@ var optional1Bytes []byte
 //go:embed testdata/optional2-dogu.json
 var optional2Bytes []byte
 
-func readTestDataPostgresqlCr(t *testing.T) *corev1.Dogu {
+func readTestDataLdapCr(t *testing.T) *corev1.Dogu {
 	t.Helper()
 
-	PostgresqlCr := &corev1.Dogu{}
-	err := yaml.Unmarshal(postgresqlCrBytes, PostgresqlCr)
+	ldapCr := &corev1.Dogu{}
+	err := yaml.Unmarshal(ldapCrBytes, ldapCr)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	return PostgresqlCr
+	return ldapCr
 }
 
 func readTestDataDogu(t *testing.T, doguBytes []byte) *core.Dogu {

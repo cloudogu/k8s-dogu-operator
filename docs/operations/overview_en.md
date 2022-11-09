@@ -113,7 +113,7 @@ kind: Dogu
 metadata:
   name: ldap
   labels:
-    dogu: ldap
+    dogu.name: ldap
     app: ces
 spec:
   name: official/ldap

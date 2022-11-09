@@ -2,12 +2,14 @@ package dependency_test
 
 import (
 	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestNewDoguDependencyValidator(t *testing.T) {
@@ -53,7 +55,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse")
+		assert.ErrorContains(t, err, "failed to parse")
 	})
 
 	t.Run("error on invalid mandatory dependency operator", func(t *testing.T) {
@@ -85,7 +87,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "An error occurred when comparing the versions")
+		assert.ErrorContains(t, err, "An error occurred when comparing the versions")
 	})
 
 	t.Run("error on invalid mandatory dependency", func(t *testing.T) {
@@ -117,7 +119,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "parsed Version does not fulfill version requirement of")
+		assert.ErrorContains(t, err, "parsed Version does not fulfill version requirement of")
 	})
 
 	t.Run("success on mandatory and optional dependency", func(t *testing.T) {

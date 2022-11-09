@@ -6,25 +6,29 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 
 	"github.com/hashicorp/go-multierror"
+	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 )
 
 // Remover removes a dogu's service account.
 type remover struct {
+	client      client.Client
 	registry    registry.Registry
 	doguFetcher localDoguFetcher
 	executor    commandExecutor
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(registry registry.Registry, commandExecutor commandExecutor) *remover {
+func NewRemover(registry registry.Registry, commandExecutor commandExecutor, client client.Client) *remover {
 	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &remover{
+		client:      client,
 		registry:    registry,
 		doguFetcher: localFetcher,
 		executor:    commandExecutor,
@@ -32,7 +36,7 @@ func NewRemover(registry registry.Registry, commandExecutor commandExecutor) *re
 }
 
 // RemoveAll removes all service accounts for a given dogu
-func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
+func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	var allProblems error
@@ -69,7 +73,12 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 			continue
 		}
 
-		err = r.executeCommand(ctx, dogu, saDogu, namespace, serviceAccount)
+		serviceAccountPod, err := getPodForServiceAccountDogu(ctx, r.client, saDogu)
+		if err != nil {
+			return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
+		}
+
+		err = r.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
 		if err != nil {
 			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to execute service account remove command: %w", err))
 			continue
@@ -85,7 +94,7 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 	return allProblems
 }
 
-func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) error {
+func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saPod *v1.Pod, serviceAccount core.ServiceAccount) error {
 	removeCommand, err := getExposedCommand(saDogu, "service-account-remove")
 	if err != nil {
 		return err
@@ -95,8 +104,8 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
 
-	command := &resource.ShellCommand{Command: removeCommand.Command, Args: args}
-	_, err = r.executor.ExecCommandForDogu(ctx, saDogu.GetSimpleName(), namespace, command)
+	command := &exec.ShellCommand{Command: removeCommand.Command, Args: args}
+	_, err = r.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}

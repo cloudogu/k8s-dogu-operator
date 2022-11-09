@@ -1,64 +1,31 @@
-package util
+package exec
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
-type ExecPod interface {
-	// Create adds a new exec pod to the cluster.
-	Create(ctx context.Context) error
-	// Delete deletes the exec pod from the cluster.
-	Delete(ctx context.Context) error
-	// PodName returns the name of the pod.
-	PodName() string
-	// ObjectKey returns the ExecPod's K8s object key.
-	ObjectKey() *client.ObjectKey
-	// Exec runs the provided command in this execPod
-	Exec(ctx context.Context, cmd *resource.ShellCommand) (out string, err error)
-}
-
-// maxTries controls the maximum number of waiting intervals between requesting an exec pod and its actual
-// instantiation. The waiting time linearly increases each iteration.
-var maxTries = 20
-
-type suffixGenerator interface {
-	// String returns a random suffix string with the given length
-	String(length int) string
-}
-
-// commandExecutor is used to execute command in a dogu
-type commandExecutor interface {
-	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, targetDogu string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
-	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, podName string, namespace string, command *resource.ShellCommand) (*bytes.Buffer, error)
-}
-
 // execPod provides features to handle files from a dogu image.
 type execPod struct {
 	client     client.Client
 	executor   commandExecutor
-	volumeMode ExecPodVolumeMode
+	volumeMode PodVolumeMode
 
 	doguResource *k8sv1.Dogu
 	dogu         *core.Dogu
@@ -67,13 +34,14 @@ type execPod struct {
 }
 
 // NewExecPod creates a new ExecPod that enables command execution towards a pod.
-func NewExecPod(client client.Client, restConfig *rest.Config, factoryMode ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu, podName string) (*execPod, error) {
-	clientSet, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return nil, err
-	}
-	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
-
+func NewExecPod(
+	client client.Client,
+	executor commandExecutor,
+	factoryMode PodVolumeMode,
+	doguResource *k8sv1.Dogu,
+	dogu *core.Dogu,
+	podName string,
+) (*execPod, error) {
 	return &execPod{
 		client:       client,
 		executor:     executor,
@@ -112,7 +80,8 @@ func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, container
 	image := ep.dogu.Image + ":" + ep.dogu.Version
 	// command is of no importance because the pod will be killed after success
 	doNothingCommand := []string{"/bin/sleep", "60"}
-	labels := map[string]string{"app": "ces", "dogu": containerName}
+	// set app name for completeness's sake so all generated resource can be selected (and possibly cleaned up) with our ces label.
+	appLabels := resource.GetAppLabel()
 
 	pullPolicy := corev1.PullIfNotPresent
 	if config.Stage == config.StageDevelopment {
@@ -126,7 +95,7 @@ func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, container
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        containerName,
 			Namespace:   k8sNamespace,
-			Labels:      labels,
+			Labels:      appLabels,
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
@@ -157,9 +126,9 @@ func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []c
 	logger := log.FromContext(ctx)
 
 	switch ep.volumeMode {
-	case ExecPodVolumeModeInstall:
+	case PodVolumeModeInstall:
 		return nil, nil
-	case ExecPodVolumeModeUpgrade:
+	case PodVolumeModeUpgrade:
 		volumeMounts := []corev1.VolumeMount{{
 			Name:      ep.doguResource.GetReservedVolumeName(),
 			ReadOnly:  false,
@@ -184,37 +153,39 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	execPodKey := ep.ObjectKey()
-
-	lePod := corev1.Pod{}
 	containerPodName := execPodKey.Name
 
-	for i := 1; i <= maxTries; i++ {
-		if i >= maxTries {
-			return fmt.Errorf("quitting dogu installation because exec pod %s could not be found", containerPodName)
-		}
-
-		err := ep.client.Get(ctx, *execPodKey, &lePod)
+	err := retry.OnErrorRetry(maxTries, retry.TestableRetryFunc, func() error {
+		pod, err := ep.getPod(ctx)
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again in %d second(s).", containerPodName, i))
-			sleep(i)
-			continue
+			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again...", containerPodName))
+			return &retry.TestableRetrierError{Err: err}
 		}
 
-		leStatus := lePod.Status.Phase
-		switch leStatus {
+		podStatus := pod.Status.Phase
+		switch podStatus {
 		case corev1.PodRunning:
 			logger.Info("Found a ready exec pod " + containerPodName)
 			return nil
 		case corev1.PodFailed, corev1.PodSucceeded:
-			return fmt.Errorf("quitting dogu installation because exec pod %s failed with status %s or did not come up in time", containerPodName, leStatus)
+			return fmt.Errorf("quitting dogu installation because exec pod %s failed with status %s or did not come up in time", containerPodName, podStatus)
 		default:
-			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again in %d second(s).", containerPodName, leStatus, i))
-			sleep(i)
-			continue
+			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again...", containerPodName, podStatus))
+			return &retry.TestableRetrierError{Err: fmt.Errorf("found exec pod %s but with status phase %+v", containerPodName, podStatus)}
 		}
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for exec pod %s to spawn: %w", containerPodName, err)
 	}
 
-	return fmt.Errorf("unexpected loop end while finding exec pod %s", containerPodName)
+	return nil
+}
+
+func (ep *execPod) getPod(ctx context.Context) (*corev1.Pod, error) {
+	pod := &corev1.Pod{}
+	err := ep.client.Get(ctx, *ep.ObjectKey(), pod)
+
+	return pod, err
 }
 
 // Delete deletes the exec pod from the cluster.
@@ -248,13 +219,15 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 }
 
 // Exec executes the given ShellCommand and returns any output to stdOut and stdErr.
-func (ep *execPod) Exec(ctx context.Context, cmd *resource.ShellCommand) (string, error) {
-	out, err := ep.executor.ExecCommandForPod(ctx, ep.podName, ep.doguResource.Namespace, cmd)
-	return out.String(), err
-}
+func (ep *execPod) Exec(ctx context.Context, cmd *ShellCommand) (string, error) {
+	pod, err := ep.getPod(ctx)
+	if err != nil {
+		return "", fmt.Errorf("could not get pod: %w", err)
+	}
 
-func sleep(sleepIntervalInSec int) {
-	time.Sleep(time.Duration(sleepIntervalInSec) * time.Second) // linear rising backoff
+	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, ContainersStarted)
+
+	return out.String(), err
 }
 
 type defaultSufficeGenerator struct{}
@@ -264,36 +237,38 @@ func (sg *defaultSufficeGenerator) String(suffixLength int) string {
 	return rand.String(suffixLength)
 }
 
-// ExecPodVolumeMode indicates whether to mount a dogu's PVC (which only makes sense when the dogu was already
+// PodVolumeMode indicates whether to mount a dogu's PVC (which only makes sense when the dogu was already
 // installed).
-type ExecPodVolumeMode int
+type PodVolumeMode int
 
 const (
-	// ExecPodVolumeModeInstall indicates to not mount a dogu's PVC.
-	ExecPodVolumeModeInstall ExecPodVolumeMode = iota
-	// ExecPodVolumeModeUpgrade indicates to mount a dogu's PVC.
-	ExecPodVolumeModeUpgrade
+	// PodVolumeModeInstall indicates to not mount a dogu's PVC.
+	PodVolumeModeInstall PodVolumeMode = iota
+	// PodVolumeModeUpgrade indicates to mount a dogu's PVC.
+	PodVolumeModeUpgrade
 )
 
 type defaultExecPodFactory struct {
-	client    client.Client
-	config    *rest.Config
-	suffixGen suffixGenerator
+	client          client.Client
+	config          *rest.Config
+	commandExecutor commandExecutor
+	suffixGen       suffixGenerator
 }
 
 // NewExecPodFactory creates a new ExecPodFactory.
-func NewExecPodFactory(client client.Client, config *rest.Config) *defaultExecPodFactory {
+func NewExecPodFactory(client client.Client, config *rest.Config, executor commandExecutor) *defaultExecPodFactory {
 	return &defaultExecPodFactory{
-		client:    client,
-		config:    config,
-		suffixGen: &defaultSufficeGenerator{},
+		client:          client,
+		config:          config,
+		commandExecutor: executor,
+		suffixGen:       &defaultSufficeGenerator{},
 	}
 }
 
 // NewExecPod creates a new ExecPod during the operation run-time.
-func (epf *defaultExecPodFactory) NewExecPod(execPodFactoryMode ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error) {
+func (epf *defaultExecPodFactory) NewExecPod(execPodFactoryMode PodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error) {
 	podName := generatePodName(dogu, epf.suffixGen)
-	return NewExecPod(epf.client, epf.config, execPodFactoryMode, doguResource, dogu, podName)
+	return NewExecPod(epf.client, epf.commandExecutor, execPodFactoryMode, doguResource, dogu, podName)
 }
 
 func generatePodName(dogu *core.Dogu, generator suffixGenerator) string {

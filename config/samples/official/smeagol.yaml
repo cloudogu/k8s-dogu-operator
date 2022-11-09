@@ -5,7 +5,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: smeagol
+    dogu.name: smeagol
     app: ces
 spec:
   name: official/smeagol

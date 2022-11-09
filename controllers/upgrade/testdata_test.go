@@ -17,8 +17,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const testNamespace = "test-namespace"
-
 //go:embed testdata/redmine-cr.yaml
 var redmineCrBytes []byte
 
@@ -101,6 +99,11 @@ func getTestScheme() *runtime.Scheme {
 		Version: "v1",
 		Kind:    "Pod",
 	}, &v1.Pod{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "PodList",
+	}, &v1.PodList{})
 
 	return scheme
 }

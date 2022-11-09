@@ -16,7 +16,7 @@ kind: Dogu
 metadata:
   name: my-dogu
   labels:
-    dogu: my-dogu
+    dogu.name: my-dogu
     app: ces
 spec:
   name: official/my-dogu
@@ -32,7 +32,7 @@ kind: Dogu
 metadata:
   name: my-dogu
   labels:
-    dogu: my-dogu
+    dogu.name: my-dogu
     app: ces
 spec:
   name: official/my-dogu

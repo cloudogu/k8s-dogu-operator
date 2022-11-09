@@ -1,7 +1,8 @@
 metadata:
   creationTimestamp: null
   labels:
-    dogu: ldap
+    app: ces
+    dogu.name: ldap
   name: ldap
   namespace: ecosystem
   ownerReferences:
@@ -14,14 +15,16 @@ metadata:
 spec:
   selector:
     matchLabels:
-      dogu: ldap
+      dogu.name: ldap
   strategy:
     type: Recreate
   template:
     metadata:
       creationTimestamp: null
       labels:
-        dogu: ldap
+        app: ces
+        dogu.name: ldap
+        dogu.version: 2.4.48-4
     spec:
       containers:
         - env:

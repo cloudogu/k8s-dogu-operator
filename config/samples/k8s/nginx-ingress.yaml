@@ -5,7 +5,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: nginx-ingress
+    dogu.name: nginx-ingress
     app: nginx-ingress
 spec:
   name: k8s/nginx-ingress

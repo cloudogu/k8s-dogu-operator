@@ -13,6 +13,7 @@ import (
 	reg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
@@ -71,7 +72,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
 	upserter := resource.NewUpserter(client, limitPatcher)
 
-	fileExtract := newPodFileExtractor(client, restConfig, clientSet)
+	fileExtract := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
@@ -85,8 +86,8 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	doguRegistrator := reg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
 
-	executor := resource.NewCommandExecutor(clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor)
+	executor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
+	serviceAccountCreator := serviceaccount.NewCreator(cesRegistry, executor, client)
 	collectApplier := resource.NewCollectApplier(applier)
 
 	return &doguInstallManager{
@@ -102,7 +103,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 		fileExtractor:         fileExtract,
 		collectApplier:        collectApplier,
 		resourceUpserter:      upserter,
-		execPodFactory:        util.NewExecPodFactory(client, restConfig),
+		execPodFactory:        exec.NewExecPodFactory(client, restConfig, executor),
 	}, nil
 }
 
@@ -156,7 +157,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 
 	logger.Info("Create service accounts...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
-	err = m.serviceAccountCreator.CreateAll(ctx, doguResource.Namespace, dogu)
+	err = m.serviceAccountCreator.CreateAll(ctx, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create service accounts: %w", err)
 	}
@@ -169,7 +170,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
-	anExecPod, err := m.execPodFactory.NewExecPod(util.ExecPodVolumeModeInstall, doguResource, dogu)
+	anExecPod, err := m.execPodFactory.NewExecPod(exec.PodVolumeModeInstall, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create ExecPod resource %s: %w", anExecPod.ObjectKey().Name, err)
 	}
@@ -228,7 +229,7 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	return nil
 }
 
-func deleteExecPod(ctx context.Context, execPod util.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
+func deleteExecPod(ctx context.Context, execPod exec.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
 	err := execPod.Delete(ctx)
 	if err != nil {
 		recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)

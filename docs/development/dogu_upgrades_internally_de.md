@@ -25,18 +25,24 @@ Es wurde auch überlegt, statt des ExecPod einen dauernd laufenden Sidecar zu ve
 aufgrund der damit einhergehenden Ressourcenverschwendung verworfen.
 
 ### ExecPod
-Upgrade Skripte kommen aus dem neuen Container und werden auf den alten Container angewandt.  
+Das Pre-Upgrade Skript kommt aus dem neuen Container und wird auf den alten Container angewandt.  
 Dafür startet der Dogu-Operator beim Upgrade einen ExecPod des neuen Dogus und kopiert das Skript in das _reserved_ Volume.  
 ExecPods benutzen das Image der neuen Dogu-Version, werden allerdings mit Sleep Infinity gestartet.
 
 ### _reserved_ Volume
 Jedes Dogu erhält bei der Installation ein _reserved_ Volume mit einem Persistent Volume Claim von 10 MiB Größe.  
 Der Name des Volumes und des Claims lautet `<dogu-name>-reserved`.  
-Aufgrund der limitierten Größe des Volumes sind Pre-Upgrade-Skripte in ihrer Größe auch limitiert.
+Aufgrund der limitierten Größe des Volumes ist das Pre-Upgrade-Skript in seiner Größe auch limitiert.
 
-### Ausführen der Pre-Upgrade-Skripte
-Aus dem _reserved_ Volume werden die Pre-Upgrade-Skripte dann im alten Container an den ursprünglichen Pfad kopiert.  
+### Ausführen des Pre-Upgrade-Skripts
+Aus dem _reserved_ Volume wird das Pre-Upgrade-Skript dann im alten Container an den ursprünglichen Pfad kopiert.  
 Dann werden diese durch den Dogu-Operator ausgeführt.
+
+## Post-Upgrade
+
+### Ausführen des Post-Upgrade-Skripts
+Der Dogu-Operator wartet bis alle Container des neuen Dogu Pods gestartet sind und startet dann das Post-Upgrade-Skript direkt im neuen Dogu-Pod.  
+Ein ExecPod ist im Gegensatz zum Pre-Upgrade nicht nötig, da das benötigte Skript im neuen Image vorhanden ist.
 
 ## Probes während und nach dem Upgrade
 Damit eventuell längere Startup Zeiten eines Dogus nach einem Upgrade abgefangen werden, wird nach einem Upgrade der

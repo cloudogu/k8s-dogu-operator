@@ -2,7 +2,6 @@ package resource
 
 import (
 	_ "embed"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/yaml"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -100,9 +98,6 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, deployment)
 
-		bytes, _ := yaml.Marshal(actualDeployment)
-		fmt.Println(string(bytes))
-
 		// then
 		require.NoError(t, err)
 		expectedCustomDeployment := readLdapDoguExpectedCustomDeployment(t)
@@ -145,7 +140,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
@@ -217,7 +212,7 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 	})
 }
 
@@ -265,7 +260,7 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 	})
 }
 
@@ -299,7 +294,7 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 	})
 }
 
@@ -333,7 +328,7 @@ func TestResourceGenerator_CreateReservedPVC(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 	})
 }
 
@@ -367,7 +362,7 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 	})
 }
 

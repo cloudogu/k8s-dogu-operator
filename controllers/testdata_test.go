@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -14,6 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
 //go:embed testdata/redmine-cr.yaml
@@ -39,9 +40,6 @@ var imageConfigBytes []byte
 
 //go:embed testdata/ldap_expectedPodTemplate_support_on.yaml
 var expectedPodTemplateSupportOnBytes []byte
-
-//go:embed testdata/ldap_expectedPodTemplate_support_off.yaml
-var expectedPodTemplateSupportOffBytes []byte
 
 func readDoguCr(t *testing.T, bytes []byte) *corev1.Dogu {
 	t.Helper()

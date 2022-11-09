@@ -24,18 +24,24 @@ We also considered using a continuously running sidecar instead of the ExecPod, 
 to the waste of resources it would entail.
 
 ### ExecPod
-Upgrade scripts come from the new container and are applied to the old container.  
+The pre-upgrade script comes from the new container and is applied to the old container.  
 To do this, the dogu operator starts an ExecPod of the new dogu during the upgrade and copies the script to the _reserved_ volume.  
 ExecPods use the image of the new Dogu version, but are started with Sleep Infinity.
 
 ### _reserved_ volume
 Each Dogu gets a _reserved_ volume with a persistent volume claim of 10 MiB size during installation.  
 The name of the volume and the claim is `<dogu-name>-reserved`.  
-Because of the limited size of the volume, pre-upgrade scripts are also limited in size.
+Because of the limited size of the volume, the pre-upgrade script is also limited in size.
 
-### Running the pre-upgrade scripts
-From the _reserved_ volume, the pre-upgrade scripts are then copied to the original path in the old container.  
+### Running the pre-upgrade script
+From the _reserved_ volume, the pre-upgrade script are then copied to the original path in the old container.  
 Then they are executed by the dogu operator.
+
+## Post-Upgrade
+
+### Running the post-upgrade script
+The Dogu operator waits until all containers of the new Dogu pod are started and then starts the post-upgrade script directly in the new Dogu pod.  
+An ExecPod is not necessary, unlike in pre-upgrade, because the required script is present in the new image.
 
 ## Probes during and after the upgrade
 In order to catch possible longer startup times of a dogu after an upgrade the

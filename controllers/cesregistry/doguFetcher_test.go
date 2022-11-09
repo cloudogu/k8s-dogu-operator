@@ -4,16 +4,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	mocks2 "github.com/cloudogu/cesapp-lib/registry/mocks"
-	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	mocks2 "github.com/cloudogu/cesapp-lib/registry/mocks"
+	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
 )
 
 var ctx = context.Background()
@@ -51,7 +52,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to get local dogu descriptor for redmine")
+		assert.ErrorContains(t, err, "failed to get local dogu descriptor for redmine")
 		mock.AssertExpectationsForObjects(t, localRegDoguContextMock)
 	})
 	t.Run("should return a dogu with K8s-CES compatible substitutes for an nginx dependency", func(t *testing.T) {
@@ -133,7 +134,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to get development dogu map: failed to get development dogu map for dogu redmine")
+		assert.ErrorContains(t, err, "failed to get development dogu map: failed to get development dogu map for dogu redmine")
 		mock.AssertExpectationsForObjects(t, client, remoteDoguRegistry)
 	})
 	t.Run("should fail on missing dogu development map and missing remote dogu", func(t *testing.T) {
@@ -153,7 +154,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to get dogu from remote or cache")
+		assert.ErrorContains(t, err, "failed to get dogu from remote or cache")
 		mock.AssertExpectationsForObjects(t, client, remoteDoguRegistry)
 	})
 	t.Run("should fetch dogu from dogu development map", func(t *testing.T) {
@@ -304,7 +305,7 @@ func Test_resourceDoguFetcher_getFromDevelopmentDoguMap(t *testing.T) {
 
 		// given
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unmarshal custom dogu descriptor")
+		assert.ErrorContains(t, err, "failed to unmarshal custom dogu descriptor")
 	})
 }
 
@@ -323,7 +324,7 @@ func Test_doguFetcher_getDoguFromRemoteRegistry(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to get dogu from remote dogu registry")
+		assert.ErrorContains(t, err, "failed to get dogu from remote dogu registry")
 		mock.AssertExpectationsForObjects(t, remoteDoguRegistry)
 	})
 }

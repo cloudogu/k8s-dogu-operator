@@ -43,7 +43,7 @@ func TestNewHardwareLimitUpdater(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "parse \"http://etcd.(!)//=)!%(?=(.svc.cluster.local:4001\": invalid URL escape \"%(\"")
+		assert.ErrorContains(t, err, "parse \"http://etcd.(!)//=)!%(?=(.svc.cluster.local:4001\": invalid URL escape \"%(\"")
 		assert.Nil(t, updater)
 	})
 }
@@ -100,28 +100,6 @@ func getTestDeployments() (*appsv1.Deployment, *appsv1.Deployment, *appsv1.Deplo
 }
 
 func Test_hardwareLimitUpdater_Start(t *testing.T) {
-	t.Run("run start and send done to context", func(t *testing.T) { // given
-		regMock := &mocks.Registry{}
-		watchContextMock := &mocks.WatchConfigurationContext{}
-		regMock.On("RootConfig").Return(watchContextMock, nil)
-		watchContextMock.On("Watch", mock.Anything, triggerSyncEtcdKeyFullPath, false, mock.Anything).Return()
-
-		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
-		hardwareUpdater := &hardwareLimitUpdater{
-			client:   clientMock,
-			registry: regMock,
-		}
-
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Millisecond*50)
-
-		// when
-		err := hardwareUpdater.Start(ctx)
-		cancelFunc()
-
-		// then
-		require.NoError(t, err)
-	})
-
 	t.Run("run start and send done to context", func(t *testing.T) { // given
 		regMock := &mocks.Registry{}
 		watchContextMock := &mocks.WatchConfigurationContext{}
@@ -237,7 +215,7 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get installed dogus from the cluster: failed to list dogus in namespace")
+		assert.ErrorContains(t, err, "failed to get installed dogus from the cluster: failed to list dogus in namespace")
 	})
 
 	t.Run("trigger fail on retrieving dogu deployments", func(t *testing.T) {

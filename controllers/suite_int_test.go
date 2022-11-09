@@ -6,12 +6,11 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -26,7 +25,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/onsi/ginkgo"
@@ -56,6 +54,7 @@ var (
 	ImageRegistryMock      *mocks.ImageRegistry
 	DoguRemoteRegistryMock *cesremotemocks.Registry
 	EtcdDoguRegistry       *cesmocks.DoguRegistry
+	CommandExecutor        = &mocks.CommandExecutor{}
 )
 
 const TimeoutInterval = time.Second * 10
@@ -169,7 +168,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
-	execPodFactory := util.NewExecPodFactory(k8sClient, cfg)
+	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutor)
 
 	installManager := &doguInstallManager{
 		client:                k8sClient,
@@ -200,8 +199,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	clientSet := fake.NewSimpleClientset()
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, cfg, clientSet, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, cfg, CommandExecutor, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,

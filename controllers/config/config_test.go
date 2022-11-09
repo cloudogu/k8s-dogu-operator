@@ -1,10 +1,11 @@
 package config
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewOperatorConfig(t *testing.T) {
@@ -35,7 +36,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get env var [NAMESPACE]: environment variable NAMESPACE must be set")
+		assert.ErrorContains(t, err, "failed to get env var [NAMESPACE]: environment variable NAMESPACE must be set")
 		assert.Nil(t, operatorConfig)
 	})
 
@@ -46,7 +47,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get env var [DOGU_REGISTRY_ENDPOINT]: environment variable DOGU_REGISTRY_ENDPOINT must be set")
+		assert.ErrorContains(t, err, "failed to get env var [DOGU_REGISTRY_ENDPOINT]: environment variable DOGU_REGISTRY_ENDPOINT must be set")
 		assert.Nil(t, operatorConfig)
 	})
 
@@ -57,7 +58,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get env var [DOGU_REGISTRY_USERNAME]: environment variable DOGU_REGISTRY_USERNAME must be set")
+		assert.ErrorContains(t, err, "failed to get env var [DOGU_REGISTRY_USERNAME]: environment variable DOGU_REGISTRY_USERNAME must be set")
 		assert.Nil(t, operatorConfig)
 	})
 
@@ -68,7 +69,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get env var [DOGU_REGISTRY_PASSWORD]: environment variable DOGU_REGISTRY_PASSWORD must be set")
+		assert.ErrorContains(t, err, "failed to get env var [DOGU_REGISTRY_PASSWORD]: environment variable DOGU_REGISTRY_PASSWORD must be set")
 		assert.Nil(t, operatorConfig)
 	})
 
@@ -80,7 +81,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get env var [DOCKER_REGISTRY]: environment variable DOCKER_REGISTRY must be set")
+		assert.ErrorContains(t, err, "failed to get env var [DOCKER_REGISTRY]: environment variable DOCKER_REGISTRY must be set")
 		assert.Nil(t, operatorConfig)
 	})
 

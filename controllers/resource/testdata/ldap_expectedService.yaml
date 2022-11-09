@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   labels:
     app: ces
-    dogu: ldap
+    dogu.name: ldap
   name: ldap
   namespace: ecosystem
   ownerReferences:
@@ -21,7 +21,7 @@ spec:
       protocol: TCP
       targetPort: 0
   selector:
-    dogu: ldap
+    dogu.name: ldap
   type: ClusterIP
 status:
   loadBalancer: { }

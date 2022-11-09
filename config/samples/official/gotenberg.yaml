@@ -5,7 +5,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: gotenberg
+    dogu.name: gotenberg
     app: ces
 spec:
   name: official/gotenberg

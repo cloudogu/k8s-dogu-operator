@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"os"
-	"path/filepath"
 	"sigs.k8s.io/yaml"
-	"strings"
-	"testing"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 )
 
 func getTestFileMap(t *testing.T) map[string]string {
@@ -109,7 +111,7 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "strconv.Atoi: parsing \"tcp\": invalid syntax")
+		assert.ErrorContains(t, err, "strconv.Atoi: parsing \"tcp\": invalid syntax")
 	})
 
 	t.Run("Annotating fails with invalid environment variable", func(t *testing.T) {
@@ -127,7 +129,7 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "environment variable [SERVICE_TAGS-invalidEnvironmentVariable] needs to be in form NAME=VALUE")
+		assert.ErrorContains(t, err, "environment variable [SERVICE_TAGS-invalidEnvironmentVariable] needs to be in form NAME=VALUE")
 	})
 
 	t.Run("Annotating fails with invalid json in additional services", func(t *testing.T) {
@@ -145,6 +147,6 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unmarshal additional services: invalid character '\\'' looking for beginning of value")
+		assert.ErrorContains(t, err, "failed to unmarshal additional services: invalid character '\\'' looking for beginning of value")
 	})
 }
