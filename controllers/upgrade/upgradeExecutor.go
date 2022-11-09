@@ -358,10 +358,10 @@ func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod 
 	return nil
 }
 
-func getPodNameForFromDogu(ctx context.Context, cli client.Client, dogu *core.Dogu) (*corev1.Pod, error) {
+func getPodNameForFromDogu(ctx context.Context, cli client.Client, fromDogu *core.Dogu) (*corev1.Pod, error) {
 	fromDoguLabels := map[string]string{
-		k8sv1.DoguLabelName:    dogu.GetSimpleName(),
-		k8sv1.DoguLabelVersion: dogu.Version,
+		k8sv1.DoguLabelName:    fromDogu.GetSimpleName(),
+		k8sv1.DoguLabelVersion: fromDogu.Version,
 	}
 
 	return k8sv1.GetPodForLabels(ctx, cli, fromDoguLabels)
