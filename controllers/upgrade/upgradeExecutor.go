@@ -368,11 +368,11 @@ func getPodNameForFromDogu(ctx context.Context, cli client.Client, fromDogu *cor
 }
 
 func (ue *upgradeExecutor) applyPostUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
-	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
+	if !toDogu.HasExposedCommand(core.ExposedCommandPostUpgrade) {
 		return nil
 	}
 
-	postUpgradeCmd := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
+	postUpgradeCmd := toDogu.GetExposedCommand(core.ExposedCommandPostUpgrade)
 
 	ue.normalEventf(toDoguResource, "Applying optional post-upgrade scripts...")
 	return ue.executePostUpgradeScript(ctx, toDoguResource, fromDogu, postUpgradeCmd)
