@@ -168,10 +168,7 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 
 func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(ctx context.Context, pod *corev1.Pod, expected PodStatus) error {
 	var err error
-	err = retry.OnErrorRetry(maxTries, func(err error) bool {
-		_, ok := err.(*unexpectedStatusError)
-		return ok
-	}, func() error {
+	err = retry.OnErrorRetry(maxTries, retry.TestableRetryFunc, func() error {
 		pod, err = ce.clientSet.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -180,14 +177,6 @@ func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(ctx context.Con
 	})
 
 	return err
-}
-
-type unexpectedStatusError struct {
-	expected PodStatus
-}
-
-func (u *unexpectedStatusError) Error() string {
-	return fmt.Sprintf("expected status %s not fulfilled", u.expected)
 }
 
 func podHasStatus(pod *corev1.Pod, expected PodStatus) error {
@@ -206,7 +195,7 @@ func podHasStatus(pod *corev1.Pod, expected PodStatus) error {
 		return fmt.Errorf("unsupported pod status: %s", expected)
 	}
 
-	return &unexpectedStatusError{expected: expected}
+	return &retry.TestableRetrierError{Err: fmt.Errorf("expected status %s not fulfilled", expected)}
 }
 
 func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command *ShellCommand) *rest.Request {
