@@ -3,9 +3,11 @@ package exec
 import (
 	"bytes"
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/errors"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 
 	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
@@ -393,7 +395,7 @@ func Test_execPod_Delete(t *testing.T) {
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to delete execPod "+podName)
 	})
-	t.Run("should succeed on on not found error", func(t *testing.T) {
+	t.Run("should succeed on not-found-error because target state is already reached", func(t *testing.T) {
 		// given
 		mockClient := apiMocks.NewClient(t)
 		mockClient.On("Delete", context.Background(), &corev1.Pod{}).Once().Return(
