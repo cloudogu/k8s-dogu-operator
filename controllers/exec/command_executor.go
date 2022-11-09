@@ -149,6 +149,7 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 			Tty:    false,
 		})
 		if err != nil {
+			// ignore this error and retry again instead since the container did not receive the command
 			if strings.Contains(err.Error(), "error dialing backend: EOF") {
 				logger.Error(err, fmt.Sprintf("Error executing '%s' in pod %s. Trying again.", command, pod.Name))
 			}

@@ -5,8 +5,6 @@ import (
 	_ "embed"
 	"testing"
 
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry/mocks"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -16,8 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
+
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry/mocks"
 )
 
 func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
