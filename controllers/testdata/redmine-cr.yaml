@@ -6,7 +6,6 @@ metadata:
     test: dev
   labels:
     dogu.name: redmine
-    dogu.version: 4.2.3-10
     app: ces
 spec:
   name: official/redmine
