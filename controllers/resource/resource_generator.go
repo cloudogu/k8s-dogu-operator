@@ -346,6 +346,7 @@ func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []core
 	return doguVolumeMounts
 }
 
+// GetAppLabel returns an app label which all CES resource may receive for general selection.
 func GetAppLabel() k8sv1.CesMatchingLabels {
 	return map[string]string{appLabelKey: appLabelValueCes}
 }
