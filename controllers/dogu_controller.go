@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -75,7 +76,7 @@ type doguReconciler struct {
 	doguManager        manager
 	doguRequeueHandler requeueHandler
 	recorder           record.EventRecorder
-	fetcher            localDoguFetcher
+	fetcher            internal.LocalDoguFetcher
 }
 
 // manager abstracts the simple dogu operations in a k8s CES.
@@ -311,7 +312,7 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 		r.doguManager.Upgrade)
 }
 
-func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher localDoguFetcher) (bool, error) {
+func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher internal.LocalDoguFetcher) (bool, error) {
 	fromDogu, err := fetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
 		return false, err

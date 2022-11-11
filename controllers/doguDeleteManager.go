@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	internal2 "github.com/cloudogu/k8s-dogu-operator/internal"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -24,11 +25,11 @@ const finalizerName = "dogu-finalizer"
 // doguDeleteManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguDeleteManager struct {
 	client                client.Client
-	localDoguFetcher      localDoguFetcher
-	imageRegistry         imageRegistry
-	doguRegistrator       doguRegistrator
-	serviceAccountRemover serviceAccountRemover
-	doguSecretHandler     doguSecretHandler
+	localDoguFetcher      internal2.LocalDoguFetcher
+	imageRegistry         internal2.ImageRegistry
+	doguRegistrator       internal2.DoguRegistrator
+	serviceAccountRemover internal2.ServiceAccountRemover
+	doguSecretHandler     internal2.DoguSecretHandler
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.

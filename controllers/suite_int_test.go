@@ -21,10 +21,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/onsi/ginkgo"
@@ -137,7 +136,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	CesRegistryMock.On("DoguConfig", mock.Anything).Return(doguConfigurationContext)
 	CesRegistryMock.On("GlobalConfig").Return(globalConfigurationContext)
 
-	limitPatcher := &resourceMocks.LimitPatcher{}
+	limitPatcher := &mocks.LimitPatcher{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher)
@@ -151,7 +150,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
 	serviceAccountRemover.On("RemoveAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	doguSecretHandler := &mocks.DoguSecretsHandler{}
+	doguSecretHandler := &mocks.DoguSecretHandler{}
 	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(k8sClient, CesRegistryMock, resourceGenerator)

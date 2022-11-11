@@ -10,7 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/logging/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
 func TestConfigureLogger(t *testing.T) {

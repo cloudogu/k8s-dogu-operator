@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -12,9 +13,8 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +53,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		doguRegistry := new(regmock.DoguRegistry)
 		mockRegistry := new(regmock.Registry)
 		mockRegistry.On("DoguRegistry").Return(doguRegistry, nil)
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		commandExecutor := mocks.NewCommandExecutor(t)
 
 		// when
@@ -110,17 +110,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		customK8sResource := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
 
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
 		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -131,7 +131,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(nil)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -145,7 +145,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Reverting to original startup probe values...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", exec.PodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", internal.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -195,17 +195,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		customK8sResource := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
 
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
 		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -216,7 +216,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(nil)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -230,7 +230,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Reverting to original startup probe values...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", exec.PodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", internal.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -279,22 +279,22 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
 
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
 		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, assert.AnError)
 		applier := mocks.NewCollectApplier(t)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -304,7 +304,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", exec.PodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", internal.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -352,16 +352,16 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
 
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
 		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
@@ -372,7 +372,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(assert.AnError)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -383,7 +383,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", exec.PodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", internal.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -434,17 +434,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		customK8sResource := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
 
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
 		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString("ouch"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, internal.ContainersStarted).Once().Return(bytes.NewBufferString("ouch"), assert.AnError)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -455,7 +455,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("ApplyDoguResource", testCtx, toDoguResource, toDogu, image, deployment).Return(nil)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -468,7 +468,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", exec.PodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", internal.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -518,19 +518,19 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
 
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
 		execPod.On("Exec", testCtx, copyCmd1).Once().Return("oh noez", assert.AnError)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", exec.PodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", internal.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -586,13 +586,13 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", exec.PodVolumeModeUpgrade, toDoguResource, toDogu).Return(nil, fmt.Errorf("could not create execPod: %w", assert.AnError))
+		execPodFactory.On("NewExecPod", internal.VolumeModeUpgrade, toDoguResource, toDogu).Return(nil, fmt.Errorf("could not create execPod: %w", assert.AnError))
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -645,13 +645,13 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		image := &imagev1.ConfigFile{Author: "Gerard du Testeaux"}
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
 
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(assert.AnError)
 
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -659,7 +659,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", exec.PodVolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", internal.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -708,7 +708,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once().
@@ -760,7 +760,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering optional service accounts...").Once()
@@ -810,7 +810,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Registering upgraded version %s in local dogu registry...", "4.2.3-11")
 
 		sut := &upgradeExecutor{
@@ -1059,7 +1059,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 	t.Run("should be successful if no pre-upgrade exposed command", func(t *testing.T) {
 		// given
 		toDoguResource := &k8sv1.Dogu{}
-		mockExecPod := exec.NewExecPodMock(t)
+		mockExecPod := mocks.NewExecPod(t)
 
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
@@ -1078,11 +1078,11 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		toDoguResource := &k8sv1.Dogu{}
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
-		mockExecPod := exec.NewExecPodMock(t)
+		mockExecPod := mocks.NewExecPod(t)
 		copy1 := exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
 		mockExecPod.On("Exec", testCtx, copy1).Once().Return("oopsie woopsie", assert.AnError)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once()
@@ -1108,14 +1108,14 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		toDogu.Version = redmineUpgradeVersion
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
-		mockExecPod := exec.NewExecPodMock(t)
+		mockExecPod := mocks.NewExecPod(t)
 		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.
@@ -1147,15 +1147,15 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		toDogu.Version = redmineUpgradeVersion
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
-		mockExecPod := exec.NewExecPodMock(t)
+		mockExecPod := mocks.NewExecPod(t)
 		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.
@@ -1187,16 +1187,16 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		toDogu.Version = redmineUpgradeVersion
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
-		mockExecPod := exec.NewExecPodMock(t)
+		mockExecPod := mocks.NewExecPod(t)
 		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(bytes.NewBufferString("uhoh"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(bytes.NewBufferString("uhoh"), assert.AnError)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.
@@ -1228,16 +1228,16 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		toDogu.Version = redmineUpgradeVersion
 		toDoguResource := readTestDataRedmineCr(t)
 		toDoguResource.Spec.Version = redmineUpgradeVersion
-		mockExecPod := exec.NewExecPodMock(t)
+		mockExecPod := mocks.NewExecPod(t)
 		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, exec.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.
@@ -1284,9 +1284,9 @@ func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
 		toDogu := readTestDataDogu(t, redmineBytes)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString("oof"), assert.AnError)
+		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, internal.ContainersStarted).Once().Return(bytes.NewBufferString("oof"), assert.AnError)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once()
@@ -1310,9 +1310,9 @@ func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
 		toDoguResource.Spec.Version = redmineUpgradeVersion
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil)
+		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
-		eventRecorder := mocks2.NewEventRecorder(t)
+		eventRecorder := mocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once()
@@ -1461,12 +1461,12 @@ func createTestDeploymentWithStartupProbe(containerName string, threshold int32)
 func Test_deleteExecPod(t *testing.T) {
 	t.Run("should throw event if delete fails", func(t *testing.T) {
 		// given
-		mockExecPod := exec.NewExecPodMock(t)
+		mockExecPod := mocks.NewExecPod(t)
 		mockExecPod.
 			On("Delete", testCtx).Once().Return(assert.AnError).
 			On("PodName").Once().Return("test-pod")
 
-		mockRecorder := mocks2.NewEventRecorder(t)
+		mockRecorder := mocks.NewEventRecorder(t)
 		mockRecorder.On("Eventf", &k8sv1.Dogu{}, corev1.EventTypeNormal, EventReason, "Failed to delete execPod %s: %w", "test-pod", assert.AnError).Once()
 
 		// when
@@ -1477,7 +1477,7 @@ func Test_deleteExecPod(t *testing.T) {
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		mockExecPod := exec.NewExecPodMock(t)
+		mockExecPod := mocks.NewExecPod(t)
 		mockExecPod.On("Delete", testCtx).Once().Return(nil)
 
 		// when

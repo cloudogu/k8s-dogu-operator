@@ -16,9 +16,8 @@ import (
 	regmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	controllermocks "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
 const namespace = "test"
@@ -27,7 +26,7 @@ type doguSupportManagerWithMocks struct {
 	supportManager   *doguSupportManager
 	doguRegistryMock *regmocks.DoguRegistry
 	k8sClient        client.WithWatch
-	recorderMock     *controllermocks.EventRecorder
+	recorderMock     *mocks.EventRecorder
 }
 
 func (d *doguSupportManagerWithMocks) AssertMocks(t *testing.T) {
@@ -40,12 +39,12 @@ func (d *doguSupportManagerWithMocks) AssertMocks(t *testing.T) {
 
 func getDoguSupportManagerWithMocks(scheme *runtime.Scheme) doguSupportManagerWithMocks {
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	limitPatcher := &resourceMocks.LimitPatcher{}
+	limitPatcher := &mocks.LimitPatcher{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher)
 	doguRegistry := &regmocks.DoguRegistry{}
-	eventRecorder := &controllermocks.EventRecorder{}
+	eventRecorder := &mocks.EventRecorder{}
 
 	doguSupportManager := &doguSupportManager{
 		client:            k8sClient,
@@ -68,7 +67,7 @@ func TestNewDoguSupportManager(t *testing.T) {
 	cesRegistry := &regmocks.Registry{}
 	doguRegistry := &regmocks.DoguRegistry{}
 	cesRegistry.On("DoguRegistry").Return(doguRegistry)
-	recorder := &controllermocks.EventRecorder{}
+	recorder := &mocks.EventRecorder{}
 
 	// when
 	manager := NewDoguSupportManager(k8sClient, cesRegistry, recorder)

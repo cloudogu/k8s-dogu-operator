@@ -1,14 +1,15 @@
 package controllers
 
 import (
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
@@ -99,12 +100,19 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.NotNil(t, actual)
-		assert.Implements(t, (*upgradeManager)(nil), actual)
+		assert.Implements(t, (*internal.UpgradeManager)(nil), actual)
 		mock.AssertExpectationsForObjects(t, doguRegistry, cesRegistry)
 	})
 }
 
-func newTestDoguUpgradeManager(client client.Client, recorder record.EventRecorder, ldf localDoguFetcher, rdf resourceDoguFetcher, pc premisesChecker, ue upgradeExecutor) *doguUpgradeManager {
+func newTestDoguUpgradeManager(
+	client client.Client,
+	recorder record.EventRecorder,
+	ldf internal.LocalDoguFetcher,
+	rdf internal.ResourceDoguFetcher,
+	pc internal.PremisesChecker,
+	ue internal.UpgradeExecutor,
+) *doguUpgradeManager {
 	return &doguUpgradeManager{
 		client:              client,
 		eventRecorder:       recorder,

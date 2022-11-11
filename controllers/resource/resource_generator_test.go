@@ -14,17 +14,16 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
-
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
 func getResourceGenerator(t *testing.T) *resourceGenerator {
 	t.Helper()
 
-	patcher := &mocks2.LimitPatcher{}
+	patcher := &mocks.LimitPatcher{}
 	patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(limit.DoguLimits{}, nil)
 	patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 
@@ -36,7 +35,7 @@ func getResourceGenerator(t *testing.T) *resourceGenerator {
 
 func TestNewResourceGenerator(t *testing.T) {
 	// given
-	registry := &mocks.Registry{}
+	registry := &cesmocks.Registry{}
 
 	// when
 	generator := NewResourceGenerator(getTestScheme(), limit.NewDoguDeploymentLimitPatcher(registry))
@@ -149,7 +148,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		generatorFail := getResourceGenerator(t)
-		patcher := &mocks2.LimitPatcher{}
+		patcher := &mocks.LimitPatcher{}
 		patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, assert.AnError)
 		generatorFail.doguLimitPatcher = patcher
 
@@ -166,7 +165,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		generatorFail := getResourceGenerator(t)
-		patcher := &mocks2.LimitPatcher{}
+		patcher := &mocks.LimitPatcher{}
 		patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
 		generatorFail.doguLimitPatcher = patcher

@@ -14,7 +14,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	mocks2 "github.com/cloudogu/cesapp-lib/registry/mocks"
 	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
 var ctx = context.Background()

@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/api/v1/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
 var testDogu = &v1.Dogu{
