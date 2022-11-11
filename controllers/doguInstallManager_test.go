@@ -189,7 +189,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 

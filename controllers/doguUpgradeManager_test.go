@@ -159,7 +159,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		upgradeExec := mocks.NewUpgradeExecutor(t)
-		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguUpgrade).Return(nil)
+		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		deplRedmine := createReadyDeployment("redmine")
 		deplPostgres := createReadyDeployment("postgresql")
@@ -214,7 +214,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		upgradeExec := mocks.NewUpgradeExecutor(t)
-		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguUpgrade).Return(nil)
+		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		deplRedmine := createReadyDeployment("redmine")
 		deplPostgres := createReadyDeployment("postgresql")
@@ -268,7 +268,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		upgradeExec := mocks.NewUpgradeExecutor(t)
-		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguUpgrade).Return(assert.AnError)
+		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(assert.AnError)
 
 		deplRedmine := createReadyDeployment("redmine")
 		deplPostgres := createReadyDeployment("postgresql")
