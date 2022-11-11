@@ -54,106 +54,92 @@ func NewUpserter(client client.Client, limitPatcher limitPatcher) *upserter {
 	return &upserter{client: client, generator: generator}
 }
 
-// ApplyDoguResource generates K8s resources from a given dogu and applies them to the cluster.
+// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
 // All parameters are mandatory except customDeployment which may be nil.
-func (u *upserter) ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
-	err := u.upsertDoguDeployment(ctx, doguResource, dogu, customDeployment)
-	if err != nil {
-		return err
-	}
-
-	err = u.upsertDoguService(ctx, doguResource, image)
-	if err != nil {
-		return err
-	}
-
-	err = u.upsertDoguExposedServices(ctx, doguResource, dogu)
-	if err != nil {
-		return err
-	}
-
-	err = u.upsertDoguPVCs(ctx, doguResource, dogu)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (u *upserter) upsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) error {
+func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
 	newDeployment, err := u.generator.CreateDoguDeployment(doguResource, dogu, customDeployment)
 	if err != nil {
-		return fmt.Errorf("failed to generate deployment: %w", err)
+		return nil, fmt.Errorf("failed to generate deployment: %w", err)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &appsv1.Deployment{}, newDeployment, noValidator)
+	deployment := &appsv1.Deployment{}
+	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), deployment, newDeployment, noValidator)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return deployment, nil
 }
 
-func (u *upserter) upsertDoguService(ctx context.Context, doguResource *k8sv1.Dogu, image *imagev1.ConfigFile) error {
+// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
+func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv1.Dogu, image *imagev1.ConfigFile) (*v1.Service, error) {
 	newService, err := u.generator.CreateDoguService(doguResource, image)
 	if err != nil {
-		return fmt.Errorf("failed to generate service: %w", err)
+		return nil, fmt.Errorf("failed to generate service: %w", err)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newService, noValidator)
+	service := &v1.Service{}
+	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), service, newService, noValidator)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return service, nil
 }
 
-// upsertDoguExposedServices creates exposed services based on the given dogu. If an error occurs during creating
+// UpsertDoguExposedServices creates exposed services based on the given dogu. If an error occurs during creating
 // several exposed services, this method tries to apply as many exposed services as possible and returns then
 // an error collection.
-func (u *upserter) upsertDoguExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+func (u *upserter) UpsertDoguExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*v1.Service, error) {
 	newExposedServices, err := u.generator.CreateDoguExposedServices(doguResource, dogu)
 	if err != nil {
-		return fmt.Errorf("failed to generate exposed services: %w", err)
+		return nil, fmt.Errorf("failed to generate exposed services: %w", err)
 	}
 
 	var collectedErrs error
-
+	serviceList := []*v1.Service{}
 	for _, newExposedService := range newExposedServices {
-		err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newExposedService, noValidator)
+		service := &v1.Service{}
+		err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), service, newExposedService, noValidator)
 		if err != nil {
 			err2 := fmt.Errorf("failed to upsert exposed service %s: %w", newExposedService.ObjectMeta.Name, err)
 			collectedErrs = multierror.Append(collectedErrs, err2)
+			continue
 		}
+
+		serviceList = append(serviceList, service)
 	}
 
-	return collectedErrs
+	return serviceList, collectedErrs
 }
 
-func (u *upserter) upsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
-	if len(dogu.Volumes) > 0 {
-		newPVC, err := u.generator.CreateDoguPVC(doguResource)
-		if err != nil {
-			return fmt.Errorf("failed to generate pvc: %w", err)
-		}
-
-		err = u.upsertPVC(ctx, newPVC, doguResource)
-		if err != nil {
-			return err
-		}
-	}
-
+// UpsertDoguPVCs generates a persitent volume claim for a given dogu and applies it to the cluster.
+func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*v1.PersistentVolumeClaim, error) {
 	newReservedPVC, err := u.generator.CreateReservedPVC(doguResource)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = u.upsertPVC(ctx, newReservedPVC, doguResource)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	if len(dogu.Volumes) > 0 {
+		newPVC, err := u.generator.CreateDoguPVC(doguResource)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate pvc: %w", err)
+		}
+
+		err = u.upsertPVC(ctx, newPVC, doguResource)
+		if err != nil {
+			return nil, err
+		}
+
+		return newPVC, nil
+	}
+
+	return nil, nil
 }
 
 func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv1.Dogu) error {

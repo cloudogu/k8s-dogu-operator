@@ -390,9 +390,24 @@ func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguR
 }
 
 func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
-	err := upserter.ApplyDoguResource(ctx, toDoguResource, toDogu, image, customDeployment)
+	_, err := upserter.UpsertDoguDeployment(ctx, toDoguResource, toDogu, customDeployment)
 	if err != nil {
-		return fmt.Errorf("failed to update dogu resources: %w", err)
+		return err
+	}
+
+	_, err = upserter.UpsertDoguService(ctx, toDoguResource, image)
+	if err != nil {
+		return err
+	}
+
+	_, err = upserter.UpsertDoguExposedServices(ctx, toDoguResource, toDogu)
+	if err != nil {
+		return err
+	}
+
+	_, err = upserter.UpsertDoguPVCs(ctx, toDoguResource, toDogu)
+	if err != nil {
+		return err
 	}
 
 	return nil

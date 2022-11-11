@@ -157,139 +157,6 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 	})
 }
 
-func Test_upserter_ApplyDoguResource(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("fail on error when creating deployment", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-		imageConfig := readLdapDoguImageConfig(t)
-
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(nil, assert.AnError)
-		upserter := upserter{
-			client:    client,
-			generator: generator,
-		}
-
-		// when
-		err := upserter.ApplyDoguResource(ctx, doguResource, dogu, imageConfig, nil)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to generate deployment")
-		// mock assert happens during cleanup
-	})
-
-	t.Run("fail on error when creating service", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-		imageConfig := readLdapDoguImageConfig(t)
-
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(readLdapDoguExpectedDeployment(t), nil)
-		generator.On("CreateDoguService", doguResource, imageConfig).Return(nil, assert.AnError)
-		upserter := upserter{
-			client:    client,
-			generator: generator,
-		}
-
-		// when
-		err := upserter.ApplyDoguResource(ctx, doguResource, dogu, imageConfig, nil)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to generate service")
-		// mock assert happens during cleanup
-	})
-
-	t.Run("fail on error when creating exposed services", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-		imageConfig := readLdapDoguImageConfig(t)
-
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(readLdapDoguExpectedDeployment(t), nil)
-		generator.On("CreateDoguService", doguResource, imageConfig).Return(readLdapDoguExpectedService(t), nil)
-		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(nil, assert.AnError)
-		upserter := upserter{
-			client:    client,
-			generator: generator,
-		}
-
-		// when
-		err := upserter.ApplyDoguResource(ctx, doguResource, dogu, imageConfig, nil)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to generate exposed services")
-		// mock assert happens during cleanup
-	})
-
-	t.Run("fail on error when creating pvc", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-		imageConfig := readLdapDoguImageConfig(t)
-
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(readLdapDoguExpectedDeployment(t), nil)
-		generator.On("CreateDoguService", doguResource, imageConfig).Return(readLdapDoguExpectedService(t), nil)
-		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(readLdapDoguExpectedExposedServices(t), nil)
-		generator.On("CreateDoguPVC", doguResource).Return(nil, assert.AnError)
-		upserter := upserter{
-			client:    client,
-			generator: generator,
-		}
-
-		// when
-		err := upserter.ApplyDoguResource(ctx, doguResource, dogu, imageConfig, nil)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to generate pvc")
-		// mock assert happens during cleanup
-	})
-
-	t.Run("success in creating new objects", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-		imageConfig := readLdapDoguImageConfig(t)
-
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(readLdapDoguExpectedDeployment(t), nil)
-		generator.On("CreateDoguService", doguResource, imageConfig).Return(readLdapDoguExpectedService(t), nil)
-		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(readLdapDoguExpectedExposedServices(t), nil)
-		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedDoguPVC(t), nil)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
-		upserter := upserter{
-			client:    client,
-			generator: generator,
-		}
-
-		// when
-		err := upserter.ApplyDoguResource(ctx, doguResource, dogu, imageConfig, nil)
-
-		// then
-		require.NoError(t, err)
-		// mock assert happens during cleanup
-	})
-}
-
 func Test_upserter_updateOrInsert(t *testing.T) {
 	t.Run("fail when using different types of objects", func(t *testing.T) {
 		// given
@@ -358,7 +225,7 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 	})
 }
 
-func Test_upserter_upsertDoguDeployment(t *testing.T) {
+func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 	t.Run("fail when upserting a deployment", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
@@ -375,14 +242,14 @@ func Test_upserter_upsertDoguDeployment(t *testing.T) {
 		}
 
 		// when
-		err := upserter.upsertDoguDeployment(context.Background(), doguResource, dogu, nil)
+		_, err := upserter.UpsertDoguDeployment(context.Background(), doguResource, dogu, nil)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 	})
 }
 
-func Test_upserter_upsertDoguExposedServices(t *testing.T) {
+func Test_upserter_UpsertDoguExposedServices(t *testing.T) {
 	t.Run("fail when upserting a exposed services", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
@@ -402,7 +269,7 @@ func Test_upserter_upsertDoguExposedServices(t *testing.T) {
 		}
 
 		// when
-		err := upserter.upsertDoguExposedServices(context.Background(), doguResource, dogu)
+		_, err := upserter.UpsertDoguExposedServices(context.Background(), doguResource, dogu)
 
 		// then
 		multiError := new(multierror.Error)
@@ -414,7 +281,7 @@ func Test_upserter_upsertDoguExposedServices(t *testing.T) {
 	})
 }
 
-func Test_upserter_upsertDoguPVCs(t *testing.T) {
+func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 	t.Run("fail when upserting a pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
@@ -424,14 +291,14 @@ func Test_upserter_upsertDoguPVCs(t *testing.T) {
 		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedDoguPVC(t), nil)
+		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedDoguPVC(t), nil)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
 		}
 
 		// when
-		err := upserter.upsertDoguPVCs(context.Background(), doguResource, dogu)
+		_, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -450,7 +317,7 @@ func Test_upserter_upsertDoguPVCs(t *testing.T) {
 		}
 
 		// when
-		err := upserter.upsertDoguPVCs(context.Background(), doguResource, dogu)
+		_, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -473,14 +340,14 @@ func Test_upserter_upsertDoguPVCs(t *testing.T) {
 		}
 
 		// when
-		err := upserter.upsertDoguPVCs(context.Background(), doguResource, dogu)
+		_, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 	})
 }
 
-func Test_upserter_upsertDoguService(t *testing.T) {
+func Test_upserter_UpsertDoguService(t *testing.T) {
 	t.Run("fail when upserting a service", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
@@ -497,7 +364,7 @@ func Test_upserter_upsertDoguService(t *testing.T) {
 		}
 
 		// when
-		err := upserter.upsertDoguService(context.Background(), doguResource, imageConfig)
+		_, err := upserter.UpsertDoguService(context.Background(), doguResource, imageConfig)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)

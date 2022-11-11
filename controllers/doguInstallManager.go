@@ -169,33 +169,9 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to pull image config: %w", err)
 	}
 
-	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
-	anExecPod, err := m.execPodFactory.NewExecPod(exec.PodVolumeModeInstall, doguResource, dogu)
-	if err != nil {
-		return fmt.Errorf("failed to create ExecPod resource %s: %w", anExecPod.ObjectKey().Name, err)
-	}
-	err = anExecPod.Create(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
-	}
-	defer deleteExecPod(ctx, anExecPod, m.recorder, doguResource)
-
-	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromContainer(ctx, anExecPod)
-	if err != nil {
-		return fmt.Errorf("failed to pull customK8sResources: %w", err)
-	}
-
-	if len(customK8sResources) > 0 {
-		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
-	}
-	customDeployment, err := m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
-	if err != nil {
-		return err
-	}
-
 	logger.Info("Create dogu resources...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
-	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig, customDeployment)
+	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
@@ -220,10 +196,49 @@ func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, custom
 	return m.collectApplier.CollectApply(ctx, customK8sResources, doguResource)
 }
 
-func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile, patchingDeployment *appsv1.Deployment) error {
-	err := m.resourceUpserter.ApplyDoguResource(ctx, doguResource, dogu, imageConfig, patchingDeployment)
+func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile) error {
+	_, err := m.resourceUpserter.UpsertDoguService(ctx, doguResource, imageConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create resource(s) for dogu %s: %w", dogu.Name, err)
+		return err
+	}
+
+	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
+	anExecPod, err := m.execPodFactory.NewExecPod(exec.PodVolumeModeInstall, doguResource, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to create ExecPod resource %s: %w", anExecPod.ObjectKey().Name, err)
+	}
+	err = anExecPod.Create(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
+	}
+	defer deleteExecPod(ctx, anExecPod, m.recorder, doguResource)
+
+	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromContainer(ctx, anExecPod)
+	if err != nil {
+		return fmt.Errorf("failed to pull customK8sResources: %w", err)
+	}
+
+	if len(customK8sResources) > 0 {
+		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
+	}
+	customDeployment, err := m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, customDeployment)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.resourceUpserter.UpsertDoguExposedServices(ctx, doguResource, dogu)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.resourceUpserter.UpsertDoguPVCs(ctx, doguResource, dogu)
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -3,10 +3,8 @@ package upgrade
 import (
 	"bytes"
 	"context"
-
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/cloudogu/cesapp-lib/core"
+	corev1 "k8s.io/api/core/v1"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -41,8 +39,17 @@ type collectApplier interface {
 }
 
 type resourceUpserter interface {
-	// ApplyDoguResource generates K8s resources from a given dogu and creates/updates them in the cluster.
-	ApplyDoguResource(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error
+	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
+	// All parameters are mandatory except customDeployment which may be nil.
+	UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error)
+	// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
+	UpsertDoguService(ctx context.Context, doguResource *k8sv1.Dogu, image *imagev1.ConfigFile) (*corev1.Service, error)
+	// UpsertDoguExposedServices creates exposed services based on the given dogu. If an error occurs during creating
+	// several exposed services, this method tries to apply as many exposed services as possible and returns then
+	// an error collection.
+	UpsertDoguExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*corev1.Service, error)
+	// UpsertDoguPVCs generates a persitent volume claim for a given dogu and applies it to the cluster.
+	UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.PersistentVolumeClaim, error)
 }
 
 type execPodFactory interface {
