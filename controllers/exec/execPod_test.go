@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -76,7 +77,7 @@ func Test_execPod_Create(t *testing.T) {
 	})
 	t.Run("should fail on resource creation", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewClient(t)
+		mockClient := external.NewClient(t)
 		mockClient.
 			On("Create", context.Background(), mock.Anything).Once().Return(assert.AnError).
 			On("Scheme").Once().Return(getTestScheme())
@@ -92,7 +93,7 @@ func Test_execPod_Create(t *testing.T) {
 	})
 	t.Run("should fail on failed pod", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewClient(t)
+		mockClient := external.NewClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		clientGetFn := func(args mock.Arguments) {
 			pod := args[2].(*corev1.Pod)
@@ -117,7 +118,7 @@ func Test_execPod_Create(t *testing.T) {
 		// given
 		originalMaxTries := maxTries
 		maxTries = 1
-		mockClient := mocks.NewClient(t)
+		mockClient := external.NewClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		clientGetFn := func(args mock.Arguments) {
 			pod := args[2].(*corev1.Pod)
@@ -143,7 +144,7 @@ func Test_execPod_Create(t *testing.T) {
 		// given
 		originalMaxTries := maxTries
 		maxTries = 1
-		mockClient := mocks.NewClient(t)
+		mockClient := external.NewClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		mockClient.
 			On("Create", context.Background(), mock.Anything).Once().Return(nil).
@@ -162,7 +163,7 @@ func Test_execPod_Create(t *testing.T) {
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewClient(t)
+		mockClient := external.NewClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		clientGetFn := func(args mock.Arguments) {
 			pod := args[2].(*corev1.Pod)
@@ -378,7 +379,7 @@ func Test_execPod_createVolumes(t *testing.T) {
 func Test_execPod_Delete(t *testing.T) {
 	t.Run("should fail on arbitrary error", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewClient(t)
+		mockClient := external.NewClient(t)
 		mockClient.
 			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(assert.AnError)
 
@@ -394,7 +395,7 @@ func Test_execPod_Delete(t *testing.T) {
 	})
 	t.Run("should succeed on not-found-error because target state is already reached", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewClient(t)
+		mockClient := external.NewClient(t)
 		mockClient.On("Delete", context.Background(), &corev1.Pod{}).Once().Return(
 			&errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}},
 		)
@@ -409,7 +410,7 @@ func Test_execPod_Delete(t *testing.T) {
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewClient(t)
+		mockClient := external.NewClient(t)
 		mockClient.
 			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(nil)
 

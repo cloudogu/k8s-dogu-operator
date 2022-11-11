@@ -114,8 +114,8 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		require.NoError(t, err)
 		mock.AssertExpectationsForObjects(t, regMock, testDoguRegistry)
 
-		assert.Equal(t, "100m", doguLimitObject.cpuLimit)
-		assert.Equal(t, "4Gi", doguLimitObject.ephemeralStorageLimit)
+		assert.Equal(t, "100m", doguLimitObject.CpuLimit().String())
+		assert.Equal(t, "4Gi", doguLimitObject.EphemeralStorageLimit().String())
 	})
 
 	t.Run("successfully create limits with all keys", func(t *testing.T) {
@@ -138,9 +138,9 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		require.NoError(t, err)
 		mock.AssertExpectationsForObjects(t, regMock, testDoguRegistry)
 
-		assert.Equal(t, "100m", doguLimitObject.cpuLimit)
-		assert.Equal(t, "1Gi", doguLimitObject.memoryLimit)
-		assert.Equal(t, "4Gi", doguLimitObject.ephemeralStorageLimit)
+		assert.Equal(t, "100m", doguLimitObject.CpuLimit().String())
+		assert.Equal(t, "1Gi", doguLimitObject.MemoryLimit().String())
+		assert.Equal(t, "4Gi", doguLimitObject.EphemeralStorageLimit().String())
 	})
 }
 
@@ -156,7 +156,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, DoguLimits{})
+		err := patcher.PatchDeployment(deployment, &doguLimits{})
 
 		// then
 		require.Error(t, err)
@@ -178,7 +178,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, DoguLimits{memoryLimit: "12e890uq209er"})
+		err := patcher.PatchDeployment(deployment, &doguLimits{memoryLimit: "12e890uq209er"})
 
 		// then
 		require.Error(t, err)
@@ -200,7 +200,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, DoguLimits{cpuLimit: "12e890uq209er"})
+		err := patcher.PatchDeployment(deployment, &doguLimits{cpuLimit: "12e890uq209er"})
 
 		// then
 		require.Error(t, err)
@@ -222,7 +222,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher.registry = regMock
 
 		// when
-		err := patcher.PatchDeployment(deployment, DoguLimits{ephemeralStorageLimit: "12e890uq209er"})
+		err := patcher.PatchDeployment(deployment, &doguLimits{ephemeralStorageLimit: "12e890uq209er"})
 
 		// then
 		require.Error(t, err)
@@ -243,7 +243,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
 
-		doguLimits := DoguLimits{
+		doguLimits := &doguLimits{
 			cpuLimit: "100m",
 		}
 
@@ -273,7 +273,7 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
 
-		doguLimits := DoguLimits{
+		doguLimits := &doguLimits{
 			cpuLimit:              "100m",
 			memoryLimit:           "2Gi",
 			ephemeralStorageLimit: "4Gi",

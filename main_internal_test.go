@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"os"
 	"testing"
 
@@ -12,8 +13,6 @@ import (
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
-
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -44,7 +43,7 @@ func getCopyMap(definitions map[string]mockDefinition) map[string]mockDefinition
 }
 
 func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) manager.Manager {
-	k8sManager := &mocks.Manager{}
+	k8sManager := &external.Manager{}
 	ctrl.NewManager = func(config *rest.Config, options manager.Options) (manager.Manager, error) {
 		for key, value := range definitions {
 			k8sManager.Mock.On(key, value.Arguments...).Return(value.ReturnValue)

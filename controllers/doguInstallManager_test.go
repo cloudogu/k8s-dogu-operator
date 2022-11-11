@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,7 +26,6 @@ import (
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
@@ -43,7 +43,7 @@ type doguInstallManagerWithMocks struct {
 	fileExtractorMock         *mocks.FileExtractor
 	client                    client.WithWatch
 	resourceUpserter          *mocks.ResourceUpserter
-	recorder                  *mocks.EventRecorder
+	recorder                  *external.EventRecorder
 	execPodFactory            *mocks.ExecPodFactory
 }
 
@@ -68,7 +68,7 @@ func (d *doguInstallManagerWithMocks) AssertMocks(t *testing.T) {
 func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguInstallManagerWithMocks {
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	limitPatcher := &mocks.LimitPatcher{}
-	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
+	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(mocks.NewDoguLimits(t), nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	upserter := &mocks.ResourceUpserter{}
 	imageRegistry := &mocks.ImageRegistry{}
@@ -78,7 +78,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 	doguSecretHandler := &mocks.DoguSecretHandler{}
 	mockedApplier := &mocks.Applier{}
 	fileExtract := mocks.NewFileExtractor(t)
-	eventRecorderMock := mocks.NewEventRecorder(t)
+	eventRecorderMock := external.NewEventRecorder(t)
 	localDoguFetcher := mocks.NewLocalDoguFetcher(t)
 	resourceDoguFetcher := mocks.NewResourceDoguFetcher(t)
 	collectApplier := resource.NewCollectApplier(mockedApplier)
@@ -141,7 +141,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
 		doguRegistry := &cesmocks.DoguRegistry{}
-		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder := &external.EventRecorder{}
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
@@ -167,7 +167,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
-		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder := &external.EventRecorder{}
 
 		// when
 		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, eventRecorder)

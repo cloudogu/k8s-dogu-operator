@@ -20,7 +20,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
@@ -137,7 +136,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	CesRegistryMock.On("GlobalConfig").Return(globalConfigurationContext)
 
 	limitPatcher := &mocks.LimitPatcher{}
-	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
+	doguLimits := &mocks.DoguLimits{}
+	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(doguLimits, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher)
 

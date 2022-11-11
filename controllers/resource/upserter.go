@@ -36,7 +36,7 @@ type upserter struct {
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, limitPatcher limitPatcher) *upserter {
+func NewUpserter(client client.Client, limitPatcher internal.LimitPatcher) *upserter {
 	schema := client.Scheme()
 	generator := NewResourceGenerator(schema, limitPatcher)
 	return &upserter{client: client, generator: generator}

@@ -4,8 +4,7 @@ package mocks
 
 import (
 	apiv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-
-	limit "github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	internal "github.com/cloudogu/k8s-dogu-operator/internal"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -18,11 +17,11 @@ type LimitPatcher struct {
 }
 
 // PatchDeployment provides a mock function with given fields: deployment, limits
-func (_m *LimitPatcher) PatchDeployment(deployment *v1.Deployment, limits limit.DoguLimits) error {
+func (_m *LimitPatcher) PatchDeployment(deployment *v1.Deployment, limits internal.DoguLimits) error {
 	ret := _m.Called(deployment, limits)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*v1.Deployment, limit.DoguLimits) error); ok {
+	if rf, ok := ret.Get(0).(func(*v1.Deployment, internal.DoguLimits) error); ok {
 		r0 = rf(deployment, limits)
 	} else {
 		r0 = ret.Error(0)
@@ -32,14 +31,16 @@ func (_m *LimitPatcher) PatchDeployment(deployment *v1.Deployment, limits limit.
 }
 
 // RetrievePodLimits provides a mock function with given fields: doguResource
-func (_m *LimitPatcher) RetrievePodLimits(doguResource *apiv1.Dogu) (limit.DoguLimits, error) {
+func (_m *LimitPatcher) RetrievePodLimits(doguResource *apiv1.Dogu) (internal.DoguLimits, error) {
 	ret := _m.Called(doguResource)
 
-	var r0 limit.DoguLimits
-	if rf, ok := ret.Get(0).(func(*apiv1.Dogu) limit.DoguLimits); ok {
+	var r0 internal.DoguLimits
+	if rf, ok := ret.Get(0).(func(*apiv1.Dogu) internal.DoguLimits); ok {
 		r0 = rf(doguResource)
 	} else {
-		r0 = ret.Get(0).(limit.DoguLimits)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(internal.DoguLimits)
+		}
 	}
 
 	var r1 error

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -34,7 +35,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		testDoguCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
-		recorder := mocks.NewEventRecorder(t)
+		recorder := external.NewEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := new(mocks.LocalDoguFetcher)
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
@@ -67,7 +68,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		testDoguCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
-		recorder := mocks.NewEventRecorder(t)
+		recorder := external.NewEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := new(mocks.LocalDoguFetcher)
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
@@ -100,7 +101,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		testDoguCr.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
-		recorder := mocks.NewEventRecorder(t)
+		recorder := external.NewEventRecorder(t)
 		recorder.On("Eventf", testDoguCr, v1.EventTypeWarning, operatorEventReason, mock.Anything, mock.Anything)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := new(mocks.LocalDoguFetcher)
@@ -174,7 +175,7 @@ func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
 		Spec:       k8sv1.DoguSpec{Name: "ns/dogu", Version: "1.2.3-5"}}
 
 	t.Run("should should return false for dogu installation", func(t *testing.T) {
-		recorder := mocks.NewEventRecorder(t)
+		recorder := external.NewEventRecorder(t)
 		recorder.On("Event", newDoguResource, "Normal", "Debug", mock.Anything)
 		sut := doguResourceChangeDebugPredicate{recorder: recorder}
 
@@ -188,7 +189,7 @@ func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
 		require.False(t, actual)
 	})
 	t.Run("should should return false for dogu deletion", func(t *testing.T) {
-		recorder := mocks.NewEventRecorder(t)
+		recorder := external.NewEventRecorder(t)
 		recorder.On("Event", oldDoguResource, "Normal", "Debug", mock.Anything)
 		sut := doguResourceChangeDebugPredicate{recorder: recorder}
 
@@ -202,7 +203,7 @@ func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
 		require.False(t, actual)
 	})
 	t.Run("should should return true for dogu upgrade", func(t *testing.T) {
-		recorder := mocks.NewEventRecorder(t)
+		recorder := external.NewEventRecorder(t)
 		recorder.On("Event", newDoguResource, "Normal", "Debug", mock.Anything)
 		sut := doguResourceChangeDebugPredicate{recorder: recorder}
 
@@ -216,7 +217,7 @@ func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
 		require.True(t, actual)
 	})
 	t.Run("should should return false for no dogu change", func(t *testing.T) {
-		recorder := mocks.NewEventRecorder(t)
+		recorder := external.NewEventRecorder(t)
 		recorder.On("Event", oldDoguResource, "Normal", "Debug", mock.Anything)
 		sut := doguResourceChangeDebugPredicate{recorder: recorder}
 
