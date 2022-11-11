@@ -31,23 +31,23 @@ type hardwareLimitUpdater struct {
 // doguLimits contains all data necessary to limit the physical resources for a dogu.
 type doguLimits struct {
 	// cpuLimit Sets the cpu requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-	cpuLimit resource.Quantity
+	cpuLimit *resource.Quantity
 	// memoryLimit Sets the memory requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-	memoryLimit resource.Quantity
+	memoryLimit *resource.Quantity
 	// ephemeralStorageLimit Sets the ephemeral storage requests and limit values for the dogu deployment to the contained value. For more information about resource management in Kubernetes see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-	ephemeralStorageLimit resource.Quantity
+	ephemeralStorageLimit *resource.Quantity
 }
 
 func (d *doguLimits) CpuLimit() *resource.Quantity {
-	return &d.cpuLimit
+	return d.cpuLimit
 }
 
 func (d *doguLimits) MemoryLimit() *resource.Quantity {
-	return &d.memoryLimit
+	return d.memoryLimit
 }
 
 func (d *doguLimits) EphemeralStorageLimit() *resource.Quantity {
-	return &d.ephemeralStorageLimit
+	return d.ephemeralStorageLimit
 }
 
 // NewHardwareLimitUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.

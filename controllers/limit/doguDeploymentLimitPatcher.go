@@ -17,6 +17,12 @@ const (
 	ephemeralStorageLimitKey = "/pod_limit/ephemeral_storage"
 )
 
+const (
+	cpuLimitKind              limitKind = "cpu"
+	memoryLimitKind           limitKind = "memory"
+	ephemeralStorageLimitKind limitKind = "ephemeral storage"
+)
+
 type doguDeploymentLimitPatcher struct {
 	registry registry.Registry
 }
@@ -37,33 +43,33 @@ func (d *doguDeploymentLimitPatcher) RetrievePodLimits(doguResource *v12.Dogu) (
 	if err != nil && !registry.IsKeyNotFoundError(err) {
 		return &doguLimits{}, err
 	} else if err == nil {
-		parsedCpuLimit, err2 := containerresource.ParseQuantity(cpuLimit)
-		if err2 != nil {
-			return nil, fmt.Errorf("failed to parse cpu request quantity '%s': %w", cpuLimit, err2)
+		limit, err := parseLimit(cpuLimit, cpuLimitKind)
+		if err != nil {
+			return nil, err
 		}
-		doguLimitObject.cpuLimit = parsedCpuLimit
+		doguLimitObject.cpuLimit = limit
 	}
 
 	memoryLimit, err := doguRegistry.Get(memoryLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
 		return &doguLimits{}, err
 	} else if err == nil {
-		parsedMemoryLimit, err2 := containerresource.ParseQuantity(memoryLimit)
-		if err2 != nil {
-			return nil, fmt.Errorf("failed to parse memory request quantity '%s': %w", memoryLimit, err2)
+		limit, err := parseLimit(memoryLimit, memoryLimitKind)
+		if err != nil {
+			return nil, err
 		}
-		doguLimitObject.memoryLimit = parsedMemoryLimit
+		doguLimitObject.memoryLimit = limit
 	}
 
 	ephemeralStorageLimit, err := doguRegistry.Get(ephemeralStorageLimitKey)
 	if err != nil && !registry.IsKeyNotFoundError(err) {
 		return &doguLimits{}, err
 	} else if err == nil {
-		parsedEphemeralStorageLimit, err2 := containerresource.ParseQuantity(ephemeralStorageLimit)
-		if err2 != nil {
-			return nil, fmt.Errorf("failed to parse ephemeral storage request quantity '%s': %w", ephemeralStorageLimit, err2)
+		limit, err := parseLimit(ephemeralStorageLimit, ephemeralStorageLimitKind)
+		if err != nil {
+			return nil, err
 		}
-		doguLimitObject.ephemeralStorageLimit = parsedEphemeralStorageLimit
+		doguLimitObject.ephemeralStorageLimit = limit
 	}
 
 	return doguLimitObject, nil
@@ -86,6 +92,19 @@ func (d *doguDeploymentLimitPatcher) PatchDeployment(deployment *appsv1.Deployme
 	deployment.Spec.Template.Spec.Containers[0].Resources.Limits = resourceLimits
 
 	return nil
+}
+
+type limitKind string
+
+func parseLimit(raw string, kind limitKind) (*containerresource.Quantity, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	limit, err := containerresource.ParseQuantity(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s limit '%s': %w", kind, raw, err)
+	}
+	return &limit, nil
 }
 
 func (d *doguDeploymentLimitPatcher) patchStorageEphemeralLimits(limits internal.DoguLimits, resourceRequests v1.ResourceList, resourceLimits v1.ResourceList) {

@@ -1,6 +1,7 @@
 package limit
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -94,6 +95,66 @@ func Test_doguDeploymentLimitPatch_RetrieveMemoryLimits(t *testing.T) {
 		mock.AssertExpectationsForObjects(t, regMock, testDoguRegistry)
 	})
 
+	t.Run("receives error when parsing memory limits", func(t *testing.T) {
+		// given
+		regMock := mocks.NewRegistry(t)
+		testDoguRegistry := mocks.NewConfigurationContext(t)
+		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
+
+		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
+		testDoguRegistry.On("Get", memoryLimitKey).Return("12e890uq209er", nil)
+
+		patcher := doguDeploymentLimitPatcher{}
+		patcher.registry = regMock
+
+		// when
+		_, err := patcher.RetrievePodLimits(doguResource)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to parse memory limit '12e890uq209er'")
+	})
+
+	t.Run("receives error when parsing cpu limits", func(t *testing.T) {
+		// given
+		regMock := &mocks.Registry{}
+		testDoguRegistry := &mocks.ConfigurationContext{}
+		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
+
+		testDoguRegistry.On("Get", cpuLimitKey).Return("12e890uq209er", nil)
+
+		patcher := doguDeploymentLimitPatcher{}
+		patcher.registry = regMock
+
+		// when
+		_, err := patcher.RetrievePodLimits(doguResource)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to parse cpu limit '12e890uq209er'")
+	})
+
+	t.Run("receives error when parsing ephemeral storage limits", func(t *testing.T) {
+		// given
+		regMock := &mocks.Registry{}
+		testDoguRegistry := &mocks.ConfigurationContext{}
+		regMock.On("DoguConfig", "testDogu").Return(testDoguRegistry)
+
+		testDoguRegistry.On("Get", cpuLimitKey).Return("100m", nil)
+		testDoguRegistry.On("Get", memoryLimitKey).Return("3Gi", nil)
+		testDoguRegistry.On("Get", ephemeralStorageLimitKey).Return("12e890uq209er", nil)
+
+		patcher := doguDeploymentLimitPatcher{}
+		patcher.registry = regMock
+
+		// when
+		_, err := patcher.RetrievePodLimits(doguResource)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to parse ephemeral storage limit '12e890uq209er'")
+	})
+
 	t.Run("successfully create limits with some of the keys", func(t *testing.T) {
 		// given
 		regMock := &mocks.Registry{}
@@ -163,72 +224,6 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		assert.ErrorContains(t, err, "given deployment cannot be patched, no containers are defined, at least one container is required")
 	})
 
-	t.Run("receives error when patching memory limits", func(t *testing.T) {
-		// given
-		deployment := &appsv1.Deployment{
-			Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{Name: "testContainer"},
-				},
-			}}},
-		}
-
-		regMock := &mocks.Registry{}
-		patcher := doguDeploymentLimitPatcher{}
-		patcher.registry = regMock
-
-		// when
-		err := patcher.PatchDeployment(deployment, &doguLimits{memoryLimit: "12e890uq209er"})
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to parse memory request quantity")
-	})
-
-	t.Run("receives error when patching cpu limits", func(t *testing.T) {
-		// given
-		deployment := &appsv1.Deployment{
-			Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{Name: "testContainer"},
-				},
-			}}},
-		}
-
-		regMock := &mocks.Registry{}
-		patcher := doguDeploymentLimitPatcher{}
-		patcher.registry = regMock
-
-		// when
-		err := patcher.PatchDeployment(deployment, &doguLimits{cpuLimit: "12e890uq209er"})
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to parse cpu request quantity")
-	})
-
-	t.Run("receives error when patching storageEphemeral limits", func(t *testing.T) {
-		// given
-		deployment := &appsv1.Deployment{
-			Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{Name: "testContainer"},
-				},
-			}}},
-		}
-
-		regMock := &mocks.Registry{}
-		patcher := doguDeploymentLimitPatcher{}
-		patcher.registry = regMock
-
-		// when
-		err := patcher.PatchDeployment(deployment, &doguLimits{ephemeralStorageLimit: "12e890uq209er"})
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to parse storageEphemeral request quantity")
-	})
-
 	t.Run("successful patch resources with one limit", func(t *testing.T) {
 		// given
 		deployment := &appsv1.Deployment{
@@ -243,12 +238,14 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
 
+		cpuLimit, err := resource.ParseQuantity("100m")
+		require.NoError(t, err)
 		doguLimits := &doguLimits{
-			cpuLimit: "100m",
+			cpuLimit: &cpuLimit,
 		}
 
 		// when
-		err := patcher.PatchDeployment(deployment, doguLimits)
+		err = patcher.PatchDeployment(deployment, doguLimits)
 
 		// then
 		require.NoError(t, err)
@@ -273,14 +270,20 @@ func Test_doguDeploymentLimitPatcher_PatchDeployment(t *testing.T) {
 		patcher := doguDeploymentLimitPatcher{}
 		patcher.registry = regMock
 
+		cpuLimit, err := resource.ParseQuantity("100m")
+		require.NoError(t, err)
+		memoryLimit, err := resource.ParseQuantity("2Gi")
+		require.NoError(t, err)
+		ephemeralStorageLimit, err := resource.ParseQuantity("4Gi")
+		require.NoError(t, err)
 		doguLimits := &doguLimits{
-			cpuLimit:              "100m",
-			memoryLimit:           "2Gi",
-			ephemeralStorageLimit: "4Gi",
+			cpuLimit:              &cpuLimit,
+			memoryLimit:           &memoryLimit,
+			ephemeralStorageLimit: &ephemeralStorageLimit,
 		}
 
 		// when
-		err := patcher.PatchDeployment(deployment, doguLimits)
+		err = patcher.PatchDeployment(deployment, doguLimits)
 
 		// then
 		require.NoError(t, err)
