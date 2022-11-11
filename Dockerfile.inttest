@@ -1,0 +1,11 @@
+FROM alpine:3.8 as downloader
+RUN apk add --no-cache curl ca-certificates
+
+FROM rancher/k3s:v1.25.3-k3s1
+COPY --from=downloader /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+EXPOSE 6443
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=2 \
+  CMD k3s kubectl version || exit 1
+
+VOLUME /var/lib/rancher /var/lib/kubelet /var/log/containers /var/log/pods
