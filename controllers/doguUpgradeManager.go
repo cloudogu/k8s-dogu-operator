@@ -17,7 +17,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	internal2 "github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -93,10 +93,10 @@ type doguUpgradeManager struct {
 	client        client.Client
 	eventRecorder record.EventRecorder
 	// upgrade business
-	premisesChecker     internal2.PremisesChecker
-	localDoguFetcher    internal2.LocalDoguFetcher
-	resourceDoguFetcher internal2.ResourceDoguFetcher
-	upgradeExecutor     internal2.UpgradeExecutor
+	premisesChecker     internal.PremisesChecker
+	localDoguFetcher    internal.LocalDoguFetcher
+	resourceDoguFetcher internal.ResourceDoguFetcher
+	upgradeExecutor     internal.UpgradeExecutor
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
