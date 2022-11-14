@@ -96,31 +96,8 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 		return err
 	}
 
-	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
-	execPod, err := ue.execPodFactory.NewExecPod(exec.PodVolumeModeUpgrade, toDoguResource, toDogu)
-	if err != nil {
-		return err
-	}
-	err = execPod.Create(ctx)
-	if err != nil {
-		return err
-	}
-	defer deleteExecPod(ctx, execPod, ue.eventRecorder, toDoguResource)
-
-	err = ue.applyPreUpgradeScript(ctx, toDoguResource, fromDogu, toDogu, execPod)
-	if err != nil {
-		return fmt.Errorf("pre-upgrade failed :%w", err)
-	}
-
-	customDeployment, err := ue.applyCustomK8sScripts(ctx, toDoguResource, execPod)
-	if err != nil {
-		return err
-	}
-
-	customDeployment = increaseStartupProbeTimeoutForUpdate(toDoguResource.Name, customDeployment)
-
 	ue.normalEventf(toDoguResource, "Updating dogu resources in the cluster...")
-	err = updateDoguResources(ctx, ue.resourceUpserter, toDoguResource, toDogu, imageConfigFile, customDeployment)
+	err = ue.updateDoguResources(ctx, ue.resourceUpserter, toDoguResource, toDogu, fromDogu, imageConfigFile)
 	if err != nil {
 		return err
 	}
@@ -389,18 +366,41 @@ func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguR
 	return nil
 }
 
-func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
-	_, err := upserter.UpsertDoguDeployment(ctx, toDoguResource, toDogu, customDeployment)
-	if err != nil {
-		return err
-	}
-
-	_, err = upserter.UpsertDoguService(ctx, toDoguResource, image)
+func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, fromDogu *core.Dogu, image *imagev1.ConfigFile) error {
+	_, err := upserter.UpsertDoguService(ctx, toDoguResource, image)
 	if err != nil {
 		return err
 	}
 
 	_, err = upserter.UpsertDoguExposedServices(ctx, toDoguResource, toDogu)
+	if err != nil {
+		return err
+	}
+
+	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
+	execPod, err := ue.execPodFactory.NewExecPod(exec.PodVolumeModeUpgrade, toDoguResource, toDogu)
+	if err != nil {
+		return err
+	}
+	err = execPod.Create(ctx)
+	if err != nil {
+		return err
+	}
+	defer deleteExecPod(ctx, execPod, ue.eventRecorder, toDoguResource)
+
+	err = ue.applyPreUpgradeScript(ctx, toDoguResource, fromDogu, toDogu, execPod)
+	if err != nil {
+		return fmt.Errorf("pre-upgrade failed :%w", err)
+	}
+
+	customDeployment, err := ue.applyCustomK8sScripts(ctx, toDoguResource, execPod)
+	if err != nil {
+		return err
+	}
+
+	customDeployment = increaseStartupProbeTimeoutForUpdate(toDoguResource.Name, customDeployment)
+
+	_, err = upserter.UpsertDoguDeployment(ctx, toDoguResource, toDogu, customDeployment)
 	if err != nil {
 		return err
 	}

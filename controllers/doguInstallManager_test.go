@@ -485,6 +485,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.execPodFactory.On("NewExecPod", exec.PodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 			managerWithMocks.resourceUpserter.On("UpsertDoguService", ctx, ldapCr, imageConfig).Once().Return(nil, nil)
+			managerWithMocks.resourceUpserter.On("UpsertDoguExposedServices", ctx, ldapCr, ldapDogu).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguDeployment", ctx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, assert.AnError)
 
 			// when
@@ -535,8 +536,6 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
 			managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-			yamlResult := make(map[string]string, 0)
-			managerWithMocks.fileExtractorMock.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
@@ -544,14 +543,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 				On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...").
 				On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...").
 				On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4").
-				On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...").
 				On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
-			execPod := exec.NewExecPodMock(t)
-			execPod.On("Create", testCtx).Return(nil)
-			execPod.On("Delete", testCtx).Return(nil)
-			managerWithMocks.execPodFactory.On("NewExecPod", exec.PodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
-
-			managerWithMocks.resourceUpserter.On("UpsertDoguDeployment", ctx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguService", ctx, ldapCr, imageConfig).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguExposedServices", ctx, ldapCr, ldapDogu).Once().Return(nil, assert.AnError)
 

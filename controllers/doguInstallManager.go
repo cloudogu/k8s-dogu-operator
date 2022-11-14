@@ -202,6 +202,11 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 		return err
 	}
 
+	_, err = m.resourceUpserter.UpsertDoguExposedServices(ctx, doguResource, dogu)
+	if err != nil {
+		return err
+	}
+
 	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
 	anExecPod, err := m.execPodFactory.NewExecPod(exec.PodVolumeModeInstall, doguResource, dogu)
 	if err != nil {
@@ -227,11 +232,6 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	_, err = m.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, customDeployment)
-	if err != nil {
-		return err
-	}
-
-	_, err = m.resourceUpserter.UpsertDoguExposedServices(ctx, doguResource, dogu)
 	if err != nil {
 		return err
 	}
