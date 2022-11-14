@@ -235,7 +235,9 @@ func createLivenessProbe(dogu *core.Dogu) *corev1.Probe {
 				TimeoutSeconds:   1,
 				PeriodSeconds:    10,
 				SuccessThreshold: 1,
-				FailureThreshold: 3,
+				// Setting this value to low makes some dogus unable to start that require a certain amount of time.
+				// The default value is set to 30 min.
+				FailureThreshold: 6 * 30,
 			}
 		}
 	}
@@ -252,7 +254,9 @@ func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
 				TimeoutSeconds:   1,
 				PeriodSeconds:    10,
 				SuccessThreshold: 1,
-				FailureThreshold: 3,
+				// Setting this value to low makes some dogus unable to start that require a certain amount of time.
+				// The default value is set to 30 min.
+				FailureThreshold: 6 * 30,
 			}
 		}
 	}
