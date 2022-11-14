@@ -62,13 +62,12 @@ func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1
 		return nil, fmt.Errorf("failed to generate deployment: %w", err)
 	}
 
-	deployment := &appsv1.Deployment{}
-	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), deployment, newDeployment, noValidator)
+	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &appsv1.Deployment{}, newDeployment, noValidator)
 	if err != nil {
 		return nil, err
 	}
 
-	return deployment, nil
+	return newDeployment, nil
 }
 
 // UpsertDoguService generates a service for a given dogu and applies it to the cluster.
@@ -78,13 +77,12 @@ func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv1.Do
 		return nil, fmt.Errorf("failed to generate service: %w", err)
 	}
 
-	service := &v1.Service{}
-	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), service, newService, noValidator)
+	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newService, noValidator)
 	if err != nil {
 		return nil, err
 	}
 
-	return service, nil
+	return newService, nil
 }
 
 // UpsertDoguExposedServices creates exposed services based on the given dogu. If an error occurs during creating
@@ -99,15 +97,14 @@ func (u *upserter) UpsertDoguExposedServices(ctx context.Context, doguResource *
 	var collectedErrs error
 	serviceList := []*v1.Service{}
 	for _, newExposedService := range newExposedServices {
-		service := &v1.Service{}
-		err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), service, newExposedService, noValidator)
+		err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newExposedService, noValidator)
 		if err != nil {
 			err2 := fmt.Errorf("failed to upsert exposed service %s: %w", newExposedService.ObjectMeta.Name, err)
 			collectedErrs = multierror.Append(collectedErrs, err2)
 			continue
 		}
 
-		serviceList = append(serviceList, service)
+		serviceList = append(serviceList, newExposedService)
 	}
 
 	return serviceList, collectedErrs
