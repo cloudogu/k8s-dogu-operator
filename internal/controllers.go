@@ -24,3 +24,11 @@ type SupportManager interface {
 	// HandleSupportMode handles the support flag in the dogu spec.
 	HandleSupportMode(ctx context.Context, doguResource *v1.Dogu) (bool, error)
 }
+
+// DoguManager abstracts the simple dogu operations in a k8s CES.
+type DoguManager interface {
+	InstallManager
+	UpgradeManager
+	DeleteManager
+	SupportManager
+}

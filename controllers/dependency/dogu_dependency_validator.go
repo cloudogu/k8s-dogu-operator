@@ -3,6 +3,7 @@ package dependency
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -28,13 +29,9 @@ func (e *dependencyValidationError) Requeue() bool {
 	return true
 }
 
-type localDoguFetcher interface {
-	FetchInstalled(doguName string) (installedDogu *core.Dogu, err error)
-}
-
 // doguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type doguDependencyValidator struct {
-	fetcher localDoguFetcher
+	fetcher internal.LocalDoguFetcher
 }
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker

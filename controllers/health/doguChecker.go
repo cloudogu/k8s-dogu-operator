@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"github.com/hashicorp/go-multierror"
 	v1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,14 +32,8 @@ func (dhe *DoguHealthError) Error() string {
 	return fmt.Errorf("dogu failed a health check: %w", dhe.err).Error()
 }
 
-type localDoguFetcher interface {
-	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
-	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(doguName string) (installedDogu *core.Dogu, err error)
-}
-
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(client client.Client, localFetcher localDoguFetcher) *doguChecker {
+func NewDoguChecker(client client.Client, localFetcher internal.LocalDoguFetcher) *doguChecker {
 	return &doguChecker{
 		client:            client,
 		doguLocalRegistry: localFetcher,
@@ -47,7 +42,7 @@ func NewDoguChecker(client client.Client, localFetcher localDoguFetcher) *doguCh
 
 type doguChecker struct {
 	client            client.Client
-	doguLocalRegistry localDoguFetcher
+	doguLocalRegistry internal.LocalDoguFetcher
 }
 
 // CheckWithResource returns nil if the dogu's replica exist and are ready. If the dogu is unhealthy an error of type
