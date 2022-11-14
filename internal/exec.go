@@ -45,9 +45,9 @@ const (
 // CommandExecutor is used to execute commands in pods and dogus
 type CommandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, resource *k8sv1.Dogu, command ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, resource *k8sv1.Dogu, command ShellCommand, expected PodStatusForExec) (*bytes.Buffer, error)
 	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand, expectedStatus PodStatus) (*bytes.Buffer, error)
+	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand, expected PodStatusForExec) (*bytes.Buffer, error)
 }
 
 // ShellCommand represents a command that can be executed in the shell of a container.
@@ -56,14 +56,14 @@ type ShellCommand interface {
 	CommandWithArgs() []string
 }
 
-// PodStatus describes a state in the lifecycle of a pod.
-type PodStatus string
+// PodStatusForExec describes a state in the lifecycle of a pod.
+type PodStatusForExec string
 
 const (
 	// ContainersStarted means that all containers of a pod were started.
-	ContainersStarted PodStatus = "started"
+	ContainersStarted PodStatusForExec = "started"
 	// PodReady means that the readiness probe of the pod has succeeded.
-	PodReady PodStatus = "ready"
+	PodReady PodStatusForExec = "ready"
 )
 
 // FileExtractor provides functionality to get the contents of files from a container.

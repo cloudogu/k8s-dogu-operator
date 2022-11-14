@@ -21,11 +21,11 @@ type CommandExecutor struct {
 }
 
 // ExecCommandForDogu provides a mock function with given fields: ctx, resource, command, expectedStatus
-func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command internal.ShellCommand, expectedStatus internal.PodStatus) (*bytes.Buffer, error) {
+func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command internal.ShellCommand, expectedStatus internal.PodStatusForExec) (*bytes.Buffer, error) {
 	ret := _m.Called(ctx, resource, command, expectedStatus)
 
 	var r0 *bytes.Buffer
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, internal.ShellCommand, internal.PodStatus) *bytes.Buffer); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, internal.ShellCommand, internal.PodStatusForExec) *bytes.Buffer); ok {
 		r0 = rf(ctx, resource, command, expectedStatus)
 	} else {
 		if ret.Get(0) != nil {
@@ -34,7 +34,7 @@ func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *v1.Dogu, internal.ShellCommand, internal.PodStatus) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.Dogu, internal.ShellCommand, internal.PodStatusForExec) error); ok {
 		r1 = rf(ctx, resource, command, expectedStatus)
 	} else {
 		r1 = ret.Error(1)
@@ -44,11 +44,11 @@ func (_m *CommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.
 }
 
 // ExecCommandForPod provides a mock function with given fields: ctx, pod, command, expectedStatus
-func (_m *CommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command internal.ShellCommand, expectedStatus internal.PodStatus) (*bytes.Buffer, error) {
+func (_m *CommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command internal.ShellCommand, expectedStatus internal.PodStatusForExec) (*bytes.Buffer, error) {
 	ret := _m.Called(ctx, pod, command, expectedStatus)
 
 	var r0 *bytes.Buffer
-	if rf, ok := ret.Get(0).(func(context.Context, *corev1.Pod, internal.ShellCommand, internal.PodStatus) *bytes.Buffer); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *corev1.Pod, internal.ShellCommand, internal.PodStatusForExec) *bytes.Buffer); ok {
 		r0 = rf(ctx, pod, command, expectedStatus)
 	} else {
 		if ret.Get(0) != nil {
@@ -57,7 +57,7 @@ func (_m *CommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Po
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *corev1.Pod, internal.ShellCommand, internal.PodStatus) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *corev1.Pod, internal.ShellCommand, internal.PodStatusForExec) error); ok {
 		r1 = rf(ctx, pod, command, expectedStatus)
 	} else {
 		r1 = ret.Error(1)
