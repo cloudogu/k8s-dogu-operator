@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+// LimitPatcher includes functionality to read and patch the physical resource limits of a dogu.
 type LimitPatcher interface {
 	// RetrievePodLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
 	RetrievePodLimits(doguResource *k8sv1.Dogu) (DoguLimits, error)

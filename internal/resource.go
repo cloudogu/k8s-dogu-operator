@@ -14,6 +14,7 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
 
+// ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
 type ResourceUpserter interface {
 	// ApplyDoguResource generates K8s resources from a given dogu and creates/updates them in the cluster.
 	ApplyDoguResource(
@@ -25,6 +26,7 @@ type ResourceUpserter interface {
 	) error
 }
 
+// DoguSecretHandler includes functionality to associate secrets from setup with a dogu.
 type DoguSecretHandler interface {
 	// WriteDoguSecretsToRegistry is used to write potential secret from the setup.json registryConfigEncrypted to the
 	// respective dogu configurations.
