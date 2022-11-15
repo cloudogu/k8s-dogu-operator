@@ -19,7 +19,7 @@ func Test_OnErrorRetry(t *testing.T) {
 		}
 
 		// when
-		err := OnErrorRetry(maxTries, AlwaysRetryFunc, fn)
+		err := OnError(maxTries, AlwaysRetryFunc, fn)
 
 		// then
 		require.NoError(t, err)
@@ -33,7 +33,7 @@ func Test_OnErrorRetry(t *testing.T) {
 		}
 
 		// when
-		err := OnErrorRetry(maxTries, AlwaysRetryFunc, fn)
+		err := OnError(maxTries, AlwaysRetryFunc, fn)
 
 		// then
 		require.Error(t, err)

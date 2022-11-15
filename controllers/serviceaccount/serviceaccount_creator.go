@@ -2,9 +2,9 @@ package serviceaccount
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	"io"
 	"strings"
@@ -25,31 +25,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-// commandExecutor is used to execute command in a dogu
-type commandExecutor interface {
-	// ExecCommandForDogu executes a command in the pod of a given dogu. The expectedStatus decides which state the
-	// pod must have in order to successfully execute the command.
-	ExecCommandForDogu(ctx context.Context, doguResource *v1.Dogu, command *exec.ShellCommand, expectedStatus exec.PodStatus) (*bytes.Buffer, error)
-	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command *exec.ShellCommand, expectedStatus exec.PodStatus) (*bytes.Buffer, error)
-}
-
-type localDoguFetcher interface {
-	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
-	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(doguName string) (installedDogu *core.Dogu, err error)
-}
-
 // creator is the unit to handle the creation of service accounts
 type creator struct {
 	client      client.Client
 	registry    registry.Registry
-	doguFetcher localDoguFetcher
-	executor    commandExecutor
+	doguFetcher internal.LocalDoguFetcher
+	executor    internal.CommandExecutor
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(registry registry.Registry, commandExecutor commandExecutor, client client.Client) *creator {
+func NewCreator(registry registry.Registry, commandExecutor internal.CommandExecutor, client client.Client) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &creator{
 		client:      client,
@@ -145,8 +130,8 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
 
-	command := &exec.ShellCommand{Command: createCommand.Command, Args: args}
-	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
+	command := exec.NewShellCommand(createCommand.Command, args...)
+	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, internal.PodReady)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}

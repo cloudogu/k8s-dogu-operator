@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"errors"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,11 +26,8 @@ import (
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	exec "github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	resourceMocks "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
 type doguInstallManagerWithMocks struct {
@@ -39,12 +38,12 @@ type doguInstallManagerWithMocks struct {
 	doguRegistratorMock       *mocks.DoguRegistrator
 	dependencyValidatorMock   *mocks.DependencyValidator
 	serviceAccountCreatorMock *mocks.ServiceAccountCreator
-	doguSecretHandlerMock     *mocks.DoguSecretsHandler
+	doguSecretHandlerMock     *mocks.DoguSecretHandler
 	applierMock               *mocks.Applier
 	fileExtractorMock         *mocks.FileExtractor
 	client                    client.WithWatch
 	resourceUpserter          *mocks.ResourceUpserter
-	recorder                  *mocks.EventRecorder
+	recorder                  *external.EventRecorder
 	execPodFactory            *mocks.ExecPodFactory
 }
 
@@ -68,18 +67,18 @@ func (d *doguInstallManagerWithMocks) AssertMocks(t *testing.T) {
 
 func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguInstallManagerWithMocks {
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	limitPatcher := &resourceMocks.LimitPatcher{}
-	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(limit.DoguLimits{}, nil)
+	limitPatcher := &mocks.LimitPatcher{}
+	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(mocks.NewDoguLimits(t), nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 	upserter := &mocks.ResourceUpserter{}
 	imageRegistry := &mocks.ImageRegistry{}
 	doguRegistrator := &mocks.DoguRegistrator{}
 	dependencyValidator := &mocks.DependencyValidator{}
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
-	doguSecretHandler := &mocks.DoguSecretsHandler{}
+	doguSecretHandler := &mocks.DoguSecretHandler{}
 	mockedApplier := &mocks.Applier{}
 	fileExtract := mocks.NewFileExtractor(t)
-	eventRecorderMock := mocks.NewEventRecorder(t)
+	eventRecorderMock := external.NewEventRecorder(t)
 	localDoguFetcher := mocks.NewLocalDoguFetcher(t)
 	resourceDoguFetcher := mocks.NewResourceDoguFetcher(t)
 	collectApplier := resource.NewCollectApplier(mockedApplier)
@@ -142,7 +141,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
 		doguRegistry := &cesmocks.DoguRegistry{}
-		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder := &external.EventRecorder{}
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
@@ -168,7 +167,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
-		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder := &external.EventRecorder{}
 
 		// when
 		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, eventRecorder)
@@ -190,7 +189,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
@@ -208,10 +207,10 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...").
 			On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml").
 			On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Return(nil)
 		execPod.On("Delete", testCtx).Return(nil)
-		managerWithMocks.execPodFactory.On("NewExecPod", exec.PodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+		managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 		// when
 		err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -230,7 +229,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, &developmentDoguMap, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		yamlResult := make(map[string]string, 0)
@@ -246,10 +245,10 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 		managerWithMocks.resourceUpserter.On("ApplyDoguResource", ctx, ldapCr, ldapDogu, imageConfig, mock.Anything).Once().Return(nil)
 
-		execPod := exec.NewExecPodMock(t)
+		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Return(nil)
 		execPod.On("Delete", testCtx).Return(nil)
-		managerWithMocks.execPodFactory.On("NewExecPod", exec.PodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+		managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 		// when
 		err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -269,7 +268,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
-		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(assert.AnError)
+		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(assert.AnError)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 		managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -290,7 +289,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
-		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
 		managerWithMocks.recorder.On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -312,7 +311,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(assert.AnError)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
 
@@ -336,7 +335,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
@@ -394,7 +393,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+		managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		_ = managerWithMocks.installManager.client.Create(ctx, ldapCr)
@@ -421,7 +420,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-			managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 			managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			yamlResult := make(map[string]string, 0)
@@ -437,10 +436,10 @@ func Test_doguInstallManager_Install(t *testing.T) {
 				On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4").
 				On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...").
 				On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
-			execPod := exec.NewExecPodMock(t)
+			execPod := mocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Return(nil)
 			execPod.On("Delete", testCtx).Return(nil)
-			managerWithMocks.execPodFactory.On("NewExecPod", exec.PodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+			managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 			// when
 			err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -456,7 +455,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.resourceDoguFetcher.On("FetchWithResource", ctx, ldapCr).Return(ldapDogu, nil, nil)
 			managerWithMocks.imageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.doguRegistratorMock.On("RegisterNewDogu", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-			managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", mock.Anything).Return(nil)
+			managerWithMocks.dependencyValidatorMock.On("ValidateDependencies", ctx, mock.Anything).Return(nil)
 			managerWithMocks.doguSecretHandlerMock.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.serviceAccountCreatorMock.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			yamlResult := make(map[string]string, 0)
@@ -470,10 +469,10 @@ func Test_doguInstallManager_Install(t *testing.T) {
 				On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4").
 				On("Eventf", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...").
 				On("Event", mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
-			execPod := exec.NewExecPodMock(t)
+			execPod := mocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Return(nil)
 			execPod.On("Delete", testCtx).Return(nil)
-			managerWithMocks.execPodFactory.On("NewExecPod", exec.PodVolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+			managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 			managerWithMocks.resourceUpserter.On("ApplyDoguResource", ctx, ldapCr, ldapDogu, imageConfig, mock.Anything).Once().Return(assert.AnError) // boom
 

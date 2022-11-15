@@ -16,6 +16,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -36,26 +37,26 @@ const upgradeStartupProbeFailureThresholdRetries = int32(60)
 type upgradeExecutor struct {
 	client                client.Client
 	eventRecorder         record.EventRecorder
-	imageRegistry         imageRegistry
-	collectApplier        collectApplier
-	k8sFileExtractor      fileExtractor
-	serviceAccountCreator serviceAccountCreator
-	doguRegistrator       doguRegistrator
-	resourceUpserter      resourceUpserter
-	execPodFactory        execPodFactory
-	doguCommandExecutor   commandExecutor
+	imageRegistry         internal.ImageRegistry
+	collectApplier        internal.CollectApplier
+	k8sFileExtractor      internal.FileExtractor
+	serviceAccountCreator internal.ServiceAccountCreator
+	doguRegistrator       internal.DoguRegistrator
+	resourceUpserter      internal.ResourceUpserter
+	execPodFactory        internal.ExecPodFactory
+	doguCommandExecutor   internal.CommandExecutor
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
 func NewUpgradeExecutor(
 	client client.Client,
 	config *rest.Config,
-	commandExecutor commandExecutor,
+	commandExecutor internal.CommandExecutor,
 	eventRecorder record.EventRecorder,
-	imageRegistry imageRegistry,
-	collectApplier collectApplier,
-	k8sFileExtractor fileExtractor,
-	serviceAccountCreator serviceAccountCreator,
+	imageRegistry internal.ImageRegistry,
+	collectApplier internal.CollectApplier,
+	k8sFileExtractor internal.FileExtractor,
+	serviceAccountCreator internal.ServiceAccountCreator,
 	registry registry.Registry,
 ) *upgradeExecutor {
 	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, nil)
@@ -97,7 +98,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
-	execPod, err := ue.execPodFactory.NewExecPod(exec.PodVolumeModeUpgrade, toDoguResource, toDogu)
+	execPod, err := ue.execPodFactory.NewExecPod(internal.VolumeModeUpgrade, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
@@ -194,7 +195,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Do
 	return nil
 }
 
-func registerUpgradedDoguVersion(cesreg doguRegistrator, toDogu *core.Dogu) error {
+func registerUpgradedDoguVersion(cesreg internal.DoguRegistrator, toDogu *core.Dogu) error {
 	err := cesreg.RegisterDoguVersion(toDogu)
 	if err != nil {
 		return fmt.Errorf("failed to register upgrade: %w", err)
@@ -203,7 +204,7 @@ func registerUpgradedDoguVersion(cesreg doguRegistrator, toDogu *core.Dogu) erro
 	return nil
 }
 
-func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCreator, toDogu *core.Dogu) error {
+func registerNewServiceAccount(ctx context.Context, saCreator internal.ServiceAccountCreator, toDogu *core.Dogu) error {
 	err := saCreator.CreateAll(ctx, toDogu)
 	if err != nil {
 		if err != nil {
@@ -213,7 +214,7 @@ func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCrea
 	return nil
 }
 
-func pullUpgradeImage(ctx context.Context, imgRegistry imageRegistry, toDogu *core.Dogu) (*imagev1.ConfigFile, error) {
+func pullUpgradeImage(ctx context.Context, imgRegistry internal.ImageRegistry, toDogu *core.Dogu) (*imagev1.ConfigFile, error) {
 	configFile, err := imgRegistry.PullImageConfig(ctx, toDogu.Image+":"+toDogu.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull upgrade image: %w", err)
@@ -222,7 +223,7 @@ func pullUpgradeImage(ctx context.Context, imgRegistry imageRegistry, toDogu *co
 	return configFile, nil
 }
 
-func (ue *upgradeExecutor) applyCustomK8sScripts(ctx context.Context, toDoguResource *k8sv1.Dogu, execPod exec.ExecPod) (*appsv1.Deployment, error) {
+func (ue *upgradeExecutor) applyCustomK8sScripts(ctx context.Context, toDoguResource *k8sv1.Dogu, execPod internal.ExecPod) (*appsv1.Deployment, error) {
 	var customK8sResources map[string]string
 	customK8sResources, err := extractCustomK8sResources(ctx, ue.k8sFileExtractor, execPod)
 	if err != nil {
@@ -236,7 +237,7 @@ func (ue *upgradeExecutor) applyCustomK8sScripts(ctx context.Context, toDoguReso
 	return applyCustomK8sResources(ctx, ue.collectApplier, toDoguResource, customK8sResources)
 }
 
-func extractCustomK8sResources(ctx context.Context, extractor fileExtractor, execPod exec.ExecPod) (map[string]string, error) {
+func extractCustomK8sResources(ctx context.Context, extractor internal.FileExtractor, execPod internal.ExecPod) (map[string]string, error) {
 	resources, err := extractor.ExtractK8sResourcesFromContainer(ctx, execPod)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract custom K8s resources: %w", err)
@@ -245,7 +246,7 @@ func extractCustomK8sResources(ctx context.Context, extractor fileExtractor, exe
 	return resources, nil
 }
 
-func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) (*appsv1.Deployment, error) {
+func applyCustomK8sResources(ctx context.Context, collectApplier internal.CollectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) (*appsv1.Deployment, error) {
 	resources, err := collectApplier.CollectApply(ctx, customK8sResources, toDoguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply custom K8s resources: %w", err)
@@ -254,7 +255,7 @@ func applyCustomK8sResources(ctx context.Context, collectApplier collectApplier,
 	return resources, nil
 }
 
-func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu, execPod exec.ExecPod) error {
+func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu, execPod internal.ExecPod) error {
 	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
 		return nil
 	}
@@ -276,7 +277,7 @@ func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguReso
 	return nil
 }
 
-func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod exec.ExecPod, preUpgradeScriptCmd *core.ExposedCommand) error {
+func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod internal.ExecPod, preUpgradeScriptCmd *core.ExposedCommand) error {
 	// the exec pod is based on the image-to-be-upgraded. Thus, upgrade scripts should have the right executable
 	// permissions which should be retained during the file copy.
 	const copyCmd = "/bin/cp"
@@ -317,7 +318,7 @@ func (ue *upgradeExecutor) copyPreUpgradeScriptToDoguReserved(ctx context.Contex
 
 	// copy the file back to the directory where it resided in the upgrade image
 	// example: /dogu-reserved/myscript.sh to /resource/myscript.sh
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, pod, preUpgradeBackCopyCmd, exec.ContainersStarted)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, pod, preUpgradeBackCopyCmd, internal.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeBackCopyCmd, outBuf, err)
 	}
@@ -325,7 +326,7 @@ func (ue *upgradeExecutor) copyPreUpgradeScriptToDoguReserved(ctx context.Contex
 	return nil
 }
 
-func getPreUpgradeBackCopyCmd(preUpgradeCmd *core.ExposedCommand) *exec.ShellCommand {
+func getPreUpgradeBackCopyCmd(preUpgradeCmd *core.ExposedCommand) internal.ShellCommand {
 	_, fileName := filepath.Split(preUpgradeCmd.Command)
 	filePathInDoguReserved := filepath.Join(resource.DoguReservedPath, fileName)
 
@@ -337,7 +338,7 @@ func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, pod *co
 
 	mkdirCmd := exec.NewShellCommand("/bin/mkdir", "-p", baseDir)
 
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, pod, mkdirCmd, exec.ContainersStarted)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, pod, mkdirCmd, internal.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", mkdirCmd, outBuf, err)
 	}
@@ -350,7 +351,7 @@ func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod 
 	// execute it as described by the dogu.json.
 	preUpgradeCmd := exec.NewShellCommand(cmd.Command, fromVersion, toVersion)
 
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, exec.PodReady)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, internal.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeCmd, outBuf, err)
 	}
@@ -381,7 +382,7 @@ func (ue *upgradeExecutor) applyPostUpgradeScript(ctx context.Context, toDoguRes
 func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu *core.Dogu, postUpgradeCmd *core.ExposedCommand) error {
 	postUpgradeShellCmd := exec.NewShellCommand(postUpgradeCmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
 
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource, postUpgradeShellCmd, exec.ContainersStarted)
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource, postUpgradeShellCmd, internal.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", postUpgradeShellCmd, outBuf, err)
 	}
@@ -389,7 +390,7 @@ func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguR
 	return nil
 }
 
-func updateDoguResources(ctx context.Context, upserter resourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
+func updateDoguResources(ctx context.Context, upserter internal.ResourceUpserter, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, image *imagev1.ConfigFile, customDeployment *appsv1.Deployment) error {
 	err := upserter.ApplyDoguResource(ctx, toDoguResource, toDogu, image, customDeployment)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu resources: %w", err)
@@ -402,7 +403,7 @@ func (ue *upgradeExecutor) normalEventf(doguResource *k8sv1.Dogu, msg string, ar
 	ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, msg, args...)
 }
 
-func deleteExecPod(ctx context.Context, execPod exec.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
+func deleteExecPod(ctx context.Context, execPod internal.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
 	err := execPod.Delete(ctx)
 	if err != nil {
 		recorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)

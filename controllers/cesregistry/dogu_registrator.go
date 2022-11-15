@@ -3,6 +3,7 @@ package cesregistry
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/keys"
@@ -10,28 +11,22 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-// secretResourceGenerator is used to generate kubernetes secret resources
-type secretResourceGenerator interface {
-	CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error)
-}
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
 type CesDoguRegistrator struct {
 	client          client.Client
 	registry        cesregistry.Registry
 	doguRegistry    cesregistry.DoguRegistry
-	secretGenerator secretResourceGenerator
+	secretGenerator internal.SecretResourceGenerator
 }
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator secretResourceGenerator) *CesDoguRegistrator {
+func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator internal.SecretResourceGenerator) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
 		client:          client,
 		registry:        registry,

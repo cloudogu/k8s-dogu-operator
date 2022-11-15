@@ -3,6 +3,7 @@ package exec
 import (
 	"bytes"
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"net/url"
 	"testing"
 
@@ -100,7 +101,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString(commandOutput)
 
 		// when
-		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, ContainersStarted)
+		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, internal.ContainersStarted)
 
 		// then
 		require.NoError(t, err)
@@ -120,7 +121,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, internal.PodReady)
 
 		// then
 		require.NoError(t, err)
@@ -154,7 +155,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, internal.PodReady)
 
 		// then
 		require.Error(t, err)
@@ -174,7 +175,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, ContainersStarted)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, internal.ContainersStarted)
 
 		// then
 		require.Error(t, err)
@@ -194,7 +195,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, internal.PodReady)
 
 		// then
 		require.Error(t, err)
@@ -212,7 +213,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, internal.PodReady)
 
 		// then
 		require.Error(t, err)
@@ -268,7 +269,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		buffer, err := sut.ExecCommandForPod(ctx, readyPod, command, internal.PodReady)
 
 		// then
 		require.NoError(t, err)
@@ -283,7 +284,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, &ShellCommand{}, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, &shellCommand{}, internal.PodReady)
 
 		// then
 		require.Error(t, err)
@@ -300,7 +301,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, unreadyPod, nil, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, unreadyPod, nil, internal.PodReady)
 
 		// then
 		require.Error(t, err)
@@ -314,7 +315,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, command, internal.PodReady)
 
 		// then
 		require.Error(t, err)
@@ -329,7 +330,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, command, internal.PodReady)
 
 		// then
 		require.Error(t, err)
@@ -341,19 +342,19 @@ func TestNewShellCommand(t *testing.T) {
 	t.Run("should return simple command without args", func(t *testing.T) {
 		actual := NewShellCommand("/bin/ls")
 
-		expected := &ShellCommand{Command: "/bin/ls"}
+		expected := &shellCommand{command: "/bin/ls"}
 		assert.Equal(t, expected, actual)
 	})
 	t.Run("should return command 1 arg", func(t *testing.T) {
 		actual := NewShellCommand("/bin/ls", "/tmp/")
 
-		expected := &ShellCommand{Command: "/bin/ls", Args: []string{"/tmp/"}}
+		expected := &shellCommand{command: "/bin/ls", args: []string{"/tmp/"}}
 		assert.Equal(t, expected, actual)
 	})
 	t.Run("should return command multiple args", func(t *testing.T) {
 		actual := NewShellCommand("/bin/ls", []string{"arg1", "arg2", "arg3"}...)
 
-		expected := &ShellCommand{Command: "/bin/ls", Args: []string{"arg1", "arg2", "arg3"}}
+		expected := &shellCommand{command: "/bin/ls", args: []string{"arg1", "arg2", "arg3"}}
 		assert.Equal(t, expected, actual)
 	})
 }
