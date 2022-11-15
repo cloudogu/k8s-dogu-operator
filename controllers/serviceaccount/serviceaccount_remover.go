@@ -3,6 +3,7 @@ package serviceaccount
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -20,12 +21,12 @@ import (
 type remover struct {
 	client      client.Client
 	registry    registry.Registry
-	doguFetcher localDoguFetcher
-	executor    commandExecutor
+	doguFetcher internal.LocalDoguFetcher
+	executor    internal.CommandExecutor
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(registry registry.Registry, commandExecutor commandExecutor, client client.Client) *remover {
+func NewRemover(registry registry.Registry, commandExecutor internal.CommandExecutor, client client.Client) *remover {
 	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &remover{
 		client:      client,
@@ -104,8 +105,8 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
 
-	command := &exec.ShellCommand{Command: removeCommand.Command, Args: args}
-	_, err = r.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
+	command := exec.NewShellCommand(removeCommand.Command, args...)
+	_, err = r.executor.ExecCommandForPod(ctx, saPod, command, internal.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}

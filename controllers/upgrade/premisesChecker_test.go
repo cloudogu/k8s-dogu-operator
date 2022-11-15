@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,12 +66,14 @@ func Test_premisesChecker_Check(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
-		mockedChecker := mocks.NewPremiseCheckerMock(t)
-		mockedChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
-		mockedChecker.On("ValidateDependencies", ctx, fromDogu).Return(nil)
-		mockedChecker.On("CheckDependenciesRecursive", ctx, fromDogu, fromDoguResource.Namespace).Return(nil)
+		mockedDependencyValidator := mocks.NewDependencyValidator(t)
+		mockedDependencyValidator.On("ValidateDependencies", ctx, fromDogu).Return(nil)
+		mockedHealthChecker := mocks.NewDoguHealthChecker(t)
+		mockedHealthChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
+		mockedRecursiveHealthChecker := mocks.NewDoguRecursiveHealthChecker(t)
+		mockedRecursiveHealthChecker.On("CheckDependenciesRecursive", ctx, fromDogu, fromDoguResource.Namespace).Return(nil)
 
-		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
+		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker)
 
 		// when
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
@@ -102,10 +104,12 @@ func Test_premisesChecker_Check(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
-		mockedChecker := mocks.NewPremiseCheckerMock(t)
-		mockedChecker.On("CheckWithResource", ctx, fromDoguResource).Return(assert.AnError)
+		mockedDependencyValidator := mocks.NewDependencyValidator(t)
+		mockedHealthChecker := mocks.NewDoguHealthChecker(t)
+		mockedHealthChecker.On("CheckWithResource", ctx, fromDoguResource).Return(assert.AnError)
+		mockedRecursiveHealthChecker := mocks.NewDoguRecursiveHealthChecker(t)
 
-		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
+		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker)
 
 		// when
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
@@ -122,11 +126,13 @@ func Test_premisesChecker_Check(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
-		mockedChecker := mocks.NewPremiseCheckerMock(t)
-		mockedChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
-		mockedChecker.On("ValidateDependencies", ctx, fromDogu).Return(assert.AnError)
+		mockedDependencyValidator := mocks.NewDependencyValidator(t)
+		mockedDependencyValidator.On("ValidateDependencies", ctx, fromDogu).Return(assert.AnError)
+		mockedHealthChecker := mocks.NewDoguHealthChecker(t)
+		mockedHealthChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
+		mockedRecursiveHealthChecker := mocks.NewDoguRecursiveHealthChecker(t)
 
-		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
+		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker)
 
 		// when
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
@@ -140,12 +146,14 @@ func Test_premisesChecker_Check(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
-		mockedChecker := mocks.NewPremiseCheckerMock(t)
-		mockedChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
-		mockedChecker.On("ValidateDependencies", ctx, fromDogu).Return(nil)
-		mockedChecker.On("CheckDependenciesRecursive", ctx, fromDogu, fromDoguResource.Namespace).Return(assert.AnError)
+		mockedDependencyValidator := mocks.NewDependencyValidator(t)
+		mockedDependencyValidator.On("ValidateDependencies", ctx, fromDogu).Return(nil)
+		mockedHealthChecker := mocks.NewDoguHealthChecker(t)
+		mockedHealthChecker.On("CheckWithResource", ctx, fromDoguResource).Return(nil)
+		mockedRecursiveHealthChecker := mocks.NewDoguRecursiveHealthChecker(t)
+		mockedRecursiveHealthChecker.On("CheckDependenciesRecursive", ctx, fromDogu, fromDoguResource.Namespace).Return(assert.AnError)
 
-		sut := NewPremisesChecker(mockedChecker, mockedChecker, mockedChecker)
+		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker)
 
 		// when
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)

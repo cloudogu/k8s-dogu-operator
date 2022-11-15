@@ -29,10 +29,10 @@ func (tre *TestableRetrierError) Error() string {
 	return tre.Err.Error()
 }
 
-// OnErrorRetry provides a K8s-way "retrier" mechanism. The value from retriable is used to indicate if workload should
+// OnError provides a K8s-way "retrier" mechanism. The value from retriable is used to indicate if workload should
 // retried another time. Please see AlwaysRetryFunc() if a workload should always retried until a fixed threshold is
 // reached.
-func OnErrorRetry(maxTries int, retriable func(error) bool, workload func() error) error {
+func OnError(maxTries int, retriable func(error) bool, workload func() error) error {
 	err := retry.OnError(wait.Backoff{
 		Duration: 1500 * time.Millisecond,
 		Factor:   1.5,

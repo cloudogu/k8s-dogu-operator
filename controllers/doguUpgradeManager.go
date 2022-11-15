@@ -3,22 +3,21 @@ package controllers
 import (
 	"context"
 	"fmt"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	cesreg "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -94,10 +93,10 @@ type doguUpgradeManager struct {
 	client        client.Client
 	eventRecorder record.EventRecorder
 	// upgrade business
-	premisesChecker     premisesChecker
-	localDoguFetcher    localDoguFetcher
-	resourceDoguFetcher resourceDoguFetcher
-	upgradeExecutor     upgradeExecutor
+	premisesChecker     internal.PremisesChecker
+	localDoguFetcher    internal.LocalDoguFetcher
+	resourceDoguFetcher internal.ResourceDoguFetcher
+	upgradeExecutor     internal.UpgradeExecutor
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {

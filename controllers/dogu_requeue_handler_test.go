@@ -3,13 +3,12 @@ package controllers
 import (
 	"context"
 	"errors"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"github.com/hashicorp/go-multierror"
 	"testing"
 	"time"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -45,7 +44,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
 		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder := &external.EventRecorder{}
 
 		handler := doguRequeueHandler{
 			client:         fakeClient,
@@ -78,7 +77,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects().Build()
 		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder := &external.EventRecorder{}
 
 		handler := doguRequeueHandler{
 			client:         fakeClient,
@@ -120,7 +119,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 
 		fakeNonCacheClient := fake2.NewSimpleClientset(event)
-		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder := &external.EventRecorder{}
 		eventRecorder.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
 		handler := doguRequeueHandler{
@@ -168,7 +167,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 
 		fakeNonCacheClient := fake2.NewSimpleClientset(event)
-		eventRecorder := &mocks.EventRecorder{}
+		eventRecorder := &external.EventRecorder{}
 		eventRecorder.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
 		handler := doguRequeueHandler{
@@ -209,7 +208,7 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 		return &rest.Config{}, nil
 	}
 
-	eventRecorder := &mocks.EventRecorder{}
+	eventRecorder := &external.EventRecorder{}
 	fakeClient := fake.NewClientBuilder().WithScheme(&runtime.Scheme{}).Build()
 
 	// when

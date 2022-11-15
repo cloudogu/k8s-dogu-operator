@@ -3,25 +3,11 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
-
-type doguHealthChecker interface {
-	// CheckWithResource returns nil if the dogu described by the resource is up and running.
-	CheckWithResource(ctx context.Context, doguResource *k8sv1.Dogu) error
-}
-
-type doguRecursiveHealthChecker interface {
-	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
-	CheckDependenciesRecursive(ctx context.Context, fromDogu *core.Dogu, currentK8sNamespace string) error
-}
-
-// dependencyValidator is used to check if dogu dependencies are installed
-type dependencyValidator interface {
-	ValidateDependencies(ctx context.Context, dogu *core.Dogu) error
-}
 
 type requeueablePremisesError struct {
 	wrapped error
@@ -45,13 +31,17 @@ func (r *requeueablePremisesError) Requeue() bool {
 }
 
 type premisesChecker struct {
-	dependencyValidator        dependencyValidator
-	doguHealthChecker          doguHealthChecker
-	doguRecursiveHealthChecker doguRecursiveHealthChecker
+	dependencyValidator        internal.DependencyValidator
+	doguHealthChecker          internal.DoguHealthChecker
+	doguRecursiveHealthChecker internal.DoguRecursiveHealthChecker
 }
 
 // NewPremisesChecker creates a new upgrade premises checker.
-func NewPremisesChecker(depValidator dependencyValidator, healthChecker doguHealthChecker, recursiveHealthChecker doguRecursiveHealthChecker) *premisesChecker {
+func NewPremisesChecker(
+	depValidator internal.DependencyValidator,
+	healthChecker internal.DoguHealthChecker,
+	recursiveHealthChecker internal.DoguRecursiveHealthChecker,
+) *premisesChecker {
 	return &premisesChecker{
 		dependencyValidator:        depValidator,
 		doguHealthChecker:          healthChecker,
@@ -61,7 +51,12 @@ func NewPremisesChecker(depValidator dependencyValidator, healthChecker doguHeal
 
 // Check tests if upgrade premises are valid and returns nil. Otherwise an error is returned to cancel the dogu upgrade
 // early.
-func (pc *premisesChecker) Check(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu, remoteDogu *core.Dogu) error {
+func (pc *premisesChecker) Check(
+	ctx context.Context,
+	doguResource *k8sv1.Dogu,
+	localDogu *core.Dogu,
+	remoteDogu *core.Dogu,
+) error {
 	changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
 	err := checkDoguIdentity(localDogu, remoteDogu, changeNamespace)
 	// this error is most probably unrequeueable
@@ -82,7 +77,11 @@ func (pc *premisesChecker) Check(ctx context.Context, doguResource *k8sv1.Dogu, 
 	return nil
 }
 
-func (pc *premisesChecker) checkDependencyDogusHealthy(ctx context.Context, doguResource *k8sv1.Dogu, localDogu *core.Dogu) error {
+func (pc *premisesChecker) checkDependencyDogusHealthy(
+	ctx context.Context,
+	doguResource *k8sv1.Dogu,
+	localDogu *core.Dogu,
+) error {
 	err := pc.dependencyValidator.ValidateDependencies(ctx, localDogu)
 	if err != nil {
 		return err

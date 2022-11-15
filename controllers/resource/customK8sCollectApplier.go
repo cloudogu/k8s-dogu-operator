@@ -3,29 +3,21 @@ package resource
 import (
 	"context"
 	"fmt"
-
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
 
-// applier provides ways to apply unstructured Kubernetes resources against the API.
-type applier interface {
-	// ApplyWithOwner provides a testable method for applying generic, unstructured K8s resources to the API
-	ApplyWithOwner(doc apply.YamlDocument, namespace string, resource metav1.Object) error
-}
-
 type collectApplier struct {
-	applier applier
+	applier internal.Applier
 }
 
 // NewCollectApplier creates a K8s resource applier that filters and collects deployment resources for a later,
 // customized application.
-func NewCollectApplier(applier applier) *collectApplier {
+func NewCollectApplier(applier internal.Applier) *collectApplier {
 	return &collectApplier{applier: applier}
 }
 

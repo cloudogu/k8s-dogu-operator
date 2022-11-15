@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -72,22 +73,10 @@ func (o operation) toString() string {
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
 	client             client.Client
-	doguManager        manager
+	doguManager        internal.DoguManager
 	doguRequeueHandler requeueHandler
 	recorder           record.EventRecorder
-	fetcher            localDoguFetcher
-}
-
-// manager abstracts the simple dogu operations in a k8s CES.
-type manager interface {
-	// Install installs a dogu resource.
-	Install(ctx context.Context, doguResource *k8sv1.Dogu) error
-	// Upgrade upgrades a dogu resource.
-	Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error
-	// Delete deletes a dogu resource.
-	Delete(ctx context.Context, doguResource *k8sv1.Dogu) error
-	// HandleSupportMode handles the support flag in the dogu spec.
-	HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error)
+	fetcher            internal.LocalDoguFetcher
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
@@ -97,7 +86,7 @@ type requeueHandler interface {
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguManager manager, eventRecorder record.EventRecorder, namespace string, localRegistry registry.DoguRegistry) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguManager internal.DoguManager, eventRecorder record.EventRecorder, namespace string, localRegistry registry.DoguRegistry) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(client, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
@@ -311,7 +300,7 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 		r.doguManager.Upgrade)
 }
 
-func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher localDoguFetcher) (bool, error) {
+func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher internal.LocalDoguFetcher) (bool, error) {
 	fromDogu, err := fetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
 		return false, err

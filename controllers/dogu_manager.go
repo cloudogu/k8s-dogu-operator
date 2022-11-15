@@ -3,8 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
-
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -24,10 +24,10 @@ var NewManager = NewDoguManager
 // The DoguManager creates, updates and deletes dogus
 type DoguManager struct {
 	scheme         *runtime.Scheme
-	installManager installManager
-	upgradeManager upgradeManager
-	deleteManager  deleteManager
-	supportManager supportManager
+	installManager internal.InstallManager
+	upgradeManager internal.UpgradeManager
+	deleteManager  internal.DeleteManager
+	supportManager internal.SupportManager
 	recorder       record.EventRecorder
 }
 
@@ -102,6 +102,5 @@ func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) erro
 
 // HandleSupportMode handles the support flag in the dogu spec.
 func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, SupportEventReason, "Starting support handler...")
 	return m.supportManager.HandleSupportMode(ctx, doguResource)
 }

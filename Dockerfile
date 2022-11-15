@@ -17,6 +17,7 @@ RUN go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY internal/ internal/
 COPY retry/ retry/
 
 # Copy .git files as the build process builds the current commit id into the binary via ldflags.
@@ -39,7 +40,7 @@ RUN make compile-generic
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="0.14.0"
+      VERSION="0.15.0"
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .
