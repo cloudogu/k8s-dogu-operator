@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"strconv"
 	"strings"
 
@@ -20,7 +21,6 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 )
 
 const (
@@ -42,19 +42,12 @@ const doguPodName = "POD_NAME"
 // as controller
 type resourceGenerator struct {
 	scheme           *runtime.Scheme
-	doguLimitPatcher limitPatcher
+	doguLimitPatcher internal.LimitPatcher
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher limitPatcher) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher internal.LimitPatcher) *resourceGenerator {
 	return &resourceGenerator{scheme: scheme, doguLimitPatcher: limitPatcher}
-}
-
-type limitPatcher interface {
-	// RetrievePodLimits reads all container keys from the dogu configuration and creates a DoguLimits object.
-	RetrievePodLimits(doguResource *k8sv1.Dogu) (limit.DoguLimits, error)
-	// PatchDeployment patches the given deployment with the resource limits provided.
-	PatchDeployment(deployment *appsv1.Deployment, limits limit.DoguLimits) error
 }
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.

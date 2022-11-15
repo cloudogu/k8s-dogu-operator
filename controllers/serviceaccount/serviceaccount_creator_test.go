@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -16,11 +17,9 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -171,12 +170,12 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 
-		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,
@@ -301,7 +300,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(nil, assert.AnError)
 		serviceAccountCreator := creator{
 			registry:    registry,
@@ -330,7 +329,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		cliWithoutReadyPod := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -364,7 +363,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(invalidPostgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,
@@ -391,12 +390,12 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(nil, assert.AnError)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(nil, assert.AnError)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,
@@ -426,13 +425,13 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		invalidBuffer := bytes.NewBufferString("username:user:invalid\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(invalidBuffer, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(invalidBuffer, nil)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,
@@ -464,12 +463,12 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,
@@ -503,12 +502,12 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,
@@ -542,12 +541,12 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,
@@ -582,12 +581,12 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,
@@ -622,13 +621,13 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		postgresCreateSAShellCmd := &exec.ShellCommand{Command: postgresCreateExposedCmd.Command, Args: []string{"redmine"}}
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		buf := bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
 
-		localFetcher := &mocks2.LocalDoguFetcher{}
+		localFetcher := &mocks.LocalDoguFetcher{}
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
 			client:      cli,

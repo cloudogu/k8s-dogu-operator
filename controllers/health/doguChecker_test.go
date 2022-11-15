@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,8 +17,6 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
 
 const testNamespace = "test-namespace"

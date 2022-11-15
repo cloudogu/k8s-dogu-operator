@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - [#55] Refactoring the creation and update of kubernetes dogu resources. 
 
+### Changed
+- Extract interfaces and mocks to an internal package, which removes duplicate interfaces and avoids import cycles.
+
 ## [v0.14.0] - 2022-11-09
 ### Added
 - [#48] Make dogu registry URL schema configurable.

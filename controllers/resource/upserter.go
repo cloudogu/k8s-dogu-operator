@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 
@@ -27,28 +28,15 @@ const (
 	longhornStorageClassName             = "longhorn"
 )
 
-var noValidator resourceValidator
-
-type resourceValidator interface {
-	Validate(ctx context.Context, doguName string, obj client.Object) error
-}
-
-// doguResourceGenerator is used to generate kubernetes resources for the dogu.
-type doguResourceGenerator interface {
-	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error)
-	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*v1.Service, error)
-	CreateDoguPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
-	CreateReservedPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
-	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*v1.Service, error)
-}
+var noValidator internal.ResourceValidator
 
 type upserter struct {
 	client    client.Client
-	generator doguResourceGenerator
+	generator internal.DoguResourceGenerator
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, limitPatcher limitPatcher) *upserter {
+func NewUpserter(client client.Client, limitPatcher internal.LimitPatcher) *upserter {
 	schema := client.Scheme()
 	generator := NewResourceGenerator(schema, limitPatcher)
 	return &upserter{client: client, generator: generator}
@@ -161,7 +149,7 @@ func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim,
 }
 
 func (u *upserter) updateOrInsert(ctx context.Context, doguName string, objectKey client.ObjectKey,
-	resourceType client.Object, upsertResource client.Object, val resourceValidator) error {
+	resourceType client.Object, upsertResource client.Object, val internal.ResourceValidator) error {
 	if resourceType == nil {
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
 	}
