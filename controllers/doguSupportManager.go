@@ -53,7 +53,7 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 	err := dsm.client.Get(ctx, doguResource.GetObjectKey(), deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			dsm.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, SupportEventReason, "No deployment found for dogu %s", doguResource.Name)
+			dsm.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, SupportEventReason, "No deployment found for dogu %s when checking support handler", doguResource.Name)
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err)
@@ -62,7 +62,6 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 	logger.Info(fmt.Sprintf("Check if support mode is currently active for dogu %s...", doguResource.Name))
 	active := isDeploymentInSupportMode(deployment)
 	if !supportModeChanged(doguResource, active) {
-		dsm.eventRecorder.Event(doguResource, corev1.EventTypeNormal, SupportEventReason, "Support flag did not change. Do nothing.")
 		return false, nil
 	}
 

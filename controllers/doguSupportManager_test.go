@@ -240,7 +240,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(getTestScheme())
 		ldapCr := readDoguCr(t, ldapCrBytes)
-		sut.recorderMock.On("Eventf", ldapCr, "Warning", "Support", "No deployment found for dogu %s", "ldap")
+		sut.recorderMock.On("Eventf", ldapCr, "Warning", "Support", "No deployment found for dogu %s when checking support handler", "ldap")
 
 		// when
 		result, err := sut.supportManager.HandleSupportMode(testCtx, ldapCr)
@@ -257,7 +257,6 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = namespace
 		ldapCr.Spec.SupportMode = false
-		sut.recorderMock.On("Event", ldapCr, "Normal", "Support", "Support flag did not change. Do nothing.")
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace},
 			Spec: appsv1.DeploymentSpec{

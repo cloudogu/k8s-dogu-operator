@@ -344,7 +344,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), exec.PodReady).Once().Return(&bytes.Buffer{}, nil).
 			On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), exec.ContainersStarted).Once().Run(func(args mock.Arguments) {
 			defer GinkgoRecover()
-			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 60)
+			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 1080)
 			assertRessourceStatus(upgradeLdapFromDoguLookupKey, "upgrading")
 		}).Return(&bytes.Buffer{}, nil)
 	})
@@ -412,7 +412,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		setExecPodRunning(ctx, "ldap")
 		createDoguPod(ctx, upgradedLdapDoguCr, oldPodLabels)
 
-		assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 3)
+		assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 180)
 
 		assertRessourceStatus(upgradeLdapFromDoguLookupKey, "installed")
 

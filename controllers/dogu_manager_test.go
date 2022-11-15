@@ -29,7 +29,6 @@ func TestDoguManager_HandleSupportMode(t *testing.T) {
 	manager := DoguManager{supportManager: supportManagerMock, recorder: eventRecorderMock}
 
 	supportManagerMock.On("HandleSupportMode", mock.Anything, mock.Anything).Return(true, nil)
-	eventRecorderMock.On("Event", dogu, corev1.EventTypeNormal, "Support", "Starting support handler...")
 
 	// when
 	result, err := manager.HandleSupportMode(context.TODO(), dogu)
