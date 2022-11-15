@@ -30,8 +30,8 @@ const (
 )
 
 // upgradeStartupProbeFailureThresholdRetries contains the number of times how often a startup probe may fail. This
-// value will be multiplied with 10 seconds for each timeout so that f. i. 60 timeouts lead to a threshold of 10 minutes.
-const upgradeStartupProbeFailureThresholdRetries = int32(60)
+// value will be multiplied with 10 seconds for each timeout so that f. i. 1080 timeouts lead to a threshold of 3 hours.
+const upgradeStartupProbeFailureThresholdRetries = int32(1080)
 
 type upgradeExecutor struct {
 	client                client.Client

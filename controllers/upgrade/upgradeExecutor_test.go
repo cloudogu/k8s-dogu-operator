@@ -1598,7 +1598,7 @@ func Test_getMapKeysAsString(t *testing.T) {
 func Test_increaseStartupProbeTimeoutForUpdate(t *testing.T) {
 	t.Run("should create new deployment with upgrade startup probe if nil deployment is provided", func(t *testing.T) {
 		// given
-		expectedDeployment := createTestDeploymentWithStartupProbe("ldap", 60)
+		expectedDeployment := createTestDeploymentWithStartupProbe("ldap", 1080)
 
 		// when
 		result := increaseStartupProbeTimeoutForUpdate("ldap", nil)
@@ -1610,7 +1610,7 @@ func Test_increaseStartupProbeTimeoutForUpdate(t *testing.T) {
 
 	t.Run("should edit existing startup probe threshold for same container name", func(t *testing.T) {
 		// given
-		expectedDeployment := createTestDeploymentWithStartupProbe("ldap", 60)
+		expectedDeployment := createTestDeploymentWithStartupProbe("ldap", 1080)
 		patchDeployment := createTestDeploymentWithStartupProbe("ldap", 3)
 
 		// when
@@ -1673,7 +1673,7 @@ func Test_revertStartupProbeAfterUpdate(t *testing.T) {
 		actualDeployment := &appsv1.Deployment{}
 		err = myClient.Get(testCtx, toDoguResource.GetObjectKey(), actualDeployment)
 		require.NoError(t, err)
-		assert.Equal(t, int32(3), actualDeployment.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold)
+		assert.Equal(t, int32(180), actualDeployment.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold)
 	})
 }
 
