@@ -16,14 +16,17 @@ import (
 
 // ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
 type ResourceUpserter interface {
-	// ApplyDoguResource generates K8s resources from a given dogu and creates/updates them in the cluster.
-	ApplyDoguResource(
-		ctx context.Context,
-		doguResource *k8sv1.Dogu,
-		dogu *cesappcore.Dogu,
-		image *image.ConfigFile,
-		customDeployment *apps.Deployment,
-	) error
+	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
+	// All parameters are mandatory except customDeployment which may be nil.
+	UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, customDeployment *apps.Deployment) (*apps.Deployment, error)
+	// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
+	UpsertDoguService(ctx context.Context, doguResource *k8sv1.Dogu, image *image.ConfigFile) (*v1.Service, error)
+	// UpsertDoguExposedServices creates exposed services based on the given dogu. If an error occurs during creating
+	// several exposed services, this method tries to apply as many exposed services as possible and returns then
+	// an error collection.
+	UpsertDoguExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) ([]*v1.Service, error)
+	// UpsertDoguPVCs generates a persitent volume claim for a given dogu and applies it to the cluster.
+	UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*v1.PersistentVolumeClaim, error)
 }
 
 // DoguSecretHandler includes functionality to associate secrets from setup with a dogu.

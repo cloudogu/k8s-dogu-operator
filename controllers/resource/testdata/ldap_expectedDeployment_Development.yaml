@@ -56,7 +56,7 @@ spec:
               name: ldap-data
               subPath: config
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 180
             periodSeconds: 10
             successThreshold: 1
             tcpSocket:
@@ -68,7 +68,7 @@ spec:
                 - bash
                 - -c
                 - '[[ $(doguctl state) == "ready" ]]'
-            failureThreshold: 3
+            failureThreshold: 180
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
