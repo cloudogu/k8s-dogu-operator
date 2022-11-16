@@ -43,6 +43,10 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	var allProblems error
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
+		if serviceAccount.Kind != "" && serviceAccount.Kind != DoguKind {
+			continue
+		}
+
 		registryCredentialPath := "sa-" + serviceAccount.Type
 		doguConfig := r.registry.DoguConfig(dogu.GetSimpleName())
 

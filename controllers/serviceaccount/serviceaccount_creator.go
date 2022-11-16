@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-
 	"io"
 	"strings"
 
@@ -17,12 +15,17 @@ import (
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/keys"
 	"github.com/cloudogu/cesapp-lib/registry"
 
 	"github.com/pkg/errors"
+)
+
+const (
+	DoguKind = "dogu"
 )
 
 // creator is the unit to handle the creation of service accounts
@@ -49,6 +52,10 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
+		if serviceAccount.Kind != "" && serviceAccount.Kind != DoguKind {
+			continue
+		}
+
 		registryCredentialPath := "sa-" + serviceAccount.Type
 		doguConfig := c.registry.DoguConfig(dogu.GetSimpleName())
 
