@@ -55,6 +55,8 @@ spec:
             - mountPath: /etc/openldap/slapd.d
               name: ldap-data
               subPath: config
+            - mountPath: /etc/my-configmap.conf
+              name: configmap-test
           livenessProbe:
             failureThreshold: 180
             periodSeconds: 10
@@ -89,6 +91,9 @@ spec:
         - name: ldap-reserved
           persistentVolumeClaim:
             claimName: ldap-reserved
+        - name: configmap-test
+          configMap:
+            name: k8s-my-configmap
         - name: ldap-data
           persistentVolumeClaim:
             claimName: ldap

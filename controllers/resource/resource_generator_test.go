@@ -7,8 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -52,6 +50,22 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 	config.Stage = config.StageProduction
 	generator := getResourceGenerator(t)
 
+	t.Run("should fail to create pod template", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		client, clientExists := ldapDogu.Volumes[2].GetClient(operatorVolumeClientName)
+		require.True(t, clientExists)
+		client.Params = "invalid"
+
+		// when
+		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to read k8s-dogu-operator client params of volume configmap-test")
+	})
+
 	t.Run("Return simple deployment", func(t *testing.T) {
 		// when
 		ldapDoguResource := readLdapDoguResource(t)
@@ -62,45 +76,6 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.NoError(t, err)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		assert.Equal(t, expectedDeployment, actualDeployment)
-		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
-	})
-
-	t.Run("Return simple deployment with given custom deployment", func(t *testing.T) {
-		// when
-		ldapDoguResource := readLdapDoguResource(t)
-		ldapDogu := readLdapDogu(t)
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: ldapDoguResource.Name,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						ServiceAccountName: "mytestAccount",
-						Containers: []corev1.Container{
-							{Name: ldapDoguResource.Name, VolumeMounts: []corev1.VolumeMount{
-								{Name: "myTestMount", MountPath: "/my/host/path/test.txt", SubPath: "test.txt"},
-							}, StartupProbe: &corev1.Probe{FailureThreshold: int32(60)}},
-						},
-						Volumes: []corev1.Volume{
-							{Name: "myTestVolume", VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/my/host/path",
-									Type: nil,
-								},
-							}},
-						},
-					},
-				},
-			},
-		}
-
-		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, deployment)
-
-		// then
-		require.NoError(t, err)
-		expectedCustomDeployment := readLdapDoguExpectedCustomDeployment(t)
-		assert.Equal(t, expectedCustomDeployment, actualDeployment)
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
@@ -377,5 +352,65 @@ func Test_createLivenessProbe(t *testing.T) {
 
 		// then
 		require.Nil(t, actual)
+	})
+}
+
+func Test_createClientVolumeFromDoguVolume(t *testing.T) {
+	t.Run("should fail due to missing client", func(t *testing.T) {
+		// given
+		doguVolume := core.Volume{
+			Name:    "my-volume",
+			Clients: []core.VolumeClient{},
+		}
+
+		// when
+		_, err := createClientVolumeFromDoguVolume(doguVolume)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "dogu volume my-volume has no client")
+	})
+	t.Run("should fail due to invalid config map type content", func(t *testing.T) {
+		// given
+		doguVolume := core.Volume{
+			Name: "my-volume",
+			Clients: []core.VolumeClient{
+				{
+					Name: "k8s-dogu-operator",
+					Params: volumeClientParams{
+						Type:    "configmap",
+						Content: "invalid",
+					},
+				},
+			},
+		}
+
+		// when
+		_, err := createClientVolumeFromDoguVolume(doguVolume)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to read configmap client type content of volume my-volume")
+	})
+	t.Run("should fail due to unsupported client param type", func(t *testing.T) {
+		// given
+		doguVolume := core.Volume{
+			Name: "my-volume",
+			Clients: []core.VolumeClient{
+				{
+					Name: "k8s-dogu-operator",
+					Params: volumeClientParams{
+						Type: "invalid",
+					},
+				},
+			},
+		}
+
+		// when
+		_, err := createClientVolumeFromDoguVolume(doguVolume)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "unsupported client param type invalid in volume my-volume")
 	})
 }

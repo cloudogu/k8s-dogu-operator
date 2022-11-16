@@ -72,6 +72,8 @@ spec:
             - mountPath: /etc/openldap/slapd.d
               name: ldap-data
               subPath: config
+            - mountPath: /etc/my-configmap.conf
+              name: configmap-test
             - mountPath: /my/host/path/test.txt
               name: myTestMount
               subPath: test.txt
@@ -93,6 +95,9 @@ spec:
         - name: ldap-reserved
           persistentVolumeClaim:
             claimName: ldap-reserved
+        - name: configmap-test
+          configMap:
+            name: k8s-my-configmap
         - name: ldap-data
           persistentVolumeClaim:
             claimName: ldap
