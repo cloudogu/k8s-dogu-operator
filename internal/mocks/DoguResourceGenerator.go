@@ -19,13 +19,13 @@ type DoguResourceGenerator struct {
 	mock.Mock
 }
 
-// CreateDoguDeployment provides a mock function with given fields: doguResource, dogu, customDeployment
-func (_m *DoguResourceGenerator) CreateDoguDeployment(doguResource *v1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
-	ret := _m.Called(doguResource, dogu, customDeployment)
+// CreateDoguDeployment provides a mock function with given fields: doguResource, dogu, deploymentPatch
+func (_m *DoguResourceGenerator) CreateDoguDeployment(doguResource *v1.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment)) (*appsv1.Deployment, error) {
+	ret := _m.Called(doguResource, dogu, deploymentPatch)
 
 	var r0 *appsv1.Deployment
-	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu, *appsv1.Deployment) *appsv1.Deployment); ok {
-		r0 = rf(doguResource, dogu, customDeployment)
+	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu, func(*appsv1.Deployment)) *appsv1.Deployment); ok {
+		r0 = rf(doguResource, dogu, deploymentPatch)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*appsv1.Deployment)
@@ -33,8 +33,8 @@ func (_m *DoguResourceGenerator) CreateDoguDeployment(doguResource *v1.Dogu, dog
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*v1.Dogu, *core.Dogu, *appsv1.Deployment) error); ok {
-		r1 = rf(doguResource, dogu, customDeployment)
+	if rf, ok := ret.Get(1).(func(*v1.Dogu, *core.Dogu, func(*appsv1.Deployment)) error); ok {
+		r1 = rf(doguResource, dogu, deploymentPatch)
 	} else {
 		r1 = ret.Error(1)
 	}

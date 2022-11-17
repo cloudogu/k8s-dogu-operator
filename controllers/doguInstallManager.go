@@ -226,12 +226,12 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	if len(customK8sResources) > 0 {
 		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
 	}
-	customDeployment, err := m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
+	_, err = m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
 	if err != nil {
 		return err
 	}
 
-	_, err = m.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, customDeployment)
+	_, err = m.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
 	if err != nil {
 		return err
 	}

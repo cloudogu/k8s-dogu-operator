@@ -44,8 +44,8 @@ func NewUpserter(client client.Client, limitPatcher internal.LimitPatcher) *upse
 
 // UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
 // All parameters are mandatory except customDeployment which may be nil.
-func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
-	newDeployment, err := u.generator.CreateDoguDeployment(doguResource, dogu, customDeployment)
+func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment)) (*appsv1.Deployment, error) {
+	newDeployment, err := u.generator.CreateDoguDeployment(doguResource, dogu, deploymentPatch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate deployment: %w", err)
 	}

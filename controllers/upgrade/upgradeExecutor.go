@@ -117,35 +117,13 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 	return nil
 }
 
-func increaseStartupProbeTimeoutForUpdate(containerName string, customDeployment *appsv1.Deployment) *appsv1.Deployment {
-	container := corev1.Container{
-		Name: containerName,
-		StartupProbe: &corev1.Probe{
-			FailureThreshold: upgradeStartupProbeFailureThresholdRetries,
-		},
-	}
-	if customDeployment == nil {
-		customDeployment = &appsv1.Deployment{
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{container},
-					},
-				},
-			},
-		}
-		return customDeployment
-	}
-
-	for _, container := range customDeployment.Spec.Template.Spec.Containers {
+func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *appsv1.Deployment) {
+	for i, container := range deployment.Spec.Template.Spec.Containers {
 		if container.Name == containerName {
-			container.StartupProbe.FailureThreshold = upgradeStartupProbeFailureThresholdRetries
-			return customDeployment
+			deployment.Spec.Template.Spec.Containers[i].StartupProbe.FailureThreshold = upgradeStartupProbeFailureThresholdRetries
+			break
 		}
 	}
-
-	customDeployment.Spec.Template.Spec.Containers = append(customDeployment.Spec.Template.Spec.Containers, container)
-	return customDeployment
 }
 
 func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, client client.Client) error {
@@ -200,11 +178,11 @@ func pullUpgradeImage(ctx context.Context, imgRegistry internal.ImageRegistry, t
 	return configFile, nil
 }
 
-func (ue *upgradeExecutor) applyCustomK8sScripts(ctx context.Context, toDoguResource *k8sv1.Dogu, execPod internal.ExecPod) (*appsv1.Deployment, error) {
+func (ue *upgradeExecutor) applyCustomK8sScripts(ctx context.Context, toDoguResource *k8sv1.Dogu, execPod internal.ExecPod) error {
 	var customK8sResources map[string]string
 	customK8sResources, err := extractCustomK8sResources(ctx, ue.k8sFileExtractor, execPod)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if len(customK8sResources) > 0 {
@@ -223,13 +201,13 @@ func extractCustomK8sResources(ctx context.Context, extractor internal.FileExtra
 	return resources, nil
 }
 
-func applyCustomK8sResources(ctx context.Context, collectApplier internal.CollectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) (*appsv1.Deployment, error) {
-	resources, err := collectApplier.CollectApply(ctx, customK8sResources, toDoguResource)
+func applyCustomK8sResources(ctx context.Context, collectApplier internal.CollectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) error {
+	_, err := collectApplier.CollectApply(ctx, customK8sResources, toDoguResource)
 	if err != nil {
-		return nil, fmt.Errorf("failed to apply custom K8s resources: %w", err)
+		return fmt.Errorf("failed to apply custom K8s resources: %w", err)
 	}
 
-	return resources, nil
+	return nil
 }
 
 func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu, execPod internal.ExecPod) error {
@@ -394,14 +372,19 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter int
 		return fmt.Errorf("pre-upgrade failed :%w", err)
 	}
 
-	customDeployment, err := ue.applyCustomK8sScripts(ctx, toDoguResource, execPod)
+	err = ue.applyCustomK8sScripts(ctx, toDoguResource, execPod)
 	if err != nil {
 		return err
 	}
 
-	customDeployment = increaseStartupProbeTimeoutForUpdate(toDoguResource.Name, customDeployment)
-
-	_, err = upserter.UpsertDoguDeployment(ctx, toDoguResource, toDogu, customDeployment)
+	_, err = upserter.UpsertDoguDeployment(
+		ctx,
+		toDoguResource,
+		toDogu,
+		func(deployment *appsv1.Deployment) {
+			increaseStartupProbeTimeoutForUpdate(toDoguResource.Name, deployment)
+		},
+	)
 	if err != nil {
 		return err
 	}

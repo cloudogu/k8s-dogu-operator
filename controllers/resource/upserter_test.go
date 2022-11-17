@@ -234,7 +234,7 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 
 		client := external.NewClient(t)
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(nil, assert.AnError)
+		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("func(*v1.Deployment)")).Return(nil, assert.AnError)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
@@ -255,7 +255,7 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 		client.On("Get", ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(readLdapDoguExpectedDeployment(t), nil)
+		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("func(*v1.Deployment)")).Return(readLdapDoguExpectedDeployment(t), nil)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
@@ -276,7 +276,7 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("*v1.Deployment")).Return(expectedDeployment, nil)
+		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("func(*v1.Deployment)")).Return(expectedDeployment, nil)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
