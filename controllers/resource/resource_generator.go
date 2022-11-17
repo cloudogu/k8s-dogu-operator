@@ -24,14 +24,10 @@ import (
 )
 
 const (
-	KubernetesKind = "k8s"
-	OperatorType   = "k8s-dogu-operator"
-)
-
-const (
 	appLabelKey      = "app"
 	appLabelValueCes = "ces"
 )
+
 const (
 	nodeMasterFile = "node-master-file"
 )
@@ -40,23 +36,10 @@ const (
 	DoguReservedPath = "/tmp/dogu-reserved"
 )
 
-const doguPodNamespace = "POD_NAMESPACE"
-const doguPodName = "POD_NAME"
-
-const operatorVolumeClientName = "k8s-dogu-operator"
-
-type volumeClientParamType string
-
-const configMapParamType volumeClientParamType = "configmap"
-
-type volumeClientParams struct {
-	Type    volumeClientParamType
-	Content interface{}
-}
-
-type volumeClientConfigMapContent struct {
-	Name string
-}
+const (
+	doguPodNamespace = "POD_NAMESPACE"
+	doguPodName      = "POD_NAME"
+)
 
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
@@ -184,7 +167,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 
 func getKubernetesServiceAccount(dogu *core.Dogu) (string, bool) {
 	for _, account := range dogu.ServiceAccounts {
-		if account.Kind == KubernetesKind && account.Type == OperatorType {
+		if account.Kind == string(k8sv1.KubernetesServiceAccountKind) && account.Type == k8sv1.DoguOperatorClient {
 			return dogu.GetSimpleName(), true
 		}
 	}
@@ -293,7 +276,7 @@ func createVolumesFromDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1
 	var multiError error
 	var volumes []corev1.Volume
 	for _, doguVolume := range doguVolumes {
-		_, clientExists := doguVolume.GetClient(operatorVolumeClientName)
+		_, clientExists := doguVolume.GetClient(k8sv1.DoguOperatorClient)
 		if clientExists {
 			volume, err := createClientVolumeFromDoguVolume(doguVolume)
 			if err != nil {
@@ -322,23 +305,23 @@ func createVolumesFromDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1
 }
 
 func createClientVolumeFromDoguVolume(doguVolume core.Volume) (*corev1.Volume, error) {
-	client, clientExists := doguVolume.GetClient(operatorVolumeClientName)
+	client, clientExists := doguVolume.GetClient(k8sv1.DoguOperatorClient)
 	if !clientExists {
 		return nil, fmt.Errorf("dogu volume %s has no client", doguVolume.Name)
 	}
 
-	clientParams := new(volumeClientParams)
+	clientParams := new(k8sv1.VolumeParams)
 	err := convertGenericJsonObject(client.Params, clientParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read %s client params of volume %s: %w", operatorVolumeClientName, doguVolume.Name, err)
+		return nil, fmt.Errorf("failed to read %s client params of volume %s: %w", k8sv1.DoguOperatorClient, doguVolume.Name, err)
 	}
 
 	switch clientParams.Type {
-	case configMapParamType:
-		configMapParamContent := new(volumeClientConfigMapContent)
+	case k8sv1.ConfigMapParamType:
+		configMapParamContent := new(k8sv1.VolumeConfigMapContent)
 		err = convertGenericJsonObject(clientParams.Content, configMapParamContent)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read %s client type content of volume %s: %w", configMapParamType, doguVolume.Name, err)
+			return nil, fmt.Errorf("failed to read %s client type content of volume %s: %w", k8sv1.ConfigMapParamType, doguVolume.Name, err)
 		}
 
 		return &corev1.Volume{
@@ -354,9 +337,9 @@ func createClientVolumeFromDoguVolume(doguVolume core.Volume) (*corev1.Volume, e
 	}
 }
 
-// convertGenericJsonObject is necessary because go unmarshalls generic json objects as `map[string]interface{}`, 
-// and, therefore, a type assertion is not possible. This method marshals the generic object (`map[string]interface{}`) 
-// back into a string. This string is then unmarshalled back into a specific given struct. 
+// convertGenericJsonObject is necessary because go unmarshalls generic json objects as `map[string]interface{}`,
+// and, therefore, a type assertion is not possible. This method marshals the generic object (`map[string]interface{}`)
+// back into a string. This string is then unmarshalled back into a specific given struct.
 func convertGenericJsonObject(genericObject interface{}, targetObject interface{}) error {
 	marshalledContent, err := json.Marshal(genericObject)
 	if err != nil {
@@ -400,7 +383,7 @@ func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []core
 }
 
 func createVolumeMountFromDoguVolume(doguVolume core.Volume, doguResource *k8sv1.Dogu) corev1.VolumeMount {
-	_, clientExists := doguVolume.GetClient(operatorVolumeClientName)
+	_, clientExists := doguVolume.GetClient(k8sv1.DoguOperatorClient)
 	if clientExists {
 		return corev1.VolumeMount{
 			Name:      doguVolume.Name,

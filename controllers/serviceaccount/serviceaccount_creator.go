@@ -24,10 +24,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	DoguKind = "dogu"
-)
-
 // creator is the unit to handle the creation of service accounts
 type creator struct {
 	client      client.Client
@@ -52,7 +48,7 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
-		if serviceAccount.Kind != "" && serviceAccount.Kind != DoguKind {
+		if serviceAccount.Kind != "" && serviceAccount.Kind != string(v1.DoguServiceAccountKind) {
 			continue
 		}
 

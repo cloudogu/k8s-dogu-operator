@@ -2,6 +2,7 @@ package resource
 
 import (
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
-		client, clientExists := ldapDogu.Volumes[2].GetClient(operatorVolumeClientName)
+		client, clientExists := ldapDogu.Volumes[2].GetClient(v1.DoguOperatorClient)
 		require.True(t, clientExists)
 		client.Params = "invalid"
 
@@ -394,7 +395,7 @@ func Test_createClientVolumeFromDoguVolume(t *testing.T) {
 			Clients: []core.VolumeClient{
 				{
 					Name: "k8s-dogu-operator",
-					Params: volumeClientParams{
+					Params: v1.VolumeParams{
 						Type:    "configmap",
 						Content: "invalid",
 					},
@@ -416,7 +417,7 @@ func Test_createClientVolumeFromDoguVolume(t *testing.T) {
 			Clients: []core.VolumeClient{
 				{
 					Name: "k8s-dogu-operator",
-					Params: volumeClientParams{
+					Params: v1.VolumeParams{
 						Type: "invalid",
 					},
 				},

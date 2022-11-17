@@ -3,6 +3,7 @@ package serviceaccount
 import (
 	"context"
 	"fmt"
+	v12 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -43,7 +44,7 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	var allProblems error
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
-		if serviceAccount.Kind != "" && serviceAccount.Kind != DoguKind {
+		if serviceAccount.Kind != "" && serviceAccount.Kind != string(v12.DoguServiceAccountKind) {
 			continue
 		}
 
