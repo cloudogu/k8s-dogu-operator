@@ -84,14 +84,14 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		ldapDogu.ServiceAccounts = []core.ServiceAccount{
-			{Type: "k8s-dogu-operator", Kind: "k8s", AccountName: "MyAccountName"},
+			{Type: "k8s-dogu-operator", Kind: "k8s"},
 		}
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
 
 		// then
 		require.NoError(t, err)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
-		expectedDeployment.Spec.Template.Spec.ServiceAccountName = "MyAccountName"
+		expectedDeployment.Spec.Template.Spec.ServiceAccountName = "ldap"
 		assert.Equal(t, expectedDeployment, actualDeployment)
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})

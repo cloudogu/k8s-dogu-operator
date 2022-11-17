@@ -185,7 +185,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 func getKubernetesServiceAccount(dogu *core.Dogu) (string, bool) {
 	for _, account := range dogu.ServiceAccounts {
 		if account.Kind == KubernetesKind && account.Type == OperatorType {
-			return account.AccountName, true
+			return dogu.GetSimpleName(), true
 		}
 	}
 
