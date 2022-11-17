@@ -17,7 +17,7 @@ import (
 // ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
 type ResourceUpserter interface {
 	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
-	// All parameters are mandatory except customDeployment which may be nil.
+	// All parameters are mandatory except deploymentPatch which may be nil.
 	UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
 	// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
 	UpsertDoguService(ctx context.Context, doguResource *k8sv1.Dogu, image *image.ConfigFile) (*v1.Service, error)
@@ -50,10 +50,23 @@ type CollectApplier interface {
 
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.
 type DoguResourceGenerator interface {
+	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
+	// The deploymentPatch is applied at the end of resource generation.
 	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
+	// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
+	// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
+	// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
+	// the service ports to the created service.
 	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *image.ConfigFile) (*v1.Service, error)
+	// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
 	CreateDoguPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
+	// CreateReservedPVC creates a persistent volume claim with a 10Mi storage for the given dogu.
+	// Used for example for upgrade operations.
 	CreateReservedPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
+	// CreateDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
+	// The created service is rather meant for cluster-external access. The given dogu provides the service ports to the
+	// created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
+	// (see K8s-service-discovery).
 	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) ([]*v1.Service, error)
 }
 
