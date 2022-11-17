@@ -45,7 +45,7 @@ type Applier interface {
 // CollectApplier provides ways to collectedly apply unstructured Kubernetes resources against the API.
 type CollectApplier interface {
 	// CollectApply applies the given resources to the K8s cluster
-	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*apps.Deployment, error)
+	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error
 }
 
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.

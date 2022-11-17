@@ -202,7 +202,7 @@ func extractCustomK8sResources(ctx context.Context, extractor internal.FileExtra
 }
 
 func applyCustomK8sResources(ctx context.Context, collectApplier internal.CollectApplier, toDoguResource *k8sv1.Dogu, customK8sResources map[string]string) error {
-	_, err := collectApplier.CollectApply(ctx, customK8sResources, toDoguResource)
+	err := collectApplier.CollectApply(ctx, customK8sResources, toDoguResource)
 	if err != nil {
 		return fmt.Errorf("failed to apply custom K8s resources: %w", err)
 	}

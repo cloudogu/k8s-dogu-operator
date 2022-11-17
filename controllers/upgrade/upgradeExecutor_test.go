@@ -1252,8 +1252,7 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		collectApplier := mocks.NewCollectApplier(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
-		fakeDeployment := createTestDeployment("redmine", "")
-		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(fakeDeployment, nil)
+		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(nil)
 
 		// when
 		err := applyCustomK8sResources(testCtx, collectApplier, toDoguCr, fakeResources)
@@ -1270,8 +1269,7 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		collectApplier := mocks.NewCollectApplier(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
-		var noDeployment *appsv1.Deployment
-		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(noDeployment, assert.AnError)
+		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(assert.AnError)
 
 		// when
 		err := applyCustomK8sResources(testCtx, collectApplier, toDoguCr, fakeResources)

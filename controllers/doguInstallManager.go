@@ -21,7 +21,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
@@ -192,7 +191,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	return nil
 }
 
-func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
+func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error {
 	return m.collectApplier.CollectApply(ctx, customK8sResources, doguResource)
 }
 
@@ -226,7 +225,7 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	if len(customK8sResources) > 0 {
 		m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
 	}
-	_, err = m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
+	err = m.applyCustomK8sResources(ctx, customK8sResources, doguResource)
 	if err != nil {
 		return err
 	}
