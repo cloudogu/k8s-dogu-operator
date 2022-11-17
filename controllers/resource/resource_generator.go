@@ -354,8 +354,9 @@ func createClientVolumeFromDoguVolume(doguVolume core.Volume) (*corev1.Volume, e
 	}
 }
 
-// convertGenericJsonObject is necessary because go unmarshalls generic json objects as `map[string]interface{}`.
-// Therefore a type assertion is not possible.
+// convertGenericJsonObject is necessary because go unmarshalls generic json objects as `map[string]interface{}`, 
+// and, therefore, a type assertion is not possible. This method marshals the generic object (`map[string]interface{}`) 
+// back into a string. This string is then unmarshalled back into a specific given struct. 
 func convertGenericJsonObject(genericObject interface{}, targetObject interface{}) error {
 	marshalledContent, err := json.Marshal(genericObject)
 	if err != nil {
