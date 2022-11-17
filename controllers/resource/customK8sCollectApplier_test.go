@@ -25,7 +25,7 @@ func TestNewCollectApplier(t *testing.T) {
 }
 
 func Test_collectApplier_CollectApply(t *testing.T) {
-	t.Run("should succeed and return a deployment", func(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
 		inputResource := make(map[string]string, 0)
 		const yamlDeployment = `apiVersion: apps/v1
 kind: Deployment
