@@ -24,7 +24,7 @@ const SupportModeEnvVar = "SUPPORT_MODE"
 
 // podTemplateResourceGenerator is used to generate pod templates.
 type podTemplateResourceGenerator interface {
-	GetPodTemplate(*k8sv1.Dogu, *core.Dogu) *corev1.PodTemplateSpec
+	GetPodTemplate(*k8sv1.Dogu, *core.Dogu) (*corev1.PodTemplateSpec, error)
 }
 
 // doguSupportManager is used to handle the support mode for dogus.
@@ -84,7 +84,10 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
 	}
 
-	podTemplate := dsm.resourceGenerator.GetPodTemplate(doguResource, dogu)
+	podTemplate, err := dsm.resourceGenerator.GetPodTemplate(doguResource, dogu)
+	if err != nil {
+		return err
+	}
 	if doguResource.Spec.SupportMode {
 		setDoguPodTemplateInSupportMode(doguResource, podTemplate)
 	}

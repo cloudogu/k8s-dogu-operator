@@ -6,12 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -27,6 +24,7 @@ const (
 	appLabelKey      = "app"
 	appLabelValueCes = "ces"
 )
+
 const (
 	nodeMasterFile = "node-master-file"
 )
@@ -35,8 +33,13 @@ const (
 	DoguReservedPath = "/tmp/dogu-reserved"
 )
 
-const doguPodNamespace = "POD_NAMESPACE"
-const doguPodName = "POD_NAME"
+const (
+	doguPodNamespace = "POD_NAMESPACE"
+	doguPodName      = "POD_NAME"
+)
+
+// kubernetesServiceAccountKind describes a service account on kubernetes.
+const kubernetesServiceAccountKind = "k8s"
 
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
@@ -51,9 +54,11 @@ func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher internal.LimitPat
 }
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-// The customDeployment is only partially patched in according to the attributes that we need.
-func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, customDeployment *appsv1.Deployment) (*appsv1.Deployment, error) {
-	podTemplate := r.GetPodTemplate(doguResource, dogu)
+func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	podTemplate, err := r.GetPodTemplate(doguResource, dogu)
+	if err != nil {
+		return nil, err
+	}
 
 	// Don't use the dogu.version label in deployment since it cannot be updated in the spec.
 	// Version labels only get applied to pods to discern them during an upgrade.
@@ -79,13 +84,6 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 		}
 	}
 
-	err := ctrl.SetControllerReference(doguResource, deployment, r.scheme)
-	if err != nil {
-		return nil, wrapControllerReferenceError(err)
-	}
-
-	applyValuesFromCustomDeployment(deployment, customDeployment)
-
 	doguLimits, err := r.doguLimitPatcher.RetrievePodLimits(doguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve resource limits for dogu [%s]: %w", doguResource.Name, err)
@@ -96,13 +94,22 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 		return nil, fmt.Errorf("failed to patch resource limits into dogu deployment [%s]: %w", doguResource.Name, err)
 	}
 
+	err = ctrl.SetControllerReference(doguResource, deployment, r.scheme)
+	if err != nil {
+		return nil, wrapControllerReferenceError(err)
+	}
+
 	return deployment, nil
 }
 
 // GetPodTemplate returns a pod template for the given dogu.
-func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu) *corev1.PodTemplateSpec {
-	volumes := createVolumesForDogu(doguResource, dogu)
-	volumeMounts := createVolumeMountsForDogu(doguResource, dogu)
+func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
+	volumes, err := createVolumes(doguResource, dogu)
+	if err != nil {
+		return nil, err
+	}
+
+	volumeMounts := createVolumeMounts(doguResource, dogu)
 	envVars := []corev1.EnvVar{
 		{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
 		{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
@@ -123,7 +130,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 
 	allLabels := GetAppLabel().Add(doguResource.GetPodLabels())
 
-	return &corev1.PodTemplateSpec{
+	podTemplate := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: allLabels,
 		},
@@ -144,6 +151,23 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 			}},
 		},
 	}
+
+	accountName, ok := getKubernetesServiceAccount(dogu)
+	if ok {
+		podTemplate.Spec.ServiceAccountName = accountName
+	}
+
+	return podTemplate, nil
+}
+
+func getKubernetesServiceAccount(dogu *core.Dogu) (string, bool) {
+	for _, account := range dogu.ServiceAccounts {
+		if account.Kind == kubernetesServiceAccountKind && account.Type == doguOperatorClient {
+			return dogu.GetSimpleName(), true
+		}
+	}
+
+	return "", false
 }
 
 func buildDeploymentSpec(selectorLabels map[string]string, podTemplate *corev1.PodTemplateSpec) appsv1.DeploymentSpec {
@@ -154,72 +178,6 @@ func buildDeploymentSpec(selectorLabels map[string]string, podTemplate *corev1.P
 		},
 		Template: *podTemplate,
 	}
-}
-
-func applyValuesFromCustomDeployment(desiredDeployment *appsv1.Deployment, patchingDeployment *appsv1.Deployment) {
-	logger := ctrl.Log
-
-	if patchingDeployment == nil {
-		return
-	}
-
-	if patchingDeployment.Spec.Template.Spec.ServiceAccountName != "" {
-		logger.Info("Found service account in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
-		desiredDeployment.Spec.Template.Spec.ServiceAccountName = patchingDeployment.Spec.Template.Spec.ServiceAccountName
-	}
-
-	updateCustomVolumes(desiredDeployment, patchingDeployment)
-	updateCustomVolumeMounts(desiredDeployment, patchingDeployment)
-	updateCustomStartupProbe(desiredDeployment, patchingDeployment)
-}
-
-func updateCustomVolumeMounts(desiredDeployment *appsv1.Deployment, patchingDeployment *appsv1.Deployment) {
-	if patchingDeployment.Spec.Template.Spec.Volumes != nil && len(patchingDeployment.Spec.Template.Spec.Volumes) > 0 {
-		ctrl.Log.Info("Found custom volumes in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
-		if desiredDeployment.Spec.Template.Spec.Volumes == nil {
-			desiredDeployment.Spec.Template.Spec.Volumes = []corev1.Volume{}
-		}
-
-		desiredDeployment.Spec.Template.Spec.Volumes = append(desiredDeployment.Spec.Template.Spec.Volumes, patchingDeployment.Spec.Template.Spec.Volumes...)
-	}
-}
-
-func updateCustomVolumes(desiredDeployment, patchingDeployment *appsv1.Deployment) {
-	for i, containerGenerated := range desiredDeployment.Spec.Template.Spec.Containers {
-		for _, containerProvided := range patchingDeployment.Spec.Template.Spec.Containers {
-			if isContainerToReceiveVolumeMounts(containerGenerated, containerProvided) {
-				log.Log.Info("Found custom volume mounts in custom deployment from k8s folder. Injecting into the deployment generated by the operator.")
-				if containerGenerated.VolumeMounts == nil {
-					containerGenerated.VolumeMounts = []corev1.VolumeMount{}
-				}
-
-				containerGenerated.VolumeMounts = append(containerGenerated.VolumeMounts, containerProvided.VolumeMounts...)
-				desiredDeployment.Spec.Template.Spec.Containers[i].VolumeMounts = containerGenerated.VolumeMounts
-			}
-		}
-	}
-}
-
-func updateCustomStartupProbe(desiredDeployment, patchingDeployment *appsv1.Deployment) {
-	for _, containerGenerated := range desiredDeployment.Spec.Template.Spec.Containers {
-		for _, containerProvided := range patchingDeployment.Spec.Template.Spec.Containers {
-			if containerGenerated.StartupProbe == nil || containerProvided.StartupProbe == nil {
-				continue
-			}
-
-			if containerGenerated.Name == containerProvided.Name {
-				log.Log.Info("Found custom startup probe in custom deployment. Injecting into the deployment generated by the operator.")
-				if containerProvided.StartupProbe.FailureThreshold != 0 {
-					containerGenerated.StartupProbe.FailureThreshold = containerProvided.StartupProbe.FailureThreshold
-				}
-			}
-		}
-	}
-}
-
-func isContainerToReceiveVolumeMounts(containerGenerated, containerProvided corev1.Container) bool {
-	return containerGenerated.Name == containerProvided.Name &&
-		containerProvided.VolumeMounts != nil && len(containerProvided.VolumeMounts) > 0
 }
 
 func createLivenessProbe(dogu *core.Dogu) *corev1.Probe {
@@ -258,93 +216,6 @@ func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
 		}
 	}
 	return nil
-}
-
-func createVolumesForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volume {
-	nodeMasterVolume := corev1.Volume{
-		Name: nodeMasterFile,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: nodeMasterFile},
-			},
-		},
-	}
-
-	mode := int32(0744)
-
-	privateVolume := corev1.Volume{
-		Name: doguResource.GetPrivateVolumeName(),
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  doguResource.GetPrivateVolumeName(),
-				DefaultMode: &mode,
-			},
-		},
-	}
-
-	// always reserve a volume for upgrade script actions, even if the dogu has no state because upgrade scripts
-	// do not always rely on a dogu state (f. e. checks on upgradability)
-	doguReservedVolume := corev1.Volume{
-		Name: doguResource.GetReservedVolumeName(),
-		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: doguResource.GetReservedPVCName(),
-			},
-		},
-	}
-
-	volumes := []corev1.Volume{
-		nodeMasterVolume,
-		privateVolume,
-		doguReservedVolume,
-	}
-
-	if len(dogu.Volumes) > 0 {
-		dataVolume := corev1.Volume{
-			Name: doguResource.GetDataVolumeName(),
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: doguResource.Name,
-				},
-			},
-		}
-		volumes = append(volumes, dataVolume)
-	}
-
-	return volumes
-}
-
-func createVolumeMountsForDogu(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
-	doguVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      nodeMasterFile,
-			ReadOnly:  true,
-			MountPath: "/etc/ces/node_master",
-			SubPath:   "node_master",
-		},
-		{
-			Name:      doguResource.GetPrivateVolumeName(),
-			ReadOnly:  true,
-			MountPath: "/private",
-		},
-		{
-			Name:      doguResource.GetReservedVolumeName(),
-			ReadOnly:  false,
-			MountPath: DoguReservedPath,
-		},
-	}
-
-	for _, doguVolume := range dogu.Volumes {
-		newVolume := corev1.VolumeMount{
-			Name:      doguResource.GetDataVolumeName(),
-			ReadOnly:  false,
-			MountPath: doguVolume.Path,
-			SubPath:   doguVolume.Name,
-		}
-		doguVolumeMounts = append(doguVolumeMounts, newVolume)
-	}
-
-	return doguVolumeMounts
 }
 
 // GetAppLabel returns an app label which all CES resource may receive for general selection.
@@ -437,43 +308,6 @@ func (r *resourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, 
 	}
 
 	return exposedServices, nil
-}
-
-// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
-func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
-	return r.createPVC(doguResource.Name, doguResource, resource.MustParse("5Gi"))
-}
-
-// CreateReservedPVC creates a persistent volume claim with a 10Mi storage for the given dogu.
-// Used for example for upgrade operations.
-func (r *resourceGenerator) CreateReservedPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
-	return r.createPVC(doguResource.GetReservedPVCName(), doguResource, resource.MustParse("10Mi"))
-}
-
-func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv1.Dogu, size resource.Quantity) (*corev1.PersistentVolumeClaim, error) {
-	pvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      pvcName,
-			Namespace: doguResource.Namespace,
-			Labels:    GetAppLabel().Add(doguResource.GetDoguNameLabel()),
-		},
-	}
-
-	pvc.Spec = corev1.PersistentVolumeClaimSpec{
-		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceStorage: size,
-			},
-		},
-	}
-
-	err := ctrl.SetControllerReference(doguResource, pvc, r.scheme)
-	if err != nil {
-		return nil, wrapControllerReferenceError(err)
-	}
-
-	return pvc, nil
 }
 
 // CreateDoguSecret generates a secret with a given data map for the dogu
