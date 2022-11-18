@@ -234,7 +234,7 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 
 		client := external.NewClient(t)
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("func(*v1.Deployment)")).Return(nil, assert.AnError)
+		generator.On("CreateDoguDeployment", doguResource, dogu).Return(nil, assert.AnError)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
@@ -255,7 +255,7 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 		client.On("Get", ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("func(*v1.Deployment)")).Return(readLdapDoguExpectedDeployment(t), nil)
+		generator.On("CreateDoguDeployment", doguResource, dogu).Return(readLdapDoguExpectedDeployment(t), nil)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
@@ -275,18 +275,24 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		expectedDeployment := readLdapDoguExpectedDeployment(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu, mock.AnythingOfType("func(*v1.Deployment)")).Return(expectedDeployment, nil)
+		generatedDeployment := readLdapDoguExpectedDeployment(t)
+		generator.On("CreateDoguDeployment", doguResource, dogu).Return(generatedDeployment, nil)
 		upserter := upserter{
 			client:    client,
 			generator: generator,
 		}
+		deploymentPatch := func(deployment *appsv1.Deployment) {
+			deployment.Labels["test"] = "testvalue"
+		}
 
 		// when
-		doguDeployment, err := upserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
+		doguDeployment, err := upserter.UpsertDoguDeployment(ctx, doguResource, dogu, deploymentPatch)
 
 		// then
 		require.NoError(t, err)
+		expectedDeployment := readLdapDoguExpectedDeployment(t)
+		expectedDeployment.ResourceVersion = "1"
+		expectedDeployment.Labels["test"] = "testvalue"
 		assert.Equal(t, expectedDeployment, doguDeployment)
 	})
 }

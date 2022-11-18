@@ -18,6 +18,7 @@ import (
 type ResourceUpserter interface {
 	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
 	// All parameters are mandatory except deploymentPatch which may be nil.
+	// The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
 	UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
 	// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
 	UpsertDoguService(ctx context.Context, doguResource *k8sv1.Dogu, image *image.ConfigFile) (*v1.Service, error)
@@ -51,8 +52,7 @@ type CollectApplier interface {
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.
 type DoguResourceGenerator interface {
 	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-	// The deploymentPatch is applied at the end of resource generation.
-	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
+	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
 	// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
 	// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 	// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides

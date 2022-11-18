@@ -81,21 +81,22 @@ func TestResourceGenerator_CreateReservedPVC(t *testing.T) {
 func Test_createVolumeByClient(t *testing.T) {
 	t.Run("should fail due to invalid config map type content", func(t *testing.T) {
 		// given
+		volumeClient := core.VolumeClient{
+			Name: "k8s-dogu-operator",
+			Params: volumeParams{
+				Type:    "configmap",
+				Content: "invalid",
+			},
+		}
 		doguVolume := core.Volume{
 			Name: "my-volume",
 			Clients: []core.VolumeClient{
-				{
-					Name: "k8s-dogu-operator",
-					Params: volumeParams{
-						Type:    "configmap",
-						Content: "invalid",
-					},
-				},
+				volumeClient,
 			},
 		}
 
 		// when
-		_, err := createVolumeByClient(doguVolume, nil)
+		_, err := createVolumeByClient(doguVolume, &volumeClient)
 
 		// then
 		require.Error(t, err)
@@ -103,20 +104,21 @@ func Test_createVolumeByClient(t *testing.T) {
 	})
 	t.Run("should fail due to unsupported client param type", func(t *testing.T) {
 		// given
+		volumeClient := core.VolumeClient{
+			Name: "k8s-dogu-operator",
+			Params: volumeParams{
+				Type: "invalid",
+			},
+		}
 		doguVolume := core.Volume{
 			Name: "my-volume",
 			Clients: []core.VolumeClient{
-				{
-					Name: "k8s-dogu-operator",
-					Params: volumeParams{
-						Type: "invalid",
-					},
-				},
+				volumeClient,
 			},
 		}
 
 		// when
-		_, err := createVolumeByClient(doguVolume, nil)
+		_, err := createVolumeByClient(doguVolume, &volumeClient)
 
 		// then
 		require.Error(t, err)

@@ -54,8 +54,7 @@ func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher internal.LimitPat
 }
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-// The deploymentPatch is applied at the end of resource generation.
-func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment)) (*appsv1.Deployment, error) {
+func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
 	podTemplate, err := r.GetPodTemplate(doguResource, dogu)
 	if err != nil {
 		return nil, err
@@ -83,10 +82,6 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 			FSGroup:             &gid,
 			FSGroupChangePolicy: &fsGroupChangePolicy,
 		}
-	}
-
-	if deploymentPatch != nil {
-		deploymentPatch(deployment)
 	}
 
 	doguLimits, err := r.doguLimitPatcher.RetrievePodLimits(doguResource)

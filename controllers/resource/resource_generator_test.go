@@ -59,7 +59,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		client.Params = "invalid"
 
 		// when
-		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -70,7 +70,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// when
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
-		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDogu.ServiceAccounts = []core.ServiceAccount{
 			{Type: "k8s-dogu-operator", Kind: "k8s"},
 		}
-		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDogu := readLdapDogu(t)
 
 		// when
-		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -126,7 +126,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDogu := readLdapDogu(t)
 
 		// when
-		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -145,7 +145,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		generatorFail.doguLimitPatcher = patcher
 
 		// when
-		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -163,7 +163,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		generatorFail.doguLimitPatcher = patcher
 
 		// when
-		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
