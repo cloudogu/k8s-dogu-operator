@@ -6,9 +6,7 @@ import (
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
-	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/yaml"
 )
 
 type collectApplier struct {
@@ -21,13 +19,12 @@ func NewCollectApplier(applier internal.Applier) *collectApplier {
 	return &collectApplier{applier: applier}
 }
 
-// CollectApply applies the given resource but filters deployment resources and returns them so that they can be
-// applied later.
-func (ca *collectApplier) CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) (*appsv1.Deployment, error) {
+// CollectApply applies the given resource.
+func (ca *collectApplier) CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 	if len(customK8sResources) == 0 {
 		logger.Info("No custom K8s resources found")
-		return nil, nil
+		return nil
 	}
 
 	targetNamespace := doguResource.ObjectMeta.Namespace
@@ -38,8 +35,6 @@ func (ca *collectApplier) CollectApply(ctx context.Context, customK8sResources m
 		Namespace: targetNamespace,
 	}
 
-	dCollector := &deploymentCollector{collected: []*appsv1.Deployment{}}
-
 	for file, yamlDocs := range customK8sResources {
 		logger.Info(fmt.Sprintf("Applying custom K8s resources from file %s", file))
 
@@ -47,60 +42,14 @@ func (ca *collectApplier) CollectApply(ctx context.Context, customK8sResources m
 			WithNamespace(targetNamespace).
 			WithOwner(doguResource).
 			WithTemplate(file, namespaceTemplate).
-			WithCollector(dCollector).
 			WithYamlResource(file, []byte(yamlDocs)).
-			WithApplyFilter(&deploymentAntiFilter{}).
 			ExecuteApply()
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	if len(dCollector.collected) > 1 {
-		return nil, fmt.Errorf("expected exactly one Deployment but found %d - not sure how to continue", len(dCollector.collected))
-	}
-	if len(dCollector.collected) == 1 {
-		return dCollector.collected[0], nil
-	}
+	return nil
 
-	return nil, nil
-
-}
-
-type deploymentCollector struct {
-	collected []*appsv1.Deployment
-}
-
-func (dc *deploymentCollector) Predicate(doc apply.YamlDocument) (bool, error) {
-	var deployment = &appsv1.Deployment{}
-
-	err := yaml.Unmarshal(doc, deployment)
-	if err != nil {
-		return false, fmt.Errorf("failed to unmarshal object [%s] into deployment: %w", string(doc), err)
-	}
-
-	return deployment.Kind == "Deployment", nil
-}
-
-func (dc *deploymentCollector) Collect(doc apply.YamlDocument) {
-	var deployment = &appsv1.Deployment{}
-
-	// ignore error because it has already been parsed in Predicate()
-	_ = yaml.Unmarshal(doc, deployment)
-
-	dc.collected = append(dc.collected, deployment)
-}
-
-type deploymentAntiFilter struct{}
-
-func (dc *deploymentAntiFilter) Predicate(doc apply.YamlDocument) (bool, error) {
-	var deployment = &appsv1.Deployment{}
-
-	err := yaml.Unmarshal(doc, deployment)
-	if err != nil {
-		return false, fmt.Errorf("failed to unmarshal object [%s] into deployment: %w", string(doc), err)
-	}
-
-	return deployment.Kind != "Deployment", nil
 }

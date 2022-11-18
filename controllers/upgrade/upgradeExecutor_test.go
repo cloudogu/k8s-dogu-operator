@@ -126,11 +126,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
 		applier := mocks.NewCollectApplier(t)
-		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
-		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(deployment, nil)
+		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(nil, nil)
 
 		upserter := mocks.NewResourceUpserter(t)
-		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, deployment).Once().Return(nil, nil)
+		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, nil)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
 		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 		upserter.On("UpsertDoguPVCs", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
@@ -214,11 +213,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
 		applier := mocks.NewCollectApplier(t)
-		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
-		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(deployment, nil)
+		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(nil, nil)
 
 		upserter := mocks.NewResourceUpserter(t)
-		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, deployment).Once().Return(nil, nil)
+		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, nil)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
 		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 		upserter.On("UpsertDoguPVCs", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
@@ -505,13 +503,12 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			k8sFileEx := mocks.NewFileExtractor(t)
 			k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
 			applier := mocks.NewCollectApplier(t)
-			deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
 			var emptyCustomK8sResource map[string]string
-			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(deployment, nil)
+			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, nil)
 			upserter := mocks.NewResourceUpserter(t)
 			upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
 			upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
-			upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, deployment).Once().Return(nil, assert.AnError)
+			upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, assert.AnError)
 
 			eventRecorder := external.NewEventRecorder(t)
 			eventRecorder.
@@ -587,13 +584,12 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			k8sFileEx := mocks.NewFileExtractor(t)
 			k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
 			applier := mocks.NewCollectApplier(t)
-			deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
 			var emptyCustomK8sResource map[string]string
-			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(deployment, nil)
+			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, nil)
 			upserter := mocks.NewResourceUpserter(t)
 			upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
 			upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
-			upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, deployment).Once().Return(nil, nil)
+			upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, nil)
 			upserter.On("UpsertDoguPVCs", testCtx, toDoguResource, toDogu).Once().Return(nil, assert.AnError)
 
 			eventRecorder := external.NewEventRecorder(t)
@@ -675,11 +671,10 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
 		applier := mocks.NewCollectApplier(t)
-		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "my-deployment"}}
-		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(deployment, nil)
+		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(nil, nil)
 
 		upserter := mocks.NewResourceUpserter(t)
-		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, deployment).Once().Return(nil, nil)
+		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, nil)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
 		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 		upserter.On("UpsertDoguPVCs", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
@@ -1248,7 +1243,7 @@ func Test_extractCustomK8sResources(t *testing.T) {
 }
 
 func Test_applyCustomK8sResources(t *testing.T) {
-	t.Run("should apply K8s resources and return deployment", func(t *testing.T) {
+	t.Run("should apply K8s resources", func(t *testing.T) {
 		// given
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
@@ -1257,15 +1252,13 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		collectApplier := mocks.NewCollectApplier(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
-		fakeDeployment := createTestDeployment("redmine", "")
-		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(fakeDeployment, nil)
+		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(nil)
 
 		// when
-		deployment, err := applyCustomK8sResources(testCtx, collectApplier, toDoguCr, fakeResources)
+		err := applyCustomK8sResources(testCtx, collectApplier, toDoguCr, fakeResources)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, fakeDeployment, deployment)
 	})
 	t.Run("should fail", func(t *testing.T) {
 		// given
@@ -1276,11 +1269,10 @@ func Test_applyCustomK8sResources(t *testing.T) {
 		collectApplier := mocks.NewCollectApplier(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
-		var noDeployment *appsv1.Deployment
-		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(noDeployment, assert.AnError)
+		collectApplier.On("CollectApply", mock.Anything, fakeResources, toDoguCr).Return(assert.AnError)
 
 		// when
-		_, err := applyCustomK8sResources(testCtx, collectApplier, toDoguCr, fakeResources)
+		err := applyCustomK8sResources(testCtx, collectApplier, toDoguCr, fakeResources)
 
 		// then
 		require.Error(t, err)
@@ -1597,42 +1589,30 @@ func Test_getMapKeysAsString(t *testing.T) {
 }
 
 func Test_increaseStartupProbeTimeoutForUpdate(t *testing.T) {
-	t.Run("should create new deployment with upgrade startup probe if nil deployment is provided", func(t *testing.T) {
-		// given
-		expectedDeployment := createTestDeploymentWithStartupProbe("ldap", 1080)
-
-		// when
-		result := increaseStartupProbeTimeoutForUpdate("ldap", nil)
-
-		// then
-		require.NotNil(t, result)
-		require.Equal(t, expectedDeployment, result)
-	})
-
 	t.Run("should edit existing startup probe threshold for same container name", func(t *testing.T) {
 		// given
 		expectedDeployment := createTestDeploymentWithStartupProbe("ldap", 1080)
 		patchDeployment := createTestDeploymentWithStartupProbe("ldap", 3)
 
 		// when
-		result := increaseStartupProbeTimeoutForUpdate("ldap", patchDeployment)
+		increaseStartupProbeTimeoutForUpdate("ldap", patchDeployment)
 
 		// then
-		require.NotNil(t, result)
-		require.NotEqual(t, 3, result.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold)
-		require.Equal(t, expectedDeployment, result)
+		require.NotNil(t, patchDeployment)
+		require.NotEqual(t, 3, patchDeployment.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold)
+		require.Equal(t, expectedDeployment, patchDeployment)
 	})
 
-	t.Run("add whole container if no one matches", func(t *testing.T) {
+	t.Run("do nothing if no container matches", func(t *testing.T) {
 		// given
 		patchDeployment := createTestDeploymentWithStartupProbe("ldap", 3)
 
 		// when
-		result := increaseStartupProbeTimeoutForUpdate("ldap-side-bmw", patchDeployment)
+		increaseStartupProbeTimeoutForUpdate("ldap-side-bmw", patchDeployment)
 
 		// then
-		require.NotNil(t, result)
-		require.Equal(t, 2, len(result.Spec.Template.Spec.Containers))
+		require.NotNil(t, patchDeployment)
+		require.Equal(t, 1, len(patchDeployment.Spec.Template.Spec.Containers))
 	})
 }
 
