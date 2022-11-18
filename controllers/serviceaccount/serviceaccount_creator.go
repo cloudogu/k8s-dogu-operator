@@ -83,27 +83,35 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 			return fmt.Errorf("service account dogu is not enabled and not optional")
 		}
 
-		saDogu, err := c.doguFetcher.FetchInstalled(serviceAccount.Type)
+		err = c.create(ctx, dogu, serviceAccount, doguConfig)
 		if err != nil {
-			return fmt.Errorf("failed to get service account dogu.json: %w", err)
-		}
-
-		serviceAccountPod, err := getPodForServiceAccountDogu(ctx, c.client, saDogu)
-		if err != nil {
-			return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
-		}
-
-		saCreds, err := c.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
-		if err != nil {
-			return fmt.Errorf("failed to execute service account create command: %w", err)
-		}
-
-		err = c.saveServiceAccount(serviceAccount, doguConfig, saCreds)
-		if err != nil {
-			return fmt.Errorf("failed to save the service account credentials: %w", err)
+			return err
 		}
 	}
 
+	return nil
+}
+
+func (c *creator) create(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, doguConfig registry.ConfigurationContext) error {
+	saDogu, err := c.doguFetcher.FetchInstalled(serviceAccount.Type)
+	if err != nil {
+		return fmt.Errorf("failed to get service account dogu.json: %w", err)
+	}
+
+	serviceAccountPod, err := getPodForServiceAccountDogu(ctx, c.client, saDogu)
+	if err != nil {
+		return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
+	}
+
+	saCreds, err := c.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
+	if err != nil {
+		return fmt.Errorf("failed to execute service account create command: %w", err)
+	}
+
+	err = c.saveServiceAccount(serviceAccount, doguConfig, saCreds)
+	if err != nil {
+		return fmt.Errorf("failed to save the service account credentials: %w", err)
+	}
 	return nil
 }
 

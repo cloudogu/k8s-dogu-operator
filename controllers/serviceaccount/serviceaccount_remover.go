@@ -72,31 +72,44 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 			continue
 		}
 
-		saDogu, err := r.doguFetcher.FetchInstalled(serviceAccount.Type)
+		err = r.delete(ctx, serviceAccount, dogu, doguConfig, registryCredentialPath)
 		if err != nil {
-			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to get service account dogu.json: %w", err))
-			continue
-		}
-
-		serviceAccountPod, err := getPodForServiceAccountDogu(ctx, r.client, saDogu)
-		if err != nil {
-			return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
-		}
-
-		err = r.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
-		if err != nil {
-			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to execute service account remove command: %w", err))
-			continue
-		}
-
-		err = doguConfig.DeleteRecursive(registryCredentialPath)
-		if err != nil {
-			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to remove service account from config: %w", err))
+			allProblems = multierror.Append(allProblems, err)
 			continue
 		}
 	}
 
 	return allProblems
+}
+
+func (r *remover) delete(
+	ctx context.Context,
+	serviceAccount core.ServiceAccount,
+	dogu *core.Dogu,
+	doguConfig registry.ConfigurationContext,
+	registryCredentialPath string,
+) error {
+	saDogu, err := r.doguFetcher.FetchInstalled(serviceAccount.Type)
+	if err != nil {
+		return fmt.Errorf("failed to get service account dogu.json: %w", err)
+	}
+
+	serviceAccountPod, err := getPodForServiceAccountDogu(ctx, r.client, saDogu)
+	if err != nil {
+		return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
+	}
+
+	err = r.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
+	if err != nil {
+		return fmt.Errorf("failed to execute service account remove command: %w", err)
+	}
+
+	err = doguConfig.DeleteRecursive(registryCredentialPath)
+	if err != nil {
+		return fmt.Errorf("failed to remove service account from config: %w", err)
+	}
+
+	return nil
 }
 
 func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saPod *v1.Pod, serviceAccount core.ServiceAccount) error {
