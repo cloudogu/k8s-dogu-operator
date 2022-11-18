@@ -85,3 +85,15 @@ kill-operator-pod:
 print-debug-info: ## Generates indo and the list of environment variables required to start the operator in debug mode.
 	@echo "The target generates a list of env variables required to start the operator in debug mode. These can be pasted directly into the 'go build' run configuration in IntelliJ to run and debug the operator on-demand."
 	@echo "STAGE=$(STAGE);LOG_LEVEL=$(LOG_LEVEL);KUBECONFIG=$(KUBECONFIG);NAMESPACE=$(NAMESPACE);DOGU_REGISTRY_ENDPOINT=$(DOGU_REGISTRY_ENDPOINT);DOGU_REGISTRY_USERNAME=$(DOGU_REGISTRY_USERNAME);DOGU_REGISTRY_PASSWORD=$(DOGU_REGISTRY_PASSWORD);DOCKER_REGISTRY={\"auths\":{\"$(docker_registry_server)\":{\"username\":\"$(docker_registry_username)\",\"password\":\"$(docker_registry_password)\",\"email\":\"ignore@me.com\",\"auth\":\"ignoreMe\"}}}"
+
+##@ Mockery
+
+MOCKERY_BIN=${UTILITY_BIN_PATH}/mockery
+MOCKERY_VERSION=v2.15.0
+
+${MOCKERY_BIN}: ${UTILITY_BIN_PATH}
+	$(call go-get-tool,$(MOCKERY_BIN),github.com/vektra/mockery/v2@$(MOCKERY_VERSION))
+
+mocks: ${MOCKERY_BIN} ## This target is used to generate all mocks for the dogu operator.
+	@cd $(WORKDIR)/internal && ${MOCKERY_BIN} --all
+	@echo "Mocks successfully created."
