@@ -3,22 +3,23 @@ package resource
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 )
 
 const (
@@ -88,9 +89,13 @@ func (u *upserter) UpsertDoguExposedServices(ctx context.Context, doguResource *
 	}
 
 	var collectedErrs error
-	serviceList := []*v1.Service{}
+	var serviceList []*v1.Service
 	for _, newExposedService := range newExposedServices {
-		err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newExposedService, noValidator)
+		exposedSvcKey := types.NamespacedName{
+			Namespace: doguResource.GetNamespace(),
+			Name:      newExposedService.Name,
+		}
+		err = u.updateOrInsert(ctx, doguResource.Name, exposedSvcKey, &v1.Service{}, newExposedService, noValidator)
 		if err != nil {
 			err2 := fmt.Errorf("failed to upsert exposed service %s: %w", newExposedService.ObjectMeta.Name, err)
 			collectedErrs = multierror.Append(collectedErrs, err2)

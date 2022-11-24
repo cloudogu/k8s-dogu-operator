@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.17.0] - 2022-11-24
+### Fixed
+- [#62] Fix wrong exposed service object key. During the creation of exposed services some wrong object keys are used. 
+  Later-on this leads to an error when tried to get these resources.
+- [#64] Fix the creation of service annotations by ignoring all irrelevant environment variables and by correctly
+  splitting environment variables containing multiple `=`.
+
 ## [v0.16.0] - 2022-11-18
 ### Added
 - [#59] Support for extended volume definitions in the `dogu.json`, allowing the creation of kubernetes specific 
