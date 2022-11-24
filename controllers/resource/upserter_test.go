@@ -2,8 +2,9 @@ package resource
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -324,7 +325,7 @@ func Test_upserter_UpsertDoguExposedServices(t *testing.T) {
 
 		client := external.NewClient(t)
 		failedToCreateFirstError := errors.New("failed on exposed service 1")
-		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Once().Return(failedToCreateFirstError)
+		client.On("Get", context.Background(), "ldap-exposed-2222", &v1.Service{}).Once().Return(failedToCreateFirstError)
 		failedToCreateSecondError := errors.New("failed on exposed service 2")
 		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Once().Return(failedToCreateSecondError)
 
