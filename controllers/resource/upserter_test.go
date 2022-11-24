@@ -2,8 +2,9 @@ package resource
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -324,9 +326,9 @@ func Test_upserter_UpsertDoguExposedServices(t *testing.T) {
 
 		client := external.NewClient(t)
 		failedToCreateFirstError := errors.New("failed on exposed service 1")
-		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Once().Return(failedToCreateFirstError)
+		client.On("Get", context.Background(), types.NamespacedName{Namespace: "ecosystem", Name: "ldap-exposed-2222"}, &v1.Service{}).Once().Return(failedToCreateFirstError)
 		failedToCreateSecondError := errors.New("failed on exposed service 2")
-		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Once().Return(failedToCreateSecondError)
+		client.On("Get", context.Background(), types.NamespacedName{Namespace: "ecosystem", Name: "ldap-exposed-8888"}, &v1.Service{}).Once().Return(failedToCreateSecondError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(readLdapDoguExpectedExposedServices(t), nil)

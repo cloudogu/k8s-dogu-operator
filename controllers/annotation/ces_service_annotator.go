@@ -106,12 +106,12 @@ func getServiceVariablesFromEnvVariables(envVariables []string) (map[string]stri
 	serviceVariables := map[string]string{}
 
 	for _, envVariables := range envVariables {
-		name, value, err := splitEnvVariable(envVariables)
-		if err != nil {
-			return map[string]string{}, fmt.Errorf("failed to split environment variable: %w", err)
-		}
+		if strings.HasPrefix(envVariables, serviceVarsPrefix) {
+			name, value, err := splitEnvVariable(envVariables)
+			if err != nil {
+				return map[string]string{}, fmt.Errorf("failed to split environment variable: %w", err)
+			}
 
-		if strings.HasPrefix(name, serviceVarsPrefix) {
 			trimmedVariable := strings.TrimPrefix(name, serviceVarsPrefix)
 			serviceVariables[trimmedVariable] = value
 		}
@@ -121,7 +121,7 @@ func getServiceVariablesFromEnvVariables(envVariables []string) (map[string]stri
 }
 
 func splitEnvVariable(variable string) (string, string, error) {
-	variableParts := strings.Split(variable, "=")
+	variableParts := strings.SplitN(variable, "=", 2)
 
 	if len(variableParts) != 2 {
 		return "", "", fmt.Errorf("environment variable [%s] needs to be in form NAME=VALUE", variable)
