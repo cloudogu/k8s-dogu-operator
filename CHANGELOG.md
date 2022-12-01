@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.18.0] - 2022-12-01
 ### Added
 - [#61] Add the yaml of the Dogu CRD in api package. Other controllers/operators can consume it for e.g. integration
   tests with envtest. The `generate` make target will refresh the yaml.
