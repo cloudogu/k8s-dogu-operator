@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"time"
 
@@ -13,6 +14,12 @@ import (
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// This embed provides the crd for other applications. They can import this package and use the yaml file
+// for the CRD in e.g. integration tests. The file gets refreshed by copying from the kubebuilder config/crd/bases
+// folder by the "generate" make target.
+//go:embed k8s.cloudogu.com_dogus.yaml
+var _ embed.FS
 
 const (
 	// RequeueTimeMultiplerForEachRequeue defines the factor to multiple the requeue time of a failed dogu crd operation

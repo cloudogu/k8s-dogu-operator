@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.18.0] - 2022-12-01
+### Added
+- [#61] Add the yaml of the Dogu CRD in api package. Other controllers/operators can consume it for e.g. integration
+  tests with envtest. The `generate` make target will refresh the yaml.
+
 ## [v0.17.0] - 2022-11-24
 ### Fixed
 - [#62] Fix wrong exposed service object key. During the creation of exposed services some wrong object keys are used. 
