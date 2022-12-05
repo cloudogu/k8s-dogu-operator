@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: backup
+  annotations:
+    test: dev
+  labels:
+    dogu.name: backup
+    app: backup
+spec:
+  name: premium/backup
+  version: 1.9.2-2
