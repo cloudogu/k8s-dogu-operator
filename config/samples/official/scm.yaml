@@ -8,5 +8,5 @@ metadata:
     dogu.name: scm
     app: ces
 spec:
-  name: testing/scm
-  version: 2.38.1-1
+  name: official/scm
+  version: 2.40.0-1
