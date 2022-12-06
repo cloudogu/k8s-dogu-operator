@@ -332,37 +332,3 @@ func (r *resourceGenerator) CreateDoguSecret(doguResource *k8sv1.Dogu, stringDat
 func wrapControllerReferenceError(err error) error {
 	return fmt.Errorf("failed to set controller reference: %w", err)
 }
-
-// TODO TODO TODO where is the original method?
-// GetDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu
-func (r *resourceGenerator) GetDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
-	doguPvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguResource.Name,
-			Namespace: doguResource.Namespace,
-		},
-	}
-
-	// todo put into dogu crd method
-	doguTargetVolumeSize := resource.MustParse(k8sv1.DefaultVolumeSize)
-	if (doguResource.Spec.Resources.VolumeSize != resource.Quantity{}) {
-		doguTargetVolumeSize = doguResource.Spec.Resources.VolumeSize
-	}
-
-	doguPvc.ObjectMeta.Labels = map[string]string{"app": cesLabel, "dogu": doguResource.Name}
-	doguPvc.Spec = corev1.PersistentVolumeClaimSpec{
-		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceStorage: doguTargetVolumeSize,
-			},
-		},
-	}
-
-	err := ctrl.SetControllerReference(doguResource, doguPvc, r.scheme)
-	if err != nil {
-		return nil, wrapControllerReferenceError(err)
-	}
-
-	return doguPvc, nil
-}

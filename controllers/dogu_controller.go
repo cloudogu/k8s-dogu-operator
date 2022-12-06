@@ -19,7 +19,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,7 +48,6 @@ const (
 const (
 	RequeueEventReason        = "Requeue"
 	ErrorOnRequeueEventReason = "ErrRequeue"
-
 )
 
 const (
@@ -151,6 +149,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return finishOperation()
 	case ExpandVolume:
 		r.recorder.Event(doguResource, v1.EventTypeNormal, VolumeExpansionEventReason, "Starting volume expansion from xxxGi to xxxGi")
+		return finishOperation()
 	default:
 		return finishOperation()
 	}
@@ -230,7 +229,7 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 	log.FromContext(ctx).Info("Check dogu volume expansion")
 
 	doguPvc := &v1.PersistentVolumeClaim{}
-	err := r.client.Get(ctx, *doguResource.GetObjectKey(), doguPvc)
+	err := r.client.Get(ctx, doguResource.GetObjectKey(), doguPvc)
 	if apierrors.IsNotFound(err) {
 		// no persistent volume claim -> no volume for the dogu -> no expansion possible
 		return false, nil
@@ -240,7 +239,9 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 
 	doguTargetVolumeSize := resource.MustParse(k8sv1.DefaultVolumeSize)
 	if (doguResource.Spec.Resources.VolumeSize != resource.Quantity{}) {
-		doguTargetVolumeSize = doguResource.Spec.Resources.VolumeSize
+		// TODO: Why used default Volume Size here?
+		// doguTargetVolumeSize = doguResource.Spec.Resources.VolumeSize
+		return false, nil
 	}
 
 	if doguTargetVolumeSize.Value() > doguPvc.Spec.Resources.Requests.Storage().Value() {

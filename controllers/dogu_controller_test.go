@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,7 +42,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
-			client:             nil,
+			client:             fake.NewClientBuilder().Build(),
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
@@ -74,7 +75,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
-			client:             nil,
+			client:             fake.NewClientBuilder().Build(),
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
@@ -108,7 +109,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
-			client:             nil,
+			client:             fake.NewClientBuilder().Build(),
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
@@ -253,7 +254,7 @@ func Test_buildResourceDiff(t *testing.T) {
 		{
 			name: "upgrade-diff",
 			args: args{objOld: oldDoguResource, objNew: newDoguResource},
-			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:          \"ns/dogu\",\n- \t\tVersion:       \"1.2.3-4\",\n+ \t\tVersion:       \"1.2.3-5\",\n  \t\tSupportMode:   false,\n  \t\tUpgradeConfig: {},\n  \t},\n  \tStatus: {},\n  }\n",
+			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:          \"ns/dogu\",\n- \t\tVersion:       \"1.2.3-4\",\n+ \t\tVersion:       \"1.2.3-5\",\n  \t\tResources:     {},\n  \t\tSupportMode:   false,\n  \t\tUpgradeConfig: {},\n  \t},\n  \tStatus: {},\n  }\n",
 		},
 		{
 			name: "delete-diff",

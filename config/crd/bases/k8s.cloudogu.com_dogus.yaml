@@ -33,11 +33,28 @@ spec:
           metadata:
             type: object
           spec:
-            description: DoguSpec defines the desired state of a Dogu.
+            description: DoguSpec defines the desired state of a Dogu
             properties:
               name:
                 description: Name of the dogu (e.g. official/ldap)
                 type: string
+              resources:
+                description: DoguResources defines the physical resources used by
+                  the dogu.
+                properties:
+                  volumeSize:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: VolumeSize represents the current size of the volume.
+                      Increasing this value leads to an automatic volume expansion.
+                      This includes a downtime for the respective dogu. The default
+                      size for volumes is "2Gi". It is not possible to lower the volume
+                      size after an expansion. This will introduce an inconsistent
+                      state for the dogu.
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                type: object
               supportMode:
                 description: SupportMode indicates whether the dogu should be restarted
                   in the support mode (f. e. to recover manually from a crash loop).
@@ -58,23 +75,6 @@ spec:
                       dogu version than already is installed. Please note, that possible
                       data loss may occur by inappropriate dogu downgrading.
                     type: boolean
-                type: object
-              resources:
-                description: DoguResources defines the physical resources used by
-                  the dogu.
-                properties:
-                  volumeSize:
-                    anyOf:
-                      - type: integer
-                      - type: string
-                    description: VolumeSize represents the current size of the volume.
-                      Increasing this value leads to an automatic volume expansion.
-                      This includes a downtime for the respective dogu. The default
-                      size for volumes is "2Gi". It is not possible to lower the volume
-                      size after an expansion. This will introduce an inconsistent
-                      state for the dogu.
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
                 type: object
               version:
                 description: Version of the dogu (e.g. 2.4.48-3)

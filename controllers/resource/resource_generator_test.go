@@ -255,51 +255,6 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 	})
 }
 
-// TODO TODO TODO
-// func TestResourceGenerator_GetDoguPVC(t *testing.T) {
-// 	generator := getResourceGenerator()
-//
-// 	t.Run("Return simple pvc", func(t *testing.T) {
-// 		// when
-// 		actualPVC, err := generator.GetDoguPVC(ldapDoguResource)
-//
-// 		// then
-// 		require.NoError(t, err)
-// 		assert.Equal(t, expectedPVC, actualPVC)
-// 	})
-//
-// 	t.Run("Return simple pvc with custom size", func(t *testing.T) {
-// 		// given
-// 		sizeBefore := ldapDoguResource.Spec.Resources.VolumeSize
-// 		defer func() { ldapDoguResource.Spec.Resources.VolumeSize = sizeBefore }()
-// 		ldapDoguResource.Spec.Resources.VolumeSize = resource.MustParse("6Gi")
-//
-// 		// when
-// 		actualPVC, err := generator.GetDoguPVC(ldapDoguResource)
-//
-// 		// then
-// 		require.NoError(t, err)
-// 		assert.Equal(t, expectedPVCWithCustomSize, actualPVC)
-// 	})
-//
-// 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
-// 		oldMethod := ctrl.SetControllerReference
-// 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-// 			return assert.AnError
-// 		}
-// 		defer func() { ctrl.SetControllerReference = oldMethod }()
-//
-// 		// when
-// 		_, err := generator.GetDoguPVC(ldapDoguResource)
-//
-// 		// then
-// 		require.Error(t, err)
-// 		assert.ErrorIs(t, err, assert.AnError)
-// 		assert.Contains(t, err.Error(), "failed to set controller reference:")
-// 	})
-// }
-
-
 func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 	generator := getResourceGenerator(t)
 

@@ -2,7 +2,7 @@ metadata:
   creationTimestamp: null
   labels:
     app: ces
-    dogu: ldap
+    dogu.name: ldap
   name: ldap
   namespace: ecosystem
   ownerReferences:
@@ -17,5 +17,5 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 6Gi
+      storage: 5Gi
 status: { }
