@@ -13,26 +13,28 @@ const (
 	StageDevelopment         = "development"
 	StageProduction          = "production"
 	StageEnvironmentVariable = "STAGE"
-	CacheDirProduction       = "/home/nonroot"
-	CacheDirDevelopment      = "."
 )
+
+const cacheDir = "/tmp/dogu-registry-cache"
 
 var Stage = StageProduction
 
 var (
-	envVarNamespace            = "NAMESPACE"
-	envVarDoguRegistryEndpoint = "DOGU_REGISTRY_ENDPOINT"
-	envVarDoguRegistryUsername = "DOGU_REGISTRY_USERNAME"
-	envVarDoguRegistryPassword = "DOGU_REGISTRY_PASSWORD"
-	envVarDockerRegistry       = "DOCKER_REGISTRY"
-	log                        = ctrl.Log.WithName("config")
+	envVarNamespace             = "NAMESPACE"
+	envVarDoguRegistryEndpoint  = "DOGU_REGISTRY_ENDPOINT"
+	envVarDoguRegistryUsername  = "DOGU_REGISTRY_USERNAME"
+	envVarDoguRegistryPassword  = "DOGU_REGISTRY_PASSWORD"
+	envVarDoguRegistryURLSchema = "DOGU_REGISTRY_URLSCHEMA"
+	envVarDockerRegistry        = "DOCKER_REGISTRY"
+	log                         = ctrl.Log.WithName("config")
 )
 
 // DoguRegistryData contains all necessary data for the dogu registry.
 type DoguRegistryData struct {
-	Endpoint string `json:"endpoint"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Endpoint  string `json:"endpoint"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	URLSchema string `json:"urlschema"`
 }
 
 // DockerRegistrySecretData contains all registry login information from a Docker-JSON-config file.
@@ -131,10 +133,17 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 		return DoguRegistryData{}, fmt.Errorf("failed to get env var [%s]: %w", envVarDoguRegistryPassword, err)
 	}
 
+	urlschema, err := getEnvVar(envVarDoguRegistryURLSchema)
+	if err != nil {
+		log.Info(envVarDoguRegistryURLSchema + " not set, using default")
+		urlschema = "default"
+	}
+
 	return DoguRegistryData{
-		Endpoint: endpoint,
-		Username: username,
-		Password: password,
+		Endpoint:  endpoint,
+		Username:  username,
+		Password:  password,
+		URLSchema: urlschema,
 	}, nil
 }
 
@@ -153,7 +162,7 @@ func readDockerRegistryData() (DockerRegistryData, error) {
 	for _, data := range secretData.Auths {
 		return data, nil
 	}
-	return DockerRegistryData{}, fmt.Errorf("no docker regsitry data provided")
+	return DockerRegistryData{}, fmt.Errorf("no docker registry data provided")
 }
 
 func getEnvVar(name string) (string, error) {
@@ -170,18 +179,17 @@ func (o *OperatorConfig) GetRemoteConfiguration() *core.Remote {
 	// trim suffix 'dogus' or 'dogus/' to provide maximum compatibility with the old remote configuration of the operator
 	endpoint = strings.TrimSuffix(endpoint, "dogus/")
 	endpoint = strings.TrimSuffix(endpoint, "dogus")
+	urlSchema := o.DoguRegistry.URLSchema
 
-	var cacheDir string
-
-	if Stage == StageProduction {
-		cacheDir = CacheDirProduction
-	} else {
-		cacheDir = CacheDirDevelopment
+	if urlSchema != "index" {
+		log.Info("URLSchema is not index. Setting it to default.")
+		urlSchema = "default"
 	}
 
 	return &core.Remote{
-		Endpoint: endpoint,
-		CacheDir: cacheDir,
+		Endpoint:  endpoint,
+		CacheDir:  cacheDir,
+		URLSchema: urlSchema,
 	}
 }
 

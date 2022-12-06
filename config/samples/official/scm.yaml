@@ -5,7 +5,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: scm
+    dogu.name: scm
     app: ces
 spec:
   name: testing/scm

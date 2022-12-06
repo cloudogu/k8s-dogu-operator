@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+
 	"github.com/hashicorp/go-multierror"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -55,29 +58,32 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 	return d.handleRequeue(ctx, contextMessage, doguResource, err, onRequeue)
 }
 
-func (d *doguRequeueHandler) handleRequeue(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error, onRequeue func(dogu *k8sv1.Dogu)) (ctrl.Result, error) {
-	if shouldRequeue(err) {
-		requeueTime := doguResource.Status.NextRequeue()
-
-		if onRequeue != nil {
-			onRequeue(doguResource)
-		}
-
-		updateError := doguResource.Update(ctx, d.client)
-		if updateError != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
-		}
-
-		result := ctrl.Result{RequeueAfter: requeueTime}
-		err := d.fireRequeueEvent(ctx, doguResource, result)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		log.FromContext(ctx).Error(err, fmt.Sprintf("%s: requeue in %s seconds", contextMessage, requeueTime))
-		return result, nil
+func (d *doguRequeueHandler) handleRequeue(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, originalErr error, onRequeue func(dogu *k8sv1.Dogu)) (ctrl.Result, error) {
+	if !shouldRequeue(originalErr) {
+		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{}, err
+	requeueTime := doguResource.Status.NextRequeue()
+
+	if onRequeue != nil {
+		onRequeue(doguResource)
+	}
+
+	updateError := doguResource.Update(ctx, d.client)
+	if updateError != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
+	}
+
+	result := ctrl.Result{RequeueAfter: requeueTime}
+	err := d.fireRequeueEvent(ctx, doguResource, result)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	log.FromContext(ctx).Error(err, fmt.Sprintf("%s: requeue in %s seconds because of: %s", contextMessage, requeueTime, originalErr.Error()))
+
+	return result, nil
+
 }
 
 func shouldRequeue(err error) bool {
@@ -85,10 +91,9 @@ func shouldRequeue(err error) bool {
 		return false
 	}
 
-	errorList := getAllErrorsFromChain(err)
-	for _, err := range errorList {
+	for _, checkErr := range getAllErrorsFromChain(err) {
 		var requeueableError requeuableError
-		if errors.As(err, &requeueableError) {
+		if errors.As(checkErr, &requeueableError) {
 			if requeueableError.Requeue() {
 				return true
 			}

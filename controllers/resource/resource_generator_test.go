@@ -2,158 +2,41 @@ package resource
 
 import (
 	_ "embed"
-	"fmt"
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/controllers/resource/mocks"
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/json"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/yaml"
-	"testing"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
-//go:embed testdata/ldap-dogu.json
-var ldapBytes []byte
-var ldapDogu = &core.Dogu{}
+func getResourceGenerator(t *testing.T) *resourceGenerator {
+	t.Helper()
 
-//go:embed testdata/ldap-cr.yaml
-var ldapDoguResourceBytes []byte
-var ldapDoguResource = &k8sv1.Dogu{}
-
-//go:embed testdata/image-config.json
-var imageConfBytes []byte
-var imageConf = &imagev1.ConfigFile{}
-
-//go:embed testdata/ldap_expectedDeployment.yaml
-var expectedDeploymentBytes []byte
-var expectedDeployment = &appsv1.Deployment{}
-
-//go:embed testdata/ldap_expectedDeployment_withCustomValues.yaml
-var expectedCustomDeploymentBytes []byte
-var expectedCustomDeployment = &appsv1.Deployment{}
-
-//go:embed testdata/ldap_expectedDeployment_Development.yaml
-var expectedDeploymentDevelopBytes []byte
-var expectedDeploymentDevelop = &appsv1.Deployment{}
-
-//go:embed testdata/ldap_expectedPVC.yaml
-var expectedPVCBytes []byte
-var expectedPVC = &corev1.PersistentVolumeClaim{}
-
-//go:embed testdata/ldap_expectedPVC_withCustomSize.yaml
-var expectedPVCWithCustomSizeBytes []byte
-var expectedPVCWithCustomSize = &corev1.PersistentVolumeClaim{}
-
-//go:embed testdata/ldap_expectedSecret.yaml
-var expectedSecretBytes []byte
-var expectedSecret = &corev1.Secret{}
-
-//go:embed testdata/ldap_expectedService.yaml
-var expectedServiceBytes []byte
-var expectedService = &corev1.Service{}
-
-//go:embed testdata/ldap_expectedExposedServices.yaml
-var expectedExposedServicesBytes []byte
-var expectedExposedServices = &[]corev1.Service{}
-
-func init() {
-	err := json.Unmarshal(ldapBytes, ldapDogu)
-	if err != nil {
-		panic(err)
-	}
-
-	err = json.Unmarshal(imageConfBytes, imageConf)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(ldapDoguResourceBytes, ldapDoguResource)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(expectedDeploymentBytes, expectedDeployment)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(expectedCustomDeploymentBytes, expectedCustomDeployment)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(expectedDeploymentDevelopBytes, expectedDeploymentDevelop)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(expectedPVCBytes, expectedPVC)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(expectedPVCWithCustomSizeBytes, expectedPVCWithCustomSize)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(expectedSecretBytes, expectedSecret)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(expectedServiceBytes, expectedService)
-	if err != nil {
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(expectedExposedServicesBytes, expectedExposedServices)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func getResourceGenerator() *ResourceGenerator {
-	scheme := runtime.NewScheme()
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cloudogu.com",
-		Version: "v1",
-		Kind:    "Dogu",
-	}, &k8sv1.Dogu{})
-	patcher := &mocks2.LimitPatcher{}
-	patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
+	patcher := &mocks.LimitPatcher{}
+	patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
 	patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-	return &ResourceGenerator{
-		scheme:           scheme,
+
+	return &resourceGenerator{
+		scheme:           getTestScheme(),
 		doguLimitPatcher: patcher,
 	}
 }
 
 func TestNewResourceGenerator(t *testing.T) {
 	// given
-	scheme := runtime.NewScheme()
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cloudogu.com",
-		Version: "v1",
-		Kind:    "Dogu",
-	}, &k8sv1.Dogu{})
-	registry := &mocks.Registry{}
+	registry := &cesmocks.Registry{}
 
 	// when
-	generator := NewResourceGenerator(scheme, limit.NewDoguDeploymentLimitPatcher(registry))
+	generator := NewResourceGenerator(getTestScheme(), limit.NewDoguDeploymentLimitPatcher(registry))
 
 	// then
 	require.NotNil(t, generator)
@@ -165,54 +48,51 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		config.Stage = oldStage
 	}()
 	config.Stage = config.StageProduction
-	generator := getResourceGenerator()
+	generator := getResourceGenerator(t)
+
+	t.Run("should fail to create pod template", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		client, clientExists := ldapDogu.Volumes[2].GetClient(doguOperatorClient)
+		require.True(t, clientExists)
+		client.Params = "invalid"
+
+		// when
+		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to read k8s-dogu-operator client params of volume configmap-test")
+	})
 
 	t.Run("Return simple deployment", func(t *testing.T) {
 		// when
-		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
+		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		assert.Equal(t, expectedDeployment, actualDeployment)
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
-	t.Run("Return simple deployment with given custom deployment", func(t *testing.T) {
+	t.Run("Return simple deployment with service account", func(t *testing.T) {
 		// when
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: ldapDoguResource.Name,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						ServiceAccountName: "mytestAccount",
-						Containers: []corev1.Container{
-							{Name: ldapDoguResource.Name, VolumeMounts: []corev1.VolumeMount{
-								{Name: "myTestMount", MountPath: "/my/host/path/test.txt", SubPath: "test.txt"},
-							}},
-						},
-						Volumes: []corev1.Volume{
-							{Name: "myTestVolume", VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/my/host/path",
-									Type: nil,
-								},
-							}},
-						},
-					},
-				},
-			},
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		ldapDogu.ServiceAccounts = []core.ServiceAccount{
+			{Type: "k8s-dogu-operator", Kind: "k8s"},
 		}
-
-		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu, deployment)
-
-		bytes, _ := yaml.Marshal(actualDeployment)
-		fmt.Println(string(bytes))
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, expectedCustomDeployment, actualDeployment)
+		expectedDeployment := readLdapDoguExpectedDeployment(t)
+		expectedDeployment.Spec.Template.Spec.ServiceAccountName = "ldap"
+		assert.Equal(t, expectedDeployment, actualDeployment)
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
@@ -223,13 +103,16 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 			config.Stage = oldStage
 		}()
 		config.Stage = config.StageDevelopment
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 
 		// when
-		actualDeployment, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, expectedDeploymentDevelop, actualDeployment)
+		expectedCustomDeployment := readLdapDoguExpectedDevelopDeployment(t)
+		assert.Equal(t, expectedCustomDeployment, actualDeployment)
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
@@ -239,24 +122,30 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 			return assert.AnError
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 
 		// when
-		_, err := generator.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
+		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
 	t.Run("Error on retrieving memory limits", func(t *testing.T) {
-		// when
-		generatorFail := getResourceGenerator()
-		patcher := &mocks2.LimitPatcher{}
-		patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, assert.AnError)
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		generatorFail := getResourceGenerator(t)
+		patcher := &mocks.LimitPatcher{}
+		patcher.On("RetrievePodLimits", ldapDoguResource).Return(mocks.NewDoguLimits(t), assert.AnError)
 		generatorFail.doguLimitPatcher = patcher
-		_, err := generatorFail.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
+
+		// when
+		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -264,13 +153,17 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 	})
 
 	t.Run("Error on patching deployment", func(t *testing.T) {
-		// when
-		generatorFail := getResourceGenerator()
-		patcher := &mocks2.LimitPatcher{}
-		patcher.On("RetrievePodLimits", ldapDoguResource).Return(limit.DoguLimits{}, nil)
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		generatorFail := getResourceGenerator(t)
+		patcher := &mocks.LimitPatcher{}
+		patcher.On("RetrievePodLimits", ldapDoguResource).Return(mocks.NewDoguLimits(t), nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
 		generatorFail.doguLimitPatcher = patcher
-		_, err := generatorFail.GetDoguDeployment(ldapDoguResource, ldapDogu, nil)
+
+		// when
+		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -279,17 +172,25 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 }
 
 func TestResourceGenerator_GetDoguService(t *testing.T) {
-	generator := getResourceGenerator()
+	generator := getResourceGenerator(t)
 
 	t.Run("Return simple service", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		imageConf := readLdapDoguImageConfig(t)
+
 		// when
-		actualService, err := generator.GetDoguService(ldapDoguResource, imageConf)
+		actualService, err := generator.CreateDoguService(ldapDoguResource, imageConf)
 
 		assert.NoError(t, err)
-		assert.Equal(t, expectedService, actualService)
+		assert.Equal(t, readLdapDoguExpectedService(t), actualService)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		imageConf := readLdapDoguImageConfig(t)
+
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
 			return assert.AnError
@@ -297,26 +198,27 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
 		// when
-		_, err := generator.GetDoguService(ldapDoguResource, imageConf)
+		_, err := generator.CreateDoguService(ldapDoguResource, imageConf)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 	})
 }
 
 func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
-	generator := getResourceGenerator()
+	generator := getResourceGenerator(t)
 
 	t.Run("Return no exposed services when given dogu json does not contain any exposed ports", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{
 			Name: "ldap",
 		}
+		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		actualExposedServices, err := generator.GetDoguExposedServices(ldapDoguResource, dogu)
+		actualExposedServices, err := generator.CreateDoguExposedServices(ldapDoguResource, dogu)
 
 		assert.NoError(t, err)
 		assert.Len(t, actualExposedServices, 0)
@@ -324,12 +226,14 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 
 	t.Run("Return all exposed services when given dogu json contains multiple exposed ports", func(t *testing.T) {
 		// when
-		actualExposedServices, err := generator.GetDoguExposedServices(ldapDoguResource, ldapDogu)
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		actualExposedServices, err := generator.CreateDoguExposedServices(ldapDoguResource, ldapDogu)
 
 		// then
 		assert.NoError(t, err)
 		assert.Len(t, actualExposedServices, 2)
-		assert.Equal(t, *expectedExposedServices, actualExposedServices)
+		assert.Equal(t, readLdapDoguExpectedExposedServices(t), actualExposedServices)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
@@ -338,73 +242,82 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 			return assert.AnError
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 
 		// when
-		_, err := generator.GetDoguExposedServices(ldapDoguResource, ldapDogu)
+		_, err := generator.CreateDoguExposedServices(ldapDoguResource, ldapDogu)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
 	})
 }
 
-func TestResourceGenerator_GetDoguPVC(t *testing.T) {
-	generator := getResourceGenerator()
+// TODO TODO TODO
+// func TestResourceGenerator_GetDoguPVC(t *testing.T) {
+// 	generator := getResourceGenerator()
+//
+// 	t.Run("Return simple pvc", func(t *testing.T) {
+// 		// when
+// 		actualPVC, err := generator.GetDoguPVC(ldapDoguResource)
+//
+// 		// then
+// 		require.NoError(t, err)
+// 		assert.Equal(t, expectedPVC, actualPVC)
+// 	})
+//
+// 	t.Run("Return simple pvc with custom size", func(t *testing.T) {
+// 		// given
+// 		sizeBefore := ldapDoguResource.Spec.Resources.VolumeSize
+// 		defer func() { ldapDoguResource.Spec.Resources.VolumeSize = sizeBefore }()
+// 		ldapDoguResource.Spec.Resources.VolumeSize = resource.MustParse("6Gi")
+//
+// 		// when
+// 		actualPVC, err := generator.GetDoguPVC(ldapDoguResource)
+//
+// 		// then
+// 		require.NoError(t, err)
+// 		assert.Equal(t, expectedPVCWithCustomSize, actualPVC)
+// 	})
+//
+// 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
+// 		oldMethod := ctrl.SetControllerReference
+// 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
+// 			return assert.AnError
+// 		}
+// 		defer func() { ctrl.SetControllerReference = oldMethod }()
+//
+// 		// when
+// 		_, err := generator.GetDoguPVC(ldapDoguResource)
+//
+// 		// then
+// 		require.Error(t, err)
+// 		assert.ErrorIs(t, err, assert.AnError)
+// 		assert.Contains(t, err.Error(), "failed to set controller reference:")
+// 	})
+// }
 
-	t.Run("Return simple pvc", func(t *testing.T) {
-		// when
-		actualPVC, err := generator.GetDoguPVC(ldapDoguResource)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, expectedPVC, actualPVC)
-	})
-
-	t.Run("Return simple pvc with custom size", func(t *testing.T) {
-		// given
-		sizeBefore := ldapDoguResource.Spec.Resources.VolumeSize
-		defer func() { ldapDoguResource.Spec.Resources.VolumeSize = sizeBefore }()
-		ldapDoguResource.Spec.Resources.VolumeSize = resource.MustParse("6Gi")
-
-		// when
-		actualPVC, err := generator.GetDoguPVC(ldapDoguResource)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, expectedPVCWithCustomSize, actualPVC)
-	})
-
-	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
-		oldMethod := ctrl.SetControllerReference
-		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return assert.AnError
-		}
-		defer func() { ctrl.SetControllerReference = oldMethod }()
-
-		// when
-		_, err := generator.GetDoguPVC(ldapDoguResource)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
-	})
-}
 
 func TestResourceGenerator_GetDoguSecret(t *testing.T) {
-	generator := getResourceGenerator()
+	generator := getResourceGenerator(t)
 
 	t.Run("Return secret", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+
 		// when
-		actualSecret, err := generator.GetDoguSecret(ldapDoguResource, map[string]string{"key": "value"})
+		actualSecret, err := generator.CreateDoguSecret(ldapDoguResource, map[string]string{"key": "value"})
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, expectedSecret, actualSecret)
+		assert.Equal(t, readLdapDoguExpectedSecret(t), actualSecret)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
 			return assert.AnError
@@ -412,11 +325,26 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
 		// when
-		_, err := generator.GetDoguSecret(ldapDoguResource, map[string]string{"key": "value"})
+		_, err := generator.CreateDoguSecret(ldapDoguResource, map[string]string{"key": "value"})
 
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "failed to set controller reference:")
+		assert.ErrorContains(t, err, "failed to set controller reference:")
+	})
+}
+
+func Test_createLivenessProbe(t *testing.T) {
+	t.Run("should should return nil for a dogu without tcp probes", func(t *testing.T) {
+		dogu := readLdapDogu(t)
+		dogu.HealthChecks = []core.HealthCheck{{
+			Type: "http",
+		}}
+
+		// when
+		actual := createLivenessProbe(dogu)
+
+		// then
+		require.Nil(t, actual)
 	})
 }

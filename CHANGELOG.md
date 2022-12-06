@@ -5,9 +5,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.18.0] - 2022-12-01
+### Added
+- [#61] Add the yaml of the Dogu CRD in api package. Other controllers/operators can consume it for e.g. integration
+  tests with envtest. The `generate` make target will refresh the yaml.
+
+## [v0.17.0] - 2022-11-24
+### Fixed
+- [#62] Fix wrong exposed service object key. During the creation of exposed services some wrong object keys are used. 
+  Later-on this leads to an error when tried to get these resources.
+- [#64] Fix the creation of service annotations by ignoring all irrelevant environment variables and by correctly
+  splitting environment variables containing multiple `=`.
+
+## [v0.16.0] - 2022-11-18
+### Added
+- [#59] Support for extended volume definitions in the `dogu.json`, allowing the creation of kubernetes specific 
+  volumes.
+- [#59] Support for extended service account definitions in the `dogu.json`, allowing the creation of kubernetes 
+  accounts for dogus.
+
+### Removed
+- [#59] Mechanism to patch the generated dogu deployment with custom volumes and service account names. These are now
+  supported by the `dogu.json` and natively generated into the deployment.
+
+## [v0.15.0] - 2022-11-15
+### Changed
+- [#55] Refactoring the creation and update of kubernetes dogu resources.
+- Extract interfaces and mocks to an internal package, which removes duplicate interfaces and avoids import cycles.
+
+## [v0.14.0] - 2022-11-09
+### Added
+- [#48] Make dogu registry URL schema configurable.
+- [#47] Execute Dogu pre-upgrade scripts in upgrade process. See [dogu upgrades](docs/operations/dogu_upgrades_en.md).
+- [#51] Execute Dogu post-upgrade scripts in upgrade process. See [dogu upgrades](docs/operations/dogu_upgrades_en.md).
+
+### Removed
+- [#52] Remove cesapp dependency and use cesapp-lib.
+
+## [v0.13.0] - 2022-10-12
+### Added
+- [#43] Dogu resource has now a support mode, which leads the dogu pods to a freeze but running state.
+  This is useful in cases where the dogu is in a restart loop. See [support mode](docs/operations/dogu_support_mode_en.md)
+  for more information.
+
+## [v0.12.0] - 2022-09-29
 ### Added
 - [#41] Fire events to the specific dogu resource when installing or deleting a dogu. See 
 [event policy](docs/development/event_policy_for_the_operator_en.md) for more information.
+- [#40] Support dogu upgrades
+  - `k8s-dogu-operator` checks the dogu health and all its dependencies similar to the `cesapp`
+  - The current PVC handling ignores any changes for dogu upgrades. This issue will be solved later.
+  - for more information about requeueing and internal error handling [the docs on reconciliation](docs/development/reconciliation_en.md)
+    provide more insights
+
+### Fixed
+- fixes a possible parsing error when the environment variable `LOG_LEVEL` is set but empty
 
 ### Changed
 - [#41] Update makefiles to version `v7.0.1`.

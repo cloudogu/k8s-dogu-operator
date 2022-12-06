@@ -3,9 +3,8 @@ package resource_test
 import (
 	"context"
 	_ "embed"
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -15,7 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
-	"testing"
+
+	"github.com/cloudogu/cesapp-lib/registry/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 )
 
 //go:embed testdata/ldap-cr.yaml
@@ -106,7 +108,7 @@ func Test_doguSecretWriter_WriteDoguSecretsToRegistry(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get key provider")
+		assert.ErrorContains(t, err, "failed to get key provider")
 		mock.AssertExpectationsForObjects(t, registryMock, globalConfigMock)
 	})
 
@@ -127,7 +129,7 @@ func Test_doguSecretWriter_WriteDoguSecretsToRegistry(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create keyprovider")
+		assert.ErrorContains(t, err, "failed to create keyprovider")
 		mock.AssertExpectationsForObjects(t, registryMock, globalConfigMock)
 	})
 
@@ -151,7 +153,7 @@ func Test_doguSecretWriter_WriteDoguSecretsToRegistry(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get public key for dogu")
+		assert.ErrorContains(t, err, "failed to get public key for dogu")
 		mock.AssertExpectationsForObjects(t, registryMock, globalConfigMock, doguConfigMock)
 	})
 
@@ -176,7 +178,7 @@ func Test_doguSecretWriter_WriteDoguSecretsToRegistry(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to write key")
+		assert.ErrorContains(t, err, "failed to write key")
 		mock.AssertExpectationsForObjects(t, registryMock, globalConfigMock, doguConfigMock)
 	})
 }

@@ -1,13 +1,43 @@
 package v1_test
 
 import (
+	"context"
 	"fmt"
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	eventV1 "k8s.io/api/events/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 )
+
+var testDogu = &v1.Dogu{
+	TypeMeta: metav1.TypeMeta{
+		APIVersion: "k8s.cloudogu.com/v1",
+		Kind:       "Dogu",
+	},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "dogu",
+		Namespace: "ecosystem",
+	},
+	Spec: v1.DoguSpec{
+		Name:          "namespace/dogu",
+		Version:       "1.2.3-4",
+		UpgradeConfig: v1.UpgradeConfig{},
+	},
+	Status: v1.DoguStatus{Status: ""},
+}
+var testCtx = context.Background()
 
 func TestDoguStatus_GetRequeueTime(t *testing.T) {
 	tests := []struct {
@@ -71,4 +101,258 @@ func TestDogu_GetSecretObjectKey(t *testing.T) {
 	// then
 	assert.Equal(t, "myspecialdogu-secrets", key.Name)
 	assert.Equal(t, "testnamespace", key.Namespace)
+}
+
+func Test_Dogu_ChangeState(t *testing.T) {
+	ctx := context.TODO()
+
+	t.Run("should set the dogu resource's status to upgrade", func(t *testing.T) {
+		sut := &v1.Dogu{}
+		myClient := new(external.Client)
+		statusMock := new(external.StatusWriter)
+		myClient.On("Status").Return(statusMock)
+		statusMock.On("Update", ctx, sut).Return(nil)
+
+		// when
+		err := sut.ChangeState(ctx, myClient, v1.DoguStatusUpgrading)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, v1.DoguStatusUpgrading, sut.Status.Status)
+		myClient.AssertExpectations(t)
+		statusMock.AssertExpectations(t)
+	})
+	t.Run("should fail on client error", func(t *testing.T) {
+		sut := &v1.Dogu{}
+		myClient := new(external.Client)
+		statusMock := new(external.StatusWriter)
+		myClient.On("Status").Return(statusMock)
+		statusMock.On("Update", ctx, sut).Return(assert.AnError)
+
+		// when
+		err := sut.ChangeState(ctx, myClient, v1.DoguStatusUpgrading)
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+		myClient.AssertExpectations(t)
+		statusMock.AssertExpectations(t)
+	})
+}
+
+func TestDogu_GetObjectKey(t *testing.T) {
+	actual := testDogu.GetObjectKey()
+
+	expectedObjKey := client.ObjectKey{
+		Namespace: "ecosystem",
+		Name:      "dogu",
+	}
+	assert.Equal(t, expectedObjKey, actual)
+}
+
+func TestDogu_GetObjectMeta(t *testing.T) {
+	actual := testDogu.GetObjectMeta()
+
+	expectedObjKey := &metav1.ObjectMeta{
+		Namespace: "ecosystem",
+		Name:      "dogu",
+	}
+	assert.Equal(t, expectedObjKey, actual)
+}
+
+func TestDogu_GetDataVolumeName(t *testing.T) {
+	actual := testDogu.GetDataVolumeName()
+
+	assert.Equal(t, "dogu-data", actual)
+}
+
+func TestDogu_GetPrivateVolumeName(t *testing.T) {
+	actual := testDogu.GetPrivateVolumeName()
+
+	assert.Equal(t, "dogu-private", actual)
+}
+
+func TestDogu_GetReservedPVCName(t *testing.T) {
+	actual := testDogu.GetReservedPVCName()
+
+	assert.Equal(t, "dogu-reserved", actual)
+}
+
+func TestDogu_GetReservedVolumeName(t *testing.T) {
+	actual := testDogu.GetReservedVolumeName()
+
+	assert.Equal(t, "dogu-reserved", actual)
+}
+
+func TestDogu_GetDevelopmentDoguMapKey(t *testing.T) {
+	actual := testDogu.GetDevelopmentDoguMapKey()
+
+	expectedKey := client.ObjectKey{
+		Namespace: "ecosystem",
+		Name:      "dogu-descriptor",
+	}
+	assert.Equal(t, expectedKey, actual)
+}
+
+func TestCesMatchingLabels_Add(t *testing.T) {
+	t.Run("should add to empty object", func(t *testing.T) {
+		input := v1.CesMatchingLabels{"key": "value"}
+		// when
+		actual := v1.CesMatchingLabels{}.Add(input)
+
+		// then
+		require.NotEmpty(t, actual)
+		expected := v1.CesMatchingLabels{"key": "value"}
+		assert.Equal(t, expected, actual)
+	})
+	t.Run("should add to filed object", func(t *testing.T) {
+		input := v1.CesMatchingLabels{"key2": "value2"}
+		// when
+		actual := v1.CesMatchingLabels{"key": "value"}.Add(input)
+
+		// then
+		require.NotEmpty(t, actual)
+		expected := v1.CesMatchingLabels{"key": "value", "key2": "value2"}
+		assert.Equal(t, expected, actual)
+	})
+}
+
+func TestDogu_Labels(t *testing.T) {
+	sut := v1.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "ldap"},
+		Spec: v1.DoguSpec{
+			Name:    "official/ldap",
+			Version: "1.2.3-4",
+		},
+	}
+
+	t.Run("should return pod labels", func(t *testing.T) {
+		actual := sut.GetPodLabels()
+
+		expected := v1.CesMatchingLabels{"dogu.name": "ldap", "dogu.version": "1.2.3-4"}
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("should return dogu name label", func(t *testing.T) {
+		// when
+		actual := sut.GetDoguNameLabel()
+
+		// then
+		expected := v1.CesMatchingLabels{"dogu.name": "ldap"}
+		assert.Equal(t, expected, actual)
+	})
+}
+
+func TestDogu_GetPod(t *testing.T) {
+	readyPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap-x2y3z45", Labels: testDogu.GetPodLabels()},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
+	}
+	cli := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(readyPod).Build()
+
+	// when
+	actual, err := testDogu.GetPod(testCtx, cli)
+
+	// then
+	require.NoError(t, err)
+	exptectedPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap-x2y3z45", Labels: testDogu.GetPodLabels()},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
+	}
+	// ignore ResourceVersion which is introduced during getting pods from the K8s API
+	actual.ResourceVersion = ""
+	assert.Equal(t, exptectedPod, actual)
+}
+
+func TestDevelopmentDoguMap_DeleteFromCluster(t *testing.T) {
+	t.Run("should delete a DevelopmentDogu cm", func(t *testing.T) {
+		inputCm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
+			Data:       map[string]string{"key": "le data"},
+		}
+		myClient := new(external.Client)
+		myClient.On("Delete", testCtx, inputCm).Return(nil)
+		sut := &v1.DevelopmentDoguMap{
+			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
+			Data:       map[string]string{"key": "le data"},
+		}
+
+		// when
+		err := sut.DeleteFromCluster(testCtx, myClient)
+
+		// then
+		require.NoError(t, err)
+		myClient.AssertExpectations(t)
+	})
+	t.Run("should return an error", func(t *testing.T) {
+		inputCm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
+			Data:       map[string]string{"key": "le data"},
+		}
+		myClient := new(external.Client)
+		myClient.On("Delete", testCtx, inputCm).Return(assert.AnError)
+		sut := &v1.DevelopmentDoguMap{
+			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
+			Data:       map[string]string{"key": "le data"},
+		}
+
+		// when
+		err := sut.DeleteFromCluster(testCtx, myClient)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		myClient.AssertExpectations(t)
+	})
+}
+
+func getTestScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogu",
+	}, &v1.Dogu{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "Deployment",
+	}, &appsv1.Deployment{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Secret",
+	}, &corev1.Secret{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Service",
+	}, &corev1.Service{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "PersistentVolumeClaim",
+	}, &corev1.PersistentVolumeClaim{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "ConfigMap",
+	}, &corev1.ConfigMap{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Event",
+	}, &eventV1.Event{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Pod",
+	}, &corev1.Pod{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "PodList",
+	}, &corev1.PodList{})
+
+	return scheme
 }

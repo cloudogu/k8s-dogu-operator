@@ -3,33 +3,50 @@ package serviceaccount
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+
 	"github.com/hashicorp/go-multierror"
+	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 )
 
 // Remover removes a dogu's service account.
 type remover struct {
-	registry registry.Registry
-	executor commandExecutor
+	client      client.Client
+	registry    registry.Registry
+	doguFetcher internal.LocalDoguFetcher
+	executor    internal.CommandExecutor
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(registry registry.Registry, commandExecutor commandExecutor) *remover {
+func NewRemover(registry registry.Registry, commandExecutor internal.CommandExecutor, client client.Client) *remover {
+	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &remover{
-		registry: registry,
-		executor: commandExecutor,
+		client:      client,
+		registry:    registry,
+		doguFetcher: localFetcher,
+		executor:    commandExecutor,
 	}
 }
 
 // RemoveAll removes all service accounts for a given dogu
-func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Dogu) error {
+func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	var allProblems error
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
+		if serviceAccount.Kind != "" && serviceAccount.Kind != string(doguKind) {
+			continue
+		}
+
 		registryCredentialPath := "sa-" + serviceAccount.Type
 		doguConfig := r.registry.DoguConfig(dogu.GetSimpleName())
 
@@ -55,21 +72,9 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 			continue
 		}
 
-		saDogu, err := doguRegistry.Get(serviceAccount.Type)
+		err = r.delete(ctx, serviceAccount, dogu, doguConfig, registryCredentialPath)
 		if err != nil {
-			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to get service account dogu.json: %w", err))
-			continue
-		}
-
-		err = r.executeCommand(ctx, dogu, saDogu, namespace, serviceAccount)
-		if err != nil {
-			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to execute service account remove command: %w", err))
-			continue
-		}
-
-		err = doguConfig.DeleteRecursive(registryCredentialPath)
-		if err != nil {
-			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to remove service account from config: %w", err))
+			allProblems = multierror.Append(allProblems, err)
 			continue
 		}
 	}
@@ -77,8 +82,38 @@ func (r *remover) RemoveAll(ctx context.Context, namespace string, dogu *core.Do
 	return allProblems
 }
 
-func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, namespace string, serviceAccount core.ServiceAccount) error {
-	removeCommand, err := getCommand(saDogu, "service-account-remove")
+func (r *remover) delete(
+	ctx context.Context,
+	serviceAccount core.ServiceAccount,
+	dogu *core.Dogu,
+	doguConfig registry.ConfigurationContext,
+	registryCredentialPath string,
+) error {
+	saDogu, err := r.doguFetcher.FetchInstalled(serviceAccount.Type)
+	if err != nil {
+		return fmt.Errorf("failed to get service account dogu.json: %w", err)
+	}
+
+	serviceAccountPod, err := getPodForServiceAccountDogu(ctx, r.client, saDogu)
+	if err != nil {
+		return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
+	}
+
+	err = r.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
+	if err != nil {
+		return fmt.Errorf("failed to execute service account remove command: %w", err)
+	}
+
+	err = doguConfig.DeleteRecursive(registryCredentialPath)
+	if err != nil {
+		return fmt.Errorf("failed to remove service account from config: %w", err)
+	}
+
+	return nil
+}
+
+func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saPod *v1.Pod, serviceAccount core.ServiceAccount) error {
+	removeCommand, err := getExposedCommand(saDogu, "service-account-remove")
 	if err != nil {
 		return err
 	}
@@ -86,7 +121,9 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	var args []string
 	args = append(args, serviceAccount.Params...)
 	args = append(args, consumerDogu.GetSimpleName())
-	_, err = r.executor.ExecCommand(ctx, saDogu.GetSimpleName(), namespace, removeCommand, args)
+
+	command := exec.NewShellCommand(removeCommand.Command, args...)
+	_, err = r.executor.ExecCommandForPod(ctx, saPod, command, internal.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}

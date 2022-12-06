@@ -5,8 +5,8 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: ldap
+    dogu.name: ldap
     app: ces
 spec:
   name: official/ldap
-  version: 2.6.2-1
+  version: 2.6.2-2

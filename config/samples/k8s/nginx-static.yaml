@@ -5,8 +5,8 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu: nginx-static
+    dogu.name: nginx-static
     app: nginx-static
 spec:
   name: k8s/nginx-static
-  version: 1.23.1-1
+  version: 1.23.1-2

@@ -5,9 +5,6 @@ ENV GOPRIVATE=github.com/cloudogu/cesapp/v5
 
 WORKDIR /workspace
 
-# set auth credentials via .netrc for private cesapp repository
-COPY .netrc /root/.netrc
-
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -20,13 +17,19 @@ RUN go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY internal/ internal/
+COPY retry/ retry/
 
-# Copy .git files as the build process builds the current commit id into the binary via ldflags
-COPY .git .git
+# Copy .git files as the build process builds the current commit id into the binary via ldflags.
+# We removed this entry as changes in the repository makes all cached layers invalid leading to rebuilding all layers.
+# TODO resolve COMMIT_ID
+#COPY .git .git
 
 # Copy build files
 COPY build build
 COPY Makefile Makefile
+
+RUN mkdir /tmp/dogu-registry-cache
 
 # Build
 RUN go mod vendor
@@ -37,10 +40,12 @@ RUN make compile-generic
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="0.11.0"
+      VERSION="0.18.0"
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .
+COPY --from=builder --chown=65532:65532 /tmp/dogu-registry-cache /tmp/dogu-registry-cache
+
 # the linter has a problem with the valid colon-syntax
 # dockerfile_lint - ignore
 USER 65532:65532

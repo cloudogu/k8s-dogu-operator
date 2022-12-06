@@ -2,21 +2,26 @@ package limit
 
 import (
 	"context"
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"testing"
+	"time"
+
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	coreosclient "github.com/coreos/etcd/client"
+
 	"github.com/hashicorp/go-multierror"
+	coreosclient "go.etcd.io/etcd/client/v2"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
-	"time"
 )
 
 func TestNewHardwareLimitUpdater(t *testing.T) {
@@ -43,7 +48,7 @@ func TestNewHardwareLimitUpdater(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "parse \"http://etcd.(!)//=)!%(?=(.svc.cluster.local:4001\": invalid URL escape \"%(\"")
+		assert.ErrorContains(t, err, "parse \"http://etcd.(!)//=)!%(?=(.svc.cluster.local:4001\": invalid URL escape \"%(\"")
 		assert.Nil(t, updater)
 	})
 }
@@ -101,30 +106,8 @@ func getTestDeployments() (*appsv1.Deployment, *appsv1.Deployment, *appsv1.Deplo
 
 func Test_hardwareLimitUpdater_Start(t *testing.T) {
 	t.Run("run start and send done to context", func(t *testing.T) { // given
-		regMock := &mocks.Registry{}
-		watchContextMock := &mocks.WatchConfigurationContext{}
-		regMock.On("RootConfig").Return(watchContextMock, nil)
-		watchContextMock.On("Watch", mock.Anything, triggerSyncEtcdKeyFullPath, false, mock.Anything).Return()
-
-		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
-		hardwareUpdater := &hardwareLimitUpdater{
-			client:   clientMock,
-			registry: regMock,
-		}
-
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Millisecond*50)
-
-		// when
-		err := hardwareUpdater.Start(ctx)
-		cancelFunc()
-
-		// then
-		require.NoError(t, err)
-	})
-
-	t.Run("run start and send done to context", func(t *testing.T) { // given
-		regMock := &mocks.Registry{}
-		watchContextMock := &mocks.WatchConfigurationContext{}
+		regMock := &cesmocks.Registry{}
+		watchContextMock := &cesmocks.WatchConfigurationContext{}
 		regMock.On("RootConfig").Return(watchContextMock, nil)
 		watchContextMock.On("Watch", mock.Anything, triggerSyncEtcdKeyFullPath, false, mock.Anything).Return()
 
@@ -146,9 +129,9 @@ func Test_hardwareLimitUpdater_Start(t *testing.T) {
 
 	t.Run("run start and send change event", func(t *testing.T) {
 		// given
-		regMock := &mocks.Registry{}
+		regMock := &cesmocks.Registry{}
 
-		watchContextMock := &mocks.WatchConfigurationContext{}
+		watchContextMock := &cesmocks.WatchConfigurationContext{}
 		watchContextMock.On("Watch", mock.Anything, triggerSyncEtcdKeyFullPath, false, mock.Anything).Run(func(args mock.Arguments) {
 			channelobject := args.Get(3)
 			sendChannel, ok := channelobject.(chan *coreosclient.Response)
@@ -168,8 +151,8 @@ func Test_hardwareLimitUpdater_Start(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		limitPatcher := newLimitPatcher(t)
-		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(DoguLimits{}, nil)
+		limitPatcher := mocks.NewLimitPatcher(t)
+		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(&doguLimits{}, nil)
 		limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 
 		hardwareUpdater := &hardwareLimitUpdater{
@@ -190,9 +173,9 @@ func Test_hardwareLimitUpdater_Start(t *testing.T) {
 
 	t.Run("run start and get error on etcd change method", func(t *testing.T) {
 		// given
-		regMock := &mocks.Registry{}
+		regMock := &cesmocks.Registry{}
 
-		watchContextMock := &mocks.WatchConfigurationContext{}
+		watchContextMock := &cesmocks.WatchConfigurationContext{}
 		watchContextMock.On("Watch", mock.Anything, triggerSyncEtcdKeyFullPath, false, mock.Anything).Run(func(args mock.Arguments) {
 			channelobject := args.Get(3)
 			sendChannel, ok := channelobject.(chan *coreosclient.Response)
@@ -226,7 +209,7 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 		clientMock := testclient.NewClientBuilder().
 			Build()
 
-		limitPatcher := newLimitPatcher(t)
+		limitPatcher := mocks.NewLimitPatcher(t)
 		hardwareUpdater := &hardwareLimitUpdater{
 			client:           clientMock,
 			doguLimitPatcher: limitPatcher,
@@ -237,7 +220,7 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get installed dogus from the cluster: failed to list dogus in namespace")
+		assert.ErrorContains(t, err, "failed to get installed dogus from the cluster: failed to list dogus in namespace")
 	})
 
 	t.Run("trigger fail on retrieving dogu deployments", func(t *testing.T) {
@@ -248,7 +231,7 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 			WithObjects(d1, d2, d3).
 			Build()
 
-		limitPatcher := newLimitPatcher(t)
+		limitPatcher := mocks.NewLimitPatcher(t)
 		hardwareUpdater := &hardwareLimitUpdater{
 			client:           clientMock,
 			doguLimitPatcher: limitPatcher,
@@ -277,8 +260,8 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		limitPatcher := newLimitPatcher(t)
-		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(DoguLimits{}, assert.AnError)
+		limitPatcher := mocks.NewLimitPatcher(t)
+		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(&doguLimits{}, assert.AnError)
 		hardwareUpdater := &hardwareLimitUpdater{
 			client:           clientMock,
 			doguLimitPatcher: limitPatcher,
@@ -307,8 +290,8 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		limitPatcher := newLimitPatcher(t)
-		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(DoguLimits{}, nil)
+		limitPatcher := mocks.NewLimitPatcher(t)
+		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(&doguLimits{}, nil)
 		limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
 		hardwareUpdater := &hardwareLimitUpdater{
 			client:           clientMock,
@@ -338,8 +321,8 @@ func Test_hardwareLimitUpdater_triggerSync(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		limitPatcher := newLimitPatcher(t)
-		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(DoguLimits{}, nil)
+		limitPatcher := mocks.NewLimitPatcher(t)
+		limitPatcher.On("RetrievePodLimits", mock.Anything).Return(&doguLimits{}, nil)
 		limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
 
 		hardwareUpdater := &hardwareLimitUpdater{

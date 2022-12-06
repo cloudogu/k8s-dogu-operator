@@ -1,14 +1,16 @@
 package logging
 
 import (
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"os"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/logging/mocks"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/cloudogu/cesapp-lib/core"
 )
 
 func TestConfigureLogger(t *testing.T) {
@@ -23,7 +25,7 @@ func TestConfigureLogger(t *testing.T) {
 
 	t.Run("create logger with no log level set in env -> should use default", func(t *testing.T) {
 		// given
-		_ = os.Unsetenv(namespaceLogLevel)
+		_ = os.Unsetenv(logLevelEnvVar)
 
 		// when
 		err := ConfigureLogger()
@@ -31,10 +33,21 @@ func TestConfigureLogger(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 	})
+	t.Run("should not fail with empty string log level and return error level", func(t *testing.T) {
+		// given
+		t.Setenv(logLevelEnvVar, "")
+
+		// when
+		err := ConfigureLogger()
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, logrus.ErrorLevel, CurrentLogLevel)
+	})
 
 	t.Run("create logger with log level INFO", func(t *testing.T) {
 		// given
-		_ = os.Setenv(namespaceLogLevel, "INFO")
+		_ = os.Setenv(logLevelEnvVar, "INFO")
 
 		// when
 		err := ConfigureLogger()
@@ -46,20 +59,20 @@ func TestConfigureLogger(t *testing.T) {
 
 	t.Run("create logger with invalid log level TEST_LEVEL", func(t *testing.T) {
 		// given
-		_ = os.Setenv(namespaceLogLevel, "TEST_LEVEL")
+		_ = os.Setenv(logLevelEnvVar, "TEST_LEVEL")
 
 		// when
 		err := ConfigureLogger()
 
 		// then
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "value of log environment variable [LOG_LEVEL] is not a valid log level")
+		assert.ErrorContains(t, err, "value of log environment variable [LOG_LEVEL] is not a valid log level")
 	})
 }
 
 func Test_libraryLogger_Debug(t *testing.T) {
 	// given
-	loggerSink := &mocks.LogSink{}
+	loggerSink := &external.LogSink{}
 	loggerSink.On("Info", debugLevel, "[testLogger] test debug call")
 	logger := libraryLogger{name: "testLogger", logger: loggerSink}
 
@@ -72,7 +85,7 @@ func Test_libraryLogger_Debug(t *testing.T) {
 
 func Test_libraryLogger_Debugf(t *testing.T) {
 	// given
-	loggerSink := &mocks.LogSink{}
+	loggerSink := &external.LogSink{}
 	loggerSink.On("Info", debugLevel, "[testLogger] myText - test debug call")
 	logger := libraryLogger{name: "testLogger", logger: loggerSink}
 
@@ -86,7 +99,7 @@ func Test_libraryLogger_Debugf(t *testing.T) {
 
 func Test_libraryLogger_Error(t *testing.T) {
 	// given
-	loggerSink := &mocks.LogSink{}
+	loggerSink := &external.LogSink{}
 	loggerSink.On("Info", errorLevel, "[testLogger] test error call")
 	logger := libraryLogger{name: "testLogger", logger: loggerSink}
 
@@ -99,7 +112,7 @@ func Test_libraryLogger_Error(t *testing.T) {
 
 func Test_libraryLogger_Errorf(t *testing.T) {
 	// given
-	loggerSink := &mocks.LogSink{}
+	loggerSink := &external.LogSink{}
 	loggerSink.On("Info", errorLevel, "[testLogger] myText - test error call")
 	logger := libraryLogger{name: "testLogger", logger: loggerSink}
 
@@ -113,7 +126,7 @@ func Test_libraryLogger_Errorf(t *testing.T) {
 
 func Test_libraryLogger_Info(t *testing.T) {
 	// given
-	loggerSink := &mocks.LogSink{}
+	loggerSink := &external.LogSink{}
 	loggerSink.On("Info", infoLevel, "[testLogger] test info call")
 	logger := libraryLogger{name: "testLogger", logger: loggerSink}
 
@@ -126,7 +139,7 @@ func Test_libraryLogger_Info(t *testing.T) {
 
 func Test_libraryLogger_Infof(t *testing.T) {
 	// given
-	loggerSink := &mocks.LogSink{}
+	loggerSink := &external.LogSink{}
 	loggerSink.On("Info", infoLevel, "[testLogger] myText - test info call")
 	logger := libraryLogger{name: "testLogger", logger: loggerSink}
 
@@ -140,7 +153,7 @@ func Test_libraryLogger_Infof(t *testing.T) {
 
 func Test_libraryLogger_Warning(t *testing.T) {
 	// given
-	loggerSink := &mocks.LogSink{}
+	loggerSink := &external.LogSink{}
 	loggerSink.On("Info", warningLevel, "[testLogger] test warning call")
 	logger := libraryLogger{name: "testLogger", logger: loggerSink}
 
@@ -153,7 +166,7 @@ func Test_libraryLogger_Warning(t *testing.T) {
 
 func Test_libraryLogger_Warningf(t *testing.T) {
 	// given
-	loggerSink := &mocks.LogSink{}
+	loggerSink := &external.LogSink{}
 	loggerSink.On("Info", warningLevel, "[testLogger] myText - test warning call")
 	logger := libraryLogger{name: "testLogger", logger: loggerSink}
 

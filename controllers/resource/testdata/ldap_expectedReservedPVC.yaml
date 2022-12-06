@@ -1,0 +1,21 @@
+metadata:
+  creationTimestamp: null
+  labels:
+    app: ces
+    dogu.name: ldap
+  name: ldap-reserved
+  namespace: ecosystem
+  ownerReferences:
+    - apiVersion: k8s.cloudogu.com/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Dogu
+      name: ldap
+      uid: ""
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Mi
+status: { }

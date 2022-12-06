@@ -1,6 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=0.11.0
+VERSION=0.18.0
 ## Image URL to use all building/pushing image targets
 IMAGE_DEV=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}:${VERSION}
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
@@ -25,9 +25,12 @@ K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
 PRE_COMPILE=generate
 
 K8S_RESOURCE_TEMP_FOLDER ?= $(TARGET_DIR)
-K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy
+K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy template-log-level
 
 include build/make/k8s-controller.mk
+
+.PHONY: build-boot
+build-boot: image-import k8s-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 ##@ Controller specific targets
 
@@ -35,6 +38,7 @@ include build/make/k8s-controller.mk
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	@echo "Generate manifests..."
 	@$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@cp config/crd/bases/k8s.cloudogu.com_dogus.yaml api/v1/
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -52,19 +56,45 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 	$(KUSTOMIZE) build config/crd | kubectl delete --wait=false --ignore-not-found=true -f -
 	@kubectl patch crd/dogus.k8s.cloudogu.com -p '{"metadata":{"finalizers":[]}}' --type=merge || true
 
-## Local Development
-
 .PHONY: setup-etcd-port-forward
 setup-etcd-port-forward:
-	kubectl port-forward etcd-0 4001:2379 &
+	kubectl -n ${NAMESPACE} port-forward etcd-0 4001:2379 &
 
 .PHONY: template-stage
 template-stage:
 	@echo "Setting STAGE env in deployment to ${STAGE}!"
 	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"STAGE\").value)=\"${STAGE}\"" $(K8S_RESOURCE_TEMP_YAML)
 
+.PHONY: template-log-level
+template-log-level:
+	@echo "Setting LOG_LEVEL env in deployment to ${LOG_LEVEL}!"
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"LOG_LEVEL\").value)=\"${LOG_LEVEL}\"" $(K8S_RESOURCE_TEMP_YAML)
+
 .PHONY: template-dev-only-image-pull-policy
-template-dev-only-image-pull-policy:
-	@if [[ ${STAGE} == "development" ]]; \
-		then echo "Setting pull policy to always for development stage!" && $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").imagePullPolicy)=\"Always\"" $(K8S_RESOURCE_TEMP_YAML); \
-	fi
+template-dev-only-image-pull-policy: $(BINARY_YQ)
+	@echo "Setting pull policy to always!"
+	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").imagePullPolicy)=\"Always\"" $(K8S_RESOURCE_TEMP_YAML)
+
+.PHONY: kill-operator-pod
+kill-operator-pod:
+	@echo "Restarting k8s-dogu-operator!"
+	@kubectl -n ${NAMESPACE} delete pods -l 'app.kubernetes.io/name=k8s-dogu-operator'
+
+##@ Debug
+
+.PHONY: print-debug-info
+print-debug-info: ## Generates indo and the list of environment variables required to start the operator in debug mode.
+	@echo "The target generates a list of env variables required to start the operator in debug mode. These can be pasted directly into the 'go build' run configuration in IntelliJ to run and debug the operator on-demand."
+	@echo "STAGE=$(STAGE);LOG_LEVEL=$(LOG_LEVEL);KUBECONFIG=$(KUBECONFIG);NAMESPACE=$(NAMESPACE);DOGU_REGISTRY_ENDPOINT=$(DOGU_REGISTRY_ENDPOINT);DOGU_REGISTRY_USERNAME=$(DOGU_REGISTRY_USERNAME);DOGU_REGISTRY_PASSWORD=$(DOGU_REGISTRY_PASSWORD);DOCKER_REGISTRY={\"auths\":{\"$(docker_registry_server)\":{\"username\":\"$(docker_registry_username)\",\"password\":\"$(docker_registry_password)\",\"email\":\"ignore@me.com\",\"auth\":\"ignoreMe\"}}}"
+
+##@ Mockery
+
+MOCKERY_BIN=${UTILITY_BIN_PATH}/mockery
+MOCKERY_VERSION=v2.15.0
+
+${MOCKERY_BIN}: ${UTILITY_BIN_PATH}
+	$(call go-get-tool,$(MOCKERY_BIN),github.com/vektra/mockery/v2@$(MOCKERY_VERSION))
+
+mocks: ${MOCKERY_BIN} ## This target is used to generate all mocks for the dogu operator.
+	@cd $(WORKDIR)/internal && ${MOCKERY_BIN} --all
+	@echo "Mocks successfully created."

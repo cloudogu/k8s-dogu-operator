@@ -1,0 +1,10 @@
+{
+  "Env": [
+    "SERVICE_80_TAGS=webapp",
+    "TEST=WDW=WDWD=webapp",
+    "SERVICE_80_TAGS=webapp=true"
+  ],
+  "ExposedPorts": {
+    "80/tcp": {}
+  }
+}

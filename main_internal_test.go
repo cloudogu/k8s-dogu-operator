@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
+	"os"
+	"testing"
+
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/mocks"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -19,13 +22,11 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"testing"
 )
 
 type mockDefinition struct {
@@ -42,7 +43,7 @@ func getCopyMap(definitions map[string]mockDefinition) map[string]mockDefinition
 }
 
 func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) manager.Manager {
-	k8sManager := &mocks.Manager{}
+	k8sManager := &external.Manager{}
 	ctrl.NewManager = func(config *rest.Config, options manager.Options) (manager.Manager, error) {
 		for key, value := range definitions {
 			k8sManager.Mock.On(key, value.Arguments...).Return(value.ReturnValue)
@@ -96,7 +97,7 @@ func Test_startDoguOperator(t *testing.T) {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "dogu.cloudogu.com",
+		Group:   "k8s.cloudogu.com",
 		Version: "v1",
 		Kind:    "dogu",
 	}, &v1.Dogu{})

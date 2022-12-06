@@ -2,19 +2,22 @@ package dependency_test
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type validatorCheckerSuccess struct {
 	called bool
 }
 
-func (v *validatorCheckerSuccess) ValidateAllDependencies(_ *core.Dogu) error {
+func (v *validatorCheckerSuccess) ValidateAllDependencies(_ context.Context, _ *core.Dogu) error {
 	v.called = true
 	return nil
 }
@@ -23,7 +26,7 @@ type validatorCheckerError struct {
 	called bool
 }
 
-func (v *validatorCheckerError) ValidateAllDependencies(_ *core.Dogu) error {
+func (v *validatorCheckerError) ValidateAllDependencies(_ context.Context, _ *core.Dogu) error {
 	v.called = true
 	return fmt.Errorf("some error")
 }
@@ -39,7 +42,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		}}
 
 		// when
-		err := compositeValidator.ValidateDependencies(&core.Dogu{})
+		err := compositeValidator.ValidateDependencies(context.Background(), &core.Dogu{})
 
 		// then
 		require.NoError(t, err)
@@ -58,14 +61,14 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		}}
 
 		// when
-		err := compositeValidator.ValidateDependencies(&core.Dogu{})
+		err := compositeValidator.ValidateDependencies(context.Background(), &core.Dogu{})
 
 		// then
 		require.Error(t, err)
 		assert.True(t, checkerOne.called)
 		assert.True(t, checkerTwo.called)
 		assert.True(t, checkerThree.called)
-		assert.Contains(t, err.Error(), "some error")
+		assert.ErrorContains(t, err, "some error")
 	})
 }
 
