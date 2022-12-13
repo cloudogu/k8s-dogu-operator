@@ -1,11 +1,16 @@
 package upgrade
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -29,6 +34,21 @@ const (
 	EventReason                     = "Upgrading"
 	ErrorOnFailedUpgradeEventReason = "ErrUpgrade"
 )
+
+const (
+	preUpgradeExecStrategyNative = iota
+	preUpgradeExecStrategyShellPipe
+)
+
+type preUpgradeExecStrategy int
+
+// copyErrorDetectorCantCreateFile recognizes at least two different errors:
+// unwritable target directory and unoverwritable script file
+var copyErrorDetectorCantCreateFile, _ = regexp.Compile(".*cp: can't create '.+':.*")
+
+func isPreUpgradeExecErrRetryable(err error) bool {
+	return copyErrorDetectorCantCreateFile.MatchString(err.Error())
+}
 
 // upgradeStartupProbeFailureThresholdRetries contains the number of times how often a startup probe may fail. This
 // value will be multiplied with 10 seconds for each timeout so that f. i. 1080 timeouts lead to a threshold of 3 hours.
@@ -249,6 +269,9 @@ func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod internal.Exec
 }
 
 func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, fromDogu *core.Dogu, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
+	logger := log.FromContext(ctx)
+	logger.Info("applying pre-upgrade script to old dogu")
+
 	pod, err := getPodNameForFromDogu(ctx, ue.client, fromDogu)
 	if err != nil {
 		return fmt.Errorf("failed to find pod for dogu %s:%s : %w", fromDogu.GetSimpleName(), fromDogu.Version, err)
@@ -260,12 +283,20 @@ func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context,
 		return err
 	}
 
+	usePreUpgradeExecStrategy := preUpgradeExecStrategy(preUpgradeExecStrategyNative)
 	err = ue.copyPreUpgradeScriptToDoguReserved(ctx, pod, preUpgradeCmd)
 	if err != nil {
-		return err
+		if !isPreUpgradeExecErrRetryable(err) {
+			return fmt.Errorf("error while executing pre-upgrade script: %w", err)
+		}
+		ue.normalEventf(toDoguResource, "Running pre-upgrade script with shell pipe strategy instead...")
+		// retry with a different strategy because we are certain that the upgrade script could not be copied because
+		// of file system permissions.
+		logger.Info(fmt.Sprintf("Native pre-upgrade script execution failed with '%s': Retry with strategy %d", err.Error(), usePreUpgradeExecStrategy))
+		usePreUpgradeExecStrategy = preUpgradeExecStrategy(preUpgradeExecStrategyShellPipe)
 	}
 
-	return ue.executePreUpgradeScript(ctx, pod, preUpgradeCmd, fromDogu.Version, toDoguResource.Spec.Version)
+	return ue.executePreUpgradeScript(ctx, pod, preUpgradeCmd, fromDogu.Version, toDoguResource.Spec.Version, usePreUpgradeExecStrategy)
 }
 
 func (ue *upgradeExecutor) copyPreUpgradeScriptToDoguReserved(ctx context.Context, pod *corev1.Pod, preUpgradeCmd *core.ExposedCommand) error {
@@ -301,17 +332,97 @@ func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, pod *co
 	return nil
 }
 
-func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion string, toVersion string) error {
-	// the previous steps took great lengths to copy the pre-upgrade script to the original place so we can finally
-	// execute it as described by the dogu.json.
+func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion, toVersion string, strategy preUpgradeExecStrategy) error {
+
+	switch strategy {
+	case preUpgradeExecStrategyNative:
+		return ue.execPreUpgradeExecNatively(ctx, fromPod, cmd, fromVersion, toVersion)
+	case preUpgradeExecStrategyShellPipe:
+		return ue.execPreUpgradeExecShellPipe(ctx, fromPod, cmd, fromVersion, toVersion)
+	default:
+		return fmt.Errorf("unsupported pre-upgrade execution value %d found", strategy)
+	}
+}
+
+func (ue *upgradeExecutor) execPreUpgradeExecNatively(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion, toVersion string) error {
+	logger := log.FromContext(ctx)
+	// the previous steps took great lengths to copy the pre-upgrade script to the original place
+	// so we can finally execute it as described by the dogu.json.
 	preUpgradeCmd := exec.NewShellCommand(cmd.Command, fromVersion, toVersion)
 
+	logger.Info("Executing pre-upgrade command " + preUpgradeCmd.String())
 	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, internal.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeCmd, outBuf, err)
 	}
 
 	return nil
+}
+
+// execPreUpgradeExecShellPipe executes the pre-upgrade script in a different way than just calling the previously
+// copied script file (which seemingly did not work since we ended up here). This method basically copies the whole
+// script content into a pipe and tries to exec it against a suitable shell interpreter. This approach does not work for
+// pre-upgrade scripts with a sticky bit because the content will be executed as the user that is currently running in
+// the dogu container, and said current user is most likely non-privileged.
+func (ue *upgradeExecutor) execPreUpgradeExecShellPipe(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion, toVersion string) error {
+	logger := log.FromContext(ctx)
+	logger.Info("Re-executing pre-upgrade command")
+	errMsg := fmt.Sprintf("failed to re-execute pre-upgrade script '%s': output: ", cmd.Command)
+
+	interpreterOut, err := ue.detectPreUpgradeScriptInterpreter(ctx, fromPod, cmd)
+	if err != nil {
+		return fmt.Errorf(errMsg+"'%s': %w", interpreterOut, err)
+	}
+
+	outBuf, err := ue.execPreUpgradeShellPipeWithInterpreter(ctx, fromPod, cmd, fromVersion, toVersion, interpreterOut)
+	if err != nil {
+		return fmt.Errorf(errMsg+"'%s': %w", outBuf, err)
+	}
+
+	return nil
+}
+
+func (ue *upgradeExecutor) detectPreUpgradeScriptInterpreter(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand) (string, error) {
+	scriptPath := fmt.Sprintf("%s%s", resource.DoguReservedPath, cmd.Command)
+
+	// every container should provide any form of shell which would alias to sh
+	preUpgradeCmd := exec.NewShellCommand("/bin/grep", "'#!'", scriptPath)
+
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, internal.PodReady)
+	if err != nil {
+		return outBuf.String(), err
+	}
+
+	interpreter, err := getScriptInterpreterFromOutput(outBuf.String())
+	if err != nil {
+		return "", fmt.Errorf("failed to detect script interpreter in %s: %w", scriptPath, err)
+	}
+
+	return interpreter, nil
+}
+
+func getScriptInterpreterFromOutput(interpreterOut string) (string, error) {
+	split := strings.Split(interpreterOut, "#!")
+	if len(split) < 2 {
+		return "", errors.New("shebang line not found")
+	}
+
+	interpreter := strings.TrimSpace(split[1])
+	if !strings.HasPrefix(interpreter, "/") {
+		return "", fmt.Errorf("shebang does not look like path to an executable: %s", interpreter)
+	}
+
+	return interpreter, nil
+}
+
+func (ue *upgradeExecutor) execPreUpgradeShellPipeWithInterpreter(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion, toVersion, interpreter string) (*bytes.Buffer, error) {
+	// "cd dirname" ensures to enter the correct directory to avoid problems with script relative filenames.
+	// the second part pipes the script from the dogu-reservation into bash along with the necessary dogu versions
+	shellPipeCmd := fmt.Sprintf(`cd $(dirname %s) && (cat %s%s | %s -s "%s" "%s")`,
+		cmd.Command, resource.DoguReservedPath, cmd.Command, interpreter, fromVersion, toVersion)
+	preUpgradeCmd := exec.NewShellCommand("/bin/sh", "-c", shellPipeCmd)
+
+	return ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, internal.PodReady)
 }
 
 func getPodNameForFromDogu(ctx context.Context, cli client.Client, fromDogu *core.Dogu) (*corev1.Pod, error) {
