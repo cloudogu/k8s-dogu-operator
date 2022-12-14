@@ -139,7 +139,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 
 func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *appsv1.Deployment) {
 	for i, container := range deployment.Spec.Template.Spec.Containers {
-		if container.Name == containerName {
+		if container.Name == containerName && deployment.Spec.Template.Spec.Containers[i].StartupProbe != nil {
 			deployment.Spec.Template.Spec.Containers[i].StartupProbe.FailureThreshold = upgradeStartupProbeFailureThresholdRetries
 			break
 		}
@@ -156,7 +156,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	for i, container := range deployment.Spec.Template.Spec.Containers {
-		if container.Name == toDoguResource.Name {
+		if container.Name == toDoguResource.Name && container.StartupProbe != nil {
 			deployment.Spec.Template.Spec.Containers[i].StartupProbe = originalStartupProbe
 			break
 		}
