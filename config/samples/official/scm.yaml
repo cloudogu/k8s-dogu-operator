@@ -10,3 +10,4 @@ metadata:
 spec:
   name: official/scm
   version: 2.40.0-1
+#  version: 2.39.1-1

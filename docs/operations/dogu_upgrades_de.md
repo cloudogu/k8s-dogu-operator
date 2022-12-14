@@ -106,8 +106,45 @@ Danach ist das Upgrade abgeschlossen.
 
 ### Downgrades
 
-To Do DG
+Downgrades von Dogus sind dann problematisch, wenn die neuer Dogu-Version die Datengrundlage der älteren Version durch das Upgrade auf eine Weise modifiziert, dass die ältere Version mit den Daten nichts mehr anfangen kann. **Unter Umständen wird das Dogu damit arbeitsunfähig**. Da dieses Verhalten sehr stark vom Werkzeughersteller abhängt, ist es im allgemeinen nicht möglich, Dogus zu _downgraden_.
+
+Daher verweigert der Dogu-Operator ein Upgrade einer Dogu-Resource auf eine niedrigere Version. Dieses Verhalten lässt sich durch den Schalter `spec.upgradeConfig.forceUpgrade` mit einem Wert von True ausschalten.
+
+**Achtung möglicher Datenschaden:*** 
+Sie sollten vorher klären, dass das Dogu keinen Schaden durch das Downgrade nimmt.
+
+```yaml
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: cas
+  labels:
+    dogu.name: cas
+    app: ces
+spec:
+  name: official/cas
+  version: 6.5.5-3
+  upgradeConfig:
+    # für ein Downgrade von v6.5.5-4
+    forceUpgrade: true
+```
 
 ### Wechsel eines Dogu-Namespaces
 
-To Do DNW
+Ein Dogu-Namespace-Wechsel wird durch eine Änderung der Dogu-Resource ermöglicht. Dies kann z. B. nötig sein, wenn ein neues Dogu in einen anderen Namespace veröffentlicht wird.
+Dieses Verhalten lässt sich durch den Schalter `spec.upgradeConfig.allowNamespaceSwitch` mit einem Wert von True ausschalten.
+
+```yaml
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: cas
+  labels:
+    dogu.name: cas
+    app: ces
+spec:
+  name: official/cas
+  version: 6.5.5-4
+  upgradeConfig:
+    allowNamespaceSwitch: true
+```
