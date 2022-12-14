@@ -66,24 +66,27 @@ drwxrwsr-x    3 root     doguuser    1.0K Dec 13 10:48 .
 Zur Lösung wurden mehrere Wege bedacht. Die folgenden vier Wege wurden abgewogen und für zu problemhaft bewertet:
 
 1. Die Upgrade-Skripte werden stets mit dem zuletzt angegebenen User und dessen Rechten ausgeführt. Kopieren von
-   Root-Dateien mit spezifischen Usern kommt daher nicht in Frage.
+   Root-Dateien mit spezifischen Usern scheiter daher in der Regel.
+   - fehlerhaftes Beispiel: `cp /tmp/dogu-reserved/pre-upgrade.sh / && /pre-upgrade.sh "${versionAlt}" "${versionNeu}"`
 2. Da es vom Skriptautor abhängt, ob relative oder absolute Pfade im Skript verwendet werden, lässt sich die Datei auch
-   nicht an einen anderen Ort kopieren und dort ausführen.
-3. Gleiches gilt für eine Ausführung vom ursprünglich zu startenden Skript, das relativ an generell einem anderen Ort,
-   weil d
+   nicht an einen anderen Ort kopieren und dort ausführen, ohne Fehler zu riskieren.
+   - fehlerhaftes Beispiel: `cd /tmp/dogu-reserved && ./pre-upgrade.sh "${versionAlt}" "${versionNeu}"`
+3. Gleiches gilt für eine Ausführung vom Arbeitsverzeichnis des ursprünglich zu startenden Skript
+   - fehlerhaftes Beispiel: `cd / && /tmp/dogu-reserved/pre-upgrade.sh`
 4. Ein dynamisches Einführen von Anweisungen im Upgradeskript wird auch verworfen, diese Lösung einerseits komplex und
-   fehleranfällig ist. Wir können nicht beliebige Dateipfade auswerten und umschreiben.
+   fehleranfällig ist. Es ist nicht ohne weiteres möglich, beliebige Dateipfade auszuwerten und umzuschreiben.
+   - fehlerhaftes Beispiel: `sed -i 's|/|/tmp/dogu-reserved|g' /tmp/dogu-reserved/pre-upgrade.sh && /tmp/dogu-reserved/pre-upgrade.sh`
 
 Stattdessen wurde sich für die folgende Lösung entschieden:
 
 Diese besteht darin, in das Verzeichnis zu wechseln, für das das Upgradeskript konzipiert wurde. Dann wird der Inhalt
-des Skripts durch Shell-Piping direkt durch den gewählten Skriptinterpreter ausgeführt.
+des Skripts durch Shell-Piping direkt durch den gewählten Skriptinterpreter ausgeführt. Dieses Verhalten wurde durch den Dogu-Operator umgesetzt. Für Dogu-Entwickelnde ist es eher interessant, die Gestaltung des eigenen Containers in dieser Hinsicht zu betrachten.
 
 - Mit diesem Snippet lässt sich dieses Verhalten im alten Dogu-Container testen:
-- `sh -c "cd (basename /preupgrade.sh) && sh -c < /tmp/dogu-reserved/pre-upgrade.sh"`
+- Testbeispiel: `sh -c "cd (basename /preupgrade.sh) && sh -c < /tmp/dogu-reserved/pre-upgrade.sh"`
    - hierbei muss das zweite Vorkommnis des Shellinterpreters `sh` durch einen im Skript definierten ausgetauscht
      werden, um eine maximale Kompatibilität von Skript und Interpreter zu gewährleisten.
-
+     
 ### Einschränkungen
 
 Durch das beschriebene Verhalten gelten damit die folgenden Einschränkungen für Pre-Upgrade-Skripte:
