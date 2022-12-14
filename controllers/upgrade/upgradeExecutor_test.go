@@ -1469,7 +1469,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		mockExecPod.On("Exec", testCtx, copy1).Once().Return("", nil)
 
 		copy2 := exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
-		detectInterpreter := exec.NewShellCommand("/bin/grep", "'#!'", "/tmp/dogu-reserved/pre-upgrade.sh")
+		detectInterpreter := exec.NewShellCommand("/bin/sh", "-c", "/bin/grep '#!' /tmp/dogu-reserved/pre-upgrade.sh")
 		shellPipeExec := exec.NewShellCommand("/bin/sh", "-c", `cd $(dirname /pre-upgrade.sh) && (cat /tmp/dogu-reserved/pre-upgrade.sh | /bin/bash -s "4.2.3-10" "4.2.3-11")`)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
@@ -1517,7 +1517,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		mockExecPod.On("Exec", testCtx, copy1).Once().Return("", nil)
 
 		copy2 := exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
-		detectInterpreter := exec.NewShellCommand("/bin/grep", "'#!'", "/tmp/dogu-reserved/pre-upgrade.sh")
+		detectInterpreter := exec.NewShellCommand("/bin/sh", "-c", "/bin/grep '#!' /tmp/dogu-reserved/pre-upgrade.sh")
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
@@ -1563,7 +1563,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		mockExecPod.On("Exec", testCtx, copy1).Once().Return("", nil)
 
 		copy2 := exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
-		detectInterpreter := exec.NewShellCommand("/bin/grep", "'#!'", "/tmp/dogu-reserved/pre-upgrade.sh")
+		detectInterpreter := exec.NewShellCommand("/bin/sh", "-c", "/bin/grep '#!' /tmp/dogu-reserved/pre-upgrade.sh")
 		shellPipeExec := exec.NewShellCommand("/bin/sh", "-c", `cd $(dirname /pre-upgrade.sh) && (cat /tmp/dogu-reserved/pre-upgrade.sh | /bin/bash -s "4.2.3-10" "4.2.3-11")`)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
