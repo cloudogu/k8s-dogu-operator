@@ -221,9 +221,9 @@ func createDoguVolumeMounts(doguVolume core.Volume, doguResource *k8sv1.Dogu) co
 // CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
 func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	// todo put into dogu crd method
-	// doguTargetVolumeSize := resource.MustParse(k8sv1.DefaultVolumeSize)
-	// if (doguResource.Spec.Resources.VolumeSize != resource.Quantity{}) {
-	// 	doguTargetVolumeSize = doguResource.Spec.Resources.VolumeSize
+	// doguTargetDataVolumeSize := resource.MustParse(k8sv1.DefaultDataVolumeSize)
+	// if (doguResource.Spec.Resources.DataVolumeSize != resource.Quantity{}) {
+	// 	doguTargetDataVolumeSize = doguResource.Spec.Resources.DataVolumeSize
 	// }
 
 	return r.createPVC(doguResource.Name, doguResource, resource.MustParse("5Gi"))

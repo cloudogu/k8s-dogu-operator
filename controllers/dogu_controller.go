@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -48,11 +49,6 @@ const (
 const (
 	RequeueEventReason        = "Requeue"
 	ErrorOnRequeueEventReason = "ErrRequeue"
-)
-
-const (
-	VolumeExpansionEventReason        = "VolumeExpansion"
-	ErrorOnVolumeExpansionEventReason = "ErrVolumeExpansion"
 )
 
 const handleRequeueErrMsg = "failed to handle requeue: %w"
@@ -148,8 +144,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	case Ignore:
 		return finishOperation()
 	case ExpandVolume:
-		r.recorder.Event(doguResource, v1.EventTypeNormal, VolumeExpansionEventReason, "Starting volume expansion from xxxGi to xxxGi")
-		return finishOperation()
+		return r.performVolumeOperation(ctx, doguResource)
 	default:
 		return finishOperation()
 	}
@@ -237,19 +232,29 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 		return false, fmt.Errorf("failed to get persistent volume claim of dogu [%s]: %w", doguResource.Name, err)
 	}
 
-	doguTargetVolumeSize := resource.MustParse(k8sv1.DefaultVolumeSize)
-	if (doguResource.Spec.Resources.VolumeSize != resource.Quantity{}) {
-		// TODO: Why used default Volume Size here?
-		// doguTargetVolumeSize = doguResource.Spec.Resources.VolumeSize
+	dataVolumeSize := doguResource.Spec.Resources.DataVolumeSize
+	if dataVolumeSize == "" {
 		return false, nil
 	}
 
-	if doguTargetVolumeSize.Value() > doguPvc.Spec.Resources.Requests.Storage().Value() {
+	doguTargetDataVolumeSize := resource.MustParse(k8sv1.DefaultVolumeSize)
+	size, err := resource.ParseQuantity(dataVolumeSize)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse resource volume size: %w", err)
+	}
+
+	if !size.IsZero() {
+		doguTargetDataVolumeSize = size
+	}
+
+	if doguTargetDataVolumeSize.Value() > doguPvc.Spec.Resources.Requests.Storage().Value() {
 		return true, nil
-	} else if doguTargetVolumeSize.Value() == doguPvc.Spec.Resources.Requests.Storage().Value() {
+	} else if doguTargetDataVolumeSize.Value() == doguPvc.Spec.Resources.Requests.Storage().Value() {
 		return false, nil
 	} else {
-		return false, fmt.Errorf("invalid dogu state for dogu [%s] as requestes volume size is [%s] while existing volume is [%s], shrinking of volumes is not allowed", doguResource.Name, doguTargetVolumeSize.String(), doguPvc.Spec.Resources.Requests.Storage().String())
+		return false, fmt.Errorf("invalid dogu state for dogu [%s] as requested volume size is [%s] while "+
+			"existing volume is [%s], shrinking of volumes is not allowed", doguResource.Name,
+			doguTargetDataVolumeSize.String(), doguPvc.Spec.Resources.Requests.Storage().String())
 	}
 }
 
@@ -264,6 +269,8 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&k8sv1.Dogu{}).
+		// TODO configurable
+		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		// Since we don't want to process dogus with same spec we use a generation change predicate
 		// as a filter to reduce the reconcile calls.
 		// The predicate implements a function that will be invoked of every update event that
@@ -345,6 +352,17 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 	// can be tried again.
 	return r.performOperation(ctx, doguResource, upgradeOperationEventProps, k8sv1.DoguStatusInstalled,
 		r.doguManager.Upgrade)
+}
+
+func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	volumeExpansionOperationEventProps := operationEventProperties{
+		successReason: VolumeExpansionEventReason,
+		errorReason:   ErrorOnVolumeExpansionEventReason,
+		operationName: "VolumeExpansion",
+		operationVerb: "expand volume",
+	}
+
+	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusInstalled, r.doguManager.SetDoguDataVolumeSize)
 }
 
 func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher internal.LocalDoguFetcher) (bool, error) {

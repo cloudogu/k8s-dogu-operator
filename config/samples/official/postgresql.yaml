@@ -11,4 +11,4 @@ spec:
   name: official/postgresql
   version: 12.10-1
   resources:
-    volumeSize: "1Gi"
+    dataVolumeSize: "1Gi"

@@ -11,4 +11,4 @@ spec:
   name: official/postfix
   version: 3.6.4-3
   resources:
-    volumeSize: "4Gi"
+    dataVolumeSize: "4Gi"

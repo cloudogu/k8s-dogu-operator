@@ -4,7 +4,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -29,9 +28,9 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 	t.Run("Return simple pvc with custom size", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
-		sizeBefore := ldapDoguResource.Spec.Resources.VolumeSize
-		defer func() { ldapDoguResource.Spec.Resources.VolumeSize = sizeBefore }()
-		ldapDoguResource.Spec.Resources.VolumeSize = resource.MustParse("6Gi")
+		sizeBefore := ldapDoguResource.Spec.Resources.DataVolumeSize
+		defer func() { ldapDoguResource.Spec.Resources.DataVolumeSize = sizeBefore }()
+		ldapDoguResource.Spec.Resources.DataVolumeSize = "6Gi"
 
 		// when
 		actualPVC, err := generator.CreateDoguPVC(ldapDoguResource)

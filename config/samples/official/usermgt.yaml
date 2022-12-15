@@ -10,3 +10,5 @@ metadata:
 spec:
   name: official/usermgt
   version: 1.7.0-1
+  resources:
+    dataVolumeSize: "16Gi"

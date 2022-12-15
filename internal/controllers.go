@@ -29,10 +29,17 @@ type SupportManager interface {
 	HandleSupportMode(ctx context.Context, doguResource *v1.Dogu) (bool, error)
 }
 
+// VolumeManager includes functionality to edit volumes for dogus in the cluster.
+type VolumeManager interface {
+	// SetDoguDataVolumeSize sets the volume size for the given dogu.
+	SetDoguDataVolumeSize(ctx context.Context, doguResource *v1.Dogu) error
+}
+
 // DoguManager abstracts the simple dogu operations in a k8s CES.
 type DoguManager interface {
 	InstallManager
 	UpgradeManager
 	DeleteManager
+	VolumeManager
 	SupportManager
 }

@@ -4,10 +4,10 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -18,6 +18,7 @@ import (
 // This embed provides the crd for other applications. They can import this package and use the yaml file
 // for the CRD in e.g. integration tests. The file gets refreshed by copying from the kubebuilder config/crd/bases
 // folder by the "generate" make target.
+//
 //go:embed k8s.cloudogu.com_dogus.yaml
 var _ embed.FS
 
@@ -45,6 +46,7 @@ type DoguSpec struct {
 	Name string `json:"name,omitempty"`
 	// Version of the dogu (e.g. 2.4.48-3)
 	Version string `json:"version,omitempty"`
+	// Resources of the dogu (e.g. dataVolumeSize)
 	Resources DoguResources `json:"resources,omitempty"`
 	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
 	// a crash loop).
@@ -66,11 +68,11 @@ type UpgradeConfig struct {
 
 // DoguResources defines the physical resources used by the dogu.
 type DoguResources struct {
-	// VolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
+	// dataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
 	// expansion. This includes a downtime for the respective dogu. The default size for volumes is "2Gi".
 	// It is not possible to lower the volume size after an expansion. This will introduce an inconsistent state for the
 	// dogu.
-	VolumeSize resource.Quantity `json:"volumeSize,omitempty"`
+	DataVolumeSize string `json:"dataVolumeSize,omitempty"`
 }
 
 // DoguStatus defines the observed state of a Dogu.
@@ -222,9 +224,31 @@ func (d *Dogu) GetDoguNameLabel() CesMatchingLabels {
 }
 
 // GetPod returns a pod for this dogu. An error is returned if either no pod or more than one pod is found.
-func (d *Dogu) GetPod(ctx context.Context, cli client.Client) (*v1.Pod, error) {
+func (d *Dogu) GetPod(ctx context.Context, cli client.Client) (*corev1.Pod, error) {
 	labels := d.GetPodLabels()
 	return GetPodForLabels(ctx, cli, labels)
+}
+
+// GetDataPVC returns the data pvc for this dogu.
+func (d *Dogu) GetDataPVC(ctx context.Context, cli client.Client) (*corev1.PersistentVolumeClaim, error) {
+	pvc := &corev1.PersistentVolumeClaim{}
+	err := cli.Get(ctx, d.GetObjectKey(), pvc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get data pvc for dogu %s: %w", d.Name, err)
+	}
+
+	return pvc, nil
+}
+
+// GetDeployment returns the data pvc for this dogu.
+func (d *Dogu) GetDeployment(ctx context.Context, cli client.Client) (*appsv1.Deployment, error) {
+	deploy := &appsv1.Deployment{}
+	err := cli.Get(ctx, d.GetObjectKey(), deploy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment for dogu %s: %w", d.Name, err)
+	}
+
+	return deploy, nil
 }
 
 // +kubebuilder:object:root=true
@@ -242,7 +266,7 @@ func init() {
 
 // DevelopmentDoguMap is a config map that is especially used to when developing a dogu. The map contains a custom
 // dogu.json in the data filed with the "dogu.json" identifier.
-type DevelopmentDoguMap v1.ConfigMap
+type DevelopmentDoguMap corev1.ConfigMap
 
 // DeleteFromCluster deletes this development config map from the cluster.
 func (ddm *DevelopmentDoguMap) DeleteFromCluster(ctx context.Context, client client.Client) error {
@@ -255,8 +279,8 @@ func (ddm *DevelopmentDoguMap) DeleteFromCluster(ctx context.Context, client cli
 }
 
 // ToConfigMap returns the development dogu map as config map pointer.
-func (ddm *DevelopmentDoguMap) ToConfigMap() *v1.ConfigMap {
-	configMap := v1.ConfigMap(*ddm)
+func (ddm *DevelopmentDoguMap) ToConfigMap() *corev1.ConfigMap {
+	configMap := corev1.ConfigMap(*ddm)
 	return &configMap
 }
 
