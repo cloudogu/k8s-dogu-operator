@@ -1883,6 +1883,8 @@ func Test_splitScriptInterpreter(t *testing.T) {
 		{"return bash path", args{"#!/bin/bash"}, "/bin/bash", assert.NoError},
 		{"return dash env", args{"#!/bin/env dash"}, "/bin/env dash", assert.NoError},
 		{"removes newline", args{"#!/bin/bash\n"}, "/bin/bash", assert.NoError},
+		{"takes 1st shebang of 2", args{"#!/bin/bash\n#! don't do this"}, "/bin/bash", assert.NoError},
+		{"takes 1st shebang of 2 similar", args{"#!/bin/bash\n#!/oh noez"}, "/bin/bash", assert.NoError},
 		{"error on missing shebang", args{""}, "", assert.Error},
 		{"error on weird comment", args{"#!!! Please note !!!"}, "", assert.Error},
 	}
