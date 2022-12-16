@@ -43,77 +43,91 @@ spec:
 ## Pre-Upgrade-Skript
 
 Für das Pre-Upgrade-Skript wird während des Upgrade-Prozesses ein Pod gestartet.
-Dieser verwendet das aktualisierte Image des Dogus und kopiert nur das Skript in den alten Container.
-Ein dafür vorgesehenes Volume wird bereits bei der Installation angelegt.
+Dieser verwendet das aktualisierte Image des Dogus und kopiert nur das in der Dogu.json genannte Skript in den alten
+Container.
 
-### Herausforderung: Differenz zwischen Dateisystemlayout und aktuellem User
+Ein dafür vorgesehenes Volume wird bereits bei der Installation angelegt. Nachdem das Pre-Upgrade-Skript im alten
+Container verfügbar gemacht wurde, wird dies ausgeführt während das Dogu läuft.
 
-Durch die Kopie des Pre-Upgrade-Skripts vom neuen in den alten Container ergibt eine Problematik, wenn die Datei aus
-Rechtegründen nicht kopiert werden kann, etwa wenn man sich das folgende Dateisystem vorstellt:
+### Anforderungen an ein Pre-Upgrade-Skript
 
+Dieser Abschnitt definiert leicht umzusetzende Anforderungen für Dogu-Entwickelnde, um die Ausführung von
+Pre-Upgrade-Skripten so fehlerfrei und transparent wie möglich zu gestalten.
+
+#### Parameter
+
+Pre-Upgrade-Skripte müssen genau zwei Parameter entgegennehmen:
+
+1. die alte Dogu-Version, die gerade läuft
+2. die neue Dogu-Version, auf die das Upgrade angewendet werden soll
+
+Anhand dieser Informationen können Pre-Upgrade-Skripte entscheidende Entscheidungen treffen. Dies kann u. a. sein:
+- Verweigerung von Upgrades für zu große Versionssprünge
+- angepasste Vorbereitungsmaßnahmen je vorgefundener Version
+
+Beispielsweise könnte das Pre-Upgrade-Skript so aufgerufen werden:
+
+```bash
+/path/to/pre-upgrade.sh 1.2.3-4 1.2.3-5
 ```
-ls -lha / 
-drwxr-xr-x    1 root     root        4.0K Dec 13 10:47 .
--rwxrwxr-x    1 root     root         704 Oct 12 14:25 pre-upgrade.sh
-...
 
-ls -lha /tmp/dogu-reserved/
-drwxrwsr-x    3 root     doguuser    1.0K Dec 13 10:48 .
--rwxr-xr-x    1 doguuser doguuser     704 Dec 13 10:48 pre-upgrade.sh
-...
-```
+Die Übergabe weiterer Parameter ist nicht vorgesehen.
 
-Zur Lösung wurden mehrere Wege bedacht. Die folgenden vier Wege wurden abgewogen und für zu problemhaft bewertet:
+#### Nutzung von absoluten Dateireferenzen
 
-1. Die Upgrade-Skripte werden stets mit dem zuletzt angegebenen User und dessen Rechten ausgeführt. Kopieren von
-   Root-Dateien mit spezifischen Usern scheiter daher in der Regel.
-   - fehlerhaftes Beispiel: `cp /tmp/dogu-reserved/pre-upgrade.sh / && /pre-upgrade.sh "${versionAlt}" "${versionNeu}"`
-2. Da es vom Skriptautor abhängt, ob relative oder absolute Pfade im Skript verwendet werden, lässt sich die Datei auch
-   nicht an einen anderen Ort kopieren und dort ausführen, ohne Fehler zu riskieren.
-   - fehlerhaftes Beispiel: `cd /tmp/dogu-reserved && ./pre-upgrade.sh "${versionAlt}" "${versionNeu}"`
-3. Gleiches gilt für eine Ausführung vom Arbeitsverzeichnis des ursprünglich zu startenden Skript
-   - fehlerhaftes Beispiel: `cd / && /tmp/dogu-reserved/pre-upgrade.sh`
-4. Ein dynamisches Einführen von Anweisungen im Upgradeskript wird auch verworfen, diese Lösung einerseits komplex und
-   fehleranfällig ist. Es ist nicht ohne weiteres möglich, beliebige Dateipfade auszuwerten und umzuschreiben.
-   - fehlerhaftes Beispiel: `sed -i 's|/|/tmp/dogu-reserved|g' /tmp/dogu-reserved/pre-upgrade.sh && /tmp/dogu-reserved/pre-upgrade.sh`
+Wenn es um Dateiverarbeitung geht, dann müssen Pre-Upgrade-Skripte absolute Dateipfade verwenden, da nicht sichergestellt werden kann, dass ein Skript immer von seinem Ursprungsort aus aufgerufen wird.
 
-Stattdessen wurde sich für die folgende Lösung entschieden:
+#### Keine Nutzung anderer Dateien
 
-Diese besteht darin, in das Verzeichnis zu wechseln, für das das Upgradeskript konzipiert wurde. Dann wird der Inhalt
-des Skripts durch Shell-Piping direkt durch den gewählten Skriptinterpreter ausgeführt. Dieses Verhalten wurde durch den Dogu-Operator umgesetzt. Für Dogu-Entwickelnde ist es eher interessant, die Gestaltung des eigenen Containers in dieser Hinsicht zu betrachten.
+Pre-Upgrade-Skripte werden vom Upgrade-Image hin zum Dogu-Container kopiert, um dort ausgeführt zu werden. Da in dem Dogu-Deskriptor `dogu.json` ausschließlich das Pre-Upgrade-Skript und nicht zusammengehörige Dateien genannt werden können, muss ein Pre-Upgrade-Skripte in seinem Funktionsumfang vollumfänglich aufgebaut sein.
 
-- Mit diesem Snippet lässt sich dieses Verhalten im alten Dogu-Container testen:
-- Testbeispiel: `sh -c "cd (basename /preupgrade.sh) && sh -c < /tmp/dogu-reserved/pre-upgrade.sh"`
-   - hierbei muss das zweite Vorkommnis des Shellinterpreters `sh` durch einen im Skript definierten ausgetauscht
-     werden, um eine maximale Kompatibilität von Skript und Interpreter zu gewährleisten.
-     
-### Einschränkungen
+Dies schließt insbesondere das Shell-Sourcing anderer Dateien aus, da hierbei häufig falsche Annahmen von Versionsständen zu Fehlern führen.
 
-Durch das beschriebene Verhalten gelten damit die folgenden Einschränkungen für Pre-Upgrade-Skripte:
+#### Ausführbarkeit
 
-- Das SetUID-Bit kann für Pre-Upgrade-Skripte aktuell nicht verwendet werden, da dieses nicht durch `cp` verloren geht
+- Das SetUID-Bit kann für Pre-Upgrade-Skripte aktuell nicht verwendet werden, da dieses durch aufruf von `cp` verloren geht
 - `/bin/cp` muss zwingend installiert sein
-- `/bin/grep` muss in dem Fall installiert sein, wenn das Pre-Upgrade-Skript oder dessen Verzeichnis einen anderen
-  Unix-User aufweisen, als in dem laufenden Dogu vorhanden
 - Es wird davon ausgegangen, dass es sich beim Pre-Upgrade-Script um ein Shellskript und nicht um ein sonstiges
   Executable handelt (etwa eine Linux-Binärdatei)
    - Sollte dies nicht der Fall sein, so muss das Container-Image so aufgebaut sein, dass der Kopiervorgang mit dem
      jeweils aktuellen Container-Benutzer sowie die Ausführung des Executables möglich ist.
+- Das Pre-Upgrade-Skript wird durch den aktuellen Container-User im alten Dogu ausgeführt
 
-## Post-Upgrade-Skript
+## Post-Upgrade Script
 
-Das Post-Upgrade-Skript wird am Ende des Upgrade-Prozesses im neuen Dogu ausgeführt.  
-Danach ist das Upgrade abgeschlossen.
+Unlike pre-upgrade scripts, post-upgrade scripts are subject to only minor constraints because the script is usually already in its execution location. The post-upgrade script is executed in the new dogu at the end of the upgrade process. The dogu is responsible for waiting for the post-upgrade script to finish. This is where the use of the dogu state has proven helpful:
+
+```bash
+# post-upgrade.sh
+doguctl state "upgrading
+# upgrade routines go here...
+doguctl state "starting
+```
+
+```bash
+# startup.sh
+while [[ "$(doguctl state)" == "upgrading" ]]; do
+  echo "Upgrade script is running. Waiting..."
+  sleep 3
+done
+# regular start-up goes here
+```
+
+After that the upgrade is finished.
 
 ## Upgrade-Sonderfälle
 
 ### Downgrades
 
-Downgrades von Dogus sind dann problematisch, wenn die neuer Dogu-Version die Datengrundlage der älteren Version durch das Upgrade auf eine Weise modifiziert, dass die ältere Version mit den Daten nichts mehr anfangen kann. **Unter Umständen wird das Dogu damit arbeitsunfähig**. Da dieses Verhalten sehr stark vom Werkzeughersteller abhängt, ist es im allgemeinen nicht möglich, Dogus zu _downgraden_.
+Downgrades von Dogus sind dann problematisch, wenn die neuer Dogu-Version die Datengrundlage der älteren Version durch
+das Upgrade auf eine Weise modifiziert, dass die ältere Version mit den Daten nichts mehr anfangen kann. **Unter
+Umständen wird das Dogu damit arbeitsunfähig**. Da dieses Verhalten sehr stark vom Werkzeughersteller abhängt, ist es im
+allgemeinen nicht möglich, Dogus zu _downgraden_.
 
-Daher verweigert der Dogu-Operator ein Upgrade einer Dogu-Resource auf eine niedrigere Version. Dieses Verhalten lässt sich durch den Schalter `spec.upgradeConfig.forceUpgrade` mit einem Wert von True ausschalten.
+Daher verweigert der Dogu-Operator ein Upgrade einer Dogu-Resource auf eine niedrigere Version. Dieses Verhalten lässt
+sich durch den Schalter `spec.upgradeConfig.forceUpgrade` mit einem Wert von True ausschalten.
 
-**Achtung möglicher Datenschaden:*** 
+**Achtung möglicher Datenschaden:***
 Sie sollten vorher klären, dass das Dogu keinen Schaden durch das Downgrade nimmt.
 
 ```yaml
@@ -134,8 +148,11 @@ spec:
 
 ### Wechsel eines Dogu-Namespaces
 
-Ein Dogu-Namespace-Wechsel wird durch eine Änderung der Dogu-Resource ermöglicht. Dies kann z. B. nötig sein, wenn ein neues Dogu in einen anderen Namespace veröffentlicht wird.
-Dieses Verhalten lässt sich durch den Schalter `spec.upgradeConfig.allowNamespaceSwitch` mit einem Wert von True ausschalten.
+Ein Dogu-Namespace-Wechsel wird durch eine Änderung der Dogu-Resource ermöglicht. Dies kann z. B. nötig sein, wenn ein
+neues Dogu in einen anderen Namespace veröffentlicht wird.
+
+Dieses Verhalten lässt sich durch den Schalter `spec.upgradeConfig.allowNamespaceSwitch` mit einem Wert von True
+ausschalten.
 
 ```yaml
 apiVersion: k8s.cloudogu.com/v1

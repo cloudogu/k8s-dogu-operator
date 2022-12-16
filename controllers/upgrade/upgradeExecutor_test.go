@@ -3,7 +3,6 @@ package upgrade
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -36,13 +35,10 @@ var testCtx = context.TODO()
 var testRestConfig = &rest.Config{}
 
 var (
-	copyCmd1              = exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
-	mkdirCmd              = exec.NewShellCommand("/bin/mkdir", "-p", "/")
-	copyCmd2              = exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
-	preUpgradeCmd         = exec.NewShellCommand("/pre-upgrade.sh", "4.2.3-10", "4.2.3-11")
-	postUpgradeCmd        = exec.NewShellCommand("/post-upgrade.sh", "4.2.3-10", "4.2.3-11")
-	mockCmdOutput         = bytes.NewBufferString("")
-	preUpgradeFileCopyErr = errors.New("cp: can't create '/pre-upgrade.sh': File exists': command terminated with exit code 1")
+	copyCmd1       = exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
+	preUpgradeCmd  = exec.NewShellCommand("/tmp/dogu-reserved/pre-upgrade.sh", "4.2.3-10", "4.2.3-11")
+	postUpgradeCmd = exec.NewShellCommand("/post-upgrade.sh", "4.2.3-10", "4.2.3-11")
+	mockCmdOutput  = bytes.NewBufferString("")
 )
 
 func TestNewUpgradeExecutor(t *testing.T) {
@@ -121,8 +117,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
@@ -208,8 +202,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
@@ -294,8 +286,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
@@ -499,8 +489,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 			mockExecutor := mocks.NewCommandExecutor(t)
 			mockExecutor.
-				On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-				On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
 				On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil)
 
 			k8sFileEx := mocks.NewFileExtractor(t)
@@ -580,8 +568,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 			mockExecutor := mocks.NewCommandExecutor(t)
 			mockExecutor.
-				On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-				On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
 				On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil)
 
 			k8sFileEx := mocks.NewFileExtractor(t)
@@ -666,8 +652,6 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, internal.ContainersStarted).Once().Return(bytes.NewBufferString("ouch"), assert.AnError)
 
@@ -1290,7 +1274,6 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "redmine-old-x1y2z3", Labels: doguResource.GetPodLabels()},
 		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
 	}
-	scriptInterpreterOutput := bytes.NewBufferString("#!/bin/bash\n")
 
 	t.Run("should be successful if no pre-upgrade exposed command", func(t *testing.T) {
 		// given
@@ -1309,7 +1292,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.NoError(t, err)
 	})
-	t.Run("should fail if copy from pod to pod fails because of a non-retryable reason", func(t *testing.T) {
+	t.Run("should fail if copy from pod to pod fail", func(t *testing.T) {
 		// given
 		toDoguResource := &k8sv1.Dogu{}
 		fromDogu := readTestDataDogu(t, redmineBytes)
@@ -1333,85 +1316,6 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to execute '/bin/cp /pre-upgrade.sh /tmp/dogu-reserved' in execpod, stdout: 'oopsie woopsie'")
 	})
-	t.Run("should fail if upgrade dir creation fails", func(t *testing.T) {
-		// given
-		cli := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(redmineOldPod).
-			Build()
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
-		mockExecPod := mocks.NewExecPod(t)
-		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
-
-		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
-
-		eventRecorder := external.NewEventRecorder(t)
-		typeNormal := corev1.EventTypeNormal
-		upgradeEvent := EventReason
-		eventRecorder.
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once().
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional pre-upgrade scripts...").Once()
-
-		upgradeExecutor := upgradeExecutor{
-			client:              cli,
-			eventRecorder:       eventRecorder,
-			doguCommandExecutor: mockExecutor,
-		}
-
-		// when
-		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to execute '/bin/mkdir -p /': output: 'oops'")
-	})
-	t.Run("should fail if copy to original dir fails", func(t *testing.T) {
-		// given
-		cli := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(redmineOldPod).
-			Build()
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
-		mockExecPod := mocks.NewExecPod(t)
-		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
-
-		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(bytes.NewBufferString("oops"), assert.AnError)
-
-		eventRecorder := external.NewEventRecorder(t)
-		typeNormal := corev1.EventTypeNormal
-		upgradeEvent := EventReason
-		eventRecorder.
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once().
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional pre-upgrade scripts...").Once()
-
-		upgradeExecutor := upgradeExecutor{
-			client:              cli,
-			eventRecorder:       eventRecorder,
-			doguCommandExecutor: mockExecutor,
-		}
-
-		// when
-		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to execute '/bin/cp /tmp/dogu-reserved/pre-upgrade.sh /pre-upgrade.sh': output: 'oops'")
-	})
 	t.Run("should fail during pre-upgrade execution", func(t *testing.T) {
 		// given
 		cli := fake.NewClientBuilder().
@@ -1428,8 +1332,6 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(bytes.NewBufferString("uhoh"), assert.AnError)
 
 		eventRecorder := external.NewEventRecorder(t)
@@ -1451,147 +1353,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to execute '/pre-upgrade.sh 4.2.3-10 4.2.3-11': output: 'uhoh'")
-	})
-	t.Run("should fail if copy from pod to pod fails and re-try fails as well", func(t *testing.T) {
-		// given
-		cli := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(redmineOldPod).
-			Build()
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
-		copy1 := exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
-		mockExecPod := mocks.NewExecPod(t)
-		mockExecPod.On("Exec", testCtx, copy1).Once().Return("", nil)
-
-		copy2 := exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
-		detectInterpreter := exec.NewShellCommand("/bin/sh", "-c", "/bin/grep '#!' /tmp/dogu-reserved/pre-upgrade.sh")
-		shellPipeExec := exec.NewShellCommand("/bin/sh", "-c", `cd $(dirname /pre-upgrade.sh) && (cat /tmp/dogu-reserved/pre-upgrade.sh | /bin/bash -s "4.2.3-10" "4.2.3-11")`)
-
-		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copy2, internal.ContainersStarted).Once().Return(mockCmdOutput, preUpgradeFileCopyErr).
-			On("ExecCommandForPod", testCtx, redmineOldPod, detectInterpreter, internal.PodReady).Once().Return(scriptInterpreterOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, shellPipeExec, internal.PodReady).Once().Return(mockCmdOutput, assert.AnError)
-
-		eventRecorder := external.NewEventRecorder(t)
-		typeNormal := corev1.EventTypeNormal
-		upgradeEvent := EventReason
-		eventRecorder.
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once().
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional pre-upgrade scripts...").Once().
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Running pre-upgrade script with shell pipe strategy instead...").Once()
-
-		upgradeExecutor := upgradeExecutor{
-			client:              cli,
-			eventRecorder:       eventRecorder,
-			doguCommandExecutor: mockExecutor,
-		}
-
-		// when
-		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to re-execute pre-upgrade script '/pre-upgrade.sh'")
-	})
-	t.Run("should fail if copy from pod to pod fails and re-try fails because script interpreter detection", func(t *testing.T) {
-		// given
-		cli := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(redmineOldPod).
-			Build()
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
-		copy1 := exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
-		mockExecPod := mocks.NewExecPod(t)
-		mockExecPod.On("Exec", testCtx, copy1).Once().Return("", nil)
-
-		copy2 := exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
-		detectInterpreter := exec.NewShellCommand("/bin/sh", "-c", "/bin/grep '#!' /tmp/dogu-reserved/pre-upgrade.sh")
-
-		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copy2, internal.ContainersStarted).Once().Return(mockCmdOutput, preUpgradeFileCopyErr).
-			On("ExecCommandForPod", testCtx, redmineOldPod, detectInterpreter, internal.PodReady).Once().Return(mockCmdOutput, assert.AnError)
-
-		eventRecorder := external.NewEventRecorder(t)
-		typeNormal := corev1.EventTypeNormal
-		upgradeEvent := EventReason
-		eventRecorder.
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once().
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional pre-upgrade scripts...").Once().
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Running pre-upgrade script with shell pipe strategy instead...").Once()
-
-		upgradeExecutor := upgradeExecutor{
-			client:              cli,
-			eventRecorder:       eventRecorder,
-			doguCommandExecutor: mockExecutor,
-		}
-
-		// when
-		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to re-execute pre-upgrade script '/pre-upgrade.sh'")
-	})
-	t.Run("should succeed after failed script copy but on shell pipe retry", func(t *testing.T) {
-		// given
-		cli := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(redmineOldPod).
-			Build()
-		fromDogu := readTestDataDogu(t, redmineBytes)
-		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
-		copy1 := exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
-		mockExecPod := mocks.NewExecPod(t)
-		mockExecPod.On("Exec", testCtx, copy1).Once().Return("", nil)
-
-		copy2 := exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh")
-		detectInterpreter := exec.NewShellCommand("/bin/sh", "-c", "/bin/grep '#!' /tmp/dogu-reserved/pre-upgrade.sh")
-		shellPipeExec := exec.NewShellCommand("/bin/sh", "-c", `cd $(dirname /pre-upgrade.sh) && (cat /tmp/dogu-reserved/pre-upgrade.sh | /bin/bash -s "4.2.3-10" "4.2.3-11")`)
-
-		mockExecutor := mocks.NewCommandExecutor(t)
-		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copy2, internal.ContainersStarted).Once().Return(mockCmdOutput, preUpgradeFileCopyErr).
-			On("ExecCommandForPod", testCtx, redmineOldPod, detectInterpreter, internal.PodReady).Once().Return(scriptInterpreterOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, shellPipeExec, internal.PodReady).Once().Return(mockCmdOutput, nil)
-
-		eventRecorder := external.NewEventRecorder(t)
-		typeNormal := corev1.EventTypeNormal
-		upgradeEvent := EventReason
-		eventRecorder.
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once().
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional pre-upgrade scripts...").Once().
-			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Running pre-upgrade script with shell pipe strategy instead...").Once()
-
-		upgradeExecutor := upgradeExecutor{
-			client:              cli,
-			eventRecorder:       eventRecorder,
-			doguCommandExecutor: mockExecutor,
-		}
-
-		// when
-		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
-
-		// then
-		require.NoError(t, err)
+		assert.ErrorContains(t, err, "failed to execute '/tmp/dogu-reserved/pre-upgrade.sh 4.2.3-10 4.2.3-11': output: 'uhoh'")
 	})
 	t.Run("should succeed after successful script copy", func(t *testing.T) {
 		// given
@@ -1609,8 +1371,6 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, mkdirCmd, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForPod", testCtx, redmineOldPod, copyCmd2, internal.ContainersStarted).Once().Return(mockCmdOutput, nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, internal.PodReady).Once().Return(mockCmdOutput, nil)
 
 		eventRecorder := external.NewEventRecorder(t)
@@ -1850,51 +1610,4 @@ func Test_deleteExecPod(t *testing.T) {
 		// then
 		// mocks will be asserted during t.CleanUp
 	})
-}
-
-func Test_isPreUpgradeExecErrRetryable(t *testing.T) {
-	tests := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{"true for full error", errors.New("dogu upgrade official/scm:2.40.0-1 failed: pre-upgrade failed :failed to execute '/bin/cp /tmp/dogu-reserved/pre-upgrade.sh /pre-upgrade.sh': output: '<nil>': resource does not meet requirements for exec: scm-55dbffc4f8-cjtf9, source error: error streaming command to pod; out: '': errOut: 'cp: can't create '/pre-upgrade.sh': File exists': command terminated with exit code 1"), true},
-		{"true for partial error", preUpgradeFileCopyErr, true},
-		{"false for similar error", errors.New("cp: can't do things with '/pre-upgrade.sh': I forgot how to compute': command terminated with exit code 1"), false},
-		{"false for unrelated error", assert.AnError, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, isPreUpgradeExecErrRetryable(tt.err), "isPreUpgradeExecErrRetryable(%v)", tt.err)
-		})
-	}
-}
-
-func Test_splitScriptInterpreter(t *testing.T) {
-	type args struct {
-		interpreterOut string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr assert.ErrorAssertionFunc
-	}{
-		{"return bash path", args{"#!/bin/bash"}, "/bin/bash", assert.NoError},
-		{"return dash env", args{"#!/bin/env dash"}, "/bin/env dash", assert.NoError},
-		{"removes newline", args{"#!/bin/bash\n"}, "/bin/bash", assert.NoError},
-		{"takes 1st shebang of 2", args{"#!/bin/bash\n#! don't do this"}, "/bin/bash", assert.NoError},
-		{"takes 1st shebang of 2 similar", args{"#!/bin/bash\n#!/oh noez"}, "/bin/bash", assert.NoError},
-		{"error on missing shebang", args{""}, "", assert.Error},
-		{"error on weird comment", args{"#!!! Please note !!!"}, "", assert.Error},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getScriptInterpreterFromOutput(tt.args.interpreterOut)
-			if !tt.wantErr(t, err, fmt.Sprintf("getScriptInterpreterFromOutput(%v)", tt.args.interpreterOut)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getScriptInterpreterFromOutput(%v)", tt.args.interpreterOut)
-		})
-	}
 }
