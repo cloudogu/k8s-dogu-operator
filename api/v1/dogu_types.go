@@ -79,10 +79,12 @@ type DoguResources struct {
 type DoguStatus struct {
 	// Status represents the state of the Dogu in the ecosystem
 	Status string `json:"status"`
-	// StatusMessages contains a list of status messages
+	// StatusMessages contains a list of status messages TODO delete this shit
 	StatusMessages []string `json:"statusMessages"`
 	// RequeueTime contains time necessary to perform the next requeue
 	RequeueTime time.Duration `json:"requeueTime"`
+	// RequeuePhase is the actual phase of the dogu resource used for a currently running async process.
+	RequeuePhase string `json:"requeuePhase"`
 }
 
 // NextRequeue increases the requeue time of the dogu status and returns the new requeue time
@@ -125,6 +127,7 @@ const (
 	DoguStatusUpgrading    = "upgrading"
 	DoguStatusDeleting     = "deleting"
 	DoguStatusInstalled    = "installed"
+	DoguStatusPVCResizing  = "resizing PVC"
 )
 
 // +kubebuilder:object:root=true

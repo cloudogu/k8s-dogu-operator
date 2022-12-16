@@ -196,6 +196,11 @@ var _ = ginkgo.BeforeSuite(func() {
 		localDoguFetcher:      localDoguFetcher,
 	}
 
+	volumeManager := &doguVolumeManager{
+		client:        k8sClient,
+		eventRecorder: eventRecorder,
+	}
+
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
 	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, cfg, CommandExecutor, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
@@ -224,6 +229,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		supportManager: supportManager,
 		upgradeManager: upgradeManager,
 		recorder:       eventRecorder,
+		volumeManager:  volumeManager,
 	}
 
 	reconciler, err := NewDoguReconciler(k8sClient, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)

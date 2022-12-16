@@ -28,8 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-type operation int
-
 const operatorEventReason = "OperationThresholding"
 
 const (
@@ -53,26 +51,15 @@ const (
 
 const handleRequeueErrMsg = "failed to handle requeue: %w"
 
-const (
-	Install operation = iota
-	Upgrade
-	Delete
-	Ignore
-	ExpandVolume
-)
+type operation string
 
-func (o operation) toString() string {
-	switch o {
-	case Install:
-		return "Install"
-	case Upgrade:
-		return "Upgrade"
-	case Delete:
-		return "Delete"
-	default:
-		return "Ignore"
-	}
-}
+const (
+	Install      = operation("Install")
+	Upgrade      = operation("Upgrade")
+	Delete       = operation("Delete")
+	Ignore       = operation("Ignore")
+	ExpandVolume = operation("ExpandVolume")
+)
 
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
@@ -132,7 +119,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		return requeueWithError(fmt.Errorf("failed to evaluate required operation: %w", err))
 	}
-	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s", doguResource.Namespace, doguResource.Name, requiredOperation.toString()))
+	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s; Status %+v", doguResource.Namespace, doguResource.Name, requiredOperation, doguResource.Status))
 
 	switch requiredOperation {
 	case Install:
@@ -186,6 +173,8 @@ func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguReso
 	switch doguResource.Status.Status {
 	case k8sv1.DoguStatusNotInstalled:
 		return Install, nil
+	case k8sv1.DoguStatusPVCResizing:
+		return ExpandVolume, nil
 	case k8sv1.DoguStatusInstalled:
 		ok, err := r.checkForVolumeExpansion(ctx, doguResource)
 		if err != nil {
@@ -221,8 +210,6 @@ func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguReso
 }
 
 func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
-	log.FromContext(ctx).Info("Check dogu volume expansion")
-
 	doguPvc := &v1.PersistentVolumeClaim{}
 	err := r.client.Get(ctx, doguResource.GetObjectKey(), doguPvc)
 	if apierrors.IsNotFound(err) {
@@ -362,7 +349,7 @@ func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResourc
 		operationVerb: "expand volume",
 	}
 
-	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusInstalled, r.doguManager.SetDoguDataVolumeSize)
+	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusPVCResizing, r.doguManager.SetDoguDataVolumeSize)
 }
 
 func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher internal.LocalDoguFetcher) (bool, error) {

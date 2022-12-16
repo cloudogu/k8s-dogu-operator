@@ -266,6 +266,44 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 		})
 
+		// This test does not work because the client in this environment can't even update the storage request of a pvc.
+		// It can be used in planned future environments with real clusters.
+		//
+		// It("Should resize dogu volume", func() {
+		// 	By("Update dogu resource with dataVolumeSize")
+		// 	createdDogu := &k8sv1.Dogu{}
+		// 	Eventually(func() bool {
+		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+		// 		return err == nil
+		// 	}, PollingInterval, TimeoutInterval).Should(BeTrue())
+		//
+		// 	newVolumeSize := "10Gi"
+		// 	newVolumeQuantity := resource.MustParse(newVolumeSize)
+		// 	createdDogu.Spec.Resources.DataVolumeSize = newVolumeSize
+		// 	updateDoguCr(ctx, createdDogu)
+		//
+		// 	By("Expect expanded pvc")
+		// 	pvc := &corev1.PersistentVolumeClaim{}
+		//
+		// 	Eventually(func() bool {
+		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, pvc)
+		// 		if err != nil {
+		// 			return false
+		// 		}
+		//
+		// 		// Does not work with the actual test environment can be use with a real cluster.
+		// 		// hasSizeInStatus := pvc.Status.Capacity.Storage().Equal(newVolumeQuantity)
+		//
+		//
+		// 		hasSizeInSpec := pvc.Spec.Resources.Requests.Storage().Equal(newVolumeQuantity)
+		// 		if hasSizeInSpec {
+		// 			return true
+		// 		}
+		//
+		// 		return false
+		// 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		// })
+
 		It("Should delete dogu", func() {
 			deleteDoguCr(ctx, ldapCr, ldapDoguLookupKey, true)
 			deleteObjectFromCluster(ctx, exposedService8888LookupKey, &corev1.Service{})

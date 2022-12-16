@@ -78,6 +78,10 @@ spec:
           status:
             description: DoguStatus defines the observed state of a Dogu.
             properties:
+              requeuePhase:
+                description: RequeuePhase is the actual phase of the dogu resource
+                  used for a currently running async process.
+                type: string
               requeueTime:
                 description: RequeueTime contains time necessary to perform the next
                   requeue
@@ -87,11 +91,13 @@ spec:
                 description: Status represents the state of the Dogu in the ecosystem
                 type: string
               statusMessages:
-                description: StatusMessages contains a list of status messages
+                description: StatusMessages contains a list of status messages TODO
+                  delete this shit
                 items:
                   type: string
                 type: array
             required:
+            - requeuePhase
             - requeueTime
             - status
             - statusMessages

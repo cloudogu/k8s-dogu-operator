@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
@@ -18,10 +19,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// requeuableError indicates that the current error requires the operator to requeue the dogu.
-type requeuableError interface {
-	// Requeue returns true when the error should produce a requeue for the current dogu resource operation.
-	Requeue() bool
+// requeuableErrorWithState indicates that the current error requires the operator to requeue the dogu and set the state
+// in dogu status.
+type requeuableErrorWithState interface {
+	requeuableErrorWithTime
+	// GetState returns the current state of the reconciled resource.
+	// In most cases it can be empty if no async state mechanism is used.
+	GetState() string
 }
 
 // doguRequeueHandler is responsible to requeue a dogu resource after it failed.
@@ -63,12 +67,12 @@ func (d *doguRequeueHandler) handleRequeue(ctx context.Context, contextMessage s
 		return ctrl.Result{}, nil
 	}
 
-	requeueTime := doguResource.Status.NextRequeue()
-
+	requeueTime := getRequeueTime(doguResource, originalErr)
 	if onRequeue != nil {
 		onRequeue(doguResource)
 	}
 
+	doguResource.Status.RequeuePhase = getRequeuePhase(originalErr)
 	updateError := doguResource.Update(ctx, d.client)
 	if updateError != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
@@ -95,6 +99,7 @@ func shouldRequeue(err error) bool {
 		var requeueableError requeuableError
 		if errors.As(checkErr, &requeueableError) {
 			if requeueableError.Requeue() {
+
 				return true
 			}
 		}
