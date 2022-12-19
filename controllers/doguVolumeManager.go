@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/async"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
@@ -52,10 +53,14 @@ func (nre notResizedError) Error() string {
 type doguVolumeManager struct {
 	client        client.Client
 	eventRecorder record.EventRecorder
+	asyncExecutor internal.AsyncExecutor
 }
 
 // NewDoguVolumeManager creates a new instance of the doguVolumeManager.
 func NewDoguVolumeManager(client client.Client, eventRecorder record.EventRecorder) *doguVolumeManager {
+	asyncExecutor := async.NewAsyncExecutionController()
+	createAsyncSteps(asyncExecutor, client, eventRecorder)
+
 	return &doguVolumeManager{
 		client:        client,
 		eventRecorder: eventRecorder,

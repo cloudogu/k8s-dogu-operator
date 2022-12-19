@@ -19,6 +19,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var ExponentialRequeueTime = time.Second * 0
+
+// requeuableError indicates that the current error requires the operator to requeue the dogu.
+type requeuableError interface {
+	// Requeue returns true when the error should produce a requeue for the current dogu resource operation.
+	Requeue() bool
+}
+
+// requeuableError indicates that the current error requires the operator to requeue the dogu.
+type requeuableErrorWithTime interface {
+	requeuableError
+	// GetRequeueTime return the time to wait before the next reconciliation. The constant ExponentialRequeueTime indicates
+	// that the requeue time increased exponentially.
+	GetRequeueTime() time.Duration
+}
+
 // requeuableErrorWithState indicates that the current error requires the operator to requeue the dogu and set the state
 // in dogu status.
 type requeuableErrorWithState interface {
@@ -88,6 +104,24 @@ func (d *doguRequeueHandler) handleRequeue(ctx context.Context, contextMessage s
 
 	return result, nil
 
+}
+
+func getRequeuePhase(err error) string {
+	var errorWithState requeuableErrorWithState
+	if errors.As(err, &errorWithState) {
+		return errorWithState.GetState()
+	}
+
+	return ""
+}
+
+func getRequeueTime(dogu *k8sv1.Dogu, err error) time.Duration {
+	var errorWithTime requeuableErrorWithTime
+	if errors.As(err, &errorWithTime) {
+		return errorWithTime.GetRequeueTime()
+	}
+
+	return dogu.Status.NextRequeue()
 }
 
 func shouldRequeue(err error) bool {
