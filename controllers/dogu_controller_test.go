@@ -301,10 +301,10 @@ func Test_requeueWithError(t *testing.T) {
 }
 
 func Test_operation_toString(t *testing.T) {
-	assert.Equal(t, "Install", Install.toString())
-	assert.Equal(t, "Upgrade", Upgrade.toString())
-	assert.Equal(t, "Delete", Delete.toString())
-	assert.Equal(t, "Ignore", Ignore.toString())
+	assert.Equal(t, operation("Install"), Install)
+	assert.Equal(t, operation("Upgrade"), Upgrade)
+	assert.Equal(t, operation("Delete"), Delete)
+	assert.Equal(t, operation("Ignore"), Ignore)
 }
 
 func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
