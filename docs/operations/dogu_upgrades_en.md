@@ -42,15 +42,100 @@ spec:
 ## Pre-upgrade scripts
 
 For the pre-upgrade script, a pod is started during the upgrade process.
-This uses the updated image of the Dogus and copies only the script into the old container.
-A designated volume is already created during the installation.
+This uses the updated image of the Dogus and copies only the script named in the Dogu.json to the old
+container.
+
+A designated volume is already created during the installation. After the pre-upgrade script is made available in the old
+container, it will be executed while the Dogu is running.
+
+### Requirements for a pre-upgrade script
+
+This section defines easy-to-implement requirements for Dogu developers to enable the execution of
+pre-upgrade scripts as error-free and transparent as possible.
+
+#### Parameters
+
+Pre-upgrade scripts must take exactly two parameters:
+
+1. the old Dogu version that is currently running
+2. the new Dogu version to which the upgrade should be applied.
+
+Based on this information, pre-upgrade scripts can make crucial decisions. This can include:
+- denial of upgrades for version jumps that are too large
+- adjusted preparation measures per found version
+
+For example, the pre-upgrade script could be called like this:
+
+```bash
+/path/to/pre-upgrade.sh 1.2.3-4 1.2.3-5
+```
+
+There is no provision for passing any other parameters.
+
+#### Use of absolute file references
+
+When it comes to file processing, pre-upgrade scripts must use absolute file paths, since there is no way to ensure that a script will always be called from its source location.
+
+#### Do not use other files
+
+Pre-upgrade scripts are copied from the upgrade image to the Dogu container to be executed there. Since only the pre-upgrade script and unrelated files can be named in the Dogu descriptor `dogu.json`, a pre-upgrade script must be fully constructed in its functional scope.
+
+This excludes in particular the shell sourcing of other files, since here frequently wrong assumptions of version levels lead to errors.
+
+#### Executability
+
+- The SetUID bit cannot currently be used for pre-upgrade scripts because it is lost by calling `cp`.
+- `/bin/cp` must be installed
+- It is assumed that the pre-upgrade script is a shell script and not any other
+  executable (e.g. a Linux binary).
+   - If this is not the case, the container image must be structured in such a way that the copy operation can be executed with the
+     container user and the execution of the executable is possible.
+- The pre-upgrade script is executed by the current container user in the old dogu
 
 ## Upgrade special cases
 
 ### Downgrades
 
-To Do DG
+Downgrades of Dogus are problematic if the new Dogu version modifies the data basis of the older version by the upgrade in such a way that the older version can no longer do anything with the data. **Under certain circumstances, the Dogu thus becomes incapable of working**. Since this behavior depends very much on the tool manufacturer, it is generally not possible to _downgrade_ Dogus.
 
-### Change of a Dogu namespace
+Therefore the dogu operator refuses to upgrade a dogu resource to a lower version. This behavior can be disabled by using the `spec.upgradeConfig.forceUpgrade` switch with a value of True.
 
-To Do DNW
+**Caution possible data corruption:**
+You should clarify beforehand that the dogu will not be damaged by the downgrade.
+
+```yaml
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: cas
+  labels:
+    dogu.name: cas
+    app: ces
+spec:
+  name: official/cas
+  version: 6.5.5-3
+  upgradeConfig:
+    # for downgrade from v6.5.5-4
+    forceUpgrade: true
+```
+
+### Dogu namespace change
+
+A dogu namespace change is made possible by changing the dogu resource. This may be necessary, for example, when a new dogu is published to a different namespace.
+
+This behavior can be disabled by using the switch `spec.upgradeConfig.allowNamespaceSwitch` with a value of `true`.
+
+```yaml
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: cas
+  labels:
+    dogu.name: cas
+    app: ces
+spec:
+  name: official/cas
+  version: 6.5.5-4
+  upgradeConfig:
+    allowNamespaceSwitch: true
+```

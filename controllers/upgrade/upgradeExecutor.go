@@ -3,9 +3,15 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"k8s.io/client-go/rest"
+
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -17,12 +23,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
-
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -105,7 +105,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 
 	err = ue.applyPostUpgradeScript(ctx, toDoguResource, fromDogu, toDogu)
 	if err != nil {
-		return fmt.Errorf("post-upgrade failed :%w", err)
+		return fmt.Errorf("post-upgrade failed: %w", err)
 	}
 
 	ue.normalEventf(toDoguResource, "Reverting to original startup probe values...")
@@ -119,7 +119,7 @@ func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Do
 
 func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *appsv1.Deployment) {
 	for i, container := range deployment.Spec.Template.Spec.Containers {
-		if container.Name == containerName {
+		if container.Name == containerName && deployment.Spec.Template.Spec.Containers[i].StartupProbe != nil {
 			deployment.Spec.Template.Spec.Containers[i].StartupProbe.FailureThreshold = upgradeStartupProbeFailureThresholdRetries
 			break
 		}
@@ -136,7 +136,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Do
 	}
 
 	for i, container := range deployment.Spec.Template.Spec.Containers {
-		if container.Name == toDoguResource.Name {
+		if container.Name == toDoguResource.Name && container.StartupProbe != nil {
 			deployment.Spec.Template.Spec.Containers[i].StartupProbe = originalStartupProbe
 			break
 		}
@@ -249,63 +249,24 @@ func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod internal.Exec
 }
 
 func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, fromDogu *core.Dogu, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
-	pod, err := getPodNameForFromDogu(ctx, ue.client, fromDogu)
+	logger := log.FromContext(ctx)
+	logger.Info("applying pre-upgrade script to old dogu")
+
+	fromDoguPod, err := getPodNameForFromDogu(ctx, ue.client, fromDogu)
 	if err != nil {
-		return fmt.Errorf("failed to find pod for dogu %s:%s : %w", fromDogu.GetSimpleName(), fromDogu.Version, err)
+		return fmt.Errorf("failed to find fromDoguPod for dogu %s:%s : %w", fromDogu.GetSimpleName(), fromDogu.Version, err)
 	}
 
-	// possibly create the necessary directory structure for the following copy action
-	err = ue.createMissingUpgradeDirs(ctx, pod, preUpgradeCmd)
-	if err != nil {
-		return err
-	}
-
-	err = ue.copyPreUpgradeScriptToDoguReserved(ctx, pod, preUpgradeCmd)
-	if err != nil {
-		return err
-	}
-
-	return ue.executePreUpgradeScript(ctx, pod, preUpgradeCmd, fromDogu.Version, toDoguResource.Spec.Version)
+	return ue.executePreUpgradeScript(ctx, fromDoguPod, preUpgradeCmd, fromDogu.Version, toDoguResource.Spec.Version)
 }
 
-func (ue *upgradeExecutor) copyPreUpgradeScriptToDoguReserved(ctx context.Context, pod *corev1.Pod, preUpgradeCmd *core.ExposedCommand) error {
-	preUpgradeBackCopyCmd := getPreUpgradeBackCopyCmd(preUpgradeCmd)
+func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion, toVersion string) error {
+	logger := log.FromContext(ctx)
+	scriptPath := fmt.Sprintf("%s%s", resource.DoguReservedPath, cmd.Command)
+	// finally execute the copied pre-upgrade script, due to the dogu-reserved location relative file paths do not work
+	preUpgradeCmd := exec.NewShellCommand(scriptPath, fromVersion, toVersion)
 
-	// copy the file back to the directory where it resided in the upgrade image
-	// example: /dogu-reserved/myscript.sh to /resource/myscript.sh
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, pod, preUpgradeBackCopyCmd, internal.ContainersStarted)
-	if err != nil {
-		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeBackCopyCmd, outBuf, err)
-	}
-
-	return nil
-}
-
-func getPreUpgradeBackCopyCmd(preUpgradeCmd *core.ExposedCommand) internal.ShellCommand {
-	_, fileName := filepath.Split(preUpgradeCmd.Command)
-	filePathInDoguReserved := filepath.Join(resource.DoguReservedPath, fileName)
-
-	return exec.NewShellCommand("/bin/cp", filePathInDoguReserved, preUpgradeCmd.Command)
-}
-
-func (ue *upgradeExecutor) createMissingUpgradeDirs(ctx context.Context, pod *corev1.Pod, cmd *core.ExposedCommand) error {
-	baseDir, _ := filepath.Split(cmd.Command)
-
-	mkdirCmd := exec.NewShellCommand("/bin/mkdir", "-p", baseDir)
-
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, pod, mkdirCmd, internal.ContainersStarted)
-	if err != nil {
-		return fmt.Errorf("failed to execute '%s': output: '%s': %w", mkdirCmd, outBuf, err)
-	}
-
-	return nil
-}
-
-func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion string, toVersion string) error {
-	// the previous steps took great lengths to copy the pre-upgrade script to the original place so we can finally
-	// execute it as described by the dogu.json.
-	preUpgradeCmd := exec.NewShellCommand(cmd.Command, fromVersion, toVersion)
-
+	logger.Info("Executing pre-upgrade command " + preUpgradeCmd.String())
 	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, internal.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeCmd, outBuf, err)
@@ -369,7 +330,7 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter int
 
 	err = ue.applyPreUpgradeScript(ctx, toDoguResource, fromDogu, toDogu, execPod)
 	if err != nil {
-		return fmt.Errorf("pre-upgrade failed :%w", err)
+		return fmt.Errorf("pre-upgrade failed: %w", err)
 	}
 
 	err = ue.applyCustomK8sScripts(ctx, toDoguResource, execPod)
