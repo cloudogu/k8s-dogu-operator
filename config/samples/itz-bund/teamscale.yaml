@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: teamscale
+  annotations:
+    test: dev
+  labels:
+    dogu.name: teamscale
+    app: ces
+spec:
+  name: itz-bund/teamscale
+  version: 8.4.0-1
