@@ -1,13 +1,12 @@
 apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
-  name: scm
+  name: jira
   annotations:
     test: dev
   labels:
-    dogu.name: scm
+    dogu.name: jira
     app: ces
 spec:
-  name: official/scm
-  version: 2.40.0-1
-#  version: 2.39.1-1
+  name: premium/jira
+  version: 8.20.13-1

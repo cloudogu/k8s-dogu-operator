@@ -2,7 +2,6 @@ package resource
 
 import (
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"strconv"
 	"strings"
 
@@ -18,6 +17,7 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 )
 
 const (

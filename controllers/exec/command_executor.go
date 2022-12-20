@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"net/url"
 	"strings"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"github.com/cloudogu/k8s-dogu-operator/retry"
 
 	corev1 "k8s.io/api/core/v1"

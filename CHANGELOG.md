@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.18.1] - 2022-12-20
+### Fixed
+- [#66] Fixes dogu upgrade problems of `official/scm` dogus and add a fallback strategy to execute pre-upgrade scripts
+  - for a detailed discussion please see the [dogu upgrade docs](docs/operations/dogu_upgrades_en.md).
+- Fixes a nil pointer panic when upgrading Dogus without `state` health check
+
 ## [v0.18.0] - 2022-12-01
 ### Added
 - [#61] Add the yaml of the Dogu CRD in api package. Other controllers/operators can consume it for e.g. integration

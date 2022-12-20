@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: elasticsearch
+  annotations:
+    test: dev
+  labels:
+    dogu.name: drawio
+    app: elasticsearch
+spec:
+  name: official/elasticsearch
+  version: 6.8.23-3
