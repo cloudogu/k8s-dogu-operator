@@ -210,7 +210,7 @@ func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguReso
 func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	var eventFilter predicate.Predicate
 	eventFilter = predicate.GenerationChangedPredicate{}
-	if logging.CurrentLogLevel == logrus.DebugLevel {
+	if logging.CurrentLogLevel == logrus.TraceLevel {
 		recorder := mgr.GetEventRecorderFor(k8sDoguOperatorFieldManagerName)
 		eventFilter = doguResourceChangeDebugPredicate{recorder: recorder}
 	}
