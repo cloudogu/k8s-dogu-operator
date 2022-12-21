@@ -96,10 +96,13 @@ type editPVCStep struct {
 	eventRecorder record.EventRecorder
 }
 
+// GetStartCondition returns the condition required to start the step.
 func (e *editPVCStep) GetStartCondition() string {
 	return startConditionPVC
 }
 
+// Execute executes the step and returns the next state and if the step fails an error.
+// The error can be a requeueable error so that the step will be executed again.
 func (e *editPVCStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, error) {
 	quantity, err := getQuantityForDogu(dogu)
 	if err != nil {
@@ -134,10 +137,13 @@ type scaleDownStep struct {
 	scaleUpStep   *scaleUpStep
 }
 
+// GetStartCondition returns the condition required to start the step.
 func (s *scaleDownStep) GetStartCondition() string {
 	return startConditionScaleDown
 }
 
+// Execute executes the step and returns the next state and if the step fails an error.
+// The error can be a requeueable error so that the step will be executed again.
 func (s *scaleDownStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, error) {
 	oldReplicas, err := scaleDeployment(ctx, s.client, s.eventRecorder, dogu, 0)
 	if err != nil {
@@ -154,10 +160,13 @@ type scaleUpStep struct {
 	replicas      int32
 }
 
+// GetStartCondition returns the condition required to start the step.
 func (s *scaleUpStep) GetStartCondition() string {
 	return startConditionScaleUp
 }
 
+// Execute executes the step and returns the next state and if the step fails an error.
+// The error can be a requeueable error so that the step will be executed again.
 func (s *scaleUpStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, error) {
 	_, err := scaleDeployment(ctx, s.client, s.eventRecorder, dogu, s.replicas)
 	if err != nil {
@@ -198,10 +207,13 @@ type checkIfPVCIsResizedStep struct {
 	eventRecorder record.EventRecorder
 }
 
+// GetStartCondition returns the condition required to start the step.
 func (w *checkIfPVCIsResizedStep) GetStartCondition() string {
 	return startConditionWaitForResize
 }
 
+// Execute executes the step and returns the next state and if the step fails an error.
+// The error can be a requeueable error so that the step will be executed again.
 func (w *checkIfPVCIsResizedStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, error) {
 	quantity, err := getQuantityForDogu(dogu)
 	if err != nil {

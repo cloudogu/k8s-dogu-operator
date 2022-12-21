@@ -349,6 +349,7 @@ func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResourc
 		operationVerb: "expand volume",
 	}
 
+	// revert to resizing in case of requeueing after an error so that the size check can made be done again.
 	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusPVCResizing, r.doguManager.SetDoguDataVolumeSize)
 }
 
