@@ -1,13 +1,12 @@
 apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
-  name: scm
+  name: confluence
   annotations:
     test: dev
   labels:
-    dogu.name: scm
+    dogu.name: confluence
     app: ces
 spec:
-  name: official/scm
-  version: 2.40.0-1
-#  version: 2.39.1-1
+  name: premium/confluence
+  version: 7.13.8-1

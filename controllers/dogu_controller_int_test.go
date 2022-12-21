@@ -8,9 +8,10 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"strings"
 	"testing"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -378,9 +379,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		CommandExecutor.
 			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved"), internal.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/mkdir", "-p", "/"), internal.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/tmp/dogu-reserved/pre-upgrade.sh", "/pre-upgrade.sh"), internal.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), internal.PodReady).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/tmp/dogu-reserved/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), internal.PodReady).Once().Return(&bytes.Buffer{}, nil).
 			On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), internal.ContainersStarted).Once().Run(func(args mock.Arguments) {
 			defer GinkgoRecover()
 			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 1080)
