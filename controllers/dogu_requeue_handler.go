@@ -19,8 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var ExponentialRequeueTime = time.Second * 0
-
 // requeuableError indicates that the current error requires the operator to requeue the dogu.
 type requeuableError interface {
 	// Requeue returns true when the error should produce a requeue for the current dogu resource operation.

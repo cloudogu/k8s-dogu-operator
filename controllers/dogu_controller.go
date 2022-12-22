@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -256,8 +255,6 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&k8sv1.Dogu{}).
-		// TODO configurable
-		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		// Since we don't want to process dogus with same spec we use a generation change predicate
 		// as a filter to reduce the reconcile calls.
 		// The predicate implements a function that will be invoked of every update event that

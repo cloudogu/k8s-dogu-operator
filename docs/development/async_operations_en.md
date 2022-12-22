@@ -1,8 +1,8 @@
 # Asynchronous operations
 
 For some operations it makes sense to let the `dogu-operator` wait for event asynchronously, so that it does not
-does not block. For this purpose a stepper has been implemented in the `async` package which, with the help of requeueable-Errors
-it is able to execute certain actions later. You can compare this stepper with a state machine.
+does not block. For this purpose an executor has been implemented in the `async` package which, with the help of requeueable-Errors
+it is able to execute certain actions later. You can compare this executor with a state machine.
 
 The individual steps need a start state and deliver a final state. While the start state is fixed, the end state 
 can vary depending on the event. If a step has to wait for a certain action in the cluster it can throw a
@@ -16,4 +16,4 @@ If the step is executed successfully, the start state of the next step is return
 
 ## Use case Adjustment Volume
 
-![Image showing the steps to increase a dogu volume](figures/async_stepper.png)
+![Image showing the steps to increase a dogu volume](figures/async_executor.png)

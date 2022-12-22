@@ -63,7 +63,6 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 		assert.Equal(t, result.RequeueAfter, time.Duration(0))
 
-		assert.Nil(t, doguResource.Status.StatusMessages)
 		assert.Equal(t, "false", doguResource.Labels["test"])
 		mock.AssertExpectationsForObjects(t, eventRecorder)
 	})
@@ -94,7 +93,6 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		// then
 		require.NoError(t, err, assert.AnError)
 		assert.Equal(t, result.RequeueAfter, time.Duration(0))
-		assert.Nil(t, doguResource.Status.StatusMessages)
 		assert.Equal(t, "false", doguResource.Labels["test"])
 		mock.AssertExpectationsForObjects(t, eventRecorder)
 	})

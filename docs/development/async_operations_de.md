@@ -1,8 +1,8 @@
 # Asynchrone Operationen
 
 Für manche Operationen ist es sinnvoll den `dogu-operator` asynchron auf Ereignis warten zu lassen, damit dieser
-nicht blockiert. Dazu wurde im `async` Package ein Stepper implementiert der Mithilfe von requeueable-Errors
-in der Lage ist bestimmte Aktionen später neu auszuführen. Vergleichen kann man diesen Stepper mit einer Zustandsmaschine.
+nicht blockiert. Dazu wurde im `async` Package ein Executor implementiert der Mithilfe von requeueable-Errors
+in der Lage ist bestimmte Aktionen später neu auszuführen. Vergleichen kann man diesen Executor mit einer Zustandsmaschine.
 
 Die einzelnen Steps benötigen einen Startzustand und liefern einen Endzustand. Während der Startzustand fix ist, kann 
 der Endzustand je nach Ereignis variieren. Muss ein Step auf eine bestimmte Aktion im Cluster warten kann er so lange ein
@@ -16,5 +16,5 @@ Bei der erfolgreichen Durchführung des Steps wird der Startzustand des nächste
 
 ## Anwendungsfall Anpassung Volume
 
-![Bild, das die Steps zur Vergrößerung eines Dogu-Volumes zeigt.](figures/async_stepper.png)
+![Bild, das die Steps zur Vergrößerung eines Dogu-Volumes zeigt.](figures/async_executor.png)
 

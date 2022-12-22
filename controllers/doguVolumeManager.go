@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	VolumeExpansionEventReason        = "VolumeExpansion"
+	// VolumeExpansionEventReason is the reason string for firing volume expansion events.
+	VolumeExpansionEventReason = "VolumeExpansion"
+	// ErrorOnVolumeExpansionEventReason is the error string for firing volume expansion error events.
 	ErrorOnVolumeExpansionEventReason = "ErrVolumeExpansion"
 )
 
@@ -50,6 +52,13 @@ func (nre notResizedError) Error() string {
 	return "pvc resizing is in progress"
 }
 
+// doguVolumeManager is currently used for resizing PVCs from dogus.
+// To do this it uses an asyncExecutor with defined steps.
+// The order of the steps is:
+// 1. editPVCStep - Edits the size from the PVC
+// 2. scaleDownStep - Kills all pods from the dogu.
+// 3. checkIfPVCIsResizedStep - Waits until the storage controller resizes the volume.
+// 4. scaleUpStep - Starts the terminated pods from the dogu.
 type doguVolumeManager struct {
 	client        client.Client
 	eventRecorder record.EventRecorder
@@ -58,7 +67,7 @@ type doguVolumeManager struct {
 
 // NewDoguVolumeManager creates a new instance of the doguVolumeManager.
 func NewDoguVolumeManager(client client.Client, eventRecorder record.EventRecorder) *doguVolumeManager {
-	asyncExecutor := async.NewAsyncExecutionController()
+	asyncExecutor := async.NewDoguExecutionController()
 	createAsyncSteps(asyncExecutor, client, eventRecorder)
 
 	return &doguVolumeManager{
@@ -123,11 +132,14 @@ func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *k8sv1
 	if err != nil {
 		return err
 	}
-	pvc.Spec.Resources.Requests[corev1.ResourceStorage] = quantity
+
+	// It is necessary to create a new map because just setting a new quantity results in an exception.
+	pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}
 	err = e.client.Update(ctx, pvc)
 	if err != nil {
 		return fmt.Errorf("failed to update PVC %s: %w", pvc.Name, err)
 	}
+
 	return err
 }
 
@@ -189,6 +201,7 @@ func scaleDeployment(ctx context.Context, client client.Client, recorder record.
 	if err != nil {
 		return 0, fmt.Errorf("failed to scale deployment for dogu %s: %w", doguResource.Name, err)
 	}
+
 	return oldReplicas, err
 }
 
@@ -208,24 +221,24 @@ type checkIfPVCIsResizedStep struct {
 }
 
 // GetStartCondition returns the condition required to start the step.
-func (w *checkIfPVCIsResizedStep) GetStartCondition() string {
+func (c *checkIfPVCIsResizedStep) GetStartCondition() string {
 	return startConditionWaitForResize
 }
 
 // Execute executes the step and returns the next state and if the step fails an error.
 // The error can be a requeueable error so that the step will be executed again.
-func (w *checkIfPVCIsResizedStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, error) {
+func (c *checkIfPVCIsResizedStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, error) {
 	quantity, err := getQuantityForDogu(dogu)
 	if err != nil {
-		return w.GetStartCondition(), err
+		return c.GetStartCondition(), err
 	}
 
-	return startConditionScaleUp, w.waitForPVCResize(ctx, dogu, quantity)
+	return startConditionScaleUp, c.waitForPVCResize(ctx, dogu, quantity)
 }
 
-func (w *checkIfPVCIsResizedStep) waitForPVCResize(ctx context.Context, doguResource *k8sv1.Dogu, quantity resource.Quantity) error {
-	w.eventRecorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Wait for pvc to be resized...")
-	pvc, err := doguResource.GetDataPVC(ctx, w.client)
+func (c *checkIfPVCIsResizedStep) waitForPVCResize(ctx context.Context, doguResource *k8sv1.Dogu, quantity resource.Quantity) error {
+	c.eventRecorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Wait for pvc to be resized...")
+	pvc, err := doguResource.GetDataPVC(ctx, c.client)
 	if err != nil {
 		return err
 	}
@@ -233,7 +246,7 @@ func (w *checkIfPVCIsResizedStep) waitForPVCResize(ctx context.Context, doguReso
 	resized := isPvcStorageResized(pvc, quantity)
 	if !resized {
 		return notResizedError{
-			state:       w.GetStartCondition(),
+			state:       c.GetStartCondition(),
 			requeueTime: time.Minute * 1,
 		}
 	}

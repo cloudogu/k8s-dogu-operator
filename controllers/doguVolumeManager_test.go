@@ -62,9 +62,9 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 	t.Run("failed to execute steps", func(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
-		stepper := &errAsyncExecutor{}
+		executor := &errAsyncExecutor{}
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(dogu).Build()
-		manager := &doguVolumeManager{client: client, asyncExecutor: stepper}
+		manager := &doguVolumeManager{client: client, asyncExecutor: executor}
 
 		// when
 		err := manager.SetDoguDataVolumeSize(context.TODO(), dogu)
@@ -82,9 +82,9 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
-		stepper := &asyncExecutor{}
+		executor := &asyncExecutor{}
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(dogu).Build()
-		manager := &doguVolumeManager{client: client, asyncExecutor: stepper}
+		manager := &doguVolumeManager{client: client, asyncExecutor: executor}
 
 		// when
 		err := manager.SetDoguDataVolumeSize(context.TODO(), dogu)

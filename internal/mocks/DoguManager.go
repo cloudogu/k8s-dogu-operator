@@ -64,6 +64,20 @@ func (_m *DoguManager) Install(ctx context.Context, doguResource *v1.Dogu) error
 	return r0
 }
 
+// SetDoguDataVolumeSize provides a mock function with given fields: ctx, doguResource
+func (_m *DoguManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *v1.Dogu) error {
+	ret := _m.Called(ctx, doguResource)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu) error); ok {
+		r0 = rf(ctx, doguResource)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Upgrade provides a mock function with given fields: ctx, doguResource
 func (_m *DoguManager) Upgrade(ctx context.Context, doguResource *v1.Dogu) error {
 	ret := _m.Called(ctx, doguResource)

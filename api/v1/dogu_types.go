@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -79,8 +80,6 @@ type DoguResources struct {
 type DoguStatus struct {
 	// Status represents the state of the Dogu in the ecosystem
 	Status string `json:"status"`
-	// StatusMessages contains a list of status messages TODO delete this shit
-	StatusMessages []string `json:"statusMessages"`
 	// RequeueTime contains time necessary to perform the next requeue
 	RequeueTime time.Duration `json:"requeueTime"`
 	// RequeuePhase is the actual phase of the dogu resource used for a currently running async process.
@@ -105,20 +104,6 @@ func (ds *DoguStatus) NextRequeue() time.Duration {
 // ResetRequeueTime resets the requeue timer to the initial value
 func (ds *DoguStatus) ResetRequeueTime() {
 	ds.RequeueTime = RequeueTimeInitialRequeueTime
-}
-
-// AddMessage adds a new entry to the message slice
-func (ds *DoguStatus) AddMessage(message string) {
-	if ds.StatusMessages == nil {
-		ds.StatusMessages = []string{}
-	}
-
-	ds.StatusMessages = append(ds.StatusMessages, message)
-}
-
-// ClearMessages removes all messages from the message log
-func (ds *DoguStatus) ClearMessages() {
-	ds.StatusMessages = []string{}
 }
 
 const (
@@ -243,7 +228,7 @@ func (d *Dogu) GetDataPVC(ctx context.Context, cli client.Client) (*corev1.Persi
 	return pvc, nil
 }
 
-// GetDeployment returns the data pvc for this dogu.
+// GetDeployment returns the deployment for this dogu.
 func (d *Dogu) GetDeployment(ctx context.Context, cli client.Client) (*appsv1.Deployment, error) {
 	deploy := &appsv1.Deployment{}
 	err := cli.Get(ctx, d.GetObjectKey(), deploy)
@@ -252,6 +237,16 @@ func (d *Dogu) GetDeployment(ctx context.Context, cli client.Client) (*appsv1.De
 	}
 
 	return deploy, nil
+}
+
+// GetDataVolumeSize returns the dataVolumeSize of the dogu. If no size is set the default size will be returned.
+func (d *Dogu) GetDataVolumeSize() resource.Quantity {
+	doguTargetDataVolumeSize := resource.MustParse(DefaultVolumeSize)
+	if d.Spec.Resources.DataVolumeSize != "" {
+		doguTargetDataVolumeSize = resource.MustParse(d.Spec.Resources.DataVolumeSize)
+	}
+
+	return doguTargetDataVolumeSize
 }
 
 // +kubebuilder:object:root=true

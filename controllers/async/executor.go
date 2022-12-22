@@ -7,24 +7,25 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal"
 )
 
+// FinishedState is the state where the executor will finish his execution.
 const FinishedState = "finished"
 
-type asyncExecutionController struct {
+type doguExecutionController struct {
 	steps []internal.AsyncStep
 }
 
-// NewAsyncExecutionController creates a new instance of asyncExecutionController.
-func NewAsyncExecutionController() *asyncExecutionController {
-	return &asyncExecutionController{}
+// NewDoguExecutionController creates a new instance of doguExecutionController.
+func NewDoguExecutionController() *doguExecutionController {
+	return &doguExecutionController{}
 }
 
 // AddStep adds a step.
-func (s *asyncExecutionController) AddStep(step internal.AsyncStep) {
+func (s *doguExecutionController) AddStep(step internal.AsyncStep) {
 	s.steps = append(s.steps, step)
 }
 
 // Execute executes all steps.
-func (s *asyncExecutionController) Execute(ctx context.Context, dogu *k8sv1.Dogu, currentState string) error {
+func (s *doguExecutionController) Execute(ctx context.Context, dogu *k8sv1.Dogu, currentState string) error {
 	if currentState == FinishedState {
 		return nil
 	}

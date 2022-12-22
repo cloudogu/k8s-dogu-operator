@@ -29,30 +29,30 @@ func (es *errorStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, err
 }
 
 func TestNewAsyncExecutionController(t *testing.T) {
-	result := NewAsyncExecutionController()
+	result := NewDoguExecutionController()
 
 	require.NotNil(t, result)
 }
 
 func Test_asyncExecutionController_AddStep(t *testing.T) {
 	// given
-	stepper := &asyncExecutionController{}
+	executor := &doguExecutionController{}
 	step := &testStep{}
 
 	// when
-	stepper.AddStep(step)
+	executor.AddStep(step)
 
 	// then
-	assert.Equal(t, 1, len(stepper.steps))
+	assert.Equal(t, 1, len(executor.steps))
 }
 
 func Test_asyncExecutionController_Execute(t *testing.T) {
 	t.Run("should do nothing and return nil if state is finished", func(t *testing.T) {
 		// given
-		stepper := &asyncExecutionController{}
+		executor := &doguExecutionController{}
 
 		// when
-		err := stepper.Execute(context.TODO(), nil, "finished")
+		err := executor.Execute(context.TODO(), nil, "finished")
 
 		// then
 		require.Nil(t, err)
@@ -60,10 +60,10 @@ func Test_asyncExecutionController_Execute(t *testing.T) {
 
 	t.Run("should return error if steps are empty", func(t *testing.T) {
 		// given
-		stepper := &asyncExecutionController{}
+		executor := &doguExecutionController{}
 
 		// when
-		err := stepper.Execute(context.TODO(), nil, "start")
+		err := executor.Execute(context.TODO(), nil, "start")
 
 		// then
 		require.Error(t, err)
@@ -72,12 +72,12 @@ func Test_asyncExecutionController_Execute(t *testing.T) {
 
 	t.Run("should return error if condition has no corresponding step", func(t *testing.T) {
 		// given
-		stepper := &asyncExecutionController{}
+		executor := &doguExecutionController{}
 		step := &testStep{}
-		stepper.AddStep(step)
+		executor.AddStep(step)
 
 		// when
-		err := stepper.Execute(context.TODO(), nil, "mid")
+		err := executor.Execute(context.TODO(), nil, "mid")
 
 		// then
 		require.Error(t, err)
@@ -86,12 +86,12 @@ func Test_asyncExecutionController_Execute(t *testing.T) {
 
 	t.Run("should return error if a step returns an error", func(t *testing.T) {
 		// given
-		stepper := &asyncExecutionController{}
+		executor := &doguExecutionController{}
 		step := &errorStep{}
-		stepper.AddStep(step)
+		executor.AddStep(step)
 
 		// when
-		err := stepper.Execute(context.TODO(), nil, "errorStart")
+		err := executor.Execute(context.TODO(), nil, "errorStart")
 
 		// then
 		require.Error(t, err)
@@ -100,14 +100,14 @@ func Test_asyncExecutionController_Execute(t *testing.T) {
 
 	t.Run("should execute the corresponding step and call the next step", func(t *testing.T) {
 		// given
-		stepper := &asyncExecutionController{}
+		executor := &doguExecutionController{}
 		step0 := &errorStep{}
 		step1 := &testStep{}
-		stepper.AddStep(step0)
-		stepper.AddStep(step1)
+		executor.AddStep(step0)
+		executor.AddStep(step1)
 
 		// when
-		err := stepper.Execute(context.TODO(), nil, "start")
+		err := executor.Execute(context.TODO(), nil, "start")
 
 		// then
 		require.Nil(t, err)

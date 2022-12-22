@@ -1,8 +1,8 @@
 # Dogu volumes
 
-Usually, when a dogu is installed, a volume with a default size is created.
-The size of the volume is two gigabytes. However, for some dogus, it may be useful later in operation to edit the size
-of the volumes.
+Usually, a volume with a default size is created during the installation of a Dogu.
+The size of the volume is two gigabytes. The `dataVolumeSize` field can be used to specify a custom size for a volume.
+However, for some dogus it may be useful to edit the volume size later on.
 
 ## Increasing the size of volumes
 
