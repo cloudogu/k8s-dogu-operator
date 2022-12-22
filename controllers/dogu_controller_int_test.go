@@ -178,7 +178,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 			Expect(ldapCr.Name).To(Equal(doguPvc.Name))
 			Expect(ldapCr.Namespace).To(Equal(doguPvc.Namespace))
-			Expect(resource.MustParse("5Gi")).To(Equal(*doguPvc.Spec.Resources.Requests.Storage()))
+			Expect(resource.MustParse("2Gi")).To(Equal(*doguPvc.Spec.Resources.Requests.Storage()))
 
 			By("Expect created reserved pvc")
 			reservedLookupKey := types.NamespacedName{Name: ldapCr.Name + "-reserved", Namespace: ldapCr.Namespace}
