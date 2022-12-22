@@ -106,7 +106,7 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		replicas := int32(0)
 		deploy := &appsv1.Deployment{ObjectMeta: *dogu.GetObjectMeta(), Spec: appsv1.DeploymentSpec{Replicas: &replicas}}
 
-		client := fake.NewClientBuilder().WithObjects(deploy).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(deploy, dogu).Build()
 		recorder := external.NewEventRecorder(t)
 		recorder.On("Eventf", dogu, "Normal", "VolumeExpansion", "Scale deployment to %d replicas...", int32(1))
 		sut := &scaleUpStep{client: client, eventRecorder: recorder, replicas: 1}
@@ -119,6 +119,10 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		deploy, err = dogu.GetDeployment(context.TODO(), client)
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), *deploy.Spec.Replicas)
+		resultDogu := &k8sv1.Dogu{}
+		err = client.Get(context.TODO(), dogu.GetObjectKey(), resultDogu)
+		require.NoError(t, err)
+		assert.Equal(t, "", resultDogu.Status.RequeuePhase)
 		assert.Equal(t, "finished", state)
 	})
 

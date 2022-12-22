@@ -185,6 +185,12 @@ func (s *scaleUpStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, er
 		return s.GetStartCondition(), err
 	}
 
+	dogu.Status.RequeuePhase = ""
+	err = dogu.Update(ctx, s.client)
+	if err != nil {
+		return "", err
+	}
+
 	return async.FinishedState, nil
 }
 
