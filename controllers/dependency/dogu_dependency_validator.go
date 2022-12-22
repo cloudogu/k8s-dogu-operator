@@ -3,11 +3,10 @@ package dependency
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"

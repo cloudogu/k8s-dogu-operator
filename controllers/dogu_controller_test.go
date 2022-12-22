@@ -3,6 +3,9 @@ package controllers
 import (
 	"context"
 	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,7 +44,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
-			client:             nil,
+			client:             fake.NewClientBuilder().Build(),
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
@@ -74,7 +77,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
-			client:             nil,
+			client:             fake.NewClientBuilder().Build(),
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
@@ -108,7 +111,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		sut := &doguReconciler{
-			client:             nil,
+			client:             fake.NewClientBuilder().Build(),
 			doguManager:        nil,
 			doguRequeueHandler: nil,
 			recorder:           recorder,
@@ -253,7 +256,7 @@ func Test_buildResourceDiff(t *testing.T) {
 		{
 			name: "upgrade-diff",
 			args: args{objOld: oldDoguResource, objNew: newDoguResource},
-			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:          \"ns/dogu\",\n- \t\tVersion:       \"1.2.3-4\",\n+ \t\tVersion:       \"1.2.3-5\",\n  \t\tSupportMode:   false,\n  \t\tUpgradeConfig: {},\n  \t},\n  \tStatus: {},\n  }\n",
+			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:          \"ns/dogu\",\n- \t\tVersion:       \"1.2.3-4\",\n+ \t\tVersion:       \"1.2.3-5\",\n  \t\tResources:     {},\n  \t\tSupportMode:   false,\n  \t\tUpgradeConfig: {},\n  \t},\n  \tStatus: {},\n  }\n",
 		},
 		{
 			name: "delete-diff",
@@ -298,8 +301,126 @@ func Test_requeueWithError(t *testing.T) {
 }
 
 func Test_operation_toString(t *testing.T) {
-	assert.Equal(t, "Install", Install.toString())
-	assert.Equal(t, "Upgrade", Upgrade.toString())
-	assert.Equal(t, "Delete", Delete.toString())
-	assert.Equal(t, "Ignore", Ignore.toString())
+	assert.Equal(t, operation("Install"), Install)
+	assert.Equal(t, operation("Upgrade"), Upgrade)
+	assert.Equal(t, operation("Delete"), Delete)
+	assert.Equal(t, operation("Ignore"), Ignore)
+}
+
+func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
+	t.Run("should return false and nil if no pvc is found", func(t *testing.T) {
+		// given
+		sut := &doguReconciler{client: fake.NewClientBuilder().Build()}
+		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
+
+		// when
+		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, expand)
+	})
+
+	t.Run("should return false and nil if pvc is found but dogu has no dataVolumeSize property", func(t *testing.T) {
+		// given
+		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
+		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta()}
+		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
+
+		// when
+		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, expand)
+	})
+
+	t.Run("should return error on invalid volume size", func(t *testing.T) {
+		// given
+		doguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+			Spec:       k8sv1.DoguSpec{Resources: k8sv1.DoguResources{DataVolumeSize: "wrong"}}}
+		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta()}
+		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
+
+		// when
+		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to parse resource volume size")
+		assert.False(t, expand)
+	})
+
+	t.Run("should return true if volume size is higher than actual", func(t *testing.T) {
+		// given
+		doguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+			Spec:       k8sv1.DoguSpec{Resources: k8sv1.DoguResources{DataVolumeSize: "2Gi"}}}
+		resources := make(map[v1.ResourceName]resource.Quantity)
+		resources[v1.ResourceStorage] = resource.MustParse("1Gi")
+		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(),
+			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.ResourceRequirements{Requests: resources}}}
+		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
+
+		// when
+		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, expand)
+	})
+
+	t.Run("should return false if size is equal", func(t *testing.T) {
+		// given
+		doguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+			Spec:       k8sv1.DoguSpec{Resources: k8sv1.DoguResources{DataVolumeSize: "2Gi"}}}
+		resources := make(map[v1.ResourceName]resource.Quantity)
+		resources[v1.ResourceStorage] = resource.MustParse("2Gi")
+		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(),
+			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.ResourceRequirements{Requests: resources}}}
+		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
+
+		// when
+		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, expand)
+	})
+
+	t.Run("should return error if size is smaller than actual", func(t *testing.T) {
+		// given
+		doguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+			Spec:       k8sv1.DoguSpec{Resources: k8sv1.DoguResources{DataVolumeSize: "2Gi"}}}
+		resources := make(map[v1.ResourceName]resource.Quantity)
+		resources[v1.ResourceStorage] = resource.MustParse("3Gi")
+		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(),
+			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.ResourceRequirements{Requests: resources}}}
+		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
+
+		// when
+		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "invalid dogu state for dogu [test] as requested volume size is "+
+			"[2Gi] while existing volume is [3Gi], shrinking of volumes is not allowed")
+		assert.False(t, expand)
+	})
+
+	t.Run("error on pvc found", func(t *testing.T) {
+		// given
+		sut := &doguReconciler{client: fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()}
+		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
+
+		// when
+		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+
+		// then
+		require.Error(t, err)
+		assert.False(t, expand)
+	})
 }

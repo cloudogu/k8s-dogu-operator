@@ -25,6 +25,21 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 		assert.Equal(t, readLdapDoguExpectedDoguPVC(t), actualPVC)
 	})
 
+	t.Run("Return simple pvc with custom size", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		sizeBefore := ldapDoguResource.Spec.Resources.DataVolumeSize
+		defer func() { ldapDoguResource.Spec.Resources.DataVolumeSize = sizeBefore }()
+		ldapDoguResource.Spec.Resources.DataVolumeSize = "6Gi"
+
+		// when
+		actualPVC, err := generator.CreateDoguPVC(ldapDoguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, readLdapDoguExpectedDoguPVCWithCustomSize(t), actualPVC)
+	})
+
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
