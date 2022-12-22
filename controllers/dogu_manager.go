@@ -27,6 +27,7 @@ type DoguManager struct {
 	installManager internal.InstallManager
 	upgradeManager internal.UpgradeManager
 	deleteManager  internal.DeleteManager
+	volumeManager  internal.VolumeManager
 	supportManager internal.SupportManager
 	recorder       record.EventRecorder
 }
@@ -55,12 +56,15 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 
 	supportManager := NewDoguSupportManager(client, cesRegistry, eventRecorder)
 
+	volumeManager := NewDoguVolumeManager(client, eventRecorder)
+
 	return &DoguManager{
 		scheme:         client.Scheme(),
 		installManager: installManager,
 		upgradeManager: upgradeManager,
 		deleteManager:  deleteManager,
 		supportManager: supportManager,
+		volumeManager:  volumeManager,
 		recorder:       eventRecorder,
 	}, nil
 }
@@ -98,6 +102,12 @@ func (m *DoguManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) err
 func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, DeinstallEventReason, "Starting deinstallation...")
 	return m.deleteManager.Delete(ctx, doguResource)
+}
+
+// SetDoguDataVolumeSize sets the dataVolumeSize from the dogu resource to the data PVC from the dogu.
+func (m *DoguManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Start volume expansion...")
+	return m.volumeManager.SetDoguDataVolumeSize(ctx, doguResource)
 }
 
 // HandleSupportMode handles the support flag in the dogu spec.
