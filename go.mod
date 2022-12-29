@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
-	github.com/cloudogu/cesapp-lib v0.9.0
+	github.com/cloudogu/cesapp-lib v0.0.0-20221229112545-4d449f4c8473
 	github.com/cloudogu/k8s-apply-lib v0.4.0
 	github.com/go-logr/logr v1.2.3
 	github.com/google/go-cmp v0.5.8
