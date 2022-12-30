@@ -25,7 +25,14 @@ import (
 )
 
 // doguKind describes a service account on a dogu.
-const doguKind = "dogu"
+const (
+	doguKind = "dogu"
+	k8sKind  = "k8s"
+)
+
+const (
+	cesControl = "k8s-ces-control"
+)
 
 // creator is the unit to handle the creation of service accounts
 type creator struct {
@@ -51,10 +58,6 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
-		if serviceAccount.Kind != "" && serviceAccount.Kind != string(doguKind) {
-			continue
-		}
-
 		registryCredentialPath := "sa-" + serviceAccount.Type
 		doguConfig := c.registry.DoguConfig(dogu.GetSimpleName())
 
@@ -66,6 +69,21 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 		if exists {
 			logger.Info("skipping creation of service account because it already exists")
 			continue
+		}
+
+		kind := serviceAccount.Kind
+		if kind != "" && kind != doguKind {
+			switch kind {
+			case k8sKind:
+				err := c.createK8sServiceAccount(ctx, dogu, doguConfig, serviceAccount)
+				if err != nil {
+					return err
+				}
+				continue
+			default:
+				logger.Error(fmt.Errorf("unknown service account kind: %s", kind), "skipping service account creation")
+				continue
+			}
 		}
 
 		doguRegistry := c.registry.DoguRegistry()
@@ -87,6 +105,58 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (c *creator) createK8sServiceAccount(ctx context.Context, dogu *core.Dogu, doguConfig registry.ConfigurationContext,
+	sa core.ServiceAccount) error {
+	switch sa.Type {
+	case "cesappd":
+		return c.createCesControlServiceAccount(ctx, dogu, doguConfig, sa)
+	default:
+		log.FromContext(ctx).Error(fmt.Errorf("unknown service account type: %s", sa.Type),
+			"skipping service account creation")
+		return nil
+	}
+}
+
+func (c *creator) createCesControlServiceAccount(ctx context.Context, dogu *core.Dogu,
+	doguConfig registry.ConfigurationContext, sa core.ServiceAccount) error {
+	logger := log.FromContext(ctx)
+
+	exists, err := c.registry.HostConfig(cesControl).Exists(dogu.GetSimpleName())
+	if err != nil {
+		return fmt.Errorf("failed to check if service account already exists: %w", err)
+	}
+
+	if exists {
+		logger.Info("%s service account for dogu %s already exists", sa.Type, dogu.GetSimpleName())
+		return nil
+	}
+
+	labels := map[string]string{"app": cesControl}
+	pod, err := v1.GetPodForLabels(ctx, c.client, labels)
+	if err != nil && c.isOptionalServiceAccount(dogu, sa.Type) {
+		logger.Info("Skipping creation of service account % because the pod was not found and the service "+
+			"account is optional", sa.Type)
+	}
+	if err != nil && !c.isOptionalServiceAccount(dogu, sa.Type) {
+		return fmt.Errorf("failed to get pod for labels %v: %w", labels, err)
+	}
+
+	command := exec.NewShellCommand(fmt.Sprintf("%s service-account-create %s", cesControl, dogu.GetSimpleName()), sa.Params...)
+	buffer, err := c.executor.ExecCommandForPod(ctx, pod, command, internal.ContainersStarted)
+
+	saCreds, err := c.parseServiceCommandOutput(buffer)
+	if err != nil {
+		return fmt.Errorf("failed to parse service account: %w", err)
+	}
+
+	err = c.saveServiceAccount(sa, doguConfig, saCreds)
+	if err != nil {
+		return fmt.Errorf("failed to save service account: %w", err)
 	}
 
 	return nil

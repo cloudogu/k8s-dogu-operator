@@ -43,8 +43,19 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	var allProblems error
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
-		if serviceAccount.Kind != "" && serviceAccount.Kind != string(doguKind) {
-			continue
+		kind := serviceAccount.Kind
+		if kind != "" && kind != doguKind {
+			switch kind {
+			case k8sKind:
+				err := r.removeK8sServiceAccount(ctx, dogu, serviceAccount)
+				if err != nil {
+					allProblems = multierror.Append(allProblems, err)
+				}
+				continue
+			default:
+				logger.Error(fmt.Errorf("unknown service account kind: %s", kind), "skipping service account creation")
+				continue
+			}
 		}
 
 		registryCredentialPath := "sa-" + serviceAccount.Type
@@ -126,6 +137,34 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	_, err = r.executor.ExecCommandForPod(ctx, saPod, command, internal.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
+	}
+
+	return nil
+}
+
+func (r *remover) removeK8sServiceAccount(ctx context.Context, dogu *core.Dogu, sa core.ServiceAccount) error {
+	switch sa.Type {
+	case "cesappd":
+		return r.removeCesControlServiceAccount(dogu)
+	default:
+		log.FromContext(ctx).Error(fmt.Errorf("unknown service account type: %s", sa.Type),
+			"skipping service account creation")
+		return nil
+	}
+}
+
+func (r *remover) removeCesControlServiceAccount(dogu *core.Dogu) error {
+	hostConfig := r.registry.HostConfig(cesControl)
+	exists, err := hostConfig.Exists(dogu.GetSimpleName())
+	if err != nil {
+		return fmt.Errorf("failed to read host config for dogu %s", dogu.GetSimpleName())
+	}
+
+	if exists {
+		err = hostConfig.DeleteRecursive(dogu.GetSimpleName())
+		if err != nil {
+			return fmt.Errorf("failed to delete host config for dogu %s", dogu.GetSimpleName())
+		}
 	}
 
 	return nil
