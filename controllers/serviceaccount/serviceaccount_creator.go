@@ -71,6 +71,14 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 			continue
 		}
 
+		if serviceAccount.Type == "cesappd" {
+			err := c.createK8sServiceAccount(ctx, dogu, doguConfig, serviceAccount)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
 		kind := serviceAccount.Kind
 		if kind != "" && kind != doguKind {
 			switch kind {
@@ -110,23 +118,11 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 	return nil
 }
 
-func (c *creator) createK8sServiceAccount(ctx context.Context, dogu *core.Dogu, doguConfig registry.ConfigurationContext,
-	sa core.ServiceAccount) error {
-	switch sa.Type {
-	case "cesappd":
-		return c.createCesControlServiceAccount(ctx, dogu, doguConfig, sa)
-	default:
-		log.FromContext(ctx).Error(fmt.Errorf("unknown service account type: %s", sa.Type),
-			"skipping service account creation")
-		return nil
-	}
-}
-
-func (c *creator) createCesControlServiceAccount(ctx context.Context, dogu *core.Dogu,
+func (c *creator) createK8sServiceAccount(ctx context.Context, dogu *core.Dogu,
 	doguConfig registry.ConfigurationContext, sa core.ServiceAccount) error {
 	logger := log.FromContext(ctx)
 
-	exists, err := c.registry.HostConfig(cesControl).Exists(dogu.GetSimpleName())
+	exists, err := c.registry.HostConfig(sa.Type).Exists(dogu.GetSimpleName())
 	if err != nil {
 		return fmt.Errorf("failed to check if service account already exists: %w", err)
 	}
@@ -136,7 +132,12 @@ func (c *creator) createCesControlServiceAccount(ctx context.Context, dogu *core
 		return nil
 	}
 
-	labels := map[string]string{"app": cesControl}
+	saType := sa.Type
+	if sa.Type == "cesappd" {
+		saType = cesControl
+	}
+
+	labels := map[string]string{"app": saType}
 	pod, err := v1.GetPodForLabels(ctx, c.client, labels)
 	if err != nil && c.isOptionalServiceAccount(dogu, sa.Type) {
 		logger.Info("Skipping creation of service account % because the pod was not found and the service "+
@@ -150,7 +151,7 @@ func (c *creator) createCesControlServiceAccount(ctx context.Context, dogu *core
 	cmdParams = append(cmdParams, "service-account-create")
 	cmdParams = append(cmdParams, dogu.GetSimpleName())
 	cmdParams = append(cmdParams, sa.Params...)
-	command := exec.NewShellCommand("/"+cesControl+"/"+cesControl, cmdParams...)
+	command := exec.NewShellCommand("/"+saType+"/"+saType, cmdParams...)
 
 	buffer, err := c.executor.ExecCommandForPod(ctx, pod, command, internal.ContainersStarted)
 	if err != nil {
