@@ -146,8 +146,16 @@ func (c *creator) createCesControlServiceAccount(ctx context.Context, dogu *core
 		return fmt.Errorf("failed to get pod for labels %v: %w", labels, err)
 	}
 
-	command := exec.NewShellCommand(fmt.Sprintf("%s service-account-create %s", cesControl, dogu.GetSimpleName()), sa.Params...)
+	var cmdParams []string
+	cmdParams = append(cmdParams, "service-account-create")
+	cmdParams = append(cmdParams, dogu.GetSimpleName())
+	cmdParams = append(cmdParams, sa.Params...)
+	command := exec.NewShellCommand("/"+cesControl+"/"+cesControl, cmdParams...)
+
 	buffer, err := c.executor.ExecCommandForPod(ctx, pod, command, internal.ContainersStarted)
+	if err != nil {
+		return fmt.Errorf("failed to exec command [%s] for pod %s: %w", command.String(), pod.Name, err)
+	}
 
 	saCreds, err := c.parseServiceCommandOutput(buffer)
 	if err != nil {
