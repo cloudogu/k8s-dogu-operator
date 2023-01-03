@@ -155,7 +155,11 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := &cesmocks.ConfigurationContext{}
 		globalConfig.Mock.On("Get", "key_provider").Return("pkcs1v15", nil)
 
+		hostConfig := &cesmocks.ConfigurationContext{}
+		hostConfig.Mock.On("Exists", "redmine").Return(true, nil)
+
 		doguConfig := &cesmocks.ConfigurationContext{}
+		doguConfig.Mock.On("Exists", "sa-k8s-dogu-operator").Return(false, nil)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 		doguConfig.Mock.On("Get", "public.pem").Return(validPubKey, nil)
 		doguConfig.Mock.On("Set", "/sa-postgresql/username", mock.Anything).Return(nil)
@@ -169,6 +173,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
+		registry.Mock.On("HostConfig", "k8s-dogu-operator").Return(hostConfig)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
@@ -213,6 +218,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// given
 		doguConfig := &cesmocks.ConfigurationContext{}
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
+		doguConfig.Mock.On("Exists", "sa-k8s-dogu-operator").Return(true, nil)
 
 		registry := &cesmocks.Registry{}
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
