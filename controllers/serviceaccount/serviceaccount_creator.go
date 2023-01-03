@@ -28,10 +28,11 @@ import (
 const (
 	doguKind = "dogu"
 	k8sKind  = "k8s"
+	cesKind  = "ces"
 )
 
 const (
-	cesControl = "k8s-ces-control"
+	cesControl = "ces-control"
 )
 
 // creator is the unit to handle the creation of service accounts
@@ -71,17 +72,17 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 			continue
 		}
 
-		if serviceAccount.Type == "cesappd" {
-			err := c.createK8sServiceAccount(ctx, dogu, doguConfig, serviceAccount)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
 		kind := serviceAccount.Kind
 		if kind != "" && kind != doguKind {
 			switch kind {
+			case cesKind:
+				if serviceAccount.Type == cesControl {
+					err = c.createK8sServiceAccount(ctx, dogu, doguConfig, serviceAccount)
+				}
+				if err != nil {
+					return err
+				}
+				continue
 			case k8sKind:
 				err := c.createK8sServiceAccount(ctx, dogu, doguConfig, serviceAccount)
 				if err != nil {
@@ -133,10 +134,6 @@ func (c *creator) createK8sServiceAccount(ctx context.Context, dogu *core.Dogu,
 	}
 
 	saType := sa.Type
-	if sa.Type == "cesappd" {
-		saType = cesControl
-	}
-
 	labels := map[string]string{"app": saType}
 	pod, err := v1.GetPodForLabels(ctx, c.client, labels)
 	if err != nil && c.isOptionalServiceAccount(dogu, sa.Type) {
