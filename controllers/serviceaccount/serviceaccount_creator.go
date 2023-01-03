@@ -32,7 +32,7 @@ const (
 )
 
 const (
-	cesControl = "ces-control"
+	cesControl = "cesappd"
 )
 
 // creator is the unit to handle the creation of service accounts
