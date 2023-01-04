@@ -306,7 +306,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		// })
 
 		It("Should delete dogu", func() {
-			deleteDoguCr(ctx, ldapCr, ldapDoguLookupKey, true)
+			deleteDoguCr(ctx, ldapCr, true)
 			deleteObjectFromCluster(ctx, exposedService8888LookupKey, &corev1.Service{})
 			deleteObjectFromCluster(ctx, exposedService2222LookupKey, &corev1.Service{})
 		})
@@ -349,7 +349,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
 		By("Delete redmine dogu crd")
-		deleteDoguCr(ctx, redmineCr, redmineCr.GetObjectKey(), false)
+		deleteDoguCr(ctx, redmineCr, false)
 
 		Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
@@ -454,7 +454,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		assertRessourceStatus(upgradeLdapFromDoguLookupKey, "installed")
 
-		deleteDoguCr(ctx, upgradedLdapDoguCr, upgradeLdapFromDoguLookupKey, true)
+		deleteDoguCr(ctx, upgradedLdapDoguCr, true)
 
 		Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
 		Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
@@ -535,19 +535,24 @@ func createDoguPod(ctx context.Context, doguCr *k8sv1.Dogu, podLabels k8sv1.CesM
 }
 
 func installDoguCr(ctx context.Context, doguCr *k8sv1.Dogu) {
-	Expect(k8sClient.Create(ctx, doguCr)).Should(Succeed())
+	doguClient := k8sClientSet.Dogus(doguCr.Namespace)
+	_, err := doguClient.Create(ctx, doguCr, v1.CreateOptions{})
+	Expect(err).Should(Succeed())
 }
 
 func updateDoguCr(ctx context.Context, doguCr *k8sv1.Dogu) {
-	Expect(k8sClient.Update(ctx, doguCr)).Should(Succeed())
+	doguClient := k8sClientSet.Dogus(doguCr.Namespace)
+	_, err := doguClient.Update(ctx, doguCr, v1.UpdateOptions{})
+	Expect(err).Should(Succeed())
 }
 
-func deleteDoguCr(ctx context.Context, doguCr *k8sv1.Dogu, doguLookupKey types.NamespacedName, deleteAdditional bool) {
-	Expect(k8sClient.Delete(ctx, doguCr)).Should(Succeed())
+func deleteDoguCr(ctx context.Context, doguCr *k8sv1.Dogu, deleteAdditional bool) {
+	doguClient := k8sClientSet.Dogus(doguCr.Namespace)
+	err := doguClient.Delete(ctx, doguCr.Name, v1.DeleteOptions{})
+	Expect(err).Should(Succeed())
 
-	dogu := &k8sv1.Dogu{}
 	Eventually(func() bool {
-		err := k8sClient.Get(ctx, doguLookupKey, dogu)
+		_, err := doguClient.Get(ctx, doguCr.Name, v1.GetOptions{})
 		return apierrors.IsNotFound(err)
 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
