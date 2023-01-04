@@ -41,56 +41,63 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	var allProblems error
-
 	for _, serviceAccount := range dogu.ServiceAccounts {
-		kind := serviceAccount.Kind
-		if kind != "" && kind != doguKind {
-			switch kind {
-			case k8sKind:
-				err := r.removeK8sServiceAccount(ctx, dogu, serviceAccount)
+		switch serviceAccount.Kind {
+		case "":
+			fallthrough
+		case doguKind:
+			err := r.removeDoguServiceAccount(ctx, dogu, serviceAccount)
+			if err != nil {
+				allProblems = multierror.Append(allProblems, err)
+			}
+		case cesKind:
+			if serviceAccount.Type == "cesappd" {
+				err := r.removeCesControlServiceAccount(dogu)
 				if err != nil {
 					allProblems = multierror.Append(allProblems, err)
 				}
-				continue
-			default:
-				logger.Error(fmt.Errorf("unknown service account kind: %s", kind), "skipping service account creation")
-				continue
 			}
-		}
-
-		registryCredentialPath := "sa-" + serviceAccount.Type
-		doguConfig := r.registry.DoguConfig(dogu.GetSimpleName())
-
-		exists, err := serviceAccountExists(registryCredentialPath, doguConfig)
-		if err != nil {
-			allProblems = multierror.Append(allProblems, err)
 			continue
-		}
-
-		if !exists {
-			logger.Info("skipping removal of service account because it does not exists")
-			continue
-		}
-
-		doguRegistry := r.registry.DoguRegistry()
-		enabled, err := doguRegistry.IsEnabled(serviceAccount.Type)
-		if err != nil {
-			allProblems = multierror.Append(allProblems, fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err))
-			continue
-		}
-		if !enabled {
-			logger.Info("skipping removal of service account because dogu is not enabled")
-			continue
-		}
-
-		err = r.delete(ctx, serviceAccount, dogu, doguConfig, registryCredentialPath)
-		if err != nil {
-			allProblems = multierror.Append(allProblems, err)
+		default:
+			logger.Error(fmt.Errorf("unknown service account kind: %s", serviceAccount.Kind), "skipping service account deletion")
 			continue
 		}
 	}
 
 	return allProblems
+}
+
+func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount) error {
+	logger := log.FromContext(ctx)
+	registryCredentialPath := "sa-" + serviceAccount.Type
+	doguConfig := r.registry.DoguConfig(dogu.GetSimpleName())
+
+	exists, err := serviceAccountExists(registryCredentialPath, doguConfig)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		logger.Info("skipping removal of service account because it does not exists")
+		return nil
+	}
+
+	doguRegistry := r.registry.DoguRegistry()
+	enabled, err := doguRegistry.IsEnabled(serviceAccount.Type)
+	if err != nil {
+		return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
+	}
+	if !enabled {
+		logger.Info("skipping removal of service account because dogu is not enabled")
+		return nil
+	}
+
+	err = r.delete(ctx, serviceAccount, dogu, doguConfig, registryCredentialPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *remover) delete(
@@ -142,19 +149,8 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	return nil
 }
 
-func (r *remover) removeK8sServiceAccount(ctx context.Context, dogu *core.Dogu, sa core.ServiceAccount) error {
-	switch sa.Type {
-	case "cesappd":
-		return r.removeCesControlServiceAccount(dogu)
-	default:
-		log.FromContext(ctx).Error(fmt.Errorf("unknown service account type: %s", sa.Type),
-			"skipping service account creation")
-		return nil
-	}
-}
-
 func (r *remover) removeCesControlServiceAccount(dogu *core.Dogu) error {
-	hostConfig := r.registry.HostConfig(cesControl)
+	hostConfig := r.registry.HostConfig(k8sCesControl)
 	exists, err := hostConfig.Exists(dogu.GetSimpleName())
 	if err != nil {
 		return fmt.Errorf("failed to read host config for dogu %s", dogu.GetSimpleName())
