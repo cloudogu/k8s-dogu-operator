@@ -6,7 +6,7 @@ metadata:
     test: dev
   labels:
     dogu.name: nginx-static
-    app: nginx-static
+    app: ces
 spec:
   name: k8s/nginx-static
   version: 1.23.1-3

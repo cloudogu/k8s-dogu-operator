@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: controller-manager
   labels:
+    app: ces
+    app.kubernetes.io/name: k8s-dogu-operator
     control-plane: controller-manager
 spec:
   selector:
@@ -16,9 +18,9 @@ spec:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        control-plane: controller-manager
-        app.kubernetes.io/name: k8s-dogu-operator
         app: ces
+        app.kubernetes.io/name: k8s-dogu-operator
+        control-plane: controller-manager
     spec:
       securityContext:
         runAsNonRoot: true

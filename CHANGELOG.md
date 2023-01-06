@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#34] add/update label for consistent mass deletion of CES K8s resources
+  - select any k8s-dogu-operator related resources like this: `kubectl get deploy,pod,dogu,rolebinding,... -l app=ces,app.kubernetes.io/name=k8s-dogu-operator`
+  - select all CES components like this: `kubectl get deploy,pod,dogu,rolebinding,... -l app=ces`
 
 ## [v0.19.0] - 2022-12-22
 ### Added
