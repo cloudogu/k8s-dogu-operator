@@ -6,6 +6,7 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"os"
 	"path/filepath"
@@ -44,6 +45,8 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 var k8sClient client.Client
+
+var k8sClientSet *ecoSystem.EcoSystemV1Alpha1Client
 var testEnv *envtest.Environment
 var cancel context.CancelFunc
 
@@ -115,6 +118,9 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	k8sClient = k8sManager.GetClient()
 	gomega.Expect(k8sClient).ToNot(gomega.BeNil())
+
+	k8sClientSet, err = ecoSystem.NewForConfig(cfg)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	DoguRemoteRegistryMock = &cesremotemocks.Registry{}
 	EtcdDoguRegistry = &cesmocks.DoguRegistry{}

@@ -166,8 +166,8 @@ github.com/cilium/ebpf v0.4.0/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJ
 github.com/cilium/ebpf v0.6.2/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
 github.com/circonus-labs/circonus-gometrics v2.3.1+incompatible/go.mod h1:nmEj6Dob7S7YxXgwXpfOuvO54S+tGdZdw9fuRZt25Ag=
 github.com/circonus-labs/circonusllhist v0.1.3/go.mod h1:kMXHVDlOchFAehlya5ePtbp5jckzBHf4XRpQvBOLI+I=
-github.com/cloudogu/cesapp-lib v0.9.0 h1:0yT7jpLKtu2X6qKG5s2UdgIojsQoyluidPRG2TwJASQ=
-github.com/cloudogu/cesapp-lib v0.9.0/go.mod h1:PTQqI3xs1ReJMXYE6BGTF33yAfmS4J7P8UiE4AwDMDY=
+github.com/cloudogu/cesapp-lib v0.0.0-20221229112545-4d449f4c8473 h1:cRZXYR4/bd+IUlBXnmlVj3kOQiluqJtwCpBiTgO6cCg=
+github.com/cloudogu/cesapp-lib v0.0.0-20221229112545-4d449f4c8473/go.mod h1:PTQqI3xs1ReJMXYE6BGTF33yAfmS4J7P8UiE4AwDMDY=
 github.com/cloudogu/k8s-apply-lib v0.4.0 h1:4jYj0gTDSvW0qs9d5yM5w8aOsMu5Sx+PBCwJwa5sMss=
 github.com/cloudogu/k8s-apply-lib v0.4.0/go.mod h1:WHCe588o8e1vzNdLGV6N4E0g7BarbPXPpW4y8U0/lxE=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=

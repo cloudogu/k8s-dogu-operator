@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - select any k8s-dogu-operator related resources like this: `kubectl get deploy,pod,dogu,rolebinding,... -l app=ces,app.kubernetes.io/name=k8s-dogu-operator`
   - select all CES components like this: `kubectl get deploy,pod,dogu,rolebinding,... -l app=ces`
 
+## [v0.20.0] - 2023-01-06
+### Added
+- Added kubernetes client for handling dogu resources of a cluster.
+### Fixed
+- Accept kind `ces` for ces control service accounts.
+
 ## [v0.19.0] - 2022-12-22
 ### Added
 - [#44] Support for expanding dogu volumes. For details see [volume expansion docs](docs/operations/expand_volume_en.md).
