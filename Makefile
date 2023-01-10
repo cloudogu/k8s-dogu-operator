@@ -62,7 +62,7 @@ setup-etcd-port-forward:
 	kubectl -n ${NAMESPACE} port-forward etcd-0 4001:2379 &
 
 .PHONY: template-crd-labels
-template-crd-labels:
+template-crd-labels: kustomize
 	@$(KUSTOMIZE) build config/labels -o config/crd/bases/k8s.cloudogu.com_dogus.yaml
 
 .PHONY: template-stage
