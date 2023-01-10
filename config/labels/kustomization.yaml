@@ -1,0 +1,10 @@
+# Labels to add to all resources and selectors.
+commonLabels:
+  app: ces
+  app.kubernetes.io/name: k8s-dogu-operator
+
+bases:
+- ../crd
+
+patchesStrategicMerge:
+- crd_label_patch.yaml
