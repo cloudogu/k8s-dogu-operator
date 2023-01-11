@@ -3,7 +3,7 @@ kind: ClusterRoleBinding
 metadata:
   name: cluster-role-binding
   labels:
-    app: k8s-dogu-operator
+    app: ces
     app.kubernetes.io/name: k8s-dogu-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io

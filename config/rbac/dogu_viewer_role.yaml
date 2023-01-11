@@ -3,6 +3,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: dogu-viewer-role
+  labels:
+    app: ces
+    app.kubernetes.io/name: k8s-dogu-operator
 rules:
 - apiGroups:
   - k8s.cloudogu.com
