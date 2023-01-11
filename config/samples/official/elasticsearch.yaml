@@ -6,7 +6,7 @@ metadata:
     test: dev
   labels:
     dogu.name: drawio
-    app: elasticsearch
+    app: ces
 spec:
   name: official/elasticsearch
   version: 6.8.23-3

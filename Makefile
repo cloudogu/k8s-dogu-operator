@@ -38,6 +38,7 @@ build-boot: image-import k8s-apply kill-operator-pod ## Builds a new version of 
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	@echo "Generate manifests..."
 	@$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@make template-crd-labels
 	@cp config/crd/bases/k8s.cloudogu.com_dogus.yaml api/v1/
 
 .PHONY: generate
@@ -53,12 +54,16 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --wait=false --ignore-not-found=true -f -
+	@$(KUSTOMIZE) build config/crd | kubectl delete --wait=false --ignore-not-found=true -f -
 	@kubectl patch crd/dogus.k8s.cloudogu.com -p '{"metadata":{"finalizers":[]}}' --type=merge || true
 
 .PHONY: setup-etcd-port-forward
 setup-etcd-port-forward:
 	kubectl -n ${NAMESPACE} port-forward etcd-0 4001:2379 &
+
+.PHONY: template-crd-labels
+template-crd-labels: kustomize
+	@$(KUSTOMIZE) build config/labels -o config/crd/bases/k8s.cloudogu.com_dogus.yaml
 
 .PHONY: template-stage
 template-stage:

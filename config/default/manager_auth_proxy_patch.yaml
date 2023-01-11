@@ -4,6 +4,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: controller-manager
+  labels:
+    app: ces
+    app.kubernetes.io/name: k8s-dogu-operator
 spec:
   template:
     spec:
