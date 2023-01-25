@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: easyredmine
+  annotations:
+    test: dev
+  labels:
+    dogu.name: easyredmine
+    app: ces
+spec:
+  name: itz-bund/easyredmine
+  version: 11.8.0-5
