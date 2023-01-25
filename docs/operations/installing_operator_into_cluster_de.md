@@ -2,7 +2,7 @@
 
 ## Voraussetzungen
 
-Vor der Installation des Operators müssen die Login Daten für die Dogu- und Docker-Registry hinterlegt
+Vor der Installation des Operators müssen die Login-Daten für die Dogu- und Docker-Registry hinterlegt
 werden:
 1. [Docker-Registry](configuring_the_docker_registry_de.md)
 2. [Dogu-Registry](configuring_the_dogu_registry_de.md)
@@ -20,11 +20,8 @@ Der Operator sollte nun erfolgreich im Cluster gestartet sein.
 
 ## Installation von lokal generiertem Dogu-Operator
 
-Der Dogu-Operator kann mit folgenden Befehlen lokal gebaut und in den Cluster installiert werden. Dabei wird davon ausgegangen, dass der lokale Cluster mit Vagrant aufgesetzt wurde und das Verzeichnis mit dem Vagrantfile als K8S_CLUSTER_ROOT übergeben wird:
+Der Dogu-Operator kann mit folgendem Befehl lokal gebaut und in den Cluster installiert werden:
 
 ```bash
-- export K8S_CLUSTER_ROOT=/home/user/k3ces
-- export OPERATOR_NAMESPACE=ecosystem
-- kubectl config set-context --current --namespace=ecosystem
 - make build
 ```
