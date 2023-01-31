@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#72] Remove the service environment variables from dogu pods with `enableServiceLinks: false` in the podspec of
   the dogu pods. `enableServiceLinks: true` would override environment variables from dogus dockerfiles e.g. easyredmine.
 - Update makefiles to version 7.2.0.
+- Update ces-build-lib to 1.62.0.
 
 ## [v0.21.0] - 2023-01-11
 ### Changed
