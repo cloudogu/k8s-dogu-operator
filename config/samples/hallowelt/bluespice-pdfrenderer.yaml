@@ -2,10 +2,7 @@ apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: bluespice-pdfrenderer
-  annotations:
-    test: dev
   labels:
-    dogu.name: bluespice-pdfrenderer
     app: ces
 spec:
   name: hallowelt/bluespice-pdfrenderer

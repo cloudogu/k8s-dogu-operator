@@ -2,10 +2,7 @@ apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: cas
-  annotations:
-    test: dev
   labels:
-    dogu.name: cas
     app: ces
 spec:
   name: official/cas
