@@ -19,11 +19,8 @@ The operator should now be successfully started in the cluster.
 
 ## Installation of locally generated dogu operator
 
-The dogu operator can be built locally and installed in the cluster using the following commands. This assumes that the local cluster has been set up with Vagrant and the directory containing the Vagrantfile is passed as K8S_CLUSTER_ROOT:
+The dogu operator can be built locally and installed in the cluster using the following command.
 
 ```bash
-- export K8S_CLUSTER_ROOT=/home/user/k3ces
-- export OPERATOR_NAMESPACE=ecosystem
-- kubectl config set-context --current --namespace=ecosystem
 - make build
 ```

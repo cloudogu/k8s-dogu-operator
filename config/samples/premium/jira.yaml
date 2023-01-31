@@ -2,10 +2,7 @@ apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: jira
-  annotations:
-    test: dev
   labels:
-    dogu.name: jira
     app: ces
 spec:
   name: premium/jira

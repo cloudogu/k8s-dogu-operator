@@ -1,11 +1,11 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=0.21.0
+VERSION=0.22.0
 ## Image URL to use all building/pushing image targets
 IMAGE_DEV=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}:${VERSION}
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG?=1.18
-MAKEFILES_VERSION=7.0.1
+MAKEFILES_VERSION=7.2.0
 LINT_VERSION=v1.45.2
 STAGE?=production
 
