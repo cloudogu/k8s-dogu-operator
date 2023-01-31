@@ -2,8 +2,6 @@ apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: jenkins
-  annotations:
-    test: dev
   labels:
     app: ces
 spec:

@@ -2,8 +2,6 @@ apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: nexus
-  annotations:
-    test: dev
   labels:
     app: ces
 spec:
