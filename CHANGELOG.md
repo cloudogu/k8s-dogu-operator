@@ -5,9 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.22.0] - 2023-01-31
 ### Changed
 - [#72] Remove the service environment variables from dogu pods with `enableServiceLinks: false` in the podspec of
-  the dogu pods. Cluster-aware dogus are generally discouraged to use service link env vars because of security considerations. Instead the service DNS names should be used to address these services as described in the [Kubernetes documentation](https://kubernetes.io/docs/concepts/services-networking/service/#dns).
+  the dogu pods. Cluster-aware dogus are generally discouraged to use service link env vars because of security considerations. Instead, the service DNS names should be used to address these services as described in the [Kubernetes documentation](https://kubernetes.io/docs/concepts/services-networking/service/#dns).
 - Update makefiles to version 7.2.0.
 - Update ces-build-lib to 1.62.0.
 
