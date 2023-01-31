@@ -5,7 +5,6 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu.name: redis
     app: ces
 spec:
   name: official/redis

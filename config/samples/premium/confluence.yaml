@@ -5,7 +5,6 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu.name: confluence
     app: ces
 spec:
   name: premium/confluence

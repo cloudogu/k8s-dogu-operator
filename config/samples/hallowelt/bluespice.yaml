@@ -5,7 +5,6 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu.name: bluespice
     app: ces
 spec:
   name: hallowelt/bluespice
