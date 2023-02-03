@@ -16,7 +16,7 @@ In order to connect a custom dogu configuration, a secret must be created in the
 must be created. This secret contains the endpoint and the login information needed for the `k8s-dogu-operator`:
 
 **Example**
-
+<!-- markdown-link-check-disable-next-line -->
 Registry endpoint (API V2): https://my-registry.com/api/v2/
 Username: myusername
 Password: mypassword
