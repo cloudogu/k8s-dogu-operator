@@ -303,3 +303,53 @@ func Test_createLivenessProbe(t *testing.T) {
 		require.Nil(t, actual)
 	})
 }
+
+func Test_getChownInitContainer(t *testing.T) {
+	t.Run("should return nil if volumes are only of type dogu-operator", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Clients: []core.VolumeClient{{Name: "k8s-dogu-operator"}}}}}
+
+		// when
+		container, err := getChownInitContainer(dogu, nil)
+
+		// then
+		require.Nil(t, container)
+		require.Nil(t, err)
+	})
+
+	t.Run("should return error if owner cannot be parsed", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "test", Owner: "3sdf"}}}
+
+		// when
+		_, err := getChownInitContainer(dogu, nil)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to parse owner id 3sdf from volume test")
+	})
+
+	t.Run("should return error if group cannot be parsed", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "test", Owner: "1", Group: "3sdf"}}}
+
+		// when
+		_, err := getChownInitContainer(dogu, nil)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to parse group id 3sdf from volume test")
+	})
+
+	t.Run("should return error if ids are not greater than 0", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "test", Owner: "0", Group: "-1"}}}
+
+		// when
+		_, err := getChownInitContainer(dogu, nil)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "owner 0 or group -1 are not greater than 0")
+	})
+}

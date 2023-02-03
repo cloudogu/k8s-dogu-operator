@@ -170,12 +170,7 @@ func convertGenericJsonObject(genericObject interface{}, targetObject interface{
 func createVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	volumeMounts := createStaticVolumeMounts(doguResource)
 
-	for _, doguVolume := range dogu.Volumes {
-		newVolume := createDoguVolumeMounts(doguVolume, doguResource)
-		volumeMounts = append(volumeMounts, newVolume)
-	}
-
-	return volumeMounts
+	return append(volumeMounts, createDoguVolumeMounts(doguResource, dogu)...)
 }
 
 func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
@@ -200,7 +195,17 @@ func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
 	return doguVolumeMounts
 }
 
-func createDoguVolumeMounts(doguVolume core.Volume, doguResource *k8sv1.Dogu) corev1.VolumeMount {
+func createDoguVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+	var volumeMounts []corev1.VolumeMount
+	for _, doguVolume := range dogu.Volumes {
+		newVolume := createDoguVolumeMount(doguVolume, doguResource)
+		volumeMounts = append(volumeMounts, newVolume)
+	}
+
+	return volumeMounts
+}
+
+func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv1.Dogu) corev1.VolumeMount {
 	_, clientExists := doguVolume.GetClient(doguOperatorClient)
 	if clientExists {
 		return corev1.VolumeMount{
