@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#74] Add init container for dogus with volumes to execute chown on the directories with the specified uid and gid.
+
 ### Changed
 - [#72] Remove the service environment variables from dogu pods with `enableServiceLinks: false` in the podspec of
   the dogu pods. Cluster-aware dogus are generally discouraged to use service link env vars because of security considerations. Instead the service DNS names should be used to address these services as described in the [Kubernetes documentation](https://kubernetes.io/docs/concepts/services-networking/service/#dns).
