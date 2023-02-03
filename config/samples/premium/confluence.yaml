@@ -2,10 +2,7 @@ apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: confluence
-  annotations:
-    test: dev
   labels:
-    dogu.name: confluence
     app: ces
 spec:
   name: premium/confluence

@@ -135,6 +135,9 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 
 	allLabels := GetAppLabel().Add(doguResource.GetPodLabels())
 
+	// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
+	enableServiceLinks := false
+
 	chownContainer, err := getChownInitContainer(dogu, doguResource)
 	if err != nil {
 		return nil, err
@@ -152,6 +155,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
 			Hostname:         doguResource.Name,
 			Volumes:          volumes,
+			EnableServiceLinks: &enableServiceLinks,
 			InitContainers:   initContainers,
 			Containers: []corev1.Container{{
 				Command:         command,

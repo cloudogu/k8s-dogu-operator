@@ -2,10 +2,7 @@ apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: drawio
-  annotations:
-    test: dev
   labels:
-    dogu.name: drawio
     app: ces
 spec:
   name: hallowelt/drawio

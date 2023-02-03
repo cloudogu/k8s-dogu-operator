@@ -55,6 +55,7 @@ spec:
         - mountPath: /etc/openldap/slapd.d
           name: ldap-data
           subPath: config
+  enableServiceLinks: false
   hostname: ldap
   imagePullSecrets:
     - name: k8s-dogu-operator-docker-registry
