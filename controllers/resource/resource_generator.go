@@ -38,6 +38,11 @@ const (
 	doguPodName      = "POD_NAME"
 )
 
+const (
+	chownInitContainerName  = "dogu-volume-chown-init"
+	chownInitContainerImage = "busybox:1.36"
+)
+
 // kubernetesServiceAccountKind describes a service account on kubernetes.
 const kubernetesServiceAccountKind = "k8s"
 
@@ -133,6 +138,15 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 	// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 	enableServiceLinks := false
 
+	chownContainer, err := getChownInitContainer(dogu, doguResource)
+	if err != nil {
+		return nil, err
+	}
+	var initContainers []corev1.Container
+	if chownContainer != nil {
+		initContainers = append(initContainers, *chownContainer)
+	}
+
 	podTemplate := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: allLabels,
@@ -142,6 +156,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 			Hostname:           doguResource.Name,
 			Volumes:            volumes,
 			EnableServiceLinks: &enableServiceLinks,
+			InitContainers:     initContainers,
 			Containers: []corev1.Container{{
 				Command:         command,
 				Args:            args,
@@ -162,6 +177,55 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 	}
 
 	return podTemplate, nil
+}
+
+func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.Container, error) {
+	// Skip chown volumes with dogu-operator client because these are volumes from configmaps and read only.
+	filteredVolumes := filterVolumesWithClient(dogu.Volumes, doguOperatorClient)
+	if len(filteredVolumes) == 0 {
+		return nil, nil
+	}
+
+	var commands []string
+	for _, volume := range filteredVolumes {
+		uid, err := strconv.ParseInt(volume.Owner, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse owner id %s from volume %s: %w", volume.Owner, volume.Name, err)
+		}
+		gid, err := strconv.ParseInt(volume.Group, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse group id %s from volume %s: %w", volume.Group, volume.Name, err)
+		}
+
+		if uid > 0 && gid > 0 {
+			mkdirCommand := fmt.Sprintf("mkdir -p \"%s\"", volume.Path)
+			chownCommand := fmt.Sprintf("chown -R %s:%s \"%s\"", volume.Owner, volume.Group, volume.Path)
+			commands = append(commands, mkdirCommand)
+			commands = append(commands, chownCommand)
+		} else {
+			return nil, fmt.Errorf("owner %d or group %d are not greater than 0", uid, gid)
+		}
+	}
+
+	return &corev1.Container{
+		Name:         chownInitContainerName,
+		Image:        chownInitContainerImage,
+		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
+		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
+	}, nil
+}
+
+func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume {
+	var filteredList []core.Volume
+	for _, volume := range volumes {
+		_, clientExists := volume.GetClient(client)
+		if clientExists {
+			continue
+		}
+		filteredList = append(filteredList, volume)
+	}
+
+	return filteredList
 }
 
 func getKubernetesServiceAccount(dogu *core.Dogu) (string, bool) {

@@ -16,7 +16,7 @@ Damit eine benutzerdefinierte Dogu Konfiguration angebunden werden kann, muss ei
 werden. Dieses Secret enthält den Endpunkt und die für das `k8s-dogu-operator` benötigten Login-Daten:
 
 **Beispiel**
-
+<!-- markdown-link-check-disable-next-line -->
 Registry-Endpunkt (API V2): https://my-registry.com/api/v2/
 Benutzername: myusername
 Passwort: mypassword

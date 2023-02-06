@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: controller-manager
+  annotations:
+    k8s-ces-additional-image-1: busybox:1.36
   labels:
     app: ces
     app.kubernetes.io/name: k8s-dogu-operator
