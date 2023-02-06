@@ -152,11 +152,11 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 			Labels: allLabels,
 		},
 		Spec: corev1.PodSpec{
-			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
-			Hostname:         doguResource.Name,
-			Volumes:          volumes,
+			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
+			Hostname:           doguResource.Name,
+			Volumes:            volumes,
 			EnableServiceLinks: &enableServiceLinks,
-			InitContainers:   initContainers,
+			InitContainers:     initContainers,
 			Containers: []corev1.Container{{
 				Command:         command,
 				Args:            args,
@@ -186,8 +186,8 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.C
 		return nil, nil
 	}
 
-	initCommand := ""
-	for index, volume := range filteredVolumes {
+	var commands []string
+	for _, volume := range filteredVolumes {
 		uid, err := strconv.ParseInt(volume.Owner, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse owner id %s from volume %s: %w", volume.Owner, volume.Name, err)
@@ -198,13 +198,10 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.C
 		}
 
 		if uid > 0 && gid > 0 {
-			mkdirCommand := fmt.Sprintf("mkdir -p %s", volume.Path)
-			chownCommand := fmt.Sprintf("chown -R %s:%s %s", volume.Owner, volume.Group, volume.Path)
-			if index == 0 {
-				initCommand = fmt.Sprintf("%s && %s", mkdirCommand, chownCommand)
-			} else {
-				initCommand = fmt.Sprintf("%s && %s && %s", initCommand, mkdirCommand, chownCommand)
-			}
+			mkdirCommand := fmt.Sprintf("mkdir -p \"%s\"", volume.Path)
+			chownCommand := fmt.Sprintf("chown -R %s:%s \"%s\"", volume.Owner, volume.Group, volume.Path)
+			commands = append(commands, mkdirCommand)
+			commands = append(commands, chownCommand)
 		} else {
 			return nil, fmt.Errorf("owner %d or group %d are not greater than 0", uid, gid)
 		}
@@ -213,7 +210,7 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.C
 	return &corev1.Container{
 		Name:         chownInitContainerName,
 		Image:        chownInitContainerImage,
-		Command:      []string{"sh", "-c", initCommand},
+		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
 		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
 	}, nil
 }
@@ -222,7 +219,6 @@ func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume
 	var filteredList []core.Volume
 	for _, volume := range volumes {
 		_, clientExists := volume.GetClient(client)
-		// Skip chown volumes with dogu-operator client because these are volumes from configmaps and read only.
 		if clientExists {
 			continue
 		}

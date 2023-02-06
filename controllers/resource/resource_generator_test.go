@@ -2,6 +2,7 @@ package resource
 
 import (
 	_ "embed"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -305,6 +306,20 @@ func Test_createLivenessProbe(t *testing.T) {
 }
 
 func Test_getChownInitContainer(t *testing.T) {
+	t.Run("success with whitespace in volume path", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "whitespace", Path: "/etc/ldap config/test", Owner: "100", Group: "100"}}}
+		doguResource := &corev1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "ldap"}}
+		expectedCommand := []string{"sh", "-c", "mkdir -p \"/etc/ldap config/test\" && chown -R 100:100 \"/etc/ldap config/test\""}
+
+		// when
+		container, err := getChownInitContainer(dogu, doguResource)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedCommand, container.Command)
+	})
+
 	t.Run("should return nil if volumes are only of type dogu-operator", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Clients: []core.VolumeClient{{Name: "k8s-dogu-operator"}}}}}
@@ -313,8 +328,8 @@ func Test_getChownInitContainer(t *testing.T) {
 		container, err := getChownInitContainer(dogu, nil)
 
 		// then
+		require.NoError(t, err)
 		require.Nil(t, container)
-		require.Nil(t, err)
 	})
 
 	t.Run("should return error if owner cannot be parsed", func(t *testing.T) {

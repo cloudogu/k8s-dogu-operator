@@ -29,7 +29,7 @@ spec:
       InitContainers:
         - image: busybox:1.36
           name: dogu-volume-chown-init
-          command: [ "sh", "-c", "mkdir -p /var/lib/openldap && chown -R 100:101 /var/lib/openldap && mkdir -p /etc/openldap/slapd.d && chown -R 100:101 /etc/openldap/slapd.d" ]
+          command: [ "sh", "-c", "mkdir -p \"/var/lib/openldap\" && chown -R 100:101 \"/var/lib/openldap\" && mkdir -p \"/etc/openldap/slapd.d\" && chown -R 100:101 \"/etc/openldap/slapd.d\"" ]
           volumeMounts:
             - name: ldap-data
               mountPath: "/var/lib/openldap"
