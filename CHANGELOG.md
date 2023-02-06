@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.23.0] - 2023-02-06
+### Added
+- [#74] Add init container for dogus with volumes to execute chown on the directories with the specified uid and gid.
+
 ## [v0.22.0] - 2023-01-31
 ### Changed
 - [#72] Remove the service environment variables from dogu pods with `enableServiceLinks: false` in the podspec of

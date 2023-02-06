@@ -5,10 +5,10 @@
 !go.*
 !api/**/*
 !build/**/*
-!controllers/
+!controllers/**/*
 !hack/**/*.go
-!internal/
-!retry/
+!internal/**/*
+!retry/**/*
 !vendor/**/*
 !Makefile
 !.git/**/*

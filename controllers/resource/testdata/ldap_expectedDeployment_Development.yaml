@@ -26,6 +26,22 @@ spec:
         dogu.name: ldap
         dogu.version: 2.4.48-4
     spec:
+      InitContainers:
+        - image: busybox:1.36
+          name: dogu-volume-chown-init
+          command: [ "sh", "-c", "mkdir -p \"/var/lib/openldap\" && chown -R 100:101 \"/var/lib/openldap\" && mkdir -p \"/etc/openldap/slapd.d\" && chown -R 100:101 \"/etc/openldap/slapd.d\"" ]
+          volumeMounts:
+            - name: ldap-data
+              mountPath: "/var/lib/openldap"
+              subPath: "db"
+              readonly: false
+            - name: ldap-data
+              mountPath: "/etc/openldap/slapd.d"
+              subPath: "config"
+              readonly: false
+            - name: configmap-test
+              mountPath: "/etc/my-configmap.conf"
+              readonly: false
       containers:
         - image: registry.cloudogu.com/official/ldap:2.4.48-4
           imagePullPolicy: Always
