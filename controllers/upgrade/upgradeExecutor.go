@@ -133,8 +133,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Do
 	// We often used to have resource conflicts here, because the API server wasn't fast enough.
 	// This mechanism retries the operation if there is a conflict.
 	err := retry.OnConflict(func() error {
-		deployment := &appsv1.Deployment{}
-		err := client.Get(ctx, toDoguResource.GetObjectKey(), deployment)
+		deployment, err := toDoguResource.GetDeployment(ctx, client)
 		if err != nil {
 			return err
 		}
