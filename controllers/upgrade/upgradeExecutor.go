@@ -3,6 +3,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 
 	"k8s.io/client-go/rest"
 
@@ -129,20 +130,24 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *apps
 func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Dogu, toDogu *core.Dogu, client client.Client) error {
 	originalStartupProbe := resource.CreateStartupProbe(toDogu)
 
-	deployment := &appsv1.Deployment{}
-	err := client.Get(ctx, toDoguResource.GetObjectKey(), deployment)
-	if err != nil {
-		return err
-	}
-
-	for i, container := range deployment.Spec.Template.Spec.Containers {
-		if container.Name == toDoguResource.Name && container.StartupProbe != nil {
-			deployment.Spec.Template.Spec.Containers[i].StartupProbe = originalStartupProbe
-			break
+	// We often used to have resource conflicts here, because the API server wasn't fast enough.
+	// This mechanism retries the operation if there is a conflict.
+	err := retry.OnConflict(func() error {
+		deployment := &appsv1.Deployment{}
+		err := client.Get(ctx, toDoguResource.GetObjectKey(), deployment)
+		if err != nil {
+			return err
 		}
-	}
 
-	err = client.Update(ctx, deployment)
+		for i, container := range deployment.Spec.Template.Spec.Containers {
+			if container.Name == toDoguResource.Name && container.StartupProbe != nil {
+				deployment.Spec.Template.Spec.Containers[i].StartupProbe = originalStartupProbe
+				break
+			}
+		}
+
+		return client.Update(ctx, deployment)
+	})
 	if err != nil {
 		return err
 	}
