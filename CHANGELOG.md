@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.24.0] - 2023-02-08
+### Added
+- [#78] Add a no spam filter to process every event thrown by the controller.
+### Fixed
+- [#76] Fix an issue where an update of a deployment in the dogu upgrade process lead to a resource conflict.
+
 ## [v0.23.0] - 2023-02-06
 ### Added
 - [#74] Add init container for dogus with volumes to execute chown on the directories with the specified uid and gid.

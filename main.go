@@ -3,17 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	reg "github.com/cloudogu/cesapp-lib/registry"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
-
+	"github.com/google/uuid"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -67,8 +67,16 @@ func startDoguOperator() error {
 	if err != nil {
 		return fmt.Errorf("failed to create new operator configuration: %w", err)
 	}
-
 	options := getK8sManagerOptions(operatorConfig)
+	correlatorOptions := record.CorrelatorOptions{
+		// This fixes the problem that different events with the same reason get aggregated.
+		// Now only events that are exactly the same get aggregated.
+		KeyFunc: noAggregationKey,
+		// This will prevent any events of the dogu operator from being dropped by the spam filter.
+		SpamKeyFunc: noSpamKey,
+	}
+	options.EventBroadcaster = record.NewBroadcasterWithCorrelatorOptions(correlatorOptions)
+
 	k8sManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		return fmt.Errorf("failed to start manager: %w", err)
@@ -87,6 +95,15 @@ func startDoguOperator() error {
 	println("Starting manager...")
 
 	return startK8sManager(k8sManager)
+}
+
+func noAggregationKey(_ *v1.Event) (string, string) {
+	uniqueEventGroup := uuid.NewString()
+	return uniqueEventGroup, uniqueEventGroup
+}
+
+func noSpamKey(_ *v1.Event) string {
+	return uuid.NewString()
 }
 
 func configureManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig) error {
