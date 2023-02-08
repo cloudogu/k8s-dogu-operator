@@ -13,4 +13,4 @@ kind: Kustomization
 images:
   - name: controller
     newName: cloudogu/k8s-dogu-operator
-    newTag: 0.23.0
+    newTag: 0.24.0
