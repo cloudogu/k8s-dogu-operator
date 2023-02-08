@@ -53,7 +53,7 @@ func OnConflict(fn func() error) error {
 		Duration: 1500 * time.Millisecond,
 		Factor:   1.5,
 		Jitter:   0,
-		Steps:    0,
+		Steps:    9999,
 		Cap:      30 * time.Second,
 	}, fn)
 }
