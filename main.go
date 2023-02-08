@@ -69,6 +69,10 @@ func startDoguOperator() error {
 	}
 	options := getK8sManagerOptions(operatorConfig)
 	correlatorOptions := record.CorrelatorOptions{
+		// This fixes the problem that different events with the same reason get aggregated.
+		// Now only events that are exactly the same get aggregated.
+		KeyFunc: noAggregationKey,
+		// This will prevent any events of the dogu operator from being dropped by the spam filter.
 		SpamKeyFunc: noSpamKey,
 	}
 	options.EventBroadcaster = record.NewBroadcasterWithCorrelatorOptions(correlatorOptions)
@@ -91,6 +95,11 @@ func startDoguOperator() error {
 	println("Starting manager...")
 
 	return startK8sManager(k8sManager)
+}
+
+func noAggregationKey(_ *v1.Event) (string, string) {
+	uniqueEventGroup := uuid.NewString()
+	return uniqueEventGroup, uniqueEventGroup
 }
 
 func noSpamKey(_ *v1.Event) string {
