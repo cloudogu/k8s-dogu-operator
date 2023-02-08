@@ -3,7 +3,6 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
 
 	"k8s.io/client-go/rest"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
 const (
