@@ -17,16 +17,6 @@
 
 Der Befehl `make help` gibt alle verfügbaren Targets und deren Beschreibungen in der Kommandozeile aus.
 
-## Lokaler Image-Build
-
-Um lokal das Image des `dogu-operator` zu bauen wird im Projektverzeichnis ein `.netrc`-File benötigt.
-
-```
-machine github.com
-login <username>
-password <token>
-```
-
 Der Token benötigt Berechtigungen, um private Repositorys zu lesen.
 
 ## Verwendung von benutzerdefinierten Dogu-Deskriptoren
@@ -35,18 +25,8 @@ Der `dogu-operator` ist in der Lage für ein Dogu eine benutzerdefinierte `dogu.
 Diese Datei muss in Form einer Configmap im selben Namespace liegen. Der Name der Configmap muss `<dogu>-descriptor`
 lauten und die Nutzdaten müssen in der Data-Map unter dem Eintrag `dogu.json` verfügbar sein.
 Es existiert ein Make-Target zur automatischen Erzeugung der Configmap - `make install-dogu-descriptor`.
-Dabei ist zu beachten, dass der Dateipfad unter der Variable `CUSTOM_DOGU_DESCRIPTOR` exportiert werden muss.
 
 Nach einer erfolgreichen Dogu-Installation wird die Configmap gelöscht.
-
-### Beispiel
-
-Installation des Dogu-Deskriptors für nginx-ingress:
-
-```
-export CUSTOM_DOGU_DESCRIPTOR=/home/USER/nginx-ingress/dogu.json
-make install-dogu-descriptor
-```
 
 ## Filtern der Reconcile-Funktion
 
