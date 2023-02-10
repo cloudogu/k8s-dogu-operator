@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"os"
 	"path/filepath"
+	config2 "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"testing"
 	"time"
 
@@ -87,10 +88,15 @@ var _ = ginkgo.BeforeSuite(func() {
 	var ctx context.Context
 	ctx, cancel = context.WithCancel(context.TODO())
 
+	useExistingCluster := true
 	ginkgo.By("bootstrapping test environment")
+	itestConfig, err := config2.GetConfigWithContext("k3d-itest")
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
+		UseExistingCluster:    &useExistingCluster,
+		Config:                itestConfig,
 	}
 
 	cfg, err := testEnv.Start()

@@ -103,3 +103,68 @@ ${MOCKERY_BIN}: ${UTILITY_BIN_PATH}
 mocks: ${MOCKERY_BIN} ## This target is used to generate all mocks for the dogu operator.
 	@cd $(WORKDIR)/internal && ${MOCKERY_BIN} --all
 	@echo "Mocks successfully created."
+
+##-----------------------------
+K3D = $(UTILITY_BIN_PATH)/k3d
+.PHONY: k3d
+k3d: ## Download k3d locally if necessary.
+	$(call go-get-tool,$(K3D),github.com/rancher/k3d@latest)
+
+K3D_IMAGE="rancher/k3s:v1.21.2-k3s1"
+K3D_CLUSTER_NAME="itest"
+K3D_NAMESPACE="ecosystem"
+SETUP_TAG="develop"
+
+.PHONY: k3d-setup-ces-cluster
+k3d-setup-ces-cluster: ${K3D} k3d-create-cluster k3d-create-namespace k3d-create-docker-registry-secret k3d-create-dogu-registry-secret k3d-apply-setup
+
+.PHONY: k3d-create-cluster
+k3d-create-cluster: ${K3D}
+	@k3d cluster create "${K3D_CLUSTER_NAME}" --image="${K3D_IMAGE}"
+
+.PHONY: k3d-create-namespace
+k3d-create-namespace:
+	@KUBECONFIG=$(k3d kubeconfig write "${K3D_CLUSTER_NAME}") kubectl create namespace "${K3D_NAMESPACE}" || true
+
+.PHONY: k3d-create-docker-registry-secret
+k3d-create-docker-registry-secret:
+	@KUBECONFIG=$(k3d kubeconfig write "${K3D_CLUSTER_NAME}") kubectl --namespace "${K3D_NAMESPACE}" create secret docker-registry k8s-dogu-operator-docker-registry \
+    --docker-server="${docker_registry_server}" \
+    --docker-username="${docker_registry_username}" \
+    --docker-email="myemail@test.com" \
+    --docker-password="${docker_registry_password}"
+
+.PHONY: k3d-create-dogu-registry-secret
+k3d-create-dogu-registry-secret:
+	@KUBECONFIG=$(k3d kubeconfig write "${K3D_CLUSTER_NAME}") kubectl --namespace "${K3D_NAMESPACE}" create secret generic k8s-dogu-operator-dogu-registry \
+	--from-literal=endpoint="${DOGU_REGISTRY_ENDPOINT}" \
+	--from-literal=username="${DOGU_REGISTRY_USERNAME}" \
+	--from-literal=password="${DOGU_REGISTRY_PASSWORD}" \
+	--from-literal=urlschema="default"
+
+.PHONY: k3d-create-nodemaster
+k3d-create-nodemaster:
+	@$(k3d kubeconfig write "${K3D_CLUSTER_NAME}") kubectl create configmap node-master-file --namespace "${K3D_NAMESPACE}" --from-literal=node_master=etcd."${K3D_NAMESPACE}".svc.cluster.local
+
+.PHONY: k3d-apply-etcd
+k3d-apply-etcd:
+	@$(k3d kubeconfig write "${K3D_CLUSTER_NAME}") kubectl apply --namespace "${K3D_NAMESPACE}" -f https://raw.githubusercontent.com/cloudogu/k8s-etcd/develop/manifests/etcd.yaml
+
+SETUP_JSON_PATH=setup.json
+SETUP_DIR=$(TMP_DIR)
+TEMP_SETUP_PATCHED=$(SETUP_DIR)/setup_patched.yaml
+TEMP_SETUP=$(SETUP_DIR)/setup.yaml
+.PHONY: k3d-apply-setup
+k3d-apply-setup: $(TMP_DIR)
+	@$(k3d kubeconfig write "${K3D_CLUSTER_NAME}") kubectl apply -f https://raw.githubusercontent.com/cloudogu/k8s-ces-setup/${SETUP_TAG}/k8s/k8s-ces-setup-config.yaml --namespace  "${K3D_NAMESPACE}"
+	@$(k3d kubeconfig write "${K3D_CLUSTER_NAME}") kubectl create configmap k8s-ces-setup-json --from-file="${SETUP_JSON_PATH}" --namespace "${K3D_NAMESPACE}"
+	@wget -O "${TEMP_SETUP}" https://raw.githubusercontent.com/cloudogu/k8s-ces-setup/${SETUP_TAG}/k8s/k8s-ces-setup.yaml
+	@yq "(select(.kind == \"ClusterRoleBinding\").subjects[]|select(.name == \"k8s-ces-setup\")).namespace=\"ecosystem\"" "${TEMP_SETUP}" | \
+	yq "(select(.kind == \"ClusterRoleBinding\").subjects[]|select(.name == \"k8s-ces-setup-finisher\")).namespace=\"ecosystem\"" > "${TEMP_SETUP_PATCHED}"
+	@$(k3d kubeconfig write "${K3D_CLUSTER_NAME}") kubectl apply -f "${TEMP_SETUP_PATCHED}" --namespace "${K3D_NAMESPACE}"
+	@rm "${TEMP_SETUP}"
+	@rm "${TEMP_SETUP_PATCHED}"
+
+.PHONY: k3d-delete-cluster
+k3d-delete-cluster: ${K3D}
+	@k3d cluster delete "${K3D_CLUSTER_NAME}"
