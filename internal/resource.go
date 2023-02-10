@@ -26,7 +26,7 @@ type ResourceUpserter interface {
 	// several exposed services, this method tries to apply as many exposed services as possible and returns then
 	// an error collection.
 	UpsertDoguExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) ([]*v1.Service, error)
-	// UpsertDoguPVCs generates a persitent volume claim for a given dogu and applies it to the cluster.
+	// UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
 	UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*v1.PersistentVolumeClaim, error)
 }
 

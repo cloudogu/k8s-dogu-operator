@@ -2,7 +2,10 @@ package resource
 
 import (
 	"context"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"testing"
+	"time"
 
 	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 
@@ -400,7 +403,7 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		client := external.NewClient(t)
 		key := doguResource.GetObjectKey()
 		key.Name = doguResource.GetReservedPVCName()
-		client.On("Get", context.Background(), key, &v1.PersistentVolumeClaim{}).Return(assert.AnError)
+		client.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
@@ -415,7 +418,45 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 	})
-	t.Run("fail when creating a dogu pvc", func(t *testing.T) {
+
+	t.Run("fail when pvc already exists and retrier timeouts", func(t *testing.T) {
+		// given
+		doguResource := readLdapDoguResource(t)
+		dogu := readLdapDogu(t)
+		dogu.Volumes = nil
+
+		client := external.NewClient(t)
+		key := doguResource.GetObjectKey()
+		key.Name = doguResource.GetReservedPVCName()
+		client.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(nil).Run(func(args mock.Arguments) {
+			pvc := args.Get(2).(*v1.PersistentVolumeClaim)
+			now := metav1.Now()
+			pvc.SetDeletionTimestamp(&now)
+		})
+
+		generator := mocks.NewDoguResourceGenerator(t)
+		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
+		upserter := upserter{
+			client:    client,
+			generator: generator,
+		}
+		oldTries := maximumTriesWaitForExistingPVC
+		maximumTriesWaitForExistingPVC = 2
+		defer func() {
+			maximumTriesWaitForExistingPVC = oldTries
+		}()
+
+		// when
+		_, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to wait for existing pvc ldap-reserved to terminate: the maximum number of retries was reached: pvc ldap-reserved still exists")
+	})
+
+	resourceNotFoundError := apierrors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, "")
+
+	t.Run("fail when generate a dogu pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
@@ -424,7 +465,8 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		key := doguResource.GetObjectKey()
 		key.Name = doguResource.GetReservedPVCName()
-		client.On("Get", context.Background(), key, &v1.PersistentVolumeClaim{}).Return(nil)
+		client.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
+		client.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
@@ -439,7 +481,35 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to generate pvc")
 	})
+
+	t.Run("fail when create a dogu reserved pvc", func(t *testing.T) {
+		// given
+		doguResource := readLdapDoguResource(t)
+		dogu := readLdapDogu(t)
+
+		client := external.NewClient(t)
+
+		key := doguResource.GetObjectKey()
+		key.Name = doguResource.GetReservedPVCName()
+		client.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
+		client.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(assert.AnError)
+
+		generator := mocks.NewDoguResourceGenerator(t)
+		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
+		upserter := upserter{
+			client:    client,
+			generator: generator,
+		}
+
+		// when
+		_, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+	})
+
 	t.Run("fail when upserting a dogu pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
@@ -449,7 +519,8 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		key := doguResource.GetObjectKey()
 		key.Name = doguResource.GetReservedPVCName()
-		client.On("Get", context.Background(), key, &v1.PersistentVolumeClaim{}).Return(nil)
+		client.On("Get", context.Background(), key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
+		client.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
 		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
@@ -489,6 +560,40 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expectedDoguPVC, actualDoguPVC)
 	})
+
+	t.Run("success when upserting a new dogu pvc when an old pvc is terminating", func(t *testing.T) {
+		// given
+		doguResource := readLdapDoguResource(t)
+		dogu := readLdapDogu(t)
+		var reservedPvc *v1.PersistentVolumeClaim
+		now := metav1.Now()
+		reservedPvc = readLdapDoguExpectedDoguPVC(t)
+		reservedPvc.DeletionTimestamp = &now
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource, reservedPvc).Build()
+		timer := time.NewTimer(time.Second * 5)
+		go func() {
+			<-timer.C
+			err := client.Delete(context.Background(), reservedPvc)
+			require.NoError(t, err)
+		}()
+
+		generator := mocks.NewDoguResourceGenerator(t)
+		expectedDoguPVC := readLdapDoguExpectedDoguPVC(t)
+		generator.On("CreateDoguPVC", doguResource).Return(expectedDoguPVC, nil)
+		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
+		upserter := upserter{
+			client:    client,
+			generator: generator,
+		}
+
+		// when
+		actualDoguPVC, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, expectedDoguPVC, actualDoguPVC)
+	})
+
 	t.Run("success when only creating reserved pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
