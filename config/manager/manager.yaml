@@ -30,9 +30,11 @@ spec:
         - name: docker-registry-cert
           secret:
             secretName: docker-registry-cert
+            optional: true
         - name: dogu-registry-cert
           secret:
             secretName: dogu-registry-cert
+            optional: true
       containers:
       - args:
         - --leader-elect
