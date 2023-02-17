@@ -87,7 +87,7 @@ dogu:
 
 ### Replace dogu operator in Nexus
 
-Attention this step is no longer necessary if the implementation for using self-signed certificates
+Attention: This step is no longer necessary if the implementation for using self-signed certificates
 in the dogu operator has been released!
 
 Replace Dogu operator yaml in Nexus:
