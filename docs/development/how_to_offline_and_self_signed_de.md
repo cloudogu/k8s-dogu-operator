@@ -135,7 +135,7 @@ kubectl --namespace ecosystem create secret generic docker-registry-cert --from-
 kubectl --namespace ecosystem create secret generic dogu-registry-cert --from-file=dogu-registry-cert.pem=cert.pem
 ```
 
-- `k8s-dogu-operator-dogu-registry` und `k8s-dogu-operator-docker-registry` löschen
+- Die Secrets `k8s-dogu-operator-dogu-registry` und `k8s-dogu-operator-docker-registry` löschen
 
 ```bash
 kubectl --namespace ecosystem create secret generic k8s-dogu-operator-dogu-registry \
