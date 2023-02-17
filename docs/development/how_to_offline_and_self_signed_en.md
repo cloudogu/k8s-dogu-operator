@@ -130,7 +130,7 @@ configs:
       ca_file: /etc/ssl/certs/cert.pem
 ```
 
-### Konfiguration certificate and registries
+### Configuration certificate and registries
 
 ```bash
 kubectl --namespace ecosystem create secret generic docker-registry-cert --from-file=docker-registry-cert.pem=cert.pem
