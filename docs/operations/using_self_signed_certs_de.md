@@ -9,7 +9,7 @@ kubectl --namespace <cesNamespace> create secret generic dogu-registry-cert --fr
 ```
 
 Bei einem Neustart des Controllers werden die Zertifikate nach `/etc/ssl/certs/<cert_name>.pem` gemountet und sind
-für verwendeten Http-Funktionen des Controllers verfügbar.
+für verwendeten Https-Funktionen des Controllers verfügbar.
 
 Zusätzlich muss das Zertifikat der Docker-Registry auf allen Nodes des Clusters verteilt werden, damit Kubernetes Images pullen kann.
 Dies kann von Distribution zu Distribution unterschiedlich sein.
