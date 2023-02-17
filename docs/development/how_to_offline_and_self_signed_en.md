@@ -155,7 +155,7 @@ kubectl --namespace ecosystem create secret docker-registry k8s-dogu-operator-do
  --docker-password="ces-admin"
 ```
 
-### Setup refresh
+### Update setup configuration
 
 - Setup-Config:
 ```yaml
