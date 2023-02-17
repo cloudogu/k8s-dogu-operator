@@ -2,7 +2,6 @@
 
 Dieses Dokument beschreibt stichwortartig, wie das k8s-Ecosystem mit einer lokalen Docker- und Dogu-Registry aufgesetzt
 werden kann. Bei der Verwendung ist zu beachten, dass die verwendete FQDN, Credentials des Ecosystems und die Dogu- bzw. Komponenten-Versionen
-aktuell gehalten werden.
 
 ## Aufsetzen der Dogu- und Dockerregistry
 - Ecosystem aufsetzen mit Nexus-Dogu
