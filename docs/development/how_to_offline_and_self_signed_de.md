@@ -80,6 +80,7 @@ dogu:
 ```
 
 - `go run . sync dogu auth`
+- `go run . sync dogu`
 - `go run . sync k8s`
 
 
