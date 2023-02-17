@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Add optional volume mount for selfsigned cert of the dogu registry; #38
+- Add optional volume mounts for selfsigned certs of the docker and dogu registries; #81
 
 ## [v0.24.0] - 2023-02-08
 ### Added
