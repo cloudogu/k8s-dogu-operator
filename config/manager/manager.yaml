@@ -26,9 +26,25 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+      volumes:
+        - name: docker-registry-cert
+          secret:
+            secretName: docker-registry-cert
+            optional: true
+        - name: dogu-registry-cert
+          secret:
+            secretName: dogu-registry-cert
+            optional: true
       containers:
       - args:
         - --leader-elect
+        volumeMounts:
+          - name: dogu-registry-cert
+            mountPath: /etc/ssl/certs/dogu-registry-cert.pem
+            subPath: "dogu-registry-cert.pem"
+          - name: docker-registry-cert
+            mountPath: /etc/ssl/certs/docker-registry-cert.pem
+            subPath: "docker-registry-cert.pem"
         env:
           - name: STAGE
             value: "production"
