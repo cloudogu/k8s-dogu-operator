@@ -133,6 +133,7 @@ configs:
 
 ```bash
 kubectl --namespace ecosystem create secret generic docker-registry-cert --from-file=docker-registry-cert.pem=cert.pem
+kubectl --namespace ecosystem create secret generic dogu-registry-cert --from-file=dogu-registry-cert.pem=cert.pem
 ```
 
 - Delete secrets `k8s-dogu-operator-dogu-registry` and `k8s-dogu-operator-docker-registry`
