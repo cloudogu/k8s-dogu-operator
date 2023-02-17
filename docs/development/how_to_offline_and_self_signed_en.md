@@ -1,6 +1,6 @@
 # Offline use of the k8s CES with self-signed certificates.
 
-This document describes in keywords how to set up the k8s ecosystem with a local Docker and Dogu registry.
+This document gives a brief summary on how to set up the k8s ecosystem with a local Docker and Dogu registry.
 When using it, make sure that the used FQDN, credentials of the ecosystem and the Dogu or component versions are
 kept up to date.
 
