@@ -84,22 +84,6 @@ dogu:
 - `go run . sync k8s`
 
 
-### Dogu-Operator in Nexus ersetzen
-
-Achtung dieser Schritt ist nicht mehr notwendig, wenn die Implementierung zur Verwendung von selbst signierten Zertifikaten
-im Dogu-Operator released wurde!
-
-Dogu-Operator yaml in Nexus ersetzen:
-- Image-Tag im Makefile ändern: IMAGE_DEV=192.168.56.10/cloudogu/${ARTIFACT_ID}:${VERSION}
-- `make k8s-generate`
-
-Nexus -> browse -> k8s:
-- delete k8s-dogu-operator/0.24.0
-Upload Component:
-- file: target/k8s-dogu-operator_0.24.0.yaml
-- filename: 0.24.0
-- directory: k8s/k8s-dogu-operator
-
 ## Vorbereitung k8s-Ecosystem
 
 ### K3S
@@ -171,7 +155,7 @@ metadata:
 data:
   k8s-ces-setup.yaml: |
     log_level: "DEBUG"
-    dogu_operator_url: https://192.168.56.10/nexus/repository/k8s/k8s/k8s-dogu-operator/0.24.0
+    dogu_operator_url: https://192.168.56.10/nexus/repository/k8s/k8s/k8s-dogu-operator/0.25.0
     service_discovery_url: https://192.168.56.10/nexus/repository/k8s/k8s/k8s-service-discovery/0.9.0
     etcd_server_url: https://raw.githubusercontent.com/cloudogu/k8s-etcd/develop/manifests/etcd.yaml
     etcd_client_image_repo: bitnami/etcd:3.5.2-debian-10-r0
