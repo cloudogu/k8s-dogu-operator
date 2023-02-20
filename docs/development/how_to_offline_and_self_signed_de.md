@@ -90,7 +90,7 @@ dogu:
 
 -  setup.json in `k8s-ecosystem` auf completed `false` setzen
 - `vagrant up`
-- Zertifikat von Ecosystem `etcdctl get config/_global/certificate/servert.crt` in `k8s-ecosystem/cert.pem` speichern
+- Zertifikat von Ecosystem `etcdctl get config/_global/certificate/server.crt` in `k8s-ecosystem/cert.pem` speichern
 - Zertifikat auf Maschinen verteilen (für k3s):
   - `vagrant ssh main`
   - `sudo cp /vagrant/cert.pem /etc/ssl/certs/cert.pem`

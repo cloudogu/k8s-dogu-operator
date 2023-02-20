@@ -91,7 +91,7 @@ dogu:
 
 - Configure setup.json in `k8s-ecosystem` that any completed is `false`
 - `vagrant up`
-- Save the certificate from the ecosystem `etcdctl get config/_global/certificate/servert.crt` in `k8s-ecosystem/cert.pem`
+- Save the certificate from the ecosystem `etcdctl get config/_global/certificate/server.crt` in `k8s-ecosystem/cert.pem`
 - Certificate distribution:
     - `vagrant ssh main`
     - `sudo cp /vagrant/cert.pem /etc/ssl/certs/cert.pem`
