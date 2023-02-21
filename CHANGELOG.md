@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - [#79] Fix a bug where an installation failed if old pvcs stuck with terminating status. 
 
+## [v0.25.0] - 2023-02-17
+### Added
+- Add optional volume mounts for selfsigned certs of the docker and dogu registries; #81
+
 ## [v0.24.0] - 2023-02-08
 ### Added
 - [#78] Add a no spam filter to process every event thrown by the controller.
