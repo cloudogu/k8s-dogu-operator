@@ -136,8 +136,8 @@ func (c *CesDoguRegistrator) registerNewKeys(ctx context.Context, doguResource *
 		return c.writeKeyPair(ctx, doguResource, dogu, keyPair)
 	}
 
-	existingPrivateKey := secret.StringData["private.pem"]
-	keyPair, err := keyProvider.FromPrivateKey([]byte(existingPrivateKey))
+	existingPrivateKey := secret.Data["private.pem"]
+	keyPair, err := keyProvider.FromPrivateKey(existingPrivateKey)
 	if err != nil {
 		return fmt.Errorf("failed to create keypair from existing private key: %w", err)
 	}
