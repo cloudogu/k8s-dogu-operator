@@ -269,7 +269,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to get secret for dogu ldap")
+		assert.ErrorContains(t, err, "failed to get private key secret for dogu ldap")
 	})
 
 	t.Run("failed to write public key from existing private key", func(t *testing.T) {

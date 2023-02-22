@@ -122,7 +122,7 @@ func (c *CesDoguRegistrator) registerNewKeys(ctx context.Context, doguResource *
 		return err
 	}
 
-	secret, err := doguResource.GetSecret(ctx, c.client)
+	secret, err := doguResource.GetPrivateKeySecret(ctx, c.client)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}

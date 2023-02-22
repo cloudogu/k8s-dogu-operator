@@ -257,12 +257,12 @@ func (d *Dogu) GetDataVolumeSize() resource.Quantity {
 	return doguTargetDataVolumeSize
 }
 
-// GetSecret returns the private key secret for this dogu.
-func (d *Dogu) GetSecret(ctx context.Context, cli client.Client) (*corev1.Secret, error) {
+// GetPrivateKeySecret returns the private key secret for this dogu.
+func (d *Dogu) GetPrivateKeySecret(ctx context.Context, cli client.Client) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
 	err := cli.Get(ctx, d.GetPrivateKeyObjectKey(), secret)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get secret for dogu %s: %w", d.Name, err)
+		return nil, fmt.Errorf("failed to get private key secret for dogu %s: %w", d.Name, err)
 	}
 
 	return secret, nil

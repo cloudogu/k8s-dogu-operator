@@ -193,6 +193,16 @@ func TestDogu_GetDevelopmentDoguMapKey(t *testing.T) {
 	assert.Equal(t, expectedKey, actual)
 }
 
+func TestDogu_GetPrivateKeyObjectKey(t *testing.T) {
+	actual := testDogu.GetPrivateKeyObjectKey()
+
+	expectedKey := client.ObjectKey{
+		Namespace: "ecosystem",
+		Name:      "dogu-private",
+	}
+	assert.Equal(t, expectedKey, actual)
+}
+
 func TestCesMatchingLabels_Add(t *testing.T) {
 	t.Run("should add to empty object", func(t *testing.T) {
 		input := v1.CesMatchingLabels{"key": "value"}
@@ -355,4 +365,34 @@ func getTestScheme() *runtime.Scheme {
 	}, &corev1.PodList{})
 
 	return scheme
+}
+
+func TestDogu_GetPrivateKeySecret(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		expected := &corev1.Secret{
+			TypeMeta:   metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{Name: "dogu-private", Namespace: "ecosystem"},
+		}
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(expected).Build()
+
+		// when
+		secret, err := testDogu.GetPrivateKeySecret(context.TODO(), fakeClient)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, expected, secret)
+	})
+
+	t.Run("fail to get private key secret", func(t *testing.T) {
+		// given
+		fakeClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+
+		// when
+		_, err := testDogu.GetPrivateKeySecret(context.TODO(), fakeClient)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get private key secret for dogu")
+	})
 }
