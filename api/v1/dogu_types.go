@@ -132,8 +132,8 @@ func (d *Dogu) GetDataVolumeName() string {
 	return d.Name + "-data"
 }
 
-// GetPrivateVolumeName returns the private volume name for the dogu resource
-func (d *Dogu) GetPrivateVolumeName() string {
+// GetPrivateKeySecretName returns the private volume name for the dogu resource
+func (d *Dogu) GetPrivateKeySecretName() string {
 	return d.Name + "-private"
 }
 
@@ -169,6 +169,14 @@ func (d *Dogu) GetSecretObjectKey() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: d.Namespace,
 		Name:      d.Name + "-secrets",
+	}
+}
+
+// GetPrivateKeyObjectKey returns the object key for the secret containing the private key for the dogu.
+func (d *Dogu) GetPrivateKeyObjectKey() client.ObjectKey {
+	return client.ObjectKey{
+		Name:      d.GetPrivateKeySecretName(),
+		Namespace: d.Namespace,
 	}
 }
 
@@ -247,6 +255,17 @@ func (d *Dogu) GetDataVolumeSize() resource.Quantity {
 	}
 
 	return doguTargetDataVolumeSize
+}
+
+// GetSecret returns the private key secret for this dogu.
+func (d *Dogu) GetSecret(ctx context.Context, cli client.Client) (*corev1.Secret, error) {
+	secret := &corev1.Secret{}
+	err := cli.Get(ctx, d.GetPrivateKeyObjectKey(), secret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret for dogu %s: %w", d.Name, err)
+	}
+
+	return secret, nil
 }
 
 // +kubebuilder:object:root=true

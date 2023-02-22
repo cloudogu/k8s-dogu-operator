@@ -166,7 +166,7 @@ func TestDogu_GetDataVolumeName(t *testing.T) {
 }
 
 func TestDogu_GetPrivateVolumeName(t *testing.T) {
-	actual := testDogu.GetPrivateVolumeName()
+	actual := testDogu.GetPrivateKeySecretName()
 
 	assert.Equal(t, "dogu-private", actual)
 }
