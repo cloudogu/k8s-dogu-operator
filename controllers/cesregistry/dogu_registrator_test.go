@@ -19,6 +19,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
+//go:embed testdata/examplePrivateKey
+var privateKeyBytes []byte
+
 func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 	ctx := context.TODO()
 	scheme := getTestScheme()
@@ -234,10 +237,9 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		registryMock.On("GlobalConfig").Return(globalConfigMock)
 		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 
-		privateKey := "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAwp063ZghmURQMUQCy10FQyYvLW7GXvPtKyQv4Ts/0qz9V1S2\ngvT0zvQ6zBiFEDeiebGyA88Uk09ts18f7tt2o9JiZo5wi6MjEstTBmFlvtii9+9j\nkRKlEHaaZI7ethZmBdmxBRfX2lJijj+RVmQd9IexZ1FkoCQS2ChybmAAD/XfjNWR\nGxOykNAoDmPy0wswE39yl9YJjOR5MKJgIAsOf/uNjVud+6iOklPaWsZTxU1rknL8\na9BQzcf/xiciLubdJL5933b+HpLz/OJzonNgZ1aLguWXMFdhhaxOjOAuAi8Kvs1U\nPTslJ5F+mJVGBrl9IEghGSDFARwiyREWZA7WPQIDAQABAoIBAQC8wuArurkr/bSC\ndGL5eRn3jXvI518FDjcF1y2RmnRHFX8MS6BS2ODyMrUs7MNzfWLcAlyVkS91yl6u\n0h8ZAEjMkOzcaGAFMJB+VDQNRj73oww+yzSZq6nqk/8gderSVltSZVlrhTraCXqK\nWmHPl3/uhAawHaQqJ5MXkfOb1wV4c+JQqLOStR0rFwitReKalZp/g6KxfUnyrUox\nAXsm1MU1YRCTgPTA9b8RbsRsqFwCKqABm1w/Jo9qKGXrIBm2av5XTX2cfpYTbm1C\nCG8LEQA7yaByxroBaPyczDAAlypU+wSVM3cW3+ABacDYAKPAHiAZaEsBIDxPpwUg\nEQsz9dpJAoGBAPP8rt6OxEWM/LGnKYGjZ2m4weg8OWjypGbTkBplXIuGkCaSw8GJ\nKhGEre4u5CIaf1Otdcle7H/QsW85F0gKzuIiPCuTuR+Rk9eBEDSi7FaRLPpYV7yD\nhQbRroRYFkU4xYSz81Pj0vG5dCYp3z72co0sw4XwFBjKJkmN8OxFEhOzAoGBAMwy\nOu4CehFHsYVysiBQ2R3AKePv0zEN4q7W6CmFS8UWBTi1+k/MPJXhhozlSBs/w8Ah\nYpmAyNrzBUd1Dx+y18YpiM0/7LykB90l+fN2xJYrRq79qTZsuiJMJeHuloZyg3YT\nxqD7LiGwTOgtG7XKFvJvFyRjpmGc/aytLarB4TZPAoGAcejFp4hV3/bLvxFBEpI8\nZKJqfUcosnOeB5e8TmaGR2nCgQ/CLugf6N/d6DaiMb3XNjTkqegUWDQRstCfqvXI\n0tCS8PFd23w23sUV0M1Ds8LBkfuOsqdggueAJ6+MbjLsHGF7N+5EfLBNpsejv5yF\nrJ16h1yntU8jgvGuylAQ+XsCgYEAvx9gsveUg2oESXCiMscZgNQlIViO5sIlYxp5\ncKt30P+cYYlKwbfbGTpesq/EPuT+9m0JGb5FwVFnpot1XWkKt0qW5e2oSqSJS7/I\n5M1MkXXuEcoQwIUh7woxBvhG4Y57Z2B5MKIJerTGNyZJYmzF76J1GbU/vOuxMBdj\nwAj6H9cCgYEA3kkXC2DlS69Z14CmUVlHbTLpKAEDbBXuiyAqSwRzyQLOn1JE4vL0\nGZZ2DKJ9pYxb0VWaMDJcJm3ppcZPD/N0QqgoBIlEVp60dBgFvHYf7iuCAR8otX20\n69LCVRuY9dbz/I19eb9IT1eX8mhb6i73zjA5Ri9PF7z2epvEU2Lny5g=\n-----END RSA PRIVATE KEY-----\n"
 		existingSecret := &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"},
-			Data:       map[string][]byte{"private.pem": []byte(privateKey)},
+			Data:       map[string][]byte{"private.pem": privateKeyBytes},
 		}
 
 		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingSecret).Build()
@@ -286,10 +288,9 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		registryMock.On("GlobalConfig").Return(globalConfigMock)
 		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
 
-		privateKey := "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAwp063ZghmURQMUQCy10FQyYvLW7GXvPtKyQv4Ts/0qz9V1S2\ngvT0zvQ6zBiFEDeiebGyA88Uk09ts18f7tt2o9JiZo5wi6MjEstTBmFlvtii9+9j\nkRKlEHaaZI7ethZmBdmxBRfX2lJijj+RVmQd9IexZ1FkoCQS2ChybmAAD/XfjNWR\nGxOykNAoDmPy0wswE39yl9YJjOR5MKJgIAsOf/uNjVud+6iOklPaWsZTxU1rknL8\na9BQzcf/xiciLubdJL5933b+HpLz/OJzonNgZ1aLguWXMFdhhaxOjOAuAi8Kvs1U\nPTslJ5F+mJVGBrl9IEghGSDFARwiyREWZA7WPQIDAQABAoIBAQC8wuArurkr/bSC\ndGL5eRn3jXvI518FDjcF1y2RmnRHFX8MS6BS2ODyMrUs7MNzfWLcAlyVkS91yl6u\n0h8ZAEjMkOzcaGAFMJB+VDQNRj73oww+yzSZq6nqk/8gderSVltSZVlrhTraCXqK\nWmHPl3/uhAawHaQqJ5MXkfOb1wV4c+JQqLOStR0rFwitReKalZp/g6KxfUnyrUox\nAXsm1MU1YRCTgPTA9b8RbsRsqFwCKqABm1w/Jo9qKGXrIBm2av5XTX2cfpYTbm1C\nCG8LEQA7yaByxroBaPyczDAAlypU+wSVM3cW3+ABacDYAKPAHiAZaEsBIDxPpwUg\nEQsz9dpJAoGBAPP8rt6OxEWM/LGnKYGjZ2m4weg8OWjypGbTkBplXIuGkCaSw8GJ\nKhGEre4u5CIaf1Otdcle7H/QsW85F0gKzuIiPCuTuR+Rk9eBEDSi7FaRLPpYV7yD\nhQbRroRYFkU4xYSz81Pj0vG5dCYp3z72co0sw4XwFBjKJkmN8OxFEhOzAoGBAMwy\nOu4CehFHsYVysiBQ2R3AKePv0zEN4q7W6CmFS8UWBTi1+k/MPJXhhozlSBs/w8Ah\nYpmAyNrzBUd1Dx+y18YpiM0/7LykB90l+fN2xJYrRq79qTZsuiJMJeHuloZyg3YT\nxqD7LiGwTOgtG7XKFvJvFyRjpmGc/aytLarB4TZPAoGAcejFp4hV3/bLvxFBEpI8\nZKJqfUcosnOeB5e8TmaGR2nCgQ/CLugf6N/d6DaiMb3XNjTkqegUWDQRstCfqvXI\n0tCS8PFd23w23sUV0M1Ds8LBkfuOsqdggueAJ6+MbjLsHGF7N+5EfLBNpsejv5yF\nrJ16h1yntU8jgvGuylAQ+XsCgYEAvx9gsveUg2oESXCiMscZgNQlIViO5sIlYxp5\ncKt30P+cYYlKwbfbGTpesq/EPuT+9m0JGb5FwVFnpot1XWkKt0qW5e2oSqSJS7/I\n5M1MkXXuEcoQwIUh7woxBvhG4Y57Z2B5MKIJerTGNyZJYmzF76J1GbU/vOuxMBdj\nwAj6H9cCgYEA3kkXC2DlS69Z14CmUVlHbTLpKAEDbBXuiyAqSwRzyQLOn1JE4vL0\nGZZ2DKJ9pYxb0VWaMDJcJm3ppcZPD/N0QqgoBIlEVp60dBgFvHYf7iuCAR8otX20\n69LCVRuY9dbz/I19eb9IT1eX8mhb6i73zjA5Ri9PF7z2epvEU2Lny5g=\n-----END RSA PRIVATE KEY-----\n"
 		existingSecret := &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"},
-			Data:       map[string][]byte{"private.pem": []byte(privateKey)},
+			Data:       map[string][]byte{"private.pem": privateKeyBytes},
 		}
 
 		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingSecret).Build()
@@ -344,7 +345,7 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to check if dogu is already installed and enabled")
 	})
 
-	t.Run("fail because the dogu is not enabled", func(t *testing.T) {
+	t.Run("fail because the dogu is not enabled an no current key exists in upgrade process", func(t *testing.T) {
 		// given
 		registryMock := cesmocks.NewRegistry(t)
 		doguRegistryMock := cesmocks.NewDoguRegistry(t)

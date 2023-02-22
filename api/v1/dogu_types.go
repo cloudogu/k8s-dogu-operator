@@ -132,7 +132,7 @@ func (d *Dogu) GetDataVolumeName() string {
 	return d.Name + "-data"
 }
 
-// GetPrivateKeySecretName returns the private volume name for the dogu resource
+// GetPrivateKeySecretName returns the name of the dogus secret resource.
 func (d *Dogu) GetPrivateKeySecretName() string {
 	return d.Name + "-private"
 }

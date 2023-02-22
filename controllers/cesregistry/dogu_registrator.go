@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -128,14 +129,13 @@ func (c *CesDoguRegistrator) registerNewKeys(ctx context.Context, doguResource *
 	}
 
 	if apierrors.IsNotFound(err) {
-		keyPair, err := keyProvider.Generate()
-		if err != nil {
-			return fmt.Errorf("failed to generate key pair: %w", err)
-		}
-
-		return c.writeKeyPair(ctx, doguResource, dogu, keyPair)
+		return c.createKeyPair(ctx, doguResource, dogu, keyProvider)
 	}
 
+	return c.recreatePubKey(secret, err, keyProvider, dogu)
+}
+
+func (c *CesDoguRegistrator) recreatePubKey(secret *corev1.Secret, err error, keyProvider *keys.KeyProvider, dogu *core.Dogu) error {
 	existingPrivateKey := secret.Data["private.pem"]
 	keyPair, err := keyProvider.FromPrivateKey(existingPrivateKey)
 	if err != nil {
@@ -148,6 +148,15 @@ func (c *CesDoguRegistrator) registerNewKeys(ctx context.Context, doguResource *
 	}
 
 	return nil
+}
+
+func (c *CesDoguRegistrator) createKeyPair(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, keyProvider *keys.KeyProvider) error {
+	keyPair, err := keyProvider.Generate()
+	if err != nil {
+		return fmt.Errorf("failed to generate key pair: %w", err)
+	}
+
+	return c.writeKeyPair(ctx, doguResource, dogu, keyPair)
 }
 
 func (c *CesDoguRegistrator) writeKeyPair(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, keyPair *keys.KeyPair) error {
