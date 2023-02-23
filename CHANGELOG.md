@@ -6,9 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.26.0] - 2023-02-23
+### Added
+- The dogu operator can now handle existing private dogu keys.
+### Changed
+- [#83] Stabilize the dogu registration process.
+  - Dogus only will be enabled last in the registration process to prevent faulty states in error cases.
+### Fixed
+- [#79] Fix a bug where an installation failed if old PVCs stuck with terminating status.
+
 ## [v0.25.0] - 2023-02-17
 ### Added
-- Add optional volume mounts for selfsigned certs of the docker and dogu registries; #81
+- [#81] Add optional volume mounts for selfsigned certs of the docker and dogu registries.
 
 ## [v0.24.0] - 2023-02-08
 ### Added

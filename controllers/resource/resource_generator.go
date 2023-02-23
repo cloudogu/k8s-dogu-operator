@@ -383,7 +383,7 @@ func (r *resourceGenerator) CreateDoguSecret(doguResource *k8sv1.Dogu, stringDat
 	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguResource.GetPrivateVolumeName(),
+			Name:      doguResource.GetPrivateKeySecretName(),
 			Namespace: doguResource.Namespace,
 			Labels:    appDoguLabels,
 		},

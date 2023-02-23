@@ -19,13 +19,15 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 )
 
+//go:embed testdata/examplePrivateKey
+var privateKeyBytes []byte
+
 func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 	ctx := context.TODO()
 	scheme := getTestScheme()
-	// fake k8sClient
-	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	ldapCr := &corev1.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "clusterns"},
 		Spec: corev1.DoguSpec{
 			Name:    "official/ldap",
 			Version: "1.0.0",
@@ -38,20 +40,21 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 	t.Run("successfully register a dogu", func(t *testing.T) {
 		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguConfigMock := &cesmocks.ConfigurationContext{}
-		globalConfigMock := &cesmocks.ConfigurationContext{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
-		doguRegistryMock.Mock.On("Register", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("Enable", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(false, nil)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
-		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
-		doguResourceGenerator.Mock.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
-		globalConfigMock.Mock.On("Get", "key_provider").Return("", nil)
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguConfigMock := cesmocks.NewConfigurationContext(t)
+		globalConfigMock := cesmocks.NewConfigurationContext(t)
+		doguResourceGenerator := mocks.NewSecretResourceGenerator(t)
+		doguConfigMock.On("Set", "public.pem", mock.Anything).Return(nil)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		doguRegistryMock.On("Enable", ldapDogu).Return(nil)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+		registryMock.On("GlobalConfig").Return(globalConfigMock)
+		doguResourceGenerator.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
+		globalConfigMock.On("Get", "key_provider").Return("", nil)
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -59,16 +62,16 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
 	})
 
 	t.Run("fail to check if dogu is already registered", func(t *testing.T) {
 		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(false, assert.AnError)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguResourceGenerator := mocks.NewSecretResourceGenerator(t)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, assert.AnError)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -78,16 +81,16 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to check if dogu is already installed and enabled")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 
 	t.Run("skip registration because dogu is already registered", func(t *testing.T) {
 		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(true, nil)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguResourceGenerator := mocks.NewSecretResourceGenerator(t)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(true, nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -95,17 +98,17 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 
 	t.Run("fail to register dogu", func(t *testing.T) {
 		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguRegistryMock.Mock.On("Register", ldapDogu).Return(assert.AnError)
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(false, nil)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguResourceGenerator := mocks.NewSecretResourceGenerator(t)
+		doguRegistryMock.On("Register", ldapDogu).Return(assert.AnError)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -115,42 +118,20 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to register dogu")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
-	})
-
-	t.Run("fail to enable dogu", func(t *testing.T) {
-		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguRegistryMock.Mock.On("Register", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(false, nil)
-		doguRegistryMock.Mock.On("Enable", ldapDogu).Return(assert.AnError)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
-
-		// when
-		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to enable dogu")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 
 	t.Run("fail get key_provider", func(t *testing.T) {
 		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		globalConfigMock := &cesmocks.ConfigurationContext{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguRegistryMock.Mock.On("Register", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("Enable", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(false, nil)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
-		globalConfigMock.Mock.On("Get", "key_provider").Return("", assert.AnError)
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		globalConfigMock := cesmocks.NewConfigurationContext(t)
+		doguResourceGenerator := mocks.NewSecretResourceGenerator(t)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.On("GlobalConfig").Return(globalConfigMock)
+		globalConfigMock.On("Get", "key_provider").Return("", assert.AnError)
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -160,24 +141,24 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to get key provider")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, globalConfigMock)
 	})
 
 	t.Run("fail to write public key", func(t *testing.T) {
 		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguConfigMock := &cesmocks.ConfigurationContext{}
-		globalConfigMock := &cesmocks.ConfigurationContext{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(assert.AnError)
-		doguRegistryMock.Mock.On("Register", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("Enable", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(false, nil)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
-		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
-		globalConfigMock.Mock.On("Get", "key_provider").Return("", nil)
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguConfigMock := cesmocks.NewConfigurationContext(t)
+		globalConfigMock := cesmocks.NewConfigurationContext(t)
+		doguResourceGenerator := mocks.NewSecretResourceGenerator(t)
+		doguConfigMock.On("Set", "public.pem", mock.Anything).Return(assert.AnError)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+		registryMock.On("GlobalConfig").Return(globalConfigMock)
+		globalConfigMock.On("Get", "key_provider").Return("", nil)
+		doguResourceGenerator.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
+		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -187,27 +168,21 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to write")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
 	})
 
 	t.Run("fail generate secret", func(t *testing.T) {
 		// given
-		scheme := runtime.NewScheme()
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguConfigMock := &cesmocks.ConfigurationContext{}
-		globalConfigMock := &cesmocks.ConfigurationContext{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
-		doguRegistryMock.Mock.On("Register", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("Enable", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(false, nil)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
-		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
-		globalConfigMock.Mock.On("Get", "key_provider").Return("", nil)
-		doguResourceGenerator.Mock.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		globalConfigMock := cesmocks.NewConfigurationContext(t)
+		doguResourceGenerator := mocks.NewSecretResourceGenerator(t)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.On("GlobalConfig").Return(globalConfigMock)
+		globalConfigMock.On("Get", "key_provider").Return("", nil)
+		doguResourceGenerator.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -217,27 +192,25 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to generate secret")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
 	})
 
-	t.Run("fail create secret", func(t *testing.T) {
+	t.Run("fail to enable dogu", func(t *testing.T) {
 		// given
-		scheme := runtime.NewScheme()
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguConfigMock := cesmocks.NewConfigurationContext(t)
+		doguResourceGenerator := mocks.NewSecretResourceGenerator(t)
+		globalConfigMock := cesmocks.NewConfigurationContext(t)
+		doguConfigMock.On("Set", "public.pem", mock.Anything).Return(nil)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		doguRegistryMock.On("Enable", ldapDogu).Return(assert.AnError)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+		registryMock.On("GlobalConfig").Return(globalConfigMock)
+		globalConfigMock.On("Get", "key_provider").Return("", nil)
+		doguResourceGenerator.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguConfigMock := &cesmocks.ConfigurationContext{}
-		globalConfigMock := &cesmocks.ConfigurationContext{}
-		doguResourceGenerator := &mocks.SecretResourceGenerator{}
-		doguConfigMock.Mock.On("Set", mock.Anything, mock.Anything).Return(nil)
-		doguRegistryMock.Mock.On("Register", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("Enable", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(false, nil)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
-		registryMock.Mock.On("GlobalConfig").Return(globalConfigMock)
-		globalConfigMock.Mock.On("Get", "key_provider").Return("", nil)
-		doguResourceGenerator.Mock.On("CreateDoguSecret", mock.Anything, mock.Anything).Return(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"}}, nil)
 		registrator := NewCESDoguRegistrator(client, registryMock, doguResourceGenerator)
 
 		// when
@@ -245,8 +218,90 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to create secret")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to enable dogu")
+	})
+
+	t.Run("success with existing private key", func(t *testing.T) {
+		// given
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		globalConfigMock := cesmocks.NewConfigurationContext(t)
+		doguConfigMock := cesmocks.NewConfigurationContext(t)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		globalConfigMock.On("Get", "key_provider").Return("", nil)
+		doguConfigMock.On("Set", "public.pem", mock.Anything).Return(nil)
+		doguRegistryMock.On("Enable", ldapDogu).Return(nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.On("GlobalConfig").Return(globalConfigMock)
+		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+
+		existingSecret := &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"},
+			Data:       map[string][]byte{"private.pem": privateKeyBytes},
+		}
+
+		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingSecret).Build()
+		registrator := NewCESDoguRegistrator(client, registryMock, nil)
+
+		// when
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("fail to get existing private key secret", func(t *testing.T) {
+		// given
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		globalConfigMock := cesmocks.NewConfigurationContext(t)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		globalConfigMock.On("Get", "key_provider").Return("", nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.On("GlobalConfig").Return(globalConfigMock)
+
+		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).WithObjects().Build()
+		registrator := NewCESDoguRegistrator(client, registryMock, nil)
+
+		// when
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get private key secret for dogu ldap")
+	})
+
+	t.Run("failed to write public key from existing private key", func(t *testing.T) {
+		// given
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		globalConfigMock := cesmocks.NewConfigurationContext(t)
+		doguConfigMock := cesmocks.NewConfigurationContext(t)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		globalConfigMock.On("Get", "key_provider").Return("", nil)
+		doguConfigMock.On("Set", "public.pem", mock.Anything).Return(assert.AnError)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock.On("GlobalConfig").Return(globalConfigMock)
+		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+
+		existingSecret := &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "ldap-private", Namespace: "clusterns"},
+			Data:       map[string][]byte{"private.pem": privateKeyBytes},
+		}
+
+		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingSecret).Build()
+		registrator := NewCESDoguRegistrator(client, registryMock, nil)
+
+		// when
+		err := registrator.RegisterNewDogu(ctx, ldapCr, ldapDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to write public key from existing private key")
 	})
 }
 
@@ -258,14 +313,12 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 
 	t.Run("successfully register a new dogu version", func(t *testing.T) {
 		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguConfigMock := &cesmocks.ConfigurationContext{}
-		globalConfigMock := &cesmocks.ConfigurationContext{}
-		doguRegistryMock.Mock.On("Register", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("Enable", ldapDogu).Return(nil)
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(true, nil)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguRegistryMock.On("Register", ldapDogu).Return(nil)
+		doguRegistryMock.On("Enable", ldapDogu).Return(nil)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(true, nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
 		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
 
 		// when
@@ -273,15 +326,14 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock, globalConfigMock)
 	})
 
 	t.Run("fail to check if dogu is already registered", func(t *testing.T) {
 		// given
-		registryMock := &cesmocks.Registry{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		doguRegistryMock.Mock.On("IsEnabled", "ldap").Return(true, assert.AnError)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(true, assert.AnError)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
 		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
 
 		// when
@@ -291,7 +343,39 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to check if dogu is already installed and enabled")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
+	})
+
+	t.Run("fail because the dogu is not enabled an no current key exists in upgrade process", func(t *testing.T) {
+		// given
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(false, nil)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
+
+		// when
+		err := registrator.RegisterDoguVersion(ldapDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "could not register dogu version: previous version not found")
+	})
+
+	t.Run("fail because the dogu cant be registered", func(t *testing.T) {
+		// given
+		registryMock := cesmocks.NewRegistry(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		doguRegistryMock.On("IsEnabled", "ldap").Return(true, nil)
+		doguRegistryMock.On("Register", ldapDogu).Return(assert.AnError)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
+
+		// when
+		err := registrator.RegisterDoguVersion(ldapDogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to register dogu ldap")
 	})
 }
 
@@ -300,13 +384,13 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		// given
 		scheme := runtime.NewScheme()
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		registryMock := &cesmocks.Registry{}
-		doguConfigMock := &cesmocks.ConfigurationContext{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		doguConfigMock.Mock.On("RemoveAll").Return(nil)
-		doguRegistryMock.Mock.On("Unregister", "ldap").Return(nil)
+		registryMock := cesmocks.NewRegistry(t)
+		doguConfigMock := cesmocks.NewConfigurationContext(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		doguConfigMock.On("RemoveAll").Return(nil)
+		doguRegistryMock.On("Unregister", "ldap").Return(nil)
 		registrator := NewCESDoguRegistrator(client, registryMock, &mocks.SecretResourceGenerator{})
 
 		// when
@@ -314,19 +398,18 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock)
 	})
 
 	t.Run("failed to remove dogu config", func(t *testing.T) {
 		// given
 		scheme := runtime.NewScheme()
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		registryMock := &cesmocks.Registry{}
-		doguConfigMock := &cesmocks.ConfigurationContext{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		doguConfigMock.Mock.On("RemoveAll").Return(assert.AnError)
+		registryMock := cesmocks.NewRegistry(t)
+		doguConfigMock := cesmocks.NewConfigurationContext(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		doguConfigMock.On("RemoveAll").Return(assert.AnError)
 		registrator := NewCESDoguRegistrator(client, registryMock, &mocks.SecretResourceGenerator{})
 
 		// when
@@ -336,20 +419,19 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to remove dogu config")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 
 	t.Run("failed to unregister dogu", func(t *testing.T) {
 		// given
 		scheme := runtime.NewScheme()
 		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		registryMock := &cesmocks.Registry{}
-		doguConfigMock := &cesmocks.ConfigurationContext{}
-		doguRegistryMock := &cesmocks.DoguRegistry{}
-		registryMock.Mock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
-		registryMock.Mock.On("DoguRegistry").Return(doguRegistryMock)
-		doguConfigMock.Mock.On("RemoveAll").Return(nil)
-		doguRegistryMock.Mock.On("Unregister", "ldap").Return(assert.AnError)
+		registryMock := cesmocks.NewRegistry(t)
+		doguConfigMock := cesmocks.NewConfigurationContext(t)
+		doguRegistryMock := cesmocks.NewDoguRegistry(t)
+		registryMock.On("DoguConfig", mock.Anything).Return(doguConfigMock)
+		registryMock.On("DoguRegistry").Return(doguRegistryMock)
+		doguConfigMock.On("RemoveAll").Return(nil)
+		doguRegistryMock.On("Unregister", "ldap").Return(assert.AnError)
 		registrator := NewCESDoguRegistrator(client, registryMock, &mocks.SecretResourceGenerator{})
 
 		// when
@@ -359,6 +441,5 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to unregister dogu")
-		mock.AssertExpectationsForObjects(t, registryMock, doguRegistryMock, doguConfigMock)
 	})
 }

@@ -485,6 +485,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 			managerWithMocks.resourceUpserter.On("UpsertDoguService", ctx, ldapCr, imageConfig).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguExposedServices", ctx, ldapCr, ldapDogu).Once().Return(nil, nil)
+			managerWithMocks.resourceUpserter.On("UpsertDoguPVCs", ctx, ldapCr, ldapDogu).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguDeployment", ctx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, assert.AnError)
 
 			// when
@@ -581,7 +582,6 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			execPod.On("Delete", testCtx).Return(nil)
 			managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
-			managerWithMocks.resourceUpserter.On("UpsertDoguDeployment", ctx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguService", ctx, ldapCr, imageConfig).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguExposedServices", ctx, ldapCr, ldapDogu).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguPVCs", ctx, ldapCr, ldapDogu).Once().Return(nil, assert.AnError)

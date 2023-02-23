@@ -1,8 +1,6 @@
 # Build the manager binary
 FROM golang:1.18 as builder
 
-ENV GOPRIVATE=github.com/cloudogu/cesapp/v5
-
 WORKDIR /workspace
 
 # Copy the Go Modules manifests
@@ -40,7 +38,7 @@ RUN make compile-generic
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="0.25.0"
+      VERSION="0.26.0"
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .
