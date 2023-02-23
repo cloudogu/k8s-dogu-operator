@@ -29,6 +29,7 @@ const (
 	annotationKubernetesBetaVolumeDriver = "volume.beta.kubernetes.io/storage-provisioner"
 	longhornDiverID                      = "driver.longhorn.io"
 	longhornStorageClassName             = "longhorn"
+	errMsgFailedToGetPVC                 = "failed to get pvc"
 )
 
 var (
@@ -152,7 +153,7 @@ func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim,
 			return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
 		}
 
-		return fmt.Errorf("failed to get pvc %s: %w", pvcObjectKey.Name, err)
+		return fmt.Errorf("%s %s: %w", errMsgFailedToGetPVC, pvcObjectKey.Name, err)
 	}
 
 	if actualPvc.DeletionTimestamp != nil {
@@ -160,9 +161,11 @@ func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim,
 		if err != nil {
 			return fmt.Errorf("failed to wait for existing pvc %s to terminate: %w", pvc.Name, err)
 		}
+
+		return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
 	}
 
-	// Only create a PVC but do not update it (for now) because updating immutable PVCs is tough
+	// If the pvc exists and is not terminating keep it to support init data.
 	return nil
 }
 
@@ -185,7 +188,7 @@ func (u *upserter) waitForExistingPVCToBeTerminated(ctx context.Context, pvcObje
 }
 
 func pvcRetry(err error) bool {
-	if strings.Contains(err.Error(), "failed to get pvc") {
+	if strings.Contains(err.Error(), errMsgFailedToGetPVC) {
 		return false
 	}
 

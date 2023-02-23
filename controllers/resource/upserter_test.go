@@ -456,7 +456,7 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 	resourceNotFoundError := apierrors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, "")
 
-	t.Run("fail when generate a dogu pvc", func(t *testing.T) {
+	t.Run("should throw an error if the resource generator fails to generate a dogu pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
@@ -484,7 +484,7 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to generate pvc")
 	})
 
-	t.Run("fail when create a dogu reserved pvc", func(t *testing.T) {
+	t.Run("should throw an error if the resource generator fails to generate a dogu reserved pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)

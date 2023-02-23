@@ -230,12 +230,12 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 		return err
 	}
 
-	_, err = m.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
+	_, err = m.resourceUpserter.UpsertDoguPVCs(ctx, doguResource, dogu)
 	if err != nil {
 		return err
 	}
 
-	_, err = m.resourceUpserter.UpsertDoguPVCs(ctx, doguResource, dogu)
+	_, err = m.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
 	if err != nil {
 		return err
 	}
