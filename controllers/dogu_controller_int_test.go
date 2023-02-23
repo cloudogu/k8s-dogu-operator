@@ -564,7 +564,7 @@ func deleteDoguCr(ctx context.Context, doguCr *k8sv1.Dogu, deleteAdditional bool
 	// We will keep it here anyway, for when we migrate these tests to a real cluster.
 	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &appsv1.Deployment{})
 	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &corev1.Service{})
-	deleteObjectFromCluster(ctx, types.NamespacedName{Name: doguCr.GetPrivateVolumeName(), Namespace: doguCr.Namespace}, &corev1.Secret{})
+	deleteObjectFromCluster(ctx, types.NamespacedName{Name: doguCr.GetPrivateKeySecretName(), Namespace: doguCr.Namespace}, &corev1.Secret{})
 	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &corev1.PersistentVolumeClaim{})
 }
 
