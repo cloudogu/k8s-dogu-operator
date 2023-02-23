@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - [#83] Stabilize the dogu registration process.
   - Dogus only will be enabled last in the registration process to prevent faulty states in error cases.
-  - The dogu operator can now handle existing private dogu keys.
+
+### Added
+- The dogu operator can now handle existing private dogu keys.
 
 ## [v0.25.0] - 2023-02-17
 ### Added
