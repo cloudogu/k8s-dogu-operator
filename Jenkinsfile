@@ -46,14 +46,6 @@ node('docker') {
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
                             stage('Build') {
-                                withCredentials([usernamePassword(credentialsId: 'cesmarvin',
-                                        passwordVariable: 'CES_MARVIN_PASSWORD',
-                                        usernameVariable: 'CES_MARVIN_USERNAME')]) {
-                                    // .netrc is necessary to access private repos
-                                    sh "echo \"machine github.com\n" +
-                                            "login ${CES_MARVIN_USERNAME}\n" +
-                                            "password ${CES_MARVIN_PASSWORD}\" >> ~/.netrc"
-                                }
                                 make 'build-controller'
                             }
 
@@ -203,16 +195,7 @@ void stageAutomaticRelease() {
         String dockerReleaseVersion = releaseVersion.split("v")[1]
 
         stage('Build & Push Image') {
-            withCredentials([usernamePassword(credentialsId: 'cesmarvin',
-                    passwordVariable: 'CES_MARVIN_PASSWORD',
-                    usernameVariable: 'CES_MARVIN_USERNAME')]) {
-                // .netrc is necessary to access private repos
-                sh "echo \"machine github.com\n" +
-                        "login ${CES_MARVIN_USERNAME}\n" +
-                        "password ${CES_MARVIN_PASSWORD}\" >> ~/.netrc"
-            }
             def dockerImage = docker.build("cloudogu/${repositoryName}:${dockerReleaseVersion}")
-            sh "rm ~/.netrc"
             docker.withRegistry('https://registry.hub.docker.com/', 'dockerHubCredentials') {
                 dockerImage.push("${dockerReleaseVersion}")
             }

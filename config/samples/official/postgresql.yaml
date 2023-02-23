@@ -6,6 +6,6 @@ metadata:
     app: ces
 spec:
   name: official/postgresql
-  version: 12.10-1
+  version: 12.13-1
   resources:
     dataVolumeSize: "1Gi"

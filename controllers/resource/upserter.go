@@ -3,7 +3,9 @@ package resource
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 	"reflect"
+	"strings"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/hashicorp/go-multierror"
@@ -27,9 +29,13 @@ const (
 	annotationKubernetesBetaVolumeDriver = "volume.beta.kubernetes.io/storage-provisioner"
 	longhornDiverID                      = "driver.longhorn.io"
 	longhornStorageClassName             = "longhorn"
+	errMsgFailedToGetPVC                 = "failed to get pvc"
 )
 
-var noValidator internal.ResourceValidator
+var (
+	noValidator                    internal.ResourceValidator
+	maximumTriesWaitForExistingPVC = 25
+)
 
 type upserter struct {
 	client    client.Client
@@ -138,24 +144,55 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 }
 
 func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv1.Dogu) error {
-	existingPVC := &v1.PersistentVolumeClaim{}
 	pvcObjectKey := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
 
-	err := u.client.Get(ctx, pvcObjectKey, existingPVC)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return err
-	}
-
-	objectKey := client.ObjectKey{Name: pvc.Name, Namespace: pvc.Namespace}
-	// Only create a PVC but do not update it (for now) because updating immutable PVCs is tough
-	if apierrors.IsNotFound(err) {
-		err = u.updateOrInsert(ctx, doguResource.Name, objectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
-		if err != nil {
-			return err
+	actualPvc := &v1.PersistentVolumeClaim{}
+	err := u.client.Get(ctx, pvcObjectKey, actualPvc)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
 		}
+
+		return fmt.Errorf("%s %s: %w", errMsgFailedToGetPVC, pvcObjectKey.Name, err)
 	}
 
+	if actualPvc.DeletionTimestamp != nil {
+		err = u.waitForExistingPVCToBeTerminated(ctx, pvcObjectKey)
+		if err != nil {
+			return fmt.Errorf("failed to wait for existing pvc %s to terminate: %w", pvc.Name, err)
+		}
+
+		return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
+	}
+
+	// If the pvc exists and is not terminating keep it to support init data.
 	return nil
+}
+
+func (u *upserter) waitForExistingPVCToBeTerminated(ctx context.Context, pvcObjectKey types.NamespacedName) error {
+	err := retry.OnError(maximumTriesWaitForExistingPVC, pvcRetry, func() error {
+		existingPVC := &v1.PersistentVolumeClaim{}
+		err := u.client.Get(ctx, pvcObjectKey, existingPVC)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("failed to get pvc %s: %w", pvcObjectKey.Name, err)
+		}
+
+		log.FromContext(ctx).Info(fmt.Sprintf("wait for pvc %s to be terminated", pvcObjectKey.Name))
+		return errors.New(fmt.Sprintf("pvc %s still exists", pvcObjectKey.Name))
+	})
+
+	return err
+}
+
+func pvcRetry(err error) bool {
+	if strings.Contains(err.Error(), errMsgFailedToGetPVC) {
+		return false
+	}
+
+	return true
 }
 
 func (u *upserter) updateOrInsert(ctx context.Context, doguName string, objectKey client.ObjectKey,

@@ -1,8 +1,6 @@
 # Build the manager binary
 FROM golang:1.18 as builder
 
-ENV GOPRIVATE=github.com/cloudogu/cesapp/v5
-
 WORKDIR /workspace
 
 # Copy the Go Modules manifests
