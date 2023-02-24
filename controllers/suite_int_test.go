@@ -63,10 +63,7 @@ var oldGetConfigOrDie func() *rest.Config
 
 func TestAPIs(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-
-	ginkgo.RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]ginkgo.Reporter{printer.NewlineReporter{}})
+	ginkgo.RunSpecs(t, "Controller Suite")
 }
 
 var _ = ginkgo.BeforeSuite(func() {
