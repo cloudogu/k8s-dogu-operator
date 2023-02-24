@@ -75,7 +75,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	config.Stage = config.StageProduction
 
-	CommandExecutor = mocks.NewCommandExecutor(ginkgo.GinkgoT())
+	CommandExecutor = &mocks.CommandExecutor{}
 	logf.SetLogger(logrusr.New(logrus.New()))
 
 	var ctx context.Context
@@ -116,9 +116,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClientSet, err = ecoSystem.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	DoguRemoteRegistryMock = extMocks.NewRemoteRegistry(ginkgo.GinkgoT())
-	EtcdDoguRegistry = extMocks.NewDoguRegistry(ginkgo.GinkgoT())
-	ImageRegistryMock = mocks.NewImageRegistry(ginkgo.GinkgoT())
+	DoguRemoteRegistryMock = &extMocks.RemoteRegistry{}
+	EtcdDoguRegistry = &extMocks.DoguRegistry{}
+	ImageRegistryMock = &mocks.ImageRegistry{}
 
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)

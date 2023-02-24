@@ -10,7 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/mock"
@@ -26,11 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
 
 type mockDefinition struct {
@@ -41,35 +40,25 @@ type mockDefinition struct {
 func getCopyMap(definitions map[string]mockDefinition) map[string]mockDefinition {
 	newCopyMap := map[string]mockDefinition{}
 	for k, v := range definitions {
-		value := v
-		newCopyMap[k] = value
+		newCopyMap[k] = v
 	}
 	return newCopyMap
 }
 
-func getNewMockManagerAndFactory(t *testing.T, expectedErrorOnNewManager error, definitions map[string]mockDefinition) (*mocks.ControllerManager, func(config *rest.Config, options manager.Options) (manager.Manager, error)) {
-	t.Helper()
-
-	k8sManager := mocks.NewControllerManager(t)
-	return k8sManager, func(config *rest.Config, options manager.Options) (manager.Manager, error) {
+func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) manager.Manager {
+	k8sManager := &extMocks.ControllerManager{}
+	ctrl.NewManager = func(config *rest.Config, options manager.Options) (manager.Manager, error) {
 		for key, value := range definitions {
-			k8sManager.Mock.On(key, value.Arguments...).Return(value.ReturnValue)
+			k8sManager.On(key, value.Arguments...).Return(value.ReturnValue)
 		}
 		return k8sManager, expectedErrorOnNewManager
 	}
-}
-
-func getMockLogger(t *testing.T, k8sManager *mocks.ControllerManager) func(l logr.Logger) {
-	t.Helper()
-
-	return func(l logr.Logger) {
-		k8sManager.EXPECT().GetLogger().Return(l)
+	ctrl.SetLogger = func(l logr.Logger) {
+		k8sManager.Mock.On("GetLogger").Return(l)
 	}
-}
-func setCommandLineFlag(t *testing.T) {
-	t.Helper()
-
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+
+	return k8sManager
 }
 
 func Test_noSpamKey(t *testing.T) {
@@ -152,18 +141,10 @@ func Test_startDoguOperator(t *testing.T) {
 		"GetEventRecorderFor":  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 	}
 
-	originalCtrlManager := ctrl.NewManager
-	originalLogger := ctrl.SetLogger
-
 	t.Run("Error on missing namespace environment variable", func(t *testing.T) {
 		// given
 		_ = os.Unsetenv("NAMESPACE")
-		defer func() { ctrl.NewManager = originalCtrlManager }()
-		defer func() { ctrl.SetLogger = originalLogger }()
-
-		_, ctrlManagerFactory := getNewMockManagerAndFactory(t, nil, defaultMockDefinitions)
-		ctrl.NewManager = ctrlManagerFactory
-		setCommandLineFlag(t)
+		getNewMockManager(nil, defaultMockDefinitions)
 
 		// when
 		err := startDoguOperator()
@@ -190,31 +171,23 @@ func Test_startDoguOperator(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_USERNAME", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_PASSWORD", "mynamespace")
 	t.Setenv("DOCKER_REGISTRY", string(dockerRegistryString))
-
 	t.Run("Test without logger environment variables", func(t *testing.T) {
 		// given
-		mgr, ctrlManagerFactory := getNewMockManagerAndFactory(t, nil, defaultMockDefinitions)
-		ctrl.NewManager = ctrlManagerFactory
-		ctrl.SetLogger = getMockLogger(t, mgr)
-		setCommandLineFlag(t)
+		k8sManager := getNewMockManager(nil, defaultMockDefinitions)
 
 		// when
 		err := startDoguOperator()
 
 		// then
 		require.NoError(t, err)
+		mock.AssertExpectationsForObjects(t, k8sManager)
 	})
 
 	expectedError := fmt.Errorf("this is my expected error")
-	if true {
-		return
-	}
+
 	t.Run("Test with error on manager creation", func(t *testing.T) {
 		// given
-		mgr, ctrlManagerFactory := getNewMockManagerAndFactory(t, expectedError, defaultMockDefinitions)
-		ctrl.NewManager = ctrlManagerFactory
-		ctrl.SetLogger = getMockLogger(t, mgr)
-		setCommandLineFlag(t)
+		getNewMockManager(expectedError, defaultMockDefinitions)
 
 		// when
 		err := startDoguOperator()
@@ -239,10 +212,7 @@ func Test_startDoguOperator(t *testing.T) {
 				Arguments:   adaptedMockDefinitions[mockDefinitionName].Arguments,
 				ReturnValue: expectedError,
 			}
-			mgr, ctrlManagerFactory := getNewMockManagerAndFactory(t, nil, adaptedMockDefinitions)
-			ctrl.NewManager = ctrlManagerFactory
-			ctrl.SetLogger = getMockLogger(t, mgr)
-			setCommandLineFlag(t)
+			getNewMockManager(nil, adaptedMockDefinitions)
 
 			// when
 			err := startDoguOperator()

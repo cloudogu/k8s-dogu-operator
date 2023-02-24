@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,12 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 type mockeryGinkgoLogger struct {
@@ -84,13 +82,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	Context("Handle dogu resource", func() {
 		It("Setup mocks and test data", func() {
-			ImageRegistryMock = mocks.NewImageRegistry(t)
-			ImageRegistryMock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-			DoguRemoteRegistryMock = extMocks.NewRemoteRegistry(t)
+			*ImageRegistryMock = mocks.ImageRegistry{}
+			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
+			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil)
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil)
 
-			EtcdDoguRegistry = extMocks.NewDoguRegistry(t)
+			*EtcdDoguRegistry = extMocks.DoguRegistry{}
 			EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed"))
 			EtcdDoguRegistry.Mock.On("Get", "cas").Return(nil, fmt.Errorf("not installed"))
 			EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
@@ -357,15 +355,15 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	It("Setup mocks and test data for upgrade", func() {
 		// create mocks
-		DoguRemoteRegistryMock = extMocks.NewRemoteRegistry(ginkgo.GinkgoT())
+		*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
 		DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Once().Return(upgradeLdapFromDoguDescriptor, nil)
 		DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(upgradeLdapToDoguDescriptor, nil)
 
-		ImageRegistryMock = mocks.NewImageRegistry(ginkgo.GinkgoT())
+		*ImageRegistryMock = mocks.ImageRegistry{}
 		ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.48-4").Return(imageConfig, nil)
 		ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil)
 
-		EtcdDoguRegistry = extMocks.NewDoguRegistry(ginkgo.GinkgoT())
+		*EtcdDoguRegistry = extMocks.DoguRegistry{}
 		EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(false, nil)
 		EtcdDoguRegistry.Mock.On("Register", upgradeLdapFromDoguDescriptor).Once().Return(nil)
 		EtcdDoguRegistry.Mock.On("Enable", upgradeLdapFromDoguDescriptor).Once().Return(nil)
