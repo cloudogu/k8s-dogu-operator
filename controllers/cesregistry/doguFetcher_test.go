@@ -14,6 +14,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	mocks2 "github.com/cloudogu/cesapp-lib/registry/mocks"
 	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 var ctx = context.Background()
@@ -124,7 +125,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 
 		remoteDoguRegistry := new(mocks3.Registry)
-		client := newMockK8sClient(t)
+		client := extMocks.NewK8sClient(t)
 		client.EXPECT().Get(ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(assert.AnError)
 		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
 
@@ -141,7 +142,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 		resourceNotFoundErr := errors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, doguCr.GetDevelopmentDoguMapKey().Name)
 
-		client := newMockK8sClient(t)
+		client := extMocks.NewK8sClient(t)
 		client.EXPECT().Get(ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
 
 		remoteDoguRegistry := new(mocks3.Registry)

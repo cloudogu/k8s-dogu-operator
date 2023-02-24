@@ -161,9 +161,8 @@ func Test_startDoguOperator(t *testing.T) {
 		defer func() { ctrl.NewManager = originalCtrlManager }()
 		defer func() { ctrl.SetLogger = originalLogger }()
 
-		mgr, ctrlManagerFactory := getNewMockManagerAndFactory(t, nil, defaultMockDefinitions)
+		_, ctrlManagerFactory := getNewMockManagerAndFactory(t, nil, defaultMockDefinitions)
 		ctrl.NewManager = ctrlManagerFactory
-		ctrl.SetLogger = getMockLogger(t, mgr)
 		setCommandLineFlag(t)
 
 		// when

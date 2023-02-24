@@ -3,15 +3,17 @@ package controllers
 import (
 	"context"
 	"errors"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
-	"github.com/hashicorp/go-multierror"
 	"testing"
 	"time"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,7 +46,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
 		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventRecorder := &external.EventRecorder{}
+		eventRecorder := &extMocks.EventRecorder{}
 
 		handler := doguRequeueHandler{
 			client:         fakeClient,
@@ -76,7 +78,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects().Build()
 		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventRecorder := &external.EventRecorder{}
+		eventRecorder := &extMocks.EventRecorder{}
 
 		handler := doguRequeueHandler{
 			client:         fakeClient,
@@ -117,7 +119,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 
 		fakeNonCacheClient := fake2.NewSimpleClientset(event)
-		eventRecorder := &external.EventRecorder{}
+		eventRecorder := &extMocks.EventRecorder{}
 		eventRecorder.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
 		handler := doguRequeueHandler{
@@ -165,7 +167,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 
 		fakeNonCacheClient := fake2.NewSimpleClientset(event)
-		eventRecorder := &external.EventRecorder{}
+		eventRecorder := &extMocks.EventRecorder{}
 		eventRecorder.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
 		handler := doguRequeueHandler{
@@ -206,7 +208,7 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 		return &rest.Config{}, nil
 	}
 
-	eventRecorder := &external.EventRecorder{}
+	eventRecorder := &extMocks.EventRecorder{}
 	fakeClient := fake.NewClientBuilder().WithScheme(&runtime.Scheme{}).Build()
 
 	// when

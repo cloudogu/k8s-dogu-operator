@@ -350,7 +350,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		mockExecutor := extMocks.NewRemoteExecutor(t)
-		mockExecutor.EXPECT().Stream(mocks.Anything).RunAndReturn(func(options remotecommand.StreamOptions) error {
+		mockExecutor.EXPECT().StreamWithContext(mocks.Anything, mocks.Anything).RunAndReturn(func(ctx context.Context, options remotecommand.StreamOptions) error {
 			if options.Stdout != nil {
 				buf := bytes.NewBufferString(commandOutput)
 				if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
@@ -368,7 +368,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 
 	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		mockExecutor := extMocks.NewRemoteExecutor(t)
-		mockExecutor.EXPECT().Stream(mocks.Anything).Return(assert.AnError)
+		mockExecutor.EXPECT().StreamWithContext(mocks.Anything, mocks.Anything).Return(assert.AnError)
 		return mockExecutor, nil
 	}
 
