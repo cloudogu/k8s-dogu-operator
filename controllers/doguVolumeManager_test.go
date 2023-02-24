@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"context"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -12,18 +12,20 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
-	"time"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 )
 
 func TestNewDoguVolumeManager(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		recorder := external.NewEventRecorder(t)
-		client := external.NewClient(t)
+		cli := NewMockK8sClient(t)
 
 		// when
-		result := NewDoguVolumeManager(client, recorder)
+		result := NewDoguVolumeManager(cli, recorder)
 
 		// then
 		require.NotNil(t, result)

@@ -3,7 +3,6 @@ package resource
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
 	"reflect"
 	"strings"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
 const (
@@ -38,7 +38,7 @@ var (
 )
 
 type upserter struct {
-	client    client.Client
+	client    k8sClient
 	generator internal.DoguResourceGenerator
 }
 

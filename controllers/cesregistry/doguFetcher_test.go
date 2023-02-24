@@ -2,7 +2,6 @@ package cesregistry
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -125,8 +124,8 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 
 		remoteDoguRegistry := new(mocks3.Registry)
-		client := &external.Client{}
-		client.On("Get", ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(assert.AnError)
+		client := newMockK8sClient(t)
+		client.EXPECT().Get(ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(assert.AnError)
 		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
 
 		// when
@@ -142,8 +141,8 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 		resourceNotFoundErr := errors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, doguCr.GetDevelopmentDoguMapKey().Name)
 
-		client := &external.Client{}
-		client.On("Get", ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
+		client := newMockK8sClient(t)
+		client.EXPECT().Get(ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
 
 		remoteDoguRegistry := new(mocks3.Registry)
 		remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)

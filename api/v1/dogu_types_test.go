@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 )
 
 var testDogu = &v1.Dogu{
@@ -108,9 +107,9 @@ func Test_Dogu_ChangeState(t *testing.T) {
 
 	t.Run("should set the dogu resource's status to upgrade", func(t *testing.T) {
 		sut := &v1.Dogu{}
-		myClient := new(external.Client)
-		statusMock := new(external.StatusWriter)
-		myClient.On("Status").Return(statusMock)
+		myClient := v1.NewMockK8sClient(t)
+		statusMock := v1.NewMockK8sSubResourceWriter(t)
+		myClient.EXPECT().Status().Return(statusMock)
 		statusMock.On("Update", ctx, sut).Return(nil)
 
 		// when
@@ -124,9 +123,9 @@ func Test_Dogu_ChangeState(t *testing.T) {
 	})
 	t.Run("should fail on client error", func(t *testing.T) {
 		sut := &v1.Dogu{}
-		myClient := new(external.Client)
-		statusMock := new(external.StatusWriter)
-		myClient.On("Status").Return(statusMock)
+		myClient := v1.NewMockK8sClient(t)
+		statusMock := v1.NewMockK8sSubResourceWriter(t)
+		myClient.EXPECT().Status().Return(statusMock)
 		statusMock.On("Update", ctx, sut).Return(assert.AnError)
 
 		// when
@@ -279,8 +278,8 @@ func TestDevelopmentDoguMap_DeleteFromCluster(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
 			Data:       map[string]string{"key": "le data"},
 		}
-		myClient := new(external.Client)
-		myClient.On("Delete", testCtx, inputCm).Return(nil)
+		myClient := v1.NewMockK8sClient(t)
+		myClient.EXPECT().Delete(testCtx, inputCm).Return(nil)
 		sut := &v1.DevelopmentDoguMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
 			Data:       map[string]string{"key": "le data"},
@@ -298,8 +297,8 @@ func TestDevelopmentDoguMap_DeleteFromCluster(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
 			Data:       map[string]string{"key": "le data"},
 		}
-		myClient := new(external.Client)
-		myClient.On("Delete", testCtx, inputCm).Return(assert.AnError)
+		myClient := v1.NewMockK8sClient(t)
+		myClient.EXPECT().Delete(testCtx, inputCm).Return(assert.AnError)
 		sut := &v1.DevelopmentDoguMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
 			Data:       map[string]string{"key": "le data"},

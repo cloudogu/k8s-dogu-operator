@@ -34,7 +34,7 @@ const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
-	client                client.Client
+	client                K8sClient
 	recorder              record.EventRecorder
 	doguRemoteRegistry    cesremote.Registry
 	doguLocalRegistry     cesregistry.DoguRegistry

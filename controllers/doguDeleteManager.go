@@ -3,15 +3,16 @@ package controllers
 import (
 	"context"
 	"fmt"
-	internal2 "github.com/cloudogu/k8s-dogu-operator/internal"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
+	internal2 "github.com/cloudogu/k8s-dogu-operator/internal"
 
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"

@@ -3,9 +3,11 @@ package exec
 import (
 	"bytes"
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
 	"net/url"
 	"testing"
+
+	"github.com/cloudogu/cesapp-lib/registry/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal"
 
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -22,30 +24,6 @@ import (
 )
 
 const commandOutput = "username:user"
-
-type fakeExecutor struct {
-	method string
-	url    *url.URL
-}
-
-type fakeFailExecutor struct {
-	method string
-	url    *url.URL
-}
-
-func (f *fakeExecutor) Stream(options remotecommand.StreamOptions) error {
-	if options.Stdout != nil {
-		buf := bytes.NewBufferString(commandOutput)
-		if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (f *fakeFailExecutor) Stream(_ remotecommand.StreamOptions) error {
-	return assert.AnError
-}
 
 func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 	ctx := context.TODO()
@@ -71,15 +49,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 	defer func() { maxTries = originalMaxTries }()
 	maxTries = 1
 
-	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return &fakeExecutor{method: method, url: url}, nil
-	}
-	fakeErrorInitNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return nil, assert.AnError
-	}
-	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return &fakeFailExecutor{method: method, url: url}, nil
-	}
+	fakeNewSPDYExecutor, fakeErrorInitNewSPDYExecutor, fakeErrorStreamNewSPDYExecutor := createFakeExecutors(t)
 
 	oldConfigFunc := config.GetConfigOrDie
 	ctrl.GetConfigOrDie = func() *rest.Config {
@@ -239,15 +209,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 
 	command := NewShellCommand("ls", "-l")
 
-	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return &fakeExecutor{method: method, url: url}, nil
-	}
-	fakeErrorInitNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return nil, assert.AnError
-	}
-	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		return &fakeFailExecutor{method: method, url: url}, nil
-	}
+	fakeNewSPDYExecutor, fakeErrorInitNewSPDYExecutor, fakeErrorStreamNewSPDYExecutor := createFakeExecutors(t)
 
 	oldConfigFunc := config.GetConfigOrDie
 	ctrl.GetConfigOrDie = func() *rest.Config {
@@ -380,4 +342,34 @@ func TestShellCommand_String(t *testing.T) {
 			assert.Equalf(t, tt.want, sc.String(), "String()")
 		})
 	}
+}
+
+func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error)) {
+	t.Helper()
+
+	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+		mockExecutor := newMockRemoteExecutor(t)
+		mockExecutor.EXPECT().Stream(mocks.Anything).RunAndReturn(func(options remotecommand.StreamOptions) error {
+			if options.Stdout != nil {
+				buf := bytes.NewBufferString(commandOutput)
+				if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		return mockExecutor, nil
+	}
+
+	fakeErrorInitNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+		return nil, assert.AnError
+	}
+
+	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+		mockExecutor := newMockRemoteExecutor(t)
+		mockExecutor.EXPECT().Stream(mocks.Anything).Return(assert.AnError)
+		return mockExecutor, nil
+	}
+
+	return fakeNewSPDYExecutor, fakeErrorInitNewSPDYExecutor, fakeErrorStreamNewSPDYExecutor
 }

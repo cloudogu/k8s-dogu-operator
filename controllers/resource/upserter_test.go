@@ -2,12 +2,8 @@ package resource
 
 import (
 	"context"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"testing"
 	"time"
-
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -16,10 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
@@ -27,16 +26,16 @@ import (
 
 func TestNewUpserter(t *testing.T) {
 	// given
-	client := &external.Client{}
-	client.On("Scheme").Return(new(runtime.Scheme))
+	mockClient := newMockK8sClient(t)
+	mockClient.On("Scheme").Return(new(runtime.Scheme))
 	patcher := mocks.NewLimitPatcher(t)
 
 	// when
-	upserter := NewUpserter(client, patcher)
+	upserter := NewUpserter(mockClient, patcher)
 
 	// then
 	require.NotNil(t, upserter)
-	assert.Equal(t, client, upserter.client)
+	assert.Equal(t, mockClient, upserter.client)
 	require.NotNil(t, upserter.generator)
 }
 
@@ -189,7 +188,7 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "incompatible types provided (*Deployment != *Service)")
 	})
-	t.Run("update existing pcv when no controller reference is set and fail on validation", func(t *testing.T) {
+	t.Run("should update existing pcv when no controller reference is set and fail on validation", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource, readLdapDoguExpectedDeployment(t)).Build()
@@ -205,7 +204,7 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 		// mock assert happens during cleanup
 	})
 
-	t.Run("update existing pcv when no controller reference is set and validation works", func(t *testing.T) {
+	t.Run("should update existing pcv when no controller reference is set and validation works", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
 		existingDeployment := readLdapDoguExpectedDeployment(t)
@@ -237,11 +236,11 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateDoguDeployment", doguResource, dogu).Return(nil, assert.AnError)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -256,13 +255,13 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
 
-		client := external.NewClient(t)
-		client.On("Get", ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}).Return(assert.AnError)
+		mockClient := newMockK8sClient(t)
+		mockClient.On("Get", ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateDoguDeployment", doguResource, dogu).Return(readLdapDoguExpectedDeployment(t), nil)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -308,11 +307,11 @@ func Test_upserter_UpsertDoguExposedServices(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(nil, assert.AnError)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -327,16 +326,16 @@ func Test_upserter_UpsertDoguExposedServices(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 		failedToCreateFirstError := errors.New("failed on exposed service 1")
-		client.On("Get", context.Background(), types.NamespacedName{Namespace: "ecosystem", Name: "ldap-exposed-2222"}, &v1.Service{}).Once().Return(failedToCreateFirstError)
+		mockClient.On("Get", context.Background(), types.NamespacedName{Namespace: "ecosystem", Name: "ldap-exposed-2222"}, &v1.Service{}).Once().Return(failedToCreateFirstError)
 		failedToCreateSecondError := errors.New("failed on exposed service 2")
-		client.On("Get", context.Background(), types.NamespacedName{Namespace: "ecosystem", Name: "ldap-exposed-8888"}, &v1.Service{}).Once().Return(failedToCreateSecondError)
+		mockClient.On("Get", context.Background(), types.NamespacedName{Namespace: "ecosystem", Name: "ldap-exposed-8888"}, &v1.Service{}).Once().Return(failedToCreateSecondError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(readLdapDoguExpectedExposedServices(t), nil)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -400,15 +399,15 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		dogu := readLdapDogu(t)
 		dogu.Volumes = nil
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 		key := doguResource.GetObjectKey()
 		key.Name = doguResource.GetReservedPVCName()
-		client.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(assert.AnError)
+		mockClient.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -425,19 +424,21 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		dogu := readLdapDogu(t)
 		dogu.Volumes = nil
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 		key := doguResource.GetObjectKey()
 		key.Name = doguResource.GetReservedPVCName()
-		client.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(nil).Run(func(args mock.Arguments) {
-			pvc := args.Get(2).(*v1.PersistentVolumeClaim)
+		mockClient.EXPECT().Get(mock.Anything, key, &v1.PersistentVolumeClaim{}).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
+			pvc := object.(*v1.PersistentVolumeClaim)
 			now := metav1.Now()
 			pvc.SetDeletionTimestamp(&now)
+
+			return nil
 		})
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 		oldTries := maximumTriesWaitForExistingPVC
@@ -461,18 +462,18 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 
 		key := doguResource.GetObjectKey()
 		key.Name = doguResource.GetReservedPVCName()
-		client.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
-		client.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
+		mockClient.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
+		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		generator.On("CreateDoguPVC", doguResource).Return(nil, assert.AnError)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -489,17 +490,17 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 
 		key := doguResource.GetObjectKey()
 		key.Name = doguResource.GetReservedPVCName()
-		client.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
-		client.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(assert.AnError)
+		mockClient.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
+		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -515,19 +516,19 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 
 		key := doguResource.GetObjectKey()
 		key.Name = doguResource.GetReservedPVCName()
-		client.On("Get", context.Background(), key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
-		client.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
-		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
+		mockClient.On("Get", context.Background(), key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
+		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
+		mockClient.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedDoguPVC(t), nil)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -625,11 +626,11 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		imageConfig := readLdapDoguImageConfig(t)
 
-		client := external.NewClient(t)
+		mockClient := newMockK8sClient(t)
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateDoguService", doguResource, imageConfig).Return(nil, assert.AnError)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -644,14 +645,14 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		imageConfig := readLdapDoguImageConfig(t)
 
-		client := external.NewClient(t)
-		client.On("Get", ctx, doguResource.GetObjectKey(), &v1.Service{}).Return(assert.AnError)
+		mockClient := newMockK8sClient(t)
+		mockClient.On("Get", ctx, doguResource.GetObjectKey(), &v1.Service{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		expectedService := readLdapDoguExpectedService(t)
 		generator.On("CreateDoguService", doguResource, imageConfig).Return(expectedService, nil)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 
@@ -689,13 +690,13 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 		doguResource := readLdapDoguResource(t)
 		imageConfig := readLdapDoguImageConfig(t)
 
-		client := external.NewClient(t)
-		client.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Return(assert.AnError)
+		mockClient := newMockK8sClient(t)
+		mockClient.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateDoguService", doguResource, imageConfig).Return(readLdapDoguExpectedService(t), nil)
 		upserter := upserter{
-			client:    client,
+			client:    mockClient,
 			generator: generator,
 		}
 

@@ -15,8 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 )
 
 func TestGetPodForLabels(t *testing.T) {
@@ -48,7 +46,7 @@ func TestGetPodForLabels(t *testing.T) {
 	t.Run("should return an when no pod was found", func(t *testing.T) {
 		// given
 		labels := CesMatchingLabels{DoguLabelName: "ldap", DoguLabelVersion: "1.2.3-4"}
-		cli := new(external.Client)
+		cli := NewMockK8sClient(t)
 		cli.On("List", testCtx, mock.Anything, client.MatchingLabels(labels)).Return(assert.AnError)
 
 		// when
