@@ -17,7 +17,7 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 const (
@@ -50,11 +50,11 @@ const kubernetesServiceAccountKind = "k8s"
 // as controller
 type resourceGenerator struct {
 	scheme           *runtime.Scheme
-	doguLimitPatcher internal.LimitPatcher
+	doguLimitPatcher cloudogu.LimitPatcher
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher internal.LimitPatcher) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher cloudogu.LimitPatcher) *resourceGenerator {
 	return &resourceGenerator{scheme: scheme, doguLimitPatcher: limitPatcher}
 }
 

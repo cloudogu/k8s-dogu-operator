@@ -3,14 +3,17 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/async"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 const (
@@ -62,7 +65,7 @@ func (nre notResizedError) Error() string {
 type doguVolumeManager struct {
 	client        client.Client
 	eventRecorder record.EventRecorder
-	asyncExecutor internal.AsyncExecutor
+	asyncExecutor cloudogu.AsyncExecutor
 }
 
 // NewDoguVolumeManager creates a new instance of the doguVolumeManager.
@@ -77,7 +80,7 @@ func NewDoguVolumeManager(client client.Client, eventRecorder record.EventRecord
 	}
 }
 
-func createAsyncSteps(executor internal.AsyncExecutor, client client.Client, recorder record.EventRecorder) {
+func createAsyncSteps(executor cloudogu.AsyncExecutor, client client.Client, recorder record.EventRecorder) {
 	executor.AddStep(&editPVCStep{client: client, eventRecorder: recorder})
 	scaleUp := &scaleUpStep{client: client, eventRecorder: recorder, replicas: 1}
 	executor.AddStep(&scaleDownStep{client: client, eventRecorder: recorder, scaleUpStep: scaleUp})

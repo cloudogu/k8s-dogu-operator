@@ -3,19 +3,22 @@ package cesregistry
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/keys"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/pkg/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
@@ -23,12 +26,12 @@ type CesDoguRegistrator struct {
 	client          client.Client
 	registry        cesregistry.Registry
 	doguRegistry    cesregistry.DoguRegistry
-	secretGenerator internal.SecretResourceGenerator
+	secretGenerator cloudogu.SecretResourceGenerator
 }
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator internal.SecretResourceGenerator) *CesDoguRegistrator {
+func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator cloudogu.SecretResourceGenerator) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
 		client:          client,
 		registry:        registry,

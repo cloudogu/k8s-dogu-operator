@@ -8,6 +8,13 @@ import (
 	cesreg "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -19,13 +26,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
@@ -95,10 +95,10 @@ type doguUpgradeManager struct {
 	client        client.Client
 	eventRecorder record.EventRecorder
 	// upgrade business
-	premisesChecker     internal.PremisesChecker
-	localDoguFetcher    internal.LocalDoguFetcher
-	resourceDoguFetcher internal.ResourceDoguFetcher
-	upgradeExecutor     internal.UpgradeExecutor
+	premisesChecker     cloudogu.PremisesChecker
+	localDoguFetcher    cloudogu.LocalDoguFetcher
+	resourceDoguFetcher cloudogu.ResourceDoguFetcher
+	upgradeExecutor     cloudogu.UpgradeExecutor
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {

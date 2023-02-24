@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -10,7 +8,9 @@ import (
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
@@ -101,7 +101,7 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.NotNil(t, actual)
-		assert.Implements(t, (*internal.UpgradeManager)(nil), actual)
+		assert.Implements(t, (*cloudogu.UpgradeManager)(nil), actual)
 		mock.AssertExpectationsForObjects(t, doguRegistry, cesRegistry)
 	})
 }
@@ -109,10 +109,10 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 func newTestDoguUpgradeManager(
 	client client.Client,
 	recorder record.EventRecorder,
-	ldf internal.LocalDoguFetcher,
-	rdf internal.ResourceDoguFetcher,
-	pc internal.PremisesChecker,
-	ue internal.UpgradeExecutor,
+	ldf cloudogu.LocalDoguFetcher,
+	rdf cloudogu.ResourceDoguFetcher,
+	pc cloudogu.PremisesChecker,
+	ue cloudogu.UpgradeExecutor,
 ) *doguUpgradeManager {
 	return &doguUpgradeManager{
 		client:              client,
@@ -146,7 +146,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := external.NewEventRecorder(t)
+		recorderMock := extMocks.NewEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
@@ -195,7 +195,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := external.NewEventRecorder(t)
+		recorderMock := extMocks.NewEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
@@ -255,7 +255,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := external.NewEventRecorder(t)
+		recorderMock := extMocks.NewEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", "4.2.3-11")
 
@@ -305,7 +305,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := external.NewEventRecorder(t)
+		recorderMock := extMocks.NewEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
@@ -353,7 +353,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := external.NewEventRecorder(t)
+		recorderMock := extMocks.NewEventRecorder(t)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.On("FetchInstalled", "redmine").Return(redmineDoguInstalled, nil)
@@ -394,7 +394,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		recorderMock := external.NewEventRecorder(t)
+		recorderMock := extMocks.NewEventRecorder(t)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.On("FetchInstalled", "redmine").Return(nil, assert.AnError)

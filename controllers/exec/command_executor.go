@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/retry"
 
 	corev1 "k8s.io/api/core/v1"
@@ -85,7 +85,7 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
-func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command internal.ShellCommand, expectedStatus internal.PodStatusForExec) (*bytes.Buffer, error) {
+func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command cloudogu.ShellCommand, expectedStatus cloudogu.PodStatusForExec) (*bytes.Buffer, error) {
 	logger := log.FromContext(ctx)
 	pod := &corev1.Pod{}
 	err := retry.OnError(maxTries, retry.AlwaysRetryFunc, func() error {
@@ -106,7 +106,7 @@ func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resour
 
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
 // identified by its pod name.
-func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command internal.ShellCommand, expectedStatus internal.PodStatusForExec) (*bytes.Buffer, error) {
+func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command cloudogu.ShellCommand, expectedStatus cloudogu.PodStatusForExec) (*bytes.Buffer, error) {
 	err := ce.waitForPodToHaveExpectedStatus(ctx, pod, expectedStatus)
 	if err != nil {
 		return nil, fmt.Errorf("an error occurred while waiting for pod %s to have status %s: %w", pod.Name, expectedStatus, err)
@@ -127,7 +127,7 @@ func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *co
 func (ce *defaultCommandExecutor) streamCommandToPod(
 	ctx context.Context,
 	exec remotecommand.Executor,
-	command internal.ShellCommand,
+	command cloudogu.ShellCommand,
 	pod *corev1.Pod,
 ) (*bytes.Buffer, error) {
 	logger := log.FromContext(ctx)
@@ -161,7 +161,7 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	return buffer, nil
 }
 
-func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(ctx context.Context, pod *corev1.Pod, expected internal.PodStatusForExec) error {
+func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(ctx context.Context, pod *corev1.Pod, expected cloudogu.PodStatusForExec) error {
 	var err error
 	err = retry.OnError(maxTries, retry.TestableRetryFunc, func() error {
 		pod, err = ce.clientSet.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
@@ -174,13 +174,13 @@ func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(ctx context.Con
 	return err
 }
 
-func podHasStatus(pod *corev1.Pod, expected internal.PodStatusForExec) error {
+func podHasStatus(pod *corev1.Pod, expected cloudogu.PodStatusForExec) error {
 	switch expected {
-	case internal.ContainersStarted:
+	case cloudogu.ContainersStarted:
 		if pod.Status.Phase == corev1.PodRunning {
 			return nil
 		}
-	case internal.PodReady:
+	case cloudogu.PodReady:
 		for _, condition := range pod.Status.Conditions {
 			if condition.Type == corev1.ContainersReady && condition.Status == corev1.ConditionTrue {
 				return nil
@@ -193,7 +193,7 @@ func podHasStatus(pod *corev1.Pod, expected internal.PodStatusForExec) error {
 	return &retry.TestableRetrierError{Err: fmt.Errorf("expected status %s not fulfilled", expected)}
 }
 
-func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command internal.ShellCommand) *rest.Request {
+func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command cloudogu.ShellCommand) *rest.Request {
 	return ce.coreV1RestClient.Post().
 		Resource("pods").
 		Name(pod.Name).

@@ -20,7 +20,8 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
@@ -33,17 +34,17 @@ const (
 )
 
 var (
-	noValidator                    internal.ResourceValidator
+	noValidator                    cloudogu.ResourceValidator
 	maximumTriesWaitForExistingPVC = 25
 )
 
 type upserter struct {
-	client    k8sClient
-	generator internal.DoguResourceGenerator
+	client    thirdParty.K8sClient
+	generator cloudogu.DoguResourceGenerator
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, limitPatcher internal.LimitPatcher) *upserter {
+func NewUpserter(client client.Client, limitPatcher cloudogu.LimitPatcher) *upserter {
 	schema := client.Scheme()
 	generator := NewResourceGenerator(schema, limitPatcher)
 	return &upserter{client: client, generator: generator}
@@ -196,7 +197,7 @@ func pvcRetry(err error) bool {
 }
 
 func (u *upserter) updateOrInsert(ctx context.Context, doguName string, objectKey client.ObjectKey,
-	resourceType client.Object, upsertResource client.Object, val internal.ResourceValidator) error {
+	resourceType client.Object, upsertResource client.Object, val cloudogu.ResourceValidator) error {
 	if resourceType == nil {
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
 	}
