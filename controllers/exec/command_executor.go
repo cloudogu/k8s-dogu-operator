@@ -138,7 +138,7 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	err = retry.OnError(maxTries, func(err error) bool {
 		return strings.Contains(err.Error(), "error dialing backend: EOF")
 	}, func() error {
-		err = exec.Stream(remotecommand.StreamOptions{
+		err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 			Stdout: buffer,
 			Stderr: bufferErr,
 			Tty:    false,
