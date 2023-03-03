@@ -139,10 +139,10 @@ github.com/cilium/ebpf v0.4.0/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJ
 github.com/cilium/ebpf v0.6.2/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
 github.com/circonus-labs/circonus-gometrics v2.3.1+incompatible/go.mod h1:nmEj6Dob7S7YxXgwXpfOuvO54S+tGdZdw9fuRZt25Ag=
 github.com/circonus-labs/circonusllhist v0.1.3/go.mod h1:kMXHVDlOchFAehlya5ePtbp5jckzBHf4XRpQvBOLI+I=
-github.com/cloudogu/cesapp-lib v0.0.0-20221229112545-4d449f4c8473 h1:cRZXYR4/bd+IUlBXnmlVj3kOQiluqJtwCpBiTgO6cCg=
-github.com/cloudogu/cesapp-lib v0.0.0-20221229112545-4d449f4c8473/go.mod h1:PTQqI3xs1ReJMXYE6BGTF33yAfmS4J7P8UiE4AwDMDY=
-github.com/cloudogu/k8s-apply-lib v0.0.0-20230224090725-6f4a6f9ca777 h1:sZx4MlIz6nzqEDKut1H+EvYGSG7YOtB/1K3Qe3TvA+k=
-github.com/cloudogu/k8s-apply-lib v0.0.0-20230224090725-6f4a6f9ca777/go.mod h1:2bRnmxhZBaskxUBFuOX7HDzxRX48jlPGJ+Uzkn/X+0I=
+github.com/cloudogu/cesapp-lib v0.10.0 h1:Pg8mLGEhCvcDn0y6w4RlspLgdUXm2xuAg2zir6hBc4w=
+github.com/cloudogu/cesapp-lib v0.10.0/go.mod h1:PTQqI3xs1ReJMXYE6BGTF33yAfmS4J7P8UiE4AwDMDY=
+github.com/cloudogu/k8s-apply-lib v0.4.1 h1:2bXWFLDS1lyxUbdMBfBnAvii9p6ALwZ7Mb7VmWt+qd8=
+github.com/cloudogu/k8s-apply-lib v0.4.1/go.mod h1:2bRnmxhZBaskxUBFuOX7HDzxRX48jlPGJ+Uzkn/X+0I=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4/go.mod h1:6pvJx4me5XPnfI9Z40ddWsdw2W/uZgQLFXToKeRcDiI=
 github.com/cncf/xds/go v0.0.0-20210922020428-25de7278fc84/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
