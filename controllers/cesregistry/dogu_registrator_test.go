@@ -16,7 +16,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
 //go:embed testdata/examplePrivateKey

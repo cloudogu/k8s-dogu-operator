@@ -4,6 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
@@ -18,37 +27,29 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
 
 const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
-	client                client.Client
+	client                thirdParty.K8sClient
 	recorder              record.EventRecorder
 	doguRemoteRegistry    cesremote.Registry
 	doguLocalRegistry     cesregistry.DoguRegistry
-	localDoguFetcher      internal.LocalDoguFetcher
-	resourceDoguFetcher   internal.ResourceDoguFetcher
-	imageRegistry         internal.ImageRegistry
-	doguRegistrator       internal.DoguRegistrator
-	dependencyValidator   internal.DependencyValidator
-	serviceAccountCreator internal.ServiceAccountCreator
-	doguSecretHandler     internal.DoguSecretHandler
-	fileExtractor         internal.FileExtractor
-	collectApplier        internal.CollectApplier
-	resourceUpserter      internal.ResourceUpserter
-	execPodFactory        internal.ExecPodFactory
+	localDoguFetcher      cloudogu.LocalDoguFetcher
+	resourceDoguFetcher   cloudogu.ResourceDoguFetcher
+	imageRegistry         cloudogu.ImageRegistry
+	doguRegistrator       cloudogu.DoguRegistrator
+	dependencyValidator   cloudogu.DependencyValidator
+	serviceAccountCreator cloudogu.ServiceAccountCreator
+	doguSecretHandler     cloudogu.DoguSecretHandler
+	fileExtractor         cloudogu.FileExtractor
+	collectApplier        cloudogu.CollectApplier
+	resourceUpserter      cloudogu.ResourceUpserter
+	execPodFactory        cloudogu.ExecPodFactory
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
@@ -207,7 +208,7 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
-	anExecPod, err := m.execPodFactory.NewExecPod(internal.VolumeModeInstall, doguResource, dogu)
+	anExecPod, err := m.execPodFactory.NewExecPod(cloudogu.VolumeModeInstall, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create ExecPod resource %s: %w", anExecPod.ObjectKey().Name, err)
 	}
@@ -243,7 +244,7 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	return nil
 }
 
-func deleteExecPod(ctx context.Context, execPod internal.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
+func deleteExecPod(ctx context.Context, execPod cloudogu.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
 	err := execPod.Delete(ctx)
 	if err != nil {
 		recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)

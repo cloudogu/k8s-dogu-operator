@@ -3,7 +3,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -63,10 +65,10 @@ const (
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
 	client             client.Client
-	doguManager        internal.DoguManager
+	doguManager        cloudogu.DoguManager
 	doguRequeueHandler requeueHandler
 	recorder           record.EventRecorder
-	fetcher            internal.LocalDoguFetcher
+	fetcher            cloudogu.LocalDoguFetcher
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
@@ -76,7 +78,7 @@ type requeueHandler interface {
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguManager internal.DoguManager, eventRecorder record.EventRecorder, namespace string, localRegistry registry.DoguRegistry) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localRegistry registry.DoguRegistry) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(client, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
@@ -350,7 +352,7 @@ func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResourc
 	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusPVCResizing, r.doguManager.SetDoguDataVolumeSize)
 }
 
-func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher internal.LocalDoguFetcher) (bool, error) {
+func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {
 	fromDogu, err := fetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
 		return false, err

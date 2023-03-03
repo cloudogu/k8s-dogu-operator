@@ -63,6 +63,10 @@ $(ETCGROUP): $(TMP_DIR)
 $(UTILITY_BIN_PATH):
 	@mkdir -p $@
 
+# Subdirectories of workdir where no mocks should be generated.
+# Multiple directories can be separated by space, comma or whatever is not a word to regex.
+MOCKERY_IGNORED=vendor,build,docs
+
 ##@ General
 
 .PHONY: help

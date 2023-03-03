@@ -5,7 +5,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,7 +22,7 @@ import (
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -197,8 +199,8 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd, internal.ContainersStarted).Return(cesControlBuf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd, cloudogu.ContainersStarted).Return(cesControlBuf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -350,7 +352,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.On("HostConfig", "k8s-ces-control").Return(hostConfig)
 		executor := mocks.NewCommandExecutor(t)
 		executor.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd,
-			internal.ContainersStarted).Return(cesControlBuf, assert.AnError)
+			cloudogu.ContainersStarted).Return(cesControlBuf, assert.AnError)
 
 		serviceAccountCreator := creator{
 			client:   cli,
@@ -378,7 +380,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.On("HostConfig", "k8s-ces-control").Return(hostConfig)
 		executor := mocks.NewCommandExecutor(t)
 		executor.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd,
-			internal.ContainersStarted).Return(bytes.NewBufferString("invalid:sa:output"), nil)
+			cloudogu.ContainersStarted).Return(bytes.NewBufferString("invalid:sa:output"), nil)
 
 		serviceAccountCreator := creator{
 			client:   cli,
@@ -409,7 +411,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.On("GlobalConfig").Return(globalConfig)
 		executor := mocks.NewCommandExecutor(t)
 		executor.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd,
-			internal.ContainersStarted).Return(cesControlBuf, nil)
+			cloudogu.ContainersStarted).Return(cesControlBuf, nil)
 
 		serviceAccountCreator := creator{
 			client:   cli,
@@ -604,7 +606,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(nil, assert.AnError)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, assert.AnError)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -639,7 +641,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
 		invalidBuffer := bytes.NewBufferString("username:user:invalid\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(invalidBuffer, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(invalidBuffer, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -675,7 +677,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -713,7 +715,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -751,7 +753,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -790,7 +792,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -831,7 +833,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
 		buf := bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)

@@ -11,8 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -24,12 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 type mockeryGinkgoLogger struct {
@@ -87,11 +84,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		It("Setup mocks and test data", func() {
 			*ImageRegistryMock = mocks.ImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
-			*DoguRemoteRegistryMock = cesremotemocks.Registry{}
+			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil)
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil)
 
-			*EtcdDoguRegistry = cesmocks.DoguRegistry{}
+			*EtcdDoguRegistry = extMocks.DoguRegistry{}
 			EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed"))
 			EtcdDoguRegistry.Mock.On("Get", "cas").Return(nil, fmt.Errorf("not installed"))
 			EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed"))
@@ -358,7 +355,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	It("Setup mocks and test data for upgrade", func() {
 		// create mocks
-		*DoguRemoteRegistryMock = cesremotemocks.Registry{}
+		*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
 		DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Once().Return(upgradeLdapFromDoguDescriptor, nil)
 		DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(upgradeLdapToDoguDescriptor, nil)
 
@@ -366,7 +363,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.48-4").Return(imageConfig, nil)
 		ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil)
 
-		*EtcdDoguRegistry = cesmocks.DoguRegistry{}
+		*EtcdDoguRegistry = extMocks.DoguRegistry{}
 		EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(false, nil)
 		EtcdDoguRegistry.Mock.On("Register", upgradeLdapFromDoguDescriptor).Once().Return(nil)
 		EtcdDoguRegistry.Mock.On("Enable", upgradeLdapFromDoguDescriptor).Once().Return(nil)
@@ -378,9 +375,9 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
 
 		CommandExecutor.
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved"), internal.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/tmp/dogu-reserved/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), internal.PodReady).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), internal.ContainersStarted).Once().Run(func(args mock.Arguments) {
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/tmp/dogu-reserved/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.PodReady).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.ContainersStarted).Once().Run(func(args mock.Arguments) {
 			defer GinkgoRecover()
 			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 1080)
 			assertRessourceStatus(upgradeLdapFromDoguLookupKey, "upgrading")

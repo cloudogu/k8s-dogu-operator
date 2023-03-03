@@ -2,7 +2,9 @@ package serviceaccount
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
@@ -12,7 +14,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
@@ -83,7 +85,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, internal.PodReady).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -132,7 +134,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", ctx, readyCasPod, casRemoveSAShellCmd, internal.PodReady).Return(nil, nil)
+			On("ExecCommandForPod", ctx, readyCasPod, casRemoveSAShellCmd, cloudogu.PodReady).Return(nil, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "cas").Return(casDescriptor, nil)
@@ -352,7 +354,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", ctx, readyPostgresPod, postgresRemoveSAShellCmd, internal.PodReady).Return(nil, assert.AnError)
+			On("ExecCommandForPod", ctx, readyPostgresPod, postgresRemoveSAShellCmd, cloudogu.PodReady).Return(nil, assert.AnError)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
@@ -392,7 +394,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPostgresPod, postgresCreateSAShellCmd, internal.PodReady).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPostgresPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)

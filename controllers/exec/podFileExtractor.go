@@ -3,7 +3,9 @@ package exec
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
 	"strings"
 
 	"k8s.io/client-go/kubernetes"
@@ -31,7 +33,7 @@ func NewPodFileExtractor(k8sClient client.Client, restConfig *rest.Config, clien
 
 // ExtractK8sResourcesFromContainer enumerates K8s resources and returns them in a map filename->content. The map will be
 // empty if there are no files.
-func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod internal.ExecPod) (map[string]string, error) {
+func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod cloudogu.ExecPod) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 
 	lsCommand := NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")

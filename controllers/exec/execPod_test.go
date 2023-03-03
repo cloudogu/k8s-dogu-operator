@@ -3,9 +3,9 @@ package exec
 import (
 	"bytes"
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,7 +22,8 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 const testNamespace = "ecosystem"
@@ -77,7 +78,7 @@ func Test_execPod_Create(t *testing.T) {
 	})
 	t.Run("should fail on resource creation", func(t *testing.T) {
 		// given
-		mockClient := external.NewClient(t)
+		mockClient := extMocks.NewK8sClient(t)
 		mockClient.
 			On("Create", context.Background(), mock.Anything).Once().Return(assert.AnError).
 			On("Scheme").Once().Return(getTestScheme())
@@ -93,7 +94,7 @@ func Test_execPod_Create(t *testing.T) {
 	})
 	t.Run("should fail on failed pod", func(t *testing.T) {
 		// given
-		mockClient := external.NewClient(t)
+		mockClient := extMocks.NewK8sClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		clientGetFn := func(args mock.Arguments) {
 			pod := args[2].(*corev1.Pod)
@@ -118,7 +119,7 @@ func Test_execPod_Create(t *testing.T) {
 		// given
 		originalMaxTries := maxTries
 		maxTries = 1
-		mockClient := external.NewClient(t)
+		mockClient := extMocks.NewK8sClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		clientGetFn := func(args mock.Arguments) {
 			pod := args[2].(*corev1.Pod)
@@ -144,7 +145,7 @@ func Test_execPod_Create(t *testing.T) {
 		// given
 		originalMaxTries := maxTries
 		maxTries = 1
-		mockClient := external.NewClient(t)
+		mockClient := extMocks.NewK8sClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		mockClient.
 			On("Create", context.Background(), mock.Anything).Once().Return(nil).
@@ -163,7 +164,7 @@ func Test_execPod_Create(t *testing.T) {
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		mockClient := external.NewClient(t)
+		mockClient := extMocks.NewK8sClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		clientGetFn := func(args mock.Arguments) {
 			pod := args[2].(*corev1.Pod)
@@ -285,7 +286,7 @@ func Test_execPod_Exec(t *testing.T) {
 		cmd := &shellCommand{command: "/bin/ls", args: []string{"-lahF"}}
 		mockExec := mocks.NewCommandExecutor(t)
 		outBuf := bytes.NewBufferString("")
-		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, internal.ContainersStarted).Return(outBuf, assert.AnError)
+		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, cloudogu.ContainersStarted).Return(outBuf, assert.AnError)
 		sut := &execPod{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
@@ -313,7 +314,7 @@ func Test_execPod_Exec(t *testing.T) {
 		cmd := &shellCommand{command: "/bin/ls", args: []string{"-lahF"}}
 		mockExec := mocks.NewCommandExecutor(t)
 		outBuf := bytes.NewBufferString("possibly some output goes here")
-		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, internal.ContainersStarted).Return(outBuf, nil)
+		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, cloudogu.ContainersStarted).Return(outBuf, nil)
 		sut := &execPod{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
@@ -346,7 +347,7 @@ func Test_execPod_createVolumes(t *testing.T) {
 	})
 	t.Run("should return no volume resources for an install execPod", func(t *testing.T) {
 		// given
-		sut := &execPod{volumeMode: internal.VolumeModeInstall}
+		sut := &execPod{volumeMode: cloudogu.VolumeModeInstall}
 
 		// when
 		actualMounts, actualVolumes := sut.createVolumes(testCtx)
@@ -358,7 +359,7 @@ func Test_execPod_createVolumes(t *testing.T) {
 	t.Run("should return volume resources for an upgrade execPod", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
-		sut := &execPod{volumeMode: internal.VolumeModeUpgrade, doguResource: ldapDoguResource}
+		sut := &execPod{volumeMode: cloudogu.VolumeModeUpgrade, doguResource: ldapDoguResource}
 
 		// when
 		actualMounts, actualVolumes := sut.createVolumes(testCtx)
@@ -379,7 +380,7 @@ func Test_execPod_createVolumes(t *testing.T) {
 func Test_execPod_Delete(t *testing.T) {
 	t.Run("should fail on arbitrary error", func(t *testing.T) {
 		// given
-		mockClient := external.NewClient(t)
+		mockClient := extMocks.NewK8sClient(t)
 		mockClient.
 			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(assert.AnError)
 
@@ -395,7 +396,7 @@ func Test_execPod_Delete(t *testing.T) {
 	})
 	t.Run("should succeed on not-found-error because target state is already reached", func(t *testing.T) {
 		// given
-		mockClient := external.NewClient(t)
+		mockClient := extMocks.NewK8sClient(t)
 		mockClient.On("Delete", context.Background(), &corev1.Pod{}).Once().Return(
 			&errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}},
 		)
@@ -410,7 +411,7 @@ func Test_execPod_Delete(t *testing.T) {
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		mockClient := external.NewClient(t)
+		mockClient := extMocks.NewK8sClient(t)
 		mockClient.
 			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(nil)
 
@@ -467,7 +468,7 @@ func Test_defaultExecPodFactory_NewExecPod(t *testing.T) {
 	sut.suffixGen = suffixGen
 
 	// when
-	pod, err := sut.NewExecPod(internal.VolumeModeInstall, nil, dogu)
+	pod, err := sut.NewExecPod(cloudogu.VolumeModeInstall, nil, dogu)
 
 	// then
 	require.NoError(t, err)

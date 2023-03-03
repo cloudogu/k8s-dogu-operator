@@ -15,7 +15,7 @@ import (
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/keys"
@@ -39,12 +39,12 @@ const (
 type creator struct {
 	client      client.Client
 	registry    registry.Registry
-	doguFetcher internal.LocalDoguFetcher
-	executor    internal.CommandExecutor
+	doguFetcher cloudogu.LocalDoguFetcher
+	executor    cloudogu.CommandExecutor
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(registry registry.Registry, commandExecutor internal.CommandExecutor, client client.Client) *creator {
+func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &creator{
 		client:      client,
@@ -182,7 +182,7 @@ func (c *creator) createCesControlServiceAccount(ctx context.Context, dogu *core
 	cmdParams = append(cmdParams, sa.Params...)
 	command := exec.NewShellCommand(fmt.Sprintf("/%s/%s", k8sCesControl, k8sCesControl), cmdParams...)
 
-	buffer, err := c.executor.ExecCommandForPod(ctx, pod, command, internal.ContainersStarted)
+	buffer, err := c.executor.ExecCommandForPod(ctx, pod, command, cloudogu.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to exec command [%s] for pod %s: %w", command.String(), pod.Name, err)
 	}
@@ -244,7 +244,7 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, consumerDogu.GetSimpleName())
 
 	command := exec.NewShellCommand(createCommand.Command, args...)
-	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, internal.PodReady)
+	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, cloudogu.PodReady)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}
