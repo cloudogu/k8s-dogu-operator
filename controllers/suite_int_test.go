@@ -6,24 +6,10 @@ package controllers
 import (
 	"context"
 	_ "embed"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/cloudogu/cesapp-lib/core"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	cesremotemocks "github.com/cloudogu/cesapp-lib/remote/mocks"
-
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/onsi/ginkgo"
@@ -33,19 +19,28 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/cloudogu/cesapp-lib/core"
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	// +kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-var k8sClient client.Client
-
 var k8sClientSet *ecoSystem.EcoSystemV1Alpha1Client
 var testEnv *envtest.Environment
 var cancel context.CancelFunc
@@ -53,9 +48,10 @@ var cancel context.CancelFunc
 // Used in other integration tests
 var (
 	ImageRegistryMock      *mocks.ImageRegistry
-	DoguRemoteRegistryMock *cesremotemocks.Registry
-	EtcdDoguRegistry       *cesmocks.DoguRegistry
-	CommandExecutor        = &mocks.CommandExecutor{}
+	CommandExecutor        *mocks.CommandExecutor
+	DoguRemoteRegistryMock *extMocks.RemoteRegistry
+	EtcdDoguRegistry       *extMocks.DoguRegistry
+	k8sClient              thirdParty.K8sClient
 )
 
 const TimeoutInterval = time.Second * 10
@@ -66,10 +62,7 @@ var oldGetConfigOrDie func() *rest.Config
 
 func TestAPIs(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-
-	ginkgo.RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]ginkgo.Reporter{printer.NewlineReporter{}})
+	ginkgo.RunSpecs(t, "Controller Suite")
 }
 
 var _ = ginkgo.BeforeSuite(func() {
@@ -82,6 +75,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	config.Stage = config.StageProduction
 
+	CommandExecutor = &mocks.CommandExecutor{}
 	logf.SetLogger(logrusr.New(logrus.New()))
 
 	var ctx context.Context
@@ -122,8 +116,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClientSet, err = ecoSystem.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	DoguRemoteRegistryMock = &cesremotemocks.Registry{}
-	EtcdDoguRegistry = &cesmocks.DoguRegistry{}
+	DoguRemoteRegistryMock = &extMocks.RemoteRegistry{}
+	EtcdDoguRegistry = &extMocks.DoguRegistry{}
 	ImageRegistryMock = &mocks.ImageRegistry{}
 
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}

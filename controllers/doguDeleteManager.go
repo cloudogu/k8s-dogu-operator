@@ -3,21 +3,22 @@ package controllers
 import (
 	"context"
 	"fmt"
-	internal2 "github.com/cloudogu/k8s-dogu-operator/internal"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 )
 
 const finalizerName = "dogu-finalizer"
@@ -25,11 +26,11 @@ const finalizerName = "dogu-finalizer"
 // doguDeleteManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguDeleteManager struct {
 	client                client.Client
-	localDoguFetcher      internal2.LocalDoguFetcher
-	imageRegistry         internal2.ImageRegistry
-	doguRegistrator       internal2.DoguRegistrator
-	serviceAccountRemover internal2.ServiceAccountRemover
-	doguSecretHandler     internal2.DoguSecretHandler
+	localDoguFetcher      cloudogu.LocalDoguFetcher
+	imageRegistry         cloudogu.ImageRegistry
+	doguRegistrator       cloudogu.DoguRegistrator
+	serviceAccountRemover cloudogu.ServiceAccountRemover
+	doguSecretHandler     cloudogu.DoguSecretHandler
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.

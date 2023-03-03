@@ -2,9 +2,10 @@ package limit
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
 	"testing"
 	"time"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"

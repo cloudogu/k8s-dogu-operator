@@ -2,14 +2,14 @@ package controllers
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -25,7 +25,7 @@ func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 	// given
 	dogu := &k8sv1.Dogu{}
 	volumeManagerMock := mocks.NewVolumeManager(t)
-	eventRecorderMock := external.NewEventRecorder(t)
+	eventRecorderMock := extMocks.NewEventRecorder(t)
 	manager := DoguManager{volumeManager: volumeManagerMock, recorder: eventRecorderMock}
 
 	eventRecorderMock.On("Event", dogu, "Normal", "VolumeExpansion", "Start volume expansion...")
@@ -42,7 +42,7 @@ func TestDoguManager_HandleSupportMode(t *testing.T) {
 	// given
 	dogu := &k8sv1.Dogu{}
 	supportManagerMock := mocks.NewSupportManager(t)
-	eventRecorderMock := external.NewEventRecorder(t)
+	eventRecorderMock := extMocks.NewEventRecorder(t)
 	manager := DoguManager{supportManager: supportManagerMock, recorder: eventRecorderMock}
 
 	supportManagerMock.On("HandleSupportMode", mock.Anything, mock.Anything).Return(true, nil)
@@ -61,7 +61,7 @@ func TestDoguManager_Delete(t *testing.T) {
 	inputContext := context.Background()
 	deleteManager := mocks.NewDeleteManager(t)
 	deleteManager.On("Delete", inputContext, inputDogu).Return(nil)
-	eventRecorder := external.NewEventRecorder(t)
+	eventRecorder := extMocks.NewEventRecorder(t)
 	m := DoguManager{deleteManager: deleteManager, recorder: eventRecorder}
 
 	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, "Deinstallation", "Starting deinstallation...")
@@ -79,7 +79,7 @@ func TestDoguManager_Install(t *testing.T) {
 	inputContext := context.Background()
 	installManager := mocks.NewInstallManager(t)
 	installManager.On("Install", inputContext, inputDogu).Return(nil)
-	eventRecorder := external.NewEventRecorder(t)
+	eventRecorder := extMocks.NewEventRecorder(t)
 	m := DoguManager{installManager: installManager, recorder: eventRecorder}
 
 	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
@@ -97,7 +97,7 @@ func TestDoguManager_Upgrade(t *testing.T) {
 	inputContext := context.Background()
 	upgradeManager := mocks.NewUpgradeManager(t)
 	upgradeManager.On("Upgrade", inputContext, inputDogu).Return(nil)
-	eventRecorder := external.NewEventRecorder(t)
+	eventRecorder := extMocks.NewEventRecorder(t)
 	m := DoguManager{upgradeManager: upgradeManager, recorder: eventRecorder}
 
 	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, upgrade.EventReason, "Starting upgrade...")
@@ -125,7 +125,7 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
-		eventRecorder := external.NewEventRecorder(t)
+		eventRecorder := extMocks.NewEventRecorder(t)
 		globalConfig.On("Exists", "key_provider").Return(true, nil)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
@@ -146,7 +146,7 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
-		eventRecorder := external.NewEventRecorder(t)
+		eventRecorder := extMocks.NewEventRecorder(t)
 		globalConfig.On("Exists", "key_provider").Return(false, nil)
 		globalConfig.On("Set", "key_provider", "pkcs1v15").Return(nil)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
@@ -164,7 +164,7 @@ func TestNewDoguManager(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
-		eventRecorder := external.NewEventRecorder(t)
+		eventRecorder := extMocks.NewEventRecorder(t)
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
@@ -190,7 +190,7 @@ func TestNewDoguManager(t *testing.T) {
 		globalConfig.On("Exists", "key_provider").Return(false, nil)
 		globalConfig.On("Set", "key_provider", "pkcs1v15").Return(assert.AnError)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
-		eventRecorder := external.NewEventRecorder(t)
+		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when
 		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)

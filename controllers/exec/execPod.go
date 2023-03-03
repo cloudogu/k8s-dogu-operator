@@ -3,7 +3,8 @@ package exec
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
 
@@ -25,8 +26,8 @@ import (
 // execPod provides features to handle files from a dogu image.
 type execPod struct {
 	client     client.Client
-	executor   internal.CommandExecutor
-	volumeMode internal.ExecPodVolumeMode
+	executor   cloudogu.CommandExecutor
+	volumeMode cloudogu.ExecPodVolumeMode
 
 	doguResource *k8sv1.Dogu
 	dogu         *core.Dogu
@@ -37,8 +38,8 @@ type execPod struct {
 // NewExecPod creates a new ExecPod that enables command execution towards a pod.
 func NewExecPod(
 	client client.Client,
-	executor internal.CommandExecutor,
-	factoryMode internal.ExecPodVolumeMode,
+	executor cloudogu.CommandExecutor,
+	factoryMode cloudogu.ExecPodVolumeMode,
 	doguResource *k8sv1.Dogu,
 	dogu *core.Dogu,
 	podName string,
@@ -127,9 +128,9 @@ func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []c
 	logger := log.FromContext(ctx)
 
 	switch ep.volumeMode {
-	case internal.VolumeModeInstall:
+	case cloudogu.VolumeModeInstall:
 		return nil, nil
-	case internal.VolumeModeUpgrade:
+	case cloudogu.VolumeModeUpgrade:
 		volumeMounts := []corev1.VolumeMount{{
 			Name:      ep.doguResource.GetReservedVolumeName(),
 			ReadOnly:  false,
@@ -220,13 +221,13 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 }
 
 // Exec executes the given shellCommand and returns any output to stdOut and stdErr.
-func (ep *execPod) Exec(ctx context.Context, cmd internal.ShellCommand) (string, error) {
+func (ep *execPod) Exec(ctx context.Context, cmd cloudogu.ShellCommand) (string, error) {
 	pod, err := ep.getPod(ctx)
 	if err != nil {
 		return "", fmt.Errorf("could not get pod: %w", err)
 	}
 
-	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, internal.ContainersStarted)
+	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, cloudogu.ContainersStarted)
 
 	return out.String(), err
 }
@@ -241,12 +242,12 @@ func (sg *defaultSufficeGenerator) String(suffixLength int) string {
 type defaultExecPodFactory struct {
 	client          client.Client
 	config          *rest.Config
-	commandExecutor internal.CommandExecutor
-	suffixGen       internal.SuffixGenerator
+	commandExecutor cloudogu.CommandExecutor
+	suffixGen       cloudogu.SuffixGenerator
 }
 
 // NewExecPodFactory creates a new ExecPodFactory.
-func NewExecPodFactory(client client.Client, config *rest.Config, executor internal.CommandExecutor) *defaultExecPodFactory {
+func NewExecPodFactory(client client.Client, config *rest.Config, executor cloudogu.CommandExecutor) *defaultExecPodFactory {
 	return &defaultExecPodFactory{
 		client:          client,
 		config:          config,
@@ -256,11 +257,11 @@ func NewExecPodFactory(client client.Client, config *rest.Config, executor inter
 }
 
 // NewExecPod creates a new ExecPod during the operation run-time.
-func (epf *defaultExecPodFactory) NewExecPod(execPodFactoryMode internal.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (internal.ExecPod, error) {
+func (epf *defaultExecPodFactory) NewExecPod(execPodFactoryMode cloudogu.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (cloudogu.ExecPod, error) {
 	podName := generatePodName(dogu, epf.suffixGen)
 	return NewExecPod(epf.client, epf.commandExecutor, execPodFactoryMode, doguResource, dogu, podName)
 }
 
-func generatePodName(dogu *core.Dogu, generator internal.SuffixGenerator) string {
+func generatePodName(dogu *core.Dogu, generator cloudogu.SuffixGenerator) string {
 	return fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", generator.String(6))
 }

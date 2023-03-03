@@ -3,10 +3,12 @@ package dependency
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -30,7 +32,7 @@ func (e *dependencyValidationError) Requeue() bool {
 
 // doguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type doguDependencyValidator struct {
-	fetcher internal.LocalDoguFetcher
+	fetcher cloudogu.LocalDoguFetcher
 }
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker

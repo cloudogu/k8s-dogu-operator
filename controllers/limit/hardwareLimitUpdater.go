@@ -3,10 +3,12 @@ package limit
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
 	"github.com/hashicorp/go-multierror"
 	coreosclient "go.etcd.io/etcd/client/v2"
 	v1 "k8s.io/api/apps/v1"
@@ -25,7 +27,7 @@ type hardwareLimitUpdater struct {
 	client           client.Client
 	namespace        string
 	registry         registry.Registry
-	doguLimitPatcher internal.LimitPatcher
+	doguLimitPatcher cloudogu.LimitPatcher
 }
 
 // doguLimits contains all data necessary to limit the physical resources for a dogu.

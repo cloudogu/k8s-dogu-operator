@@ -3,8 +3,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks/external"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +25,9 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 type doguInstallManagerWithMocks struct {
@@ -43,7 +43,7 @@ type doguInstallManagerWithMocks struct {
 	fileExtractorMock         *mocks.FileExtractor
 	client                    client.WithWatch
 	resourceUpserter          *mocks.ResourceUpserter
-	recorder                  *external.EventRecorder
+	recorder                  *extMocks.EventRecorder
 	execPodFactory            *mocks.ExecPodFactory
 }
 
@@ -78,7 +78,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 	doguSecretHandler := &mocks.DoguSecretHandler{}
 	mockedApplier := &mocks.Applier{}
 	fileExtract := mocks.NewFileExtractor(t)
-	eventRecorderMock := external.NewEventRecorder(t)
+	eventRecorderMock := extMocks.NewEventRecorder(t)
 	localDoguFetcher := mocks.NewLocalDoguFetcher(t)
 	resourceDoguFetcher := mocks.NewResourceDoguFetcher(t)
 	collectApplier := resource.NewCollectApplier(mockedApplier)
@@ -141,7 +141,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
 		doguRegistry := &cesmocks.DoguRegistry{}
-		eventRecorder := &external.EventRecorder{}
+		eventRecorder := extMocks.NewEventRecorder(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
@@ -167,7 +167,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := &cesmocks.Registry{}
-		eventRecorder := &external.EventRecorder{}
+		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when
 		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, eventRecorder)
@@ -213,7 +213,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Return(nil)
 		execPod.On("Delete", testCtx).Return(nil)
-		managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+		managerWithMocks.execPodFactory.On("NewExecPod", cloudogu.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 		// when
 		err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -254,7 +254,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Return(nil)
 		execPod.On("Delete", testCtx).Return(nil)
-		managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+		managerWithMocks.execPodFactory.On("NewExecPod", cloudogu.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 		// when
 		err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -448,7 +448,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			execPod := mocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Return(nil)
 			execPod.On("Delete", testCtx).Return(nil)
-			managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+			managerWithMocks.execPodFactory.On("NewExecPod", cloudogu.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 			// when
 			err := managerWithMocks.installManager.Install(ctx, ldapCr)
@@ -481,7 +481,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			execPod := mocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Return(nil)
 			execPod.On("Delete", testCtx).Return(nil)
-			managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+			managerWithMocks.execPodFactory.On("NewExecPod", cloudogu.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 			managerWithMocks.resourceUpserter.On("UpsertDoguService", ctx, ldapCr, imageConfig).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguExposedServices", ctx, ldapCr, ldapDogu).Once().Return(nil, nil)
@@ -580,7 +580,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			execPod := mocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Return(nil)
 			execPod.On("Delete", testCtx).Return(nil)
-			managerWithMocks.execPodFactory.On("NewExecPod", internal.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
+			managerWithMocks.execPodFactory.On("NewExecPod", cloudogu.VolumeModeInstall, ldapCr, ldapDogu, mock.Anything).Return(execPod, nil)
 
 			managerWithMocks.resourceUpserter.On("UpsertDoguService", ctx, ldapCr, imageConfig).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.On("UpsertDoguExposedServices", ctx, ldapCr, ldapDogu).Once().Return(nil, nil)

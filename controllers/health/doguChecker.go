@@ -3,10 +3,12 @@ package health
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+
 	"github.com/hashicorp/go-multierror"
 	v1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,7 +35,7 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(client client.Client, localFetcher internal.LocalDoguFetcher) *doguChecker {
+func NewDoguChecker(client client.Client, localFetcher cloudogu.LocalDoguFetcher) *doguChecker {
 	return &doguChecker{
 		client:            client,
 		doguLocalRegistry: localFetcher,
@@ -42,7 +44,7 @@ func NewDoguChecker(client client.Client, localFetcher internal.LocalDoguFetcher
 
 type doguChecker struct {
 	client            client.Client
-	doguLocalRegistry internal.LocalDoguFetcher
+	doguLocalRegistry cloudogu.LocalDoguFetcher
 }
 
 // CheckWithResource returns nil if the dogu's replica exist and are ready. If the dogu is unhealthy an error of type

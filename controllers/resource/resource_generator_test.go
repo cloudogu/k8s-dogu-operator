@@ -2,8 +2,9 @@ package resource
 
 import (
 	_ "embed"
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"testing"
+
+	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,7 +17,7 @@ import (
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
-	"github.com/cloudogu/k8s-dogu-operator/internal/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
 func getResourceGenerator(t *testing.T) *resourceGenerator {
