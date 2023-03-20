@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/hosts"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -38,7 +39,7 @@ type doguSupportManager struct {
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.
 func NewDoguSupportManager(client client.Client, cesRegistry registry.Registry, eventRecorder record.EventRecorder) *doguSupportManager {
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
+	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry), hosts.NewHostAliasGenerator(cesRegistry))
 	return &doguSupportManager{
 		client:            client,
 		doguRegistry:      cesRegistry.DoguRegistry(),

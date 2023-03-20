@@ -3,6 +3,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/hosts"
 
 	"k8s.io/client-go/rest"
 
@@ -62,7 +63,8 @@ func NewUpgradeExecutor(
 ) *upgradeExecutor {
 	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, nil)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
-	upserter := resource.NewUpserter(client, limitPatcher)
+	hostAliasGenerator := hosts.NewHostAliasGenerator(registry)
+	upserter := resource.NewUpserter(client, limitPatcher, hostAliasGenerator)
 
 	return &upgradeExecutor{
 		client:                client,

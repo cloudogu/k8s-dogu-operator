@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/hosts"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -69,8 +70,9 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	resourceDoguFetcher := reg.NewResourceDoguFetcher(client, doguRemoteRegistry)
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(cesRegistry)
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
-	upserter := resource.NewUpserter(client, limitPatcher)
+	hostAliasGenerator := hosts.NewHostAliasGenerator(cesRegistry)
+	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limitPatcher, hostAliasGenerator)
+	upserter := resource.NewUpserter(client, limitPatcher, hostAliasGenerator)
 
 	fileExtract := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)

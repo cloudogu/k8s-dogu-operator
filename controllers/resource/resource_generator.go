@@ -49,13 +49,18 @@ const kubernetesServiceAccountKind = "k8s"
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type resourceGenerator struct {
-	scheme           *runtime.Scheme
-	doguLimitPatcher cloudogu.LimitPatcher
+	scheme             *runtime.Scheme
+	doguLimitPatcher   cloudogu.LimitPatcher
+	hostAliasGenerator cloudogu.HostAliasGenerator
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher cloudogu.LimitPatcher) *resourceGenerator {
-	return &resourceGenerator{scheme: scheme, doguLimitPatcher: limitPatcher}
+func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher cloudogu.LimitPatcher, hostAliasGenerator cloudogu.HostAliasGenerator) *resourceGenerator {
+	return &resourceGenerator{
+		scheme:             scheme,
+		doguLimitPatcher:   limitPatcher,
+		hostAliasGenerator: hostAliasGenerator,
+	}
 }
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
@@ -147,6 +152,11 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		initContainers = append(initContainers, *chownContainer)
 	}
 
+	hostAliases, err := r.hostAliasGenerator.Generate()
+	if err != nil {
+		return nil, err
+	}
+
 	podTemplate := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: allLabels,
@@ -154,6 +164,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		Spec: corev1.PodSpec{
 			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
 			Hostname:           doguResource.Name,
+			HostAliases:        hostAliases,
 			Volumes:            volumes,
 			EnableServiceLinks: &enableServiceLinks,
 			InitContainers:     initContainers,
