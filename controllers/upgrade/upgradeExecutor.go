@@ -3,8 +3,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/hosts"
-
+	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	"k8s.io/client-go/rest"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -63,7 +62,7 @@ func NewUpgradeExecutor(
 ) *upgradeExecutor {
 	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, nil)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
-	hostAliasGenerator := hosts.NewHostAliasGenerator(registry)
+	hostAliasGenerator := alias.NewHostAliasGenerator(registry.GlobalConfig())
 	upserter := resource.NewUpserter(client, limitPatcher, hostAliasGenerator)
 
 	return &upgradeExecutor{

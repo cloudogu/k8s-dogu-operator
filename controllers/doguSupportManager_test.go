@@ -25,11 +25,12 @@ import (
 const namespace = "test"
 
 type doguSupportManagerWithMocks struct {
-	supportManager   *doguSupportManager
-	doguRegistryMock *regmocks.DoguRegistry
-	k8sClient        client.WithWatch
-	recorderMock     *extMocks.EventRecorder
-	doguLimits       cloudogu.DoguLimits
+	supportManager     *doguSupportManager
+	doguRegistryMock   *regmocks.DoguRegistry
+	k8sClient          client.WithWatch
+	recorderMock       *extMocks.EventRecorder
+	doguLimits         cloudogu.DoguLimits
+	hostAliasGenerator *mocks.HostAliasGenerator
 }
 
 func (d *doguSupportManagerWithMocks) AssertMocks(t *testing.T) {
@@ -48,7 +49,8 @@ func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSu
 	doguLimits := &mocks.DoguLimits{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(doguLimits, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher)
+	hostAliasGenerator := mocks.NewHostAliasGenerator(t)
+	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher, hostAliasGenerator)
 	doguRegistry := &regmocks.DoguRegistry{}
 	eventRecorder := extMocks.NewEventRecorder(t)
 
@@ -60,19 +62,22 @@ func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSu
 	}
 
 	return doguSupportManagerWithMocks{
-		supportManager:   doguSupportManager,
-		k8sClient:        k8sClient,
-		doguRegistryMock: doguRegistry,
-		recorderMock:     eventRecorder,
-		doguLimits:       doguLimits,
+		supportManager:     doguSupportManager,
+		k8sClient:          k8sClient,
+		doguRegistryMock:   doguRegistry,
+		recorderMock:       eventRecorder,
+		doguLimits:         doguLimits,
+		hostAliasGenerator: hostAliasGenerator,
 	}
 }
 
 func TestNewDoguSupportManager(t *testing.T) {
 	// given
 	k8sClient := fake.NewClientBuilder().Build()
-	cesRegistry := &regmocks.Registry{}
-	doguRegistry := &regmocks.DoguRegistry{}
+	cesRegistry := regmocks.NewRegistry(t)
+	doguRegistry := regmocks.NewDoguRegistry(t)
+	globalConfig := regmocks.NewConfigurationContext(t)
+	cesRegistry.On("GlobalConfig").Return(globalConfig)
 	cesRegistry.On("DoguRegistry").Return(doguRegistry)
 	recorder := extMocks.NewEventRecorder(t)
 
@@ -81,7 +86,6 @@ func TestNewDoguSupportManager(t *testing.T) {
 
 	// then
 	require.NotNil(t, manager)
-	mock.AssertExpectationsForObjects(t, cesRegistry, doguRegistry, recorder)
 }
 
 func Test_doguSupportManager_supportModeChanged(t *testing.T) {
@@ -145,6 +149,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		ldapCr.Namespace = namespace
 		ldapCr.Spec.SupportMode = true
 		sut.doguRegistryMock.On("Get", "ldap").Return(ldap, nil)
+		sut.hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace}}
 		err := sut.supportManager.client.Create(testCtx, deployment)
 		require.NoError(t, err)
@@ -189,6 +194,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		ldap := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		sut.doguRegistryMock.On("Get", "ldap").Return(ldap, nil)
+		sut.hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		// when
 		err := sut.supportManager.updateDeployment(testCtx, ldapCr, &appsv1.Deployment{})
@@ -210,6 +216,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		ldapCr.Spec.SupportMode = true
 		sut.doguRegistryMock.On("Get", "ldap").Return(ldap, nil)
 		sut.recorderMock.On("Eventf", ldapCr, "Normal", "Support", "Support flag changed to %t. Deployment updated.", true)
+		sut.hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace},
 			Spec: appsv1.DeploymentSpec{

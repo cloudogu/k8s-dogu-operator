@@ -3,8 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/hosts"
-
+	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -70,7 +69,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	resourceDoguFetcher := reg.NewResourceDoguFetcher(client, doguRemoteRegistry)
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
 	limitPatcher := limit.NewDoguDeploymentLimitPatcher(cesRegistry)
-	hostAliasGenerator := hosts.NewHostAliasGenerator(cesRegistry)
+	hostAliasGenerator := alias.NewHostAliasGenerator(cesRegistry.GlobalConfig())
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limitPatcher, hostAliasGenerator)
 	upserter := resource.NewUpserter(client, limitPatcher, hostAliasGenerator)
 

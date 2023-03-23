@@ -76,9 +76,11 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
-		cesRegistry := &cesmocks.Registry{}
-		doguRegistry := &cesmocks.DoguRegistry{}
+		cesRegistry := cesmocks.NewRegistry(t)
+		doguRegistry := cesmocks.NewDoguRegistry(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+		globalConfig := cesmocks.NewConfigurationContext(t)
+		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
 		doguManager, err := NewDoguDeleteManager(client, cesRegistry)
@@ -86,7 +88,6 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.NotNil(t, doguManager)
-		mock.AssertExpectationsForObjects(t, cesRegistry, doguRegistry)
 	})
 
 	t.Run("fail when creating client", func(t *testing.T) {
@@ -102,7 +103,9 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
-		cesRegistry := &cesmocks.Registry{}
+		cesRegistry := cesmocks.NewRegistry(t)
+		globalConfig := cesmocks.NewConfigurationContext(t)
+		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
 		doguManager, err := NewDoguDeleteManager(client, cesRegistry)
