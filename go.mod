@@ -4,8 +4,9 @@ go 1.18
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
-	github.com/cloudogu/cesapp-lib v0.10.0
+	github.com/cloudogu/cesapp-lib v0.11.0
 	github.com/cloudogu/k8s-apply-lib v0.4.1
+	github.com/cloudogu/k8s-host-change v0.1.0
 	github.com/go-logr/logr v1.2.3
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.8.0
@@ -17,12 +18,12 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 	go.etcd.io/etcd/client/v2 v2.305.5
-	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10
-	k8s.io/api v0.26.1
-	k8s.io/apimachinery v0.26.1
+	golang.org/x/net v0.7.0
+	k8s.io/api v0.26.3
+	k8s.io/apimachinery v0.26.3
 	k8s.io/client-go v0.26.1
 	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448
-	sigs.k8s.io/controller-runtime v0.14.4
+	sigs.k8s.io/controller-runtime v0.14.5
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -78,9 +79,9 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
 	golang.org/x/oauth2 v0.0.0-20220822191816-0ebed06d0094 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/term v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect

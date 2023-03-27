@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.27.0] - 2023-03-27
+### Added
+- [#87] Support for Split-DNS environments
+
 ## [v0.26.1] - 2023-03-03
 ### Fixed
 - [#85] Fix DoS vulnerability by upgrading the k8s controller-runtime (along with `k8s-apply-lib`)

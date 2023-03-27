@@ -4,6 +4,7 @@ package thirdParty
 
 import (
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,4 +45,9 @@ type RemoteRegistry interface {
 
 type DoguRegistry interface {
 	registry.DoguRegistry
+}
+
+// HostAliasGenerator creates host aliases from fqdn, internal ip and additional host configuration.
+type HostAliasGenerator interface {
+	Generate() (hostAliases []corev1.HostAlias, err error)
 }

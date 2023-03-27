@@ -139,10 +139,12 @@ func TestNewDoguInstallManager(t *testing.T) {
 		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
-		cesRegistry := &cesmocks.Registry{}
-		doguRegistry := &cesmocks.DoguRegistry{}
+		cesRegistry := cesmocks.NewRegistry(t)
+		doguRegistry := cesmocks.NewDoguRegistry(t)
+		globalConfig := cesmocks.NewConfigurationContext(t)
 		eventRecorder := extMocks.NewEventRecorder(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
 		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, eventRecorder)
@@ -150,7 +152,6 @@ func TestNewDoguInstallManager(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.NotNil(t, doguManager)
-		mock.AssertExpectationsForObjects(t, cesRegistry, doguRegistry)
 	})
 
 	t.Run("fail when creating client", func(t *testing.T) {

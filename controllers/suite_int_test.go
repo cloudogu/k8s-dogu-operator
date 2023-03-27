@@ -129,6 +129,9 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	globalConfigurationContext := &cesmocks.ConfigurationContext{}
 	globalConfigurationContext.On("Get", "key_provider").Return("", nil)
+	globalConfigurationContext.On("Get", "fqdn").Return("", nil)
+	globalConfigurationContext.On("Get", "k8s/use_internal_ip").Return("false", nil)
+	globalConfigurationContext.On("GetAll").Return(map[string]string{}, nil)
 
 	CesRegistryMock := &cesmocks.Registry{}
 	CesRegistryMock.On("DoguRegistry").Return(EtcdDoguRegistry)
@@ -139,7 +142,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguLimits := &mocks.DoguLimits{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(doguLimits, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher)
+	hostAliasGeneratorMock := &extMocks.HostAliasGenerator{}
+	hostAliasGeneratorMock.On("Generate").Return(nil, nil)
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher, hostAliasGeneratorMock)
 
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -162,7 +167,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
-	upserter := resource.NewUpserter(k8sClient, limitPatcher)
+	upserter := resource.NewUpserter(k8sClient, limitPatcher, hostAliasGeneratorMock)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)

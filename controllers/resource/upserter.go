@@ -44,9 +44,9 @@ type upserter struct {
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, limitPatcher cloudogu.LimitPatcher) *upserter {
+func NewUpserter(client client.Client, limitPatcher cloudogu.LimitPatcher, hostAliasGenerator thirdParty.HostAliasGenerator) *upserter {
 	schema := client.Scheme()
-	generator := NewResourceGenerator(schema, limitPatcher)
+	generator := NewResourceGenerator(schema, limitPatcher, hostAliasGenerator)
 	return &upserter{client: client, generator: generator}
 }
 
