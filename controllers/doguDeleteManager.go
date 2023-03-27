@@ -4,21 +4,21 @@ import (
 	"context"
 	"fmt"
 
-	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-host-change/pkg/alias"
 )
 
 const finalizerName = "dogu-finalizer"
@@ -35,7 +35,7 @@ type doguDeleteManager struct {
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
 func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry) (*doguDeleteManager, error) {
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry))
+	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry), alias.NewHostAliasGenerator(cesRegistry.GlobalConfig()))
 
 	restConfig := ctrl.GetConfigOrDie()
 	clientSet, err := kubernetes.NewForConfig(restConfig)

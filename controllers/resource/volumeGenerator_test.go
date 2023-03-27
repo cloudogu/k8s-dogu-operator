@@ -11,10 +11,13 @@ import (
 )
 
 func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
-	generator := getResourceGenerator(t)
 
 	t.Run("Return simple pvc", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
@@ -27,6 +30,10 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 
 	t.Run("Return simple pvc with custom size", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		sizeBefore := ldapDoguResource.Spec.Resources.DataVolumeSize
 		defer func() { ldapDoguResource.Spec.Resources.DataVolumeSize = sizeBefore }()
@@ -42,6 +49,10 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
@@ -60,10 +71,13 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 }
 
 func TestResourceGenerator_CreateReservedPVC(t *testing.T) {
-	generator := getResourceGenerator(t)
 
 	t.Run("Return simple pvc", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
@@ -76,6 +90,10 @@ func TestResourceGenerator_CreateReservedPVC(t *testing.T) {
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {

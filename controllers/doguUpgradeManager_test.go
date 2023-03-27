@@ -16,8 +16,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/stretchr/testify/mock"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,9 +89,11 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
-		cesRegistry := &cesmocks.Registry{}
-		doguRegistry := &cesmocks.DoguRegistry{}
+		cesRegistry := cesmocks.NewRegistry(t)
+		doguRegistry := cesmocks.NewDoguRegistry(t)
+		globalConfig := cesmocks.NewConfigurationContext(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
+		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
 		actual, err := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
@@ -102,7 +102,6 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, actual)
 		assert.Implements(t, (*cloudogu.UpgradeManager)(nil), actual)
-		mock.AssertExpectationsForObjects(t, doguRegistry, cesRegistry)
 	})
 }
 

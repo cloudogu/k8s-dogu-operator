@@ -2,6 +2,8 @@ package resource
 
 import (
 	_ "embed"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	"testing"
 
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -20,25 +22,14 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
-func getResourceGenerator(t *testing.T) *resourceGenerator {
-	t.Helper()
-
-	patcher := &mocks.LimitPatcher{}
-	patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
-	patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-
-	return &resourceGenerator{
-		scheme:           getTestScheme(),
-		doguLimitPatcher: patcher,
-	}
-}
-
 func TestNewResourceGenerator(t *testing.T) {
 	// given
-	registry := &cesmocks.Registry{}
+	registry := cesmocks.NewRegistry(t)
+	globalConfig := cesmocks.NewConfigurationContext(t)
+	registry.On("GlobalConfig").Return(globalConfig)
 
 	// when
-	generator := NewResourceGenerator(getTestScheme(), limit.NewDoguDeploymentLimitPatcher(registry))
+	generator := NewResourceGenerator(getTestScheme(), limit.NewDoguDeploymentLimitPatcher(registry), alias.NewHostAliasGenerator(registry.GlobalConfig()))
 
 	// then
 	require.NotNil(t, generator)
@@ -50,10 +41,13 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		config.Stage = oldStage
 	}()
 	config.Stage = config.StageProduction
-	generator := getResourceGenerator(t)
 
 	t.Run("should fail to create pod template", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		client, clientExists := ldapDogu.Volumes[2].GetClient(doguOperatorClient)
@@ -70,6 +64,18 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 	t.Run("Return simple deployment", func(t *testing.T) {
 		// when
+		patcher := mocks.NewLimitPatcher(t)
+		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
+		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
+		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:             getTestScheme(),
+			doguLimitPatcher:   patcher,
+			hostAliasGenerator: hostAliasGenerator,
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
@@ -83,6 +89,18 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 	t.Run("Return simple deployment with service account", func(t *testing.T) {
 		// when
+		patcher := mocks.NewLimitPatcher(t)
+		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
+		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
+		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:             getTestScheme(),
+			doguLimitPatcher:   patcher,
+			hostAliasGenerator: hostAliasGenerator,
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		ldapDogu.ServiceAccounts = []core.ServiceAccount{
@@ -100,6 +118,18 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 	t.Run("Return simple deployment with development stage", func(t *testing.T) {
 		// given
+		patcher := mocks.NewLimitPatcher(t)
+		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
+		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
+		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:             getTestScheme(),
+			doguLimitPatcher:   patcher,
+			hostAliasGenerator: hostAliasGenerator,
+		}
+
 		oldStage := config.Stage
 		defer func() {
 			config.Stage = oldStage
@@ -119,6 +149,18 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
+		patcher := mocks.NewLimitPatcher(t)
+		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
+		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
+		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:             getTestScheme(),
+			doguLimitPatcher:   patcher,
+			hostAliasGenerator: hostAliasGenerator,
+		}
+
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
 			return assert.AnError
@@ -141,10 +183,16 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
-		generatorFail := getResourceGenerator(t)
-		patcher := &mocks.LimitPatcher{}
+		patcher := mocks.NewLimitPatcher(t)
 		patcher.On("RetrievePodLimits", ldapDoguResource).Return(mocks.NewDoguLimits(t), assert.AnError)
-		generatorFail.doguLimitPatcher = patcher
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
+		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		generatorFail := resourceGenerator{
+			scheme:             getTestScheme(),
+			doguLimitPatcher:   patcher,
+			hostAliasGenerator: hostAliasGenerator,
+		}
 
 		// when
 		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu)
@@ -158,11 +206,18 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
-		generatorFail := getResourceGenerator(t)
-		patcher := &mocks.LimitPatcher{}
+
+		patcher := mocks.NewLimitPatcher(t)
 		patcher.On("RetrievePodLimits", ldapDoguResource).Return(mocks.NewDoguLimits(t), nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
-		generatorFail.doguLimitPatcher = patcher
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
+		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		generatorFail := resourceGenerator{
+			scheme:             getTestScheme(),
+			doguLimitPatcher:   patcher,
+			hostAliasGenerator: hostAliasGenerator,
+		}
 
 		// when
 		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu)
@@ -174,12 +229,14 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 }
 
 func TestResourceGenerator_GetDoguService(t *testing.T) {
-	generator := getResourceGenerator(t)
 
 	t.Run("Return simple service", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 		imageConf := readLdapDoguImageConfig(t)
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
 
 		// when
 		actualService, err := generator.CreateDoguService(ldapDoguResource, imageConf)
@@ -190,6 +247,10 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		imageConf := readLdapDoguImageConfig(t)
 
@@ -210,10 +271,13 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 }
 
 func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
-	generator := getResourceGenerator(t)
 
 	t.Run("Return no exposed services when given dogu json does not contain any exposed ports", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		dogu := &core.Dogu{
 			Name: "ldap",
 		}
@@ -228,6 +292,10 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 
 	t.Run("Return all exposed services when given dogu json contains multiple exposed ports", func(t *testing.T) {
 		// when
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		actualExposedServices, err := generator.CreateDoguExposedServices(ldapDoguResource, ldapDogu)
@@ -239,6 +307,10 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
 			return assert.AnError
@@ -258,10 +330,13 @@ func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
 }
 
 func TestResourceGenerator_GetDoguSecret(t *testing.T) {
-	generator := getResourceGenerator(t)
 
 	t.Run("Return secret", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
@@ -274,6 +349,10 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
 		ldapDoguResource := readLdapDoguResource(t)
 		oldMethod := ctrl.SetControllerReference
 		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
