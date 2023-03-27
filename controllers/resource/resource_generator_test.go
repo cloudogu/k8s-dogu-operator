@@ -2,6 +2,7 @@ package resource
 
 import (
 	_ "embed"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	"testing"
 
@@ -66,7 +67,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		patcher := mocks.NewLimitPatcher(t)
 		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-		hostAliasGenerator := mocks.NewHostAliasGenerator(t)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generator := resourceGenerator{
@@ -91,7 +92,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		patcher := mocks.NewLimitPatcher(t)
 		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-		hostAliasGenerator := mocks.NewHostAliasGenerator(t)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generator := resourceGenerator{
@@ -120,7 +121,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		patcher := mocks.NewLimitPatcher(t)
 		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-		hostAliasGenerator := mocks.NewHostAliasGenerator(t)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generator := resourceGenerator{
@@ -151,7 +152,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		patcher := mocks.NewLimitPatcher(t)
 		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-		hostAliasGenerator := mocks.NewHostAliasGenerator(t)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generator := resourceGenerator{
@@ -184,7 +185,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDogu := readLdapDogu(t)
 		patcher := mocks.NewLimitPatcher(t)
 		patcher.On("RetrievePodLimits", ldapDoguResource).Return(mocks.NewDoguLimits(t), assert.AnError)
-		hostAliasGenerator := mocks.NewHostAliasGenerator(t)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generatorFail := resourceGenerator{
@@ -209,7 +210,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		patcher := mocks.NewLimitPatcher(t)
 		patcher.On("RetrievePodLimits", ldapDoguResource).Return(mocks.NewDoguLimits(t), nil)
 		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
-		hostAliasGenerator := mocks.NewHostAliasGenerator(t)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generatorFail := resourceGenerator{

@@ -142,7 +142,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguLimits := &mocks.DoguLimits{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(doguLimits, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-	hostAliasGeneratorMock := &mocks.HostAliasGenerator{}
+	hostAliasGeneratorMock := &extMocks.HostAliasGenerator{}
 	hostAliasGeneratorMock.On("Generate").Return(nil, nil)
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), limitPatcher, hostAliasGeneratorMock)
 

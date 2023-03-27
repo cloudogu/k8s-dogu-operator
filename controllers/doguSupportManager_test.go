@@ -30,7 +30,7 @@ type doguSupportManagerWithMocks struct {
 	k8sClient          client.WithWatch
 	recorderMock       *extMocks.EventRecorder
 	doguLimits         cloudogu.DoguLimits
-	hostAliasGenerator *mocks.HostAliasGenerator
+	hostAliasGenerator *extMocks.HostAliasGenerator
 }
 
 func (d *doguSupportManagerWithMocks) AssertMocks(t *testing.T) {
@@ -49,7 +49,7 @@ func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSu
 	doguLimits := &mocks.DoguLimits{}
 	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(doguLimits, nil)
 	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-	hostAliasGenerator := mocks.NewHostAliasGenerator(t)
+	hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher, hostAliasGenerator)
 	doguRegistry := &regmocks.DoguRegistry{}
 	eventRecorder := extMocks.NewEventRecorder(t)

@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"strconv"
 	"strings"
 
@@ -51,11 +52,11 @@ const kubernetesServiceAccountKind = "k8s"
 type resourceGenerator struct {
 	scheme             *runtime.Scheme
 	doguLimitPatcher   cloudogu.LimitPatcher
-	hostAliasGenerator cloudogu.HostAliasGenerator
+	hostAliasGenerator thirdParty.HostAliasGenerator
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher cloudogu.LimitPatcher, hostAliasGenerator cloudogu.HostAliasGenerator) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher cloudogu.LimitPatcher, hostAliasGenerator thirdParty.HostAliasGenerator) *resourceGenerator {
 	return &resourceGenerator{
 		scheme:             scheme,
 		doguLimitPatcher:   limitPatcher,
