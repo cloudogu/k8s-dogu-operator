@@ -47,6 +47,7 @@ type DoguRegistry interface {
 	registry.DoguRegistry
 }
 
+// HostAliasGenerator creates host aliases from fqdn, internal ip and additional host configuration.
 type HostAliasGenerator interface {
 	Generate() (hostAliases []corev1.HostAlias, err error)
 }
