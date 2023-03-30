@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
@@ -117,8 +118,8 @@ func Test_execPod_Create(t *testing.T) {
 	})
 	t.Run("should fail on other pod status", func(t *testing.T) {
 		// given
-		originalMaxTries := maxTries
-		maxTries = 1
+		originalMaxWaitDuration := maxWaitDuration
+		maxWaitDuration = time.Second * 3
 		mockClient := extMocks.NewK8sClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		clientGetFn := func(args mock.Arguments) {
@@ -139,12 +140,12 @@ func Test_execPod_Create(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to wait for exec pod test-execpod-123abc to spawn")
 		assert.ErrorContains(t, err, "found exec pod test-execpod-123abc but with status phase Pending")
-		maxTries = originalMaxTries
+		maxWaitDuration = originalMaxWaitDuration
 	})
 	t.Run("should fail on unable to find pod", func(t *testing.T) {
 		// given
-		originalMaxTries := maxTries
-		maxTries = 1
+		originalMaxWaitDuration := maxWaitDuration
+		maxWaitDuration = time.Second * 3
 		mockClient := extMocks.NewK8sClient(t)
 		objectKey := client.ObjectKey{Namespace: testNamespace, Name: podName}
 		mockClient.
@@ -160,7 +161,7 @@ func Test_execPod_Create(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to wait for exec pod test-execpod-123abc to spawn")
-		maxTries = originalMaxTries
+		maxWaitDuration = originalMaxWaitDuration
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
