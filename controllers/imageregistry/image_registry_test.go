@@ -3,6 +3,7 @@ package imageregistry_test
 import (
 	"context"
 	"fmt"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"net/http/httptest"
 	"net/url"
 	"testing"
@@ -35,6 +36,32 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "error pulling image")
 	})
+
+	t.Run("should retry when the network ist not reachable", func(t *testing.T) {
+		// given
+		oldImagePull := imageregistry.ImagePull
+
+		i := 0
+		imageregistry.ImagePull = func(src string, opt ...crane.Option) (imagev1.Image, error) {
+			if i < 2 {
+				i++
+				return nil, fmt.Errorf("error pulling image: Get \"https://registry.cloudogu.com/v2/\": dial tcp 34.159.195.251:443: connect: network is unreachable")
+			}
+			i++
+			return mockImage{}, nil
+		}
+
+		defer func() {
+			imageregistry.ImagePull = oldImagePull
+		}()
+
+		// when
+		_, err := imageRegistry.PullImageConfig(context.Background(), "dummyImage")
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, 3, i)
+	})
 }
 
 func setupCraneRegistry(t *testing.T) (*httptest.Server, string) {
@@ -59,4 +86,12 @@ func setupCraneRegistry(t *testing.T) (*httptest.Server, string) {
 	}
 
 	return s, src
+}
+
+type mockImage struct {
+	imagev1.Image
+}
+
+func (mi mockImage) ConfigFile() (*imagev1.ConfigFile, error) {
+	return nil, nil
 }
