@@ -34,6 +34,7 @@ erfolgreiche Installation, um einen guten Überblick über die Granularität des
 ![Bild mit Ereignissen für die erfolgreiche Installation des `postgresql` Dogu.](figures/events_without_errors.png)
 
 ## Verwendung von Ereignissen im `k8s-dogu-operator`
-
+<!-- TODO Please check this link because actual kubebuilder has ssl issues -->
+<!-- markdown-link-check-disable -->
 Die [kubebuilder Dokumentation](https://book-v1.book.kubebuilder.io/beyond_basics/creating_events.html) erklärt, wie man
 Events innerhalb eines Kubernetes-Controllers verwendet.

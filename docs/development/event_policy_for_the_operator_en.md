@@ -32,6 +32,7 @@ overview about the granularity used in the `k8s-dogu-operator`.
 ![Image depicting events for successful `postgresql` dogu installation.](figures/events_without_errors.png)
 
 ## Using events in the `k8s-dogu-operator`
-
+<!-- TODO Please check this link because actual kubebuilder has ssl issues -->
+<!-- markdown-link-check-disable -->
 The [kubebuilder documentation](https://book-v1.book.kubebuilder.io/beyond_basics/creating_events.html) explains
 perfectly how to use events inside a kubernetes controller.
