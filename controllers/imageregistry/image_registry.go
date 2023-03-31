@@ -8,12 +8,13 @@ import (
 	"github.com/google/go-containerregistry/pkg/crane"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
+	"time"
 )
 
-const errMsgNoNetwork = "connect: network is unreachable"
-
-var ImagePull = crane.Pull
+var (
+	ImagePull       = crane.Pull
+	MaxWaitDuration = time.Minute * 1
+)
 
 // craneContainerImageRegistry is a component to interact with a container registry.
 // It is able to pull the config of an image and uses the crane library
@@ -42,11 +43,11 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 	logger.Info(fmt.Sprintf("Try to pull image manifest from image: [%s]", image))
 
 	var img imagev1.Image
-	err := retry.OnError(15, retry.TestableRetryFunc, func() (err error) {
+	err := retry.OnErrorWithLimit(MaxWaitDuration, retry.AlwaysRetryFunc, func() (err error) {
 		img, err = ImagePull(image, authOpts, ctxOpt)
-		if err != nil && strings.Contains(err.Error(), errMsgNoNetwork) {
-			logger.Error(err, "Retry because the network is not reachable")
-			return &retry.TestableRetrierError{}
+		if err != nil {
+			logger.Error(err, "error on image pull: retry")
+			return err
 		}
 
 		return

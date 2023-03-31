@@ -6,8 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- [89] Add retry mechanism when pulling image metadata to avoid installation/upgrade interrupts when the network is not
-available. Moreover, increase the backoff time to 10 minutes when waiting for an exec pod to pull his image.
+- [89] Add retry mechanism when pulling image metadata to avoid installation/upgrade interrupts if errors occur. 
+Moreover, increase the backoff time to 10 minutes when waiting for an exec pod to pull the dogu image.
 
 ## [v0.27.0] - 2023-03-27
 ### Added

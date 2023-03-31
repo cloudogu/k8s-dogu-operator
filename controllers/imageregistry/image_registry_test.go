@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	craneRegistry "github.com/google/go-containerregistry/pkg/registry"
@@ -31,23 +32,32 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 	})
 
 	t.Run("error pulling image with wrong URL", func(t *testing.T) {
+		oldMaxWaitDuration := imageregistry.MaxWaitDuration
+		imageregistry.MaxWaitDuration = time.Second * 3
+		defer func() {
+			imageregistry.MaxWaitDuration = oldMaxWaitDuration
+		}()
 		_, err := imageRegistry.PullImageConfig(context.Background(), "wrong url")
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "error pulling image")
 	})
 
-	t.Run("should retry when the network ist not reachable", func(t *testing.T) {
+	t.Run("should retry when an error occurs", func(t *testing.T) {
 		// given
-		oldImagePull := imageregistry.ImagePull
+		oldMaxWaitDuration := imageregistry.MaxWaitDuration
+		imageregistry.MaxWaitDuration = time.Second * 3
+		defer func() {
+			imageregistry.MaxWaitDuration = oldMaxWaitDuration
+		}()
 
+		oldImagePull := imageregistry.ImagePull
 		i := 0
 		imageregistry.ImagePull = func(src string, opt ...crane.Option) (imagev1.Image, error) {
-			if i < 2 {
+			if i < 1 {
 				i++
-				return nil, fmt.Errorf("error pulling image: Get \"https://registry.cloudogu.com/v2/\": dial tcp 34.159.195.251:443: connect: network is unreachable")
+				return nil, assert.AnError
 			}
-			i++
 			return mockImage{}, nil
 		}
 
@@ -60,7 +70,6 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, 3, i)
 	})
 }
 
