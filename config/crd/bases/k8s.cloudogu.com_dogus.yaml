@@ -75,6 +75,11 @@ spec:
               version:
                 description: Version of the dogu (e.g. 2.4.48-3)
                 type: string
+              additionalIngressAnnotations:
+                description: AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
+                additionalProperties:
+                  type: string
+                type: object
             type: object
           status:
             description: DoguStatus defines the observed state of a Dogu.
