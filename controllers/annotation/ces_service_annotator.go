@@ -24,6 +24,9 @@ const (
 	serviceTagWebapp          = "webapp"
 )
 
+// AdditionalIngressAnnotationsAnnotation contains additional ingress annotations to be appended to the ingress object for this service.
+const AdditionalIngressAnnotationsAnnotation = "k8s-dogu-operator.cloudogu.com/additional-ingress-annotations"
+
 // cesService describes a reachable service in the ecosystem.
 type cesService struct {
 	Name     string `json:"name"`
@@ -38,7 +41,7 @@ type CesServiceAnnotator struct{}
 // AnnotateService annotates a given service with ces service information based on the given service and the provided
 // image configuration which includes defined environment variables and labels used to customize the service for the
 // ecosystem.
-func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *imagev1.Config) error {
+func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *imagev1.Config, additionalIngressAnnotations map[string]string) error {
 	serviceTags, err := getServiceVariables(config)
 	if err != nil {
 		return fmt.Errorf("failed to get service tags: %w", err)
@@ -49,15 +52,38 @@ func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *i
 		return fmt.Errorf("failed to create ces services: %w", err)
 	}
 
-	err = appendAnnotations(service, cesServices)
+	err = appendServiceAnnotations(service, cesServices)
 	if err != nil {
 		return fmt.Errorf("failed to append annotation [%s] to service [%s]: %w", CesServicesAnnotation, service.GetName(), err)
+	}
+
+	err = appendAdditionalIngressAnnotations(service, additionalIngressAnnotations)
+	if err != nil {
+		return fmt.Errorf("failed to append annotation [%s] to service [%s]: %w", AdditionalIngressAnnotationsAnnotation, service.GetName(), err)
 	}
 
 	return nil
 }
 
-func appendAnnotations(service *corev1.Service, cesServices []cesService) error {
+func appendAdditionalIngressAnnotations(service *corev1.Service, ingressAnnotations map[string]string) error {
+	if len(ingressAnnotations) < 1 {
+		return nil
+	}
+
+	if service.Annotations == nil {
+		service.Annotations = map[string]string{}
+	}
+
+	ingressAnnotationsJson, err := json.Marshal(ingressAnnotations)
+	if err != nil {
+		return fmt.Errorf("failed to marshal additional ingress annotations: %w", err)
+	}
+
+	service.Annotations[AdditionalIngressAnnotationsAnnotation] = string(ingressAnnotationsJson)
+	return nil
+}
+
+func appendServiceAnnotations(service *corev1.Service, cesServices []cesService) error {
 	if len(cesServices) < 1 {
 		return nil
 	}
