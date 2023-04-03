@@ -9,3 +9,5 @@ spec:
   version: 3.40.1-2
   resources:
     dataVolumeSize: 5Gi
+  additionalIngressAnnotations:
+    nginx.org/client-max-body-size: "100m"
