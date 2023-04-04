@@ -35,5 +35,8 @@ erfolgreiche Installation, um einen guten Überblick über die Granularität des
 
 ## Verwendung von Ereignissen im `k8s-dogu-operator`
 
-Die [kubebuilder Dokumentation](https://book-v1.book.kubebuilder.io/beyond_basics/creating_events.html) erklärt, wie man
-Events innerhalb eines Kubernetes-Controllers verwendet.
+Events können mit einem [EventRecoder](https://pkg.go.dev/k8s.io/client-go/tools/record#EventRecorder) an 
+Dogu-Ressourcen geschrieben werden. Der Manager implementiert das Interface 
+[Cluster](https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/cluster#Cluster). Die darin enthaltene Methode
+`GetEventRecorderFor(name string)` liefert eine Referenz zu einem EventRecorder-Objekt.
+Die Verwendung kann zum Beispiel in dem Installation-Manager des `k8s-dogu-operator` betrachtet werden.

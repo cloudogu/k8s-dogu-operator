@@ -3,9 +3,11 @@ package imageregistry_test
 import (
 	"context"
 	"fmt"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	craneRegistry "github.com/google/go-containerregistry/pkg/registry"
@@ -30,10 +32,44 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 	})
 
 	t.Run("error pulling image with wrong URL", func(t *testing.T) {
+		oldMaxWaitDuration := imageregistry.MaxWaitDuration
+		imageregistry.MaxWaitDuration = time.Second * 3
+		defer func() {
+			imageregistry.MaxWaitDuration = oldMaxWaitDuration
+		}()
 		_, err := imageRegistry.PullImageConfig(context.Background(), "wrong url")
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "error pulling image")
+	})
+
+	t.Run("should retry when an error occurs", func(t *testing.T) {
+		// given
+		oldMaxWaitDuration := imageregistry.MaxWaitDuration
+		imageregistry.MaxWaitDuration = time.Second * 3
+		defer func() {
+			imageregistry.MaxWaitDuration = oldMaxWaitDuration
+		}()
+
+		oldImagePull := imageregistry.ImagePull
+		i := 0
+		imageregistry.ImagePull = func(src string, opt ...crane.Option) (imagev1.Image, error) {
+			if i < 1 {
+				i++
+				return nil, assert.AnError
+			}
+			return mockImage{}, nil
+		}
+
+		defer func() {
+			imageregistry.ImagePull = oldImagePull
+		}()
+
+		// when
+		_, err := imageRegistry.PullImageConfig(context.Background(), "dummyImage")
+
+		// then
+		assert.NoError(t, err)
 	})
 }
 
@@ -59,4 +95,12 @@ func setupCraneRegistry(t *testing.T) (*httptest.Server, string) {
 	}
 
 	return s, src
+}
+
+type mockImage struct {
+	imagev1.Image
+}
+
+func (mi mockImage) ConfigFile() (*imagev1.ConfigFile, error) {
+	return nil, nil
 }
