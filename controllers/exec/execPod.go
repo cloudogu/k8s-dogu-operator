@@ -3,6 +3,7 @@ package exec
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
@@ -22,6 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var maxWaitDuration = time.Minute * 10
 
 // execPod provides features to handle files from a dogu image.
 type execPod struct {
@@ -157,7 +160,7 @@ func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
 	execPodKey := ep.ObjectKey()
 	containerPodName := execPodKey.Name
 
-	err := retry.OnError(maxTries, retry.TestableRetryFunc, func() error {
+	err := retry.OnErrorWithLimit(maxWaitDuration, retry.TestableRetryFunc, func() error {
 		pod, err := ep.getPod(ctx)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again...", containerPodName))

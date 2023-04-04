@@ -33,12 +33,22 @@ func (tre *TestableRetrierError) Error() string {
 // retried another time. Please see AlwaysRetryFunc() if a workload should always retried until a fixed threshold is
 // reached.
 func OnError(maxTries int, retriable func(error) bool, workload func() error) error {
+	return onError(maxTries, 3*time.Minute, retriable, workload)
+}
+
+// OnErrorWithLimit provides a K8s-way "retrier" mechanism with a time limit as option.
+func OnErrorWithLimit(limit time.Duration, retriable func(error) bool, workload func() error) error {
+	// Use a high integer here to avoid limit the cap with the steps.
+	return onError(9999999, limit, retriable, workload)
+}
+
+func onError(maxTries int, limit time.Duration, retriable func(error) bool, workload func() error) error {
 	err := retry.OnError(wait.Backoff{
 		Duration: 1500 * time.Millisecond,
 		Factor:   1.5,
 		Jitter:   0,
 		Steps:    maxTries,
-		Cap:      3 * time.Minute,
+		Cap:      limit,
 	}, retriable, workload)
 
 	if err != nil && retriable(err) {
