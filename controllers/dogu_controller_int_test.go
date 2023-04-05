@@ -8,6 +8,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"strings"
 	"testing"
 
@@ -57,6 +58,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""
+	ldapCr.Spec.AdditionalIngressAnnotations = map[string]string{"example-key": "example-value"}
 	ldapDoguLookupKey := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
 
 	redmineCr.Namespace = "default"
@@ -148,6 +150,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 			Expect(ldapCr.Name).To(Equal(service.Name))
 			Expect(ldapCr.Namespace).To(Equal(service.Namespace))
+			Expect(service.Annotations[annotation.AdditionalIngressAnnotationsAnnotation]).To(Equal("{\"example-key\":\"example-value\"}"))
 
 			By("Expect created secret")
 			secret := &corev1.Secret{}
