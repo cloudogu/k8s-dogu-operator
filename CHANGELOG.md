@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - [#91] Add additional ingress annotations to dogu resource.
+
+## [v0.28.0] - 2023-04-04
 ### Changed
-- [#89] Add retry mechanism when pulling image metadata to avoid installation/upgrade interrupts if errors occur. 
+- [#89] Add retry mechanism when pulling image metadata to avoid installation/upgrade interrupts if errors occur.  
 Moreover, increase the backoff time to 10 minutes when waiting for an exec pod to pull the dogu image.
 
 ## [v0.27.0] - 2023-03-27
