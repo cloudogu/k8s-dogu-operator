@@ -44,5 +44,10 @@ func (d *doguAdditionalIngressAnnotationsManager) SetDoguAdditionalIngressAnnota
 		return fmt.Errorf("failed to add additional ingress annotations to service of dogu '%s': %w", doguResource.Name, err)
 	}
 
+	err = d.client.Update(ctx, doguService)
+	if err != nil {
+		return fmt.Errorf("failed to update dogu service '%s' with ingress annotations: %w", doguService.Name, err)
+	}
+
 	return nil
 }

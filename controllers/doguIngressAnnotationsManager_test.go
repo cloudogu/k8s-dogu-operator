@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	k8s "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
 )
@@ -67,5 +70,33 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to fetch service for dogu 'ldap'")
+	})
+
+	t.Run("should fail to update service", func(t *testing.T) {
+		// given
+		dogu := readDoguCr(t, ldapCrBytes)
+		ingressAnnotation := map[string]string{"test": "test"}
+		marshal, err := json.Marshal(ingressAnnotation)
+		require.NoError(t, err)
+		annotations := map[string]string{
+			"k8s-dogu-operator.cloudogu.com/additional-ingress-annotations": string(marshal),
+		}
+		doguService := v1.Service{ObjectMeta: metav1.ObjectMeta{Name: dogu.Name, Namespace: dogu.Namespace, Annotations: annotations}}
+		client := mocks.NewK8sClient(t)
+		client.EXPECT().Get(context.TODO(), dogu.GetObjectKey(), mock.AnythingOfType("*v1.Service")).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object k8s.Object, option ...k8s.GetOption) error {
+			servicePtr := object.(*v1.Service)
+			*servicePtr = doguService
+			return nil
+		})
+		client.EXPECT().Update(context.TODO(), mock.AnythingOfType("*v1.Service")).Return(assert.AnError)
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, mocks.NewEventRecorder(t))
+
+		// when
+		err = sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to update dogu service 'ldap' with ingress annotations")
 	})
 }
