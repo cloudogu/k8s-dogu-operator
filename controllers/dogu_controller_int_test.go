@@ -8,7 +8,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"strings"
 	"testing"
 
@@ -58,7 +57,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""
-	ldapCr.Spec.AdditionalIngressAnnotations = map[string]string{"example-key": "example-value"}
 	ldapDoguLookupKey := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
 
 	redmineCr.Namespace = "default"
@@ -150,7 +148,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 			Expect(ldapCr.Name).To(Equal(service.Name))
 			Expect(ldapCr.Namespace).To(Equal(service.Namespace))
-			Expect(service.Annotations[annotation.AdditionalIngressAnnotationsAnnotation]).To(Equal("{\"example-key\":\"example-value\"}"))
 
 			By("Expect created secret")
 			secret := &corev1.Secret{}
@@ -216,6 +213,38 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}, PollingInterval, TimeoutInterval).Should(BeTrue())
 
 			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
+		})
+
+		It("Update dogus additional ingress annotations", func() {
+			By("Update dogu resource with ingress annotations")
+			createdDogu := &k8sv1.Dogu{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				return err == nil
+			}, PollingInterval, TimeoutInterval).Should(BeTrue())
+
+			if createdDogu.Spec.AdditionalIngressAnnotations == nil {
+				createdDogu.Spec.AdditionalIngressAnnotations = map[string]string{}
+			}
+			createdDogu.Spec.AdditionalIngressAnnotations["new"] = "new"
+			updateDoguCr(ctx, createdDogu)
+
+			By("Expect service with additional ingress annotations")
+			service := &corev1.Service{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, service)
+				if err != nil {
+					return false
+				}
+
+				s, exists := service.ObjectMeta.Annotations["k8s-dogu-operator.cloudogu.com/additional-ingress-annotations"]
+				if exists && s == "{\"new\": \"new\"}" {
+					return true
+				}
+
+				return false
+			})
 		})
 
 		It("Set dogu in support mode", func() {
