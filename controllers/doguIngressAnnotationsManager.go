@@ -19,6 +19,7 @@ const (
 	ErrorOnAdditionalIngressAnnotationsChangeEventReason = "ErrAdditionalIngressAnnotationsChange"
 )
 
+// NewDoguAdditionalIngressAnnotationsManager creates a new instance of a manager to append ingress annotations to a dogu service.
 func NewDoguAdditionalIngressAnnotationsManager(client client.Client, eventRecorder record.EventRecorder) *doguAdditionalIngressAnnotationsManager {
 	return &doguAdditionalIngressAnnotationsManager{client: client, eventRecorder: eventRecorder}
 }
@@ -28,6 +29,8 @@ type doguAdditionalIngressAnnotationsManager struct {
 	eventRecorder record.EventRecorder
 }
 
+// SetDoguAdditionalIngressAnnotations reads the additional ingress annotations from the dogu resource and appends them to the dogu service.
+// These annotations are then to be read by the service discovery and appended to the ingress object for the dogu.
 func (d *doguAdditionalIngressAnnotationsManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	doguService := &corev1.Service{}
 	err := d.client.Get(ctx, doguResource.GetObjectKey(), doguService)
