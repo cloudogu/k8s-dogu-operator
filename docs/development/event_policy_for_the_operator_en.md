@@ -33,5 +33,8 @@ overview about the granularity used in the `k8s-dogu-operator`.
 
 ## Using events in the `k8s-dogu-operator`
 
-The [kubebuilder documentation](https://book-v1.book.kubebuilder.io/beyond_basics/creating_events.html) explains
-perfectly how to use events inside a kubernetes controller.
+Events can be written with an [EventRecoder](https://pkg.go.dev/k8s.io/client-go/tools/record#EventRecorder) to
+Dogu resources. The manager implements the interface
+[Cluster](https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/cluster#Cluster). The method contained in it
+`GetEventRecorderFor(name string)` returns a reference to an EventRecorder object.
+The usage can be seen for example in the installation manager of the `k8s-dogu-operator`.
