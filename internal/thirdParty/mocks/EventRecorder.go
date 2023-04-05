@@ -34,12 +34,12 @@ type EventRecorder_AnnotatedEventf_Call struct {
 }
 
 // AnnotatedEventf is a helper method to define mock.On call
-//  - object runtime.Object
-//  - annotations map[string]string
-//  - eventtype string
-//  - reason string
-//  - messageFmt string
-//  - args ...interface{}
+//   - object runtime.Object
+//   - annotations map[string]string
+//   - eventtype string
+//   - reason string
+//   - messageFmt string
+//   - args ...interface{}
 func (_e *EventRecorder_Expecter) AnnotatedEventf(object interface{}, annotations interface{}, eventtype interface{}, reason interface{}, messageFmt interface{}, args ...interface{}) *EventRecorder_AnnotatedEventf_Call {
 	return &EventRecorder_AnnotatedEventf_Call{Call: _e.mock.On("AnnotatedEventf",
 		append([]interface{}{object, annotations, eventtype, reason, messageFmt}, args...)...)}
@@ -79,10 +79,10 @@ type EventRecorder_Event_Call struct {
 }
 
 // Event is a helper method to define mock.On call
-//  - object runtime.Object
-//  - eventtype string
-//  - reason string
-//  - message string
+//   - object runtime.Object
+//   - eventtype string
+//   - reason string
+//   - message string
 func (_e *EventRecorder_Expecter) Event(object interface{}, eventtype interface{}, reason interface{}, message interface{}) *EventRecorder_Event_Call {
 	return &EventRecorder_Event_Call{Call: _e.mock.On("Event", object, eventtype, reason, message)}
 }
@@ -118,11 +118,11 @@ type EventRecorder_Eventf_Call struct {
 }
 
 // Eventf is a helper method to define mock.On call
-//  - object runtime.Object
-//  - eventtype string
-//  - reason string
-//  - messageFmt string
-//  - args ...interface{}
+//   - object runtime.Object
+//   - eventtype string
+//   - reason string
+//   - messageFmt string
+//   - args ...interface{}
 func (_e *EventRecorder_Expecter) Eventf(object interface{}, eventtype interface{}, reason interface{}, messageFmt interface{}, args ...interface{}) *EventRecorder_Eventf_Call {
 	return &EventRecorder_Eventf_Call{Call: _e.mock.On("Eventf",
 		append([]interface{}{object, eventtype, reason, messageFmt}, args...)...)}

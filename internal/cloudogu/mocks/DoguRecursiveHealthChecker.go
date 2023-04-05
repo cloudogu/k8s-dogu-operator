@@ -42,9 +42,9 @@ type DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call struct {
 }
 
 // CheckDependenciesRecursive is a helper method to define mock.On call
-//  - ctx context.Context
-//  - fromDogu *core.Dogu
-//  - currentK8sNamespace string
+//   - ctx context.Context
+//   - fromDogu *core.Dogu
+//   - currentK8sNamespace string
 func (_e *DoguRecursiveHealthChecker_Expecter) CheckDependenciesRecursive(ctx interface{}, fromDogu interface{}, currentK8sNamespace interface{}) *DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call {
 	return &DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call{Call: _e.mock.On("CheckDependenciesRecursive", ctx, fromDogu, currentK8sNamespace)}
 }

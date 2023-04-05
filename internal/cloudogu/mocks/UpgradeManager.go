@@ -42,8 +42,8 @@ type UpgradeManager_Upgrade_Call struct {
 }
 
 // Upgrade is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *UpgradeManager_Expecter) Upgrade(ctx interface{}, doguResource interface{}) *UpgradeManager_Upgrade_Call {
 	return &UpgradeManager_Upgrade_Call{Call: _e.mock.On("Upgrade", ctx, doguResource)}
 }

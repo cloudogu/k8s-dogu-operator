@@ -44,10 +44,10 @@ type PremisesChecker_Check_Call struct {
 }
 
 // Check is a helper method to define mock.On call
-//  - ctx context.Context
-//  - toDoguResource *v1.Dogu
-//  - fromDogu *core.Dogu
-//  - toDogu *core.Dogu
+//   - ctx context.Context
+//   - toDoguResource *v1.Dogu
+//   - fromDogu *core.Dogu
+//   - toDogu *core.Dogu
 func (_e *PremisesChecker_Expecter) Check(ctx interface{}, toDoguResource interface{}, fromDogu interface{}, toDogu interface{}) *PremisesChecker_Check_Call {
 	return &PremisesChecker_Check_Call{Call: _e.mock.On("Check", ctx, toDoguResource, fromDogu, toDogu)}
 }

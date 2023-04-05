@@ -61,8 +61,8 @@ type DoguResourceGenerator_CreateDoguDeployment_Call struct {
 }
 
 // CreateDoguDeployment is a helper method to define mock.On call
-//  - doguResource *v1.Dogu
-//  - dogu *core.Dogu
+//   - doguResource *v1.Dogu
+//   - dogu *core.Dogu
 func (_e *DoguResourceGenerator_Expecter) CreateDoguDeployment(doguResource interface{}, dogu interface{}) *DoguResourceGenerator_CreateDoguDeployment_Call {
 	return &DoguResourceGenerator_CreateDoguDeployment_Call{Call: _e.mock.On("CreateDoguDeployment", doguResource, dogu)}
 }
@@ -116,8 +116,8 @@ type DoguResourceGenerator_CreateDoguExposedServices_Call struct {
 }
 
 // CreateDoguExposedServices is a helper method to define mock.On call
-//  - doguResource *v1.Dogu
-//  - dogu *core.Dogu
+//   - doguResource *v1.Dogu
+//   - dogu *core.Dogu
 func (_e *DoguResourceGenerator_Expecter) CreateDoguExposedServices(doguResource interface{}, dogu interface{}) *DoguResourceGenerator_CreateDoguExposedServices_Call {
 	return &DoguResourceGenerator_CreateDoguExposedServices_Call{Call: _e.mock.On("CreateDoguExposedServices", doguResource, dogu)}
 }
@@ -171,7 +171,7 @@ type DoguResourceGenerator_CreateDoguPVC_Call struct {
 }
 
 // CreateDoguPVC is a helper method to define mock.On call
-//  - doguResource *v1.Dogu
+//   - doguResource *v1.Dogu
 func (_e *DoguResourceGenerator_Expecter) CreateDoguPVC(doguResource interface{}) *DoguResourceGenerator_CreateDoguPVC_Call {
 	return &DoguResourceGenerator_CreateDoguPVC_Call{Call: _e.mock.On("CreateDoguPVC", doguResource)}
 }
@@ -225,8 +225,8 @@ type DoguResourceGenerator_CreateDoguService_Call struct {
 }
 
 // CreateDoguService is a helper method to define mock.On call
-//  - doguResource *v1.Dogu
-//  - imageConfig *pkgv1.ConfigFile
+//   - doguResource *v1.Dogu
+//   - imageConfig *pkgv1.ConfigFile
 func (_e *DoguResourceGenerator_Expecter) CreateDoguService(doguResource interface{}, imageConfig interface{}) *DoguResourceGenerator_CreateDoguService_Call {
 	return &DoguResourceGenerator_CreateDoguService_Call{Call: _e.mock.On("CreateDoguService", doguResource, imageConfig)}
 }
@@ -280,7 +280,7 @@ type DoguResourceGenerator_CreateReservedPVC_Call struct {
 }
 
 // CreateReservedPVC is a helper method to define mock.On call
-//  - doguResource *v1.Dogu
+//   - doguResource *v1.Dogu
 func (_e *DoguResourceGenerator_Expecter) CreateReservedPVC(doguResource interface{}) *DoguResourceGenerator_CreateReservedPVC_Call {
 	return &DoguResourceGenerator_CreateReservedPVC_Call{Call: _e.mock.On("CreateReservedPVC", doguResource)}
 }

@@ -54,8 +54,8 @@ type SecretResourceGenerator_CreateDoguSecret_Call struct {
 }
 
 // CreateDoguSecret is a helper method to define mock.On call
-//  - doguResource *v1.Dogu
-//  - stringData map[string]string
+//   - doguResource *v1.Dogu
+//   - stringData map[string]string
 func (_e *SecretResourceGenerator_Expecter) CreateDoguSecret(doguResource interface{}, stringData interface{}) *SecretResourceGenerator_CreateDoguSecret_Call {
 	return &SecretResourceGenerator_CreateDoguSecret_Call{Call: _e.mock.On("CreateDoguSecret", doguResource, stringData)}
 }

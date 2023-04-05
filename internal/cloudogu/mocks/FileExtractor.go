@@ -55,8 +55,8 @@ type FileExtractor_ExtractK8sResourcesFromContainer_Call struct {
 }
 
 // ExtractK8sResourcesFromContainer is a helper method to define mock.On call
-//  - ctx context.Context
-//  - k8sExecPod cloudogu.ExecPod
+//   - ctx context.Context
+//   - k8sExecPod cloudogu.ExecPod
 func (_e *FileExtractor_Expecter) ExtractK8sResourcesFromContainer(ctx interface{}, k8sExecPod interface{}) *FileExtractor_ExtractK8sResourcesFromContainer_Call {
 	return &FileExtractor_ExtractK8sResourcesFromContainer_Call{Call: _e.mock.On("ExtractK8sResourcesFromContainer", ctx, k8sExecPod)}
 }

@@ -40,7 +40,7 @@ type RemoteRegistry_Create_Call struct {
 }
 
 // Create is a helper method to define mock.On call
-//  - dogu *core.Dogu
+//   - dogu *core.Dogu
 func (_e *RemoteRegistry_Expecter) Create(dogu interface{}) *RemoteRegistry_Create_Call {
 	return &RemoteRegistry_Create_Call{Call: _e.mock.On("Create", dogu)}
 }
@@ -82,7 +82,7 @@ type RemoteRegistry_Delete_Call struct {
 }
 
 // Delete is a helper method to define mock.On call
-//  - dogu *core.Dogu
+//   - dogu *core.Dogu
 func (_e *RemoteRegistry_Expecter) Delete(dogu interface{}) *RemoteRegistry_Delete_Call {
 	return &RemoteRegistry_Delete_Call{Call: _e.mock.On("Delete", dogu)}
 }
@@ -136,7 +136,7 @@ type RemoteRegistry_Get_Call struct {
 }
 
 // Get is a helper method to define mock.On call
-//  - name string
+//   - name string
 func (_e *RemoteRegistry_Expecter) Get(name interface{}) *RemoteRegistry_Get_Call {
 	return &RemoteRegistry_Get_Call{Call: _e.mock.On("Get", name)}
 }
@@ -243,8 +243,8 @@ type RemoteRegistry_GetVersion_Call struct {
 }
 
 // GetVersion is a helper method to define mock.On call
-//  - name string
-//  - version string
+//   - name string
+//   - version string
 func (_e *RemoteRegistry_Expecter) GetVersion(name interface{}, version interface{}) *RemoteRegistry_GetVersion_Call {
 	return &RemoteRegistry_GetVersion_Call{Call: _e.mock.On("GetVersion", name, version)}
 }
@@ -298,7 +298,7 @@ type RemoteRegistry_GetVersionsOf_Call struct {
 }
 
 // GetVersionsOf is a helper method to define mock.On call
-//  - name string
+//   - name string
 func (_e *RemoteRegistry_Expecter) GetVersionsOf(name interface{}) *RemoteRegistry_GetVersionsOf_Call {
 	return &RemoteRegistry_GetVersionsOf_Call{Call: _e.mock.On("GetVersionsOf", name)}
 }
@@ -331,7 +331,7 @@ type RemoteRegistry_SetUseCache_Call struct {
 }
 
 // SetUseCache is a helper method to define mock.On call
-//  - useCache bool
+//   - useCache bool
 func (_e *RemoteRegistry_Expecter) SetUseCache(useCache interface{}) *RemoteRegistry_SetUseCache_Call {
 	return &RemoteRegistry_SetUseCache_Call{Call: _e.mock.On("SetUseCache", useCache)}
 }

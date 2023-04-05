@@ -42,8 +42,8 @@ type VolumeManager_SetDoguDataVolumeSize_Call struct {
 }
 
 // SetDoguDataVolumeSize is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *VolumeManager_Expecter) SetDoguDataVolumeSize(ctx interface{}, doguResource interface{}) *VolumeManager_SetDoguDataVolumeSize_Call {
 	return &VolumeManager_SetDoguDataVolumeSize_Call{Call: _e.mock.On("SetDoguDataVolumeSize", ctx, doguResource)}
 }

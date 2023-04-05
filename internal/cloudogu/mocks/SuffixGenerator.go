@@ -37,7 +37,7 @@ type SuffixGenerator_String_Call struct {
 }
 
 // String is a helper method to define mock.On call
-//  - length int
+//   - length int
 func (_e *SuffixGenerator_Expecter) String(length interface{}) *SuffixGenerator_String_Call {
 	return &SuffixGenerator_String_Call{Call: _e.mock.On("String", length)}
 }

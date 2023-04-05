@@ -63,10 +63,10 @@ type ResourceUpserter_UpsertDoguDeployment_Call struct {
 }
 
 // UpsertDoguDeployment is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
-//  - dogu *core.Dogu
-//  - deploymentPatch func(*appsv1.Deployment)
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
+//   - dogu *core.Dogu
+//   - deploymentPatch func(*appsv1.Deployment)
 func (_e *ResourceUpserter_Expecter) UpsertDoguDeployment(ctx interface{}, doguResource interface{}, dogu interface{}, deploymentPatch interface{}) *ResourceUpserter_UpsertDoguDeployment_Call {
 	return &ResourceUpserter_UpsertDoguDeployment_Call{Call: _e.mock.On("UpsertDoguDeployment", ctx, doguResource, dogu, deploymentPatch)}
 }
@@ -120,9 +120,9 @@ type ResourceUpserter_UpsertDoguExposedServices_Call struct {
 }
 
 // UpsertDoguExposedServices is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
-//  - dogu *core.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
+//   - dogu *core.Dogu
 func (_e *ResourceUpserter_Expecter) UpsertDoguExposedServices(ctx interface{}, doguResource interface{}, dogu interface{}) *ResourceUpserter_UpsertDoguExposedServices_Call {
 	return &ResourceUpserter_UpsertDoguExposedServices_Call{Call: _e.mock.On("UpsertDoguExposedServices", ctx, doguResource, dogu)}
 }
@@ -176,9 +176,9 @@ type ResourceUpserter_UpsertDoguPVCs_Call struct {
 }
 
 // UpsertDoguPVCs is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
-//  - dogu *core.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
+//   - dogu *core.Dogu
 func (_e *ResourceUpserter_Expecter) UpsertDoguPVCs(ctx interface{}, doguResource interface{}, dogu interface{}) *ResourceUpserter_UpsertDoguPVCs_Call {
 	return &ResourceUpserter_UpsertDoguPVCs_Call{Call: _e.mock.On("UpsertDoguPVCs", ctx, doguResource, dogu)}
 }
@@ -232,9 +232,9 @@ type ResourceUpserter_UpsertDoguService_Call struct {
 }
 
 // UpsertDoguService is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
-//  - image *pkgv1.ConfigFile
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
+//   - image *pkgv1.ConfigFile
 func (_e *ResourceUpserter_Expecter) UpsertDoguService(ctx interface{}, doguResource interface{}, image interface{}) *ResourceUpserter_UpsertDoguService_Call {
 	return &ResourceUpserter_UpsertDoguService_Call{Call: _e.mock.On("UpsertDoguService", ctx, doguResource, image)}
 }

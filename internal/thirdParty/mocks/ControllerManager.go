@@ -64,7 +64,7 @@ type ControllerManager_Add_Call struct {
 }
 
 // Add is a helper method to define mock.On call
-//  - _a0 manager.Runnable
+//   - _a0 manager.Runnable
 func (_e *ControllerManager_Expecter) Add(_a0 interface{}) *ControllerManager_Add_Call {
 	return &ControllerManager_Add_Call{Call: _e.mock.On("Add", _a0)}
 }
@@ -106,8 +106,8 @@ type ControllerManager_AddHealthzCheck_Call struct {
 }
 
 // AddHealthzCheck is a helper method to define mock.On call
-//  - name string
-//  - check healthz.Checker
+//   - name string
+//   - check healthz.Checker
 func (_e *ControllerManager_Expecter) AddHealthzCheck(name interface{}, check interface{}) *ControllerManager_AddHealthzCheck_Call {
 	return &ControllerManager_AddHealthzCheck_Call{Call: _e.mock.On("AddHealthzCheck", name, check)}
 }
@@ -149,8 +149,8 @@ type ControllerManager_AddMetricsExtraHandler_Call struct {
 }
 
 // AddMetricsExtraHandler is a helper method to define mock.On call
-//  - path string
-//  - handler http.Handler
+//   - path string
+//   - handler http.Handler
 func (_e *ControllerManager_Expecter) AddMetricsExtraHandler(path interface{}, handler interface{}) *ControllerManager_AddMetricsExtraHandler_Call {
 	return &ControllerManager_AddMetricsExtraHandler_Call{Call: _e.mock.On("AddMetricsExtraHandler", path, handler)}
 }
@@ -192,8 +192,8 @@ type ControllerManager_AddReadyzCheck_Call struct {
 }
 
 // AddReadyzCheck is a helper method to define mock.On call
-//  - name string
-//  - check healthz.Checker
+//   - name string
+//   - check healthz.Checker
 func (_e *ControllerManager_Expecter) AddReadyzCheck(name interface{}, check interface{}) *ControllerManager_AddReadyzCheck_Call {
 	return &ControllerManager_AddReadyzCheck_Call{Call: _e.mock.On("AddReadyzCheck", name, check)}
 }
@@ -493,7 +493,7 @@ type ControllerManager_GetEventRecorderFor_Call struct {
 }
 
 // GetEventRecorderFor is a helper method to define mock.On call
-//  - name string
+//   - name string
 func (_e *ControllerManager_Expecter) GetEventRecorderFor(name interface{}) *ControllerManager_GetEventRecorderFor_Call {
 	return &ControllerManager_GetEventRecorderFor_Call{Call: _e.mock.On("GetEventRecorderFor", name)}
 }
@@ -748,7 +748,7 @@ type ControllerManager_SetFields_Call struct {
 }
 
 // SetFields is a helper method to define mock.On call
-//  - _a0 interface{}
+//   - _a0 interface{}
 func (_e *ControllerManager_Expecter) SetFields(_a0 interface{}) *ControllerManager_SetFields_Call {
 	return &ControllerManager_SetFields_Call{Call: _e.mock.On("SetFields", _a0)}
 }
@@ -790,7 +790,7 @@ type ControllerManager_Start_Call struct {
 }
 
 // Start is a helper method to define mock.On call
-//  - ctx context.Context
+//   - ctx context.Context
 func (_e *ControllerManager_Expecter) Start(ctx interface{}) *ControllerManager_Start_Call {
 	return &ControllerManager_Start_Call{Call: _e.mock.On("Start", ctx)}
 }

@@ -44,7 +44,7 @@ type DoguRegistrator_RegisterDoguVersion_Call struct {
 }
 
 // RegisterDoguVersion is a helper method to define mock.On call
-//  - dogu *core.Dogu
+//   - dogu *core.Dogu
 func (_e *DoguRegistrator_Expecter) RegisterDoguVersion(dogu interface{}) *DoguRegistrator_RegisterDoguVersion_Call {
 	return &DoguRegistrator_RegisterDoguVersion_Call{Call: _e.mock.On("RegisterDoguVersion", dogu)}
 }
@@ -86,9 +86,9 @@ type DoguRegistrator_RegisterNewDogu_Call struct {
 }
 
 // RegisterNewDogu is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
-//  - dogu *core.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
+//   - dogu *core.Dogu
 func (_e *DoguRegistrator_Expecter) RegisterNewDogu(ctx interface{}, doguResource interface{}, dogu interface{}) *DoguRegistrator_RegisterNewDogu_Call {
 	return &DoguRegistrator_RegisterNewDogu_Call{Call: _e.mock.On("RegisterNewDogu", ctx, doguResource, dogu)}
 }
@@ -130,7 +130,7 @@ type DoguRegistrator_UnregisterDogu_Call struct {
 }
 
 // UnregisterDogu is a helper method to define mock.On call
-//  - dogu string
+//   - dogu string
 func (_e *DoguRegistrator_Expecter) UnregisterDogu(dogu interface{}) *DoguRegistrator_UnregisterDogu_Call {
 	return &DoguRegistrator_UnregisterDogu_Call{Call: _e.mock.On("UnregisterDogu", dogu)}
 }
