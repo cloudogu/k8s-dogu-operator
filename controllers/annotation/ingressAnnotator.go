@@ -23,7 +23,6 @@ func (i IngressAnnotator) AppendIngressAnnotationsToService(service *corev1.Serv
 	}
 
 	return nil
-
 }
 
 func appendAdditionalIngressAnnotations(service *corev1.Service, ingressAnnotations doguv1.IngressAnnotations) error {
