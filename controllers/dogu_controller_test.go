@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -69,6 +70,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 				Status: k8sv1.DoguStatusInstalled,
 			},
 		}
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 
 		recorder := extMocks.NewEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
@@ -76,7 +78,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
 
 		// TODO make this client fail
-		fakeClient := fake.NewClientBuilder().Build()
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -539,5 +541,62 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.False(t, expand)
+	})
+}
+
+func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
+	t.Run("should return true if annotations are not euqal", func(t *testing.T) {
+		// given
+		doguIngressAnnotation := map[string]string{"test": "test"}
+		serviceIngressAnnotation := map[string]string{"sdf": "sdfsdf"}
+		marshalServiceAnnotations, err := json.Marshal(serviceIngressAnnotation)
+		require.NoError(t, err)
+		annotationsService := map[string]string{
+			"k8s-dogu-operator.cloudogu.com/additional-ingress-annotations": string(marshalServiceAnnotations),
+		}
+		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+			Spec: k8sv1.DoguSpec{AdditionalIngressAnnotations: doguIngressAnnotation}}
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Annotations: annotationsService}}
+		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(doguService).Build()}
+
+		// when
+		result, err := sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result)
+	})
+
+	t.Run("should return error if service annotations are not map[string]string", func(t *testing.T) {
+		// given
+		serviceIngressAnnotation := map[string]bool{"sdf": true}
+		marshalServiceAnnotations, err := json.Marshal(serviceIngressAnnotation)
+		require.NoError(t, err)
+		annotationsService := map[string]string{
+			"k8s-dogu-operator.cloudogu.com/additional-ingress-annotations": string(marshalServiceAnnotations),
+		}
+		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Annotations: annotationsService}}
+		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(doguService).Build()}
+
+		// when
+		_, err = sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get additional ingress annotations from service of dogu [test]")
+	})
+
+	t.Run("should return error if no service is found", func(t *testing.T) {
+		// given
+		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
+		sut := &doguReconciler{client: fake.NewClientBuilder().Build()}
+
+		// when
+		_, err := sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get service of dogu [test]")
 	})
 }
