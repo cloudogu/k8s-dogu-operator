@@ -1,16 +1,16 @@
 resources:
-  - manager.yaml
+- manager.yaml
 generatorOptions:
   disableNameSuffixHash: true
   labels:
     app: ces
 configMapGenerator:
-  - files:
-      - controller_manager_config.yaml
-    name: manager-config
+- files:
+  - controller_manager_config.yaml
+  name: manager-config
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-  - name: controller
-    newName: cloudogu/k8s-dogu-operator
-    newTag: 0.27.0
+- name: controller
+  newName: cloudogu/k8s-dogu-operator
+  newTag: 0.27.0

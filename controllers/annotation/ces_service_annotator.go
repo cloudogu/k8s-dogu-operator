@@ -24,9 +24,6 @@ const (
 	serviceTagWebapp          = "webapp"
 )
 
-// AdditionalIngressAnnotationsAnnotation contains additional ingress annotations to be appended to the ingress object for this service.
-const AdditionalIngressAnnotationsAnnotation = "k8s-dogu-operator.cloudogu.com/additional-ingress-annotations"
-
 // cesService describes a reachable service in the ecosystem.
 type cesService struct {
 	Name     string `json:"name"`
@@ -41,7 +38,7 @@ type CesServiceAnnotator struct{}
 // AnnotateService annotates a given service with ces service information based on the given service and the provided
 // image configuration which includes defined environment variables and labels used to customize the service for the
 // ecosystem.
-func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *imagev1.Config, additionalIngressAnnotations map[string]string) error {
+func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *imagev1.Config) error {
 	serviceTags, err := getServiceVariables(config)
 	if err != nil {
 		return fmt.Errorf("failed to get service tags: %w", err)
@@ -57,29 +54,6 @@ func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *i
 		return fmt.Errorf("failed to append annotation [%s] to service [%s]: %w", CesServicesAnnotation, service.GetName(), err)
 	}
 
-	err = appendAdditionalIngressAnnotations(service, additionalIngressAnnotations)
-	if err != nil {
-		return fmt.Errorf("failed to append annotation [%s] to service [%s]: %w", AdditionalIngressAnnotationsAnnotation, service.GetName(), err)
-	}
-
-	return nil
-}
-
-func appendAdditionalIngressAnnotations(service *corev1.Service, ingressAnnotations map[string]string) error {
-	if len(ingressAnnotations) < 1 {
-		return nil
-	}
-
-	if service.Annotations == nil {
-		service.Annotations = map[string]string{}
-	}
-
-	ingressAnnotationsJson, err := json.Marshal(ingressAnnotations)
-	if err != nil {
-		return fmt.Errorf("failed to marshal additional ingress annotations: %w", err)
-	}
-
-	service.Annotations[AdditionalIngressAnnotationsAnnotation] = string(ingressAnnotationsJson)
 	return nil
 }
 

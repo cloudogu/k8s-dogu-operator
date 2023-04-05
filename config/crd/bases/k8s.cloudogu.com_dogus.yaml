@@ -36,6 +36,12 @@ spec:
           spec:
             description: DoguSpec defines the desired state of a Dogu
             properties:
+              additionalIngressAnnotations:
+                additionalProperties:
+                  type: string
+                description: AdditionalIngressAnnotations provides additional annotations
+                  that get included into the dogu's ingress rules.
+                type: object
               name:
                 description: Name of the dogu (e.g. official/ldap)
                 type: string
@@ -75,11 +81,6 @@ spec:
               version:
                 description: Version of the dogu (e.g. 2.4.48-3)
                 type: string
-              additionalIngressAnnotations:
-                description: AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
-                additionalProperties:
-                  type: string
-                type: object
             type: object
           status:
             description: DoguStatus defines the observed state of a Dogu.

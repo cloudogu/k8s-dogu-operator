@@ -336,9 +336,15 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageCon
 	}
 
 	cesServiceAnnotationCreator := annotation.CesServiceAnnotator{}
-	err := cesServiceAnnotationCreator.AnnotateService(service, &imageConfig.Config, doguResource.Spec.AdditionalIngressAnnotations)
+	err := cesServiceAnnotationCreator.AnnotateService(service, &imageConfig.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to annotate service: %w", err)
+	}
+
+	ingressAnnotationCreator := annotation.IngressAnnotator{}
+	err = ingressAnnotationCreator.AppendIngressAnnotationsToService(service, doguResource.Spec.AdditionalIngressAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add ingress annotations to service: %w", err)
 	}
 
 	err = ctrl.SetControllerReference(doguResource, service, r.scheme)

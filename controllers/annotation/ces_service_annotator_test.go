@@ -88,7 +88,7 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 			annotator := annotation.CesServiceAnnotator{}
 
 			// when
-			err := annotator.AnnotateService(service, config, nil)
+			err := annotator.AnnotateService(service, config)
 			require.NoError(t, err)
 
 			// then
@@ -107,7 +107,7 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 		annotator := annotation.CesServiceAnnotator{}
 
 		// when
-		err := annotator.AnnotateService(service, config, nil)
+		err := annotator.AnnotateService(service, config)
 
 		// then
 		require.Error(t, err)
@@ -125,7 +125,7 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 		annotator := annotation.CesServiceAnnotator{}
 
 		// when
-		err := annotator.AnnotateService(service, config, nil)
+		err := annotator.AnnotateService(service, config)
 
 		// then
 		require.Error(t, err)
@@ -143,33 +143,10 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 		annotator := annotation.CesServiceAnnotator{}
 
 		// when
-		err := annotator.AnnotateService(service, config, nil)
+		err := annotator.AnnotateService(service, config)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to unmarshal additional services: invalid character '\\'' looking for beginning of value")
-	})
-
-	t.Run("Should append additional ingress annotations as json object to service", func(t *testing.T) {
-		// given
-		config := &imagev1.Config{
-			Env: []string{
-				"SERVICE_ADDITIONAL_SERVICES=[{\"name\": \"docker-registry\", \"location\": \"v2\", \"pass\": \"nexus/repository/docker-registry/v2/\"}]",
-			},
-		}
-		service := &corev1.Service{}
-		additionalIngressAnnotations := map[string]string{
-			"nginx.org/client-max-body-size": "100m",
-			"example-annotation":             "example-value",
-		}
-		annotator := annotation.CesServiceAnnotator{}
-
-		// when
-		err := annotator.AnnotateService(service, config, additionalIngressAnnotations)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, "[{\"name\":\"docker-registry\",\"port\":0,\"location\":\"/v2\",\"pass\":\"/nexus/repository/docker-registry/v2/\"}]", service.Annotations[annotation.CesServicesAnnotation])
-		assert.Equal(t, "{\"example-annotation\":\"example-value\",\"nginx.org/client-max-body-size\":\"100m\"}", service.Annotations[annotation.AdditionalIngressAnnotationsAnnotation])
 	})
 }
