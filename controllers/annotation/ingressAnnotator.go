@@ -11,8 +11,11 @@ import (
 // AdditionalIngressAnnotationsAnnotation contains additional ingress annotations to be appended to the ingress object for this service.
 const AdditionalIngressAnnotationsAnnotation = "k8s-dogu-operator.cloudogu.com/additional-ingress-annotations"
 
+// IngressAnnotator adds json-marshalled ingress annotations to a service.
 type IngressAnnotator struct{}
 
+// AppendIngressAnnotationsToService marshals the additional ingress annotations to json and adds them to the service as an annotation with the key of AdditionalIngressAnnotationsAnnotation.
+// These annotations are then to be read by the service discovery and appended to the ingress object for the dogu.
 func (i IngressAnnotator) AppendIngressAnnotationsToService(service *corev1.Service, additionalIngressAnnotations doguv1.IngressAnnotations) error {
 	err := appendAdditionalIngressAnnotations(service, additionalIngressAnnotations)
 	if err != nil {
