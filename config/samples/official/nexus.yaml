@@ -10,4 +10,4 @@ spec:
   resources:
     dataVolumeSize: 5Gi
   additionalIngressAnnotations:
-    nginx.org/client-max-body-size: "100m"
+    nginx.org/client-max-body-size: "0"
