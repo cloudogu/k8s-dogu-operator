@@ -36,7 +36,7 @@ type AsyncExecutor_AddStep_Call struct {
 }
 
 // AddStep is a helper method to define mock.On call
-//  - step cloudogu.AsyncStep
+//   - step cloudogu.AsyncStep
 func (_e *AsyncExecutor_Expecter) AddStep(step interface{}) *AsyncExecutor_AddStep_Call {
 	return &AsyncExecutor_AddStep_Call{Call: _e.mock.On("AddStep", step)}
 }
@@ -78,9 +78,9 @@ type AsyncExecutor_Execute_Call struct {
 }
 
 // Execute is a helper method to define mock.On call
-//  - ctx context.Context
-//  - dogu *v1.Dogu
-//  - currentState string
+//   - ctx context.Context
+//   - dogu *v1.Dogu
+//   - currentState string
 func (_e *AsyncExecutor_Expecter) Execute(ctx interface{}, dogu interface{}, currentState interface{}) *AsyncExecutor_Execute_Call {
 	return &AsyncExecutor_Execute_Call{Call: _e.mock.On("Execute", ctx, dogu, currentState)}
 }

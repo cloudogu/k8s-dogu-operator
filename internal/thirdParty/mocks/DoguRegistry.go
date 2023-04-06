@@ -40,7 +40,7 @@ type DoguRegistry_Enable_Call struct {
 }
 
 // Enable is a helper method to define mock.On call
-//  - dogu *core.Dogu
+//   - dogu *core.Dogu
 func (_e *DoguRegistry_Expecter) Enable(dogu interface{}) *DoguRegistry_Enable_Call {
 	return &DoguRegistry_Enable_Call{Call: _e.mock.On("Enable", dogu)}
 }
@@ -94,7 +94,7 @@ type DoguRegistry_Get_Call struct {
 }
 
 // Get is a helper method to define mock.On call
-//  - name string
+//   - name string
 func (_e *DoguRegistry_Expecter) Get(name interface{}) *DoguRegistry_Get_Call {
 	return &DoguRegistry_Get_Call{Call: _e.mock.On("Get", name)}
 }
@@ -199,7 +199,7 @@ type DoguRegistry_IsEnabled_Call struct {
 }
 
 // IsEnabled is a helper method to define mock.On call
-//  - name string
+//   - name string
 func (_e *DoguRegistry_Expecter) IsEnabled(name interface{}) *DoguRegistry_IsEnabled_Call {
 	return &DoguRegistry_IsEnabled_Call{Call: _e.mock.On("IsEnabled", name)}
 }
@@ -241,7 +241,7 @@ type DoguRegistry_Register_Call struct {
 }
 
 // Register is a helper method to define mock.On call
-//  - dogu *core.Dogu
+//   - dogu *core.Dogu
 func (_e *DoguRegistry_Expecter) Register(dogu interface{}) *DoguRegistry_Register_Call {
 	return &DoguRegistry_Register_Call{Call: _e.mock.On("Register", dogu)}
 }
@@ -283,7 +283,7 @@ type DoguRegistry_Unregister_Call struct {
 }
 
 // Unregister is a helper method to define mock.On call
-//  - name string
+//   - name string
 func (_e *DoguRegistry_Expecter) Unregister(name interface{}) *DoguRegistry_Unregister_Call {
 	return &DoguRegistry_Unregister_Call{Call: _e.mock.On("Unregister", name)}
 }

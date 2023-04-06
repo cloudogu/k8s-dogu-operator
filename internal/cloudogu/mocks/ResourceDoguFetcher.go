@@ -65,8 +65,8 @@ type ResourceDoguFetcher_FetchWithResource_Call struct {
 }
 
 // FetchWithResource is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *ResourceDoguFetcher_Expecter) FetchWithResource(ctx interface{}, doguResource interface{}) *ResourceDoguFetcher_FetchWithResource_Call {
 	return &ResourceDoguFetcher_FetchWithResource_Call{Call: _e.mock.On("FetchWithResource", ctx, doguResource)}
 }

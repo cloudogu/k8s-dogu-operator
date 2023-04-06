@@ -42,8 +42,8 @@ type DoguSecretHandler_WriteDoguSecretsToRegistry_Call struct {
 }
 
 // WriteDoguSecretsToRegistry is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *DoguSecretHandler_Expecter) WriteDoguSecretsToRegistry(ctx interface{}, doguResource interface{}) *DoguSecretHandler_WriteDoguSecretsToRegistry_Call {
 	return &DoguSecretHandler_WriteDoguSecretsToRegistry_Call{Call: _e.mock.On("WriteDoguSecretsToRegistry", ctx, doguResource)}
 }

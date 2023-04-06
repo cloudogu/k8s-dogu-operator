@@ -56,9 +56,9 @@ type ExecPodFactory_NewExecPod_Call struct {
 }
 
 // NewExecPod is a helper method to define mock.On call
-//  - execPodFactoryMode cloudogu.ExecPodVolumeMode
-//  - doguResource *v1.Dogu
-//  - dogu *core.Dogu
+//   - execPodFactoryMode cloudogu.ExecPodVolumeMode
+//   - doguResource *v1.Dogu
+//   - dogu *core.Dogu
 func (_e *ExecPodFactory_Expecter) NewExecPod(execPodFactoryMode interface{}, doguResource interface{}, dogu interface{}) *ExecPodFactory_NewExecPod_Call {
 	return &ExecPodFactory_NewExecPod_Call{Call: _e.mock.On("NewExecPod", execPodFactoryMode, doguResource, dogu)}
 }

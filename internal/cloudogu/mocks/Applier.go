@@ -43,9 +43,9 @@ type Applier_ApplyWithOwner_Call struct {
 }
 
 // ApplyWithOwner is a helper method to define mock.On call
-//  - doc apply.YamlDocument
-//  - namespace string
-//  - resource v1.Object
+//   - doc apply.YamlDocument
+//   - namespace string
+//   - resource v1.Object
 func (_e *Applier_Expecter) ApplyWithOwner(doc interface{}, namespace interface{}, resource interface{}) *Applier_ApplyWithOwner_Call {
 	return &Applier_ApplyWithOwner_Call{Call: _e.mock.On("ApplyWithOwner", doc, namespace, resource)}
 }

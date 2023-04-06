@@ -42,8 +42,8 @@ type ServiceAccountRemover_RemoveAll_Call struct {
 }
 
 // RemoveAll is a helper method to define mock.On call
-//  - ctx context.Context
-//  - dogu *core.Dogu
+//   - ctx context.Context
+//   - dogu *core.Dogu
 func (_e *ServiceAccountRemover_Expecter) RemoveAll(ctx interface{}, dogu interface{}) *ServiceAccountRemover_RemoveAll_Call {
 	return &ServiceAccountRemover_RemoveAll_Call{Call: _e.mock.On("RemoveAll", ctx, dogu)}
 }

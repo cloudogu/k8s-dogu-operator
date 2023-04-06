@@ -42,8 +42,8 @@ type InstallManager_Install_Call struct {
 }
 
 // Install is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *InstallManager_Expecter) Install(ctx interface{}, doguResource interface{}) *InstallManager_Install_Call {
 	return &InstallManager_Install_Call{Call: _e.mock.On("Install", ctx, doguResource)}
 }

@@ -43,9 +43,9 @@ type ResourceValidator_Validate_Call struct {
 }
 
 // Validate is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguName string
-//  - obj client.Object
+//   - ctx context.Context
+//   - doguName string
+//   - obj client.Object
 func (_e *ResourceValidator_Expecter) Validate(ctx interface{}, doguName interface{}, obj interface{}) *ResourceValidator_Validate_Call {
 	return &ResourceValidator_Validate_Call{Call: _e.mock.On("Validate", ctx, doguName, obj)}
 }

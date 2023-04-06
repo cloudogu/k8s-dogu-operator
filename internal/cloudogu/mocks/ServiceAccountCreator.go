@@ -42,8 +42,8 @@ type ServiceAccountCreator_CreateAll_Call struct {
 }
 
 // CreateAll is a helper method to define mock.On call
-//  - ctx context.Context
-//  - dogu *core.Dogu
+//   - ctx context.Context
+//   - dogu *core.Dogu
 func (_e *ServiceAccountCreator_Expecter) CreateAll(ctx interface{}, dogu interface{}) *ServiceAccountCreator_CreateAll_Call {
 	return &ServiceAccountCreator_CreateAll_Call{Call: _e.mock.On("CreateAll", ctx, dogu)}
 }

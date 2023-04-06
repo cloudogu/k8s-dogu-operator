@@ -49,7 +49,7 @@ func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *i
 		return fmt.Errorf("failed to create ces services: %w", err)
 	}
 
-	err = appendAnnotations(service, cesServices)
+	err = appendServiceAnnotations(service, cesServices)
 	if err != nil {
 		return fmt.Errorf("failed to append annotation [%s] to service [%s]: %w", CesServicesAnnotation, service.GetName(), err)
 	}
@@ -57,7 +57,7 @@ func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *i
 	return nil
 }
 
-func appendAnnotations(service *corev1.Service, cesServices []cesService) error {
+func appendServiceAnnotations(service *corev1.Service, cesServices []cesService) error {
 	if len(cesServices) < 1 {
 		return nil
 	}

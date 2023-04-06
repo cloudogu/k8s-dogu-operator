@@ -45,7 +45,7 @@ type ExecPod_Create_Call struct {
 }
 
 // Create is a helper method to define mock.On call
-//  - ctx context.Context
+//   - ctx context.Context
 func (_e *ExecPod_Expecter) Create(ctx interface{}) *ExecPod_Create_Call {
 	return &ExecPod_Create_Call{Call: _e.mock.On("Create", ctx)}
 }
@@ -87,7 +87,7 @@ type ExecPod_Delete_Call struct {
 }
 
 // Delete is a helper method to define mock.On call
-//  - ctx context.Context
+//   - ctx context.Context
 func (_e *ExecPod_Expecter) Delete(ctx interface{}) *ExecPod_Delete_Call {
 	return &ExecPod_Delete_Call{Call: _e.mock.On("Delete", ctx)}
 }
@@ -139,8 +139,8 @@ type ExecPod_Exec_Call struct {
 }
 
 // Exec is a helper method to define mock.On call
-//  - ctx context.Context
-//  - cmd cloudogu.ShellCommand
+//   - ctx context.Context
+//   - cmd cloudogu.ShellCommand
 func (_e *ExecPod_Expecter) Exec(ctx interface{}, cmd interface{}) *ExecPod_Exec_Call {
 	return &ExecPod_Exec_Call{Call: _e.mock.On("Exec", ctx, cmd)}
 }

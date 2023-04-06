@@ -56,9 +56,9 @@ type K8sClient_Create_Call struct {
 }
 
 // Create is a helper method to define mock.On call
-//  - ctx context.Context
-//  - obj client.Object
-//  - opts ...client.CreateOption
+//   - ctx context.Context
+//   - obj client.Object
+//   - opts ...client.CreateOption
 func (_e *K8sClient_Expecter) Create(ctx interface{}, obj interface{}, opts ...interface{}) *K8sClient_Create_Call {
 	return &K8sClient_Create_Call{Call: _e.mock.On("Create",
 		append([]interface{}{ctx, obj}, opts...)...)}
@@ -114,9 +114,9 @@ type K8sClient_Delete_Call struct {
 }
 
 // Delete is a helper method to define mock.On call
-//  - ctx context.Context
-//  - obj client.Object
-//  - opts ...client.DeleteOption
+//   - ctx context.Context
+//   - obj client.Object
+//   - opts ...client.DeleteOption
 func (_e *K8sClient_Expecter) Delete(ctx interface{}, obj interface{}, opts ...interface{}) *K8sClient_Delete_Call {
 	return &K8sClient_Delete_Call{Call: _e.mock.On("Delete",
 		append([]interface{}{ctx, obj}, opts...)...)}
@@ -172,9 +172,9 @@ type K8sClient_DeleteAllOf_Call struct {
 }
 
 // DeleteAllOf is a helper method to define mock.On call
-//  - ctx context.Context
-//  - obj client.Object
-//  - opts ...client.DeleteAllOfOption
+//   - ctx context.Context
+//   - obj client.Object
+//   - opts ...client.DeleteAllOfOption
 func (_e *K8sClient_Expecter) DeleteAllOf(ctx interface{}, obj interface{}, opts ...interface{}) *K8sClient_DeleteAllOf_Call {
 	return &K8sClient_DeleteAllOf_Call{Call: _e.mock.On("DeleteAllOf",
 		append([]interface{}{ctx, obj}, opts...)...)}
@@ -230,10 +230,10 @@ type K8sClient_Get_Call struct {
 }
 
 // Get is a helper method to define mock.On call
-//  - ctx context.Context
-//  - key types.NamespacedName
-//  - obj client.Object
-//  - opts ...client.GetOption
+//   - ctx context.Context
+//   - key types.NamespacedName
+//   - obj client.Object
+//   - opts ...client.GetOption
 func (_e *K8sClient_Expecter) Get(ctx interface{}, key interface{}, obj interface{}, opts ...interface{}) *K8sClient_Get_Call {
 	return &K8sClient_Get_Call{Call: _e.mock.On("Get",
 		append([]interface{}{ctx, key, obj}, opts...)...)}
@@ -289,9 +289,9 @@ type K8sClient_List_Call struct {
 }
 
 // List is a helper method to define mock.On call
-//  - ctx context.Context
-//  - list client.ObjectList
-//  - opts ...client.ListOption
+//   - ctx context.Context
+//   - list client.ObjectList
+//   - opts ...client.ListOption
 func (_e *K8sClient_Expecter) List(ctx interface{}, list interface{}, opts ...interface{}) *K8sClient_List_Call {
 	return &K8sClient_List_Call{Call: _e.mock.On("List",
 		append([]interface{}{ctx, list}, opts...)...)}
@@ -347,10 +347,10 @@ type K8sClient_Patch_Call struct {
 }
 
 // Patch is a helper method to define mock.On call
-//  - ctx context.Context
-//  - obj client.Object
-//  - patch client.Patch
-//  - opts ...client.PatchOption
+//   - ctx context.Context
+//   - obj client.Object
+//   - patch client.Patch
+//   - opts ...client.PatchOption
 func (_e *K8sClient_Expecter) Patch(ctx interface{}, obj interface{}, patch interface{}, opts ...interface{}) *K8sClient_Patch_Call {
 	return &K8sClient_Patch_Call{Call: _e.mock.On("Patch",
 		append([]interface{}{ctx, obj, patch}, opts...)...)}
@@ -530,7 +530,7 @@ type K8sClient_SubResource_Call struct {
 }
 
 // SubResource is a helper method to define mock.On call
-//  - subResource string
+//   - subResource string
 func (_e *K8sClient_Expecter) SubResource(subResource interface{}) *K8sClient_SubResource_Call {
 	return &K8sClient_SubResource_Call{Call: _e.mock.On("SubResource", subResource)}
 }
@@ -579,9 +579,9 @@ type K8sClient_Update_Call struct {
 }
 
 // Update is a helper method to define mock.On call
-//  - ctx context.Context
-//  - obj client.Object
-//  - opts ...client.UpdateOption
+//   - ctx context.Context
+//   - obj client.Object
+//   - opts ...client.UpdateOption
 func (_e *K8sClient_Expecter) Update(ctx interface{}, obj interface{}, opts ...interface{}) *K8sClient_Update_Call {
 	return &K8sClient_Update_Call{Call: _e.mock.On("Update",
 		append([]interface{}{ctx, obj}, opts...)...)}

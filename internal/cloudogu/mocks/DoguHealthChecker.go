@@ -42,8 +42,8 @@ type DoguHealthChecker_CheckWithResource_Call struct {
 }
 
 // CheckWithResource is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *DoguHealthChecker_Expecter) CheckWithResource(ctx interface{}, doguResource interface{}) *DoguHealthChecker_CheckWithResource_Call {
 	return &DoguHealthChecker_CheckWithResource_Call{Call: _e.mock.On("CheckWithResource", ctx, doguResource)}
 }

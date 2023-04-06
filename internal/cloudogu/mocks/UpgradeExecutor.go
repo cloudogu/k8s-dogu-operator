@@ -44,10 +44,10 @@ type UpgradeExecutor_Upgrade_Call struct {
 }
 
 // Upgrade is a helper method to define mock.On call
-//  - ctx context.Context
-//  - toDoguResource *v1.Dogu
-//  - fromDogu *core.Dogu
-//  - toDogu *core.Dogu
+//   - ctx context.Context
+//   - toDoguResource *v1.Dogu
+//   - fromDogu *core.Dogu
+//   - toDogu *core.Dogu
 func (_e *UpgradeExecutor_Expecter) Upgrade(ctx interface{}, toDoguResource interface{}, fromDogu interface{}, toDogu interface{}) *UpgradeExecutor_Upgrade_Call {
 	return &UpgradeExecutor_Upgrade_Call{Call: _e.mock.On("Upgrade", ctx, toDoguResource, fromDogu, toDogu)}
 }

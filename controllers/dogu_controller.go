@@ -2,19 +2,20 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-
+	"reflect"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
@@ -55,11 +56,12 @@ const handleRequeueErrMsg = "failed to handle requeue: %w"
 type operation string
 
 const (
-	Install      = operation("Install")
-	Upgrade      = operation("Upgrade")
-	Delete       = operation("Delete")
-	Ignore       = operation("Ignore")
-	ExpandVolume = operation("ExpandVolume")
+	Install                            = operation("Install")
+	Upgrade                            = operation("Upgrade")
+	Delete                             = operation("Delete")
+	Ignore                             = operation("Ignore")
+	ExpandVolume                       = operation("ExpandVolume")
+	ChangeAdditionalIngressAnnotations = operation("ChangeAdditionalIngressAnnotations")
 )
 
 // doguReconciler reconciles a Dogu object
@@ -133,6 +135,8 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return finishOperation()
 	case ExpandVolume:
 		return r.performVolumeOperation(ctx, doguResource)
+	case ChangeAdditionalIngressAnnotations:
+		return r.performAddititionalIngressAnnotationsOperation(ctx, doguResource)
 	default:
 		return finishOperation()
 	}
@@ -177,14 +181,24 @@ func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguReso
 	case k8sv1.DoguStatusPVCResizing:
 		return ExpandVolume, nil
 	case k8sv1.DoguStatusInstalled:
-		ok, err := r.checkForVolumeExpansion(ctx, doguResource)
+		isVolumeExpansion, err := r.checkForVolumeExpansion(ctx, doguResource)
 		if err != nil {
 			return Ignore, err
 		}
 
-		if ok {
+		if isVolumeExpansion {
 			return ExpandVolume, nil
 		}
+
+		ingressAnnotationsChanged, err := r.checkForAdditionalIngressAnnotations(ctx, doguResource)
+		if err != nil {
+			return Ignore, err
+		}
+
+		if ingressAnnotationsChanged {
+			return ChangeAdditionalIngressAnnotations, nil
+		}
+
 		// Checking if the resource spec field has changed is unnecessary because we
 		// use a predicate to filter update events where specs don't change
 		upgradeable, err := checkUpgradeability(doguResource, r.fetcher)
@@ -243,6 +257,29 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 		return false, fmt.Errorf("invalid dogu state for dogu [%s] as requested volume size is [%s] while "+
 			"existing volume is [%s], shrinking of volumes is not allowed", doguResource.Name,
 			doguTargetDataVolumeSize.String(), doguPvc.Spec.Resources.Requests.Storage().String())
+	}
+}
+
+func (r *doguReconciler) checkForAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
+	doguService := &v1.Service{}
+	err := r.client.Get(ctx, doguResource.GetObjectKey(), doguService)
+	if err != nil {
+		return false, fmt.Errorf("failed to get service of dogu [%s]: %w", doguResource.Name, err)
+	}
+
+	annotationsJson, exists := doguService.Annotations[annotation.AdditionalIngressAnnotationsAnnotation]
+	annotations := k8sv1.IngressAnnotations(nil)
+	if exists {
+		err = json.Unmarshal([]byte(annotationsJson), &annotations)
+		if err != nil {
+			return false, fmt.Errorf("failed to get additional ingress annotations from service of dogu [%s]: %w", doguResource.Name, err)
+		}
+	}
+
+	if reflect.DeepEqual(annotations, doguResource.Spec.AdditionalIngressAnnotations) {
+		return false, nil
+	} else {
+		return true, nil
 	}
 }
 
@@ -348,8 +385,20 @@ func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResourc
 		operationVerb: "expand volume",
 	}
 
-	// revert to resizing in case of requeueing after an error so that the size check can made be done again.
+	// revert to resizing in case of requeueing after an error so that the size check can be done again.
 	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusPVCResizing, r.doguManager.SetDoguDataVolumeSize)
+}
+
+func (r *doguReconciler) performAddititionalIngressAnnotationsOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	additionalIngressAnnotationsOperationEventProps := operationEventProperties{
+		successReason: AdditionalIngressAnnotationsChangeEventReason,
+		errorReason:   ErrorOnAdditionalIngressAnnotationsChangeEventReason,
+		operationName: "AdditionalIngressAnnotationsChange",
+		operationVerb: "change additional ingress annotations",
+	}
+
+	// revert to Installed in case of requeueing after an error so that the change check can be done again.
+	return r.performOperation(ctx, doguResource, additionalIngressAnnotationsOperationEventProps, k8sv1.DoguStatusInstalled, r.doguManager.SetDoguAdditionalIngressAnnotations)
 }
 
 func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {

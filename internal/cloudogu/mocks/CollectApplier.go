@@ -42,9 +42,9 @@ type CollectApplier_CollectApply_Call struct {
 }
 
 // CollectApply is a helper method to define mock.On call
-//  - ctx context.Context
-//  - customK8sResources map[string]string
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - customK8sResources map[string]string
+//   - doguResource *v1.Dogu
 func (_e *CollectApplier_Expecter) CollectApply(ctx interface{}, customK8sResources interface{}, doguResource interface{}) *CollectApplier_CollectApply_Call {
 	return &CollectApplier_CollectApply_Call{Call: _e.mock.On("CollectApply", ctx, customK8sResources, doguResource)}
 }

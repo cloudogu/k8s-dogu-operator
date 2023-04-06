@@ -54,7 +54,12 @@ type DoguSpec struct {
 	SupportMode bool `json:"supportMode,omitempty"`
 	// UpgradeConfig contains options to manipulate the upgrade process.
 	UpgradeConfig UpgradeConfig `json:"upgradeConfig,omitempty"`
+	// AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
+	AdditionalIngressAnnotations IngressAnnotations `json:"additionalIngressAnnotations,omitempty"`
 }
+
+// IngressAnnotations are annotations of nginx-ingress rules.
+type IngressAnnotations map[string]string
 
 // UpgradeConfig contains configuration hints for the dogu operator regarding aspects during the upgrade of dogus.
 type UpgradeConfig struct {

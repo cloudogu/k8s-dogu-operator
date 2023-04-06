@@ -50,10 +50,10 @@ type K8sSubResourceWriter_Create_Call struct {
 }
 
 // Create is a helper method to define mock.On call
-//  - ctx context.Context
-//  - obj client.Object
-//  - subResource client.Object
-//  - opts ...client.SubResourceCreateOption
+//   - ctx context.Context
+//   - obj client.Object
+//   - subResource client.Object
+//   - opts ...client.SubResourceCreateOption
 func (_e *K8sSubResourceWriter_Expecter) Create(ctx interface{}, obj interface{}, subResource interface{}, opts ...interface{}) *K8sSubResourceWriter_Create_Call {
 	return &K8sSubResourceWriter_Create_Call{Call: _e.mock.On("Create",
 		append([]interface{}{ctx, obj, subResource}, opts...)...)}
@@ -109,10 +109,10 @@ type K8sSubResourceWriter_Patch_Call struct {
 }
 
 // Patch is a helper method to define mock.On call
-//  - ctx context.Context
-//  - obj client.Object
-//  - patch client.Patch
-//  - opts ...client.SubResourcePatchOption
+//   - ctx context.Context
+//   - obj client.Object
+//   - patch client.Patch
+//   - opts ...client.SubResourcePatchOption
 func (_e *K8sSubResourceWriter_Expecter) Patch(ctx interface{}, obj interface{}, patch interface{}, opts ...interface{}) *K8sSubResourceWriter_Patch_Call {
 	return &K8sSubResourceWriter_Patch_Call{Call: _e.mock.On("Patch",
 		append([]interface{}{ctx, obj, patch}, opts...)...)}
@@ -168,9 +168,9 @@ type K8sSubResourceWriter_Update_Call struct {
 }
 
 // Update is a helper method to define mock.On call
-//  - ctx context.Context
-//  - obj client.Object
-//  - opts ...client.SubResourceUpdateOption
+//   - ctx context.Context
+//   - obj client.Object
+//   - opts ...client.SubResourceUpdateOption
 func (_e *K8sSubResourceWriter_Expecter) Update(ctx interface{}, obj interface{}, opts ...interface{}) *K8sSubResourceWriter_Update_Call {
 	return &K8sSubResourceWriter_Update_Call{Call: _e.mock.On("Update",
 		append([]interface{}{ctx, obj}, opts...)...)}
