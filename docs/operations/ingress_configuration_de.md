@@ -4,7 +4,7 @@ Ingress-Regeln für Dogus werden von [k8s-service-discovery](https://github.com/
 Allerdings kann ein Großteil der Konfiguration durch Anmerkungen zu den Ingress-Regeln vorgenommen werden.
 
 ## Ingress-Annotationen
-Da die Ingress-Regeln für Dogus nicht manuell bearbeitet werden sollten, können [Ingress-Annotationen](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/) über die Dogu-Ressource zu den Ingress-Regeln hinzugefügt werden.  
+Da die Ingress-Regeln für Dogus nicht manuell bearbeitet werden sollten, können [NGINX-Ingress-Annotationen](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/) über die Dogu-Ressource zu den Ingress-Regeln hinzugefügt werden.  
 Sie werden einfach in das Feld `additionalIngressAnnotations` im `spec`-Feld der Dogu-Ressource angehängt.
 
 Beispiel:
@@ -19,5 +19,5 @@ spec:
   name: official/nexus
   version: 3.40.1-2
   additionalIngressAnnotations:
-    nginx.org/client-max-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
 ```
