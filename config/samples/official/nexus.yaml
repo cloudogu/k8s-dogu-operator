@@ -7,3 +7,7 @@ metadata:
 spec:
   name: official/nexus
   version: 3.40.1-2
+  resources:
+    dataVolumeSize: 5Gi
+  additionalIngressAnnotations:
+    nginx.org/client-max-body-size: "0"

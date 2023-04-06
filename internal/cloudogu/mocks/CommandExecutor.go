@@ -60,10 +60,10 @@ type CommandExecutor_ExecCommandForDogu_Call struct {
 }
 
 // ExecCommandForDogu is a helper method to define mock.On call
-//  - ctx context.Context
-//  - resource *v1.Dogu
-//  - command cloudogu.ShellCommand
-//  - expected cloudogu.PodStatusForExec
+//   - ctx context.Context
+//   - resource *v1.Dogu
+//   - command cloudogu.ShellCommand
+//   - expected cloudogu.PodStatusForExec
 func (_e *CommandExecutor_Expecter) ExecCommandForDogu(ctx interface{}, resource interface{}, command interface{}, expected interface{}) *CommandExecutor_ExecCommandForDogu_Call {
 	return &CommandExecutor_ExecCommandForDogu_Call{Call: _e.mock.On("ExecCommandForDogu", ctx, resource, command, expected)}
 }
@@ -117,10 +117,10 @@ type CommandExecutor_ExecCommandForPod_Call struct {
 }
 
 // ExecCommandForPod is a helper method to define mock.On call
-//  - ctx context.Context
-//  - pod *corev1.Pod
-//  - command cloudogu.ShellCommand
-//  - expected cloudogu.PodStatusForExec
+//   - ctx context.Context
+//   - pod *corev1.Pod
+//   - command cloudogu.ShellCommand
+//   - expected cloudogu.PodStatusForExec
 func (_e *CommandExecutor_Expecter) ExecCommandForPod(ctx interface{}, pod interface{}, command interface{}, expected interface{}) *CommandExecutor_ExecCommandForPod_Call {
 	return &CommandExecutor_ExecCommandForPod_Call{Call: _e.mock.On("ExecCommandForPod", ctx, pod, command, expected)}
 }

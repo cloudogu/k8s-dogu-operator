@@ -44,8 +44,8 @@ type LimitPatcher_PatchDeployment_Call struct {
 }
 
 // PatchDeployment is a helper method to define mock.On call
-//  - deployment *v1.Deployment
-//  - limits cloudogu.DoguLimits
+//   - deployment *v1.Deployment
+//   - limits cloudogu.DoguLimits
 func (_e *LimitPatcher_Expecter) PatchDeployment(deployment interface{}, limits interface{}) *LimitPatcher_PatchDeployment_Call {
 	return &LimitPatcher_PatchDeployment_Call{Call: _e.mock.On("PatchDeployment", deployment, limits)}
 }
@@ -99,7 +99,7 @@ type LimitPatcher_RetrievePodLimits_Call struct {
 }
 
 // RetrievePodLimits is a helper method to define mock.On call
-//  - doguResource *apiv1.Dogu
+//   - doguResource *apiv1.Dogu
 func (_e *LimitPatcher_Expecter) RetrievePodLimits(doguResource interface{}) *LimitPatcher_RetrievePodLimits_Call {
 	return &LimitPatcher_RetrievePodLimits_Call{Call: _e.mock.On("RetrievePodLimits", doguResource)}
 }

@@ -42,8 +42,8 @@ type DependencyValidator_ValidateDependencies_Call struct {
 }
 
 // ValidateDependencies is a helper method to define mock.On call
-//  - ctx context.Context
-//  - dogu *core.Dogu
+//   - ctx context.Context
+//   - dogu *core.Dogu
 func (_e *DependencyValidator_Expecter) ValidateDependencies(ctx interface{}, dogu interface{}) *DependencyValidator_ValidateDependencies_Call {
 	return &DependencyValidator_ValidateDependencies_Call{Call: _e.mock.On("ValidateDependencies", ctx, dogu)}
 }

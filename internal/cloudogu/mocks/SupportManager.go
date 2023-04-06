@@ -52,8 +52,8 @@ type SupportManager_HandleSupportMode_Call struct {
 }
 
 // HandleSupportMode is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *SupportManager_Expecter) HandleSupportMode(ctx interface{}, doguResource interface{}) *SupportManager_HandleSupportMode_Call {
 	return &SupportManager_HandleSupportMode_Call{Call: _e.mock.On("HandleSupportMode", ctx, doguResource)}
 }

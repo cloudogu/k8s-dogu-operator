@@ -40,7 +40,7 @@ type LogSink_Enabled_Call struct {
 }
 
 // Enabled is a helper method to define mock.On call
-//  - level int
+//   - level int
 func (_e *LogSink_Expecter) Enabled(level interface{}) *LogSink_Enabled_Call {
 	return &LogSink_Enabled_Call{Call: _e.mock.On("Enabled", level)}
 }
@@ -76,9 +76,9 @@ type LogSink_Error_Call struct {
 }
 
 // Error is a helper method to define mock.On call
-//  - err error
-//  - msg string
-//  - keysAndValues ...interface{}
+//   - err error
+//   - msg string
+//   - keysAndValues ...interface{}
 func (_e *LogSink_Expecter) Error(err interface{}, msg interface{}, keysAndValues ...interface{}) *LogSink_Error_Call {
 	return &LogSink_Error_Call{Call: _e.mock.On("Error",
 		append([]interface{}{err, msg}, keysAndValues...)...)}
@@ -121,9 +121,9 @@ type LogSink_Info_Call struct {
 }
 
 // Info is a helper method to define mock.On call
-//  - level int
-//  - msg string
-//  - keysAndValues ...interface{}
+//   - level int
+//   - msg string
+//   - keysAndValues ...interface{}
 func (_e *LogSink_Expecter) Info(level interface{}, msg interface{}, keysAndValues ...interface{}) *LogSink_Info_Call {
 	return &LogSink_Info_Call{Call: _e.mock.On("Info",
 		append([]interface{}{level, msg}, keysAndValues...)...)}
@@ -163,7 +163,7 @@ type LogSink_Init_Call struct {
 }
 
 // Init is a helper method to define mock.On call
-//  - info logr.RuntimeInfo
+//   - info logr.RuntimeInfo
 func (_e *LogSink_Expecter) Init(info interface{}) *LogSink_Init_Call {
 	return &LogSink_Init_Call{Call: _e.mock.On("Init", info)}
 }
@@ -207,7 +207,7 @@ type LogSink_WithName_Call struct {
 }
 
 // WithName is a helper method to define mock.On call
-//  - name string
+//   - name string
 func (_e *LogSink_Expecter) WithName(name interface{}) *LogSink_WithName_Call {
 	return &LogSink_WithName_Call{Call: _e.mock.On("WithName", name)}
 }
@@ -253,7 +253,7 @@ type LogSink_WithValues_Call struct {
 }
 
 // WithValues is a helper method to define mock.On call
-//  - keysAndValues ...interface{}
+//   - keysAndValues ...interface{}
 func (_e *LogSink_Expecter) WithValues(keysAndValues ...interface{}) *LogSink_WithValues_Call {
 	return &LogSink_WithValues_Call{Call: _e.mock.On("WithValues",
 		append([]interface{}{}, keysAndValues...)...)}

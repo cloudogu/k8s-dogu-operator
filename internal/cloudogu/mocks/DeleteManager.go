@@ -42,8 +42,8 @@ type DeleteManager_Delete_Call struct {
 }
 
 // Delete is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *DeleteManager_Expecter) Delete(ctx interface{}, doguResource interface{}) *DeleteManager_Delete_Call {
 	return &DeleteManager_Delete_Call{Call: _e.mock.On("Delete", ctx, doguResource)}
 }

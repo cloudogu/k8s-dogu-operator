@@ -52,7 +52,7 @@ type LocalDoguFetcher_FetchInstalled_Call struct {
 }
 
 // FetchInstalled is a helper method to define mock.On call
-//  - doguName string
+//   - doguName string
 func (_e *LocalDoguFetcher_Expecter) FetchInstalled(doguName interface{}) *LocalDoguFetcher_FetchInstalled_Call {
 	return &LocalDoguFetcher_FetchInstalled_Call{Call: _e.mock.On("FetchInstalled", doguName)}
 }

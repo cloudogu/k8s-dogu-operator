@@ -42,7 +42,7 @@ type RemoteExecutor_Stream_Call struct {
 }
 
 // Stream is a helper method to define mock.On call
-//  - options remotecommand.StreamOptions
+//   - options remotecommand.StreamOptions
 func (_e *RemoteExecutor_Expecter) Stream(options interface{}) *RemoteExecutor_Stream_Call {
 	return &RemoteExecutor_Stream_Call{Call: _e.mock.On("Stream", options)}
 }
@@ -84,8 +84,8 @@ type RemoteExecutor_StreamWithContext_Call struct {
 }
 
 // StreamWithContext is a helper method to define mock.On call
-//  - ctx context.Context
-//  - options remotecommand.StreamOptions
+//   - ctx context.Context
+//   - options remotecommand.StreamOptions
 func (_e *RemoteExecutor_Expecter) StreamWithContext(ctx interface{}, options interface{}) *RemoteExecutor_StreamWithContext_Call {
 	return &RemoteExecutor_StreamWithContext_Call{Call: _e.mock.On("StreamWithContext", ctx, options)}
 }

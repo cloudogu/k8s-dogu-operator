@@ -36,11 +36,18 @@ type VolumeManager interface {
 	SetDoguDataVolumeSize(ctx context.Context, doguResource *v1.Dogu) error
 }
 
+// AdditionalIngressAnnotationsManager includes functionality to edit additional ingress annotations for dogus in the cluster.
+type AdditionalIngressAnnotationsManager interface {
+	// SetDoguAdditionalIngressAnnotations edits the additional ingress annotations in the given dogu's service.
+	SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *v1.Dogu) error
+}
+
 // DoguManager abstracts the simple dogu operations in a k8s CES.
 type DoguManager interface {
 	InstallManager
 	UpgradeManager
 	DeleteManager
 	VolumeManager
+	AdditionalIngressAnnotationsManager
 	SupportManager
 }

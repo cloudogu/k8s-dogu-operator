@@ -42,8 +42,8 @@ type DoguManager_Delete_Call struct {
 }
 
 // Delete is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *DoguManager_Expecter) Delete(ctx interface{}, doguResource interface{}) *DoguManager_Delete_Call {
 	return &DoguManager_Delete_Call{Call: _e.mock.On("Delete", ctx, doguResource)}
 }
@@ -95,8 +95,8 @@ type DoguManager_HandleSupportMode_Call struct {
 }
 
 // HandleSupportMode is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *DoguManager_Expecter) HandleSupportMode(ctx interface{}, doguResource interface{}) *DoguManager_HandleSupportMode_Call {
 	return &DoguManager_HandleSupportMode_Call{Call: _e.mock.On("HandleSupportMode", ctx, doguResource)}
 }
@@ -138,8 +138,8 @@ type DoguManager_Install_Call struct {
 }
 
 // Install is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *DoguManager_Expecter) Install(ctx interface{}, doguResource interface{}) *DoguManager_Install_Call {
 	return &DoguManager_Install_Call{Call: _e.mock.On("Install", ctx, doguResource)}
 }
@@ -157,6 +157,49 @@ func (_c *DoguManager_Install_Call) Return(_a0 error) *DoguManager_Install_Call 
 }
 
 func (_c *DoguManager_Install_Call) RunAndReturn(run func(context.Context, *v1.Dogu) error) *DoguManager_Install_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetDoguAdditionalIngressAnnotations provides a mock function with given fields: ctx, doguResource
+func (_m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *v1.Dogu) error {
+	ret := _m.Called(ctx, doguResource)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu) error); ok {
+		r0 = rf(ctx, doguResource)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DoguManager_SetDoguAdditionalIngressAnnotations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDoguAdditionalIngressAnnotations'
+type DoguManager_SetDoguAdditionalIngressAnnotations_Call struct {
+	*mock.Call
+}
+
+// SetDoguAdditionalIngressAnnotations is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
+func (_e *DoguManager_Expecter) SetDoguAdditionalIngressAnnotations(ctx interface{}, doguResource interface{}) *DoguManager_SetDoguAdditionalIngressAnnotations_Call {
+	return &DoguManager_SetDoguAdditionalIngressAnnotations_Call{Call: _e.mock.On("SetDoguAdditionalIngressAnnotations", ctx, doguResource)}
+}
+
+func (_c *DoguManager_SetDoguAdditionalIngressAnnotations_Call) Run(run func(ctx context.Context, doguResource *v1.Dogu)) *DoguManager_SetDoguAdditionalIngressAnnotations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*v1.Dogu))
+	})
+	return _c
+}
+
+func (_c *DoguManager_SetDoguAdditionalIngressAnnotations_Call) Return(_a0 error) *DoguManager_SetDoguAdditionalIngressAnnotations_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *DoguManager_SetDoguAdditionalIngressAnnotations_Call) RunAndReturn(run func(context.Context, *v1.Dogu) error) *DoguManager_SetDoguAdditionalIngressAnnotations_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -181,8 +224,8 @@ type DoguManager_SetDoguDataVolumeSize_Call struct {
 }
 
 // SetDoguDataVolumeSize is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *DoguManager_Expecter) SetDoguDataVolumeSize(ctx interface{}, doguResource interface{}) *DoguManager_SetDoguDataVolumeSize_Call {
 	return &DoguManager_SetDoguDataVolumeSize_Call{Call: _e.mock.On("SetDoguDataVolumeSize", ctx, doguResource)}
 }
@@ -224,8 +267,8 @@ type DoguManager_Upgrade_Call struct {
 }
 
 // Upgrade is a helper method to define mock.On call
-//  - ctx context.Context
-//  - doguResource *v1.Dogu
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
 func (_e *DoguManager_Expecter) Upgrade(ctx interface{}, doguResource interface{}) *DoguManager_Upgrade_Call {
 	return &DoguManager_Upgrade_Call{Call: _e.mock.On("Upgrade", ctx, doguResource)}
 }

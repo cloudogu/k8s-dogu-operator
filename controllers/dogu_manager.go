@@ -24,13 +24,14 @@ var NewManager = NewDoguManager
 // DoguManager is a central unit in the process of handling dogu custom resources
 // The DoguManager creates, updates and deletes dogus
 type DoguManager struct {
-	scheme         *runtime.Scheme
-	installManager cloudogu.InstallManager
-	upgradeManager cloudogu.UpgradeManager
-	deleteManager  cloudogu.DeleteManager
-	volumeManager  cloudogu.VolumeManager
-	supportManager cloudogu.SupportManager
-	recorder       record.EventRecorder
+	scheme                    *runtime.Scheme
+	installManager            cloudogu.InstallManager
+	upgradeManager            cloudogu.UpgradeManager
+	deleteManager             cloudogu.DeleteManager
+	volumeManager             cloudogu.VolumeManager
+	ingressAnnotationsManager cloudogu.AdditionalIngressAnnotationsManager
+	supportManager            cloudogu.SupportManager
+	recorder                  record.EventRecorder
 }
 
 // NewDoguManager creates a new instance of DoguManager
@@ -59,14 +60,17 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 
 	volumeManager := NewDoguVolumeManager(client, eventRecorder)
 
+	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
+
 	return &DoguManager{
-		scheme:         client.Scheme(),
-		installManager: installManager,
-		upgradeManager: upgradeManager,
-		deleteManager:  deleteManager,
-		supportManager: supportManager,
-		volumeManager:  volumeManager,
-		recorder:       eventRecorder,
+		scheme:                    client.Scheme(),
+		installManager:            installManager,
+		upgradeManager:            upgradeManager,
+		deleteManager:             deleteManager,
+		supportManager:            supportManager,
+		volumeManager:             volumeManager,
+		ingressAnnotationsManager: ingressAnnotationsManager,
+		recorder:                  eventRecorder,
 	}, nil
 }
 
@@ -109,6 +113,12 @@ func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) erro
 func (m *DoguManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Start volume expansion...")
 	return m.volumeManager.SetDoguDataVolumeSize(ctx, doguResource)
+}
+
+// SetDoguAdditionalIngressAnnotations edits the additional ingress annotations in the given dogu's service.
+func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, AdditionalIngressAnnotationsChangeEventReason, "Start additional ingress annotations change...")
+	return m.ingressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
 }
 
 // HandleSupportMode handles the support flag in the dogu spec.

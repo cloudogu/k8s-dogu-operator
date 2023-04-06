@@ -21,6 +21,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+func TestDoguManager_SetDoguAdditionalIngressAnnotations(t *testing.T) {
+	// given
+	dogu := &k8sv1.Dogu{}
+	recorder := extMocks.NewEventRecorder(t)
+	recorder.EXPECT().Event(dogu, "Normal", "AdditionalIngressAnnotationsChange", "Start additional ingress annotations change...")
+	annotationsManager := mocks.NewAdditionalIngressAnnotationsManager(t)
+	annotationsManager.EXPECT().SetDoguAdditionalIngressAnnotations(mock.Anything, dogu).Return(nil)
+	manager := DoguManager{ingressAnnotationsManager: annotationsManager, recorder: recorder}
+
+	// when
+	err := manager.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)
+
+	// then
+	require.Nil(t, err)
+}
+
 func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 	// given
 	dogu := &k8sv1.Dogu{}
@@ -28,8 +44,8 @@ func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 	eventRecorderMock := extMocks.NewEventRecorder(t)
 	manager := DoguManager{volumeManager: volumeManagerMock, recorder: eventRecorderMock}
 
-	eventRecorderMock.On("Event", dogu, "Normal", "VolumeExpansion", "Start volume expansion...")
-	volumeManagerMock.On("SetDoguDataVolumeSize", mock.Anything, mock.Anything).Return(nil)
+	eventRecorderMock.EXPECT().Event(dogu, "Normal", "VolumeExpansion", "Start volume expansion...")
+	volumeManagerMock.EXPECT().SetDoguDataVolumeSize(mock.Anything, mock.Anything).Return(nil)
 
 	// when
 	err := manager.SetDoguDataVolumeSize(context.TODO(), dogu)
@@ -45,7 +61,7 @@ func TestDoguManager_HandleSupportMode(t *testing.T) {
 	eventRecorderMock := extMocks.NewEventRecorder(t)
 	manager := DoguManager{supportManager: supportManagerMock, recorder: eventRecorderMock}
 
-	supportManagerMock.On("HandleSupportMode", mock.Anything, mock.Anything).Return(true, nil)
+	supportManagerMock.EXPECT().HandleSupportMode(mock.Anything, mock.Anything).Return(true, nil)
 
 	// when
 	result, err := manager.HandleSupportMode(context.TODO(), dogu)
@@ -60,11 +76,11 @@ func TestDoguManager_Delete(t *testing.T) {
 	inputDogu := &k8sv1.Dogu{}
 	inputContext := context.Background()
 	deleteManager := mocks.NewDeleteManager(t)
-	deleteManager.On("Delete", inputContext, inputDogu).Return(nil)
+	deleteManager.EXPECT().Delete(inputContext, inputDogu).Return(nil)
 	eventRecorder := extMocks.NewEventRecorder(t)
 	m := DoguManager{deleteManager: deleteManager, recorder: eventRecorder}
 
-	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, "Deinstallation", "Starting deinstallation...")
+	eventRecorder.EXPECT().Event(inputDogu, corev1.EventTypeNormal, "Deinstallation", "Starting deinstallation...")
 
 	// when
 	err := m.Delete(inputContext, inputDogu)
@@ -78,11 +94,11 @@ func TestDoguManager_Install(t *testing.T) {
 	inputDogu := &k8sv1.Dogu{}
 	inputContext := context.Background()
 	installManager := mocks.NewInstallManager(t)
-	installManager.On("Install", inputContext, inputDogu).Return(nil)
+	installManager.EXPECT().Install(inputContext, inputDogu).Return(nil)
 	eventRecorder := extMocks.NewEventRecorder(t)
 	m := DoguManager{installManager: installManager, recorder: eventRecorder}
 
-	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
+	eventRecorder.EXPECT().Event(inputDogu, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
 
 	// when
 	err := m.Install(inputContext, inputDogu)
@@ -96,11 +112,11 @@ func TestDoguManager_Upgrade(t *testing.T) {
 	inputDogu := &k8sv1.Dogu{}
 	inputContext := context.Background()
 	upgradeManager := mocks.NewUpgradeManager(t)
-	upgradeManager.On("Upgrade", inputContext, inputDogu).Return(nil)
+	upgradeManager.EXPECT().Upgrade(inputContext, inputDogu).Return(nil)
 	eventRecorder := extMocks.NewEventRecorder(t)
 	m := DoguManager{upgradeManager: upgradeManager, recorder: eventRecorder}
 
-	eventRecorder.On("Event", inputDogu, corev1.EventTypeNormal, upgrade.EventReason, "Starting upgrade...")
+	eventRecorder.EXPECT().Event(inputDogu, corev1.EventTypeNormal, upgrade.EventReason, "Starting upgrade...")
 
 	// when
 	err := m.Upgrade(inputContext, inputDogu)

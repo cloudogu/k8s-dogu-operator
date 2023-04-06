@@ -52,8 +52,8 @@ type AsyncStep_Execute_Call struct {
 }
 
 // Execute is a helper method to define mock.On call
-//  - ctx context.Context
-//  - dogu *v1.Dogu
+//   - ctx context.Context
+//   - dogu *v1.Dogu
 func (_e *AsyncStep_Expecter) Execute(ctx interface{}, dogu interface{}) *AsyncStep_Execute_Call {
 	return &AsyncStep_Execute_Call{Call: _e.mock.On("Execute", ctx, dogu)}
 }

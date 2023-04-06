@@ -54,8 +54,8 @@ type ImageRegistry_PullImageConfig_Call struct {
 }
 
 // PullImageConfig is a helper method to define mock.On call
-//  - ctx context.Context
-//  - image string
+//   - ctx context.Context
+//   - image string
 func (_e *ImageRegistry_Expecter) PullImageConfig(ctx interface{}, image interface{}) *ImageRegistry_PullImageConfig_Call {
 	return &ImageRegistry_PullImageConfig_Call{Call: _e.mock.On("PullImageConfig", ctx, image)}
 }
