@@ -49,12 +49,13 @@ func TestIngressAnnotator_AppendIngressAnnotationsToService(t *testing.T) {
 		assert.Equal(t, "{\"example-annotation\":\"example-value\",\"nginx.org/client-max-body-size\":\"100m\"}", service.Annotations[AdditionalIngressAnnotationsAnnotation])
 	})
 
-	t.Run("Should return nil if the length of annotation is < 1", func(t *testing.T) {
+	t.Run("Should delete annotations from service and succeed if the length of annotation is < 1", func(t *testing.T) {
 		// given
 		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
-					"existing": "value",
+					"existing":                             "value",
+					AdditionalIngressAnnotationsAnnotation: "bla bla bla",
 				},
 			},
 		}
@@ -65,5 +66,7 @@ func TestIngressAnnotator_AppendIngressAnnotationsToService(t *testing.T) {
 
 		// then
 		require.Nil(t, err)
+		assert.Contains(t, service.Annotations, "existing")
+		assert.NotContains(t, service.Annotations, AdditionalIngressAnnotationsAnnotation)
 	})
 }
