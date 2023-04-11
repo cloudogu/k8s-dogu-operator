@@ -27,6 +27,7 @@ func (i IngressAnnotator) AppendIngressAnnotationsToService(service *corev1.Serv
 
 func appendAdditionalIngressAnnotations(service *corev1.Service, ingressAnnotations doguv1.IngressAnnotations) error {
 	if len(ingressAnnotations) < 1 {
+		delete(service.Annotations, AdditionalIngressAnnotationsAnnotation)
 		return nil
 	}
 

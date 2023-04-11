@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.29.1] - 2023-04-11
+### Fixed
+- [#93] Delete additional ingress annotations if not present on the dogu resource
+- [#94] Correct ingress annotation in docs and sample
+
 ## [v0.29.0] - 2023-04-06
 ### Added
 - [#91] Add additional ingress annotations to dogu resource. Append those annotations to the dogu's service.
