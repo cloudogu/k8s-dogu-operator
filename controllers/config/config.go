@@ -175,15 +175,17 @@ func getEnvVar(name string) (string, error) {
 
 // GetRemoteConfiguration creates a remote configuration with the configured values.
 func (o *OperatorConfig) GetRemoteConfiguration() *core.Remote {
-	endpoint := o.DoguRegistry.Endpoint
-	// trim suffix 'dogus' or 'dogus/' to provide maximum compatibility with the old remote configuration of the operator
-	endpoint = strings.TrimSuffix(endpoint, "dogus/")
-	endpoint = strings.TrimSuffix(endpoint, "dogus")
 	urlSchema := o.DoguRegistry.URLSchema
-
 	if urlSchema != "index" {
 		log.Info("URLSchema is not index. Setting it to default.")
 		urlSchema = "default"
+	}
+
+	endpoint := o.DoguRegistry.Endpoint
+	if urlSchema == "default" {
+		// trim suffix 'dogus' or 'dogus/' to provide maximum compatibility with the old remote configuration of the operator
+		endpoint = strings.TrimSuffix(endpoint, "dogus/")
+		endpoint = strings.TrimSuffix(endpoint, "dogus")
 	}
 
 	return &core.Remote{
