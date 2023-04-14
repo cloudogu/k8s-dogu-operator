@@ -5,9 +5,9 @@ When using it, make sure that the used FQDN, credentials of the ecosystem and th
 kept up to date.
 
 ## Setting up the Dogu and Docker Registry
-- Set up ecosystem with Nexus-Dogu
-- Add FQDN as insecure registry in docker config `/etc/docker/daemon.json`.
-- Create raw(hosted) repository `mirror` and `k8s`.
+- Set up a (legacy) ecosystem with Nexus-Dogu
+- Add FQDN as insecure registry in docker config `/etc/docker/daemon.json`
+- Create the `raw (hosted)` repositories `mirror` and `k8s`
 
 ### Mirror components:
 
@@ -91,7 +91,7 @@ dogu:
 
 - Configure setup.json in `k8s-ecosystem` that any completed is `false`
 - `vagrant up`
-- Save the certificate from the ecosystem `etcdctl get config/_global/certificate/server.crt` in `k8s-ecosystem/cert.pem`
+- Export the certificate from the (legacy) ecosystem `etcdctl get config/_global/certificate/server.crt` and copy it to `k8s-ecosystem/cert.pem`
 - Certificate distribution:
     - `vagrant ssh main`
     - `sudo cp /vagrant/cert.pem /etc/ssl/certs/cert.pem`
@@ -124,19 +124,21 @@ kubectl --namespace ecosystem create secret generic dogu-registry-cert --from-fi
 - Delete secrets `k8s-dogu-operator-dogu-registry` and `k8s-dogu-operator-docker-registry`
 
 ```bash
+kubectl --namespace ecosystem delete secret k8s-dogu-operator-dogu-registry
+kubectl --namespace ecosystem delete secret k8s-dogu-operator-docker-registry
+
+# do not forget to adjust th endpoint towards the chosen Nexus repository
 kubectl --namespace ecosystem create secret generic k8s-dogu-operator-dogu-registry \
 --from-literal=endpoint="https://192.168.56.10/nexus/repository/mirror" \
 --from-literal=username="ces-admin" \
 --from-literal=password="ces-admin" \
 --from-literal=urlschema="index"
-```
 
-```bash
 kubectl --namespace ecosystem create secret docker-registry k8s-dogu-operator-docker-registry \
  --docker-server="192.168.56.10" \
  --docker-username="ces-admin" \
- --docker-email="myemail@test.com" \
- --docker-password="ces-admin"
+ --docker-password="ces-admin" \
+ --docker-email="myemail@test.com"
 ```
 
 ### Update setup configuration

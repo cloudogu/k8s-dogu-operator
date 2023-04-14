@@ -107,12 +107,14 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 		stage         string
 		urlSchemaEnv  string
 		wantUrlSchema string
+		wantEndpoint  string
 	}{
-		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "default", urlSchemaEnv: ""},
-		{name: "get remote configuration with correct url and development mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageDevelopment, wantUrlSchema: "default", urlSchemaEnv: "invalid"},
-		{name: "get remote configuration with 'dogus' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", stage: StageProduction, wantUrlSchema: "default", urlSchemaEnv: "default"},
-		{name: "get remote configuration with 'dogus/' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus/", stage: StageProduction, wantUrlSchema: "default", urlSchemaEnv: "default"},
-		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "index", urlSchemaEnv: "index"},
+		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "default", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: ""},
+		{name: "get remote configuration with correct url and development mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageDevelopment, wantUrlSchema: "default", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: "invalid"},
+		{name: "get remote configuration with 'dogus' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", stage: StageProduction, wantUrlSchema: "default", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: "default"},
+		{name: "get remote configuration with 'dogus/' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus/", stage: StageProduction, wantUrlSchema: "default", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: "default"},
+		{name: "get remote configuration with 'dogus' suffix url and non-default url schema", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", stage: StageProduction, wantUrlSchema: "index", wantEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", urlSchemaEnv: "index"},
+		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "index", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: "index"},
 	}
 
 	t.Setenv(envVarNamespace, "test")
@@ -147,7 +149,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 
 			// then
 			assert.NotNil(t, remoteConfig)
-			assert.Equal(t, "https://dogu.cloudogu.com/api/v2/", remoteConfig.Endpoint)
+			assert.Equal(t, tt.wantEndpoint, remoteConfig.Endpoint)
 			assert.Equal(t, "/tmp/dogu-registry-cache", remoteConfig.CacheDir)
 			assert.Equal(t, tt.wantUrlSchema, remoteConfig.URLSchema)
 			_ = os.Unsetenv(envVarDoguRegistryURLSchema)

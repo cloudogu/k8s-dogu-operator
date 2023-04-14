@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.29.2] - 2023-04-14
+### Fixed
+- [#96] Trim "dogus/" suffix only on URL "default" schema
+  - this change avoids removing the endpoint suffix for the "index" schema
+
 ## [v0.29.1] - 2023-04-11
 ### Fixed
 - [#93] Delete additional ingress annotations if not present on the dogu resource
