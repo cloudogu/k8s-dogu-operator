@@ -4,7 +4,7 @@ Dieses Dokument beschreibt stichwortartig, wie das k8s-Ecosystem mit einer lokal
 werden kann. Bei der Verwendung ist zu beachten, dass die verwendete FQDN, Credentials des Ecosystems und die Dogu- bzw. Komponenten-Versionen aktuell gehalten werden.
 
 ## Aufsetzen der Dogu- und Dockerregistry
-- Ecosystem aufsetzen mit Nexus-Dogu
+- (Legacy-)Ecosystem aufsetzen mit IP `192.168.56.10` und Nexus-Dogu
 - FQDN als insecure registry in docker config hinzufügen `/etc/docker/daemon.json`
 - raw(hosted) Repository `mirror` und `k8s` anlegen
 
@@ -90,7 +90,7 @@ dogu:
 
 -  setup.json in `k8s-ecosystem` auf completed `false` setzen
 - `vagrant up`
-- Zertifikat von Ecosystem `etcdctl get config/_global/certificate/server.crt` in `k8s-ecosystem/cert.pem` speichern
+- Zertifikat von (Legacy-)Ecosystem `etcdctl get config/_global/certificate/server.crt` speichern und nach `k8s-ecosystem/cert.pem` kopieren
 - Zertifikat auf Maschinen verteilen (für k3s):
   - `vagrant ssh main`
   - `sudo cp /vagrant/cert.pem /etc/ssl/certs/cert.pem`
@@ -120,22 +120,24 @@ kubectl --namespace ecosystem create secret generic docker-registry-cert --from-
 kubectl --namespace ecosystem create secret generic dogu-registry-cert --from-file=dogu-registry-cert.pem=cert.pem
 ```
 
-- Die Secrets `k8s-dogu-operator-dogu-registry` und `k8s-dogu-operator-docker-registry` löschen
+- Die Secrets `k8s-dogu-operator-dogu-registry` und `k8s-dogu-operator-docker-registry` löschen und neu erzeugen
 
 ```bash
+kubectl --namespace ecosystem delete secret k8s-dogu-operator-dogu-registry
+kubectl --namespace ecosystem delete secret k8s-dogu-operator-docker-registry
+
+# nicht vergessen, den Endpunkt an das gewählte Nexus-Repository anzupassen 
 kubectl --namespace ecosystem create secret generic k8s-dogu-operator-dogu-registry \
 --from-literal=endpoint="https://192.168.56.10/nexus/repository/mirror" \
 --from-literal=username="ces-admin" \
 --from-literal=password="ces-admin" \
 --from-literal=urlschema="index"
-```
 
-```bash
 kubectl --namespace ecosystem create secret docker-registry k8s-dogu-operator-docker-registry \
  --docker-server="192.168.56.10" \
  --docker-username="ces-admin" \
- --docker-email="myemail@test.com" \
- --docker-password="ces-admin"
+ --docker-password="ces-admin" \
+ --docker-email="myemail@test.com"
 ```
 
 ### Setup aktualisieren
