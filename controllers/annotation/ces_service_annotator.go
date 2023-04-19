@@ -20,6 +20,7 @@ const (
 	serviceVarName            = "NAME"
 	serviceVarLocation        = "LOCATION"
 	serviceVarPass            = "PASS"
+	serviceVarRewrite         = "REWRITE"
 	serviceVarTags            = "TAGS"
 	serviceTagWebapp          = "webapp"
 )
@@ -30,6 +31,7 @@ type cesService struct {
 	Port     int32  `json:"port"`
 	Location string `json:"location"`
 	Pass     string `json:"pass"`
+	Rewrite  string `json:"rewrite"`
 }
 
 // CesServiceAnnotator collects ces service information and annotates them to a given K8s service.
@@ -178,12 +180,14 @@ func createWebAppCesServices(service *corev1.Service, config *imagev1.Config, se
 		name := getServiceName(serviceVariables, port, service)
 		location := getServiceLocation(serviceVariables, port, name)
 		pass := getServicePass(serviceVariables, port, name)
+		rewrite := getServiceRewrite(serviceVariables, port)
 
 		cesService := cesService{
 			Name:     name,
 			Port:     port,
 			Location: location,
 			Pass:     pass,
+			Rewrite:  rewrite,
 		}
 
 		webAppServices = append(webAppServices, cesService)
@@ -257,6 +261,10 @@ func getServicePass(serviceVariables map[string]string, port int32, serviceName 
 		return fmt.Sprintf("/%s", pass)
 	}
 	return pass
+}
+
+func getServiceRewrite(serviceVariables map[string]string, port int32) string {
+	return getValueFromServiceVariables(serviceVariables, port, serviceVarRewrite)
 }
 
 func getValueFromServiceVariables(serviceVariables map[string]string, port int32, variableName string) string {
