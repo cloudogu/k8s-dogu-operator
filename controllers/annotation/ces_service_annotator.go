@@ -31,7 +31,7 @@ type cesService struct {
 	Port     int32  `json:"port"`
 	Location string `json:"location"`
 	Pass     string `json:"pass"`
-	Rewrite  string `json:"rewrite"`
+	Rewrite  string `json:"rewrite,omitempty"`
 }
 
 // CesServiceAnnotator collects ces service information and annotates them to a given K8s service.
