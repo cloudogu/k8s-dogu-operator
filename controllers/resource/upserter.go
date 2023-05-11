@@ -26,11 +26,7 @@ import (
 )
 
 const (
-	annotationKubernetesVolumeDriver     = "volume.kubernetes.io/storage-provisioner"
-	annotationKubernetesBetaVolumeDriver = "volume.beta.kubernetes.io/storage-provisioner"
-	longhornDiverID                      = "driver.longhorn.io"
-	longhornStorageClassName             = "longhorn"
-	errMsgFailedToGetPVC                 = "failed to get pvc"
+	errMsgFailedToGetPVC = "failed to get pvc"
 )
 
 var (
@@ -151,7 +147,7 @@ func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim,
 	err := u.client.Get(ctx, pvcObjectKey, actualPvc)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
+			return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &pvcValidator{})
 		}
 
 		return fmt.Errorf("%s %s: %w", errMsgFailedToGetPVC, pvcObjectKey.Name, err)
@@ -163,7 +159,7 @@ func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim,
 			return fmt.Errorf("failed to wait for existing pvc %s to terminate: %w", pvc.Name, err)
 		}
 
-		return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
+		return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &pvcValidator{})
 	}
 
 	// If the pvc exists and is not terminating keep it to support init data.
@@ -229,10 +225,10 @@ func (u *upserter) updateOrInsert(ctx context.Context, doguName string, objectKe
 	return u.client.Update(ctx, upsertResource)
 }
 
-type longhornPVCValidator struct{}
+type pvcValidator struct{}
 
 // Validate validates that a pvc contains all necessary data to be used as a valid dogu pvc.
-func (v *longhornPVCValidator) Validate(ctx context.Context, doguName string, resourceObj client.Object) error {
+func (v *pvcValidator) Validate(ctx context.Context, doguName string, resourceObj client.Object) error {
 	log.FromContext(ctx).Info(fmt.Sprintf("Starting validation of existing pvc in cluster with name [%s]", doguName))
 
 	castedPVC, ok := resourceObj.(*v1.PersistentVolumeClaim)
@@ -240,24 +236,9 @@ func (v *longhornPVCValidator) Validate(ctx context.Context, doguName string, re
 		return fmt.Errorf("unsupported validation object (expected: PVC): %v", resourceObj)
 	}
 
-	if castedPVC.Annotations[annotationKubernetesBetaVolumeDriver] != longhornDiverID {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]",
-			doguName, annotationKubernetesBetaVolumeDriver, longhornDiverID)
-	}
-
-	if castedPVC.Annotations[annotationKubernetesVolumeDriver] != longhornDiverID {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]",
-			doguName, annotationKubernetesVolumeDriver, longhornDiverID)
-	}
-
-	if castedPVC.Labels["dogu"] != doguName {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc does not contain label [dogu] with value [%s]",
+	if castedPVC.Labels["dogu.name"] != doguName {
+		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc does not contain label [dogu.name] with value [%s]",
 			doguName, doguName)
-	}
-
-	if *castedPVC.Spec.StorageClassName != longhornStorageClassName {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc has invalid storage class: the storage class must be [%s]",
-			doguName, longhornStorageClassName)
 	}
 
 	return nil

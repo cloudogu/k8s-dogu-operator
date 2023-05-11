@@ -44,7 +44,7 @@ func TestNewUpserter(t *testing.T) {
 func Test_longhornPVCValidator_validate(t *testing.T) {
 	t.Run("error on validating pvc with non pvc object", func(t *testing.T) {
 		// given
-		validator := longhornPVCValidator{}
+		validator := pvcValidator{}
 		testObject := &appsv1.Deployment{}
 
 		// when
@@ -55,55 +55,14 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 		assert.ErrorContains(t, err, "unsupported validation object (expected: PVC)")
 	})
 
-	t.Run("error on missing beta longhorn annotation", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testPvc := &v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-		}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testPvc)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as annotation [volume.beta.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
-	})
-	t.Run("error on missing default longhorn annotation", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testPvc := &v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-				Annotations: map[string]string{
-					annotationKubernetesBetaVolumeDriver: longhornDiverID,
-				},
-			},
-		}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testPvc)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as annotation [volume.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
-	})
-
 	t.Run("error on missing dogu label", func(t *testing.T) {
 		// given
-		validator := longhornPVCValidator{}
+		validator := pvcValidator{}
 		testPvc := &v1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-				Annotations: map[string]string{
-					annotationKubernetesBetaVolumeDriver: longhornDiverID,
-					annotationKubernetesVolumeDriver:     longhornDiverID,
-				},
+				Name:        "name",
+				Namespace:   "namespace",
+				Annotations: map[string]string{},
 			},
 		}
 
@@ -112,47 +71,19 @@ func Test_longhornPVCValidator_validate(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as pvc does not contain label [dogu] with value [name]")
-	})
-
-	t.Run("error on missing dogu label", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testPvc := &v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-				Annotations: map[string]string{
-					annotationKubernetesBetaVolumeDriver: longhornDiverID,
-					annotationKubernetesVolumeDriver:     longhornDiverID,
-				},
-				Labels: map[string]string{"dogu": "name"},
-			},
-			Spec: v1.PersistentVolumeClaimSpec{StorageClassName: pointer.String("invalidStorageClass")},
-		}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testPvc)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as pvc has invalid storage class: the storage class must be [longhorn]")
+		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as pvc does not contain label [dogu.name] with value [name]")
 	})
 
 	t.Run("success", func(t *testing.T) {
 		// given
-		validator := longhornPVCValidator{}
+		validator := pvcValidator{}
 		testPvc := &v1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-				Annotations: map[string]string{
-					annotationKubernetesBetaVolumeDriver: longhornDiverID,
-					annotationKubernetesVolumeDriver:     longhornDiverID,
-				},
-				Labels: map[string]string{"dogu": "name"},
+				Name:        "name",
+				Namespace:   "namespace",
+				Annotations: map[string]string{},
+				Labels:      map[string]string{"dogu.name": "name"},
 			},
-			Spec: v1.PersistentVolumeClaimSpec{StorageClassName: pointer.String(longhornStorageClassName)},
 		}
 
 		// when
