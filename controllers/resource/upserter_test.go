@@ -41,7 +41,7 @@ func TestNewUpserter(t *testing.T) {
 	require.NotNil(t, upserter.generator)
 }
 
-func Test_longhornPVCValidator_validate(t *testing.T) {
+func Test_pvcValidator_validate(t *testing.T) {
 	t.Run("error on validating pvc with non pvc object", func(t *testing.T) {
 		// given
 		validator := pvcValidator{}
