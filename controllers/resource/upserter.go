@@ -13,7 +13,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,15 +25,10 @@ import (
 )
 
 const (
-	annotationKubernetesVolumeDriver     = "volume.kubernetes.io/storage-provisioner"
-	annotationKubernetesBetaVolumeDriver = "volume.beta.kubernetes.io/storage-provisioner"
-	longhornDiverID                      = "driver.longhorn.io"
-	longhornStorageClassName             = "longhorn"
-	errMsgFailedToGetPVC                 = "failed to get pvc"
+	errMsgFailedToGetPVC = "failed to get pvc"
 )
 
 var (
-	noValidator                    cloudogu.ResourceValidator
 	maximumTriesWaitForExistingPVC = 25
 )
 
@@ -63,7 +57,7 @@ func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1
 		deploymentPatch(newDeployment)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &appsv1.Deployment{}, newDeployment, noValidator)
+	err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}, newDeployment)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +72,7 @@ func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv1.Do
 		return nil, fmt.Errorf("failed to generate service: %w", err)
 	}
 
-	err = u.updateOrInsert(ctx, doguResource.Name, doguResource.GetObjectKey(), &v1.Service{}, newService, noValidator)
+	err = u.updateOrInsert(ctx, doguResource.GetObjectKey(), &v1.Service{}, newService)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +96,7 @@ func (u *upserter) UpsertDoguExposedServices(ctx context.Context, doguResource *
 			Namespace: doguResource.GetNamespace(),
 			Name:      newExposedService.Name,
 		}
-		err = u.updateOrInsert(ctx, doguResource.Name, exposedSvcKey, &v1.Service{}, newExposedService, noValidator)
+		err = u.updateOrInsert(ctx, exposedSvcKey, &v1.Service{}, newExposedService)
 		if err != nil {
 			err2 := fmt.Errorf("failed to upsert exposed service %s: %w", newExposedService.ObjectMeta.Name, err)
 			collectedErrs = multierror.Append(collectedErrs, err2)
@@ -122,7 +116,7 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 		return nil, err
 	}
 
-	err = u.upsertPVC(ctx, newReservedPVC, doguResource)
+	err = u.upsertPVC(ctx, newReservedPVC)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +127,7 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 			return nil, fmt.Errorf("failed to generate pvc: %w", err)
 		}
 
-		err = u.upsertPVC(ctx, newPVC, doguResource)
+		err = u.upsertPVC(ctx, newPVC)
 		if err != nil {
 			return nil, err
 		}
@@ -144,14 +138,14 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 	return nil, nil
 }
 
-func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv1.Dogu) error {
+func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim) error {
 	pvcObjectKey := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
 
 	actualPvc := &v1.PersistentVolumeClaim{}
 	err := u.client.Get(ctx, pvcObjectKey, actualPvc)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
+			return u.updateOrInsert(ctx, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc)
 		}
 
 		return fmt.Errorf("%s %s: %w", errMsgFailedToGetPVC, pvcObjectKey.Name, err)
@@ -163,7 +157,7 @@ func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim,
 			return fmt.Errorf("failed to wait for existing pvc %s to terminate: %w", pvc.Name, err)
 		}
 
-		return u.updateOrInsert(ctx, doguResource.Name, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc, &longhornPVCValidator{})
+		return u.updateOrInsert(ctx, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc)
 	}
 
 	// If the pvc exists and is not terminating keep it to support init data.
@@ -196,8 +190,8 @@ func pvcRetry(err error) bool {
 	return true
 }
 
-func (u *upserter) updateOrInsert(ctx context.Context, doguName string, objectKey client.ObjectKey,
-	resourceType client.Object, upsertResource client.Object, val cloudogu.ResourceValidator) error {
+func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKey,
+	resourceType client.Object, upsertResource client.Object) error {
 	if resourceType == nil {
 		return errors.New("upsert type must be a valid pointer to an K8s resource")
 	}
@@ -215,52 +209,7 @@ func (u *upserter) updateOrInsert(ctx context.Context, doguName string, objectKe
 		return u.client.Create(ctx, upsertResource)
 	}
 
-	// use resourceType here because it origins from the cluster state while upsertResource was artificially created so
-	// it does not contain any useful metadata.
-	ownerRef := metav1.GetControllerOf(resourceType)
-	if ownerRef != nil && val != nil {
-		err = val.Validate(ctx, doguName, resourceType)
-		if err != nil {
-			return err
-		}
-		// update existing resource either way
-	}
-
 	return u.client.Update(ctx, upsertResource)
-}
-
-type longhornPVCValidator struct{}
-
-// Validate validates that a pvc contains all necessary data to be used as a valid dogu pvc.
-func (v *longhornPVCValidator) Validate(ctx context.Context, doguName string, resourceObj client.Object) error {
-	log.FromContext(ctx).Info(fmt.Sprintf("Starting validation of existing pvc in cluster with name [%s]", doguName))
-
-	castedPVC, ok := resourceObj.(*v1.PersistentVolumeClaim)
-	if !ok {
-		return fmt.Errorf("unsupported validation object (expected: PVC): %v", resourceObj)
-	}
-
-	if castedPVC.Annotations[annotationKubernetesBetaVolumeDriver] != longhornDiverID {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]",
-			doguName, annotationKubernetesBetaVolumeDriver, longhornDiverID)
-	}
-
-	if castedPVC.Annotations[annotationKubernetesVolumeDriver] != longhornDiverID {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as annotation [%s] does not exist or is not [%s]",
-			doguName, annotationKubernetesVolumeDriver, longhornDiverID)
-	}
-
-	if castedPVC.Labels["dogu"] != doguName {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc does not contain label [dogu] with value [%s]",
-			doguName, doguName)
-	}
-
-	if *castedPVC.Spec.StorageClassName != longhornStorageClassName {
-		return fmt.Errorf("pvc for dogu [%s] is not valid as pvc has invalid storage class: the storage class must be [%s]",
-			doguName, longhornStorageClassName)
-	}
-
-	return nil
 }
 
 func sameResourceTypes(resourceType client.Object, newResource client.Object) (bool, string, string) {

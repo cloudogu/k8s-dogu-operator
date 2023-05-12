@@ -76,7 +76,7 @@ metadata:
     volume.kubernetes.io/storage-provisioner: driver.longhorn.io
   labels:
     app: ces
-    dogu: redmine
+    dogu.name: redmine
   name: redmine
   namespace: ecosystem
 spec:

@@ -3,11 +3,9 @@ package cloudogu
 import (
 	"context"
 
+	"github.com/cloudogu/k8s-apply-lib/apply"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/cloudogu/k8s-apply-lib/apply"
 
 	image "github.com/google/go-containerregistry/pkg/v1"
 	apps "k8s.io/api/apps/v1"
@@ -70,10 +68,4 @@ type DoguResourceGenerator interface {
 	// created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
 	// (see K8s-service-discovery).
 	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) ([]*v1.Service, error)
-}
-
-// ResourceValidator provides functionality to validate resources for a given dogu.
-type ResourceValidator interface {
-	// Validate checks that a resource contains all necessary data to be used in a dogu.
-	Validate(ctx context.Context, doguName string, obj client.Object) error
 }
