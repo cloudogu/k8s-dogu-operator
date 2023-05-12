@@ -1,0 +1,12 @@
+{
+  "Labels": {
+    "SERVICE_TAGS": "webapp",
+    "SERVICE_NAME": "admin"
+  },
+  "Env": [
+    "SERVICE_REWRITE='{\"pattern\": \"portainer\", \"rewrite\": \"\"}'"
+  ],
+  "ExposedPorts": {
+    "80/tcp": {}
+  }
+}

@@ -41,128 +41,6 @@ func TestNewUpserter(t *testing.T) {
 	require.NotNil(t, upserter.generator)
 }
 
-func Test_longhornPVCValidator_validate(t *testing.T) {
-	t.Run("error on validating pvc with non pvc object", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testObject := &appsv1.Deployment{}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testObject)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "unsupported validation object (expected: PVC)")
-	})
-
-	t.Run("error on missing beta longhorn annotation", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testPvc := &v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-		}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testPvc)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as annotation [volume.beta.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
-	})
-	t.Run("error on missing default longhorn annotation", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testPvc := &v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-				Annotations: map[string]string{
-					annotationKubernetesBetaVolumeDriver: longhornDiverID,
-				},
-			},
-		}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testPvc)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as annotation [volume.kubernetes.io/storage-provisioner] does not exist or is not [driver.longhorn.io]")
-	})
-
-	t.Run("error on missing dogu label", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testPvc := &v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-				Annotations: map[string]string{
-					annotationKubernetesBetaVolumeDriver: longhornDiverID,
-					annotationKubernetesVolumeDriver:     longhornDiverID,
-				},
-			},
-		}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testPvc)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as pvc does not contain label [dogu] with value [name]")
-	})
-
-	t.Run("error on missing dogu label", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testPvc := &v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-				Annotations: map[string]string{
-					annotationKubernetesBetaVolumeDriver: longhornDiverID,
-					annotationKubernetesVolumeDriver:     longhornDiverID,
-				},
-				Labels: map[string]string{"dogu": "name"},
-			},
-			Spec: v1.PersistentVolumeClaimSpec{StorageClassName: pointer.String("invalidStorageClass")},
-		}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testPvc)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "pvc for dogu [name] is not valid as pvc has invalid storage class: the storage class must be [longhorn]")
-	})
-
-	t.Run("success", func(t *testing.T) {
-		// given
-		validator := longhornPVCValidator{}
-		testPvc := &v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-				Annotations: map[string]string{
-					annotationKubernetesBetaVolumeDriver: longhornDiverID,
-					annotationKubernetesVolumeDriver:     longhornDiverID,
-				},
-				Labels: map[string]string{"dogu": "name"},
-			},
-			Spec: v1.PersistentVolumeClaimSpec{StorageClassName: pointer.String(longhornStorageClassName)},
-		}
-
-		// when
-		err := validator.Validate(context.Background(), "name", testPvc)
-
-		// then
-		require.NoError(t, err)
-	})
-}
-
 func Test_upserter_updateOrInsert(t *testing.T) {
 	t.Run("fail when using different types of objects", func(t *testing.T) {
 		// given
@@ -170,7 +48,7 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 		upserter := upserter{}
 
 		// when
-		err := upserter.updateOrInsert(context.Background(), doguResource.Name, doguResource.GetObjectKey(), nil, &appsv1.StatefulSet{}, noValidator)
+		err := upserter.updateOrInsert(context.Background(), doguResource.GetObjectKey(), nil, &appsv1.StatefulSet{})
 
 		// then
 		require.Error(t, err)
@@ -184,42 +62,25 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 		sut := upserter{}
 
 		// when
-		err := sut.updateOrInsert(context.Background(), doguResource.Name, doguResource.GetObjectKey(), depl, svc, noValidator)
+		err := sut.updateOrInsert(context.Background(), doguResource.GetObjectKey(), depl, svc)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "incompatible types provided (*Deployment != *Service)")
 	})
-	t.Run("should update existing pcv when no controller reference is set and fail on validation", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource, readLdapDoguExpectedDeployment(t)).Build()
-		resourceValidator := mocks.NewResourceValidator(t)
-		resourceValidator.On("Validate", context.Background(), doguResource.Name, mock.Anything).Return(assert.AnError)
-		upserter := upserter{client: testClient}
 
-		// when
-		err := upserter.updateOrInsert(context.Background(), doguResource.Name, doguResource.GetObjectKey(), &appsv1.Deployment{}, readLdapDoguExpectedDeployment(t), resourceValidator)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-		// mock assert happens during cleanup
-	})
-
-	t.Run("should update existing pcv when no controller reference is set and validation works", func(t *testing.T) {
+	t.Run("should update existing pcv when no controller reference is set", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
 		existingDeployment := readLdapDoguExpectedDeployment(t)
 		// the test should override the replication count back to 1
 		existingDeployment.Spec.Replicas = pointer.Int32(10)
 		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource, existingDeployment).Build()
-		resourceValidator := mocks.NewResourceValidator(t)
-		resourceValidator.On("Validate", context.Background(), doguResource.Name, mock.Anything).Return(nil)
 		upserter := upserter{client: testClient}
 
 		// when
 		upsertedDeployment := readLdapDoguExpectedDeployment(t)
-		err := upserter.updateOrInsert(context.Background(), doguResource.Name, doguResource.GetObjectKey(), &appsv1.Deployment{}, upsertedDeployment, resourceValidator)
+		err := upserter.updateOrInsert(context.Background(), doguResource.GetObjectKey(), &appsv1.Deployment{}, upsertedDeployment)
 
 		// then
 		require.NoError(t, err)

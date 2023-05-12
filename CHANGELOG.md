@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.30.0] - 2023-05-12
+### Added
+- [#98] Support for service rewrite mechanism
+
+### Removed
+- [#100] Longhorn validation for PVCs
+
 ## [v0.29.2] - 2023-04-14
 ### Fixed
 - [#96] Trim "dogus/" suffix only on URL "default" schema
