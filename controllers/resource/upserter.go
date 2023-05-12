@@ -116,7 +116,7 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 		return nil, err
 	}
 
-	err = u.upsertPVC(ctx, newReservedPVC, doguResource)
+	err = u.upsertPVC(ctx, newReservedPVC)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 			return nil, fmt.Errorf("failed to generate pvc: %w", err)
 		}
 
-		err = u.upsertPVC(ctx, newPVC, doguResource)
+		err = u.upsertPVC(ctx, newPVC)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +138,7 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu,
 	return nil, nil
 }
 
-func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv1.Dogu) error {
+func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim) error {
 	pvcObjectKey := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
 
 	actualPvc := &v1.PersistentVolumeClaim{}
