@@ -58,13 +58,12 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	ldapCr.Namespace = "default"
 	ldapCr.ResourceVersion = ""
 	ldapDoguLookupKey := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
+	cesLoadbalancerLookupKey := types.NamespacedName{Name: "ces-loadbalancer", Namespace: "default"}
 
 	redmineCr.Namespace = "default"
 	redmineCr.ResourceVersion = ""
 
 	ctx := context.TODO()
-	var exposedService2222LookupKey types.NamespacedName
-	var exposedService8888LookupKey types.NamespacedName
 
 	// Upgrade testdata
 	upgradeNamespace := "upgrade"
@@ -149,6 +148,33 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(ldapCr.Name).To(Equal(service.Name))
 			Expect(ldapCr.Namespace).To(Equal(service.Namespace))
 
+			By("Expect created loadbalancer service")
+			lbService := &corev1.Service{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, cesLoadbalancerLookupKey, lbService)
+				if err != nil {
+					return false
+				}
+
+				found := false
+				for _, doguPort := range ldapDogu.ExposedPorts {
+					for _, port := range lbService.Spec.Ports {
+						if port.Port == int32(doguPort.Host) && port.TargetPort.IntVal == int32(doguPort.Container) &&
+							strings.ToLower(string(port.Protocol)) == strings.ToLower(doguPort.Type) &&
+							port.Name == fmt.Sprintf("%s-%d", ldapDogu.GetSimpleName(), doguPort.Host) {
+							found = true
+							break
+						}
+					}
+					if !found {
+						return false
+					}
+				}
+
+				return true
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
 			By("Expect created secret")
 			secret := &corev1.Secret{}
 			secretLookupKey := types.NamespacedName{Name: ldapCr.Name + "-private", Namespace: ldapCr.Namespace}
@@ -191,28 +217,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(ldapCr.Name + "-reserved").To(Equal(reservedPvc.Name))
 			Expect(ldapCr.Namespace).To(Equal(reservedPvc.Namespace))
 			Expect(resource.MustParse("10Mi")).To(Equal(*reservedPvc.Spec.Resources.Requests.Storage()))
-
-			By("Expect exposed service for service port 2222")
-			exposedService2222 := &corev1.Service{}
-			exposedService2222Name := fmt.Sprintf("%s-exposed-2222", ldapCr.Name)
-			exposedService2222LookupKey = types.NamespacedName{Name: exposedService2222Name, Namespace: ldapCr.Namespace}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, exposedService2222LookupKey, exposedService2222)
-				return err == nil
-			}, PollingInterval, TimeoutInterval).Should(BeTrue())
-
-			By("Expect exposed service for service port 8888")
-			exposedService8888 := &corev1.Service{}
-			exposedService8888Name := fmt.Sprintf("%s-exposed-8888", ldapCr.Name)
-			exposedService8888LookupKey = types.NamespacedName{Name: exposedService8888Name, Namespace: ldapCr.Namespace}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, exposedService8888LookupKey, exposedService8888)
-				return err == nil
-			}, PollingInterval, TimeoutInterval).Should(BeTrue())
-
-			Expect(exposedService8888.Name).To(Equal(exposedService8888Name))
 		})
 
 		It("Update dogus additional ingress annotations", func() {
@@ -336,8 +340,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Should delete dogu", func() {
 			deleteDoguCr(ctx, ldapCr, true)
-			deleteObjectFromCluster(ctx, exposedService8888LookupKey, &corev1.Service{})
-			deleteObjectFromCluster(ctx, exposedService2222LookupKey, &corev1.Service{})
+
+			By("LoadBalancer service should be deleted")
+			lbService := &corev1.Service{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, cesLoadbalancerLookupKey, lbService)
+				return apierrors.IsNotFound(err)
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 		})
 	})
 
@@ -370,11 +379,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}
 			}
 
-			if count != 1 {
-				return false
-			}
-
-			return true
+			return count == 1
 		}, TimeoutInterval, PollingInterval).Should(BeTrue())
 
 		By("Delete redmine dogu crd")
@@ -534,10 +539,8 @@ func setExecPodRunning(ctx context.Context, doguName string) {
 			if strings.Contains(pod.Name, doguName+"-execpod") && pod.Status.Phase != corev1.PodRunning {
 				pod.Status.Phase = corev1.PodRunning
 				err := k8sClient.Status().Update(ctx, &pod)
-				if err != nil {
-					return false
-				}
-				return true
+
+				return err == nil
 			}
 		}
 		return false

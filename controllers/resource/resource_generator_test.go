@@ -270,65 +270,6 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 	})
 }
 
-func TestResourceGenerator_GetDoguExposedServices(t *testing.T) {
-
-	t.Run("Return no exposed services when given dogu json does not contain any exposed ports", func(t *testing.T) {
-		// given
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		dogu := &core.Dogu{
-			Name: "ldap",
-		}
-		ldapDoguResource := readLdapDoguResource(t)
-
-		// when
-		actualExposedServices, err := generator.CreateDoguExposedServices(ldapDoguResource, dogu)
-
-		assert.NoError(t, err)
-		assert.Len(t, actualExposedServices, 0)
-	})
-
-	t.Run("Return all exposed services when given dogu json contains multiple exposed ports", func(t *testing.T) {
-		// when
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		ldapDoguResource := readLdapDoguResource(t)
-		ldapDogu := readLdapDogu(t)
-		actualExposedServices, err := generator.CreateDoguExposedServices(ldapDoguResource, ldapDogu)
-
-		// then
-		assert.NoError(t, err)
-		assert.Len(t, actualExposedServices, 2)
-		assert.Equal(t, readLdapDoguExpectedExposedServices(t), actualExposedServices)
-	})
-
-	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		oldMethod := ctrl.SetControllerReference
-		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return assert.AnError
-		}
-		defer func() { ctrl.SetControllerReference = oldMethod }()
-		ldapDoguResource := readLdapDoguResource(t)
-		ldapDogu := readLdapDogu(t)
-
-		// when
-		_, err := generator.CreateDoguExposedServices(ldapDoguResource, ldapDogu)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to set controller reference:")
-	})
-}
-
 func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 
 	t.Run("Return secret", func(t *testing.T) {

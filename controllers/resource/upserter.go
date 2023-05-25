@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,15 +32,17 @@ var (
 )
 
 type upserter struct {
-	client    thirdParty.K8sClient
-	generator cloudogu.DoguResourceGenerator
+	client           thirdParty.K8sClient
+	generator        cloudogu.DoguResourceGenerator
+	exposedPortAdder cloudogu.ExposePortAdder
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
 func NewUpserter(client client.Client, limitPatcher cloudogu.LimitPatcher, hostAliasGenerator thirdParty.HostAliasGenerator) *upserter {
 	schema := client.Scheme()
 	generator := NewResourceGenerator(schema, limitPatcher, hostAliasGenerator)
-	return &upserter{client: client, generator: generator}
+	exposedPortAdder := NewDoguExposedPortHandler(client)
+	return &upserter{client: client, generator: generator, exposedPortAdder: exposedPortAdder}
 }
 
 // UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
@@ -80,33 +81,8 @@ func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv1.Do
 	return newService, nil
 }
 
-// UpsertDoguExposedServices creates exposed services based on the given dogu. If an error occurs during creating
-// several exposed services, this method tries to apply as many exposed services as possible and returns then
-// an error collection.
-func (u *upserter) UpsertDoguExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*v1.Service, error) {
-	newExposedServices, err := u.generator.CreateDoguExposedServices(doguResource, dogu)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate exposed services: %w", err)
-	}
-
-	var collectedErrs error
-	var serviceList []*v1.Service
-	for _, newExposedService := range newExposedServices {
-		exposedSvcKey := types.NamespacedName{
-			Namespace: doguResource.GetNamespace(),
-			Name:      newExposedService.Name,
-		}
-		err = u.updateOrInsert(ctx, exposedSvcKey, &v1.Service{}, newExposedService)
-		if err != nil {
-			err2 := fmt.Errorf("failed to upsert exposed service %s: %w", newExposedService.ObjectMeta.Name, err)
-			collectedErrs = multierror.Append(collectedErrs, err2)
-			continue
-		}
-
-		serviceList = append(serviceList, newExposedService)
-	}
-
-	return serviceList, collectedErrs
+func (u *upserter) UpsertDoguExposedService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*v1.Service, error) {
+	return u.exposedPortAdder.CreateOrUpdateCesLoadbalancerService(ctx, doguResource, dogu)
 }
 
 // UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.

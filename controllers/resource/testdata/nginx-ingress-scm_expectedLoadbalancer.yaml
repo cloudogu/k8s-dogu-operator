@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  finalizers:
+    - service.kubernetes.io/load-balancer-cleanup
+  labels:
+    app: ces
+  name: ces-loadbalancer
+  namespace: ecosystem
+spec:
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: nginx-ingress-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+    - name: nginx-ingress-443
+      port: 443
+      protocol: TCP
+      targetPort: 443
+    - name: scm-2222
+      port: 2222
+      protocol: TCP
+      targetPort: 2222
+  selector:
+    dogu.name: nginx-ingress
+  sessionAffinity: None
+  type: LoadBalancer

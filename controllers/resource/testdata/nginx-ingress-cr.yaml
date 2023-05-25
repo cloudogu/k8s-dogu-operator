@@ -1,0 +1,10 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: nginx-ingress
+  namespace: ecosystem
+  labels:
+    app: ces
+spec:
+  name: k8s/nginx-ingress
+  version: 1.6.4-1

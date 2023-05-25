@@ -129,7 +129,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, nil)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+		upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 		upserter.On("UpsertDoguPVCs", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
@@ -214,7 +214,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, nil)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+		upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 		upserter.On("UpsertDoguPVCs", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
@@ -295,7 +295,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+		upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 		eventRecorder.
@@ -425,7 +425,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			applier := mocks.NewCollectApplier(t)
 			upserter := mocks.NewResourceUpserter(t)
 			upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-			upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, assert.AnError)
+			upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, assert.AnError)
 
 			eventRecorder := extMocks.NewEventRecorder(t)
 			eventRecorder.
@@ -499,7 +499,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, nil)
 			upserter := mocks.NewResourceUpserter(t)
 			upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-			upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+			upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 			upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, assert.AnError)
 
 			eventRecorder := extMocks.NewEventRecorder(t)
@@ -578,7 +578,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, nil)
 			upserter := mocks.NewResourceUpserter(t)
 			upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-			upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+			upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 			upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, nil)
 			upserter.On("UpsertDoguPVCs", testCtx, toDoguResource, toDogu).Once().Return(nil, assert.AnError)
 
@@ -664,7 +664,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("UpsertDoguDeployment", testCtx, toDoguResource, toDogu, mock.AnythingOfType("func(*v1.Deployment)")).Once().Return(nil, nil)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+		upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 		upserter.On("UpsertDoguPVCs", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
@@ -742,7 +742,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+		upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 		eventRecorder.
@@ -807,7 +807,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+		upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 		eventRecorder.
@@ -869,7 +869,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		applier := mocks.NewCollectApplier(t)
 		upserter := mocks.NewResourceUpserter(t)
 		upserter.On("UpsertDoguService", testCtx, toDoguResource, image).Once().Return(nil, nil)
-		upserter.On("UpsertDoguExposedServices", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
+		upserter.On("UpsertDoguExposedService", testCtx, toDoguResource, toDogu).Once().Return(nil, nil)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 		eventRecorder.

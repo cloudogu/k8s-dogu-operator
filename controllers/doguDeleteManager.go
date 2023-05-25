@@ -31,6 +31,7 @@ type doguDeleteManager struct {
 	doguRegistrator       cloudogu.DoguRegistrator
 	serviceAccountRemover cloudogu.ServiceAccountRemover
 	doguSecretHandler     cloudogu.DoguSecretHandler
+	exposedPortRemover    cloudogu.ExposePortRemover
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
@@ -49,6 +50,7 @@ func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry
 		localDoguFetcher:      cesreg.NewLocalDoguFetcher(cesRegistry.DoguRegistry()),
 		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
 		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor, client),
+		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
 	}, nil
 }
 
@@ -78,6 +80,12 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		err = m.doguRegistrator.UnregisterDogu(doguResource.Name)
 		if err != nil {
 			logger.Error(err, "failed to unregister dogu")
+		}
+
+		logger.Info("Remove potential exposed ports from loadbalancer...")
+		err = m.exposedPortRemover.RemoveExposedPorts(ctx, doguResource, dogu)
+		if err != nil {
+			logger.Error(err, "failed to remove exposed ports")
 		}
 	}
 

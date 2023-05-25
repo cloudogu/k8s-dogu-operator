@@ -1,0 +1,91 @@
+{
+  "Name": "k8s/nginx-ingress",
+  "Version": "1.6.4-1",
+  "DisplayName": "Nginx Ingress",
+  "Description": "Nginx WebServer with Ingress Controller.",
+  "Logo": "https://cloudogu.com/images/dogus/nginx.png",
+  "Category": "Base",
+  "Tags": [
+    "webserver",
+    "proxy",
+    "reverse-proxy",
+    "k8s"
+  ],
+  "Url": "https://kubernetes.github.io/ingress-nginx/",
+  "Image": "registry.cloudogu.com/k8s/nginx-ingress",
+  "Dependencies": [
+    {
+      "type": "client",
+      "name": "k8s-dogu-operator",
+      "version": ">=0.16.0"
+    },
+    {
+      "type": "client",
+      "name": "cesapp",
+      "version": "<0.0.0"
+    },
+    {
+      "type": "client",
+      "name": "ces-setup",
+      "version": "<0.0.0"
+    }
+  ],
+  "ServiceAccounts": [
+    {
+      "Type": "k8s-dogu-operator",
+      "Kind": "k8s"
+    }
+  ],
+  "Configuration": [
+    {
+      "Name": "logging/root",
+      "Description": "Set the root log level to one of ERROR, WARN, INFO, DEBUG.",
+      "Optional": true,
+      "Default": "WARN",
+      "Validation": {
+        "Type": "ONE_OF",
+        "Values": [
+          "WARN",
+          "DEBUG",
+          "INFO",
+          "ERROR"
+        ]
+      }
+    },
+    {
+      "Name": "disable_access_log",
+      "Description": "Disable logging of incoming requests",
+      "Optional": true
+    },
+    {
+      "Name": "google_tracking_id",
+      "Description": "Google Analytics Tracking ID",
+      "Optional": true
+    }
+  ],
+  "ExposedPorts": [
+    {
+      "Type": "tcp",
+      "Host": 80,
+      "Container": 80
+    },
+    {
+      "Type": "tcp",
+      "Host": 443,
+      "Container": 443
+    }
+  ],
+  "HealthChecks": [
+    {
+      "Type": "tcp",
+      "Port": 80
+    },
+    {
+      "Type": "tcp",
+      "Port": 443
+    }
+  ],
+  "Properties": {
+    "stopAtBackup": "false"
+  }
+}
