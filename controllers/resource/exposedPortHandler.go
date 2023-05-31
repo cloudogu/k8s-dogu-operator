@@ -5,43 +5,40 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/loadbalancer/nginx"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
 )
 
 const cesLoadbalancerName = "ces-loadbalancer"
 
-type IngressNginxTcpUpdExposer struct {
-	client client.Client
-}
-
-func NewIngressNginxTCPUDPExposer(client client.Client) *IngressNginxTcpUpdExposer {
-	return &IngressNginxTcpUpdExposer{client: client}
-}
-
-type tcpUpdServiceExposer interface {
-	exposeService(port core.ExposedPort) error
-}
-
 type doguExposedPortHandler struct {
-	client client.Client
+	client         client.Client
+	serviceExposer cloudogu.TcpUpdServiceExposer
 }
 
 // NewDoguExposedPortHandler creates a new instance of doguExposedPortHandler.
 func NewDoguExposedPortHandler(client client.Client) *doguExposedPortHandler {
-	return &doguExposedPortHandler{client: client}
+	return &doguExposedPortHandler{
+		client:         client,
+		serviceExposer: nginx.NewIngressNginxTCPUDPExposer(client),
+	}
 }
 
 // CreateOrUpdateCesLoadbalancerService updates the loadbalancer service "ces-loadbalancer" with the dogu exposed ports.
 // If the service is not existent in cluster, it will be created.
 // If the dogu has no exposed ports, this method return an empty service object and nil.
 func (deph *doguExposedPortHandler) CreateOrUpdateCesLoadbalancerService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
+	logger := log.FromContext(ctx)
 	if len(dogu.ExposedPorts) == 0 {
+		logger.Info("Skipping loadbalancer creation because the dogu has no exposed ports...")
 		return &corev1.Service{}, nil
 	}
 
@@ -51,16 +48,27 @@ func (deph *doguExposedPortHandler) CreateOrUpdateCesLoadbalancerService(ctx con
 	}
 
 	if err != nil && apierrors.IsNotFound(err) {
+		logger.Info(fmt.Sprintf("Loadbalancer service %s does not exist. Create a new one...", cesLoadbalancerName))
 		createLoadbalancerService, createErr := deph.createCesLoadbalancerService(ctx, doguResource, dogu)
 		if createErr != nil {
 			return nil, fmt.Errorf("failed to create %s service: %w", cesLoadbalancerName, createErr)
 		}
-		// TODO update tcp/udp configmaps
+
+		err = deph.serviceExposer.ExposeOrUpdateDoguServices(ctx, doguResource.Namespace, dogu)
+		if err != nil {
+			return nil, fmt.Errorf("failed to expose dogu services: %w", err)
+		}
+
 		return createLoadbalancerService, nil
 	}
 
+	logger.Info(fmt.Sprintf("Update loadbalancer service %s...", cesLoadbalancerName))
 	exposedService = updateCesLoadbalancerService(dogu, exposedService)
-	// TODO update tcp/udp configmaps
+
+	err = deph.serviceExposer.ExposeOrUpdateDoguServices(ctx, doguResource.Namespace, dogu)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expose dogu services: %w", err)
+	}
 
 	return exposedService, deph.updateService(ctx, exposedService)
 }
@@ -152,8 +160,16 @@ func (deph *doguExposedPortHandler) updateService(ctx context.Context, exposedSe
 // If these ports are the only ones, the service will be deleted.
 // If the dogu has no exposed ports, the method returns nil.
 func (deph *doguExposedPortHandler) RemoveExposedPorts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+	logger := log.FromContext(ctx)
 	if len(dogu.ExposedPorts) == 0 {
+		logger.Info("Skipping deletion from loadbalancer service because the dogu has no exposed ports...")
 		return nil
+	}
+
+	logger.Info("Delete exposed tcp and upd ports...")
+	err := deph.serviceExposer.DeleteDoguServices(ctx, doguResource.Namespace, dogu)
+	if err != nil {
+		return fmt.Errorf("failed to delete entries from expose configmap: %w", err)
 	}
 
 	exposedService, err := deph.getCesLoadBalancerService(ctx, doguResource)
@@ -167,10 +183,12 @@ func (deph *doguExposedPortHandler) RemoveExposedPorts(ctx context.Context, dogu
 
 	ports := filterDoguServicePorts(dogu, exposedService)
 	if len(ports) > 0 {
+		logger.Info("Update loadbalancer service...")
 		exposedService.Spec.Ports = ports
 		return deph.updateService(ctx, exposedService)
 	}
 
+	logger.Info("Delete loadbalancer service because no ports are remaining...")
 	err = deph.client.Delete(ctx, exposedService)
 	if err != nil {
 		return fmt.Errorf("failed to delete service %s: %w", cesLoadbalancerName, err)

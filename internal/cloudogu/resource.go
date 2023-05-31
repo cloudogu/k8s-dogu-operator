@@ -61,9 +61,24 @@ type DoguResourceGenerator interface {
 	CreateReservedPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
 }
 
+// ExposePortAdder is used to expose exposed services from the dogu.
 type ExposePortAdder interface {
+	// CreateOrUpdateCesLoadbalancerService deletes the exposure of the exposed services from the dogu.
 	CreateOrUpdateCesLoadbalancerService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*v1.Service, error)
 }
+
+// ExposePortRemover is used to delete the exposure of the exposed services from the dogu.
 type ExposePortRemover interface {
+	// RemoveExposedPorts deletes the exposure of the exposed services from the dogu.
 	RemoveExposedPorts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) error
+}
+
+// TcpUpdServiceExposer is used to expose non http services.
+type TcpUpdServiceExposer interface {
+	// ExposeOrUpdateDoguServices adds or updates the exposing of the exposed ports in the dogu from the cluster. These are typically
+	// entries in a configmap.
+	ExposeOrUpdateDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
+	// DeleteDoguServices removes the exposing of the exposed ports in the dogu from the cluster. These are typically
+	// entries in a configmap.
+	DeleteDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
 }

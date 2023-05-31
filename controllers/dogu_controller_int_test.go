@@ -59,6 +59,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	ldapCr.ResourceVersion = ""
 	ldapDoguLookupKey := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
 	cesLoadbalancerLookupKey := types.NamespacedName{Name: "ces-loadbalancer", Namespace: "default"}
+	tcpExposedPortsLookupKey := types.NamespacedName{Name: "tcp-services", Namespace: "default"}
 
 	redmineCr.Namespace = "default"
 	redmineCr.ResourceVersion = ""
@@ -161,7 +162,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				for _, doguPort := range ldapDogu.ExposedPorts {
 					for _, port := range lbService.Spec.Ports {
 						if port.Port == int32(doguPort.Host) && port.TargetPort.IntVal == int32(doguPort.Container) &&
-							strings.ToLower(string(port.Protocol)) == strings.ToLower(doguPort.Type) &&
+							strings.EqualFold(string(port.Protocol), doguPort.Type) &&
 							port.Name == fmt.Sprintf("%s-%d", ldapDogu.GetSimpleName(), doguPort.Host) {
 							found = true
 							break
@@ -170,6 +171,21 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					if !found {
 						return false
 					}
+				}
+
+				return true
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			By("Expect created tcp/udp configmap")
+			cm := &corev1.ConfigMap{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, tcpExposedPortsLookupKey, cm)
+				if err != nil && cm.Data == nil && len(cm.Data) != 2 {
+					return false
+				}
+
+				if cm.Data["2222"] != "default/ldap:2222" && cm.Data["8888"] == "default/ldap:8888" {
+					return false
 				}
 
 				return true
@@ -346,6 +362,17 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, cesLoadbalancerLookupKey, lbService)
 				return apierrors.IsNotFound(err)
+			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+
+			By("Expected deleted entries in tcp/udp configmap")
+			cm := &corev1.ConfigMap{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, tcpExposedPortsLookupKey, cm)
+				if err != nil && len(cm.Data) != 0 {
+					return false
+				}
+
+				return true
 			}, TimeoutInterval, PollingInterval).Should(BeTrue())
 		})
 	})
