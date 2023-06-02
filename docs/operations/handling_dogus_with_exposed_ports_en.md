@@ -8,7 +8,7 @@ appropriate service.
 # Expose HTTP ports
 
 In Kubernetes, the `k8s-dogu-operator` creates **one** service `ces-loadblancer` of type LoadBalancer for this purpose.
-In most cloud infrastructures, a publicly accessible IP is assigned to this service, which serves as access to the
+In most cloud infrastructures, a publicly accessible IP is assigned to this service, which serves as the entry point to the
 Cloudogu EcoSystem.
 Typically, port `80` and `443` are always included in this service, as they are defined by `nginx-ingress` to ensure
 that other Dogus are reachable using ingress resources.
