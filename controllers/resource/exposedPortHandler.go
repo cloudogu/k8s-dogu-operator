@@ -45,9 +45,7 @@ func (deph *doguExposedPortHandler) CreateOrUpdateCesLoadbalancerService(ctx con
 	exposedService, err := deph.getCesLoadBalancerService(ctx, doguResource)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, fmt.Errorf("failed to get service %s: %w", cesLoadbalancerName, err)
-	}
-
-	if err != nil && apierrors.IsNotFound(err) {
+	} else if err != nil && apierrors.IsNotFound(err) {
 		logger.Info(fmt.Sprintf("Loadbalancer service %s does not exist. Create a new one...", cesLoadbalancerName))
 		createLoadbalancerService, createErr := deph.createCesLoadbalancerService(ctx, doguResource, dogu)
 		if createErr != nil {
