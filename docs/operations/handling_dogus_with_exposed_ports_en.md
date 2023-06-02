@@ -15,7 +15,7 @@ that other Dogus are reachable using ingress resources.
 
 # Expose TCP/UDP ports
 
-Other ports, such as `2222` for the SCM manager, are not necessarily based on the HTTP protocol and use
+Other ports, such as `2222` for the SCM-Manager, are not necessarily based on the HTTP protocol and use
 pure TCP or UDP. These ports are also entered into the `ces-loadblancer`. Additionally, these
 are written to `tcp-services` and `udp-services` configmaps for the `nginx-ingress` to route the traffic
 (see [nginx-guide](https://kubernetes.github.io/ingress-nginx/user-guide/exposing-tcp-udp-services/)).
