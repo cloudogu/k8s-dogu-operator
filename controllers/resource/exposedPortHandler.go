@@ -131,6 +131,7 @@ func updateCesLoadbalancerService(dogu *core.Dogu, service *corev1.Service) *cor
 	return service
 }
 
+// filterDoguServicePorts removes all ports from the service which route traffic to the given dogu.
 func filterDoguServicePorts(dogu *core.Dogu, service *corev1.Service) []corev1.ServicePort {
 	var doguServicePorts []corev1.ServicePort
 

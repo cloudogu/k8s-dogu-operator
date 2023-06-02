@@ -51,9 +51,7 @@ func (intue *ingressNginxTcpUpdExposer) exposeOrUpdatePortsForProtocol(ctx conte
 	cm, err := intue.getNginxExposeConfigmap(ctx, namespace, protocol)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to get configmap %s: %w", getConfigMapNameForProtocol(protocol), err)
-	}
-
-	if err != nil && apierrors.IsNotFound(err) {
+	} else if err != nil && apierrors.IsNotFound(err) {
 		_, err = intue.createNginxExposeConfigMapForProtocol(ctx, namespace, dogu, protocol)
 		return err
 	}
@@ -126,6 +124,7 @@ func getServiceEntryValuePrefix(namespace string, dogu *core.Dogu) string {
 	return fmt.Sprintf("%s/%s", namespace, dogu.GetSimpleName())
 }
 
+// filterDoguServices removes all entries from the data map which route traffic to the given dogu.
 func filterDoguServices(cm *corev1.ConfigMap, namespace string, dogu *core.Dogu) map[string]string {
 	data := cm.Data
 	if data == nil {
