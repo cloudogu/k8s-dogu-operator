@@ -19,7 +19,7 @@ Other ports, such as `2222` for the SCM-Manager, are not necessarily based on th
 pure TCP or UDP. These ports are also entered into the `ces-loadblancer`. Additionally, these
 are written to `tcp-services` and `udp-services` configmaps for the `nginx-ingress` to route the traffic
 (see [nginx-guide](https://kubernetes.github.io/ingress-nginx/user-guide/exposing-tcp-udp-services/)).
-The configmaps each have a finalizer `cloudogu.com/nginx-tcp-services` so that they are not be deleted by
+The configmaps each have a finalizer `cloudogu.com/nginx-tcp-services` so that they are not being deleted by
 accident. The format for an exposed service in such a configmap is the following:
 
 ```yaml
