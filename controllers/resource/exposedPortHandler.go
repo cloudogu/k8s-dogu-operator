@@ -34,7 +34,7 @@ func NewDoguExposedPortHandler(client client.Client) *doguExposedPortHandler {
 
 // CreateOrUpdateCesLoadbalancerService updates the loadbalancer service "ces-loadbalancer" with the dogu exposed ports.
 // If the service is not existent in cluster, it will be created.
-// If the dogu has no exposed ports, this method return an empty service object and nil.
+// If the dogu has no exposed ports, this method returns an empty service object and nil.
 func (deph *doguExposedPortHandler) CreateOrUpdateCesLoadbalancerService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
 	logger := log.FromContext(ctx)
 	if len(dogu.ExposedPorts) == 0 {
