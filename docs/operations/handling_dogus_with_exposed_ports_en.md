@@ -1,7 +1,7 @@
 # Exposed Ports
 
 Exposed ports of Dogus must be publicly available so that users can use services such as the Git protocol on port 2222
-for the SCM Manager.
+for the SCM-Manager.
 This process is different from the old Cloudogu EcoSystem where the port was shared on the host and routed to the
 appropriate service.
 
