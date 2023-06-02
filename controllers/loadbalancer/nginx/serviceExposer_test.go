@@ -81,7 +81,7 @@ func Test_getServiceEntryValuePrefix(t *testing.T) {
 	})
 }
 
-func Test_getExposedPortsByType1(t *testing.T) {
+func Test_getExposedPortsByType(t *testing.T) {
 	type args struct {
 		dogu     *core.Dogu
 		protocol string
