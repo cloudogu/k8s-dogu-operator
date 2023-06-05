@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.31.0] - 2023-06-05
 ### Changed
 - [#102] Generate only one loadbalancer service for all dogu exposed ports so that all will be available with the same
   ip. `Nginx ingress` needs additional information to route tcp and udp traffic. The dogu operator creates and updates
