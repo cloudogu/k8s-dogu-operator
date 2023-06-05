@@ -84,61 +84,6 @@ func (_c *DoguResourceGenerator_CreateDoguDeployment_Call) RunAndReturn(run func
 	return _c
 }
 
-// CreateDoguExposedServices provides a mock function with given fields: doguResource, dogu
-func (_m *DoguResourceGenerator) CreateDoguExposedServices(doguResource *v1.Dogu, dogu *core.Dogu) ([]*corev1.Service, error) {
-	ret := _m.Called(doguResource, dogu)
-
-	var r0 []*corev1.Service
-	var r1 error
-	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) ([]*corev1.Service, error)); ok {
-		return rf(doguResource, dogu)
-	}
-	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) []*corev1.Service); ok {
-		r0 = rf(doguResource, dogu)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*corev1.Service)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(*v1.Dogu, *core.Dogu) error); ok {
-		r1 = rf(doguResource, dogu)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// DoguResourceGenerator_CreateDoguExposedServices_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateDoguExposedServices'
-type DoguResourceGenerator_CreateDoguExposedServices_Call struct {
-	*mock.Call
-}
-
-// CreateDoguExposedServices is a helper method to define mock.On call
-//   - doguResource *v1.Dogu
-//   - dogu *core.Dogu
-func (_e *DoguResourceGenerator_Expecter) CreateDoguExposedServices(doguResource interface{}, dogu interface{}) *DoguResourceGenerator_CreateDoguExposedServices_Call {
-	return &DoguResourceGenerator_CreateDoguExposedServices_Call{Call: _e.mock.On("CreateDoguExposedServices", doguResource, dogu)}
-}
-
-func (_c *DoguResourceGenerator_CreateDoguExposedServices_Call) Run(run func(doguResource *v1.Dogu, dogu *core.Dogu)) *DoguResourceGenerator_CreateDoguExposedServices_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*v1.Dogu), args[1].(*core.Dogu))
-	})
-	return _c
-}
-
-func (_c *DoguResourceGenerator_CreateDoguExposedServices_Call) Return(_a0 []*corev1.Service, _a1 error) *DoguResourceGenerator_CreateDoguExposedServices_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *DoguResourceGenerator_CreateDoguExposedServices_Call) RunAndReturn(run func(*v1.Dogu, *core.Dogu) ([]*corev1.Service, error)) *DoguResourceGenerator_CreateDoguExposedServices_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CreateDoguPVC provides a mock function with given fields: doguResource
 func (_m *DoguResourceGenerator) CreateDoguPVC(doguResource *v1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	ret := _m.Called(doguResource)

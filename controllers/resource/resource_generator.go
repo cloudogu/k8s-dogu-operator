@@ -355,47 +355,6 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageCon
 	return service, nil
 }
 
-// CreateDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
-// The created service is rather meant for cluster-external access. The given dogu provides the service ports to the
-// created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
-// (see K8s-service-discovery).
-func (r *resourceGenerator) CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]*corev1.Service, error) {
-	exposedServices := make([]*corev1.Service, 0)
-	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
-
-	for _, exposedPort := range dogu.ExposedPorts {
-		ipSingleStackPolicy := corev1.IPFamilyPolicySingleStack
-		exposedService := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-exposed-%d", doguResource.Name, exposedPort.Host),
-				Namespace: doguResource.Namespace,
-				Labels:    appDoguLabels,
-			},
-			Spec: corev1.ServiceSpec{
-				Type:           corev1.ServiceTypeLoadBalancer,
-				IPFamilyPolicy: &ipSingleStackPolicy,
-				IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol},
-				Selector:       doguResource.GetDoguNameLabel(),
-				Ports: []corev1.ServicePort{{
-					Name:       strconv.Itoa(exposedPort.Host),
-					Protocol:   corev1.Protocol(strings.ToUpper(exposedPort.Type)),
-					Port:       int32(exposedPort.Host),
-					TargetPort: intstr.FromInt(exposedPort.Container),
-				}},
-			},
-		}
-
-		err := ctrl.SetControllerReference(doguResource, exposedService, r.scheme)
-		if err != nil {
-			return nil, wrapControllerReferenceError(err)
-		}
-
-		exposedServices = append(exposedServices, exposedService)
-	}
-
-	return exposedServices, nil
-}
-
 // CreateDoguSecret generates a secret with a given data map for the dogu
 func (r *resourceGenerator) CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
 	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	eventV1 "k8s.io/api/events/v1"
@@ -28,9 +28,6 @@ var imageConfBytes []byte
 //go:embed testdata/ldap_expectedDeployment.yaml
 var expectedDeploymentBytes []byte
 
-//go:embed testdata/ldap_expectedDeployment_withCustomValues.yaml
-var expectedCustomDeploymentBytes []byte
-
 //go:embed testdata/ldap_expectedDeployment_Development.yaml
 var expectedDeploymentDevelopBytes []byte
 
@@ -49,8 +46,17 @@ var expectedSecretBytes []byte
 //go:embed testdata/ldap_expectedService.yaml
 var expectedServiceBytes []byte
 
-//go:embed testdata/ldap_expectedExposedServices.yaml
-var expectedExposedServicesBytes []byte
+//go:embed testdata/nginx-ingress-dogu.json
+var nginxIngressBytes []byte
+
+//go:embed testdata/nginx-ingress-cr.yaml
+var nginxIngressDoguResourceBytes []byte
+
+//go:embed testdata/nginx-ingress-only_expectedLoadbalancer.yaml
+var expectedNginxIngressOnlyLoadBalancer []byte
+
+//go:embed testdata/nginx-ingress-scm_expectedLoadbalancer.yaml
+var expectedNginxIngressSCMLoadBalancer []byte
 
 func readLdapDogu(t *testing.T) *core.Dogu {
 	t.Helper()
@@ -64,10 +70,10 @@ func readLdapDogu(t *testing.T) *core.Dogu {
 	return data
 }
 
-func readLdapDoguResource(t *testing.T) *corev1.Dogu {
+func readLdapDoguResource(t *testing.T) *k8sv1.Dogu {
 	t.Helper()
 
-	data := &corev1.Dogu{}
+	data := &k8sv1.Dogu{}
 	err := yaml.Unmarshal(ldapDoguResourceBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -93,18 +99,6 @@ func readLdapDoguExpectedDeployment(t *testing.T) *appsv1.Deployment {
 
 	data := &appsv1.Deployment{}
 	err := yaml.Unmarshal(expectedDeploymentBytes, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return data
-}
-
-func readLdapDoguExpectedCustomDeployment(t *testing.T) *appsv1.Deployment {
-	t.Helper()
-
-	data := &appsv1.Deployment{}
-	err := yaml.Unmarshal(expectedCustomDeploymentBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -184,16 +178,52 @@ func readLdapDoguExpectedService(t *testing.T) *v1.Service {
 	return data
 }
 
-func readLdapDoguExpectedExposedServices(t *testing.T) []*v1.Service {
+func readNginxIngressDogu(t *testing.T) *core.Dogu {
 	t.Helper()
 
-	data := &[]*v1.Service{}
-	err := yaml.Unmarshal(expectedExposedServicesBytes, data)
+	data := &core.Dogu{}
+	err := json.Unmarshal(nginxIngressBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	return *data
+	return data
+}
+
+func readNginxIngressDoguResource(t *testing.T) *k8sv1.Dogu {
+	t.Helper()
+
+	data := &k8sv1.Dogu{}
+	err := yaml.Unmarshal(nginxIngressDoguResourceBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readNginxIngressOnlyExpectedLoadBalancer(t *testing.T) *v1.Service {
+	t.Helper()
+
+	data := &v1.Service{}
+	err := yaml.Unmarshal(expectedNginxIngressOnlyLoadBalancer, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readNginxIngressSCMExpectedLoadBalancer(t *testing.T) *v1.Service {
+	t.Helper()
+
+	data := &v1.Service{}
+	err := yaml.Unmarshal(expectedNginxIngressSCMLoadBalancer, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
 }
 
 func getTestScheme() *runtime.Scheme {
@@ -203,7 +233,7 @@ func getTestScheme() *runtime.Scheme {
 		Group:   "k8s.cloudogu.com",
 		Version: "v1",
 		Kind:    "Dogu",
-	}, &corev1.Dogu{})
+	}, &k8sv1.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

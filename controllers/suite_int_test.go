@@ -173,6 +173,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
 	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutor)
+	exposedPortRemover := resource.NewDoguExposedPortHandler(k8sClient)
 
 	installManager := &doguInstallManager{
 		client:                k8sClient,
@@ -199,6 +200,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		serviceAccountRemover: serviceAccountRemover,
 		doguSecretHandler:     doguSecretHandler,
 		localDoguFetcher:      localDoguFetcher,
+		exposedPortRemover:    exposedPortRemover,
 	}
 
 	volumeManager := &doguVolumeManager{

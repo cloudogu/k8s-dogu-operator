@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -161,79 +159,6 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 		expectedDeployment.ResourceVersion = "1"
 		expectedDeployment.Labels["test"] = "testvalue"
 		assert.Equal(t, expectedDeployment, doguDeployment)
-	})
-}
-
-func Test_upserter_UpsertDoguExposedServices(t *testing.T) {
-	t.Run("fail when generating exposed services", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-
-		mockClient := extMocks.NewK8sClient(t)
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(nil, assert.AnError)
-		upserter := upserter{
-			client:    mockClient,
-			generator: generator,
-		}
-
-		// when
-		_, err := upserter.UpsertDoguExposedServices(context.Background(), doguResource, dogu)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-	})
-	t.Run("fail when upserting a exposed services", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-
-		mockClient := extMocks.NewK8sClient(t)
-		failedToCreateFirstError := errors.New("failed on exposed service 1")
-		mockClient.On("Get", context.Background(), types.NamespacedName{Namespace: "ecosystem", Name: "ldap-exposed-2222"}, &v1.Service{}).Once().Return(failedToCreateFirstError)
-		failedToCreateSecondError := errors.New("failed on exposed service 2")
-		mockClient.On("Get", context.Background(), types.NamespacedName{Namespace: "ecosystem", Name: "ldap-exposed-8888"}, &v1.Service{}).Once().Return(failedToCreateSecondError)
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(readLdapDoguExpectedExposedServices(t), nil)
-		upserter := upserter{
-			client:    mockClient,
-			generator: generator,
-		}
-
-		// when
-		_, err := upserter.UpsertDoguExposedServices(context.Background(), doguResource, dogu)
-
-		// then
-		multiError := new(multierror.Error)
-		require.ErrorAs(t, err, &multiError)
-		require.ErrorIs(t, multiError.Errors[0], failedToCreateFirstError)
-		assert.Contains(t, multiError.Errors[0].Error(), "failed to upsert exposed service ldap-exposed-2222")
-		require.ErrorIs(t, multiError.Errors[1], failedToCreateSecondError)
-		assert.Contains(t, multiError.Errors[1].Error(), "failed to upsert exposed service ldap-exposed-8888")
-	})
-	t.Run("successfully create exposed services", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-
-		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		expectedExposedServices := readLdapDoguExpectedExposedServices(t)
-		generator.On("CreateDoguExposedServices", doguResource, dogu).Return(expectedExposedServices, nil)
-		upserter := upserter{
-			client:    testClient,
-			generator: generator,
-		}
-
-		// when
-		actualExposedServices, err := upserter.UpsertDoguExposedServices(context.Background(), doguResource, dogu)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, expectedExposedServices, actualExposedServices)
 	})
 }
 

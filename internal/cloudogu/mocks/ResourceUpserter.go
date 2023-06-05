@@ -88,20 +88,20 @@ func (_c *ResourceUpserter_UpsertDoguDeployment_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// UpsertDoguExposedServices provides a mock function with given fields: ctx, doguResource, dogu
-func (_m *ResourceUpserter) UpsertDoguExposedServices(ctx context.Context, doguResource *v1.Dogu, dogu *core.Dogu) ([]*corev1.Service, error) {
+// UpsertDoguExposedService provides a mock function with given fields: ctx, doguResource, dogu
+func (_m *ResourceUpserter) UpsertDoguExposedService(ctx context.Context, doguResource *v1.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
 	ret := _m.Called(ctx, doguResource, dogu)
 
-	var r0 []*corev1.Service
+	var r0 *corev1.Service
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, *core.Dogu) ([]*corev1.Service, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, *core.Dogu) (*corev1.Service, error)); ok {
 		return rf(ctx, doguResource, dogu)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, *core.Dogu) []*corev1.Service); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, *core.Dogu) *corev1.Service); ok {
 		r0 = rf(ctx, doguResource, dogu)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*corev1.Service)
+			r0 = ret.Get(0).(*corev1.Service)
 		}
 	}
 
@@ -114,32 +114,32 @@ func (_m *ResourceUpserter) UpsertDoguExposedServices(ctx context.Context, doguR
 	return r0, r1
 }
 
-// ResourceUpserter_UpsertDoguExposedServices_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertDoguExposedServices'
-type ResourceUpserter_UpsertDoguExposedServices_Call struct {
+// ResourceUpserter_UpsertDoguExposedService_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertDoguExposedService'
+type ResourceUpserter_UpsertDoguExposedService_Call struct {
 	*mock.Call
 }
 
-// UpsertDoguExposedServices is a helper method to define mock.On call
+// UpsertDoguExposedService is a helper method to define mock.On call
 //   - ctx context.Context
 //   - doguResource *v1.Dogu
 //   - dogu *core.Dogu
-func (_e *ResourceUpserter_Expecter) UpsertDoguExposedServices(ctx interface{}, doguResource interface{}, dogu interface{}) *ResourceUpserter_UpsertDoguExposedServices_Call {
-	return &ResourceUpserter_UpsertDoguExposedServices_Call{Call: _e.mock.On("UpsertDoguExposedServices", ctx, doguResource, dogu)}
+func (_e *ResourceUpserter_Expecter) UpsertDoguExposedService(ctx interface{}, doguResource interface{}, dogu interface{}) *ResourceUpserter_UpsertDoguExposedService_Call {
+	return &ResourceUpserter_UpsertDoguExposedService_Call{Call: _e.mock.On("UpsertDoguExposedService", ctx, doguResource, dogu)}
 }
 
-func (_c *ResourceUpserter_UpsertDoguExposedServices_Call) Run(run func(ctx context.Context, doguResource *v1.Dogu, dogu *core.Dogu)) *ResourceUpserter_UpsertDoguExposedServices_Call {
+func (_c *ResourceUpserter_UpsertDoguExposedService_Call) Run(run func(ctx context.Context, doguResource *v1.Dogu, dogu *core.Dogu)) *ResourceUpserter_UpsertDoguExposedService_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*v1.Dogu), args[2].(*core.Dogu))
 	})
 	return _c
 }
 
-func (_c *ResourceUpserter_UpsertDoguExposedServices_Call) Return(_a0 []*corev1.Service, _a1 error) *ResourceUpserter_UpsertDoguExposedServices_Call {
+func (_c *ResourceUpserter_UpsertDoguExposedService_Call) Return(_a0 *corev1.Service, _a1 error) *ResourceUpserter_UpsertDoguExposedService_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *ResourceUpserter_UpsertDoguExposedServices_Call) RunAndReturn(run func(context.Context, *v1.Dogu, *core.Dogu) ([]*corev1.Service, error)) *ResourceUpserter_UpsertDoguExposedServices_Call {
+func (_c *ResourceUpserter_UpsertDoguExposedService_Call) RunAndReturn(run func(context.Context, *v1.Dogu, *core.Dogu) (*corev1.Service, error)) *ResourceUpserter_UpsertDoguExposedService_Call {
 	_c.Call.Return(run)
 	return _c
 }
