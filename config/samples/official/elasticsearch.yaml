@@ -6,4 +6,4 @@ metadata:
     app: ces
 spec:
   name: official/elasticsearch
-  version: 6.8.23-3
+  version: 6.8.23-4

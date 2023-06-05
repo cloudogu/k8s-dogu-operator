@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.31.0] - 2023-06-05
+### Changed
+- [#102] Generate only one loadbalancer service for all dogu exposed ports so that all will be available with the same
+  ip. `Nginx ingress` needs additional information to route tcp and udp traffic. The dogu operator creates and updates
+  configmaps (`tcp-services` and `udp-services`) for that.
+
 ## [v0.30.0] - 2023-05-12
 ### Added
 - [#98] Support for service rewrite mechanism

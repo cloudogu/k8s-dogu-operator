@@ -203,7 +203,7 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 		return err
 	}
 
-	_, err = m.resourceUpserter.UpsertDoguExposedServices(ctx, doguResource, dogu)
+	_, err = m.resourceUpserter.UpsertDoguExposedService(ctx, doguResource, dogu)
 	if err != nil {
 		return err
 	}

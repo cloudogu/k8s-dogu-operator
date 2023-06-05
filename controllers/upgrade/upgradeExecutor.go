@@ -317,7 +317,7 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter clo
 		return err
 	}
 
-	_, err = upserter.UpsertDoguExposedServices(ctx, toDoguResource, toDogu)
+	_, err = upserter.UpsertDoguExposedService(ctx, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}

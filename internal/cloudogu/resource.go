@@ -2,13 +2,11 @@ package cloudogu
 
 import (
 	"context"
-
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	image "github.com/google/go-containerregistry/pkg/v1"
 	apps "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -22,12 +20,10 @@ type ResourceUpserter interface {
 	UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
 	// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
 	UpsertDoguService(ctx context.Context, doguResource *k8sv1.Dogu, image *image.ConfigFile) (*v1.Service, error)
-	// UpsertDoguExposedServices creates exposed services based on the given dogu. If an error occurs during creating
-	// several exposed services, this method tries to apply as many exposed services as possible and returns then
-	// an error collection.
-	UpsertDoguExposedServices(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) ([]*v1.Service, error)
 	// UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
 	UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*v1.PersistentVolumeClaim, error)
+	// UpsertDoguExposedService creates oder updates the exposed service with the given dogu.
+	UpsertDoguExposedService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*v1.Service, error)
 }
 
 // DoguSecretHandler includes functionality to associate secrets from setup with a dogu.
@@ -63,9 +59,26 @@ type DoguResourceGenerator interface {
 	// CreateReservedPVC creates a persistent volume claim with a 10Mi storage for the given dogu.
 	// Used for example for upgrade operations.
 	CreateReservedPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
-	// CreateDoguExposedServices creates a new instance of a LoadBalancer service for each exposed port.
-	// The created service is rather meant for cluster-external access. The given dogu provides the service ports to the
-	// created service. An additional ingress rule must be created in order to map the arbitrary port to something useful
-	// (see K8s-service-discovery).
-	CreateDoguExposedServices(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) ([]*v1.Service, error)
+}
+
+// ExposePortAdder is used to expose exposed services from the dogu.
+type ExposePortAdder interface {
+	// CreateOrUpdateCesLoadbalancerService deletes the exposure of the exposed services from the dogu.
+	CreateOrUpdateCesLoadbalancerService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*v1.Service, error)
+}
+
+// ExposePortRemover is used to delete the exposure of the exposed services from the dogu.
+type ExposePortRemover interface {
+	// RemoveExposedPorts deletes the exposure of the exposed services from the dogu.
+	RemoveExposedPorts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) error
+}
+
+// TcpUpdServiceExposer is used to expose non http services.
+type TcpUpdServiceExposer interface {
+	// ExposeOrUpdateDoguServices adds or updates the exposing of the exposed ports in the dogu from the cluster. These are typically
+	// entries in a configmap.
+	ExposeOrUpdateDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
+	// DeleteDoguServices removes the exposing of the exposed ports in the dogu from the cluster. These are typically
+	// entries in a configmap.
+	DeleteDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
 }
