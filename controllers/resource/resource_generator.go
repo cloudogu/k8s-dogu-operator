@@ -144,16 +144,12 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 	// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 	enableServiceLinks := false
 
-	chownContainer, err := getChownInitContainer(dogu, doguResource)
+	hostAliases, err := r.hostAliasGenerator.Generate()
 	if err != nil {
 		return nil, err
 	}
-	var initContainers []corev1.Container
-	if chownContainer != nil {
-		initContainers = append(initContainers, *chownContainer)
-	}
 
-	hostAliases, err := r.hostAliasGenerator.Generate()
+	psc, err := getPodSecurityContext(dogu)
 	if err != nil {
 		return nil, err
 	}
@@ -163,12 +159,12 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 			Labels: allLabels,
 		},
 		Spec: corev1.PodSpec{
+			SecurityContext:    psc,
 			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
 			Hostname:           doguResource.Name,
 			HostAliases:        hostAliases,
 			Volumes:            volumes,
 			EnableServiceLinks: &enableServiceLinks,
-			InitContainers:     initContainers,
 			Containers: []corev1.Container{{
 				Command:         command,
 				Args:            args,
@@ -189,6 +185,35 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 	}
 
 	return podTemplate, nil
+}
+
+func getPodSecurityContext(dogu *core.Dogu) (*corev1.PodSecurityContext, error) {
+	// Skip chown volumes with dogu-operator client because these are volumes from configmaps and read only.
+	filteredVolumes := filterVolumesWithClient(dogu.Volumes, doguOperatorClient)
+	if len(filteredVolumes) == 0 {
+		return nil, nil
+	}
+
+	// we assume that for every volume the same user and group is used
+	firstVolume := filteredVolumes[0]
+	_, err := strconv.ParseInt(firstVolume.Owner, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse owner id %s from volume %s: %w", firstVolume.Owner, firstVolume.Name, err)
+	}
+	_, err = strconv.ParseInt(firstVolume.Group, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse group id %s from volume %s: %w", firstVolume.Group, firstVolume.Name, err)
+	}
+
+	g := int64(999)
+	policy := corev1.FSGroupChangeAlways
+	// root := int64(0)
+	psc := &corev1.PodSecurityContext{
+		FSGroup:             &g,
+		FSGroupChangePolicy: &policy,
+	}
+
+	return psc, nil
 }
 
 func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.Container, error) {
