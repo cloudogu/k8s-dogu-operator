@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -239,6 +240,26 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		require.NotNil(t, buffer)
 		assert.Equal(t, expectedBuffer, buffer)
 	})
+	t.Run("success with stdin", func(t *testing.T) {
+		// given
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, readyPod).
+			Build()
+		clientSet := testclient.NewSimpleClientset(readyPod)
+		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
+		expectedBuffer := bytes.NewBufferString("username:user")
+		stdinCmd := NewShellCommandWithStdin(strings.NewReader("abc"), "base64")
+
+		// when
+		buffer, err := sut.ExecCommandForPod(ctx, readyPod, stdinCmd, cloudogu.PodReady)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, buffer)
+		assert.Equal(t, expectedBuffer, buffer)
+	})
 	t.Run("found no pods", func(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().Build()
@@ -373,4 +394,17 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 	}
 
 	return fakeNewSPDYExecutor, fakeErrorInitNewSPDYExecutor, fakeErrorStreamNewSPDYExecutor
+}
+
+func TestNewShellCommandWithStdin(t *testing.T) {
+	t.Run("should create shell command with stdin", func(t *testing.T) {
+		// given
+		stdin := strings.NewReader("abc")
+
+		// when
+		actual := NewShellCommandWithStdin(stdin, "base64")
+
+		// then
+		assert.Equal(t, &shellCommand{command: "base64", stdin: strings.NewReader("abc")}, actual)
+	})
 }
