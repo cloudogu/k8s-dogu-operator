@@ -277,7 +277,6 @@ func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context,
 func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion, toVersion string) error {
 	logger := log.FromContext(ctx)
 
-	// finally execute the copied pre-upgrade script, due to the dogu-reserved location relative file paths do not work
 	preUpgradeCmd := exec.NewShellCommand(cmd.Command, fromVersion, toVersion)
 
 	logger.Info("Executing pre-upgrade command " + preUpgradeCmd.String())
