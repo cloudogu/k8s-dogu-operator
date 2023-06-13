@@ -258,7 +258,7 @@ func (ue *upgradeExecutor) copyPreUpgradeScriptFromPodToPod(ctx context.Context,
 		return fmt.Errorf("failed to create pre-upgrade target dir with command '%s', stdout: '%s': %w", createPathCommand.String(), out, err)
 	}
 
-	untarCommand := exec.NewShellCommandWithStdin(archive, "tar", "xf", "-", "-C", preUpgradeScriptPath)
+	untarCommand := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", preUpgradeScriptPath)
 	out, err = ue.doguCommandExecutor.ExecCommandForPod(ctx, destPod, untarCommand, cloudogu.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to extract pre-upgrade script to dogu pod with command '%s', stdout: '%s': %w", untarCommand.String(), out, err)
