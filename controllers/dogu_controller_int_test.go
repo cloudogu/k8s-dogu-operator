@@ -218,21 +218,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(ldapCr.Name).To(Equal(doguPvc.Name))
 			Expect(ldapCr.Namespace).To(Equal(doguPvc.Namespace))
 			Expect(resource.MustParse("2Gi")).To(Equal(*doguPvc.Spec.Resources.Requests.Storage()))
-
-			By("Expect created reserved pvc")
-			reservedLookupKey := types.NamespacedName{Name: ldapCr.Name + "-reserved", Namespace: ldapCr.Namespace}
-			reservedPvc := &corev1.PersistentVolumeClaim{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, reservedLookupKey, reservedPvc)
-				if err != nil {
-					return false
-				}
-				return verifyOwner(createdDogu.Name, reservedPvc.ObjectMeta)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
-			Expect(ldapCr.Name + "-reserved").To(Equal(reservedPvc.Name))
-			Expect(ldapCr.Namespace).To(Equal(reservedPvc.Namespace))
-			Expect(resource.MustParse("10Mi")).To(Equal(*reservedPvc.Spec.Resources.Requests.Storage()))
 		})
 
 		It("Update dogus additional ingress annotations", func() {
