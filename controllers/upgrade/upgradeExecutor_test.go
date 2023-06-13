@@ -146,7 +146,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Reverting to original startup probe values...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -231,7 +231,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Reverting to original startup probe values...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -308,7 +308,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -513,7 +513,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once()
 
 			execPodFactory := mocks.NewExecPodFactory(t)
-			execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+			execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
 			sut := &upgradeExecutor{
 				client:                myClient,
@@ -593,7 +593,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once()
 
 			execPodFactory := mocks.NewExecPodFactory(t)
-			execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+			execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
 			sut := &upgradeExecutor{
 				client:                myClient,
@@ -680,7 +680,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -736,7 +736,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
@@ -801,7 +801,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		imageRegMock.On("PullImageConfig", testCtx, toDogu.Image+":"+toDogu.Version).Return(image, nil)
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(nil, fmt.Errorf("could not create execPod: %w", assert.AnError))
+		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(nil, fmt.Errorf("could not create execPod: %w", assert.AnError))
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
@@ -880,7 +880,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
-		execPodFactory.On("NewExecPod", cloudogu.VolumeModeUpgrade, toDoguResource, toDogu).Return(execPod, nil)
+		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -1293,7 +1293,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.NoError(t, err)
 	})
-	t.Run("should fail if copy from pod to pod fail", func(t *testing.T) {
+	t.Run("should fail if copy from pod to pod fails", func(t *testing.T) {
 		// given
 		toDoguResource := &k8sv1.Dogu{}
 		fromDogu := readTestDataDogu(t, redmineBytes)
