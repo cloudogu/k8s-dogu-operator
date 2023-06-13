@@ -28,7 +28,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
+	runtimeconf "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -45,7 +45,7 @@ func getCopyMap(definitions map[string]mockDefinition) map[string]mockDefinition
 	return newCopyMap
 }
 
-func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) manager.Manager {
+func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) *extMocks.ControllerManager {
 	k8sManager := &extMocks.ControllerManager{}
 	ctrl.NewManager = func(config *rest.Config, options manager.Options) (manager.Manager, error) {
 		for key, value := range definitions {
@@ -132,12 +132,12 @@ func Test_startDoguOperator(t *testing.T) {
 	defaultMockDefinitions := map[string]mockDefinition{
 		"GetScheme":            {ReturnValue: scheme},
 		"GetClient":            {ReturnValue: myClient},
+		"GetCache":             {ReturnValue: nil},
 		"Add":                  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 		"AddHealthzCheck":      {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
 		"AddReadyzCheck":       {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
 		"Start":                {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
-		"GetControllerOptions": {ReturnValue: v1alpha1.ControllerConfigurationSpec{}},
-		"SetFields":            {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
+		"GetControllerOptions": {ReturnValue: runtimeconf.Controller{}},
 		"GetEventRecorderFor":  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 	}
 
@@ -201,7 +201,6 @@ func Test_startDoguOperator(t *testing.T) {
 		"AddHealthzCheck",
 		"AddReadyzCheck",
 		"Start",
-		"SetFields",
 	}
 
 	for _, mockDefinitionName := range mockDefinitionsThatCanFail {
