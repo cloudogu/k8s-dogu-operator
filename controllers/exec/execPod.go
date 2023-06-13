@@ -197,9 +197,7 @@ func (ep *execPod) Exec(ctx context.Context, cmd cloudogu.ShellCommand) (*bytes.
 		return nil, fmt.Errorf("could not get pod: %w", err)
 	}
 
-	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, cloudogu.ContainersStarted)
-
-	return out, err
+	return ep.executor.ExecCommandForPod(ctx, pod, cmd, cloudogu.ContainersStarted)
 }
 
 type defaultSufficeGenerator struct{}

@@ -199,7 +199,7 @@ func Test_execPod_createPod(t *testing.T) {
 
 	t.Run("should create exec pod same name as container name", func(t *testing.T) {
 		// when
-		actual, err := sut.createPod(testCtx, testNamespace, containerName)
+		actual, err := sut.createPod(testNamespace, containerName)
 
 		// then
 		require.NoError(t, err)
@@ -214,7 +214,7 @@ func Test_execPod_createPod(t *testing.T) {
 		config.Stage = config.StageDevelopment
 
 		// when
-		actual, err := sut.createPod(testCtx, testNamespace, containerName)
+		actual, err := sut.createPod(testNamespace, containerName)
 
 		// then
 		require.NoError(t, err)
@@ -227,7 +227,7 @@ func Test_execPod_createPod(t *testing.T) {
 
 	t.Run("should create exec pod from dogu image", func(t *testing.T) {
 		// when
-		actual, err := sut.createPod(testCtx, testNamespace, containerName)
+		actual, err := sut.createPod(testNamespace, containerName)
 
 		// then
 		require.NoError(t, err)
@@ -238,7 +238,7 @@ func Test_execPod_createPod(t *testing.T) {
 
 	t.Run("should fail to set controller reference", func(t *testing.T) {
 		// when
-		_, err := sut.createPod(testCtx, "namespace-causing-failure", containerName)
+		_, err := sut.createPod("namespace-causing-failure", containerName)
 
 		// then
 		require.Error(t, err)
@@ -302,7 +302,7 @@ func Test_execPod_Exec(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Empty(t, actualOut)
+		assert.Equal(t, "", actualOut.String())
 	})
 	t.Run("should be successful", func(t *testing.T) {
 		// given
@@ -329,52 +329,7 @@ func Test_execPod_Exec(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "possibly some output goes here", actualOut)
-	})
-}
-
-func Test_execPod_createVolumes(t *testing.T) {
-	t.Run("should return no resources for an unexpected execPod", func(t *testing.T) {
-		// given
-		const PodVolumeModeUnexpected = 3
-		sut := &execPod{volumeMode: PodVolumeModeUnexpected}
-
-		// when
-		actualMounts, actualVolumes := sut.createVolumes(testCtx)
-
-		// then
-		assert.Nil(t, actualMounts)
-		assert.Nil(t, actualVolumes)
-	})
-	t.Run("should return no volume resources for an install execPod", func(t *testing.T) {
-		// given
-		sut := &execPod{volumeMode: cloudogu.VolumeModeInstall}
-
-		// when
-		actualMounts, actualVolumes := sut.createVolumes(testCtx)
-
-		// then
-		assert.Nil(t, actualMounts)
-		assert.Nil(t, actualVolumes)
-	})
-	t.Run("should return volume resources for an upgrade execPod", func(t *testing.T) {
-		// given
-		ldapDoguResource := readLdapDoguResource(t)
-		sut := &execPod{volumeMode: cloudogu.VolumeModeUpgrade, doguResource: ldapDoguResource}
-
-		// when
-		actualMounts, actualVolumes := sut.createVolumes(testCtx)
-
-		// then
-		assert.NotEmpty(t, actualMounts)
-		assert.Equal(t, "ldap-reserved", actualMounts[0].Name)
-		assert.Equal(t, "/tmp/dogu-reserved", actualMounts[0].MountPath)
-		assert.False(t, actualMounts[0].ReadOnly)
-
-		assert.NotEmpty(t, actualVolumes)
-		assert.Equal(t, "ldap-reserved", actualVolumes[0].Name)
-		assert.Equal(t, "ldap-reserved", actualVolumes[0].VolumeSource.PersistentVolumeClaim.ClaimName)
-		assert.False(t, actualVolumes[0].VolumeSource.PersistentVolumeClaim.ReadOnly)
+		assert.Equal(t, "possibly some output goes here", actualOut.String())
 	})
 }
 
@@ -469,7 +424,7 @@ func Test_defaultExecPodFactory_NewExecPod(t *testing.T) {
 	sut.suffixGen = suffixGen
 
 	// when
-	pod, err := sut.NewExecPod(cloudogu.VolumeModeInstall, nil, dogu)
+	pod, err := sut.NewExecPod(nil, dogu)
 
 	// then
 	require.NoError(t, err)
