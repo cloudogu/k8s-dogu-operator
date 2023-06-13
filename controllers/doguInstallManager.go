@@ -209,7 +209,7 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
-	anExecPod, err := m.execPodFactory.NewExecPod(cloudogu.VolumeModeInstall, doguResource, dogu)
+	anExecPod, err := m.execPodFactory.NewExecPod(doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to create ExecPod resource %s: %w", anExecPod.ObjectKey().Name, err)
 	}

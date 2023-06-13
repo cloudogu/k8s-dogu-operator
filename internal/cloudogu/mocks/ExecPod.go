@@ -3,6 +3,7 @@
 package mocks
 
 import (
+	bytes "bytes"
 	context "context"
 
 	cloudogu "github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
@@ -110,18 +111,20 @@ func (_c *ExecPod_Delete_Call) RunAndReturn(run func(context.Context) error) *Ex
 }
 
 // Exec provides a mock function with given fields: ctx, cmd
-func (_m *ExecPod) Exec(ctx context.Context, cmd cloudogu.ShellCommand) (string, error) {
+func (_m *ExecPod) Exec(ctx context.Context, cmd cloudogu.ShellCommand) (*bytes.Buffer, error) {
 	ret := _m.Called(ctx, cmd)
 
-	var r0 string
+	var r0 *bytes.Buffer
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, cloudogu.ShellCommand) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cloudogu.ShellCommand) (*bytes.Buffer, error)); ok {
 		return rf(ctx, cmd)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, cloudogu.ShellCommand) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cloudogu.ShellCommand) *bytes.Buffer); ok {
 		r0 = rf(ctx, cmd)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*bytes.Buffer)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, cloudogu.ShellCommand) error); ok {
@@ -152,12 +155,12 @@ func (_c *ExecPod_Exec_Call) Run(run func(ctx context.Context, cmd cloudogu.Shel
 	return _c
 }
 
-func (_c *ExecPod_Exec_Call) Return(out string, err error) *ExecPod_Exec_Call {
+func (_c *ExecPod_Exec_Call) Return(out *bytes.Buffer, err error) *ExecPod_Exec_Call {
 	_c.Call.Return(out, err)
 	return _c
 }
 
-func (_c *ExecPod_Exec_Call) RunAndReturn(run func(context.Context, cloudogu.ShellCommand) (string, error)) *ExecPod_Exec_Call {
+func (_c *ExecPod_Exec_Call) RunAndReturn(run func(context.Context, cloudogu.ShellCommand) (*bytes.Buffer, error)) *ExecPod_Exec_Call {
 	_c.Call.Return(run)
 	return _c
 }

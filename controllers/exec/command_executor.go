@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 
@@ -28,6 +29,16 @@ type shellCommand struct {
 	command string
 	// args contains any parameters, switches etc. that the command needs to run properly.
 	args []string
+	// stdin contains standard input for the command, input that could for example be piped in a CLI environment.
+	stdin io.Reader
+}
+
+func (sc *shellCommand) Stdin() (bool, io.Reader) {
+	if sc.stdin == nil {
+		return false, nil
+	}
+
+	return true, sc.stdin
 }
 
 func (sc *shellCommand) CommandWithArgs() []string {
@@ -42,6 +53,10 @@ func (sc *shellCommand) String() string {
 // NewShellCommand creates a new shellCommand. While the command is mandatory, there can be zero to n command arguments.
 func NewShellCommand(command string, args ...string) *shellCommand {
 	return &shellCommand{command: command, args: args}
+}
+
+func NewShellCommandWithStdin(stdin io.Reader, command string, args ...string) *shellCommand {
+	return &shellCommand{command: command, args: args, stdin: stdin}
 }
 
 // stateError is returned when a specific resource (pod/dogu) does not meet the requirements for the exec.
@@ -133,12 +148,14 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	logger := log.FromContext(ctx)
 
 	var err error
+	_, stdin := command.Stdin()
 	buffer := bytes.NewBuffer([]byte{})
 	bufferErr := bytes.NewBuffer([]byte{})
 	err = retry.OnError(maxTries, func(err error) bool {
 		return strings.Contains(err.Error(), "error dialing backend: EOF")
 	}, func() error {
 		err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+			Stdin:  stdin,
 			Stdout: buffer,
 			Stderr: bufferErr,
 			Tty:    false,
@@ -194,6 +211,7 @@ func podHasStatus(pod *corev1.Pod, expected cloudogu.PodStatusForExec) error {
 }
 
 func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command cloudogu.ShellCommand) *rest.Request {
+	hasStdin, _ := command.Stdin()
 	return ce.coreV1RestClient.Post().
 		Resource("pods").
 		Name(pod.Name).
@@ -201,7 +219,7 @@ func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command 
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Command: command.CommandWithArgs(),
-			Stdin:   false,
+			Stdin:   hasStdin,
 			Stdout:  true,
 			Stderr:  true,
 			// Note: if the TTY is set to true shell commands may emit ANSI codes into the stdout

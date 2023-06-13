@@ -167,18 +167,6 @@ func TestDogu_GetPrivateVolumeName(t *testing.T) {
 	assert.Equal(t, "dogu-private", actual)
 }
 
-func TestDogu_GetReservedPVCName(t *testing.T) {
-	actual := testDogu.GetReservedPVCName()
-
-	assert.Equal(t, "dogu-reserved", actual)
-}
-
-func TestDogu_GetReservedVolumeName(t *testing.T) {
-	actual := testDogu.GetReservedVolumeName()
-
-	assert.Equal(t, "dogu-reserved", actual)
-}
-
 func TestDogu_GetDevelopmentDoguMapKey(t *testing.T) {
 	actual := testDogu.GetDevelopmentDoguMapKey()
 

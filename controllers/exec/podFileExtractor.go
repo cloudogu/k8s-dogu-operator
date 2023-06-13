@@ -37,9 +37,10 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 	logger := log.FromContext(ctx)
 
 	lsCommand := NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")
-	fileList, err := k8sExecPod.Exec(ctx, lsCommand)
+	fileListBuf, err := k8sExecPod.Exec(ctx, lsCommand)
+	fileList := fileListBuf.String()
 
-	logger.Info(fmt.Sprintf("ExecPod file list results in '%s'", fileList))
+	logger.Info(fmt.Sprintf("ExecPod file list results in '%s'", fileListBuf))
 
 	if err != nil {
 		return nil, err
@@ -61,7 +62,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromContainer(ctx context.Context
 			return nil, err
 		}
 
-		resultDocs[trimmedFile] = fileContent
+		resultDocs[trimmedFile] = fileContent.String()
 	}
 
 	return resultDocs, nil

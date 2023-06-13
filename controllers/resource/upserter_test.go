@@ -10,13 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
@@ -181,30 +177,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 	})
-	t.Run("fail when upserting a reserved pvc", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-		dogu.Volumes = nil
-
-		mockClient := extMocks.NewK8sClient(t)
-		key := doguResource.GetObjectKey()
-		key.Name = doguResource.GetReservedPVCName()
-		mockClient.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(assert.AnError)
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
-		upserter := upserter{
-			client:    mockClient,
-			generator: generator,
-		}
-
-		// when
-		_, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-	})
 
 	t.Run("fail when pvc already exists and retrier timeouts", func(t *testing.T) {
 		// given
@@ -213,15 +185,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		dogu.Volumes = nil
 
 		mockClient := extMocks.NewK8sClient(t)
-		key := doguResource.GetObjectKey()
-		key.Name = doguResource.GetReservedPVCName()
-		mockClient.EXPECT().Get(mock.Anything, key, &v1.PersistentVolumeClaim{}).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
-			pvc := object.(*v1.PersistentVolumeClaim)
-			now := metav1.Now()
-			pvc.SetDeletionTimestamp(&now)
-
-			return nil
-		})
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
@@ -243,8 +206,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to wait for existing pvc ldap-reserved to terminate: the maximum number of retries was reached: pvc ldap-reserved still exists")
 	})
 
-	resourceNotFoundError := apierrors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, "")
-
 	t.Run("should throw an error if the resource generator fails to generate a dogu pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
@@ -252,13 +213,9 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		mockClient := extMocks.NewK8sClient(t)
 
-		key := doguResource.GetObjectKey()
-		key.Name = doguResource.GetReservedPVCName()
-		mockClient.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
 		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		generator.On("CreateDoguPVC", doguResource).Return(nil, assert.AnError)
 		upserter := upserter{
 			client:    mockClient,
@@ -280,9 +237,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		mockClient := extMocks.NewK8sClient(t)
 
-		key := doguResource.GetObjectKey()
-		key.Name = doguResource.GetReservedPVCName()
-		mockClient.On("Get", mock.Anything, key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
 		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
@@ -306,9 +260,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		mockClient := extMocks.NewK8sClient(t)
 
-		key := doguResource.GetObjectKey()
-		key.Name = doguResource.GetReservedPVCName()
-		mockClient.On("Get", context.Background(), key, &v1.PersistentVolumeClaim{}).Return(resourceNotFoundError)
 		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
 		mockClient.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	"k8s.io/client-go/rest"
+	"path/filepath"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -223,13 +224,19 @@ func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguReso
 	preUpgradeScriptCmd := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
 
 	ue.normalEventf(toDoguResource, "Copying optional pre-upgrade scripts...")
-	err := copyPreUpgradeScriptFromPodToPod(ctx, execPod, preUpgradeScriptCmd)
+
+	fromDoguPod, err := getPodForDogu(ctx, ue.client, fromDogu)
+	if err != nil {
+		return fmt.Errorf("failed to find pod for dogu %s:%s : %w", fromDogu.GetSimpleName(), fromDogu.Version, err)
+	}
+
+	err = ue.copyPreUpgradeScriptFromPodToPod(ctx, execPod, fromDoguPod, preUpgradeScriptCmd)
 	if err != nil {
 		return err
 	}
 
 	ue.normalEventf(toDoguResource, "Applying optional pre-upgrade scripts...")
-	err = ue.applyPreUpgradeScriptToOlderDogu(ctx, fromDogu, toDoguResource, preUpgradeScriptCmd)
+	err = ue.applyPreUpgradeScriptToOlderDogu(ctx, fromDogu, fromDoguPod, toDoguResource, preUpgradeScriptCmd)
 	if err != nil {
 		return err
 	}
@@ -237,39 +244,41 @@ func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguReso
 	return nil
 }
 
-func copyPreUpgradeScriptFromPodToPod(ctx context.Context, execPod cloudogu.ExecPod, preUpgradeScriptCmd *core.ExposedCommand) error {
-	// the exec pod is based on the image-to-be-upgraded. Thus, upgrade scripts should have the right executable
-	// permissions which should be retained during the file copy.
-	const copyCmd = "/bin/cp"
-	// since we copy to a directory we can here ignore any included directories in the command
-	// example: copy from /resource/myscript.sh to /dogu-reserved/myscript.sh
-	copyPreUpgradeScriptCmd := exec.NewShellCommand(copyCmd, preUpgradeScriptCmd.Command, resource.DoguReservedPath)
-
-	out, err := execPod.Exec(ctx, copyPreUpgradeScriptCmd)
+func (ue *upgradeExecutor) copyPreUpgradeScriptFromPodToPod(ctx context.Context, srcPod cloudogu.ExecPod, destPod *corev1.Pod, preUpgradeScriptCmd *core.ExposedCommand) error {
+	tarCommand := exec.NewShellCommand("/bin/tar", "cf", "-", preUpgradeScriptCmd.Command)
+	archive, err := srcPod.Exec(ctx, tarCommand)
 	if err != nil {
-		return fmt.Errorf("failed to execute '%s' in execpod, stdout: '%s':  %w", copyPreUpgradeScriptCmd.String(), out, err)
+		return fmt.Errorf("failed to get pre-upgrade script from execpod with command '%s', stdout: '%s':  %w", tarCommand.String(), archive, err)
+	}
+
+	preUpgradeScriptPath := filepath.Dir(preUpgradeScriptCmd.Command)
+	createPathCommand := exec.NewShellCommand("/bin/mkdir", "-p", preUpgradeScriptPath)
+	out, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, destPod, createPathCommand, cloudogu.ContainersStarted)
+	if err != nil {
+		return fmt.Errorf("failed to create pre-upgrade target dir with command '%s', stdout: '%s': %w", createPathCommand.String(), out, err)
+	}
+
+	untarCommand := exec.NewShellCommandWithStdin(archive, "tar", "xf", "-", "-C", preUpgradeScriptPath)
+	out, err = ue.doguCommandExecutor.ExecCommandForPod(ctx, destPod, untarCommand, cloudogu.ContainersStarted)
+	if err != nil {
+		return fmt.Errorf("failed to extract pre-upgrade script to dogu pod with command '%s', stdout: '%s': %w", untarCommand.String(), out, err)
 	}
 
 	return nil
 }
 
-func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, fromDogu *core.Dogu, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
+func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, fromDogu *core.Dogu, fromDoguPod *corev1.Pod, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
 	logger := log.FromContext(ctx)
 	logger.Info("applying pre-upgrade script to old dogu")
-
-	fromDoguPod, err := getPodNameForFromDogu(ctx, ue.client, fromDogu)
-	if err != nil {
-		return fmt.Errorf("failed to find fromDoguPod for dogu %s:%s : %w", fromDogu.GetSimpleName(), fromDogu.Version, err)
-	}
 
 	return ue.executePreUpgradeScript(ctx, fromDoguPod, preUpgradeCmd, fromDogu.Version, toDoguResource.Spec.Version)
 }
 
 func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion, toVersion string) error {
 	logger := log.FromContext(ctx)
-	scriptPath := fmt.Sprintf("%s%s", resource.DoguReservedPath, cmd.Command)
+
 	// finally execute the copied pre-upgrade script, due to the dogu-reserved location relative file paths do not work
-	preUpgradeCmd := exec.NewShellCommand(scriptPath, fromVersion, toVersion)
+	preUpgradeCmd := exec.NewShellCommand(cmd.Command, fromVersion, toVersion)
 
 	logger.Info("Executing pre-upgrade command " + preUpgradeCmd.String())
 	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, cloudogu.PodReady)
@@ -280,10 +289,10 @@ func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod 
 	return nil
 }
 
-func getPodNameForFromDogu(ctx context.Context, cli client.Client, fromDogu *core.Dogu) (*corev1.Pod, error) {
+func getPodForDogu(ctx context.Context, cli client.Client, dogu *core.Dogu) (*corev1.Pod, error) {
 	fromDoguLabels := map[string]string{
-		k8sv1.DoguLabelName:    fromDogu.GetSimpleName(),
-		k8sv1.DoguLabelVersion: fromDogu.Version,
+		k8sv1.DoguLabelName:    dogu.GetSimpleName(),
+		k8sv1.DoguLabelVersion: dogu.Version,
 	}
 
 	return k8sv1.GetPodForLabels(ctx, cli, fromDoguLabels)
@@ -323,7 +332,7 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter clo
 	}
 
 	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
-	execPod, err := ue.execPodFactory.NewExecPod(cloudogu.VolumeModeUpgrade, toDoguResource, toDogu)
+	execPod, err := ue.execPodFactory.NewExecPod(toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
