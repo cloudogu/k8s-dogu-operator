@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -159,25 +158,6 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 }
 
 func Test_upserter_UpsertDoguPVCs(t *testing.T) {
-	t.Run("fail when creating a reserved pvc", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-		dogu.Volumes = nil
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateReservedPVC", doguResource).Return(nil, assert.AnError)
-		upserter := upserter{
-			generator: generator,
-		}
-
-		// when
-		_, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-	})
-
 	t.Run("fail when pvc already exists and retrier timeouts", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
@@ -187,7 +167,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		mockClient := extMocks.NewK8sClient(t)
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		upserter := upserter{
 			client:    mockClient,
 			generator: generator,
@@ -213,8 +192,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		mockClient := extMocks.NewK8sClient(t)
 
-		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
-
 		generator := mocks.NewDoguResourceGenerator(t)
 		generator.On("CreateDoguPVC", doguResource).Return(nil, assert.AnError)
 		upserter := upserter{
@@ -230,29 +207,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to generate pvc")
 	})
 
-	t.Run("should throw an error if the resource generator fails to generate a dogu reserved pvc", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-
-		mockClient := extMocks.NewK8sClient(t)
-
-		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(assert.AnError)
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
-		upserter := upserter{
-			client:    mockClient,
-			generator: generator,
-		}
-
-		// when
-		_, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-	})
-
 	t.Run("fail when upserting a dogu pvc", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
@@ -260,11 +214,9 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		mockClient := extMocks.NewK8sClient(t)
 
-		mockClient.On("Create", mock.Anything, readLdapDoguExpectedReservedPVC(t)).Return(nil)
 		mockClient.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.PersistentVolumeClaim{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		generator.On("CreateDoguPVC", doguResource).Return(readLdapDoguExpectedDoguPVC(t), nil)
 		upserter := upserter{
 			client:    mockClient,
@@ -287,7 +239,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		generator := mocks.NewDoguResourceGenerator(t)
 		expectedDoguPVC := readLdapDoguExpectedDoguPVC(t)
 		generator.On("CreateDoguPVC", doguResource).Return(expectedDoguPVC, nil)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		upserter := upserter{
 			client:    testClient,
 			generator: generator,
@@ -320,7 +271,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		generator := mocks.NewDoguResourceGenerator(t)
 		expectedDoguPVC := readLdapDoguExpectedDoguPVC(t)
 		generator.On("CreateDoguPVC", doguResource).Return(expectedDoguPVC, nil)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
 		upserter := upserter{
 			client:    testClient,
 			generator: generator,
@@ -332,29 +282,6 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, expectedDoguPVC, actualDoguPVC)
-	})
-
-	t.Run("success when only creating reserved pvc", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		dogu := readLdapDogu(t)
-		dogu.Volumes = nil
-
-		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
-
-		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateReservedPVC", doguResource).Return(readLdapDoguExpectedReservedPVC(t), nil)
-		upserter := upserter{
-			client:    testClient,
-			generator: generator,
-		}
-
-		// when
-		actualDoguPVC, err := upserter.UpsertDoguPVCs(context.Background(), doguResource, dogu)
-
-		// then
-		require.NoError(t, err)
-		assert.Nil(t, actualDoguPVC)
 	})
 }
 
