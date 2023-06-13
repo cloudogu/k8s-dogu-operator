@@ -11,12 +11,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	client3 "go.etcd.io/etcd/client/v2"
+	regclient "go.etcd.io/etcd/client/v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 	ctrl "sigs.k8s.io/controller-runtime"
-	client2 "sigs.k8s.io/controller-runtime/pkg/client"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -131,7 +131,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, client2.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
@@ -153,7 +153,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 
-		keyNotFoundErr := client3.Error{Code: client3.ErrorCodeKeyNotFound}
+		keyNotFoundErr := regclient.Error{Code: regclient.ErrorCodeKeyNotFound}
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(nil, keyNotFoundErr)
 		managerWithMocks.deleteManager.client = client
 
@@ -163,7 +163,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, client2.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
@@ -184,7 +184,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, client2.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
@@ -205,7 +205,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, client2.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
@@ -226,7 +226,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, client2.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
