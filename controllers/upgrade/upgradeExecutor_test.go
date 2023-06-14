@@ -34,9 +34,15 @@ var testCtx = context.TODO()
 var testRestConfig = &rest.Config{}
 
 var (
-	copyCmd1       = exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
-	preUpgradeCmd  = exec.NewShellCommand("/tmp/dogu-reserved/pre-upgrade.sh", "4.2.3-10", "4.2.3-11")
+	tarCmd = exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
+
+	mkDirCmd = exec.NewShellCommand("/bin/mkdir", "-p", "/")
+
+	untarCmd = exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/")
+
+	preUpgradeCmd  = exec.NewShellCommand("/pre-upgrade.sh", "4.2.3-10", "4.2.3-11")
 	postUpgradeCmd = exec.NewShellCommand("/post-upgrade.sh", "4.2.3-10", "4.2.3-11")
+	archive        = bytes.NewBufferString("compressed data")
 	mockCmdOutput  = bytes.NewBufferString("")
 )
 
@@ -113,13 +119,19 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
-		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+		execPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, cloudogu.ContainersStarted).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("dir created"), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("untar archive"), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
+			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil).
+			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, cloudogu.ContainersStarted).
+			Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -198,13 +210,19 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
-		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+		execPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, cloudogu.ContainersStarted).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("dir created"), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("untar archive"), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
+			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil).
+			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, cloudogu.ContainersStarted).
+			Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -282,12 +300,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
-		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+		execPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("dir created"), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("untar archive"), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
+			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, assert.AnError)
@@ -485,12 +508,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 			execPod := mocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Once().Return(nil)
-			execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+			execPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 			execPod.On("Delete", testCtx).Once().Return(nil)
 
 			mockExecutor := mocks.NewCommandExecutor(t)
 			mockExecutor.
-				On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).Once().Return(mockCmdOutput, nil)
+				On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+				Once().Return(bytes.NewBufferString("dir created"), nil).
+				On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+				Once().Return(bytes.NewBufferString("untar archive"), nil).
+				On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
+				Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
 
 			k8sFileEx := mocks.NewFileExtractor(t)
 			k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
@@ -564,12 +592,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 			execPod := mocks.NewExecPod(t)
 			execPod.On("Create", testCtx).Once().Return(nil)
-			execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+			execPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 			execPod.On("Delete", testCtx).Once().Return(nil)
 
 			mockExecutor := mocks.NewCommandExecutor(t)
 			mockExecutor.
-				On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).Once().Return(mockCmdOutput, nil)
+				On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+				Once().Return(bytes.NewBufferString("dir created"), nil).
+				On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+				Once().Return(bytes.NewBufferString("untar archive"), nil).
+				On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
+				Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
 
 			k8sFileEx := mocks.NewFileExtractor(t)
 			k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
@@ -648,13 +681,19 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
-		execPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+		execPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).Once().Return(mockCmdOutput, nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, cloudogu.ContainersStarted).Once().Return(bytes.NewBufferString("ouch"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("dir created"), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("untar archive"), nil).
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
+			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil).
+			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("ouch"), assert.AnError)
 
 		k8sFileEx := mocks.NewFileExtractor(t)
 		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
@@ -719,7 +758,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment).
+			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -732,7 +771,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		execPod := mocks.NewExecPod(t)
 		execPod.On("Create", testCtx).Once().Return(nil)
-		execPod.On("Exec", testCtx, copyCmd1).Once().Return("oh noez", assert.AnError)
+		execPod.On("Exec", testCtx, tarCmd).Once().Return(bytes.NewBufferString("oh noez"), assert.AnError)
 		execPod.On("Delete", testCtx).Once().Return(nil)
 
 		execPodFactory := mocks.NewExecPodFactory(t)
@@ -771,7 +810,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to execute '/bin/cp")
+		assert.ErrorContains(t, err, "pre-upgrade failed")
 		assert.ErrorContains(t, err, "oh noez")
 	})
 	t.Run("should fail during pre-upgrade script application", func(t *testing.T) {
@@ -1303,7 +1342,6 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		mockExecPod := mocks.NewExecPod(t)
-		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
 		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(bytes.NewBufferString("oopsie woopsie"), assert.AnError)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
@@ -1355,11 +1393,9 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		mockExecPod := mocks.NewExecPod(t)
-		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
-		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(bytes.NewBufferString("compressed data"), nil)
+		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mkDirCmd := exec.NewShellCommand("/bin/mkdir", "-p", "/")
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
 			Once().Return(bytes.NewBufferString("failed to create dir"), assert.AnError)
@@ -1393,17 +1429,13 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		mockExecPod := mocks.NewExecPod(t)
-		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
-		archive := bytes.NewBufferString("compressed data")
 		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mkDirCmd := exec.NewShellCommand("/bin/mkdir", "-p", "/")
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
 			Once().Return(bytes.NewBufferString("dir created"), nil)
 
-		untarCmd := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/")
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
 			Once().Return(bytes.NewBufferString("failed to untar"), assert.AnError)
@@ -1434,26 +1466,21 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 			WithScheme(getTestScheme()).
 			WithObjects(redmineOldPod).
 			Build()
-		toDoguResource := &k8sv1.Dogu{}
+		toDoguResource := &k8sv1.Dogu{Spec: k8sv1.DoguSpec{Version: "4.2.3-11"}}
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		mockExecPod := mocks.NewExecPod(t)
-		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
-		archive := bytes.NewBufferString("compressed data")
 		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mkDirCmd := exec.NewShellCommand("/bin/mkdir", "-p", "/")
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
 			Once().Return(bytes.NewBufferString("dir created"), nil)
 
-		untarCmd := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/")
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
 			Once().Return(bytes.NewBufferString("untar archive"), nil)
 
-		preUpgradeCmd := exec.NewShellCommand("/pre-upgrade.sh", fromDogu.Version, toDoguResource.Spec.Version)
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
 			Once().Return(bytes.NewBufferString("pre upgrade failed"), assert.AnError)
@@ -1477,7 +1504,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to execute '/pre-upgrade.sh 4.2.3-10 ': output: 'pre upgrade failed'")
+		assert.ErrorContains(t, err, "failed to execute '/pre-upgrade.sh 4.2.3-10 4.2.3-11': output: 'pre upgrade failed'")
 	})
 	t.Run("should succeed after successful script copy", func(t *testing.T) {
 		// given
@@ -1485,26 +1512,21 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 			WithScheme(getTestScheme()).
 			WithObjects(redmineOldPod).
 			Build()
-		toDoguResource := &k8sv1.Dogu{}
+		toDoguResource := &k8sv1.Dogu{Spec: k8sv1.DoguSpec{Version: "4.2.3-11"}}
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		mockExecPod := mocks.NewExecPod(t)
-		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
-		archive := bytes.NewBufferString("compressed data")
 		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
-		mkDirCmd := exec.NewShellCommand("/bin/mkdir", "-p", "/")
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
 			Once().Return(bytes.NewBufferString("dir created"), nil)
 
-		untarCmd := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/")
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
 			Once().Return(bytes.NewBufferString("untar archive"), nil)
 
-		preUpgradeCmd := exec.NewShellCommand("/pre-upgrade.sh", fromDogu.Version, toDoguResource.Spec.Version)
 		mockExecutor.
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
 			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
