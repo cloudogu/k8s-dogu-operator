@@ -72,11 +72,7 @@ func NewDoguRequeueHandler(client client.Client, recorder record.EventRecorder, 
 }
 
 // Handle takes an error and handles the requeue process for the current dogu operation.
-func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error, onRequeue func(dogu *k8sv1.Dogu)) (ctrl.Result, error) {
-	return d.handleRequeue(ctx, contextMessage, doguResource, err, onRequeue)
-}
-
-func (d *doguRequeueHandler) handleRequeue(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, originalErr error, onRequeue func(dogu *k8sv1.Dogu)) (ctrl.Result, error) {
+func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, originalErr error, onRequeue func(dogu *k8sv1.Dogu)) (ctrl.Result, error) {
 	if !shouldRequeue(originalErr) {
 		return ctrl.Result{}, nil
 	}
