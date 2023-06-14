@@ -423,9 +423,12 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		EtcdDoguRegistry.Mock.On("Enable", upgradeLdapToDoguDescriptor).Once().Return(nil)
 		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
 
+		archive := bytes.NewBufferString("compressed data")
 		CommandExecutor.
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/tmp/dogu-reserved/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.PodReady).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh"), cloudogu.ContainersStarted).Once().Return(archive, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/mkdir", "-p", "/"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.PodReady).Once().Return(&bytes.Buffer{}, nil).
 			On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.ContainersStarted).Once().Run(func(args mock.Arguments) {
 			defer GinkgoRecover()
 			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 1080)
