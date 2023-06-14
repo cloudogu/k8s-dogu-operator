@@ -1293,21 +1293,25 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.NoError(t, err)
 	})
-	t.Run("should fail if copy from pod to pod fails", func(t *testing.T) {
+	t.Run("should fail if tar from exec pod fails", func(t *testing.T) {
 		// given
+		cli := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(redmineOldPod).
+			Build()
 		toDoguResource := &k8sv1.Dogu{}
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		mockExecPod := mocks.NewExecPod(t)
-		copy1 := exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved")
-		mockExecPod.On("Exec", testCtx, copy1).Once().Return("oopsie woopsie", assert.AnError)
+		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
+		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(bytes.NewBufferString("oopsie woopsie"), assert.AnError)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once()
 
-		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder}
+		upgradeExecutor := upgradeExecutor{client: cli, eventRecorder: eventRecorder}
 
 		// when
 		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
@@ -1315,25 +1319,144 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to execute '/bin/cp /pre-upgrade.sh /tmp/dogu-reserved' in execpod, stdout: 'oopsie woopsie'")
+		assert.ErrorContains(t, err, "failed to get pre-upgrade script from execpod with command '/bin/tar cf - /pre-upgrade.sh', stdout: 'oopsie woopsie'")
 	})
+	t.Run("should fail to get Pod from dogu when pod is missing", func(t *testing.T) {
+		// given
+		cli := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects().
+			Build()
+		toDoguResource := &k8sv1.Dogu{}
+		fromDogu := readTestDataDogu(t, redmineBytes)
+		toDogu := readTestDataDogu(t, redmineBytes)
+
+		eventRecorder := extMocks.NewEventRecorder(t)
+		typeNormal := corev1.EventTypeNormal
+		upgradeEvent := EventReason
+		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once()
+
+		upgradeExecutor := upgradeExecutor{client: cli, eventRecorder: eventRecorder}
+
+		// when
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, nil)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to find pod for dogu redmine:4.2.3-10 : found no pods for labels map[dogu.name:redmine dogu.version:4.2.3-10]")
+	})
+	t.Run("should fail if target directory creation fails", func(t *testing.T) {
+		// given
+		cli := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(redmineOldPod).
+			Build()
+		toDoguResource := &k8sv1.Dogu{}
+		fromDogu := readTestDataDogu(t, redmineBytes)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		mockExecPod := mocks.NewExecPod(t)
+		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
+		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(bytes.NewBufferString("compressed data"), nil)
+
+		mockExecutor := mocks.NewCommandExecutor(t)
+		mkDirCmd := exec.NewShellCommand("/bin/mkdir", "-p", "/")
+		mockExecutor.
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("failed to create dir"), assert.AnError)
+
+		eventRecorder := extMocks.NewEventRecorder(t)
+		typeNormal := corev1.EventTypeNormal
+		upgradeEvent := EventReason
+		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once()
+
+		upgradeExecutor := upgradeExecutor{
+			client:              cli,
+			eventRecorder:       eventRecorder,
+			doguCommandExecutor: mockExecutor,
+		}
+
+		// when
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to create pre-upgrade target dir with command '/bin/mkdir -p /', stdout: 'failed to create dir'")
+	})
+	t.Run("should fail if untar command fails", func(t *testing.T) {
+		// given
+		cli := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(redmineOldPod).
+			Build()
+		toDoguResource := &k8sv1.Dogu{}
+		fromDogu := readTestDataDogu(t, redmineBytes)
+		toDogu := readTestDataDogu(t, redmineBytes)
+		mockExecPod := mocks.NewExecPod(t)
+		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
+		archive := bytes.NewBufferString("compressed data")
+		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
+
+		mockExecutor := mocks.NewCommandExecutor(t)
+		mkDirCmd := exec.NewShellCommand("/bin/mkdir", "-p", "/")
+		mockExecutor.
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("dir created"), nil)
+
+		untarCmd := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/")
+		mockExecutor.
+			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("failed to untar"), assert.AnError)
+
+		eventRecorder := extMocks.NewEventRecorder(t)
+		typeNormal := corev1.EventTypeNormal
+		upgradeEvent := EventReason
+		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once()
+
+		upgradeExecutor := upgradeExecutor{
+			client:              cli,
+			eventRecorder:       eventRecorder,
+			doguCommandExecutor: mockExecutor,
+		}
+
+		// when
+		err := upgradeExecutor.applyPreUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu, mockExecPod)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to extract pre-upgrade script to dogu pod with command '/bin/tar xf - -C /', stdout: 'failed to untar'")
+	})
+
 	t.Run("should fail during pre-upgrade execution", func(t *testing.T) {
 		// given
 		cli := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			WithObjects(redmineOldPod).
 			Build()
+		toDoguResource := &k8sv1.Dogu{}
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
 		mockExecPod := mocks.NewExecPod(t)
-		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
+		archive := bytes.NewBufferString("compressed data")
+		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
+		mkDirCmd := exec.NewShellCommand("/bin/mkdir", "-p", "/")
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).Once().Return(bytes.NewBufferString("uhoh"), assert.AnError)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("dir created"), nil)
+
+		untarCmd := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/")
+		mockExecutor.
+			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("untar archive"), nil)
+
+		preUpgradeCmd := exec.NewShellCommand("/pre-upgrade.sh", fromDogu.Version, toDoguResource.Spec.Version)
+		mockExecutor.
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
+			Once().Return(bytes.NewBufferString("pre upgrade failed"), assert.AnError)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
@@ -1354,7 +1477,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to execute '/tmp/dogu-reserved/pre-upgrade.sh 4.2.3-10 4.2.3-11': output: 'uhoh'")
+		assert.ErrorContains(t, err, "failed to execute '/pre-upgrade.sh 4.2.3-10 ': output: 'pre upgrade failed'")
 	})
 	t.Run("should succeed after successful script copy", func(t *testing.T) {
 		// given
@@ -1362,17 +1485,29 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 			WithScheme(getTestScheme()).
 			WithObjects(redmineOldPod).
 			Build()
+		toDoguResource := &k8sv1.Dogu{}
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
-		toDogu.Version = redmineUpgradeVersion
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
 		mockExecPod := mocks.NewExecPod(t)
-		mockExecPod.On("Exec", testCtx, copyCmd1).Once().Return("", nil)
+		tarCmd := exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
+		archive := bytes.NewBufferString("compressed data")
+		mockExecPod.On("Exec", testCtx, tarCmd).Once().Return(archive, nil)
 
 		mockExecutor := mocks.NewCommandExecutor(t)
+		mkDirCmd := exec.NewShellCommand("/bin/mkdir", "-p", "/")
 		mockExecutor.
-			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).Once().Return(mockCmdOutput, nil)
+			On("ExecCommandForPod", testCtx, redmineOldPod, mkDirCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("dir created"), nil)
+
+		untarCmd := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/")
+		mockExecutor.
+			On("ExecCommandForPod", testCtx, redmineOldPod, untarCmd, cloudogu.ContainersStarted).
+			Once().Return(bytes.NewBufferString("untar archive"), nil)
+
+		preUpgradeCmd := exec.NewShellCommand("/pre-upgrade.sh", fromDogu.Version, toDoguResource.Spec.Version)
+		mockExecutor.
+			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, cloudogu.PodReady).
+			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal

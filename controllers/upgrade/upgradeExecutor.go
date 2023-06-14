@@ -267,22 +267,22 @@ func (ue *upgradeExecutor) copyPreUpgradeScriptFromPodToPod(ctx context.Context,
 	return nil
 }
 
-func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(ctx context.Context, fromDogu *core.Dogu, fromDoguPod *corev1.Pod, toDoguResource *k8sv1.Dogu, preUpgradeCmd *core.ExposedCommand) error {
+func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(
+	ctx context.Context,
+	fromDogu *core.Dogu,
+	fromDoguPod *corev1.Pod,
+	toDoguResource *k8sv1.Dogu,
+	preUpgradeCmd *core.ExposedCommand,
+) error {
 	logger := log.FromContext(ctx)
 	logger.Info("applying pre-upgrade script to old dogu")
 
-	return ue.executePreUpgradeScript(ctx, fromDoguPod, preUpgradeCmd, fromDogu.Version, toDoguResource.Spec.Version)
-}
+	preUpgradeShellCmd := exec.NewShellCommand(preUpgradeCmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
 
-func (ue *upgradeExecutor) executePreUpgradeScript(ctx context.Context, fromPod *corev1.Pod, cmd *core.ExposedCommand, fromVersion, toVersion string) error {
-	logger := log.FromContext(ctx)
-
-	preUpgradeCmd := exec.NewShellCommand(cmd.Command, fromVersion, toVersion)
-
-	logger.Info("Executing pre-upgrade command " + preUpgradeCmd.String())
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromPod, preUpgradeCmd, cloudogu.PodReady)
+	logger.Info("Executing pre-upgrade command " + preUpgradeShellCmd.String())
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromDoguPod, preUpgradeShellCmd, cloudogu.PodReady)
 	if err != nil {
-		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeCmd, outBuf, err)
+		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeShellCmd, outBuf, err)
 	}
 
 	return nil
