@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
@@ -266,15 +267,17 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
-		var reservedPvc *v1.PersistentVolumeClaim
+		var doguPvc *v1.PersistentVolumeClaim
 		now := metav1.Now()
-		reservedPvc = readLdapDoguExpectedDoguPVC(t)
-		reservedPvc.DeletionTimestamp = &now
-		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource, reservedPvc).Build()
+		doguPvc = readLdapDoguExpectedDoguPVC(t)
+		doguPvc.DeletionTimestamp = &now
+		doguPvc.Finalizers = []string{"myFinalizer"}
+		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource, doguPvc).WithStatusSubresource(&k8sv1.Dogu{}).Build()
 		timer := time.NewTimer(time.Second * 5)
 		go func() {
 			<-timer.C
-			err := testClient.Delete(context.Background(), reservedPvc)
+			patch := client.RawPatch(types.JSONPatchType, []byte(`[{"op": "remove", "path": "/metadata/finalizers"}]`))
+			err := testClient.Patch(context.Background(), doguPvc, patch)
 			require.NoError(t, err)
 		}()
 
