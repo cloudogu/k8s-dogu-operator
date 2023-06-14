@@ -185,7 +185,7 @@ func (d *Dogu) GetObjectMeta() *metav1.ObjectMeta {
 
 // Update updates the dogu's status property in the cluster state.
 func (d *Dogu) Update(ctx context.Context, client client.Client) error {
-	updateError := client.Update(ctx, d)
+	updateError := client.Status().Update(ctx, d)
 	if updateError != nil {
 		return fmt.Errorf("failed to update dogu status: %w", updateError)
 	}

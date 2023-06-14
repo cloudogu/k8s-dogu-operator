@@ -47,7 +47,7 @@ type doguInstallManagerWithMocks struct {
 }
 
 func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguInstallManagerWithMocks {
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).Build()
 	upserter := mocks.NewResourceUpserter(t)
 	imageRegistry := mocks.NewImageRegistry(t)
 	doguRegistrator := mocks.NewDoguRegistrator(t)

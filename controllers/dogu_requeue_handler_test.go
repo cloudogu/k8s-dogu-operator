@@ -106,7 +106,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}, Namespace: namespace},
 			Status:     k8sv1.DoguStatus{},
 		}
-		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(doguResource).Build()
 
 		event := &v1.Event{
 			TypeMeta:   metav1.TypeMeta{},
@@ -154,7 +154,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}, Namespace: namespace},
 			Status:     k8sv1.DoguStatus{},
 		}
-		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(doguResource).Build()
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(doguResource).Build()
 
 		event := &v1.Event{
 			TypeMeta:   metav1.TypeMeta{},

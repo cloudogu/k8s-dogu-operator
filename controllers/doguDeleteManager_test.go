@@ -117,7 +117,8 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 	t.Run("successfully delete a dogu", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
+		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
+		//ldapName := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(ctx, ldapDogu).Return(nil)
@@ -150,7 +151,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 	t.Run("failure during fetching local dogu should not interrupt the delete routine", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
+		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 
 		keyNotFoundErr := regclient.Error{Code: regclient.ErrorCodeKeyNotFound}
@@ -170,7 +171,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 	t.Run("failure during service account removal should not interrupt the delete routine", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
+		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(ctx, ldapDogu).Return(assert.AnError)
@@ -191,7 +192,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 	t.Run("failure during unregister should not interrupt the delete routine", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
+		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(ctx, ldapDogu).Return(nil)
@@ -212,7 +213,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 	t.Run("failure during exposed port removal should not interrupt the delete routine", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ldapCr).Build()
+		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(ctx, ldapDogu).Return(nil)
