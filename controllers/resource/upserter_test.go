@@ -2,6 +2,8 @@ package resource
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 	"time"
 
@@ -162,11 +164,19 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
 		dogu := readLdapDogu(t)
-		dogu.Volumes = nil
 
 		mockClient := extMocks.NewK8sClient(t)
+		key := doguResource.GetObjectKey()
+		mockClient.EXPECT().Get(context.TODO(), key, &v1.PersistentVolumeClaim{}).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
+			pvc := object.(*v1.PersistentVolumeClaim)
+			now := metav1.Now()
+			pvc.SetDeletionTimestamp(&now)
+
+			return nil
+		})
 
 		generator := mocks.NewDoguResourceGenerator(t)
+		generator.EXPECT().CreateDoguPVC(doguResource).Return(readLdapDoguExpectedDoguPVC(t), nil)
 		upserter := upserter{
 			client:    mockClient,
 			generator: generator,
@@ -182,7 +192,7 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to wait for existing pvc ldap-reserved to terminate: the maximum number of retries was reached: pvc ldap-reserved still exists")
+		assert.ErrorContains(t, err, "failed to wait for existing pvc ldap to terminate: the maximum number of retries was reached: pvc ldap still exists")
 	})
 
 	t.Run("should throw an error if the resource generator fails to generate a dogu pvc", func(t *testing.T) {
