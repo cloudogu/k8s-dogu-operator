@@ -103,7 +103,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		// given
 		scheme := getTestScheme()
 		doguResource := &k8sv1.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: "myName", Namespace: namespace},
 			Status:     k8sv1.DoguStatus{},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(doguResource).Build()
@@ -130,7 +130,10 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 		myError := myRequeueableError{}
 
-		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
+		requeueCalled := false
+		onRequeue := func(doguResource *k8sv1.Dogu) {
+			requeueCalled = true
+		}
 
 		// when
 		result, err := handler.Handle(context.Background(), "my context", doguResource, myError, onRequeue)
@@ -138,7 +141,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, result.RequeueAfter, time.Second*10)
-		assert.Equal(t, "true", doguResource.Labels["test"])
+		assert.True(t, requeueCalled, "Requeue was not called.")
 		mock.AssertExpectationsForObjects(t, eventRecorder)
 
 		eventList, err := fakeNonCacheClient.CoreV1().Events(namespace).List(context.Background(), metav1.ListOptions{})
@@ -151,7 +154,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		// given
 		scheme := getTestScheme()
 		doguResource := &k8sv1.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: "myName", Namespace: namespace},
 			Status:     k8sv1.DoguStatus{},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(doguResource).Build()
@@ -182,7 +185,10 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		myMultipleErrors := new(multierror.Error)
 		myMultipleErrors.Errors = []error{myError, myError2}
 
-		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
+		requeueCalled := false
+		onRequeue := func(doguResource *k8sv1.Dogu) {
+			requeueCalled = true
+		}
 
 		// when
 		result, err := handler.Handle(context.Background(), "my context", doguResource, myMultipleErrors, onRequeue)
@@ -190,7 +196,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, result.RequeueAfter, time.Second*10)
-		assert.Equal(t, "true", doguResource.Labels["test"])
+		assert.True(t, requeueCalled, "Requeue was not called.")
 		mock.AssertExpectationsForObjects(t, eventRecorder)
 
 		eventList, err := fakeNonCacheClient.CoreV1().Events(namespace).List(context.Background(), metav1.ListOptions{})
