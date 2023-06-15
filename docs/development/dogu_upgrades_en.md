@@ -1,12 +1,12 @@
 # Developing Dogu upgrades
 
-This document discusses development decisions related to upgrades of Dogus.
+This document discusses development decisions related to upgrades of Dogus. 
 
 ## Pre-Upgrade Scripts
 
 ### Challenge: Difference between file system layout and current user
 
-Copying the pre-upgrade script from the new container to the old container results in a problem if the file cannot be copied for
+Copying the pre-upgrade script from the new container to the old container results in a problem if the file 
 cannot be copied for rights reasons, such as when the following file system is imagined:
 
 ```
