@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-host-change/pkg/alias"
-	"k8s.io/client-go/rest"
-	"path/filepath"
-
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -35,6 +34,8 @@ const (
 // upgradeStartupProbeFailureThresholdRetries contains the number of times how often a startup probe may fail. This
 // value will be multiplied with 10 seconds for each timeout so that f. i. 1080 timeouts lead to a threshold of 3 hours.
 const upgradeStartupProbeFailureThresholdRetries = int32(1080)
+
+const preUpgradeScriptDir = "/tmp/pre-upgrade"
 
 type upgradeExecutor struct {
 	client                client.Client
@@ -251,14 +252,13 @@ func (ue *upgradeExecutor) copyPreUpgradeScriptFromPodToPod(ctx context.Context,
 		return fmt.Errorf("failed to get pre-upgrade script from execpod with command '%s', stdout: '%s':  %w", tarCommand.String(), archive, err)
 	}
 
-	preUpgradeScriptPath := filepath.Dir(preUpgradeScriptCmd.Command)
-	createPathCommand := exec.NewShellCommand("/bin/mkdir", "-p", preUpgradeScriptPath)
+	createPathCommand := exec.NewShellCommand("/bin/mkdir", "-p", preUpgradeScriptDir)
 	out, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, destPod, createPathCommand, cloudogu.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to create pre-upgrade target dir with command '%s', stdout: '%s': %w", createPathCommand.String(), out, err)
 	}
 
-	untarCommand := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", preUpgradeScriptPath)
+	untarCommand := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", preUpgradeScriptDir)
 	out, err = ue.doguCommandExecutor.ExecCommandForPod(ctx, destPod, untarCommand, cloudogu.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to extract pre-upgrade script to dogu pod with command '%s', stdout: '%s': %w", untarCommand.String(), out, err)
@@ -277,7 +277,9 @@ func (ue *upgradeExecutor) applyPreUpgradeScriptToOlderDogu(
 	logger := log.FromContext(ctx)
 	logger.Info("applying pre-upgrade script to old dogu")
 
-	preUpgradeShellCmd := exec.NewShellCommand(preUpgradeCmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
+	preUpgradeScriptPath := filepath.Join(preUpgradeScriptDir, filepath.Base(preUpgradeCmd.Command))
+
+	preUpgradeShellCmd := exec.NewShellCommand(preUpgradeScriptPath, fromDogu.Version, toDoguResource.Spec.Version)
 
 	logger.Info("Executing pre-upgrade command " + preUpgradeShellCmd.String())
 	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, fromDoguPod, preUpgradeShellCmd, cloudogu.PodReady)

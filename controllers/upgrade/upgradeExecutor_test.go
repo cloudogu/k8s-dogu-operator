@@ -36,11 +36,11 @@ var testRestConfig = &rest.Config{}
 var (
 	tarCmd = exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh")
 
-	mkDirCmd = exec.NewShellCommand("/bin/mkdir", "-p", "/")
+	mkDirCmd = exec.NewShellCommand("/bin/mkdir", "-p", "/tmp/pre-upgrade")
 
-	untarCmd = exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/")
+	untarCmd = exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/tmp/pre-upgrade")
 
-	preUpgradeCmd  = exec.NewShellCommand("/pre-upgrade.sh", "4.2.3-10", "4.2.3-11")
+	preUpgradeCmd  = exec.NewShellCommand("/tmp/pre-upgrade/pre-upgrade.sh", "4.2.3-10", "4.2.3-11")
 	postUpgradeCmd = exec.NewShellCommand("/post-upgrade.sh", "4.2.3-10", "4.2.3-11")
 	archive        = bytes.NewBufferString("compressed data")
 	mockCmdOutput  = bytes.NewBufferString("")
@@ -1417,7 +1417,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to create pre-upgrade target dir with command '/bin/mkdir -p /', stdout: 'failed to create dir'")
+		assert.ErrorContains(t, err, "failed to create pre-upgrade target dir with command '/bin/mkdir -p /tmp/pre-upgrade', stdout: 'failed to create dir'")
 	})
 	t.Run("should fail if untar command fails", func(t *testing.T) {
 		// given
@@ -1457,7 +1457,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to extract pre-upgrade script to dogu pod with command '/bin/tar xf - -C /', stdout: 'failed to untar'")
+		assert.ErrorContains(t, err, "failed to extract pre-upgrade script to dogu pod with command '/bin/tar xf - -C /tmp/pre-upgrade', stdout: 'failed to untar'")
 	})
 
 	t.Run("should fail during pre-upgrade execution", func(t *testing.T) {
@@ -1504,7 +1504,7 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to execute '/pre-upgrade.sh 4.2.3-10 4.2.3-11': output: 'pre upgrade failed'")
+		assert.ErrorContains(t, err, "failed to execute '/tmp/pre-upgrade/pre-upgrade.sh 4.2.3-10 4.2.3-11': output: 'pre upgrade failed'")
 	})
 	t.Run("should succeed after successful script copy", func(t *testing.T) {
 		// given
