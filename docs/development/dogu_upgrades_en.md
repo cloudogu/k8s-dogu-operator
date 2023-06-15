@@ -16,7 +16,7 @@ drwxr-xr-x 1 root root 4.0K Dec 13 10:47 .
 ...
 
 ls -lha /tmp/dogu-reserved/
-drwxrwsr-x 3 root doguuser 1.0K Dec 13 10:48 .
+drwxrwxr-x 3 root doguuser 1.0K Dec 13 10:48 .
 -rwxr-xr-x 1 doguuser doguuser 704 Dec 13 10:48 pre-upgrade.sh
 ...
 ```
