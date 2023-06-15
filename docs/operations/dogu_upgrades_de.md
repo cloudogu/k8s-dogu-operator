@@ -93,6 +93,10 @@ Dies schließt insbesondere das Shell-Sourcing anderer Dateien aus, da hierbei h
      jeweils aktuellen Container-Benutzer sowie die Ausführung des Executables möglich ist.
 - Das Pre-Upgrade-Skript wird durch den aktuellen Container-User im alten Dogu ausgeführt
 
+#### Limitierungen
+
+Die Größe des Pre-Upgrade-Skriptes ist lediglich durch den Arbeitsspeicher limitiert.
+
 ## Post-Upgrade Skript
 
 Im Gegensatz zum Pre-Upgrade-Skript unterliegt das Post-Upgrade-Skript nur geringen Einschränkungen, da sich das Skript in der Regel bereits an seinem Ausführungsort befindet.

@@ -92,6 +92,10 @@ This excludes in particular the shell sourcing of other files, since here freque
      container user and the execution of the executable is possible.
 - The pre-upgrade script is executed by the current container user in the old dogu
 
+#### Limitations
+
+The size of the pre-upgrade script is only limited by the RAM (random access memory).
+
 ## Post-Upgrade Script
 
 Unlike the pre-upgrade script, the post-upgrade script is subject to only minor constraints because the script is usually already in its execution location.
