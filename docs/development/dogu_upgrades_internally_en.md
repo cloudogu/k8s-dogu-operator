@@ -32,7 +32,7 @@ To do this, the dogu operator starts an ExecPod of the new dogu during the upgra
 ExecPods use the image of the new Dogu version, but are started with Sleep Infinity.
 
 ### Running the pre-upgrade script
-The pre-upgrade script is then run by the dogu operator from the original path in the old container.
+The pre-upgrade script is then run by the dogu operator from the `/tmp/pre-upgrade` path in the old container.
 
 ## Post-Upgrade
 

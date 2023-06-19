@@ -33,7 +33,7 @@ Dafür startet der Dogu-Operator beim Upgrade einen ExecPod des neuen Dogus und 
 ExecPods benutzen das Image der neuen Dogu-Version, werden allerdings mit Sleep Infinity gestartet.
 
 ### Ausführen des Pre-Upgrade-Skripts
-Das Pre-Upgrade-Skript wird dann im alten Container vom ursprünglichen Pfad aus durch den Dogu-Operator ausgeführt.
+Das Pre-Upgrade-Skript wird dann im alten Container von dem Pfad `/tmp/pre-upgrade` aus durch den Dogu-Operator ausgeführt.
 
 ## Post-Upgrade
 
