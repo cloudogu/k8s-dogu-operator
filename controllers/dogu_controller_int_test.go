@@ -217,6 +217,18 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(ldapCr.Name).To(Equal(doguPvc.Name))
 			Expect(ldapCr.Namespace).To(Equal(doguPvc.Namespace))
 			Expect(resource.MustParse("2Gi")).To(Equal(*doguPvc.Spec.Resources.Requests.Storage()))
+
+			By("Expect dogu status to be installed")
+			dogu := &k8sv1.Dogu{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, dogu)
+				if err != nil {
+					return false
+				}
+				status := dogu.Status.Status
+				return status == k8sv1.DoguStatusInstalled
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		})
 
 		It("Update dogus additional ingress annotations", func() {
