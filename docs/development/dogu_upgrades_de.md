@@ -36,5 +36,11 @@ Zur Lösung wurden mehrere Wege bedacht. Die folgenden Wege wurden gegeneinander
    - Beispiel: `sed -i 's|/|/tmp/dogu-reserved|g' /tmp/dogu-reserved/pre-upgrade.sh && /tmp/dogu-reserved/pre-upgrade.sh ${versionAlt}" "${versionNeu}"`
 5. Skripts in eine Shell-Pipe lesen und den Stream durch einen geeigneten Interpreter ausführen lassen
    - Beispiel: `cd $(dirname /pre-upgrade.sh) && (cat /tmp/dogu-reserved/pre-upgrade.sh | /bin/bash -s ${versionAlt}" "${versionNeu}")`
+6. Analog zu `kubectl cp` mittels `tar`, um Dateien und Verzeichnisse als Archive zu verpacken und am Zielort zu entpacken.
+   Diese Lösung benötigt kein zusätzliches Volume.
 
-Schlussendlich haben alle Lösungen sowohl Vorteile als auch Nachteile. Die geringste Komplexität bieten jedoch die Lösungen 2. und 3., die sich inhaltlich nur durch das Arbeitsverzeichnis unterscheiden. Hierbei wird die Komplexität durch Konventionen, wie [Pre-Upgrade-Skripte entwickelt](../operations/dogu_upgrades_de.md) werden müssen, eingetauscht.
+Letztendlich haben alle Lösungen Vor- und Nachteile.
+
+Die erste Wahl waren die Lösungen 2 und 3, da sie die geringste Komplexität bieten und sich inhaltlich nur durch das Arbeitsverzeichnis unterscheiden. Hierbei wird die Komplexität durch Konventionen, wie [Pre-Upgrade-Skripte entwickelt](../operations/dogu_upgrades_de.md) werden müssen, eingetauscht.
+
+Zurzeit haben wir uns für die neu gefundene Lösung 6 entschieden, sodass nicht für jedes Dogu ein zusätzliches Volume erstellt werden muss.
