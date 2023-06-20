@@ -45,7 +45,7 @@ func getCopyMap(definitions map[string]mockDefinition) map[string]mockDefinition
 	return newCopyMap
 }
 
-func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) *extMocks.ControllerManager {
+func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) manager.Manager {
 	k8sManager := &extMocks.ControllerManager{}
 	ctrl.NewManager = func(config *rest.Config, options manager.Options) (manager.Manager, error) {
 		for key, value := range definitions {
