@@ -168,7 +168,7 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 
 		mockClient := extMocks.NewK8sClient(t)
 		key := doguResource.GetObjectKey()
-		mockClient.EXPECT().Get(context.TODO(), key, &v1.PersistentVolumeClaim{}).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
+		mockClient.EXPECT().Get(context.Background(), key, &v1.PersistentVolumeClaim{}).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
 			pvc := object.(*v1.PersistentVolumeClaim)
 			now := metav1.Now()
 			pvc.SetDeletionTimestamp(&now)

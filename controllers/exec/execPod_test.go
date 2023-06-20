@@ -302,7 +302,7 @@ func Test_execPod_Exec(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.Equal(t, "", actualOut.String())
+		assert.Empty(t, actualOut.String())
 	})
 	t.Run("should be successful", func(t *testing.T) {
 		// given
