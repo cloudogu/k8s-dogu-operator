@@ -24,19 +24,16 @@ werden soll, haben wir uns gegen diese Lösung entschieden.
 Es wurde auch überlegt, statt des ExecPod einen dauernd laufenden Sidecar zu verwenden, diese Idee wurde allerdings 
 aufgrund der damit einhergehenden Ressourcenverschwendung verworfen.
 
+`kubectl cp` nutzt `tar` um Dateien und Verzeichnisse als Archiv zu verpacken und am Zielort zu entpacken. 
+Eine Möglichkeit ist es analog vorzugehen und somit kein zusätzliches Volume zu benötigen.
+
 ### ExecPod
 Das Pre-Upgrade Skript kommt aus dem neuen Container und wird auf den alten Container angewandt.  
-Dafür startet der Dogu-Operator beim Upgrade einen ExecPod des neuen Dogus und kopiert das Skript in das _reserved_ Volume.  
+Dafür startet der Dogu-Operator beim Upgrade einen ExecPod des neuen Dogus und kopiert das Skript mittels `tar` in das alte Dogu.  
 ExecPods benutzen das Image der neuen Dogu-Version, werden allerdings mit Sleep Infinity gestartet.
 
-### _reserved_ Volume
-Jedes Dogu erhält bei der Installation ein _reserved_ Volume mit einem Persistent Volume Claim von 10 MiB Größe.  
-Der Name des Volumes und des Claims lautet `<dogu-name>-reserved`.  
-Aufgrund der limitierten Größe des Volumes ist das Pre-Upgrade-Skript in seiner Größe auch limitiert.
-
 ### Ausführen des Pre-Upgrade-Skripts
-Aus dem _reserved_ Volume wird das Pre-Upgrade-Skript dann im alten Container an den ursprünglichen Pfad kopiert.  
-Dann werden diese durch den Dogu-Operator ausgeführt.
+Das Pre-Upgrade-Skript wird dann im alten Container von dem Pfad `/tmp/pre-upgrade` aus durch den Dogu-Operator ausgeführt.
 
 ## Post-Upgrade
 

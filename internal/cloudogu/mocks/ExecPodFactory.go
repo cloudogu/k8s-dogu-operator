@@ -24,25 +24,25 @@ func (_m *ExecPodFactory) EXPECT() *ExecPodFactory_Expecter {
 	return &ExecPodFactory_Expecter{mock: &_m.Mock}
 }
 
-// NewExecPod provides a mock function with given fields: execPodFactoryMode, doguResource, dogu
-func (_m *ExecPodFactory) NewExecPod(execPodFactoryMode cloudogu.ExecPodVolumeMode, doguResource *v1.Dogu, dogu *core.Dogu) (cloudogu.ExecPod, error) {
-	ret := _m.Called(execPodFactoryMode, doguResource, dogu)
+// NewExecPod provides a mock function with given fields: doguResource, dogu
+func (_m *ExecPodFactory) NewExecPod(doguResource *v1.Dogu, dogu *core.Dogu) (cloudogu.ExecPod, error) {
+	ret := _m.Called(doguResource, dogu)
 
 	var r0 cloudogu.ExecPod
 	var r1 error
-	if rf, ok := ret.Get(0).(func(cloudogu.ExecPodVolumeMode, *v1.Dogu, *core.Dogu) (cloudogu.ExecPod, error)); ok {
-		return rf(execPodFactoryMode, doguResource, dogu)
+	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) (cloudogu.ExecPod, error)); ok {
+		return rf(doguResource, dogu)
 	}
-	if rf, ok := ret.Get(0).(func(cloudogu.ExecPodVolumeMode, *v1.Dogu, *core.Dogu) cloudogu.ExecPod); ok {
-		r0 = rf(execPodFactoryMode, doguResource, dogu)
+	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) cloudogu.ExecPod); ok {
+		r0 = rf(doguResource, dogu)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(cloudogu.ExecPod)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(cloudogu.ExecPodVolumeMode, *v1.Dogu, *core.Dogu) error); ok {
-		r1 = rf(execPodFactoryMode, doguResource, dogu)
+	if rf, ok := ret.Get(1).(func(*v1.Dogu, *core.Dogu) error); ok {
+		r1 = rf(doguResource, dogu)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,16 +56,15 @@ type ExecPodFactory_NewExecPod_Call struct {
 }
 
 // NewExecPod is a helper method to define mock.On call
-//   - execPodFactoryMode cloudogu.ExecPodVolumeMode
 //   - doguResource *v1.Dogu
 //   - dogu *core.Dogu
-func (_e *ExecPodFactory_Expecter) NewExecPod(execPodFactoryMode interface{}, doguResource interface{}, dogu interface{}) *ExecPodFactory_NewExecPod_Call {
-	return &ExecPodFactory_NewExecPod_Call{Call: _e.mock.On("NewExecPod", execPodFactoryMode, doguResource, dogu)}
+func (_e *ExecPodFactory_Expecter) NewExecPod(doguResource interface{}, dogu interface{}) *ExecPodFactory_NewExecPod_Call {
+	return &ExecPodFactory_NewExecPod_Call{Call: _e.mock.On("NewExecPod", doguResource, dogu)}
 }
 
-func (_c *ExecPodFactory_NewExecPod_Call) Run(run func(execPodFactoryMode cloudogu.ExecPodVolumeMode, doguResource *v1.Dogu, dogu *core.Dogu)) *ExecPodFactory_NewExecPod_Call {
+func (_c *ExecPodFactory_NewExecPod_Call) Run(run func(doguResource *v1.Dogu, dogu *core.Dogu)) *ExecPodFactory_NewExecPod_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(cloudogu.ExecPodVolumeMode), args[1].(*v1.Dogu), args[2].(*core.Dogu))
+		run(args[0].(*v1.Dogu), args[1].(*core.Dogu))
 	})
 	return _c
 }
@@ -75,7 +74,7 @@ func (_c *ExecPodFactory_NewExecPod_Call) Return(_a0 cloudogu.ExecPod, _a1 error
 	return _c
 }
 
-func (_c *ExecPodFactory_NewExecPod_Call) RunAndReturn(run func(cloudogu.ExecPodVolumeMode, *v1.Dogu, *core.Dogu) (cloudogu.ExecPod, error)) *ExecPodFactory_NewExecPod_Call {
+func (_c *ExecPodFactory_NewExecPod_Call) RunAndReturn(run func(*v1.Dogu, *core.Dogu) (cloudogu.ExecPod, error)) *ExecPodFactory_NewExecPod_Call {
 	_c.Call.Return(run)
 	return _c
 }

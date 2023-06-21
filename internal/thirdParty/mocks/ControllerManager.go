@@ -6,6 +6,8 @@ import (
 	cache "sigs.k8s.io/controller-runtime/pkg/cache"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
+	config "sigs.k8s.io/controller-runtime/pkg/config"
+
 	context "context"
 
 	healthz "sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -25,8 +27,6 @@ import (
 	rest "k8s.io/client-go/rest"
 
 	runtime "k8s.io/apimachinery/pkg/runtime"
-
-	v1alpha1 "sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 
 	webhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -431,14 +431,14 @@ func (_c *ControllerManager_GetConfig_Call) RunAndReturn(run func() *rest.Config
 }
 
 // GetControllerOptions provides a mock function with given fields:
-func (_m *ControllerManager) GetControllerOptions() v1alpha1.ControllerConfigurationSpec {
+func (_m *ControllerManager) GetControllerOptions() config.Controller {
 	ret := _m.Called()
 
-	var r0 v1alpha1.ControllerConfigurationSpec
-	if rf, ok := ret.Get(0).(func() v1alpha1.ControllerConfigurationSpec); ok {
+	var r0 config.Controller
+	if rf, ok := ret.Get(0).(func() config.Controller); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(v1alpha1.ControllerConfigurationSpec)
+		r0 = ret.Get(0).(config.Controller)
 	}
 
 	return r0
@@ -461,12 +461,12 @@ func (_c *ControllerManager_GetControllerOptions_Call) Run(run func()) *Controll
 	return _c
 }
 
-func (_c *ControllerManager_GetControllerOptions_Call) Return(_a0 v1alpha1.ControllerConfigurationSpec) *ControllerManager_GetControllerOptions_Call {
+func (_c *ControllerManager_GetControllerOptions_Call) Return(_a0 config.Controller) *ControllerManager_GetControllerOptions_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *ControllerManager_GetControllerOptions_Call) RunAndReturn(run func() v1alpha1.ControllerConfigurationSpec) *ControllerManager_GetControllerOptions_Call {
+func (_c *ControllerManager_GetControllerOptions_Call) RunAndReturn(run func() config.Controller) *ControllerManager_GetControllerOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -554,6 +554,49 @@ func (_c *ControllerManager_GetFieldIndexer_Call) Return(_a0 client.FieldIndexer
 }
 
 func (_c *ControllerManager_GetFieldIndexer_Call) RunAndReturn(run func() client.FieldIndexer) *ControllerManager_GetFieldIndexer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetHTTPClient provides a mock function with given fields:
+func (_m *ControllerManager) GetHTTPClient() *http.Client {
+	ret := _m.Called()
+
+	var r0 *http.Client
+	if rf, ok := ret.Get(0).(func() *http.Client); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Client)
+		}
+	}
+
+	return r0
+}
+
+// ControllerManager_GetHTTPClient_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetHTTPClient'
+type ControllerManager_GetHTTPClient_Call struct {
+	*mock.Call
+}
+
+// GetHTTPClient is a helper method to define mock.On call
+func (_e *ControllerManager_Expecter) GetHTTPClient() *ControllerManager_GetHTTPClient_Call {
+	return &ControllerManager_GetHTTPClient_Call{Call: _e.mock.On("GetHTTPClient")}
+}
+
+func (_c *ControllerManager_GetHTTPClient_Call) Run(run func()) *ControllerManager_GetHTTPClient_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ControllerManager_GetHTTPClient_Call) Return(_a0 *http.Client) *ControllerManager_GetHTTPClient_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ControllerManager_GetHTTPClient_Call) RunAndReturn(run func() *http.Client) *ControllerManager_GetHTTPClient_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -686,15 +729,15 @@ func (_c *ControllerManager_GetScheme_Call) RunAndReturn(run func() *runtime.Sch
 }
 
 // GetWebhookServer provides a mock function with given fields:
-func (_m *ControllerManager) GetWebhookServer() *webhook.Server {
+func (_m *ControllerManager) GetWebhookServer() webhook.Server {
 	ret := _m.Called()
 
-	var r0 *webhook.Server
-	if rf, ok := ret.Get(0).(func() *webhook.Server); ok {
+	var r0 webhook.Server
+	if rf, ok := ret.Get(0).(func() webhook.Server); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*webhook.Server)
+			r0 = ret.Get(0).(webhook.Server)
 		}
 	}
 
@@ -718,54 +761,12 @@ func (_c *ControllerManager_GetWebhookServer_Call) Run(run func()) *ControllerMa
 	return _c
 }
 
-func (_c *ControllerManager_GetWebhookServer_Call) Return(_a0 *webhook.Server) *ControllerManager_GetWebhookServer_Call {
+func (_c *ControllerManager_GetWebhookServer_Call) Return(_a0 webhook.Server) *ControllerManager_GetWebhookServer_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *ControllerManager_GetWebhookServer_Call) RunAndReturn(run func() *webhook.Server) *ControllerManager_GetWebhookServer_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetFields provides a mock function with given fields: _a0
-func (_m *ControllerManager) SetFields(_a0 interface{}) error {
-	ret := _m.Called(_a0)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// ControllerManager_SetFields_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetFields'
-type ControllerManager_SetFields_Call struct {
-	*mock.Call
-}
-
-// SetFields is a helper method to define mock.On call
-//   - _a0 interface{}
-func (_e *ControllerManager_Expecter) SetFields(_a0 interface{}) *ControllerManager_SetFields_Call {
-	return &ControllerManager_SetFields_Call{Call: _e.mock.On("SetFields", _a0)}
-}
-
-func (_c *ControllerManager_SetFields_Call) Run(run func(_a0 interface{})) *ControllerManager_SetFields_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(interface{}))
-	})
-	return _c
-}
-
-func (_c *ControllerManager_SetFields_Call) Return(_a0 error) *ControllerManager_SetFields_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *ControllerManager_SetFields_Call) RunAndReturn(run func(interface{}) error) *ControllerManager_SetFields_Call {
+func (_c *ControllerManager_GetWebhookServer_Call) RunAndReturn(run func() webhook.Server) *ControllerManager_GetWebhookServer_Call {
 	_c.Call.Return(run)
 	return _c
 }

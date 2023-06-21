@@ -56,9 +56,6 @@ type DoguResourceGenerator interface {
 	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *image.ConfigFile) (*v1.Service, error)
 	// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
 	CreateDoguPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
-	// CreateReservedPVC creates a persistent volume claim with a 10Mi storage for the given dogu.
-	// Used for example for upgrade operations.
-	CreateReservedPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
 }
 
 // ExposePortAdder is used to expose exposed services from the dogu.

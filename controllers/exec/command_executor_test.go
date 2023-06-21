@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -239,6 +240,41 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		require.NotNil(t, buffer)
 		assert.Equal(t, expectedBuffer, buffer)
 	})
+	t.Run("success with stdin", func(t *testing.T) {
+		// given
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, readyPod).
+			Build()
+		clientSet := testclient.NewSimpleClientset(readyPod)
+		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
+		reader := strings.NewReader("abc")
+		buffer := bytes.NewBuffer([]byte{})
+		bufferErr := bytes.NewBuffer([]byte{})
+
+		sut.commandExecutorCreator = func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+			mockExecutor := extMocks.NewRemoteExecutor(t)
+			mockExecutor.EXPECT().StreamWithContext(mocks.Anything, remotecommand.StreamOptions{
+				// expects the reader as stream option in the mocked call to verify the stdin command
+				Stdin:  reader,
+				Stdout: buffer,
+				Stderr: bufferErr,
+				Tty:    false,
+			}).RunAndReturn(streamWithContextRun())
+			return mockExecutor, nil
+		}
+
+		expectedBuffer := bytes.NewBufferString("username:user")
+		stdinCmd := NewShellCommandWithStdin(reader, "base64")
+
+		// when
+		buffer, err := sut.ExecCommandForPod(ctx, readyPod, stdinCmd, cloudogu.PodReady)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, buffer)
+		assert.Equal(t, expectedBuffer, buffer)
+	})
 	t.Run("found no pods", func(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().Build()
@@ -301,6 +337,18 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 	})
 }
 
+func streamWithContextRun() func(ctx context.Context, options remotecommand.StreamOptions) error {
+	return func(ctx context.Context, options remotecommand.StreamOptions) error {
+		if options.Stdout != nil {
+			buf := bytes.NewBufferString(commandOutput)
+			if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
 func TestNewShellCommand(t *testing.T) {
 	t.Run("should return simple command without args", func(t *testing.T) {
 		actual := NewShellCommand("/bin/ls")
@@ -350,15 +398,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		mockExecutor := extMocks.NewRemoteExecutor(t)
-		mockExecutor.EXPECT().StreamWithContext(mocks.Anything, mocks.Anything).RunAndReturn(func(ctx context.Context, options remotecommand.StreamOptions) error {
-			if options.Stdout != nil {
-				buf := bytes.NewBufferString(commandOutput)
-				if _, err := options.Stdout.Write(buf.Bytes()); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+		mockExecutor.EXPECT().StreamWithContext(mocks.Anything, mocks.Anything).RunAndReturn(streamWithContextRun())
 		return mockExecutor, nil
 	}
 
@@ -373,4 +413,17 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 	}
 
 	return fakeNewSPDYExecutor, fakeErrorInitNewSPDYExecutor, fakeErrorStreamNewSPDYExecutor
+}
+
+func TestNewShellCommandWithStdin(t *testing.T) {
+	t.Run("should create shell command with stdin", func(t *testing.T) {
+		// given
+		stdin := strings.NewReader("abc")
+
+		// when
+		actual := NewShellCommandWithStdin(stdin, "base64")
+
+		// then
+		assert.Equal(t, &shellCommand{command: "base64", stdin: strings.NewReader("abc")}, actual)
+	})
 }

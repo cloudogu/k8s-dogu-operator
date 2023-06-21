@@ -72,21 +72,9 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		},
 	}
 
-	// always reserve a volume for upgrade script actions, even if the dogu has no state because upgrade scripts
-	// do not always rely on a dogu state (f. e. checks on upgradability)
-	doguReservedVolume := corev1.Volume{
-		Name: doguResource.GetReservedVolumeName(),
-		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: doguResource.GetReservedPVCName(),
-			},
-		},
-	}
-
 	return []corev1.Volume{
 		nodeMasterVolume,
 		privateVolume,
-		doguReservedVolume,
 	}
 }
 
@@ -186,11 +174,6 @@ func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
 			ReadOnly:  true,
 			MountPath: "/private",
 		},
-		{
-			Name:      doguResource.GetReservedVolumeName(),
-			ReadOnly:  false,
-			MountPath: DoguReservedPath,
-		},
 	}
 	return doguVolumeMounts
 }
@@ -226,12 +209,6 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv1.Dogu) cor
 // CreateDoguPVC creates a persistent volume claim for the given dogu.
 func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	return r.createPVC(doguResource.Name, doguResource, doguResource.GetDataVolumeSize())
-}
-
-// CreateReservedPVC creates a persistent volume claim with a 10Mi storage for the given dogu.
-// Used for example for upgrade operations.
-func (r *resourceGenerator) CreateReservedPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
-	return r.createPVC(doguResource.GetReservedPVCName(), doguResource, resource.MustParse("10Mi"))
 }
 
 func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv1.Dogu, size resource.Quantity) (*corev1.PersistentVolumeClaim, error) {

@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- [#104] Change the pre-upgrade process, so that it doesn't need to create the additional reserved volumes anymore. 
+  To do so, we adapted the way of the k8s api (`kubectl cp`) and copied the script directly in the old container 
+  by using `tar`. 
+
 ## [v0.31.0] - 2023-06-05
 ### Changed
 - [#102] Generate only one loadbalancer service for all dogu exposed ports so that all will be available with the same

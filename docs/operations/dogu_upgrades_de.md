@@ -44,10 +44,7 @@ spec:
 
 Für das Pre-Upgrade-Skript wird während des Upgrade-Prozesses ein Pod gestartet.
 Dieser verwendet das aktualisierte Image des Dogus und kopiert nur das in der Dogu.json genannte Skript in den alten
-Container.
-
-Ein dafür vorgesehenes Volume wird bereits bei der Installation angelegt. Nachdem das Pre-Upgrade-Skript im alten
-Container verfügbar gemacht wurde, wird dies ausgeführt während das Dogu läuft.
+Container. Dieses wird dann im alten Dogu während der Laufzeit ausgeführt. Dies geschieht vom gleichen Pfad, in dem das Skript im neuen Dogu lag.
 
 ### Anforderungen an ein Pre-Upgrade-Skript
 
@@ -75,27 +72,37 @@ Die Übergabe weiterer Parameter ist nicht vorgesehen.
 
 #### Nutzung von absoluten Dateireferenzen
 
-Wenn es um Dateiverarbeitung geht, dann müssen Pre-Upgrade-Skripte absolute Dateipfade verwenden, da nicht sichergestellt werden kann, dass ein Skript immer von seinem Ursprungsort aus aufgerufen wird.
+Wenn es um Dateiverarbeitung geht, dann müssen Pre-Upgrade-Skripte absolute Dateipfade verwenden,
+da nicht sichergestellt werden kann, dass ein Skript immer von seinem Ursprungsort aus aufgerufen wird.
 
 #### Keine Nutzung anderer Dateien
 
-Pre-Upgrade-Skripte werden vom Upgrade-Image hin zum Dogu-Container kopiert, um dort ausgeführt zu werden. Da in dem Dogu-Deskriptor `dogu.json` ausschließlich das Pre-Upgrade-Skript und nicht zusammengehörige Dateien genannt werden können, muss ein Pre-Upgrade-Skripte in seinem Funktionsumfang vollumfänglich aufgebaut sein.
+Pre-Upgrade-Skripte werden vom Upgrade-Image hin zum Dogu-Container kopiert, um dort ausgeführt zu werden.
+Da in dem Dogu-Deskriptor `dogu.json` ausschließlich das Pre-Upgrade-Skript und nicht zusammengehörige Dateien genannt werden können,
+muss ein Pre-Upgrade-Skript in seinem Funktionsumfang vollumfänglich aufgebaut sein.
 
 Dies schließt insbesondere das Shell-Sourcing anderer Dateien aus, da hierbei häufig falsche Annahmen von Versionsständen zu Fehlern führen.
 
 #### Ausführbarkeit
 
-- Das SetUID-Bit kann für Pre-Upgrade-Skripte aktuell nicht verwendet werden, da dieses durch aufruf von `cp` verloren geht
-- `/bin/cp` muss zwingend installiert sein
+- Das SetUID-Bit kann für Pre-Upgrade-Skripte aktuell nicht verwendet werden, da dieses beim Kopieren von Pod zu Pod (mittels `tar`) verloren geht
+- `/bin/tar` muss zwingend installiert sein
 - Es wird davon ausgegangen, dass es sich beim Pre-Upgrade-Script um ein Shellskript und nicht um ein sonstiges
   Executable handelt (etwa eine Linux-Binärdatei)
    - Sollte dies nicht der Fall sein, so muss das Container-Image so aufgebaut sein, dass der Kopiervorgang mit dem
      jeweils aktuellen Container-Benutzer sowie die Ausführung des Executables möglich ist.
 - Das Pre-Upgrade-Skript wird durch den aktuellen Container-User im alten Dogu ausgeführt
 
-## Post-Upgrade Script
+#### Limitierungen
 
-Unlike pre-upgrade scripts, post-upgrade scripts are subject to only minor constraints because the script is usually already in its execution location. The post-upgrade script is executed in the new dogu at the end of the upgrade process. The dogu is responsible for waiting for the post-upgrade script to finish. This is where the use of the dogu state has proven helpful:
+Die Größe des Pre-Upgrade-Skriptes ist lediglich durch den Arbeitsspeicher limitiert.
+
+## Post-Upgrade Skript
+
+Im Gegensatz zum Pre-Upgrade-Skript unterliegt das Post-Upgrade-Skript nur geringen Einschränkungen, da sich das Skript in der Regel bereits an seinem Ausführungsort befindet.
+Das Post-Upgrade-Skript wird am Ende des Upgrade-Prozesses im neuen Dogu ausgeführt.
+Das Dogu ist dafür verantwortlich, auf die Beendigung des Post-Upgrade-Skripts zu warten.
+Hier hat sich die Verwendung des Dogu-State als hilfreich erwiesen:
 
 ```bash
 # post-upgrade.sh
@@ -113,16 +120,16 @@ done
 # regular start-up goes here
 ```
 
-After that the upgrade is finished.
+Danach ist das Upgrade beendet.
 
 ## Upgrade-Sonderfälle
 
 ### Downgrades
 
-Downgrades von Dogus sind dann problematisch, wenn die neuer Dogu-Version die Datengrundlage der älteren Version durch
+Downgrades von Dogus sind dann problematisch, wenn die neuere Dogu-Version die Datengrundlage der älteren Version durch
 das Upgrade auf eine Weise modifiziert, dass die ältere Version mit den Daten nichts mehr anfangen kann. **Unter
 Umständen wird das Dogu damit arbeitsunfähig**. Da dieses Verhalten sehr stark vom Werkzeughersteller abhängt, ist es im
-allgemeinen nicht möglich, Dogus zu _downgraden_.
+Allgemeinen nicht möglich, Dogus zu _downgraden_.
 
 Daher verweigert der Dogu-Operator ein Upgrade einer Dogu-Resource auf eine niedrigere Version. Dieses Verhalten lässt
 sich durch den Schalter `spec.upgradeConfig.forceUpgrade` mit einem Wert von True ausschalten.

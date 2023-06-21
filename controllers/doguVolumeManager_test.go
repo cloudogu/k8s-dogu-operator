@@ -34,17 +34,17 @@ func TestNewDoguVolumeManager(t *testing.T) {
 
 type errAsyncExecutor struct{}
 
-func (e *errAsyncExecutor) AddStep(step cloudogu.AsyncStep) {}
+func (e *errAsyncExecutor) AddStep(cloudogu.AsyncStep) {}
 
-func (e *errAsyncExecutor) Execute(ctx context.Context, dogu *k8sv1.Dogu, currentState string) error {
+func (e *errAsyncExecutor) Execute(context.Context, *k8sv1.Dogu, string) error {
 	return assert.AnError
 }
 
 type asyncExecutor struct{}
 
-func (e *asyncExecutor) AddStep(step cloudogu.AsyncStep) {}
+func (e *asyncExecutor) AddStep(cloudogu.AsyncStep) {}
 
-func (e *asyncExecutor) Execute(ctx context.Context, dogu *k8sv1.Dogu, currentState string) error {
+func (e *asyncExecutor) Execute(context.Context, *k8sv1.Dogu, string) error {
 	return nil
 }
 
@@ -65,7 +65,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		executor := &errAsyncExecutor{}
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(dogu).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(dogu).Build()
 		manager := &doguVolumeManager{client: client, asyncExecutor: executor}
 
 		// when
@@ -85,7 +85,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		executor := &asyncExecutor{}
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(dogu).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(dogu).Build()
 		manager := &doguVolumeManager{client: client, asyncExecutor: executor}
 
 		// when
@@ -108,7 +108,7 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		replicas := int32(0)
 		deploy := &appsv1.Deployment{ObjectMeta: *dogu.GetObjectMeta(), Spec: appsv1.DeploymentSpec{Replicas: &replicas}}
 
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(deploy, dogu).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(deploy, dogu).Build()
 		recorder := extMocks.NewEventRecorder(t)
 		recorder.On("Eventf", dogu, "Normal", "VolumeExpansion", "Scale deployment to %d replicas...", int32(1))
 		sut := &scaleUpStep{client: client, eventRecorder: recorder, replicas: 1}
