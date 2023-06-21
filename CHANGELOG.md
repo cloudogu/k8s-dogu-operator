@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.32.0] - 2023-06-21
+
 ### Changed
 - [#104] Change the pre-upgrade process, so that it doesn't need to create the additional reserved volumes anymore. 
   To do so, we adapted the way of the k8s api (`kubectl cp`) and copied the script directly in the old container 
