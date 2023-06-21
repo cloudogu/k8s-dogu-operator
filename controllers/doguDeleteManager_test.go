@@ -115,16 +115,15 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 	ldapCr := readDoguCr(t, ldapCrBytes)
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 	t.Run("successfully delete a dogu", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
-		//ldapName := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(ctx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu("ldap").Return(nil)
 		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(ctx, ldapCr, ldapDogu).Return(nil)
-		managerWithMocks.deleteManager.client = client
+		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
 		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
@@ -132,7 +131,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = fakeClient.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
@@ -151,12 +150,11 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 	t.Run("failure during fetching local dogu should not interrupt the delete routine", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 
 		keyNotFoundErr := regclient.Error{Code: regclient.ErrorCodeKeyNotFound}
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(nil, keyNotFoundErr)
-		managerWithMocks.deleteManager.client = client
+		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
 		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
@@ -164,20 +162,19 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = fakeClient.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
 
 	t.Run("failure during service account removal should not interrupt the delete routine", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(ctx, ldapDogu).Return(assert.AnError)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu("ldap").Return(nil)
 		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(ctx, ldapCr, ldapDogu).Return(nil)
-		managerWithMocks.deleteManager.client = client
+		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
 		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
@@ -185,20 +182,19 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = fakeClient.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
 
 	t.Run("failure during unregister should not interrupt the delete routine", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(ctx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu("ldap").Return(assert.AnError)
 		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(ctx, ldapCr, ldapDogu).Return(nil)
-		managerWithMocks.deleteManager.client = client
+		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
 		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
@@ -206,20 +202,19 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = fakeClient.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
 
 	t.Run("failure during exposed port removal should not interrupt the delete routine", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(ldapCr).Build()
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled("ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(ctx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu("ldap").Return(nil)
 		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(ctx, ldapCr, ldapDogu).Return(assert.AnError)
-		managerWithMocks.deleteManager.client = client
+		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
 		err := managerWithMocks.deleteManager.Delete(ctx, ldapCr)
@@ -227,7 +222,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		deletedDogu := k8sv1.Dogu{}
-		err = client.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		err = fakeClient.Get(ctx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
 	})

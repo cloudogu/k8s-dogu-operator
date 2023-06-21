@@ -34,11 +34,7 @@ type shellCommand struct {
 }
 
 func (sc *shellCommand) Stdin() (bool, io.Reader) {
-	if sc.stdin == nil {
-		return false, nil
-	}
-
-	return true, sc.stdin
+	return sc.stdin != nil, sc.stdin
 }
 
 func (sc *shellCommand) CommandWithArgs() []string {
