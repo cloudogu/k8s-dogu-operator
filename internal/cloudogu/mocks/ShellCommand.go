@@ -65,29 +65,19 @@ func (_c *ShellCommand_CommandWithArgs_Call) RunAndReturn(run func() []string) *
 }
 
 // Stdin provides a mock function with given fields:
-func (_m *ShellCommand) Stdin() (bool, io.Reader) {
+func (_m *ShellCommand) Stdin() io.Reader {
 	ret := _m.Called()
 
-	var r0 bool
-	var r1 io.Reader
-	if rf, ok := ret.Get(0).(func() (bool, io.Reader)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() bool); ok {
+	var r0 io.Reader
+	if rf, ok := ret.Get(0).(func() io.Reader); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func() io.Reader); ok {
-		r1 = rf()
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(io.Reader)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(io.Reader)
 		}
 	}
 
-	return r0, r1
+	return r0
 }
 
 // ShellCommand_Stdin_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stdin'
@@ -107,12 +97,12 @@ func (_c *ShellCommand_Stdin_Call) Run(run func()) *ShellCommand_Stdin_Call {
 	return _c
 }
 
-func (_c *ShellCommand_Stdin_Call) Return(_a0 bool, _a1 io.Reader) *ShellCommand_Stdin_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *ShellCommand_Stdin_Call) Return(_a0 io.Reader) *ShellCommand_Stdin_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *ShellCommand_Stdin_Call) RunAndReturn(run func() (bool, io.Reader)) *ShellCommand_Stdin_Call {
+func (_c *ShellCommand_Stdin_Call) RunAndReturn(run func() io.Reader) *ShellCommand_Stdin_Call {
 	_c.Call.Return(run)
 	return _c
 }

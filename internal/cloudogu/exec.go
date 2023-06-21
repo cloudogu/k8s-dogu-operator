@@ -46,8 +46,8 @@ type CommandExecutor interface {
 type ShellCommand interface {
 	// CommandWithArgs returns the commands and its arguments in a way suitable for execution.
 	CommandWithArgs() []string
-	// Stdin returns whether the command has standard input and if so the appropriate reader.
-	Stdin() (bool, io.Reader)
+	// Stdin returns the appropriate reader for standard input.
+	Stdin() io.Reader
 }
 
 // PodStatusForExec describes a state in the lifecycle of a pod.
