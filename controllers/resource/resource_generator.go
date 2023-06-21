@@ -31,10 +31,6 @@ const (
 )
 
 const (
-	DoguReservedPath = "/tmp/dogu-reserved"
-)
-
-const (
 	doguPodNamespace = "POD_NAMESPACE"
 	doguPodName      = "POD_NAME"
 )

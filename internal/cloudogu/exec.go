@@ -3,6 +3,7 @@ package cloudogu
 import (
 	"bytes"
 	"context"
+	"io"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -24,25 +25,14 @@ type ExecPod interface {
 	// ObjectKey returns the ExecPod's K8s object key.
 	ObjectKey() *client.ObjectKey
 	// Exec runs the provided command in this execPod
-	Exec(ctx context.Context, cmd ShellCommand) (out string, err error)
+	Exec(ctx context.Context, cmd ShellCommand) (out *bytes.Buffer, err error)
 }
 
 // ExecPodFactory provides functionality to create ExecPods.
 type ExecPodFactory interface {
 	// NewExecPod creates a new ExecPod.
-	NewExecPod(execPodFactoryMode ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error)
+	NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error)
 }
-
-// ExecPodVolumeMode indicates whether to mount a dogu's PVC (which only makes sense when the dogu was already
-// installed).
-type ExecPodVolumeMode int
-
-const (
-	// VolumeModeInstall indicates to not mount a dogu's PVC.
-	VolumeModeInstall ExecPodVolumeMode = iota
-	// VolumeModeUpgrade indicates to mount a dogu's PVC.
-	VolumeModeUpgrade
-)
 
 // CommandExecutor is used to execute commands in pods and dogus
 type CommandExecutor interface {
@@ -56,6 +46,8 @@ type CommandExecutor interface {
 type ShellCommand interface {
 	// CommandWithArgs returns the commands and its arguments in a way suitable for execution.
 	CommandWithArgs() []string
+	// Stdin returns the appropriate reader for standard input.
+	Stdin() io.Reader
 }
 
 // PodStatusForExec describes a state in the lifecycle of a pod.

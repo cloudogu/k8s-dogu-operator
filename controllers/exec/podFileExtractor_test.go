@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"testing"
@@ -28,7 +29,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		clientset := fake2.NewSimpleClientset()
 
 		execPod := mocks.NewExecPod(t)
-		execPod.On("Exec", testCtx, testLsShellCommand).Return("uh oh", assert.AnError)
+		execPod.On("Exec", testCtx, testLsShellCommand).Return(bytes.NewBufferString("uh oh"), assert.AnError)
 
 		sut := &podFileExtractor{
 			k8sClient: fakeClient,
@@ -48,9 +49,9 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		execPod := mocks.NewExecPod(t)
-		execPod.On("Exec", testCtx, testLsShellCommand).Once().Return("test-k8s-resources.yaml", nil)
+		execPod.On("Exec", testCtx, testLsShellCommand).Once().Return(bytes.NewBufferString("test-k8s-resources.yaml"), nil)
 		expectedCatCommand := &shellCommand{command: "/bin/cat", args: []string{"/k8s/test-k8s-resources.yaml"}}
-		execPod.On("Exec", testCtx, expectedCatCommand).Once().Return("resource { content : goes-here }", nil)
+		execPod.On("Exec", testCtx, expectedCatCommand).Once().Return(bytes.NewBufferString("resource { content : goes-here }"), nil)
 
 		sut := &podFileExtractor{
 			k8sClient: fakeClient,
@@ -72,7 +73,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			Build()
 		clientset := fake2.NewSimpleClientset()
 		execPod := mocks.NewExecPod(t)
-		execPod.On("Exec", testCtx, testLsShellCommand).Return("No such file or directory", nil)
+		execPod.On("Exec", testCtx, testLsShellCommand).Return(bytes.NewBufferString("No such file or directory"), nil)
 
 		sut := &podFileExtractor{
 			k8sClient: fakeClient,

@@ -170,6 +170,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
+			WithStatusSubresource(&v1.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
@@ -225,6 +226,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
+			WithStatusSubresource(&v1.Dogu{}).
 			WithObjects(devDoguMap.ToConfigMap(), redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 		preErr := clientMock.Get(testCtx, redmineCr.GetObjectKey(), devDoguMap.ToConfigMap())
@@ -279,6 +281,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
+			WithStatusSubresource(&v1.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
@@ -327,6 +330,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
+			WithStatusSubresource(&v1.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
@@ -372,6 +376,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
+			WithStatusSubresource(&v1.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
@@ -412,6 +417,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
+			WithStatusSubresource(&v1.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 

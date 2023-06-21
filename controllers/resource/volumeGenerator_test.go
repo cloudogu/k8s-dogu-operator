@@ -70,47 +70,6 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 	})
 }
 
-func TestResourceGenerator_CreateReservedPVC(t *testing.T) {
-
-	t.Run("Return simple pvc", func(t *testing.T) {
-		// given
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		ldapDoguResource := readLdapDoguResource(t)
-
-		// when
-		actualPVC, err := generator.CreateReservedPVC(ldapDoguResource)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, readLdapDoguExpectedReservedPVC(t), actualPVC)
-	})
-
-	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
-		// given
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		ldapDoguResource := readLdapDoguResource(t)
-		oldMethod := ctrl.SetControllerReference
-		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return assert.AnError
-		}
-		defer func() { ctrl.SetControllerReference = oldMethod }()
-
-		// when
-		_, err := generator.CreateReservedPVC(ldapDoguResource)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to set controller reference:")
-	})
-}
-
 func Test_createVolumeByClient(t *testing.T) {
 	t.Run("should fail due to invalid config map type content", func(t *testing.T) {
 		// given

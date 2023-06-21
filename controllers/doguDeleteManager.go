@@ -60,7 +60,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting}
 	err := doguResource.Update(ctx, m.client)
 	if err != nil {
-		return fmt.Errorf("failed to update dogu status: %w", err)
+		return err
 	}
 
 	logger.Info("Fetching dogu...")

@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -28,9 +29,8 @@ var maxWaitDuration = time.Minute * 10
 
 // execPod provides features to handle files from a dogu image.
 type execPod struct {
-	client     client.Client
-	executor   cloudogu.CommandExecutor
-	volumeMode cloudogu.ExecPodVolumeMode
+	client   client.Client
+	executor cloudogu.CommandExecutor
 
 	doguResource *k8sv1.Dogu
 	dogu         *core.Dogu
@@ -42,7 +42,6 @@ type execPod struct {
 func NewExecPod(
 	client client.Client,
 	executor cloudogu.CommandExecutor,
-	factoryMode cloudogu.ExecPodVolumeMode,
 	doguResource *k8sv1.Dogu,
 	dogu *core.Dogu,
 	podName string,
@@ -50,7 +49,6 @@ func NewExecPod(
 	return &execPod{
 		client:       client,
 		executor:     executor,
-		volumeMode:   factoryMode,
 		doguResource: doguResource,
 		dogu:         dogu,
 		podName:      podName,
@@ -61,7 +59,7 @@ func NewExecPod(
 func (ep *execPod) Create(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
-	execPodSpec, err := ep.createPod(ctx, ep.doguResource.Namespace, ep.podName)
+	execPodSpec, err := ep.createPod(ep.doguResource.Namespace, ep.podName)
 	if err != nil {
 		return err
 	}
@@ -81,7 +79,7 @@ func (ep *execPod) Create(ctx context.Context) error {
 	return nil
 }
 
-func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, containerName string) (*corev1.Pod, error) {
+func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1.Pod, error) {
 	image := ep.dogu.Image + ":" + ep.dogu.Version
 	// command is of no importance because the pod will be killed after success
 	doNothingCommand := []string{"/bin/sleep", "60"}
@@ -92,8 +90,6 @@ func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, container
 	if config.Stage == config.StageDevelopment {
 		pullPolicy = corev1.PullAlways
 	}
-
-	volumeMounts, volumes := ep.createVolumes(ctx)
 
 	podSpec := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{},
@@ -110,13 +106,11 @@ func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, container
 					Image:           image,
 					Command:         doNothingCommand,
 					ImagePullPolicy: pullPolicy,
-					VolumeMounts:    volumeMounts,
 				},
 			},
 			ImagePullSecrets: []corev1.LocalObjectReference{
 				{Name: "k8s-dogu-operator-docker-registry"},
 			},
-			Volumes: volumes,
 		},
 	}
 
@@ -125,33 +119,6 @@ func (ep *execPod) createPod(ctx context.Context, k8sNamespace string, container
 		return nil, fmt.Errorf("failed to set controller reference to exec pod %s: %w", containerName, err)
 	}
 	return podSpec, nil
-}
-
-func (ep *execPod) createVolumes(ctx context.Context) ([]corev1.VolumeMount, []corev1.Volume) {
-	logger := log.FromContext(ctx)
-
-	switch ep.volumeMode {
-	case cloudogu.VolumeModeInstall:
-		return nil, nil
-	case cloudogu.VolumeModeUpgrade:
-		volumeMounts := []corev1.VolumeMount{{
-			Name:      ep.doguResource.GetReservedVolumeName(),
-			ReadOnly:  false,
-			MountPath: resource.DoguReservedPath,
-		}}
-
-		volumes := []corev1.Volume{{
-			Name: ep.doguResource.GetReservedVolumeName(),
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: ep.doguResource.GetReservedPVCName(),
-				},
-			},
-		}}
-		return volumeMounts, volumes
-	}
-	logger.Info("ExecPod is about to be created without volumes because of unexpected factory mode %d", ep.volumeMode)
-	return nil, nil
 }
 
 func (ep *execPod) waitForPodToSpawn(ctx context.Context) error {
@@ -224,15 +191,13 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 }
 
 // Exec executes the given shellCommand and returns any output to stdOut and stdErr.
-func (ep *execPod) Exec(ctx context.Context, cmd cloudogu.ShellCommand) (string, error) {
+func (ep *execPod) Exec(ctx context.Context, cmd cloudogu.ShellCommand) (*bytes.Buffer, error) {
 	pod, err := ep.getPod(ctx)
 	if err != nil {
-		return "", fmt.Errorf("could not get pod: %w", err)
+		return nil, fmt.Errorf("could not get pod: %w", err)
 	}
 
-	out, err := ep.executor.ExecCommandForPod(ctx, pod, cmd, cloudogu.ContainersStarted)
-
-	return out.String(), err
+	return ep.executor.ExecCommandForPod(ctx, pod, cmd, cloudogu.ContainersStarted)
 }
 
 type defaultSufficeGenerator struct{}
@@ -260,9 +225,9 @@ func NewExecPodFactory(client client.Client, config *rest.Config, executor cloud
 }
 
 // NewExecPod creates a new ExecPod during the operation run-time.
-func (epf *defaultExecPodFactory) NewExecPod(execPodFactoryMode cloudogu.ExecPodVolumeMode, doguResource *k8sv1.Dogu, dogu *core.Dogu) (cloudogu.ExecPod, error) {
+func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (cloudogu.ExecPod, error) {
 	podName := generatePodName(dogu, epf.suffixGen)
-	return NewExecPod(epf.client, epf.commandExecutor, execPodFactoryMode, doguResource, dogu, podName)
+	return NewExecPod(epf.client, epf.commandExecutor, doguResource, dogu, podName)
 }
 
 func generatePodName(dogu *core.Dogu, generator cloudogu.SuffixGenerator) string {

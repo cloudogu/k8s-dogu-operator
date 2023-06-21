@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -28,6 +28,12 @@ type shellCommand struct {
 	command string
 	// args contains any parameters, switches etc. that the command needs to run properly.
 	args []string
+	// stdin contains standard input for the command, input that could for example be piped in a CLI environment.
+	stdin io.Reader
+}
+
+func (sc *shellCommand) Stdin() io.Reader {
+	return sc.stdin
 }
 
 func (sc *shellCommand) CommandWithArgs() []string {
@@ -42,6 +48,10 @@ func (sc *shellCommand) String() string {
 // NewShellCommand creates a new shellCommand. While the command is mandatory, there can be zero to n command arguments.
 func NewShellCommand(command string, args ...string) *shellCommand {
 	return &shellCommand{command: command, args: args}
+}
+
+func NewShellCommandWithStdin(stdin io.Reader, command string, args ...string) *shellCommand {
+	return &shellCommand{command: command, args: args, stdin: stdin}
 }
 
 // stateError is returned when a specific resource (pod/dogu) does not meet the requirements for the exec.
@@ -112,7 +122,7 @@ func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *co
 		return nil, fmt.Errorf("an error occurred while waiting for pod %s to have status %s: %w", pod.Name, expectedStatus, err)
 	}
 
-	req := ce.getCreateExecRequest(pod, command)
+	req := ce.getCreateExecRequest(pod)
 	exec, err := ce.commandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
 		return nil, &stateError{
@@ -133,12 +143,14 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	logger := log.FromContext(ctx)
 
 	var err error
+	stdin := command.Stdin()
 	buffer := bytes.NewBuffer([]byte{})
 	bufferErr := bytes.NewBuffer([]byte{})
 	err = retry.OnError(maxTries, func(err error) bool {
 		return strings.Contains(err.Error(), "error dialing backend: EOF")
 	}, func() error {
 		err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+			Stdin:  stdin,
 			Stdout: buffer,
 			Stderr: bufferErr,
 			Tty:    false,
@@ -193,18 +205,10 @@ func podHasStatus(pod *corev1.Pod, expected cloudogu.PodStatusForExec) error {
 	return &retry.TestableRetrierError{Err: fmt.Errorf("expected status %s not fulfilled", expected)}
 }
 
-func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command cloudogu.ShellCommand) *rest.Request {
+func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod) *rest.Request {
 	return ce.coreV1RestClient.Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(pod.Namespace).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Command: command.CommandWithArgs(),
-			Stdin:   false,
-			Stdout:  true,
-			Stderr:  true,
-			// Note: if the TTY is set to true shell commands may emit ANSI codes into the stdout
-			TTY: false,
-		}, scheme.ParameterCodec)
+		SubResource("exec")
 }

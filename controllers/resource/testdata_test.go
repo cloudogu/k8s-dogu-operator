@@ -37,9 +37,6 @@ var expectedDoguPVCBytes []byte
 //go:embed testdata/ldap_expectedPVC_withCustomSize.yaml
 var expectedDoguPVCWithCustomSizeBytes []byte
 
-//go:embed testdata/ldap_expectedReservedPVC.yaml
-var expectedReservedPVCBytes []byte
-
 //go:embed testdata/ldap_expectedSecret.yaml
 var expectedSecretBytes []byte
 
@@ -135,18 +132,6 @@ func readLdapDoguExpectedDoguPVCWithCustomSize(t *testing.T) *v1.PersistentVolum
 
 	data := &v1.PersistentVolumeClaim{}
 	err := yaml.Unmarshal(expectedDoguPVCWithCustomSizeBytes, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return data
-}
-
-func readLdapDoguExpectedReservedPVC(t *testing.T) interface{} {
-	t.Helper()
-
-	data := &v1.PersistentVolumeClaim{}
-	err := yaml.Unmarshal(expectedReservedPVCBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

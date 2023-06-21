@@ -8,9 +8,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"strings"
-	"testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -21,6 +18,8 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
+	"testing"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
@@ -119,7 +118,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					return true
 				}
 				return false
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			setExecPodRunning(ctx, "ldap")
 
@@ -132,7 +131,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, deployment.ObjectMeta)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 			Expect(ldapCr.Name).To(Equal(deployment.Name))
 			Expect(ldapCr.Namespace).To(Equal(deployment.Namespace))
 
@@ -145,7 +144,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, service.ObjectMeta)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 			Expect(ldapCr.Name).To(Equal(service.Name))
 			Expect(ldapCr.Namespace).To(Equal(service.Namespace))
 
@@ -174,7 +173,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}
 
 				return true
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			By("Expect created tcp/udp configmap")
 			cm := &corev1.ConfigMap{}
@@ -189,7 +188,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}
 
 				return true
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			By("Expect created secret")
 			secret := &corev1.Secret{}
@@ -201,7 +200,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, secret.ObjectMeta)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 			Expect(ldapCr.Name + "-private").To(Equal(secret.Name))
 			Expect(ldapCr.Namespace).To(Equal(secret.Namespace))
 
@@ -214,25 +213,22 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					return false
 				}
 				return verifyOwner(createdDogu.Name, doguPvc.ObjectMeta)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 			Expect(ldapCr.Name).To(Equal(doguPvc.Name))
 			Expect(ldapCr.Namespace).To(Equal(doguPvc.Namespace))
 			Expect(resource.MustParse("2Gi")).To(Equal(*doguPvc.Spec.Resources.Requests.Storage()))
 
-			By("Expect created reserved pvc")
-			reservedLookupKey := types.NamespacedName{Name: ldapCr.Name + "-reserved", Namespace: ldapCr.Namespace}
-			reservedPvc := &corev1.PersistentVolumeClaim{}
+			By("Expect dogu status to be installed")
+			dogu := &k8sv1.Dogu{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, reservedLookupKey, reservedPvc)
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, dogu)
 				if err != nil {
 					return false
 				}
-				return verifyOwner(createdDogu.Name, reservedPvc.ObjectMeta)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
-			Expect(ldapCr.Name + "-reserved").To(Equal(reservedPvc.Name))
-			Expect(ldapCr.Namespace).To(Equal(reservedPvc.Namespace))
-			Expect(resource.MustParse("10Mi")).To(Equal(*reservedPvc.Spec.Resources.Requests.Storage()))
+				status := dogu.Status.Status
+				return status == k8sv1.DoguStatusInstalled
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		})
 
 		It("Update dogus additional ingress annotations", func() {
@@ -241,7 +237,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
 				return err == nil
-			}, PollingInterval, TimeoutInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			if createdDogu.Spec.AdditionalIngressAnnotations == nil {
 				createdDogu.Spec.AdditionalIngressAnnotations = map[string]string{}
@@ -259,12 +255,12 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}
 
 				s, exists := service.ObjectMeta.Annotations["k8s-dogu-operator.cloudogu.com/additional-ingress-annotations"]
-				if exists && s == "{\"new\": \"new\"}" {
+				if exists && s == "{\"new\":\"new\"}" {
 					return true
 				}
 
 				return false
-			})
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		})
 
 		It("Set dogu in support mode", func() {
@@ -273,7 +269,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
 				return err == nil
-			}, PollingInterval, TimeoutInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			createdDogu.Spec.SupportMode = true
 			updateDoguCr(ctx, createdDogu)
@@ -290,7 +286,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					return true
 				}
 				return false
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		})
 
 		It("Should unset dogu support mode", func() {
@@ -299,7 +295,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
 				return err == nil
-			}, PollingInterval, TimeoutInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			createdDogu.Spec.SupportMode = false
 			updateDoguCr(ctx, createdDogu)
@@ -313,7 +309,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					return false
 				}
 				return !isDeploymentInSupportMode(deployment)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		})
 
 		// This test does not work because the client in this environment can't even update the storage request of a pvc.
@@ -325,7 +321,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		// 	Eventually(func() bool {
 		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
 		// 		return err == nil
-		// 	}, PollingInterval, TimeoutInterval).Should(BeTrue())
+		// 	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		//
 		// 	newVolumeSize := "10Gi"
 		// 	newVolumeQuantity := resource.MustParse(newVolumeSize)
@@ -351,7 +347,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		// 		}
 		//
 		// 		return false
-		// 	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		// 	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		// })
 
 		It("Should delete dogu", func() {
@@ -362,7 +358,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, cesLoadbalancerLookupKey, lbService)
 				return apierrors.IsNotFound(err)
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			By("Expected deleted entries in tcp/udp configmap")
 			cm := &corev1.ConfigMap{}
@@ -373,7 +369,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}
 
 				return true
-			}, TimeoutInterval, PollingInterval).Should(BeTrue())
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		})
 	})
 
@@ -407,7 +403,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}
 
 			return count == 1
-		}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 		By("Delete redmine dogu crd")
 		deleteDoguCr(ctx, redmineCr, false)
@@ -438,9 +434,12 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		EtcdDoguRegistry.Mock.On("Enable", upgradeLdapToDoguDescriptor).Once().Return(nil)
 		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
 
+		archive := bytes.NewBufferString("compressed data")
 		CommandExecutor.
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/cp", "/pre-upgrade.sh", "/tmp/dogu-reserved"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/tmp/dogu-reserved/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.PodReady).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh"), cloudogu.ContainersStarted).Once().Return(archive, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/mkdir", "-p", "/tmp/pre-upgrade"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/tmp/pre-upgrade"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/tmp/pre-upgrade/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.PodReady).Once().Return(&bytes.Buffer{}, nil).
 			On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.ContainersStarted).Once().Run(func(args mock.Arguments) {
 			defer GinkgoRecover()
 			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 1080)
@@ -469,20 +468,20 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}
 
 			return false
-		}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 		setExecPodRunning(ctx, "ldap")
 
 		By("Wait for resources created deployment")
 		deployment := new(appsv1.Deployment)
-		Eventually(func() bool { return getObjectFromCluster(testCtx, deployment, upgradeLdapFromDoguLookupKey) }, TimeoutInterval, PollingInterval).Should(BeTrue())
-		Eventually(func() bool { return getObjectFromCluster(testCtx, &corev1.Service{}, upgradeLdapFromDoguLookupKey) }, TimeoutInterval, PollingInterval).Should(BeTrue())
+		Eventually(func() bool { return getObjectFromCluster(testCtx, deployment, upgradeLdapFromDoguLookupKey) }).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
+		Eventually(func() bool { return getObjectFromCluster(testCtx, &corev1.Service{}, upgradeLdapFromDoguLookupKey) }).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		Eventually(func() bool {
 			return getObjectFromCluster(testCtx, &corev1.PersistentVolumeClaim{}, upgradeLdapFromDoguLookupKey)
-		}, TimeoutInterval, PollingInterval).Should(BeTrue())
+		}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 		secretLookupKey := types.NamespacedName{Name: upgradeLdapFromDoguLookupKey.Name + "-private", Namespace: upgradeLdapFromDoguLookupKey.Namespace}
-		Eventually(func() bool { return getObjectFromCluster(testCtx, &corev1.Secret{}, secretLookupKey) }, TimeoutInterval, PollingInterval).Should(BeTrue())
+		Eventually(func() bool { return getObjectFromCluster(testCtx, &corev1.Secret{}, secretLookupKey) }).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 		assertRessourceStatus(upgradeLdapFromDoguLookupKey, "installed")
 
@@ -533,7 +532,7 @@ func assertRessourceStatus(ressourceLookupKey types.NamespacedName, expectedStat
 			return actualResource.Status.Status
 		}
 		return "resource not found"
-	}, TimeoutInterval, PollingInterval).Should(Equal(expectedStatus))
+	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(Equal(expectedStatus))
 }
 
 func assertNewDeploymentVersionWithStartupProbe(doguLookupKey types.NamespacedName, doguVersion string, expectedStartupProbe int) {
@@ -545,7 +544,7 @@ func assertNewDeploymentVersionWithStartupProbe(doguLookupKey types.NamespacedNa
 			return deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].Image
 		}
 		return "resource not found"
-	}, TimeoutInterval, PollingInterval).Should(ContainSubstring(doguVersion))
+	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(ContainSubstring(doguVersion))
 
 	By("Check startup probe failure threshold in deployment")
 	Expect(int32(expectedStartupProbe)).To(Equal(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold))
@@ -571,7 +570,7 @@ func setExecPodRunning(ctx context.Context, doguName string) {
 			}
 		}
 		return false
-	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 }
 
 // createDoguPod can be necessary because the environment has no controllers to really create the pods,
@@ -613,7 +612,7 @@ func deleteDoguCr(ctx context.Context, doguCr *k8sv1.Dogu, deleteAdditional bool
 	Eventually(func() bool {
 		_, err := doguClient.Get(ctx, doguCr.Name, v1.GetOptions{})
 		return apierrors.IsNotFound(err)
-	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 	if !deleteAdditional {
 		return
@@ -637,7 +636,7 @@ func deleteObjectFromCluster(ctx context.Context, objectKey client.ObjectKey, de
 
 		err := k8sClient.Delete(ctx, deleteType)
 		return err == nil
-	}, TimeoutInterval, PollingInterval).Should(BeTrue())
+	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 }
 
 func getObjectFromCluster(ctx context.Context, objectType client.Object, lookupKey types.NamespacedName) bool {

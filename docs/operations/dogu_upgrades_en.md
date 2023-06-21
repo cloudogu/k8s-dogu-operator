@@ -42,11 +42,8 @@ spec:
 ## Pre-upgrade scripts
 
 For the pre-upgrade script, a pod is started during the upgrade process.
-This uses the updated image of the Dogus and copies only the script named in the Dogu.json to the old
-container.
-
-A designated volume is already created during the installation. After the pre-upgrade script is made available in the old
-container, it will be executed while the Dogu is running.
+This uses the updated image of the Dogu and copies only the script named in the Dogu.json to the old
+container. It is then executed in the old Dogu during runtime. This is done from the same path where the script was in the new Dogu.
 
 ### Requirements for a pre-upgrade script
 
@@ -74,31 +71,66 @@ There is no provision for passing any other parameters.
 
 #### Use of absolute file references
 
-When it comes to file processing, pre-upgrade scripts must use absolute file paths, since there is no way to ensure that a script will always be called from its source location.
+When it comes to file processing, pre-upgrade scripts must use absolute file paths,
+since there is no way to ensure that a script will always be called from its source location.
 
 #### Do not use other files
 
-Pre-upgrade scripts are copied from the upgrade image to the Dogu container to be executed there. Since only the pre-upgrade script and unrelated files can be named in the Dogu descriptor `dogu.json`, a pre-upgrade script must be fully constructed in its functional scope.
+Pre-upgrade scripts are copied from the upgrade image to the Dogu container to be executed there.
+Since only the pre-upgrade script and unrelated files can be named in the Dogu descriptor `dogu.json`,
+a pre-upgrade script must be fully constructed in its functional scope.
 
 This excludes in particular the shell sourcing of other files, since here frequently wrong assumptions of version levels lead to errors.
 
 #### Executability
 
-- The SetUID bit cannot currently be used for pre-upgrade scripts because it is lost by calling `cp`.
-- `/bin/cp` must be installed
+- The SetUID bit cannot currently be used for pre-upgrade scripts because it is lost by copying the script from pod to pod (using `tar`).
+- `/bin/tar` must be installed
 - It is assumed that the pre-upgrade script is a shell script and not any other
   executable (e.g. a Linux binary).
    - If this is not the case, the container image must be structured in such a way that the copy operation can be executed with the
      container user and the execution of the executable is possible.
 - The pre-upgrade script is executed by the current container user in the old dogu
 
+#### Limitations
+
+The size of the pre-upgrade script is only limited by the RAM (random access memory).
+
+## Post-Upgrade Script
+
+Unlike the pre-upgrade script, the post-upgrade script is subject to only minor constraints because the script is usually already in its execution location.
+The post-upgrade script is executed in the new dogu at the end of the upgrade process.
+The dogu is responsible for waiting for the post-upgrade script to finish.
+This is where the use of the dogu state has proven helpful:
+
+```bash
+# post-upgrade.sh
+doguctl state "upgrading
+# upgrade routines go here...
+doguctl state "starting
+```
+
+```bash
+# startup.sh
+while [[ "$(doguctl state)" == "upgrading" ]]; do
+  echo "Upgrade script is running. Waiting..."
+  sleep 3
+done
+# regular start-up goes here
+```
+
+After that the upgrade is finished.
+
 ## Upgrade special cases
 
 ### Downgrades
 
-Downgrades of Dogus are problematic if the new Dogu version modifies the data basis of the older version by the upgrade in such a way that the older version can no longer do anything with the data. **Under certain circumstances, the Dogu thus becomes incapable of working**. Since this behavior depends very much on the tool manufacturer, it is generally not possible to _downgrade_ Dogus.
+Downgrades of Dogus are problematic if the new Dogu version modifies the data basis of the older version by the upgrade in such a way
+that the older version can no longer do anything with the data. **Under certain circumstances, the Dogu thus becomes incapable of working**.
+Since this behavior depends very much on the tool manufacturer, it is generally not possible to _downgrade_ Dogus.
 
-Therefore the dogu operator refuses to upgrade a dogu resource to a lower version. This behavior can be disabled by using the `spec.upgradeConfig.forceUpgrade` switch with a value of True.
+Therefore, the dogu operator refuses to upgrade a dogu resource to a lower version.
+This behavior can be disabled by using the `spec.upgradeConfig.forceUpgrade` switch with a value of True.
 
 **Caution possible data corruption:**
 You should clarify beforehand that the dogu will not be damaged by the downgrade.

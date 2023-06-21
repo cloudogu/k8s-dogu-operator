@@ -17,7 +17,10 @@ import (
 	"strings"
 )
 
-const cesLoadbalancerName = "ces-loadbalancer"
+const (
+	cesLoadbalancerName  = "ces-loadbalancer"
+	cesIngressController = "nginx-ingress"
+)
 
 type doguExposedPortHandler struct {
 	client         client.Client
@@ -90,7 +93,9 @@ func (deph *doguExposedPortHandler) createCesLoadbalancerService(ctx context.Con
 			Type:           corev1.ServiceTypeLoadBalancer,
 			IPFamilyPolicy: &ipSingleStackPolicy,
 			IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol},
-			Selector:       doguResource.GetDoguNameLabel(),
+			Selector: map[string]string{
+				k8sv1.DoguLabelName: cesIngressController,
+			},
 		},
 	}
 

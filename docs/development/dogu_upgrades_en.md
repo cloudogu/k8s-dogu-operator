@@ -1,12 +1,12 @@
 # Developing Dogu upgrades
 
-This document discusses development decisions related to upgrades of Dogus.
+This document discusses development decisions related to upgrades of Dogus. 
 
 ## Pre-Upgrade Scripts
 
 ### Challenge: Difference between file system layout and current user
 
-Copying the pre-upgrade script from the new container to the old container results in a problem if the file cannot be copied for
+Copying the pre-upgrade script from the new container to the old container results in a problem if the file 
 cannot be copied for rights reasons, such as when the following file system is imagined:
 
 ```
@@ -16,7 +16,7 @@ drwxr-xr-x 1 root root 4.0K Dec 13 10:47 .
 ...
 
 ls -lha /tmp/dogu-reserved/
-drwxrwsr-x 3 root doguuser 1.0K Dec 13 10:48 .
+drwxrwxr-x 3 root doguuser 1.0K Dec 13 10:48 .
 -rwxr-xr-x 1 doguuser doguuser 704 Dec 13 10:48 pre-upgrade.sh
 ...
 ```
@@ -36,5 +36,11 @@ Several ways were considered for the solution. The following ways were weighed a
    - Example: `sed -i 's|/|/tmp/dogu-reserved|g' /tmp/dogu-reserved/pre-upgrade.sh && /tmp/dogu-reserved/pre-upgrade.sh ${versionOld}" "${versionNew}"`
 5. read scripts into a shell pipe and run the stream through a suitable interpreter
    - Example: `cd $(dirname /pre-upgrade.sh) && (cat /tmp/dogu-reserved/pre-upgrade.sh | /bin/bash -s ${versionOld}" "${versionNew}")`
+6. analog to `kubectl cp` using `tar` to package files and directories as archives and unpack them at the destination.
+   This solution does not need an additional volume.
 
-In the end, all solutions have both advantages and disadvantages. However, solutions 2. and 3. offer the least complexity, differing in content only by the working directory. Here the complexity is traded off by conventions, like [pre-upgrade scripts developed](../operations/dogu_upgrades_en.md) must be.
+In the end, all solutions have both advantages and disadvantages. 
+
+The first choices were solutions 2 and 3, as they offer the least complexity, differing in content only by the working directory. Here the complexity is traded off by conventions, such as [pre-upgrade scripts developed](../operations/dogu_upgrades_en.md) must be.
+
+We ended up using the newly found solution 6, so that no extra volume needs to be created for each dogu.
