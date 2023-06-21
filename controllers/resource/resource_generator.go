@@ -46,9 +46,10 @@ const kubernetesServiceAccountKind = "k8s"
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type resourceGenerator struct {
-	scheme             *runtime.Scheme
-	doguLimitPatcher   cloudogu.LimitPatcher
-	hostAliasGenerator thirdParty.HostAliasGenerator
+	scheme                *runtime.Scheme
+	doguLimitPatcher      cloudogu.LimitPatcher
+	requirementsGenerator cloudogu.ResourceRequirementsGenerator
+	hostAliasGenerator    thirdParty.HostAliasGenerator
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
@@ -154,6 +155,11 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		return nil, err
 	}
 
+	resourceRequirements, err := r.requirementsGenerator.Generate(dogu)
+	if err != nil {
+		return nil, err
+	}
+
 	podTemplate := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: allLabels,
@@ -175,6 +181,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 				ImagePullPolicy: pullPolicy,
 				VolumeMounts:    volumeMounts,
 				Env:             envVars,
+				Resources:       resourceRequirements,
 			}},
 		},
 	}
