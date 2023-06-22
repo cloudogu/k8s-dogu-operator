@@ -23,7 +23,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
@@ -68,10 +67,10 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 	localDoguFetcher := reg.NewLocalDoguFetcher(cesRegistry.DoguRegistry())
 	resourceDoguFetcher := reg.NewResourceDoguFetcher(client, doguRemoteRegistry)
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
-	limitPatcher := limit.NewDoguDeploymentLimitPatcher(cesRegistry)
+	requirementsGenerator := resource.NewRequirementsGenerator(cesRegistry)
 	hostAliasGenerator := alias.NewHostAliasGenerator(cesRegistry.GlobalConfig())
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limitPatcher, hostAliasGenerator)
-	upserter := resource.NewUpserter(client, limitPatcher, hostAliasGenerator)
+	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator)
+	upserter := resource.NewUpserter(client, requirementsGenerator, hostAliasGenerator)
 
 	fileExtract := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)

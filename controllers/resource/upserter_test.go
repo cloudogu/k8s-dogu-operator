@@ -25,11 +25,11 @@ func TestNewUpserter(t *testing.T) {
 	// given
 	mockClient := extMocks.NewK8sClient(t)
 	mockClient.On("Scheme").Return(new(runtime.Scheme))
-	patcher := mocks.NewLimitPatcher(t)
+	requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
 	generator := extMocks.NewHostAliasGenerator(t)
 
 	// when
-	upserter := NewUpserter(mockClient, patcher, generator)
+	upserter := NewUpserter(mockClient, requirementsGenerator, generator)
 
 	// then
 	require.NotNil(t, upserter)

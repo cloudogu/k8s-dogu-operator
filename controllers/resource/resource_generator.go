@@ -47,17 +47,16 @@ const kubernetesServiceAccountKind = "k8s"
 // as controller
 type resourceGenerator struct {
 	scheme                *runtime.Scheme
-	doguLimitPatcher      cloudogu.LimitPatcher
 	requirementsGenerator cloudogu.ResourceRequirementsGenerator
 	hostAliasGenerator    thirdParty.HostAliasGenerator
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher cloudogu.LimitPatcher, hostAliasGenerator thirdParty.HostAliasGenerator) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator) *resourceGenerator {
 	return &resourceGenerator{
-		scheme:             scheme,
-		doguLimitPatcher:   limitPatcher,
-		hostAliasGenerator: hostAliasGenerator,
+		scheme:                scheme,
+		requirementsGenerator: requirementsGenerator,
+		hostAliasGenerator:    hostAliasGenerator,
 	}
 }
 
@@ -90,16 +89,6 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 			FSGroup:             &gid,
 			FSGroupChangePolicy: &fsGroupChangePolicy,
 		}
-	}
-
-	doguLimits, err := r.doguLimitPatcher.RetrievePodLimits(doguResource)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve resource limits for dogu [%s]: %w", doguResource.Name, err)
-	}
-
-	err = r.doguLimitPatcher.PatchDeployment(deployment, doguLimits)
-	if err != nil {
-		return nil, fmt.Errorf("failed to patch resource limits into dogu deployment [%s]: %w", doguResource.Name, err)
 	}
 
 	err = ctrl.SetControllerReference(doguResource, deployment, r.scheme)
