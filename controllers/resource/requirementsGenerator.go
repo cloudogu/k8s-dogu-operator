@@ -49,7 +49,8 @@ func (r requirementsGenerator) Generate(dogu *core.Dogu) (corev1.ResourceRequire
 		}
 	}
 	if len(errList) > 0 {
-		return corev1.ResourceRequirements{}, errors.Join(errList...)
+		return corev1.ResourceRequirements{},
+			fmt.Errorf("errors occured during requirements generation: %w", errors.Join(errList...))
 	}
 
 	return requirements, nil
@@ -69,7 +70,7 @@ func readFromConfigOrDefault(key string, doguConfig registry.ConfigurationContex
 			return "", nil
 		}
 
-		return "", err
+		return "", fmt.Errorf("failed to read value of key '%s' from registry config of dogu '%s': %w", key, dogu.Name, err)
 	}
 
 	return configValue, nil
@@ -92,12 +93,22 @@ func appendRequirementsForResourceType(resourceType resourceType, requirements c
 		requirements.Requests[resourceName], requestConversionErr = convertCesUnitToQuantity(request, resourceType)
 	}
 
-	return errors.Join(limitErr, limitConversionErr, requestErr, requestConversionErr)
+	err := errors.Join(limitErr, limitConversionErr, requestErr, requestConversionErr)
+	if err != nil {
+		return fmt.Errorf("errors occured while appending requirements for resource type '%s': %w", resourceType, err)
+	}
+
+	return nil
 }
 
 func convertCesUnitToQuantity(cesUnit string, resourceType resourceType) (resource.Quantity, error) {
 	if resourceType == cpuCoreType {
-		return resource.ParseQuantity(cesUnit)
+		quantity, err := resource.ParseQuantity(cesUnit)
+		if err != nil {
+			return resource.Quantity{},
+				fmt.Errorf("failed to convert cpu cores with value '%s' to quantity: %w", cesUnit, err)
+		}
+		return quantity, nil
 	}
 
 	// otherwise this is a binary measurement and converted as follows
@@ -109,5 +120,10 @@ func convertCesUnitToQuantity(cesUnit string, resourceType resourceType) (resour
 	cesUnit = strings.Replace(cesUnit, "k", "Ki", 1)
 	cesUnit = strings.Replace(cesUnit, "m", "Mi", 1)
 	cesUnit = strings.Replace(cesUnit, "g", "Gi", 1)
-	return resource.ParseQuantity(cesUnit)
+	quantity, err := resource.ParseQuantity(cesUnit)
+	if err != nil {
+		return resource.Quantity{},
+			fmt.Errorf("failed to convert ces unit '%s' of type '%s' to quantity: %w", cesUnit, resourceType, err)
+	}
+	return quantity, nil
 }

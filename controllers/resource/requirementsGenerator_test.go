@@ -37,6 +37,7 @@ func Test_convertCesUnitToQuantity(t *testing.T) {
 			resource.Quantity{},
 			func(t *testing.T, err error) {
 				require.Error(t, err)
+				assert.ErrorContains(t, err, "failed to convert cpu cores with value '0.5TTT' to quantity")
 				assert.ErrorContains(t, err, "unable to parse quantity's suffix")
 			},
 		},
@@ -83,6 +84,7 @@ func Test_convertCesUnitToQuantity(t *testing.T) {
 			resource.Quantity{},
 			func(t *testing.T, err error) {
 				require.Error(t, err)
+				assert.ErrorContains(t, err, "failed to convert ces unit '500Gig' of type 'memory' to quantity")
 				assert.ErrorContains(t, err, "quantities must match the regular expression")
 			},
 		},
@@ -107,8 +109,10 @@ func Test_appendRequirementsForResourceType(t *testing.T) {
 		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_limit", memoryType)).Return("", assert.AnError)
 		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_request", memoryType)).Return("200m", nil)
 
-		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{})
+		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{Name: "official/ldap"})
 		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'memory'")
+		assert.ErrorContains(t, err, "failed to read value of key 'container_config/memory_limit' from registry config of dogu 'official/ldap'")
 		assert.Empty(t, requirements.Limits)
 		assert.Equal(t, resource.MustParse("200Mi"), requirements.Requests[corev1.ResourceMemory])
 	})
@@ -122,8 +126,10 @@ func Test_appendRequirementsForResourceType(t *testing.T) {
 		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_limit", memoryType)).Return("200m", nil)
 		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_request", memoryType)).Return("", assert.AnError)
 
-		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{})
+		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{Name: "official/ldap"})
 		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'memory'")
+		assert.ErrorContains(t, err, "failed to read value of key 'container_config/memory_request' from registry config of dogu 'official/ldap'")
 		assert.Equal(t, resource.MustParse("200Mi"), requirements.Limits[corev1.ResourceMemory])
 		assert.Empty(t, requirements.Requests)
 	})
@@ -137,7 +143,9 @@ func Test_appendRequirementsForResourceType(t *testing.T) {
 		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_limit", memoryType)).Return("", fmt.Errorf("test error limit memory"))
 		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_request", memoryType)).Return("", fmt.Errorf("test error request memory"))
 
-		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{})
+		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{Name: "official/ldap"})
+		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'memory'")
+		assert.ErrorContains(t, err, "failed to read value of key 'container_config/memory_limit' from registry config of dogu 'official/ldap'")
 		assert.ErrorContains(t, err, "test error limit memory")
 		assert.ErrorContains(t, err, "test error request memory")
 		assert.Empty(t, requirements.Limits)
@@ -167,8 +175,9 @@ func Test_readFromConfigOrDefault(t *testing.T) {
 		configurationContext := mocks.NewConfigurationContext(t)
 		configurationContext.EXPECT().Get(key).Return("", assert.AnError)
 
-		val, err := readFromConfigOrDefault(key, configurationContext, &core.Dogu{})
+		val, err := readFromConfigOrDefault(key, configurationContext, &core.Dogu{Name: "official/ldap"})
 		require.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to read value of key 'container_config/memory_limit' from registry config of dogu 'official/ldap'")
 		assert.Empty(t, val)
 	})
 
@@ -237,6 +246,9 @@ func Test_requirementsGenerator_Generate(t *testing.T) {
 		generator := NewRequirementsGenerator(registry)
 
 		requirements, err := generator.Generate(dogu)
+		assert.ErrorContains(t, err, "errors occured during requirements generation")
+		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'memory'")
+		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'cpu_core'")
 		require.ErrorContains(t, err, "error memory limit")
 		require.ErrorContains(t, err, "error cpu_core limit")
 		assert.Empty(t, requirements)
