@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#106] Resource limits (memory, cpu-cores, ephemeral storage) are now read from
+  `/config/<dogu>/container_config/<resource-type>_limit` instead of `/config/<dogu>/pod_limit/<resource-type>`.
+- [#106] Resource request are now handled separately from limits and can be configured through `/config/<dogu>/container_config/<resource-type>_request`.
+- [#106] Defaults for these requests and limits can now be set in the `Configuration`-section of the `dogu.json`.
+  These will be used if the key is not configured in the config registry.
 
 ## [v0.32.0] - 2023-06-21
 
