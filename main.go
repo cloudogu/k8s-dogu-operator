@@ -8,8 +8,8 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -82,8 +82,8 @@ func startDoguOperator() error {
 		return fmt.Errorf("failed to start manager: %w", err)
 	}
 
-	if err = handleHardwareLimitUpdater(k8sManager, operatorConfig.Namespace); err != nil {
-		return fmt.Errorf("failed to create hardware limit updater: %w", err)
+	if err = resourceRequirementsUpdater(k8sManager, operatorConfig.Namespace); err != nil {
+		return fmt.Errorf("failed to create resource requirements updater: %w", err)
 	}
 
 	err = configureManager(k8sManager, operatorConfig)
@@ -151,14 +151,14 @@ func startK8sManager(k8sManager manager.Manager) error {
 	return nil
 }
 
-func handleHardwareLimitUpdater(k8sManager manager.Manager, namespace string) error {
-	hardwareLimitUpdater, err := limit.NewHardwareLimitUpdater(k8sManager.GetClient(), namespace)
+func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string) error {
+	requirementsUpdater, err := resource.NewRequirementsUpdater(k8sManager.GetClient(), namespace)
 	if err != nil {
 		return err
 	}
 
-	if err := k8sManager.Add(hardwareLimitUpdater); err != nil {
-		return fmt.Errorf("failed to add hardwareLimitUpdater as runnable to the manager: %w", err)
+	if err := k8sManager.Add(requirementsUpdater); err != nil {
+		return fmt.Errorf("failed to add requirementsUpdater as runnable to the manager: %w", err)
 	}
 
 	return nil

@@ -79,3 +79,11 @@ type TcpUpdServiceExposer interface {
 	// entries in a configmap.
 	DeleteDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
 }
+
+// ResourceRequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
+type ResourceRequirementsGenerator interface {
+	// Generate creates resource limits and requests for dogu deployments.
+	// It tries to retrieve them from the dogu config registry. If not set, defaults from the dogu.json are used.
+	// If there is no default, the requirement will be omitted.
+	Generate(dogu *cesappcore.Dogu) (v1.ResourceRequirements, error)
+}

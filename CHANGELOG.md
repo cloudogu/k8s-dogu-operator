@@ -6,8 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v0.32.0] - 2023-06-21
+## [v0.33.0] - 2023-06-23
+### Changed
+- [#106] Resource limits (memory, cpu-cores, ephemeral storage) are now read from
+  `/config/<dogu>/container_config/<resource-type>_limit` instead of `/config/<dogu>/pod_limit/<resource-type>`.
+- [#106] Resource request are now handled separately from limits and can be configured through `/config/<dogu>/container_config/<resource-type>_request`.
+- [#106] Defaults for these requests and limits can now be set in the `Configuration`-section of the `dogu.json`.
+  These will be used if the key is not configured in the config registry.
 
+### Fixed
+- [#108] Failing execs on pods because of missing `VersionedParams`
+
+## [v0.32.0] - 2023-06-21
 ### Changed
 - [#104] Change the pre-upgrade process, so that it doesn't need to create the additional reserved volumes anymore. 
   To do so, we adapted the way of the k8s api (`kubectl cp`) and copied the script directly in the old container 

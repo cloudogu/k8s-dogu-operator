@@ -4,12 +4,13 @@ import (
 	_ "embed"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	"github.com/cloudogu/k8s-host-change/pkg/alias"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
 
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,7 +19,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
@@ -29,7 +29,7 @@ func TestNewResourceGenerator(t *testing.T) {
 	registry.On("GlobalConfig").Return(globalConfig)
 
 	// when
-	generator := NewResourceGenerator(getTestScheme(), limit.NewDoguDeploymentLimitPatcher(registry), alias.NewHostAliasGenerator(registry.GlobalConfig()))
+	generator := NewResourceGenerator(getTestScheme(), NewRequirementsGenerator(registry), alias.NewHostAliasGenerator(registry.GlobalConfig()))
 
 	// then
 	require.NotNil(t, generator)
@@ -64,48 +64,47 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 	t.Run("Return simple deployment", func(t *testing.T) {
 		// when
-		patcher := mocks.NewLimitPatcher(t)
-		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
-		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+
+		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
+		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generator := resourceGenerator{
-			scheme:             getTestScheme(),
-			doguLimitPatcher:   patcher,
-			hostAliasGenerator: hostAliasGenerator,
+			scheme:                getTestScheme(),
+			requirementsGenerator: requirementsGenerator,
+			hostAliasGenerator:    hostAliasGenerator,
 		}
 
-		ldapDoguResource := readLdapDoguResource(t)
-		ldapDogu := readLdapDogu(t)
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		assert.Equal(t, expectedDeployment, actualDeployment)
-		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
 	t.Run("Return simple deployment with service account", func(t *testing.T) {
 		// when
-		patcher := mocks.NewLimitPatcher(t)
-		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
-		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
-		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
-
-		generator := resourceGenerator{
-			scheme:             getTestScheme(),
-			doguLimitPatcher:   patcher,
-			hostAliasGenerator: hostAliasGenerator,
-		}
-
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 		ldapDogu.ServiceAccounts = []core.ServiceAccount{
 			{Type: "k8s-dogu-operator", Kind: "k8s"},
 		}
+
+		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
+		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
+		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:                getTestScheme(),
+			requirementsGenerator: requirementsGenerator,
+			hostAliasGenerator:    hostAliasGenerator,
+		}
+
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
@@ -113,21 +112,59 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		expectedDeployment.Spec.Template.Spec.ServiceAccountName = "ldap"
 		assert.Equal(t, expectedDeployment, actualDeployment)
-		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
-	t.Run("Return simple deployment with development stage", func(t *testing.T) {
-		// given
-		patcher := mocks.NewLimitPatcher(t)
-		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
-		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+	t.Run("Return simple deployment with resource requirements", func(t *testing.T) {
+		// when
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		requirements := v1.ResourceRequirements{
+			Limits: v1.ResourceList{
+				v1.ResourceMemory:           resource.MustParse("250Mi"),
+				v1.ResourceCPU:              resource.MustParse("0.5"),
+				v1.ResourceEphemeralStorage: resource.MustParse("5Gi"),
+			},
+			Requests: v1.ResourceList{
+				v1.ResourceMemory:           resource.MustParse("150Mi"),
+				v1.ResourceCPU:              resource.MustParse("42m"),
+				v1.ResourceEphemeralStorage: resource.MustParse("3Gi"),
+			},
+		}
+
+		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
+		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(requirements, nil)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generator := resourceGenerator{
-			scheme:             getTestScheme(),
-			doguLimitPatcher:   patcher,
-			hostAliasGenerator: hostAliasGenerator,
+			scheme:                getTestScheme(),
+			requirementsGenerator: requirementsGenerator,
+			hostAliasGenerator:    hostAliasGenerator,
+		}
+
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
+
+		// then
+		require.NoError(t, err)
+		expectedDeployment := readLdapDoguExpectedDeployment(t)
+		expectedDeployment.Spec.Template.Spec.Containers[0].Resources = requirements
+		assert.Equal(t, expectedDeployment, actualDeployment)
+	})
+
+	t.Run("Return simple deployment with development stage", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+
+		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
+		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
+		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:                getTestScheme(),
+			requirementsGenerator: requirementsGenerator,
+			hostAliasGenerator:    hostAliasGenerator,
 		}
 
 		oldStage := config.Stage
@@ -135,8 +172,6 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 			config.Stage = oldStage
 		}()
 		config.Stage = config.StageDevelopment
-		ldapDoguResource := readLdapDoguResource(t)
-		ldapDogu := readLdapDogu(t)
 
 		// when
 		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
@@ -145,20 +180,21 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.NoError(t, err)
 		expectedCustomDeployment := readLdapDoguExpectedDevelopDeployment(t)
 		assert.Equal(t, expectedCustomDeployment, actualDeployment)
-		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
-		patcher := mocks.NewLimitPatcher(t)
-		patcher.On("RetrievePodLimits", readLdapDoguResource(t)).Return(mocks.NewDoguLimits(t), nil)
-		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+
+		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
+		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generator := resourceGenerator{
-			scheme:             getTestScheme(),
-			doguLimitPatcher:   patcher,
-			hostAliasGenerator: hostAliasGenerator,
+			scheme:                getTestScheme(),
+			requirementsGenerator: requirementsGenerator,
+			hostAliasGenerator:    hostAliasGenerator,
 		}
 
 		oldMethod := ctrl.SetControllerReference
@@ -166,8 +202,6 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 			return assert.AnError
 		}
 		defer func() { ctrl.SetControllerReference = oldMethod }()
-		ldapDoguResource := readLdapDoguResource(t)
-		ldapDogu := readLdapDogu(t)
 
 		// when
 		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
@@ -176,22 +210,21 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to set controller reference:")
-		mock.AssertExpectationsForObjects(t, generator.doguLimitPatcher)
 	})
 
-	t.Run("Error on retrieving memory limits", func(t *testing.T) {
+	t.Run("Error on generating resource requirements", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
-		patcher := mocks.NewLimitPatcher(t)
-		patcher.On("RetrievePodLimits", ldapDoguResource).Return(mocks.NewDoguLimits(t), assert.AnError)
+		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
+		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, assert.AnError)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
 
 		generatorFail := resourceGenerator{
-			scheme:             getTestScheme(),
-			doguLimitPatcher:   patcher,
-			hostAliasGenerator: hostAliasGenerator,
+			scheme:                getTestScheme(),
+			requirementsGenerator: requirementsGenerator,
+			hostAliasGenerator:    hostAliasGenerator,
 		}
 
 		// when
@@ -199,32 +232,6 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
-		mock.AssertExpectationsForObjects(t, generatorFail.doguLimitPatcher)
-	})
-
-	t.Run("Error on patching deployment", func(t *testing.T) {
-		// given
-		ldapDoguResource := readLdapDoguResource(t)
-		ldapDogu := readLdapDogu(t)
-
-		patcher := mocks.NewLimitPatcher(t)
-		patcher.On("RetrievePodLimits", ldapDoguResource).Return(mocks.NewDoguLimits(t), nil)
-		patcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(assert.AnError)
-		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
-
-		generatorFail := resourceGenerator{
-			scheme:             getTestScheme(),
-			doguLimitPatcher:   patcher,
-			hostAliasGenerator: hostAliasGenerator,
-		}
-
-		// when
-		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-		mock.AssertExpectationsForObjects(t, generatorFail.doguLimitPatcher)
 	})
 }
 

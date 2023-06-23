@@ -46,17 +46,17 @@ const kubernetesServiceAccountKind = "k8s"
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type resourceGenerator struct {
-	scheme             *runtime.Scheme
-	doguLimitPatcher   cloudogu.LimitPatcher
-	hostAliasGenerator thirdParty.HostAliasGenerator
+	scheme                *runtime.Scheme
+	requirementsGenerator cloudogu.ResourceRequirementsGenerator
+	hostAliasGenerator    thirdParty.HostAliasGenerator
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, limitPatcher cloudogu.LimitPatcher, hostAliasGenerator thirdParty.HostAliasGenerator) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator) *resourceGenerator {
 	return &resourceGenerator{
-		scheme:             scheme,
-		doguLimitPatcher:   limitPatcher,
-		hostAliasGenerator: hostAliasGenerator,
+		scheme:                scheme,
+		requirementsGenerator: requirementsGenerator,
+		hostAliasGenerator:    hostAliasGenerator,
 	}
 }
 
@@ -89,16 +89,6 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 			FSGroup:             &gid,
 			FSGroupChangePolicy: &fsGroupChangePolicy,
 		}
-	}
-
-	doguLimits, err := r.doguLimitPatcher.RetrievePodLimits(doguResource)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve resource limits for dogu [%s]: %w", doguResource.Name, err)
-	}
-
-	err = r.doguLimitPatcher.PatchDeployment(deployment, doguLimits)
-	if err != nil {
-		return nil, fmt.Errorf("failed to patch resource limits into dogu deployment [%s]: %w", doguResource.Name, err)
 	}
 
 	err = ctrl.SetControllerReference(doguResource, deployment, r.scheme)
@@ -154,6 +144,11 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		return nil, err
 	}
 
+	resourceRequirements, err := r.requirementsGenerator.Generate(dogu)
+	if err != nil {
+		return nil, err
+	}
+
 	podTemplate := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: allLabels,
@@ -175,6 +170,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 				ImagePullPolicy: pullPolicy,
 				VolumeMounts:    volumeMounts,
 				Env:             envVars,
+				Resources:       resourceRequirements,
 			}},
 		},
 	}

@@ -51,3 +51,11 @@ type DoguRegistry interface {
 type HostAliasGenerator interface {
 	Generate() (hostAliases []corev1.HostAlias, err error)
 }
+
+type ConfigurationContext interface {
+	registry.ConfigurationContext
+}
+
+type ConfigurationRegistry interface {
+	registry.Registry
+}
