@@ -20,7 +20,6 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/retry"
@@ -63,9 +62,9 @@ func NewUpgradeExecutor(
 	registry registry.Registry,
 ) *upgradeExecutor {
 	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, nil)
-	limitPatcher := limit.NewDoguDeploymentLimitPatcher(registry)
+	requirementsGenerator := resource.NewRequirementsGenerator(registry)
 	hostAliasGenerator := alias.NewHostAliasGenerator(registry.GlobalConfig())
-	upserter := resource.NewUpserter(client, limitPatcher, hostAliasGenerator)
+	upserter := resource.NewUpserter(client, requirementsGenerator, hostAliasGenerator)
 
 	return &upgradeExecutor{
 		client:                client,

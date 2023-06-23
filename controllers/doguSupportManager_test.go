@@ -25,12 +25,12 @@ import (
 const namespace = "test"
 
 type doguSupportManagerWithMocks struct {
-	supportManager     *doguSupportManager
-	doguRegistryMock   *regmocks.DoguRegistry
-	k8sClient          client.WithWatch
-	recorderMock       *extMocks.EventRecorder
-	doguLimits         cloudogu.DoguLimits
-	hostAliasGenerator *extMocks.HostAliasGenerator
+	supportManager        *doguSupportManager
+	doguRegistryMock      *regmocks.DoguRegistry
+	k8sClient             client.WithWatch
+	recorderMock          *extMocks.EventRecorder
+	requirementsGenerator cloudogu.ResourceRequirementsGenerator
+	hostAliasGenerator    *extMocks.HostAliasGenerator
 }
 
 func (d *doguSupportManagerWithMocks) AssertMocks(t *testing.T) {
@@ -45,12 +45,10 @@ func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSu
 	t.Helper()
 
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	limitPatcher := &mocks.LimitPatcher{}
-	doguLimits := &mocks.DoguLimits{}
-	limitPatcher.On("RetrievePodLimits", mock.Anything).Return(doguLimits, nil)
-	limitPatcher.On("PatchDeployment", mock.Anything, mock.Anything).Return(nil)
+	requirementsGenerator := &mocks.ResourceRequirementsGenerator{}
+	requirementsGenerator.EXPECT().Generate(mock.Anything).Return(corev1.ResourceRequirements{}, nil)
 	hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-	resourceGenerator := resource.NewResourceGenerator(scheme, limitPatcher, hostAliasGenerator)
+	resourceGenerator := resource.NewResourceGenerator(scheme, requirementsGenerator, hostAliasGenerator)
 	doguRegistry := &regmocks.DoguRegistry{}
 	eventRecorder := extMocks.NewEventRecorder(t)
 
@@ -62,12 +60,12 @@ func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSu
 	}
 
 	return doguSupportManagerWithMocks{
-		supportManager:     doguSupportManager,
-		k8sClient:          k8sClient,
-		doguRegistryMock:   doguRegistry,
-		recorderMock:       eventRecorder,
-		doguLimits:         doguLimits,
-		hostAliasGenerator: hostAliasGenerator,
+		supportManager:        doguSupportManager,
+		k8sClient:             k8sClient,
+		doguRegistryMock:      doguRegistry,
+		recorderMock:          eventRecorder,
+		requirementsGenerator: requirementsGenerator,
+		hostAliasGenerator:    hostAliasGenerator,
 	}
 }
 
@@ -167,6 +165,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		require.NoError(t, err)
 		assert.Greater(t, deployment.ResourceVersion, resourceVersion)
 		assert.Equal(t, *readLdapDoguExpectedPodTemplateSupportOn(t), deployment.Spec.Template)
+		mock.AssertExpectationsForObjects(t, sut.requirementsGenerator)
 	})
 
 	t.Run("error getting dogu descriptor", func(t *testing.T) {
@@ -203,6 +202,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to update dogu deployment ldap")
 		sut.AssertMocks(t)
+		mock.AssertExpectationsForObjects(t, sut.requirementsGenerator)
 	})
 }
 
@@ -233,6 +233,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, result)
 		sut.AssertMocks(t)
+		mock.AssertExpectationsForObjects(t, sut.requirementsGenerator)
 	})
 
 	t.Run("error getting deployment from dogu", func(t *testing.T) {

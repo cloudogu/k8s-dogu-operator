@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"k8s.io/client-go/kubernetes/scheme"
 	"net/url"
 	"strings"
 
@@ -122,7 +123,7 @@ func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *co
 		return nil, fmt.Errorf("an error occurred while waiting for pod %s to have status %s: %w", pod.Name, expectedStatus, err)
 	}
 
-	req := ce.getCreateExecRequest(pod)
+	req := ce.getCreateExecRequest(pod, command)
 	exec, err := ce.commandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
 		return nil, &stateError{
@@ -205,10 +206,19 @@ func podHasStatus(pod *corev1.Pod, expected cloudogu.PodStatusForExec) error {
 	return &retry.TestableRetrierError{Err: fmt.Errorf("expected status %s not fulfilled", expected)}
 }
 
-func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod) *rest.Request {
+func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command cloudogu.ShellCommand) *rest.Request {
+	hasStdin := command.Stdin() != nil
 	return ce.coreV1RestClient.Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(pod.Namespace).
-		SubResource("exec")
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Command: command.CommandWithArgs(),
+			Stdin:   hasStdin,
+			Stdout:  true,
+			Stderr:  true,
+			// Note: if the TTY is set to true shell commands may emit ANSI codes into the stdout
+			TTY: false,
+		}, scheme.ParameterCodec)
 }

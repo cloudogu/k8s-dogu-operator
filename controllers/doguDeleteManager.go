@@ -14,7 +14,6 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/limit"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
@@ -36,7 +35,7 @@ type doguDeleteManager struct {
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
 func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry) (*doguDeleteManager, error) {
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), limit.NewDoguDeploymentLimitPatcher(cesRegistry), alias.NewHostAliasGenerator(cesRegistry.GlobalConfig()))
+	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), resource.NewRequirementsGenerator(cesRegistry), alias.NewHostAliasGenerator(cesRegistry.GlobalConfig()))
 
 	restConfig := ctrl.GetConfigOrDie()
 	clientSet, err := kubernetes.NewForConfig(restConfig)
