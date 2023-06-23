@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.33.0] - 2023-06-23
 ### Changed
 - [#106] Resource limits (memory, cpu-cores, ephemeral storage) are now read from
   `/config/<dogu>/container_config/<resource-type>_limit` instead of `/config/<dogu>/pod_limit/<resource-type>`.
@@ -16,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#108] Failing execs on pods because of missing `VersionedParams`
 
 ## [v0.32.0] - 2023-06-21
-
 ### Changed
 - [#104] Change the pre-upgrade process, so that it doesn't need to create the additional reserved volumes anymore. 
   To do so, we adapted the way of the k8s api (`kubectl cp`) and copied the script directly in the old container 
