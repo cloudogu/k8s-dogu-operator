@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	triggerSyncEtcdKeyFullPath = "/config/_global/trigger_container_limit_sync"
+	triggerSyncEtcdKeyFullPath = "/config/_global/sync_resource_requirements"
 )
 
 // requirementsUpdater is responsible to update all hardware limits for dogu deployments when a certain trigger is called.
