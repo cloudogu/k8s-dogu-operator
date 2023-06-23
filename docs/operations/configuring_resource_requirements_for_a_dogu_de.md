@@ -68,11 +68,9 @@ Generell können in jedem `config`-Bereich eines Dogus unter dem Abschnitt `cont
 Damit die Ressourcenanforderungen auch angewendet werden, muss der globale Etcd-Key: `config/_global/sync_resource_requirements`
 erstellt/verändert/gelöscht werden. Jede Änderung an dem Schlüssel führt zum Start einem automatischen Update Prozess
 für alle Dogus. In diesem Update Prozess werden für alle Dogus die Ressourcenanforderungen angewendet und die Dogus, wenn neue Ressourcenanforderungen
-gesetzt wurden, neu gestartet. Unveränderte Dogus werden nicht neu gestartet. Generell kann der Update-Prozess mit dem
-Befehl:
+gesetzt wurden, neu gestartet. Unveränderte Dogus werden nicht neu gestartet. 
+Generell kann der Update-Prozess mit folgendem Befehl gestartet werden:
 
 ```bash
 etcdctl set /config/_global/sync_resource_requirements true
 ```
-
-gestartet werden.

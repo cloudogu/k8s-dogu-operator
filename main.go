@@ -83,7 +83,7 @@ func startDoguOperator() error {
 	}
 
 	if err = resourceRequirementsUpdater(k8sManager, operatorConfig.Namespace); err != nil {
-		return fmt.Errorf("failed to create hardware limit updater: %w", err)
+		return fmt.Errorf("failed to create resource requirements updater: %w", err)
 	}
 
 	err = configureManager(k8sManager, operatorConfig)

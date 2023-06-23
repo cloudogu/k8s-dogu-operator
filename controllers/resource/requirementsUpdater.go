@@ -21,7 +21,7 @@ const (
 	triggerSyncEtcdKeyFullPath = "/config/_global/sync_resource_requirements"
 )
 
-// requirementsUpdater is responsible to update all hardware limits for dogu deployments when a certain trigger is called.
+// requirementsUpdater is responsible to update all resource requirements for dogu deployments when a certain trigger is called.
 type requirementsUpdater struct {
 	client          client.Client
 	namespace       string
@@ -77,7 +77,7 @@ func (hlu *requirementsUpdater) startEtcdWatch(ctx context.Context) error {
 }
 
 func (hlu *requirementsUpdater) triggerSync(ctx context.Context) error {
-	ctrl.LoggerFrom(ctx).Info("Trigger for updating dogu hardware limits detected in registry. Updating deployment for all dogus...")
+	ctrl.LoggerFrom(ctx).Info("Trigger for updating dogu resource requirements detected in registry. Updating deployment for all dogus...")
 
 	installedDogus, err := hlu.getInstalledDogus(ctx)
 	if err != nil {
