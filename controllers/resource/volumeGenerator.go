@@ -81,6 +81,10 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]corev1.Volume, error) {
 	var multiError error
 	var volumes []corev1.Volume
+
+	pvcVolumeCreated := false
+	emptyDirVolumeCreated := false
+
 	for _, doguVolume := range doguVolumes {
 		client, clientExists := doguVolume.GetClient(doguOperatorClient)
 		if clientExists {
@@ -91,20 +95,29 @@ func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]c
 			}
 
 			volumes = append(volumes, *volume)
-		}
-	}
-
-	dataVolumeCount := len(doguVolumes) - len(volumes)
-	if dataVolumeCount > 0 {
-		dataVolume := corev1.Volume{
-			Name: doguResource.GetDataVolumeName(),
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: doguResource.Name,
+		} else if doguVolume.NeedsBackup && !pvcVolumeCreated {
+			// add PVC-VolumeSource for volumes with backup
+			dataVolume := corev1.Volume{
+				Name: doguResource.GetDataVolumeName(),
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: doguResource.Name,
+					},
 				},
-			},
+			}
+			volumes = append(volumes, dataVolume)
+			pvcVolumeCreated = true
+		} else if !doguVolume.NeedsBackup && !emptyDirVolumeCreated {
+			// add EmptyDir-VolumeSource for volumes without backup
+			dataVolume := corev1.Volume{
+				Name: doguResource.GetEphemeralDataVolumeName(),
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			}
+			volumes = append(volumes, dataVolume)
+			emptyDirVolumeCreated = true
 		}
-		volumes = append(volumes, dataVolume)
 	}
 
 	return volumes, multiError
@@ -195,6 +208,15 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv1.Dogu) cor
 			Name:      doguVolume.Name,
 			ReadOnly:  false,
 			MountPath: doguVolume.Path,
+		}
+	}
+
+	if !doguVolume.NeedsBackup {
+		return corev1.VolumeMount{
+			Name:      doguResource.GetEphemeralDataVolumeName(),
+			ReadOnly:  false,
+			MountPath: doguVolume.Path,
+			SubPath:   doguVolume.Name,
 		}
 	}
 
