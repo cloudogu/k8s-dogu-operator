@@ -102,10 +102,10 @@ spec:
           secret:
             defaultMode: 484
             secretName: ldap-private
-        - name: configmap-test
-          configMap:
-            name: k8s-my-configmap
         - name: ldap-data
           persistentVolumeClaim:
             claimName: ldap
+        - name: configmap-test
+          configMap:
+            name: k8s-my-configmap
 status: { }

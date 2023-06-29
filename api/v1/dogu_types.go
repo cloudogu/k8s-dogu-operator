@@ -132,9 +132,14 @@ type Dogu struct {
 	Status DoguStatus `json:"status,omitempty"`
 }
 
-// GetDataVolumeName returns the data volume name for the dogu resource
+// GetDataVolumeName returns the data volume name for the dogu resource for volumes with backup
 func (d *Dogu) GetDataVolumeName() string {
 	return d.Name + "-data"
+}
+
+// GetEphemeralDataVolumeName returns the data volume name for the dogu resource for volumes without backup
+func (d *Dogu) GetEphemeralDataVolumeName() string {
+	return d.Name + "-ephemeral"
 }
 
 // GetPrivateKeySecretName returns the name of the dogus secret resource.
