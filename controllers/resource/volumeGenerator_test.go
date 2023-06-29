@@ -212,7 +212,7 @@ func Test_createDoguVolumes(t *testing.T) {
 		assert.IsType(t, &corev1.EmptyDirVolumeSource{}, volumes[0].VolumeSource.EmptyDir)
 	})
 
-	t.Run("should create only one pvc-Volume and onyl one emptyDir-Volume", func(t *testing.T) {
+	t.Run("should create only one pvc-Volume and only one emptyDir-Volume", func(t *testing.T) {
 		// given
 		volumeClient := core.VolumeClient{
 			Name: "k8s-dogu-operator",
@@ -272,7 +272,7 @@ func Test_createDoguVolumes(t *testing.T) {
 }
 
 func Test_createVolumeMounts(t *testing.T) {
-	t.Run("should create create static volumeMounts", func(t *testing.T) {
+	t.Run("should create static volumeMounts", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 
@@ -292,7 +292,7 @@ func Test_createVolumeMounts(t *testing.T) {
 		assert.Equal(t, "/private", volumeMounts[1].MountPath)
 	})
 
-	t.Run("should create create dogu volumeMounts", func(t *testing.T) {
+	t.Run("should create dogu volumeMounts", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 
@@ -342,7 +342,7 @@ func Test_createVolumeMounts(t *testing.T) {
 }
 
 func Test_createVolumes(t *testing.T) {
-	t.Run("should create create static volumes", func(t *testing.T) {
+	t.Run("should create static volumes", func(t *testing.T) {
 		// given
 		mode := int32(0744)
 		ldapDoguResource := readLdapDoguResource(t)
@@ -362,7 +362,7 @@ func Test_createVolumes(t *testing.T) {
 		assert.Equal(t, &mode, volumes[1].VolumeSource.Secret.DefaultMode)
 	})
 
-	t.Run("should create create dogu volumes", func(t *testing.T) {
+	t.Run("should create dogu volumes", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 
