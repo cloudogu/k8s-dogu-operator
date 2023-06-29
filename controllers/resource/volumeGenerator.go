@@ -82,10 +82,12 @@ func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]c
 	var multiError error
 	var volumes []corev1.Volume
 
+	// only create max one pvcVolume and one emptyDirVolume
 	pvcVolumeCreated := false
 	emptyDirVolumeCreated := false
 
 	for _, doguVolume := range doguVolumes {
+		// to mount e.g. config maps
 		client, clientExists := doguVolume.GetClient(doguOperatorClient)
 		if clientExists {
 			volume, err := createVolumeByClient(doguVolume, client)
