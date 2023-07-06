@@ -18,6 +18,8 @@ goVersion = "1.20.3"
 repositoryOwner = "cloudogu"
 repositoryName = "k8s-dogu-operator"
 project = "github.com/${repositoryOwner}/${repositoryName}"
+registry = "registry.cloudogu.com"
+registry_namespace = "k8s"
 
 // Configuration of branches
 productionReleaseBranch = "main"
@@ -226,6 +228,24 @@ void stageAutomaticRelease() {
 
             DoguRegistry registry = new DoguRegistry(this)
             registry.pushK8sYaml(targetOperatorResourceYaml, repositoryName, "k8s", "${controllerVersion}")
+        }
+
+        stage('Push Helm chart to Harbor') {
+            new Docker(this)
+                .image("golang:${goVersion}")
+                .mountJenkinsUser()
+                .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
+                        {
+                            make 'k8s-helm-package-release'
+
+                            Makefile makefile = new Makefile(this)
+                            String controllerVersion = makefile.getVersion()
+
+                            withCredentials([usernamePassword(credentialsId: 'harborhelmchartpush', usernameVariable: 'HARBOR_USERNAME', passwordVariable: 'HARBOR_PASSWORD')]) {
+                                sh ".bin/helm registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'"
+                                sh ".bin/helm push target/helm/${repositoryName}-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
+                            }
+                        }
         }
 
         stage('Add Github-Release') {
