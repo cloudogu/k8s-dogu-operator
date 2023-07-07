@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#111] Add Helm chart release process to project
+
 ### Changed
 - [#109] Dogu-volumes without backup (needsBackup: false) are now mounted to an emptyDir-volume.
   Dogu-volumes with backup (needsBackup: true) are mounted to the Dogu-PVC.

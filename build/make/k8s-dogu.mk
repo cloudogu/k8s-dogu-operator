@@ -6,7 +6,7 @@ DOGU_JSON_DEV_FILE=${TARGET_DIR}/dogu.json
 ARTIFACT_ID=$(shell $(BINARY_YQ) -e ".Name" $(DOGU_JSON_FILE) | sed "s|.*/||g")
 # Namespace of the dogu is extracted from the dogu.json
 ARTIFACT_NAMESPACE=$(shell $(BINARY_YQ) -e ".Name" $(DOGU_JSON_FILE) | sed "s|/.*||g")
-# Namespace of the dogu is extracted from the dogu.json
+# Version of the dogu is extracted from the dogu.json
 VERSION=$(shell $(BINARY_YQ) -e ".Version" $(DOGU_JSON_FILE))
 # Image of the dogu is extracted from the dogu.json
 IMAGE=$(shell $(BINARY_YQ) -e ".Image" $(DOGU_JSON_FILE)):$(VERSION)
