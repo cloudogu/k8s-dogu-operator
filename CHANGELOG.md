@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.34.0] - 2023-07-07
+### Added
+- [#111] Add Helm chart release process to project
+
+### Changed
+- [#109] Dogu-volumes without backup (needsBackup: false) are now mounted to an emptyDir-volume.
+  Dogu-volumes with backup (needsBackup: true) are mounted to the Dogu-PVC.
+
 ## [v0.33.0] - 2023-06-23
 ### Changed
 - [#106] Resource limits (memory, cpu-cores, ephemeral storage) are now read from

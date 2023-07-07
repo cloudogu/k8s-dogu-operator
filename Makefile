@@ -1,11 +1,11 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=0.33.0
+VERSION=0.34.0
 ## Image URL to use all building/pushing image targets
 IMAGE_DEV=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}:${VERSION}
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG?=1.20.3
-MAKEFILES_VERSION=7.5.0
+MAKEFILES_VERSION=7.10.0
 LINT_VERSION?=v1.52.1
 STAGE?=production
 
@@ -66,12 +66,12 @@ template-crd-labels: kustomize
 	@$(KUSTOMIZE) build config/labels -o config/crd/bases/k8s.cloudogu.com_dogus.yaml
 
 .PHONY: template-stage
-template-stage:
+template-stage: $(BINARY_YQ)
 	@echo "Setting STAGE env in deployment to ${STAGE}!"
 	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"STAGE\").value)=\"${STAGE}\"" $(K8S_RESOURCE_TEMP_YAML)
 
 .PHONY: template-log-level
-template-log-level:
+template-log-level: $(BINARY_YQ)
 	@echo "Setting LOG_LEVEL env in deployment to ${LOG_LEVEL}!"
 	@$(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").env[]|select(.name==\"LOG_LEVEL\").value)=\"${LOG_LEVEL}\"" $(K8S_RESOURCE_TEMP_YAML)
 
