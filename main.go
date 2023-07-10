@@ -52,7 +52,7 @@ func init() {
 func main() {
 	err := startDoguOperator()
 	if err != nil {
-		setupLog.Error(err, "failed to operate dogu operator")
+		setupLog.Error(err, "failed to operate dogu operatorrrrrrrrr")
 		os.Exit(1)
 	}
 }
