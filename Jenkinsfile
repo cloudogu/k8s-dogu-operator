@@ -90,7 +90,7 @@ node('docker') {
 
             def imageName
             stage('Build & Push Image') {
-                docker.info()
+                sh "docker info"
                 imageName = k3d.buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion)
             }
 
