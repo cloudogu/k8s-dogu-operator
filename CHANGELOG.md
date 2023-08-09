@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#113] Prevent nginx HTTP 413 errors for too small body sizes in SCM-Manager and Jenkins
+   - A default value of 1 GB per request is now in place
+- Update versions for SCM-Manager (2.45.1-1) and Jenkins (2.401.3-1) in the sample dogu resources
 
 ## [v0.34.0] - 2023-07-07
 ### Added
