@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -176,8 +177,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
 
-	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
-	err = doguResource.Update(ctx, m.client)
+	err = updateStatusInstalled(ctx, doguResource, m.client)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
@@ -190,6 +190,20 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	return nil
+}
+
+func updateStatusInstalled(ctx context.Context, doguResource *k8sv1.Dogu, client client.Client) error {
+	err := retry.OnConflict(func() error {
+		err := client.Get(ctx, doguResource.GetObjectKey(), doguResource)
+		if err != nil {
+			return err
+		}
+
+		doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
+		err = doguResource.Update(ctx, client)
+		return err
+	})
+	return err
 }
 
 func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error {
