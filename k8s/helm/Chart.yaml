@@ -22,3 +22,8 @@ version: 0.0.0-replaceme
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
 appVersion: "0.0.0-replaceme"
+
+dependencies:
+  - name: k8s-etcd
+    version: 3.*.*
+    condition: false
