@@ -81,15 +81,6 @@ k8s-apply: k8s-generate $(K8S_POST_GENERATE_TARGETS) ## Applies all generated K8
 
 ##@ K8s - Helm general
 
-${K8S_HELM_RESSOURCES}/Chart.yaml: ${BINARY_HELM} ## Creates the Chart.yaml-template if missing
-	@echo "Create Chart.yaml..."
-	@mkdir -p ${K8S_HELM_RESSOURCES}/tmp/
-	@${BINARY_HELM} create ${K8S_HELM_RESSOURCES}/tmp/${ARTIFACT_ID}
-	@cp ${K8S_HELM_RESSOURCES}/tmp/${ARTIFACT_ID}/Chart.yaml ${K8S_HELM_RESSOURCES}/
-	@rm -dr ${K8S_HELM_RESSOURCES}/tmp
-	@sed -i 's/appVersion: ".*"/appVersion: "0.0.0-replaceme"/' ${K8S_HELM_RESSOURCES}/Chart.yaml
-	@sed -i 's/version: .*/version: 0.0.0-replaceme/' ${K8S_HELM_RESSOURCES}/Chart.yaml
-
 .PHONY: k8s-helm-delete
 k8s-helm-delete: ${BINARY_HELM} ## Uninstalls the current helm chart.
 	@echo "Uninstall helm chart"
@@ -163,7 +154,7 @@ image-import: check-all-vars check-k8s-artifact-id docker-dev-tag ## Imports the
 .PHONY: chart-import
 chart-import: check-all-vars check-k8s-artifact-id k8s-helm-generate-chart k8s-helm-package-release image-import ## Imports the currently available image into the cluster-local registry.
 	@echo "Import ${K8S_HELM_RELEASE_TGZ} into K8s cluster ${K3CES_REGISTRY_URL_PREFIX}..."
-	@helm push --kube-insecure-skip-tls-verify ${K8S_HELM_RELEASE_TGZ} oci://${K3CES_REGISTRY_URL_PREFIX}/k8s
+	@${BINARY_HELM} push ${K8S_HELM_RELEASE_TGZ} oci://${K3CES_REGISTRY_URL_PREFIX}/k8s --plain-http
 
 	@echo "Done."
 
@@ -186,4 +177,4 @@ ${BINARY_YQ}: $(UTILITY_BIN_PATH) ## Download yq locally if necessary.
 	$(call go-get-tool,$(BINARY_YQ),github.com/mikefarah/yq/v4@v4.25.1)
 
 ${BINARY_HELM}: $(UTILITY_BIN_PATH) ## Download helm locally if necessary.
-	$(call go-get-tool,$(BINARY_HELM),helm.sh/helm/v3/cmd/helm@latest)
+	$(call go-get-tool,$(BINARY_HELM),helm.sh/helm/v3/cmd/helm@v3.12.0-dev.1.0.20230817154107-a749b663101d)
