@@ -51,3 +51,9 @@ type DoguManager interface {
 	AdditionalIngressAnnotationsManager
 	SupportManager
 }
+
+// AdditionalImageNameGetter lets users retrieve image names by key from a configmap.
+type AdditionalImageNameGetter interface {
+	// ImageForKey returns a container image reference from a configmap.
+	ImageForKey(ctx context.Context, key string) (string, error)
+}

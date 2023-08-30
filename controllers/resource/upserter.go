@@ -38,9 +38,7 @@ type upserter struct {
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator) *upserter {
-	schema := client.Scheme()
-	generator := NewResourceGenerator(schema, requirementsGenerator, hostAliasGenerator)
+func NewUpserter(client client.Client, generator cloudogu.DoguResourceGenerator) *upserter {
 	exposedPortAdder := NewDoguExposedPortHandler(client)
 	return &upserter{client: client, generator: generator, exposedPortAdder: exposedPortAdder}
 }
@@ -49,7 +47,7 @@ func NewUpserter(client client.Client, requirementsGenerator cloudogu.ResourceRe
 // All parameters are mandatory except deploymentPatch which may be nil.
 // The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
 func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment)) (*appsv1.Deployment, error) {
-	newDeployment, err := u.generator.CreateDoguDeployment(doguResource, dogu)
+	newDeployment, err := u.generator.CreateDoguDeployment(ctx, doguResource, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate deployment: %w", err)
 	}

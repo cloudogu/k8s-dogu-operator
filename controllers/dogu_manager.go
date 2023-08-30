@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
@@ -51,12 +50,12 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, err
 	}
 
-	deleteManager, err := NewDoguDeleteManager(client, cesRegistry)
+	deleteManager, err := NewDoguDeleteManager(client, operatorConfig, cesRegistry, eventRecorder)
 	if err != nil {
 		return nil, err
 	}
 
-	supportManager := NewDoguSupportManager(client, cesRegistry, eventRecorder)
+	supportManager, _ := NewDoguSupportManager(client, operatorConfig, cesRegistry, eventRecorder)
 
 	volumeManager := NewDoguVolumeManager(client, eventRecorder)
 

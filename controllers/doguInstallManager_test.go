@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"k8s.io/client-go/rest"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -106,15 +105,13 @@ func getDoguInstallManagerTestData(t *testing.T) (*k8sv1.Dogu, *core.Dogu, *core
 
 func TestNewDoguInstallManager(t *testing.T) {
 	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = func() *rest.Config {
-		return &rest.Config{}
-	}
+	oldGetConfigDelegate := ctrl.GetConfig
+	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+	ctrl.GetConfig = createTestRestConfig
 
 	t.Run("success", func(t *testing.T) {
 		// given
-		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
@@ -136,10 +133,10 @@ func TestNewDoguInstallManager(t *testing.T) {
 		// given
 
 		// override default controller method to return a config that fail the client creation
-		oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-		defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-		ctrl.GetConfigOrDie = func() *rest.Config {
-			return &rest.Config{ExecProvider: &api.ExecConfig{}, AuthProvider: &api.AuthProviderConfig{}}
+		oldGetConfigDelegate := ctrl.GetConfig
+		defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+		ctrl.GetConfig = func() (*rest.Config, error) {
+			return nil, assert.AnError
 		}
 
 		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
@@ -153,6 +150,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		require.Nil(t, doguManager)
 	})
 }

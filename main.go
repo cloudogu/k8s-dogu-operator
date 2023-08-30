@@ -31,7 +31,7 @@ var (
 	scheme = runtime.NewScheme()
 	// set up the logger before the actual logger is instantiated
 	// the logger will be replaced later-on with a more sophisticated instance
-	setupLog             = ctrl.Log.WithName("setup")
+	setupLog             = ctrl.Log.WithName("k8s-dogu-operator")
 	metricsAddr          string
 	enableLeaderElection bool
 	probeAddr            string

@@ -3,7 +3,6 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -50,21 +49,9 @@ type upgradeExecutor struct {
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
-func NewUpgradeExecutor(
-	client client.Client,
-	config *rest.Config,
-	commandExecutor cloudogu.CommandExecutor,
-	eventRecorder record.EventRecorder,
-	imageRegistry cloudogu.ImageRegistry,
-	collectApplier cloudogu.CollectApplier,
-	k8sFileExtractor cloudogu.FileExtractor,
-	serviceAccountCreator cloudogu.ServiceAccountCreator,
-	registry registry.Registry,
-) *upgradeExecutor {
-	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, nil)
-	requirementsGenerator := resource.NewRequirementsGenerator(registry)
-	hostAliasGenerator := alias.NewHostAliasGenerator(registry.GlobalConfig())
-	upserter := resource.NewUpserter(client, requirementsGenerator, hostAliasGenerator)
+func NewUpgradeExecutor(client client.Client, config *rest.Config, commandExecutor cloudogu.CommandExecutor, eventRecorder record.EventRecorder, imageRegistry cloudogu.ImageRegistry, collectApplier cloudogu.CollectApplier, k8sFileExtractor cloudogu.FileExtractor, serviceAccountCreator cloudogu.ServiceAccountCreator, registry registry.Registry, resourceUpserter cloudogu.ResourceUpserter) (*upgradeExecutor, error) {
+	var noSecretGeneratorForUpgrades cloudogu.SecretResourceGenerator
+	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, noSecretGeneratorForUpgrades)
 
 	return &upgradeExecutor{
 		client:                client,
@@ -74,10 +61,10 @@ func NewUpgradeExecutor(
 		k8sFileExtractor:      k8sFileExtractor,
 		serviceAccountCreator: serviceAccountCreator,
 		doguRegistrator:       doguReg,
-		resourceUpserter:      upserter,
+		resourceUpserter:      resourceUpserter,
 		execPodFactory:        exec.NewExecPodFactory(client, config, commandExecutor),
 		doguCommandExecutor:   commandExecutor,
-	}
+	}, nil
 }
 
 // Upgrade executes all necessary steps to update a dogu to a new version.

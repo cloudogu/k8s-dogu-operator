@@ -146,7 +146,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	requirementsGen.EXPECT().Generate(mock.Anything).Return(v1.ResourceRequirements{}, nil)
 	hostAliasGeneratorMock := &extMocks.HostAliasGenerator{}
 	hostAliasGeneratorMock.On("Generate").Return(nil, nil)
-	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock)
+
+	//additionalImageGetter := util.NewAdditionalImageGetter(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, nil)
 
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -169,7 +171,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
-	upserter := resource.NewUpserter(k8sClient, requirementsGen, hostAliasGeneratorMock)
+	upserter := resource.NewUpserter(k8sClient, resourceGenerator)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
@@ -217,7 +219,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, cfg, CommandExecutor, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
+	upgradeExecutor, _ := upgrade.NewUpgradeExecutor(k8sClient, cfg, CommandExecutor, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock, upserter)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,
@@ -229,11 +231,11 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	supportManager := &doguSupportManager{
-		client:            k8sManager.GetClient(),
-		scheme:            k8sManager.GetScheme(),
-		doguRegistry:      EtcdDoguRegistry,
-		resourceGenerator: resourceGenerator,
-		eventRecorder:     eventRecorder,
+		client:                       k8sManager.GetClient(),
+		scheme:                       k8sManager.GetScheme(),
+		doguRegistry:                 EtcdDoguRegistry,
+		podTemplateResourceGenerator: resourceGenerator,
+		eventRecorder:                eventRecorder,
 	}
 
 	doguManager := &DoguManager{

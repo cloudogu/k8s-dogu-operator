@@ -3,9 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	cesremote "github.com/cloudogu/cesapp-lib/remote"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"k8s.io/client-go/tools/record"
 
-	"k8s.io/client-go/kubernetes"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -13,11 +14,9 @@ import (
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
 )
 
 const finalizerName = "dogu-finalizer"
@@ -31,25 +30,28 @@ type doguDeleteManager struct {
 	serviceAccountRemover cloudogu.ServiceAccountRemover
 	doguSecretHandler     cloudogu.DoguSecretHandler
 	exposedPortRemover    cloudogu.ExposePortRemover
+	eventRecorder         record.EventRecorder
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry) (*doguDeleteManager, error) {
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), resource.NewRequirementsGenerator(cesRegistry), alias.NewHostAliasGenerator(cesRegistry.GlobalConfig()))
-
-	restConfig := ctrl.GetConfigOrDie()
-	clientSet, err := kubernetes.NewForConfig(restConfig)
+func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*doguDeleteManager, error) {
+	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
 	if err != nil {
-		return nil, fmt.Errorf("failed to find cluster config: %w", err)
+		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
 	}
-	executor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
+
+	_, _, _, excecutor, _, _, _, _, resourceGenerator, err := initManagerObjects(client, operatorConfig, cesRegistry, doguRemoteRegistry)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize dogu delete manager objects: %w", err)
+	}
 
 	return &doguDeleteManager{
 		client:                client,
 		localDoguFetcher:      cesreg.NewLocalDoguFetcher(cesRegistry.DoguRegistry()),
 		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor, client),
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, excecutor, client),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
+		eventRecorder:         recorder,
 	}, nil
 }
 

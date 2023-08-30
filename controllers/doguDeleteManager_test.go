@@ -2,6 +2,10 @@ package controllers
 
 import (
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	"testing"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
@@ -13,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 	regclient "go.etcd.io/etcd/client/v2"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -60,13 +62,19 @@ func TestNewDoguDeleteManager(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		// override default controller method to retrieve a kube config
-		oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-		defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-		ctrl.GetConfigOrDie = func() *rest.Config {
-			return &rest.Config{}
+		oldGetConfigDelegate := ctrl.GetConfig
+		defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+		ctrl.GetConfig = createTestRestConfig
+
+		addImagesConfigmap := &v1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      util.OperatorAdditionalImagesConfigmapName,
+				Namespace: testNamespace,
+			},
+			Data: map[string]string{util.ChownInitImageConfigmapNameKey: "busybox:123"},
 		}
 
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(addImagesConfigmap).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
@@ -76,7 +84,7 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
-		doguManager, err := NewDoguDeleteManager(client, cesRegistry)
+		doguManager, err := NewDoguDeleteManager(client, operatorConfig, cesRegistry, nil)
 
 		// then
 		require.NoError(t, err)
@@ -87,24 +95,23 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		// given
 
 		// override default controller method to return a config that fail the client creation
-		oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-		defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-		ctrl.GetConfigOrDie = func() *rest.Config {
-			return &rest.Config{ExecProvider: &api.ExecConfig{}, AuthProvider: &api.AuthProviderConfig{}}
+		oldGetConfigDelegate := ctrl.GetConfig
+		defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+		ctrl.GetConfig = func() (*rest.Config, error) {
+			return nil, assert.AnError
 		}
 
 		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
-		globalConfig := cesmocks.NewConfigurationContext(t)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
-		doguManager, err := NewDoguDeleteManager(client, cesRegistry)
+		doguManager, err := NewDoguDeleteManager(client, operatorConfig, cesRegistry, nil)
 
 		// then
 		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
 		require.Nil(t, doguManager)
 	})
 }

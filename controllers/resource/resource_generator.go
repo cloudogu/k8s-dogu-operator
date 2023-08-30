@@ -1,12 +1,11 @@
 package resource
 
 import (
+	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"strconv"
 	"strings"
 
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,10 +14,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
 
 const (
@@ -36,12 +39,16 @@ const (
 )
 
 const (
-	chownInitContainerName  = "dogu-volume-chown-init"
-	chownInitContainerImage = "busybox:1.36"
+	chownInitContainerName = "dogu-volume-chown-init"
 )
 
 // kubernetesServiceAccountKind describes a service account on kubernetes.
 const kubernetesServiceAccountKind = "k8s"
+
+type additionalImageGetter interface {
+	// ImageForKey returns a container image reference from a configmap.
+	ImageForKey(ctx context.Context, key string) (string, error)
+}
 
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
@@ -49,20 +56,27 @@ type resourceGenerator struct {
 	scheme                *runtime.Scheme
 	requirementsGenerator cloudogu.ResourceRequirementsGenerator
 	hostAliasGenerator    thirdParty.HostAliasGenerator
+	additionalImageGetter additionalImageGetter
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator, additionalImageGetter additionalImageGetter) *resourceGenerator {
 	return &resourceGenerator{
 		scheme:                scheme,
 		requirementsGenerator: requirementsGenerator,
 		hostAliasGenerator:    hostAliasGenerator,
+		additionalImageGetter: additionalImageGetter,
 	}
 }
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
-	podTemplate, err := r.GetPodTemplate(doguResource, dogu)
+func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	chownInitImage, err := r.additionalImageGetter.ImageForKey(ctx, util.ChownInitImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not create dogu deployment %s: configuration additional images failed: %w", doguResource.Name, err)
+	}
+
+	podTemplate, err := r.GetPodTemplate(doguResource, dogu, chownInitImage)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +114,7 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 }
 
 // GetPodTemplate returns a pod template for the given dogu.
-func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
+func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu, chownInitImage string) (*corev1.PodTemplateSpec, error) {
 	volumes, err := createVolumes(doguResource, dogu)
 	if err != nil {
 		return nil, err
@@ -130,7 +144,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 	// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 	enableServiceLinks := false
 
-	chownContainer, err := getChownInitContainer(dogu, doguResource)
+	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +197,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 	return podTemplate, nil
 }
 
-func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.Container, error) {
+func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu, chownInitImage string) (*corev1.Container, error) {
 	// Skip chown volumes with dogu-operator client because these are volumes from configmaps and read only.
 	filteredVolumes := filterVolumesWithClient(dogu.Volumes, doguOperatorClient)
 	if len(filteredVolumes) == 0 {
@@ -213,7 +227,7 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.C
 
 	return &corev1.Container{
 		Name:         chownInitContainerName,
-		Image:        chownInitContainerImage,
+		Image:        chownInitImage,
 		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
 		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
 	}, nil

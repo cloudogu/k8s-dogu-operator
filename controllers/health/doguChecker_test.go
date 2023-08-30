@@ -30,9 +30,10 @@ var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound,
 
 func Test_doguChecker_checkDoguHealth(t *testing.T) {
 	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
+	oldGetConfigDelegate := ctrl.GetConfig
+	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+	ctrl.GetConfig = createTestRestConfig
+
 	operatorConfig := &config.OperatorConfig{}
 	operatorConfig.Namespace = testNamespace
 
@@ -75,7 +76,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
 	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
+	ctrl.GetConfig = createTestRestConfig
 
 	operatorConfig := &config.OperatorConfig{}
 	operatorConfig.Namespace = testNamespace
@@ -822,6 +823,6 @@ func createDeployment(doguName string, replicas, replicasReady int32) *appsv1.De
 	}
 }
 
-func createTestRestConfig() *rest.Config {
-	return &rest.Config{}
+func createTestRestConfig() (*rest.Config, error) {
+	return &rest.Config{}, nil
 }

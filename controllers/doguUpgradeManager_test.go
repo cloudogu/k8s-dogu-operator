@@ -36,8 +36,8 @@ var deploymentTypeMeta = metav1.TypeMeta{
 	Kind:       "Deployment",
 }
 
-func createTestRestConfig() *rest.Config {
-	return &rest.Config{}
+func createTestRestConfig() (*rest.Config, error) {
+	return &rest.Config{}, nil
 }
 
 func createReadyDeployment(doguName string) *appsv1.Deployment {
@@ -60,18 +60,18 @@ func createDeployment(doguName string, replicas, replicasReady int32) *appsv1.De
 
 func TestNewDoguUpgradeManager(t *testing.T) {
 	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
+	oldGetConfigDelegate := ctrl.GetConfig
+	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+	ctrl.GetConfig = createTestRestConfig
 
 	t.Run("fail when no valid kube config was found", func(t *testing.T) {
 		// given
 
 		// override default controller method to return a config that fail the client creation
-		oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-		defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-		ctrl.GetConfigOrDie = func() *rest.Config {
-			return &rest.Config{ExecProvider: &api.ExecConfig{}, AuthProvider: &api.AuthProviderConfig{}}
+		oldGetConfigDelegate := ctrl.GetConfig
+		defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+		ctrl.GetConfig = func() (*rest.Config, error) {
+			return &rest.Config{ExecProvider: &api.ExecConfig{}, AuthProvider: &api.AuthProviderConfig{}}, nil
 		}
 
 		operatorConfig := &config.OperatorConfig{}
@@ -129,7 +129,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
 	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
+	ctrl.GetConfig = createTestRestConfig
 
 	operatorConfig := &config.OperatorConfig{}
 	operatorConfig.Namespace = testNamespace

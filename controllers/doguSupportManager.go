@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
-
+	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,27 +21,35 @@ const SupportModeEnvVar = "SUPPORT_MODE"
 
 // podTemplateResourceGenerator is used to generate pod templates.
 type podTemplateResourceGenerator interface {
-	GetPodTemplate(*k8sv1.Dogu, *core.Dogu) (*corev1.PodTemplateSpec, error)
+	GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu, chownInitImage string) (*corev1.PodTemplateSpec, error)
 }
 
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
-	client            client.Client
-	scheme            *runtime.Scheme
-	doguRegistry      registry.DoguRegistry
-	resourceGenerator podTemplateResourceGenerator
-	eventRecorder     record.EventRecorder
+	client                       client.Client
+	scheme                       *runtime.Scheme
+	doguRegistry                 registry.DoguRegistry
+	podTemplateResourceGenerator podTemplateResourceGenerator
+	eventRecorder                record.EventRecorder
 }
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.
-func NewDoguSupportManager(client client.Client, cesRegistry registry.Registry, eventRecorder record.EventRecorder) *doguSupportManager {
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), resource.NewRequirementsGenerator(cesRegistry), alias.NewHostAliasGenerator(cesRegistry.GlobalConfig()))
-	return &doguSupportManager{
-		client:            client,
-		doguRegistry:      cesRegistry.DoguRegistry(),
-		resourceGenerator: resourceGenerator,
-		eventRecorder:     eventRecorder,
+func NewDoguSupportManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry registry.Registry, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
+	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
 	}
+	_, _, _, _, _, _, _, _, resourceGenerator, err := initManagerObjects(client, operatorConfig, cesRegistry, doguRemoteRegistry)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize dogu support manager objects: %w", err)
+	}
+
+	return &doguSupportManager{
+		client:                       client,
+		doguRegistry:                 cesRegistry.DoguRegistry(),
+		podTemplateResourceGenerator: resourceGenerator,
+		eventRecorder:                eventRecorder,
+	}, nil
 }
 
 // HandleSupportMode handles the support flag in the dogu spec and returns whether the support modes changed during the
@@ -83,7 +89,7 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
 	}
 
-	podTemplate, err := dsm.resourceGenerator.GetPodTemplate(doguResource, dogu)
+	podTemplate, err := dsm.podTemplateResourceGenerator.GetPodTemplate(doguResource, dogu, "")
 	if err != nil {
 		return err
 	}
