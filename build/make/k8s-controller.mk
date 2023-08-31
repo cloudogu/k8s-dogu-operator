@@ -38,7 +38,7 @@ K8S_INTEGRATION_TEST_DIR=${TARGET_DIR}/k8s-integration-test
 ##@ K8s - EcoSystem
 
 .PHONY: build
-build: image-import k8s-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
+build: k8s-helm-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 ##@ Release
 
@@ -83,7 +83,7 @@ k8s-integration-test: $(K8S_INTEGRATION_TEST_DIR) manifests generate envtest ## 
 CONTROLLER_GEN = $(UTILITY_BIN_PATH)/controller-gen
 .PHONY: controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.11.3)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.13.0)
 
 KUSTOMIZE = $(UTILITY_BIN_PATH)/kustomize
 .PHONY: kustomize
