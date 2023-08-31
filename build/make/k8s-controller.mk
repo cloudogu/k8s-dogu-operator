@@ -38,7 +38,7 @@ K8S_INTEGRATION_TEST_DIR=${TARGET_DIR}/k8s-integration-test
 ##@ K8s - EcoSystem
 
 .PHONY: build
-build: image-import k8s-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
+build: k8s-helm-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 ##@ Release
 
