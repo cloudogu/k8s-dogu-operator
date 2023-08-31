@@ -102,7 +102,7 @@ k8s-helm-delete: ${BINARY_HELM} check-k8s-namespace-env-var ## Uninstalls the cu
 	@${BINARY_HELM} uninstall ${ARTIFACT_ID} --namespace=${NAMESPACE} ${BINARY_HELM_ADDITIONAL_UNINST_ARGS} || true
 
 .PHONY: k8s-helm-generate-chart
-k8s-helm-generate-chart: ${K8S_HELM_TARGET}/Chart.yaml ## Generates the final helm chart.
+k8s-helm-generate-chart: ${K8S_HELM_TARGET}/Chart.yaml  k8s-helm-create-temp-dependencies ## Generates the final helm chart.
 
 ${K8S_HELM_TARGET}/Chart.yaml: $(K8S_RESOURCE_TEMP_FOLDER)
 	@echo "Generate helm chart..."
@@ -135,19 +135,19 @@ ${K8S_HELM_TARGET}/templates/$(ARTIFACT_ID)_$(VERSION).yaml: $(K8S_PRE_GENERATE_
 	@sed -i "s/'{{ .Namespace }}'/'{{ .Release.Namespace }}'/" ${K8S_HELM_TARGET}/templates/$(ARTIFACT_ID)_$(VERSION).yaml
 
 .PHONY: k8s-helm-package-release
-k8s-helm-package-release: ${BINARY_HELM} k8s-helm-delete-existing-tgz ${K8S_HELM_RELEASE_TGZ} k8s-helm-delete-temp-dependencies k8s-helm-remove-dependency-charts ## Generates and packages the helm chart with release urls.
+k8s-helm-package-release: ${BINARY_HELM} k8s-helm-delete-existing-tgz ${K8S_HELM_RELEASE_TGZ} ## Generates and packages the helm chart with release urls.
 
 .PHONY: k8s-helm-delete-existing-tgz
 k8s-helm-delete-existing-tgz: ## Remove an existing Helm package.
 # remove
 	@rm -f ${K8S_HELM_RELEASE_TGZ}*
 
-${K8S_HELM_RELEASE_TGZ}: ${BINARY_HELM} ${K8S_HELM_TARGET}/templates/$(ARTIFACT_ID)_$(VERSION).yaml k8s-helm-create-temp-dependencies $(K8S_POST_GENERATE_TARGETS) ## Generates and packages the helm chart with release urls.
+${K8S_HELM_RELEASE_TGZ}: ${BINARY_HELM} ${K8S_HELM_TARGET}/templates/$(ARTIFACT_ID)_$(VERSION).yaml k8s-helm-generate-chart $(K8S_POST_GENERATE_TARGETS) ## Generates and packages the helm chart with release urls.
 	@echo "Package generated helm chart"
 	@${BINARY_HELM} package ${K8S_HELM_TARGET} -d ${K8S_HELM_TARGET} ${BINARY_HELM_ADDITIONAL_PACK_ARGS}
 
 .PHONY: k8s-helm-create-temp-dependencies
-k8s-helm-create-temp-dependencies: k8s-helm-generate-chart
+k8s-helm-create-temp-dependencies: ${K8S_HELM_TARGET}/Chart.yaml
 # we use helm dependencies internally but never use them as "official" dependency because the namespace may differ
 # instead we create empty dependencies to satisfy the helm package call and delete the whole directory from the chart.tgz later-on.
 	@echo "Create helm temp dependencies (if they exist)"
@@ -155,23 +155,6 @@ k8s-helm-create-temp-dependencies: k8s-helm-generate-chart
 		mkdir -p ${K8S_HELM_TARGET}/${K8S_HELM_TARGET_DEP_DIR}/$${dep} ; \
 		sed "s|replaceme|$${dep}|g" $(BUILD_DIR)/make/k8s-helm-temp-chart.yaml > ${K8S_HELM_TARGET}/${K8S_HELM_TARGET_DEP_DIR}/$${dep}/Chart.yaml ; \
 	done
-
-.PHONY: k8s-helm-delete-temp-dependencies
-k8s-helm-delete-temp-dependencies:
-	@echo "Delete helm temp dependencies (if they exist)"
-	@rm -rf ${K8S_HELM_TARGET}/${K8S_HELM_TARGET_DEP_DIR}
-
-.PHONY: k8s-helm-remove-dependency-charts
-k8s-helm-remove-dependency-charts: ${K8S_HELM_RELEASE_TGZ}
-# deleting dirs from a .tgz is hard so un-tar,remove dir,re-tar is a good alternative
-# but only if any dependency directory actually exists
-	@if tar -tf ${K8S_HELM_RELEASE_TGZ} ${ARTIFACT_ID}/${K8S_HELM_TARGET_DEP_DIR} > /dev/null 2>&1; then \
-		echo "Remove dependency files from ${K8S_HELM_RELEASE_TGZ}" ; \
-		gzip --to-stdout --decompress ${K8S_HELM_RELEASE_TGZ} | \
-		  tar --to-stdout --delete "${ARTIFACT_ID}/${K8S_HELM_TARGET_DEP_DIR}" -f - | \
-		  gzip > ${K8S_HELM_RELEASE_TGZ}.temp ; \
-		rm ${K8S_HELM_RELEASE_TGZ} && mv ${K8S_HELM_RELEASE_TGZ}.temp ${K8S_HELM_RELEASE_TGZ} ; \
-	fi
 
 .PHONY: chart-import
 chart-import: check-all-vars check-k8s-artifact-id k8s-helm-generate-chart k8s-helm-package-release image-import ## Imports the currently available image into the cluster-local registry.
