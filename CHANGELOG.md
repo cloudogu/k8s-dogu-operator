@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.35.1] - 2023-08-31
+### Added
+- [#119] Add "k8s-etcd" as a dependency to the helm-chart
+
 ## [v0.35.0] - 2023-08-14
 ### Changed
 - [#113] Prevent nginx HTTP 413 errors for too small body sizes in SCM-Manager and Jenkins in dogu resource samples
