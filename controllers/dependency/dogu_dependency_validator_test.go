@@ -87,7 +87,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "An error occurred when comparing the versions")
+		assert.ErrorContains(t, err, "an error occurred when comparing the versions")
 	})
 
 	t.Run("error on invalid mandatory dependency", func(t *testing.T) {

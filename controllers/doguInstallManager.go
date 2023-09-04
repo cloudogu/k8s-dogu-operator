@@ -3,8 +3,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
+
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,6 +25,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
 const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"

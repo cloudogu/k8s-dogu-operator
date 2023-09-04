@@ -3,31 +3,32 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/cesapp-lib/core"
-	cesreg "github.com/cloudogu/cesapp-lib/registry"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
-	"github.com/cloudogu/k8s-apply-lib/apply"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
-	"k8s.io/client-go/rest"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/cloudogu/cesapp-lib/core"
+	cesreg "github.com/cloudogu/cesapp-lib/registry"
+	cesremote "github.com/cloudogu/cesapp-lib/remote"
+	"github.com/cloudogu/k8s-apply-lib/apply"
+	"github.com/cloudogu/k8s-host-change/pkg/alias"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.

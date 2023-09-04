@@ -2,7 +2,6 @@ package serviceaccount
 
 import (
 	"context"
-
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	"testing"
@@ -16,7 +15,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,7 +101,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("failure during first sa deletion should not interrupt second sa deletion", func(t *testing.T) {
+	t.Run("failure during first SA deletion should not interrupt second SA deletion", func(t *testing.T) {
 		// given
 		readyPostgresPod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
@@ -150,10 +148,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		multiError, ok := err.(*multierror.Error)
-		require.True(t, ok, "expected a different error than: "+err.Error())
-		assert.Equal(t, 1, len(multiError.Errors))
-		assert.ErrorIs(t, multiError.Errors[0], assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 
 	t.Run("sa dogu does not exist", func(t *testing.T) {

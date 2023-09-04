@@ -17,7 +17,6 @@ import (
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
-	"github.com/hashicorp/go-multierror"
 	coreosclient "go.etcd.io/etcd/client/v2"
 
 	"github.com/stretchr/testify/assert"
@@ -303,13 +302,9 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		err := sut.triggerSync(context.Background())
 
 		// then
-		var myMultiError *multierror.Error
-		require.ErrorAs(t, err, &myMultiError)
-
-		assert.Len(t, myMultiError.Errors, 3)
-		assert.Contains(t, myMultiError.Errors[0].Error(), "failed to get dogu.json of dogu [dogu1] from registry")
-		assert.Contains(t, myMultiError.Errors[1].Error(), "failed to get dogu.json of dogu [dogu2] from registry")
-		assert.Contains(t, myMultiError.Errors[2].Error(), "failed to get dogu.json of dogu [dogu3] from registry")
+		assert.ErrorContains(t, err, "failed to get dogu.json of dogu [dogu1] from registry")
+		assert.ErrorContains(t, err, "failed to get dogu.json of dogu [dogu2] from registry")
+		assert.ErrorContains(t, err, "failed to get dogu.json of dogu [dogu3] from registry")
 	})
 
 	t.Run("trigger fail on retrieving dogu deployments", func(t *testing.T) {
@@ -339,13 +334,9 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		err := sut.triggerSync(context.Background())
 
 		// then
-		var myMultiError *multierror.Error
-		require.ErrorAs(t, err, &myMultiError)
-
-		assert.Len(t, myMultiError.Errors, 3)
-		assert.Contains(t, myMultiError.Errors[0].Error(), "failed to get deployment of dogu [test/dogu1]")
-		assert.Contains(t, myMultiError.Errors[1].Error(), "failed to get deployment of dogu [test/dogu2]")
-		assert.Contains(t, myMultiError.Errors[2].Error(), "failed to get deployment of dogu [test/dogu3]")
+		assert.ErrorContains(t, err, "failed to get deployment of dogu [test/dogu1]")
+		assert.ErrorContains(t, err, "failed to get deployment of dogu [test/dogu2]")
+		assert.ErrorContains(t, err, "failed to get deployment of dogu [test/dogu3]")
 	})
 
 	t.Run("trigger fail on generating resource requirements", func(t *testing.T) {
@@ -381,13 +372,9 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		err := sut.triggerSync(context.Background())
 
 		// then
-		var myMultiError *multierror.Error
-		require.ErrorAs(t, err, &myMultiError)
-
-		assert.Len(t, myMultiError.Errors, 3)
-		assert.ErrorIs(t, myMultiError.Errors[0], assert.AnError)
-		assert.ErrorIs(t, myMultiError.Errors[1], assert.AnError)
-		assert.ErrorIs(t, myMultiError.Errors[2], assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 
 	t.Run("trigger fail on updating deployment", func(t *testing.T) {
@@ -426,13 +413,9 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		err := sut.triggerSync(context.Background())
 
 		// then
-		var myMultiError *multierror.Error
-		require.ErrorAs(t, err, &myMultiError)
-
-		assert.Len(t, myMultiError.Errors, 3)
-		assert.ErrorIs(t, myMultiError.Errors[0], assert.AnError)
-		assert.ErrorIs(t, myMultiError.Errors[1], assert.AnError)
-		assert.ErrorIs(t, myMultiError.Errors[2], assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 
 	t.Run("trigger success", func(t *testing.T) {

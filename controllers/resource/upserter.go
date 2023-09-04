@@ -2,12 +2,12 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -140,7 +140,7 @@ func (u *upserter) waitForExistingPVCToBeTerminated(ctx context.Context, pvcObje
 		}
 
 		log.FromContext(ctx).Info(fmt.Sprintf("wait for pvc %s to be terminated", pvcObjectKey.Name))
-		return errors.New(fmt.Sprintf("pvc %s still exists", pvcObjectKey.Name))
+		return fmt.Errorf("pvc %s still exists", pvcObjectKey.Name)
 	})
 
 	return err

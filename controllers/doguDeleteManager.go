@@ -3,17 +3,17 @@ package controllers
 import (
 	"context"
 	"fmt"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"k8s.io/client-go/tools/record"
 
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"

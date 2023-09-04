@@ -2,15 +2,14 @@ package serviceaccount
 
 import (
 	"context"
+	"errors"
 	"fmt"
-
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 
-	"github.com/hashicorp/go-multierror"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -49,13 +48,13 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 		case doguKind:
 			err := r.removeDoguServiceAccount(ctx, dogu, serviceAccount)
 			if err != nil {
-				allProblems = multierror.Append(allProblems, err)
+				allProblems = errors.Join(allProblems, err)
 			}
 		case cesKind:
 			if serviceAccount.Type == "cesappd" {
 				err := r.removeCesControlServiceAccount(dogu)
 				if err != nil {
-					allProblems = multierror.Append(allProblems, err)
+					allProblems = errors.Join(allProblems, err)
 				}
 			}
 			continue
