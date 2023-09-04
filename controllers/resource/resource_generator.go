@@ -215,14 +215,15 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu, chownInitI
 			return nil, fmt.Errorf("failed to parse group id %s from volume %s: %w", volume.Group, volume.Name, err)
 		}
 
-		if uid > 0 && gid > 0 {
-			mkdirCommand := fmt.Sprintf("mkdir -p \"%s\"", volume.Path)
-			chownCommand := fmt.Sprintf("chown -R %s:%s \"%s\"", volume.Owner, volume.Group, volume.Path)
-			commands = append(commands, mkdirCommand)
-			commands = append(commands, chownCommand)
-		} else {
+		isNotRootOwned := uid <= 0 || gid <= 0
+		if isNotRootOwned {
 			return nil, fmt.Errorf("owner %d or group %d are not greater than 0", uid, gid)
 		}
+
+		mkdirCommand := fmt.Sprintf("mkdir -p \"%s\"", volume.Path)
+		chownCommand := fmt.Sprintf("chown -R %s:%s \"%s\"", volume.Owner, volume.Group, volume.Path)
+		commands = append(commands, mkdirCommand)
+		commands = append(commands, chownCommand)
 	}
 
 	return &corev1.Container{
