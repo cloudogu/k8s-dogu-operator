@@ -3,12 +3,14 @@ package util
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
-	"testing"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var (
@@ -18,9 +20,9 @@ var (
 
 func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 	t.Run("should fail on non-existing configmap", func(t *testing.T) {
-		clientset := fake.NewSimpleClientset()
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		// given
-		sut := NewAdditionalImageGetter(clientset.CoreV1().ConfigMaps(testNamespace))
+		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
 		_, err := sut.ImageForKey(testCtx, OperatorAdditionalImagesConfigmapName)
@@ -37,8 +39,8 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 				Namespace: testNamespace,
 			},
 		}
-		clientset := fake.NewSimpleClientset(invalidCM)
-		sut := NewAdditionalImageGetter(clientset.CoreV1().ConfigMaps(testNamespace))
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(invalidCM).Build()
+		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
 		_, err := sut.ImageForKey(testCtx, OperatorAdditionalImagesConfigmapName)
@@ -56,8 +58,8 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 			},
 			Data: map[string]string{ChownInitImageConfigmapNameKey: "busybox:::::123"},
 		}
-		clientset := fake.NewSimpleClientset(invalidCM)
-		sut := NewAdditionalImageGetter(clientset.CoreV1().ConfigMaps(testNamespace))
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(invalidCM).Build()
+		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
 		_, err := sut.ImageForKey(testCtx, OperatorAdditionalImagesConfigmapName)
@@ -75,8 +77,8 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 			},
 			Data: map[string]string{ChownInitImageConfigmapNameKey: "busybox:123"},
 		}
-		clientset := fake.NewSimpleClientset(validCM)
-		sut := NewAdditionalImageGetter(clientset.CoreV1().ConfigMaps(testNamespace))
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(validCM).Build()
+		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
 		actual, err := sut.ImageForKey(testCtx, OperatorAdditionalImagesConfigmapName)

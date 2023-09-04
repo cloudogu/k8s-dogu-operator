@@ -7,7 +7,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,7 +28,6 @@ type podTemplateResourceGenerator interface {
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
 	client                       client.Client
-	scheme                       *runtime.Scheme
 	doguRegistry                 registry.DoguRegistry
 	podTemplateResourceGenerator podTemplateResourceGenerator
 	eventRecorder                record.EventRecorder

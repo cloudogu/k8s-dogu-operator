@@ -108,7 +108,7 @@ func initManagerObjects(client client.Client, operatorConfig *config.OperatorCon
 
 	requirementsGenerator := resource.NewRequirementsGenerator(cesRegistry)
 	hostAliasGenerator := alias.NewHostAliasGenerator(cesRegistry.GlobalConfig())
-	additionalImageGetter := util.NewAdditionalImageGetter(clientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
+	additionalImageGetter := util.NewAdditionalImageGetter(client, operatorConfig.Namespace)
 	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImageGetter)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("cannot create resource generator: %w", err)
