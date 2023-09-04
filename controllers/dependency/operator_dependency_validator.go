@@ -1,9 +1,9 @@
 package dependency
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"golang.org/x/net/context"
 
 	"github.com/cloudogu/cesapp-lib/core"
 )
