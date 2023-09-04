@@ -55,11 +55,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Upgrade, operation)
+		assert.Equal(t, []operation{Upgrade}, operations)
 	})
 	t.Run("installed should return ignore for error when fetching volume", func(t *testing.T) {
 		// given
@@ -87,11 +87,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Upgrade, operation)
+		assert.Equal(t, []operation{Upgrade}, operations)
 	})
 	t.Run("installed should return ignore for any other changes on a pre-existing dogu resource", func(t *testing.T) {
 		// given
@@ -118,11 +118,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 	t.Run("installed should fail because of version parsing errors", func(t *testing.T) {
 		// given
@@ -150,12 +150,12 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to parse major version")
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 
 	t.Run("deletiontimestamp should return delete", func(t *testing.T) {
@@ -174,11 +174,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		sut := &doguReconciler{}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Delete, operation)
+		assert.Equal(t, []operation{Delete}, operations)
 		testDoguCr.DeletionTimestamp = nil
 	})
 
@@ -188,19 +188,33 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ledogu",
 			},
+			Spec: k8sv1.DoguSpec{Name: "official/ledogu", Version: "42.0.0-1"},
 			Status: k8sv1.DoguStatus{
 				Status: k8sv1.DoguStatusInstalling,
 			},
 		}
 
-		sut := &doguReconciler{}
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 
 	t.Run("deleting should return ignore", func(t *testing.T) {
@@ -217,11 +231,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		sut := &doguReconciler{}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 
 	t.Run("not installed should return install", func(t *testing.T) {
@@ -238,11 +252,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		sut := &doguReconciler{}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Install, operation)
+		assert.Equal(t, []operation{Install}, operations)
 	})
 
 	t.Run("pvc resizing should return expand volume", func(t *testing.T) {
@@ -251,19 +265,33 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ledogu",
 			},
+			Spec: k8sv1.DoguSpec{Name: "official/ledogu", Version: "42.0.0-1"},
 			Status: k8sv1.DoguStatus{
 				Status: k8sv1.DoguStatusPVCResizing,
 			},
 		}
 
-		sut := &doguReconciler{}
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, ExpandVolume, operation)
+		assert.Equal(t, []operation{ExpandVolume}, operations)
 	})
 
 	t.Run("default should return ignore", func(t *testing.T) {
@@ -280,11 +308,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		sut := &doguReconciler{}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 }
 
@@ -423,7 +451,6 @@ func Test_operation_toString(t *testing.T) {
 	assert.Equal(t, operation("Install"), Install)
 	assert.Equal(t, operation("Upgrade"), Upgrade)
 	assert.Equal(t, operation("Delete"), Delete)
-	assert.Equal(t, operation("Ignore"), Ignore)
 }
 
 func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
