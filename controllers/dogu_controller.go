@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
 	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
 	"time"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
+
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -80,15 +81,9 @@ const waitTimeout = 5 * time.Second
 type doguReconciler struct {
 	client             client.Client
 	doguManager        cloudogu.DoguManager
-	doguRequeueHandler requeueHandler
+	doguRequeueHandler cloudogu.RequeueHandler
 	recorder           record.EventRecorder
 	fetcher            cloudogu.LocalDoguFetcher
-}
-
-// requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
-type requeueHandler interface {
-	// Handle takes an error and handles the requeue process for the current dogu operation.
-	Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error, onRequeue func(dogu *k8sv1.Dogu)) (result ctrl.Result, requeueErr error)
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
@@ -151,7 +146,7 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 	switch requiredOperations[0] {
 	case Wait:
 		if requeueForMultipleOperations {
-			return requeueOrFinishOperation(reconcile.Result{Requeue: true, RequeueAfter: waitTimeout})
+			return requeueOrFinishOperation(ctrl.Result{Requeue: true, RequeueAfter: waitTimeout})
 		}
 
 		return finishOperation()

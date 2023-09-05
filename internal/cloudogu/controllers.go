@@ -2,6 +2,7 @@ package cloudogu
 
 import (
 	"context"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
@@ -50,4 +51,10 @@ type DoguManager interface {
 	VolumeManager
 	AdditionalIngressAnnotationsManager
 	SupportManager
+}
+
+// RequeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
+type RequeueHandler interface {
+	// Handle takes an error and handles the requeue process for the current dogu operation.
+	Handle(ctx context.Context, contextMessage string, doguResource *v1.Dogu, err error, onRequeue func(dogu *v1.Dogu)) (result ctrl.Result, requeueErr error)
 }
