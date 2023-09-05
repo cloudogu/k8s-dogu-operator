@@ -264,16 +264,23 @@ func (c *checkIfPVCIsResizedStep) waitForPVCResize(ctx context.Context, doguReso
 }
 
 func isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
-	// first check if the filesystem resize is "pending", which means that the pod has to be (re)started to actually resize the volume
-	// see https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/#file-system-expansion
+	if isPvcResizeApplicable(pvc) {
+		return true
+	}
+
+	// Longhorn works this way and does not add the Condition "FileSystemResizePending" to the PVC
+	// see https://github.com/longhorn/longhorn/issues/2749
+	isRequestedCapacityAvailable := pvc.Status.Capacity.Storage().Equal(quantity)
+	return isRequestedCapacityAvailable
+}
+
+// isPvcResizeApplicable checks if the filesystem resize is "pending", which means that the pod has to be (re)started to actually resize the volume.
+// see https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/#file-system-expansion
+func isPvcResizeApplicable(pvc *corev1.PersistentVolumeClaim) bool {
 	for _, condition := range pvc.Status.Conditions {
 		if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending && condition.Status == corev1.ConditionTrue {
 			return true
 		}
 	}
-
-	// check if the requested capacity is already available
-	// Longhorn works this way and does not add the Condition "FileSystemResizePending" to the PVC
-	// see https://github.com/longhorn/longhorn/issues/2749
-	return pvc.Status.Capacity.Storage().Equal(quantity)
+	return false
 }
