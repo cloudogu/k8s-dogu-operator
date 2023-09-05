@@ -82,6 +82,7 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 }
 
 func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *k8sv1.Dogu, deployment *appsv1.Deployment) error {
+	logger := log.FromContext(ctx)
 	dogu, err := dsm.doguRegistry.Get(doguResource.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
@@ -96,13 +97,7 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 	}
 
 	deployment.Spec.Template = *podTemplate
-	logger := log.FromContext(ctx)
-	logger.Info("---------------------------------")
-	logger.Info("---------------------------------")
 	logger.Info(fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
-	logger.Info(fmt.Sprintf("deployment spec.template.spec tbu %#v...", deployment.Spec.Template.Spec))
-	logger.Info("---------------------------------")
-	logger.Info("---------------------------------")
 	err = dsm.client.Update(ctx, deployment)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu deployment %s: %w", doguResource.Name, err)
