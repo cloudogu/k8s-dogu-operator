@@ -25,7 +25,7 @@ const (
 
 const (
 	startConditionPVC           = ""
-	startConditionScaleDown     = "Scale down"
+	startConditionEditPvc       = "Edit PVC"
 	startConditionWaitForResize = "Wait for resize"
 	startConditionScaleUp       = "Scale up"
 )
@@ -81,9 +81,9 @@ func NewDoguVolumeManager(client client.Client, eventRecorder record.EventRecord
 }
 
 func createAsyncSteps(executor cloudogu.AsyncExecutor, client client.Client, recorder record.EventRecorder) {
-	executor.AddStep(&editPVCStep{client: client, eventRecorder: recorder})
 	scaleUp := &scaleUpStep{client: client, eventRecorder: recorder, replicas: 1}
 	executor.AddStep(&scaleDownStep{client: client, eventRecorder: recorder, scaleUpStep: scaleUp})
+	executor.AddStep(&editPVCStep{client: client, eventRecorder: recorder})
 	executor.AddStep(&checkIfPVCIsResizedStep{client: client, eventRecorder: recorder})
 	executor.AddStep(scaleUp)
 }
@@ -110,7 +110,7 @@ type editPVCStep struct {
 
 // GetStartCondition returns the condition required to start the step.
 func (e *editPVCStep) GetStartCondition() string {
-	return startConditionPVC
+	return startConditionEditPvc
 }
 
 // Execute executes the step and returns the next state and if the step fails an error.
@@ -126,7 +126,7 @@ func (e *editPVCStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, er
 		return e.GetStartCondition(), err
 	}
 
-	return startConditionScaleDown, nil
+	return startConditionWaitForResize, nil
 }
 
 func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *k8sv1.Dogu, quantity resource.Quantity) error {
@@ -154,7 +154,7 @@ type scaleDownStep struct {
 
 // GetStartCondition returns the condition required to start the step.
 func (s *scaleDownStep) GetStartCondition() string {
-	return startConditionScaleDown
+	return startConditionPVC
 }
 
 // Execute executes the step and returns the next state and if the step fails an error.
@@ -166,7 +166,7 @@ func (s *scaleDownStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, 
 	}
 	s.scaleUpStep.replicas = oldReplicas
 
-	return startConditionWaitForResize, nil
+	return startConditionEditPvc, nil
 }
 
 type scaleUpStep struct {
