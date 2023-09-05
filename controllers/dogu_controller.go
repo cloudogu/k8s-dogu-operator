@@ -7,7 +7,9 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
+	"time"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
@@ -67,9 +69,12 @@ const (
 	Install                            = operation("Install")
 	Upgrade                            = operation("Upgrade")
 	Delete                             = operation("Delete")
+	Wait                               = operation("Wait")
 	ExpandVolume                       = operation("ExpandVolume")
 	ChangeAdditionalIngressAnnotations = operation("ChangeAdditionalIngressAnnotations")
 )
+
+const waitTimeout = 5 * time.Second
 
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
@@ -139,6 +144,8 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	requeueForMultipleOperations := len(requiredOperations) > 1
 	switch requiredOperations[0] {
+	case Wait:
+		return requeueOrFinishOperation(reconcile.Result{Requeue: true, RequeueAfter: waitTimeout})
 	case Install:
 		return r.performInstallOperation(ctx, doguResource)
 	case Upgrade:
@@ -192,17 +199,24 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 		return []operation{Delete}, nil
 	}
 
+	var err error
 	var operations []operation
 	switch doguResource.Status.Status {
 	case k8sv1.DoguStatusNotInstalled:
 		return []operation{Install}, nil
 	case k8sv1.DoguStatusPVCResizing:
 		operations = append(operations, ExpandVolume)
-		fallthrough
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
 	case k8sv1.DoguStatusInstalling:
-		fallthrough
+		operations = append(operations, Wait)
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
 	case k8sv1.DoguStatusInstalled:
-		var err error
 		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
 		if err != nil {
 			return nil, err

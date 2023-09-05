@@ -215,7 +215,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Empty(t, operations)
+		assert.Equal(t, []operation{Wait}, operations)
 	})
 
 	t.Run("installed with changed ingress annotation should return IngressAnnotationChange", func(t *testing.T) {
@@ -294,7 +294,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		assert.Nil(t, operations)
 	})
 
-	t.Run("installing with changed ingress annotation should return IngressAnnotationChange", func(t *testing.T) {
+	t.Run("installing with changed ingress annotation should return Wait and IngressAnnotationChange", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
@@ -330,7 +330,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, []operation{ChangeAdditionalIngressAnnotations}, operations)
+		assert.Equal(t, []operation{Wait, ChangeAdditionalIngressAnnotations}, operations)
 	})
 
 	t.Run("pvc resizing with changed ingress annotation should return PVCResize, IngressAnnotationChange", func(t *testing.T) {
