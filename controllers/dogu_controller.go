@@ -135,6 +135,11 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return requeueWithError(fmt.Errorf("failed to evaluate required operation: %w", err))
 	}
 
+	return r.executeRequiredOperation(ctx, requiredOperations, doguResource)
+}
+
+func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredOperations []operation, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
 	if len(requiredOperations) == 0 {
 		logger.Info(fmt.Sprintf("Nothing to be done for Dogu %s/%s with Status %s", doguResource.Namespace, doguResource.Name, doguResource.Status.Status))
 		return finishOperation()
