@@ -198,6 +198,11 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 }
 
 func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu, chownInitImage string) (*corev1.Container, error) {
+	noInitContainerNeeded := chownInitImage == ""
+	if noInitContainerNeeded {
+		return nil, nil
+	}
+
 	// Skip chown volumes with dogu-operator client because these are volumes from configmaps and read only.
 	filteredVolumes := filterVolumesWithClient(dogu.Volumes, doguOperatorClient)
 	if len(filteredVolumes) == 0 {

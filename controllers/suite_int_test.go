@@ -6,6 +6,7 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"os"
 	"path/filepath"
@@ -149,7 +150,13 @@ var _ = ginkgo.BeforeSuite(func() {
 	hostAliasGeneratorMock.On("Generate").Return(nil, nil)
 
 	additionalImageGetter := &mocks.AdditionalImageNameGetter{}
-	additionalImageGetter.EXPECT().ImageForKey(mock.Anything, util.ChownInitImageConfigmapNameKey).Return("busybox:0.36.0", nil)
+	additionalImageGetter.EXPECT().ImageForKey(mock.Anything, util.ChownInitImageConfigmapNameKey).RunAndReturn(func(ctx context.Context, s string) (string, error) {
+		fmt.Println("#################")
+		fmt.Println("##############################################################")
+		fmt.Println("################################################################################################")
+		fmt.Println("##############################################################################################################")
+		return "busybox:1.36", nil
+	})
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, additionalImageGetter)
 
 	version, err := core.ParseVersion("0.0.0")

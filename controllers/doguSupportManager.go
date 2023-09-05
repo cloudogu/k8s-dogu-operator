@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -73,7 +72,6 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 		return false, nil
 	}
 
-	logger.Info(fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
 	err = dsm.updateDeployment(ctx, doguResource, deployment)
 	if err != nil {
 		return false, err
@@ -98,6 +96,13 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 	}
 
 	deployment.Spec.Template = *podTemplate
+	logger := log.FromContext(ctx)
+	logger.Info("---------------------------------")
+	logger.Info("---------------------------------")
+	logger.Info(fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
+	logger.Info(fmt.Sprintf("deployment spec.template.spec tbu %#v...", deployment.Spec.Template.Spec))
+	logger.Info("---------------------------------")
+	logger.Info("---------------------------------")
 	err = dsm.client.Update(ctx, deployment)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu deployment %s: %w", doguResource.Name, err)

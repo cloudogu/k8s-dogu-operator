@@ -42,7 +42,7 @@ func (adig *additionalImageGetter) ImageForKey(ctx context.Context, key string) 
 		return "", fmt.Errorf("error while getting configmap '%s': %w", OperatorAdditionalImagesConfigmapName, err)
 	}
 
-	imageTag := configMap.Data[ChownInitImageConfigmapNameKey]
+	imageTag := configMap.Data[key]
 	if imageTag == "" {
 		return "", fmt.Errorf("configmap '%s' must not contain empty chown init image name", OperatorAdditionalImagesConfigmapName)
 	}

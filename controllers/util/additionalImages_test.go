@@ -25,7 +25,7 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, OperatorAdditionalImagesConfigmapName)
+		_, err := sut.ImageForKey(testCtx, ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -43,7 +43,7 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, OperatorAdditionalImagesConfigmapName)
+		_, err := sut.ImageForKey(testCtx, ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -62,7 +62,7 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, OperatorAdditionalImagesConfigmapName)
+		_, err := sut.ImageForKey(testCtx, ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -81,7 +81,7 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		actual, err := sut.ImageForKey(testCtx, OperatorAdditionalImagesConfigmapName)
+		actual, err := sut.ImageForKey(testCtx, ChownInitImageConfigmapNameKey)
 
 		// then
 		require.NoError(t, err)
