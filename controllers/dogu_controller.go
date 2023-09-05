@@ -145,7 +145,11 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	requeueForMultipleOperations := len(requiredOperations) > 1
 	switch requiredOperations[0] {
 	case Wait:
-		return requeueOrFinishOperation(reconcile.Result{Requeue: true, RequeueAfter: waitTimeout})
+		if requeueForMultipleOperations {
+			return requeueOrFinishOperation(reconcile.Result{Requeue: true, RequeueAfter: waitTimeout})
+		}
+
+		return finishOperation()
 	case Install:
 		return r.performInstallOperation(ctx, doguResource)
 	case Upgrade:
