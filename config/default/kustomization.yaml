@@ -10,7 +10,7 @@ commonLabels:
 # field above.
 namePrefix: k8s-dogu-operator-
 
-bases:
+resources:
 - ../crd
 - ../rbac
 - ../manager
