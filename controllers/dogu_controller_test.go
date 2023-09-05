@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"testing"
 	"time"
 
@@ -215,6 +216,160 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Empty(t, operations)
+	})
+
+	t.Run("installed with changed ingress annotation should return IngressAnnotationChange", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{
+				Name:                         "official/ledogu",
+				Version:                      "42.0.0-1",
+				AdditionalIngressAnnotations: map[string]string{"annotation1": "value1"},
+			},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusInstalled,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ChangeAdditionalIngressAnnotations}, operations)
+	})
+
+	t.Run("check for ingress annotations should fail", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{
+				Name:    "official/ledogu",
+				Version: "42.0.0-1",
+			},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusInstalled,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:        "ledogu",
+			Annotations: map[string]string{annotation.AdditionalIngressAnnotationsAnnotation: "{{\"invalid json"},
+		}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get additional ingress annotations from service of dogu [ledogu]")
+		assert.Nil(t, operations)
+	})
+
+	t.Run("installing with changed ingress annotation should return IngressAnnotationChange", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{
+				Name:                         "official/ledogu",
+				Version:                      "42.0.0-1",
+				AdditionalIngressAnnotations: map[string]string{"annotation1": "value1"},
+			},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusInstalling,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ChangeAdditionalIngressAnnotations}, operations)
+	})
+
+	t.Run("pvc resizing with changed ingress annotation should return PVCResize, IngressAnnotationChange", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{
+				Name:                         "official/ledogu",
+				Version:                      "42.0.0-1",
+				AdditionalIngressAnnotations: map[string]string{"annotation1": "value1"},
+			},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusPVCResizing,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ExpandVolume, ChangeAdditionalIngressAnnotations}, operations)
 	})
 
 	t.Run("deleting should return ignore", func(t *testing.T) {
