@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- [#117] Fix waiting for PVC to be resized on "AzureDisk"-storage
+  - The conditions "FileSystemResizePending" has to be checked for storage-interfaces (like "AzureDisk") that require a file system expansion before the additional space of an expanded volume is usable by pods.
 
 ## [v0.35.1] - 2023-08-31
 ### Added
