@@ -128,29 +128,12 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 				FieldPath: "metadata.name",
 			},
 		}}}
-	var startupProbe *corev1.Probe
-	var livenessProbe *corev1.Probe
 	var command []string
 	var args []string
-	startupProbe = CreateStartupProbe(dogu)
-	livenessProbe = createLivenessProbe(dogu)
-	pullPolicy := corev1.PullIfNotPresent
-	if config.Stage == config.StageDevelopment {
-		pullPolicy = corev1.PullAlways
-	}
-
-	allLabels := GetAppLabel().Add(doguResource.GetPodLabels())
-
-	// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
-	enableServiceLinks := false
 
 	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage)
 	if err != nil {
 		return nil, err
-	}
-	var initContainers []corev1.Container
-	if chownContainer != nil {
-		initContainers = append(initContainers, *chownContainer)
 	}
 
 	hostAliases, err := r.hostAliasGenerator.Generate()
@@ -163,36 +146,22 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		return nil, err
 	}
 
-	podTemplate := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: allLabels,
-		},
-		Spec: corev1.PodSpec{
-			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
-			Hostname:           doguResource.Name,
-			HostAliases:        hostAliases,
-			Volumes:            volumes,
-			EnableServiceLinks: &enableServiceLinks,
-			InitContainers:     initContainers,
-			Containers: []corev1.Container{{
-				Command:         command,
-				Args:            args,
-				LivenessProbe:   livenessProbe,
-				StartupProbe:    startupProbe,
-				Name:            doguResource.Name,
-				Image:           dogu.Image + ":" + dogu.Version,
-				ImagePullPolicy: pullPolicy,
-				VolumeMounts:    volumeMounts,
-				Env:             envVars,
-				Resources:       resourceRequirements,
-			}},
-		},
-	}
-
-	accountName, ok := getKubernetesServiceAccount(dogu)
-	if ok {
-		podTemplate.Spec.ServiceAccountName = accountName
-	}
+	podTemplate := newPodSpecBuilder(doguResource, dogu).
+		labels(GetAppLabel().Add(doguResource.GetPodLabels())).
+		hostAliases(hostAliases).
+		volumes(volumes).
+		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
+		enableServiceLinks(false).
+		initContainers(chownContainer).
+		containerCommandAndArgs(command, args).
+		containerLivenessProbe().
+		containerStartupProbe().
+		containerPullPolicy().
+		containerVolumeMounts(volumeMounts).
+		containerEnvVars(envVars).
+		containerResourceRequirements(resourceRequirements).
+		serviceAccount().
+		build()
 
 	return podTemplate, nil
 }
@@ -388,4 +357,144 @@ func (r *resourceGenerator) CreateDoguSecret(doguResource *k8sv1.Dogu, stringDat
 
 func wrapControllerReferenceError(err error) error {
 	return fmt.Errorf("failed to set controller reference: %w", err)
+}
+
+type podSpecBuilder struct {
+	theDoguResource              *k8sv1.Dogu
+	theDogu                      *core.Dogu
+	metaAllLabels                k8sv1.CesMatchingLabels
+	specHostAliases              []corev1.HostAlias
+	specVolumes                  []corev1.Volume
+	specEnableServiceLinks       bool
+	specServiceAccountName       string
+	specInitContainers           []corev1.Container
+	specContainerCommand         []string
+	specContainerArgs            []string
+	specContainerLivenessProbe   *corev1.Probe
+	specContainerStartupProbe    *corev1.Probe
+	specContainerImagePullPolicy corev1.PullPolicy
+	specContainerVolumeMounts    []corev1.VolumeMount
+	specContainerEnvVars         []corev1.EnvVar
+	specContainerResourcesReq    corev1.ResourceRequirements
+}
+
+func newPodSpecBuilder(doguResource *k8sv1.Dogu, dogu *core.Dogu) *podSpecBuilder {
+	p := &podSpecBuilder{}
+	p.theDoguResource = doguResource
+	p.theDogu = dogu
+	return p
+}
+
+func (p *podSpecBuilder) labels(labels k8sv1.CesMatchingLabels) *podSpecBuilder {
+	p.metaAllLabels = labels
+	return p
+}
+
+func (p *podSpecBuilder) hostAliases(hostAliases []corev1.HostAlias) *podSpecBuilder {
+	p.specHostAliases = hostAliases
+	return p
+}
+
+func (p *podSpecBuilder) volumes(volumes []corev1.Volume) *podSpecBuilder {
+	p.specVolumes = volumes
+	return p
+}
+
+func (p *podSpecBuilder) enableServiceLinks(enable bool) *podSpecBuilder {
+	p.specEnableServiceLinks = enable
+	return p
+}
+
+func (p *podSpecBuilder) initContainers(initContainers ...*corev1.Container) *podSpecBuilder {
+	for _, initContainer := range initContainers {
+		if initContainer == nil {
+			continue
+		}
+
+		foundContainer := *initContainer
+		p.specInitContainers = append(p.specInitContainers, foundContainer)
+	}
+	return p
+}
+
+func (p *podSpecBuilder) containerCommandAndArgs(command, args []string) *podSpecBuilder {
+	p.specContainerCommand = command
+	p.specContainerArgs = args
+	return p
+}
+
+func (p *podSpecBuilder) containerLivenessProbe() *podSpecBuilder {
+	p.specContainerLivenessProbe = createLivenessProbe(p.theDogu)
+	return p
+}
+
+func (p *podSpecBuilder) containerStartupProbe() *podSpecBuilder {
+	p.specContainerStartupProbe = CreateStartupProbe(p.theDogu)
+	return p
+}
+
+func (p *podSpecBuilder) containerPullPolicy() *podSpecBuilder {
+	pullPolicy := corev1.PullIfNotPresent
+	if config.Stage == config.StageDevelopment {
+		pullPolicy = corev1.PullAlways
+	}
+
+	p.specContainerImagePullPolicy = pullPolicy
+
+	return p
+}
+
+func (p *podSpecBuilder) containerVolumeMounts(volumeMounts []corev1.VolumeMount) *podSpecBuilder {
+	p.specContainerVolumeMounts = volumeMounts
+	return p
+}
+
+func (p *podSpecBuilder) containerEnvVars(envVars []corev1.EnvVar) *podSpecBuilder {
+	p.specContainerEnvVars = envVars
+	return p
+}
+
+func (p *podSpecBuilder) containerResourceRequirements(reqs corev1.ResourceRequirements) *podSpecBuilder {
+	p.specContainerResourcesReq = reqs
+	return p
+}
+
+func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
+	result := &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: p.metaAllLabels,
+		},
+		Spec: corev1.PodSpec{
+			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
+			Hostname:           p.theDoguResource.Name,
+			HostAliases:        p.specHostAliases,
+			Volumes:            p.specVolumes,
+			EnableServiceLinks: &p.specEnableServiceLinks,
+			ServiceAccountName: p.specServiceAccountName,
+			InitContainers:     p.specInitContainers,
+			Containers: []corev1.Container{{
+				Name:            p.theDoguResource.Name,
+				Image:           p.theDogu.Image + ":" + p.theDogu.Version,
+				Command:         p.specContainerCommand,
+				Args:            p.specContainerArgs,
+				LivenessProbe:   p.specContainerLivenessProbe,
+				StartupProbe:    p.specContainerStartupProbe,
+				ImagePullPolicy: p.specContainerImagePullPolicy,
+				VolumeMounts:    p.specContainerVolumeMounts,
+				Env:             p.specContainerEnvVars,
+				Resources:       p.specContainerResourcesReq,
+			}},
+		},
+	}
+
+	return result
+}
+
+func (p *podSpecBuilder) serviceAccount() *podSpecBuilder {
+	accountName, ok := getKubernetesServiceAccount(p.theDogu)
+	if ok {
+		p.specServiceAccountName = accountName
+	}
+
+	return p
 }
