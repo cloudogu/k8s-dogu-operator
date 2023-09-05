@@ -3,18 +3,14 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	"fmt"
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
@@ -23,8 +19,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
@@ -615,7 +616,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -629,7 +630,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -645,7 +646,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -665,7 +666,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -684,7 +685,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -703,7 +704,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -718,7 +719,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -742,7 +743,7 @@ func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(doguService).Build()}
 
 		// when
-		result, err := sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+		result, err := sut.checkForAdditionalIngressAnnotations(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -762,7 +763,7 @@ func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(doguService).Build()}
 
 		// when
-		_, err = sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+		_, err = sut.checkForAdditionalIngressAnnotations(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -775,7 +776,7 @@ func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().Build()}
 
 		// when
-		_, err := sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+		_, err := sut.checkForAdditionalIngressAnnotations(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
