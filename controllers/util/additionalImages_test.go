@@ -29,7 +29,7 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "error while getting configmap 'k8s-ces-additional-images':")
+		assert.ErrorContains(t, err, "error while getting configmap 'k8s-dogu-operator-additional-images':")
 	})
 	t.Run("should fail on missing configmap key", func(t *testing.T) {
 		// given
@@ -47,7 +47,7 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "configmap 'k8s-ces-additional-images' must not contain empty chown init image name")
+		assert.ErrorContains(t, err, "configmap 'k8s-dogu-operator-additional-images' must not contain empty chown init image name")
 	})
 	t.Run("should fail on invalid image tag", func(t *testing.T) {
 		// given
@@ -66,7 +66,7 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "configmap 'k8s-ces-additional-images' contains an invalid image tag: image tag 'busybox:::::123' seems invalid")
+		assert.ErrorContains(t, err, "configmap 'k8s-dogu-operator-additional-images' contains an invalid image tag: image tag 'busybox:::::123' seems invalid")
 	})
 	t.Run("should succeed on valid configmap", func(t *testing.T) {
 		// given

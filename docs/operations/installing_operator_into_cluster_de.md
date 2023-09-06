@@ -29,13 +29,13 @@ Der Dogu-Operator kann mit folgendem Befehl lokal gebaut und in den Cluster inst
 
 ## Von k8s-dogu-operator zusätzlich verwendete Images anpassen
 
-Die ConfigMap `k8s-ces-additional-images` muss vor dem Start des k8s-dogu-operator existieren. Normalerweise sollte dies
+Die ConfigMap `k8s-dogu-operator-additional-images` muss vor dem Start des k8s-dogu-operator existieren. Normalerweise sollte dies
 kein Problem sein, da k8s-dogu-operator mit einer vorkonfigurierten ConfigMap ausgeliefert wird.
 
 Ein einzelnes Image in der ConfigMap kann wie folgt durch ein anderes ausgetauscht werden:
 
 ```bash
-kubectl -n ecosystem get cm k8s-ces-additional-images -o yaml |
+kubectl -n ecosystem get cm k8s-dogu-operator-additional-images -o yaml |
   sed -e 's|chownInitImage: busybox:1.36|chownInitImage: yourimage:tag|' |
   kubectl apply -f -
 ```

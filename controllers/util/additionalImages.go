@@ -12,7 +12,7 @@ import (
 
 const (
 	// OperatorAdditionalImagesConfigmapName contains the configmap name which consists of auxiliary yet necessary container images.
-	OperatorAdditionalImagesConfigmapName = "k8s-ces-additional-images"
+	OperatorAdditionalImagesConfigmapName = "k8s-dogu-operator-additional-images"
 	ChownInitImageConfigmapNameKey        = "chownInitImage"
 )
 
