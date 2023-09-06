@@ -53,11 +53,13 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, fmt.Errorf("failed to validate key provider: %w", err)
 	}
 
-	// get AND validate config in one yay
-	util.NewAdditionalImageGetter(client, operatorConfig.Namespace).ImageForKey(nil, "")
-
-	// map[string]string => additionalImages
-	// TODO read add images once during start up, not during runtime, add docs how to handle the configmap change (with op reboot)
+	ctx := context.Background()
+	imageGetter := util.NewAdditionalImageGetter(client, operatorConfig.Namespace)
+	additionalImageChownInitContainer, err := imageGetter.ImageForKey(ctx, util.ChownInitImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	}
+	additionalImages := map[string]string{util.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
 
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
@@ -80,7 +82,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
 	}
 
-	mgrSet, err := newManagerSet(restConfig, client, clientSet, operatorConfig, cesRegistry, applier)
+	mgrSet, err := newManagerSet(restConfig, client, clientSet, operatorConfig, cesRegistry, applier, additionalImages)
 	if err != nil {
 		return nil, fmt.Errorf("could not create manager set: %w", err)
 	}
@@ -185,7 +187,7 @@ type managerSet struct {
 	imageRegistry         cloudogu.ImageRegistry
 }
 
-func newManagerSet(restConfig *rest.Config, client client.Client, clientSet *kubernetes.Clientset, config *config.OperatorConfig, cesreg cesregistry.Registry, applier *apply.Applier) (*managerSet, error) {
+func newManagerSet(restConfig *rest.Config, client client.Client, clientSet *kubernetes.Clientset, config *config.OperatorConfig, cesreg cesregistry.Registry, applier *apply.Applier, additionalImages map[string]string) (*managerSet, error) {
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
@@ -201,8 +203,7 @@ func newManagerSet(restConfig *rest.Config, client client.Client, clientSet *kub
 
 	requirementsGenerator := resource.NewRequirementsGenerator(cesreg)
 	hostAliasGenerator := alias.NewHostAliasGenerator(cesreg.GlobalConfig())
-	additionalImageGetter := util.NewAdditionalImageGetter(client, config.Namespace)
-	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImageGetter)
+	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImages)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create resource generator: %w", err)
 	}

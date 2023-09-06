@@ -5,8 +5,6 @@ package mocks
 import (
 	appsv1 "k8s.io/api/apps/v1"
 
-	context "context"
-
 	core "github.com/cloudogu/cesapp-lib/core"
 
 	corev1 "k8s.io/api/core/v1"
@@ -31,25 +29,25 @@ func (_m *DoguResourceGenerator) EXPECT() *DoguResourceGenerator_Expecter {
 	return &DoguResourceGenerator_Expecter{mock: &_m.Mock}
 }
 
-// CreateDoguDeployment provides a mock function with given fields: ctx, doguResource, dogu
-func (_m *DoguResourceGenerator) CreateDoguDeployment(ctx context.Context, doguResource *v1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
-	ret := _m.Called(ctx, doguResource, dogu)
+// CreateDoguDeployment provides a mock function with given fields: doguResource, dogu
+func (_m *DoguResourceGenerator) CreateDoguDeployment(doguResource *v1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	ret := _m.Called(doguResource, dogu)
 
 	var r0 *appsv1.Deployment
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, *core.Dogu) (*appsv1.Deployment, error)); ok {
-		return rf(ctx, doguResource, dogu)
+	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) (*appsv1.Deployment, error)); ok {
+		return rf(doguResource, dogu)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu, *core.Dogu) *appsv1.Deployment); ok {
-		r0 = rf(ctx, doguResource, dogu)
+	if rf, ok := ret.Get(0).(func(*v1.Dogu, *core.Dogu) *appsv1.Deployment); ok {
+		r0 = rf(doguResource, dogu)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*appsv1.Deployment)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *v1.Dogu, *core.Dogu) error); ok {
-		r1 = rf(ctx, doguResource, dogu)
+	if rf, ok := ret.Get(1).(func(*v1.Dogu, *core.Dogu) error); ok {
+		r1 = rf(doguResource, dogu)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -63,16 +61,15 @@ type DoguResourceGenerator_CreateDoguDeployment_Call struct {
 }
 
 // CreateDoguDeployment is a helper method to define mock.On call
-//   - ctx context.Context
 //   - doguResource *v1.Dogu
 //   - dogu *core.Dogu
-func (_e *DoguResourceGenerator_Expecter) CreateDoguDeployment(ctx interface{}, doguResource interface{}, dogu interface{}) *DoguResourceGenerator_CreateDoguDeployment_Call {
-	return &DoguResourceGenerator_CreateDoguDeployment_Call{Call: _e.mock.On("CreateDoguDeployment", ctx, doguResource, dogu)}
+func (_e *DoguResourceGenerator_Expecter) CreateDoguDeployment(doguResource interface{}, dogu interface{}) *DoguResourceGenerator_CreateDoguDeployment_Call {
+	return &DoguResourceGenerator_CreateDoguDeployment_Call{Call: _e.mock.On("CreateDoguDeployment", doguResource, dogu)}
 }
 
-func (_c *DoguResourceGenerator_CreateDoguDeployment_Call) Run(run func(ctx context.Context, doguResource *v1.Dogu, dogu *core.Dogu)) *DoguResourceGenerator_CreateDoguDeployment_Call {
+func (_c *DoguResourceGenerator_CreateDoguDeployment_Call) Run(run func(doguResource *v1.Dogu, dogu *core.Dogu)) *DoguResourceGenerator_CreateDoguDeployment_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v1.Dogu), args[2].(*core.Dogu))
+		run(args[0].(*v1.Dogu), args[1].(*core.Dogu))
 	})
 	return _c
 }
@@ -82,7 +79,7 @@ func (_c *DoguResourceGenerator_CreateDoguDeployment_Call) Return(_a0 *appsv1.De
 	return _c
 }
 
-func (_c *DoguResourceGenerator_CreateDoguDeployment_Call) RunAndReturn(run func(context.Context, *v1.Dogu, *core.Dogu) (*appsv1.Deployment, error)) *DoguResourceGenerator_CreateDoguDeployment_Call {
+func (_c *DoguResourceGenerator_CreateDoguDeployment_Call) RunAndReturn(run func(*v1.Dogu, *core.Dogu) (*appsv1.Deployment, error)) *DoguResourceGenerator_CreateDoguDeployment_Call {
 	_c.Call.Return(run)
 	return _c
 }

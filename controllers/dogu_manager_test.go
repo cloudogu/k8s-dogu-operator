@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -135,7 +134,7 @@ func TestNewDoguManager(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
@@ -156,7 +155,7 @@ func TestNewDoguManager(t *testing.T) {
 
 	t.Run("successfully set default key provider", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
@@ -178,7 +177,7 @@ func TestNewDoguManager(t *testing.T) {
 
 	t.Run("failed to query existing key provider", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		eventRecorder := extMocks.NewEventRecorder(t)
 		operatorConfig.Namespace = "test"
@@ -198,7 +197,7 @@ func TestNewDoguManager(t *testing.T) {
 
 	t.Run("failed to set default key provider", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)

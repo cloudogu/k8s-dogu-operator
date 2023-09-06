@@ -40,6 +40,12 @@ kubectl -n ecosystem get cm k8s-dogu-operator-additional-images -o yaml |
   kubectl apply -f -
 ```
 
+Damit die Änderung dieser Configmap angewendet wird, muss `k8s-dogu-operator` neugestartet werden:
+
+```bash
+kubectl -n ecosystem delete pods -l app.kubernetes.io/name=k8s-dogu-operator
+```
+
 Die aktuelle Liste der zusätzlichen Images und deren Zugriffsschlüssel:
 
 | Schlüssel        | Image-Beschreibung                                                                                               |

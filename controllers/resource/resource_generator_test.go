@@ -22,15 +22,16 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
+var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36"}
+
 func TestNewResourceGenerator(t *testing.T) {
 	// given
 	registry := cesmocks.NewRegistry(t)
 	globalConfig := cesmocks.NewConfigurationContext(t)
 	registry.On("GlobalConfig").Return(globalConfig)
-	mockImageGetter := mocks.NewAdditionalImageNameGetter(t)
 
 	// when
-	generator := NewResourceGenerator(getTestScheme(), NewRequirementsGenerator(registry), alias.NewHostAliasGenerator(registry.GlobalConfig()), mockImageGetter)
+	generator := NewResourceGenerator(getTestScheme(), NewRequirementsGenerator(registry), alias.NewHostAliasGenerator(registry.GlobalConfig()), testAdditionalImages)
 
 	// then
 	require.NotNil(t, generator)
@@ -45,11 +46,9 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 	t.Run("should fail to create pod template", func(t *testing.T) {
 		// given
-		imageNameGetter := mocks.NewAdditionalImageNameGetter(t)
-		imageNameGetter.EXPECT().ImageForKey(testCtx, "chownInitImage").Return("busybox:1.2.3", nil)
 		generator := resourceGenerator{
-			scheme:                getTestScheme(),
-			additionalImageGetter: imageNameGetter,
+			scheme:           getTestScheme(),
+			additionalImages: testAdditionalImages,
 		}
 
 		ldapDoguResource := readLdapDoguResource(t)
@@ -59,7 +58,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		client.Params = "invalid"
 
 		// when
-		_, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -75,17 +74,15 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
-		imageNameGetter := mocks.NewAdditionalImageNameGetter(t)
-		imageNameGetter.EXPECT().ImageForKey(testCtx, "chownInitImage").Return("busybox:1.36", nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
 			requirementsGenerator: requirementsGenerator,
 			hostAliasGenerator:    hostAliasGenerator,
-			additionalImageGetter: imageNameGetter,
+			additionalImages:      testAdditionalImages,
 		}
 
-		actualDeployment, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -105,17 +102,15 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
-		imageNameGetter := mocks.NewAdditionalImageNameGetter(t)
-		imageNameGetter.EXPECT().ImageForKey(testCtx, "chownInitImage").Return("busybox:1.36", nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
 			requirementsGenerator: requirementsGenerator,
 			hostAliasGenerator:    hostAliasGenerator,
-			additionalImageGetter: imageNameGetter,
+			additionalImages:      testAdditionalImages,
 		}
 
-		actualDeployment, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -145,17 +140,15 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(requirements, nil)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
-		imageNameGetter := mocks.NewAdditionalImageNameGetter(t)
-		imageNameGetter.EXPECT().ImageForKey(testCtx, "chownInitImage").Return("busybox:1.36", nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
 			requirementsGenerator: requirementsGenerator,
 			hostAliasGenerator:    hostAliasGenerator,
-			additionalImageGetter: imageNameGetter,
+			additionalImages:      testAdditionalImages,
 		}
 
-		actualDeployment, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -173,14 +166,12 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
-		imageNameGetter := mocks.NewAdditionalImageNameGetter(t)
-		imageNameGetter.EXPECT().ImageForKey(testCtx, "chownInitImage").Return("busybox:1.36", nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
 			requirementsGenerator: requirementsGenerator,
 			hostAliasGenerator:    hostAliasGenerator,
-			additionalImageGetter: imageNameGetter,
+			additionalImages:      testAdditionalImages,
 		}
 
 		oldStage := config.Stage
@@ -190,7 +181,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		config.Stage = config.StageDevelopment
 
 		// when
-		actualDeployment, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+		actualDeployment, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -206,14 +197,12 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
-		imageNameGetter := mocks.NewAdditionalImageNameGetter(t)
-		imageNameGetter.EXPECT().ImageForKey(testCtx, "chownInitImage").Return("busybox:1.36", nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
 			requirementsGenerator: requirementsGenerator,
 			hostAliasGenerator:    hostAliasGenerator,
-			additionalImageGetter: imageNameGetter,
+			additionalImages:      testAdditionalImages,
 		}
 
 		oldMethod := ctrl.SetControllerReference
@@ -223,7 +212,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
 		// when
-		_, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+		_, err := generator.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -239,18 +228,16 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, assert.AnError)
 		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
 		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
-		imageNameGetter := mocks.NewAdditionalImageNameGetter(t)
-		imageNameGetter.EXPECT().ImageForKey(testCtx, "chownInitImage").Return("busybox:1.36", nil)
 
 		generatorFail := resourceGenerator{
 			scheme:                getTestScheme(),
 			requirementsGenerator: requirementsGenerator,
 			hostAliasGenerator:    hostAliasGenerator,
-			additionalImageGetter: imageNameGetter,
+			additionalImages:      testAdditionalImages,
 		}
 
 		// when
-		_, err := generatorFail.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+		_, err := generatorFail.CreateDoguDeployment(ldapDoguResource, ldapDogu)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)

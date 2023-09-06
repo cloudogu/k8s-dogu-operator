@@ -1,8 +1,8 @@
 package resource
 
 import (
-	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"strconv"
 	"strings"
 
@@ -18,7 +18,6 @@ import (
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
@@ -44,37 +43,28 @@ const (
 // kubernetesServiceAccountKind describes a service account on kubernetes.
 const kubernetesServiceAccountKind = "k8s"
 
-type additionalImageGetter interface {
-	// ImageForKey returns a container image reference from a configmap.
-	ImageForKey(ctx context.Context, key string) (string, error)
-}
-
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type resourceGenerator struct {
 	scheme                *runtime.Scheme
 	requirementsGenerator cloudogu.ResourceRequirementsGenerator
 	hostAliasGenerator    thirdParty.HostAliasGenerator
-	additionalImageGetter additionalImageGetter
+	additionalImages      map[string]string
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator, additionalImageGetter additionalImageGetter) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
 	return &resourceGenerator{
 		scheme:                scheme,
 		requirementsGenerator: requirementsGenerator,
 		hostAliasGenerator:    hostAliasGenerator,
-		additionalImageGetter: additionalImageGetter,
+		additionalImages:      additionalImages,
 	}
 }
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
-	chownInitImage, err := r.additionalImageGetter.ImageForKey(ctx, util.ChownInitImageConfigmapNameKey)
-	if err != nil {
-		return nil, fmt.Errorf("could not create dogu deployment %s: configuration additional images failed: %w", doguResource.Name, err)
-	}
-
+func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	chownInitImage := r.additionalImages[util.ChownInitImageConfigmapNameKey]
 	podTemplate, err := r.GetPodTemplate(doguResource, dogu, chownInitImage)
 	if err != nil {
 		return nil, err
