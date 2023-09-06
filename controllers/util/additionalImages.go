@@ -13,7 +13,8 @@ import (
 const (
 	// OperatorAdditionalImagesConfigmapName contains the configmap name which consists of auxiliary yet necessary container images.
 	OperatorAdditionalImagesConfigmapName = "k8s-dogu-operator-additional-images"
-	ChownInitImageConfigmapNameKey        = "chownInitImage"
+	// ChownInitImageConfigmapNameKey contains the key to retrieve the chown init container image from the OperatorAdditionalImagesConfigmapName configmap.
+	ChownInitImageConfigmapNameKey = "chownInitImage"
 )
 
 // imageTagValidator defines a regexp string that validates a container reference. These include:
