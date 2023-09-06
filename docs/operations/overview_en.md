@@ -108,7 +108,7 @@ The CRD (Custom Resource) description for Dogus looks something like this:
 
 Example: `ldap.yaml`
 ```yaml
-apiVersion: dogu.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: ldap
@@ -119,6 +119,11 @@ spec:
   name: official/ldap
   version: 2.4.48-3
 ```
+
+> [!IMPORTANT]
+> `metadata.name` and the simple name of the dogu in `spec.name` must be equal.
+> The simple name is the part after the slash (`/`), so without the namespace.
+> For example, for a dogu with `spec.name` of `k8s/nginx-ingress` the `metadata.name` of `nginx-ingress` would be ok, while `nginx` would not.
 
 To install the LDAP dogu, a simple call is enough:
 

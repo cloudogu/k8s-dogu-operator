@@ -109,8 +109,9 @@ caption Unterschiedliche Aufgaben des Dogu-Operators bei einer Dogu-Installation
 Die CRD-Ausprägung (Custom Resource) für Dogus sieht ungefähr so aus:
 
 Beispiel: `ldap.yaml`
+
 ```yaml
-apiVersion: dogu.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
   name: ldap
@@ -121,6 +122,11 @@ spec:
   name: official/ldap
   version: 2.4.48-3
 ```
+
+> [!IMPORTANT]
+> `metadata.name` und der einfache Name des Dogus in `spec.name` müssen gleich sein.
+> Der einfache Name ist der Teil nach dem Schrägstrich (`/`), also ohne den Namespace.
+> Zum Beispiel wäre für eine dogu mit `spec.name` von `k8s/nginx-ingress` der `metadata.name` `nginx-ingress` in Ordnung, während `nginx` nicht in Ordnung wäre.
 
 Um das LDAP-Dogu zu installieren, reicht ein einfacher Aufruf:
 
