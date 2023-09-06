@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	v1 "k8s.io/api/core/v1"
@@ -351,9 +352,12 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 
 		generator := mocks.NewResourceRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
-		generator.EXPECT().Generate(dj1).Return(v1.ResourceRequirements{}, assert.AnError)
-		generator.EXPECT().Generate(dj2).Return(v1.ResourceRequirements{}, assert.AnError)
-		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, assert.AnError)
+		testErr1 := errors.New("error1 occurred: wrong bitsize")
+		testErr2 := errors.New("error2 occurred: out of entropy")
+		testErr3 := errors.New("error3 failed to fail: bad luck")
+		generator.EXPECT().Generate(dj1).Return(v1.ResourceRequirements{}, testErr1)
+		generator.EXPECT().Generate(dj2).Return(v1.ResourceRequirements{}, testErr2)
+		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, testErr3)
 
 		regMock := extMocks.NewConfigurationRegistry(t)
 		doguRegMock := extMocks.NewDoguRegistry(t)
@@ -372,9 +376,14 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		err := sut.triggerSync(context.Background())
 
 		// then
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorIs(t, err, assert.AnError)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to generate resource requirements of dogu")
+		assert.ErrorContains(t, err, "test/dogu1")
+		assert.ErrorContains(t, err, "test/dogu2")
+		assert.ErrorContains(t, err, "test/dogu3")
+		assert.ErrorIs(t, err, testErr1)
+		assert.ErrorIs(t, err, testErr2)
+		assert.ErrorIs(t, err, testErr3)
 	})
 
 	t.Run("trigger fail on updating deployment", func(t *testing.T) {
@@ -413,9 +422,11 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		err := sut.triggerSync(context.Background())
 
 		// then
+		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "test/dogu1")
+		assert.ErrorContains(t, err, "test/dogu2")
+		assert.ErrorContains(t, err, "test/dogu3")
 	})
 
 	t.Run("trigger success", func(t *testing.T) {
