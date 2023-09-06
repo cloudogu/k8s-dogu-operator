@@ -51,6 +51,10 @@ const (
 	ErrorOnRequeueEventReason = "ErrRequeue"
 )
 
+const (
+	SpecNameValidationEventReason = "SpecNameValidation"
+)
+
 const handleRequeueErrMsg = "failed to handle requeue: %w"
 
 type operation string
@@ -110,6 +114,11 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
+
+	uniquenessResult := r.validateSpecName(doguResource)
+	if uniquenessResult != nil {
+		return *uniquenessResult, nil
+	}
 
 	if doguResource.Status.Status != k8sv1.DoguStatusNotInstalled {
 		supportResult, err := r.handleSupportMode(ctx, doguResource)
@@ -399,6 +408,17 @@ func (r *doguReconciler) performAddititionalIngressAnnotationsOperation(ctx cont
 
 	// revert to Installed in case of requeueing after an error so that the change check can be done again.
 	return r.performOperation(ctx, doguResource, additionalIngressAnnotationsOperationEventProps, k8sv1.DoguStatusInstalled, r.doguManager.SetDoguAdditionalIngressAnnotations)
+}
+
+func (r *doguReconciler) validateSpecName(doguResource *k8sv1.Dogu) *ctrl.Result {
+	simpleName := core.GetSimpleDoguName(doguResource.Spec.Name)
+
+	if doguResource.ObjectMeta.Name != simpleName {
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, SpecNameValidationEventReason, "Dogu resource does not follow naming rules: The dogu's simple name (without the namespace) must equal the resource name. Resource name: %s ; Simple name: %s", doguResource.Name, simpleName)
+		return &ctrl.Result{}
+	}
+
+	return nil
 }
 
 func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {
