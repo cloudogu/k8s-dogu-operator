@@ -6,12 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
@@ -22,8 +16,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
@@ -599,4 +598,41 @@ func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get service of dogu [test]")
 	})
+}
+
+func Test_doguReconciler_validateSpecName(t *testing.T) {
+	tests := []struct {
+		name         string
+		recorderFunc func(t *testing.T) record.EventRecorder
+		doguResource *k8sv1.Dogu
+		wantSuccess  bool
+		wantResult   *ctrl.Result
+	}{
+		{
+			name: "should fail validation",
+			recorderFunc: func(t *testing.T) record.EventRecorder {
+				recorder := extMocks.NewEventRecorder(t)
+				recorder.EXPECT().Eventf(mock.Anything, "Warning", "SpecNameValidation", "Dogu resource does not follow naming rules: The dogu's simple name (without the namespace) must equal the resource name. Resource name: %s ; Simple name: %s", "example", "invalid-example")
+				return recorder
+			},
+			doguResource: &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "example"}, Spec: k8sv1.DoguSpec{Name: "testing/invalid-example"}},
+			wantSuccess:  false,
+			wantResult:   &ctrl.Result{},
+		},
+		{
+			name:         "should succeed validation",
+			recorderFunc: func(t *testing.T) record.EventRecorder { return extMocks.NewEventRecorder(t) },
+			doguResource: &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "example"}, Spec: k8sv1.DoguSpec{Name: "testing/example"}},
+			wantSuccess:  true,
+			wantResult:   nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &doguReconciler{recorder: tt.recorderFunc(t)}
+			success, result := r.validateSpecName(tt.doguResource)
+			assert.Equal(t, tt.wantSuccess, success)
+			assert.Equal(t, tt.wantResult, result)
+		})
+	}
 }
