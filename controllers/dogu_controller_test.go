@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
@@ -54,45 +55,13 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Upgrade, operation)
+		assert.Equal(t, []operation{Upgrade}, operations)
 	})
-	t.Run("installed should return ignore for error when fetching volume", func(t *testing.T) {
-		// given
-		testDoguCr := &k8sv1.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "ledogu"},
-			Spec:       k8sv1.DoguSpec{Name: "official/ledogu", Version: "9000.0.0-1"},
-			Status: k8sv1.DoguStatus{
-				Status: k8sv1.DoguStatusInstalled,
-			},
-		}
-		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-
-		recorder := extMocks.NewEventRecorder(t)
-		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
-		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
-
-		// TODO make this client fail
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
-
-		sut := &doguReconciler{
-			client:   fakeClient,
-			recorder: recorder,
-			fetcher:  localDoguFetcher,
-		}
-
-		// when
-		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, Upgrade, operation)
-	})
-	t.Run("installed should return ignore for any other changes on a pre-existing dogu resource", func(t *testing.T) {
+	t.Run("installed should return no operations for any other changes on a pre-existing dogu resource", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "ledogu"},
@@ -117,11 +86,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 	t.Run("installed should fail because of version parsing errors", func(t *testing.T) {
 		// given
@@ -149,12 +118,12 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(testCtx, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
 
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to parse major version")
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 
 	t.Run("deletiontimestamp should return delete", func(t *testing.T) {
@@ -173,36 +142,239 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		sut := &doguReconciler{}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Delete, operation)
+		assert.Equal(t, []operation{Delete}, operations)
 		testDoguCr.DeletionTimestamp = nil
 	})
 
-	t.Run("installing should return ignore", func(t *testing.T) {
+	t.Run("installing should return wait", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{Name: "official/ledogu", Version: "42.0.0-1"},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusInstalling,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{Wait}, operations)
+	})
+
+	t.Run("upgrading should return wait", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{Name: "official/ledogu", Version: "42.0.0-1"},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusUpgrading,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{Wait}, operations)
+	})
+
+	t.Run("installed with changed ingress annotation should return IngressAnnotationChange", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{
+				Name:                         "official/ledogu",
+				Version:                      "42.0.0-1",
+				AdditionalIngressAnnotations: map[string]string{"annotation1": "value1"},
+			},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusInstalled,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ChangeAdditionalIngressAnnotations}, operations)
+	})
+
+	t.Run("check for ingress annotations should fail", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{
+				Name:    "official/ledogu",
+				Version: "42.0.0-1",
+			},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusInstalled,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:        "ledogu",
+			Annotations: map[string]string{annotation.AdditionalIngressAnnotationsAnnotation: "{{\"invalid json"},
+		}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get additional ingress annotations from service of dogu [ledogu]")
+		assert.Nil(t, operations)
+	})
+
+	t.Run("installing with changed ingress annotation should return Wait and IngressAnnotationChange", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{
+				Name:                         "official/ledogu",
+				Version:                      "42.0.0-1",
+				AdditionalIngressAnnotations: map[string]string{"annotation1": "value1"},
 			},
 			Status: k8sv1.DoguStatus{
 				Status: k8sv1.DoguStatusInstalling,
 			},
 		}
 
-		sut := &doguReconciler{}
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Ignore, operation)
+		assert.Equal(t, []operation{Wait, ChangeAdditionalIngressAnnotations}, operations)
 	})
 
-	t.Run("deleting should return ignore", func(t *testing.T) {
+	t.Run("pvc resizing with changed ingress annotation should return PVCResize, IngressAnnotationChange", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{
+				Name:                         "official/ledogu",
+				Version:                      "42.0.0-1",
+				AdditionalIngressAnnotations: map[string]string{"annotation1": "value1"},
+			},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusPVCResizing,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ExpandVolume, ChangeAdditionalIngressAnnotations}, operations)
+	})
+
+	t.Run("deleting should return no operations", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
@@ -216,11 +388,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		sut := &doguReconciler{}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 
 	t.Run("not installed should return install", func(t *testing.T) {
@@ -237,11 +409,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		sut := &doguReconciler{}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Install, operation)
+		assert.Equal(t, []operation{Install}, operations)
 	})
 
 	t.Run("pvc resizing should return expand volume", func(t *testing.T) {
@@ -250,22 +422,36 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ledogu",
 			},
+			Spec: k8sv1.DoguSpec{Name: "official/ledogu", Version: "42.0.0-1"},
 			Status: k8sv1.DoguStatus{
 				Status: k8sv1.DoguStatusPVCResizing,
 			},
 		}
 
-		sut := &doguReconciler{}
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, ExpandVolume, operation)
+		assert.Equal(t, []operation{ExpandVolume}, operations)
 	})
 
-	t.Run("default should return ignore", func(t *testing.T) {
+	t.Run("default should return no operations", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
@@ -279,11 +465,11 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		sut := &doguReconciler{}
 
 		// when
-		operation, err := sut.evaluateRequiredOperation(nil, testDoguCr)
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, Ignore, operation)
+		assert.Empty(t, operations)
 	})
 }
 
@@ -422,7 +608,6 @@ func Test_operation_toString(t *testing.T) {
 	assert.Equal(t, operation("Install"), Install)
 	assert.Equal(t, operation("Upgrade"), Upgrade)
 	assert.Equal(t, operation("Delete"), Delete)
-	assert.Equal(t, operation("Ignore"), Ignore)
 }
 
 func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
@@ -432,7 +617,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -446,7 +631,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -462,7 +647,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -482,7 +667,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -501,7 +686,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -520,7 +705,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -535,7 +720,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		doguCr := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
 
 		// when
-		expand, err := sut.checkForVolumeExpansion(context.TODO(), doguCr)
+		expand, err := sut.checkForVolumeExpansion(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -559,7 +744,7 @@ func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(doguService).Build()}
 
 		// when
-		result, err := sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+		result, err := sut.checkForAdditionalIngressAnnotations(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -579,7 +764,7 @@ func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(doguService).Build()}
 
 		// when
-		_, err = sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+		_, err = sut.checkForAdditionalIngressAnnotations(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -592,7 +777,7 @@ func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
 		sut := &doguReconciler{client: fake.NewClientBuilder().Build()}
 
 		// when
-		_, err := sut.checkForAdditionalIngressAnnotations(context.TODO(), doguCr)
+		_, err := sut.checkForAdditionalIngressAnnotations(testCtx, doguCr)
 
 		// then
 		require.Error(t, err)
@@ -635,4 +820,317 @@ func Test_doguReconciler_validateSpecName(t *testing.T) {
 			assert.Equal(t, tt.wantResult, result)
 		})
 	}
+}
+
+func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
+	t.Run("should finish if no operation required", func(t *testing.T) {
+		// given
+		sut := &doguReconciler{}
+		var requiredOperations []operation
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should finish if only wait is required", func(t *testing.T) {
+		// given
+		sut := &doguReconciler{}
+		requiredOperations := []operation{Wait}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling}}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should requeue if wait and another operation are required", func(t *testing.T) {
+		// given
+		sut := &doguReconciler{}
+		requiredOperations := []operation{Wait, ExpandVolume}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalling}}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{Requeue: true, RequeueAfter: 5 * time.Second}, actual)
+	})
+	t.Run("should install", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{Install}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(nil)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Installation", "%s successful.", "Installation").Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to install dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should requeue on install error", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{Install}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(assert.AnError)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Warning", "ErrInstallation", "%s failed. Reason: %s.", "Installation", assert.AnError.Error()).Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to install dogu ldap", doguResource, assert.AnError, mock.Anything).Return(ctrl.Result{Requeue: true, RequeueAfter: 1 * time.Minute}, nil)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{Requeue: true, RequeueAfter: 1 * time.Minute}, actual)
+	})
+	t.Run("should fail to handle install error", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{Install}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(assert.AnError)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Warning", "ErrInstallation", "%s failed. Reason: %s.", "Installation", assert.AnError.Error()).Return()
+		mockRecorder.EXPECT().Eventf(doguResource, "Warning", "ErrRequeue", "Failed to requeue the %s.", "installation").Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to install dogu ldap", doguResource, assert.AnError, mock.Anything).Return(ctrl.Result{}, assert.AnError)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should install", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{Install}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(nil)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Installation", "%s successful.", "Installation").Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to install dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should upgrade", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{Upgrade}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().Upgrade(testCtx, doguResource).Return(nil)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Upgrading", "%s successful.", "Upgrade").Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to upgrade dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should delete", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{Delete}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().Delete(testCtx, doguResource).Return(nil)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Deinstallation", "%s successful.", "Deinstallation").Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to delete dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should expand volume", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{ExpandVolume}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().SetDoguDataVolumeSize(testCtx, doguResource).Return(nil)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "VolumeExpansion", "%s successful.", "VolumeExpansion").Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to expand volume dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should change additional ingress annotations", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{ChangeAdditionalIngressAnnotations}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().SetDoguAdditionalIngressAnnotations(testCtx, doguResource).Return(nil)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "AdditionalIngressAnnotationsChange", "%s successful.", "AdditionalIngressAnnotationsChange").Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to change additional ingress annotations dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should finish for other operations", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{operation("some_operation")}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		sut := &doguReconciler{}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should requeue on multiple operations", func(t *testing.T) {
+		// given
+		requiredOperations := []operation{ExpandVolume, AdditionalIngressAnnotationsChangeEventReason}
+		doguResource := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{
+			Name:      "ldap",
+			Namespace: "ecosystem",
+		}, Status: k8sv1.DoguStatus{Status: k8sv1.DoguStatusNotInstalled}}
+
+		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager.EXPECT().SetDoguDataVolumeSize(testCtx, doguResource).Return(nil)
+		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "VolumeExpansion", "%s successful.", "VolumeExpansion").Return()
+		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to expand volume dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
+		sut := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockRequeueHandler,
+		}
+
+		// when
+		actual, err := sut.executeRequiredOperation(testCtx, requiredOperations, doguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ctrl.Result{Requeue: true}, actual)
+	})
 }
