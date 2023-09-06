@@ -60,39 +60,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []operation{Upgrade}, operations)
 	})
-	t.Run("installed should return ignore for error when fetching volume", func(t *testing.T) {
-		// given
-		testDoguCr := &k8sv1.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "ledogu"},
-			Spec:       k8sv1.DoguSpec{Name: "official/ledogu", Version: "9000.0.0-1"},
-			Status: k8sv1.DoguStatus{
-				Status: k8sv1.DoguStatusInstalled,
-			},
-		}
-		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-
-		recorder := extMocks.NewEventRecorder(t)
-		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
-		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
-
-		// TODO make this client fail
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
-
-		sut := &doguReconciler{
-			client:   fakeClient,
-			recorder: recorder,
-			fetcher:  localDoguFetcher,
-		}
-
-		// when
-		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, []operation{Upgrade}, operations)
-	})
-	t.Run("installed should return ignore for any other changes on a pre-existing dogu resource", func(t *testing.T) {
+	t.Run("installed should return no operations for any other changes on a pre-existing dogu resource", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "ledogu"},
@@ -181,7 +149,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		testDoguCr.DeletionTimestamp = nil
 	})
 
-	t.Run("installing should return ignore", func(t *testing.T) {
+	t.Run("installing should return wait", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
@@ -405,7 +373,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		assert.Equal(t, []operation{ExpandVolume, ChangeAdditionalIngressAnnotations}, operations)
 	})
 
-	t.Run("deleting should return ignore", func(t *testing.T) {
+	t.Run("deleting should return no operations", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
@@ -482,7 +450,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		assert.Equal(t, []operation{ExpandVolume}, operations)
 	})
 
-	t.Run("default should return ignore", func(t *testing.T) {
+	t.Run("default should return no operations", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
