@@ -31,7 +31,7 @@ var (
 	scheme = runtime.NewScheme()
 	// set up the logger before the actual logger is instantiated
 	// the logger will be replaced later-on with a more sophisticated instance
-	setupLog             = ctrl.Log.WithName("k8s-dogu-operator")
+	startupLog           = ctrl.Log.WithName("k8s-dogu-operator")
 	metricsAddr          string
 	enableLeaderElection bool
 	probeAddr            string
@@ -52,7 +52,7 @@ func init() {
 func main() {
 	err := startDoguOperator()
 	if err != nil {
-		setupLog.Error(err, "failed to operate dogu operator")
+		startupLog.Error(err, "failed to operate dogu operator")
 		os.Exit(1)
 	}
 }
@@ -142,7 +142,7 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 }
 
 func startK8sManager(k8sManager manager.Manager) error {
-	setupLog.Info("starting manager")
+	startupLog.Info("starting manager")
 	err := k8sManager.Start(ctrl.SetupSignalHandler())
 	if err != nil {
 		return fmt.Errorf("failed to start manager: %w", err)
