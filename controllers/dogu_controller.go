@@ -115,9 +115,9 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
 
-	uniquenessResult := r.validateSpecName(doguResource)
-	if uniquenessResult != nil {
-		return *uniquenessResult, nil
+	success, validationResult := r.validateSpecName(doguResource)
+	if !success {
+		return *validationResult, nil
 	}
 
 	if doguResource.Status.Status != k8sv1.DoguStatusNotInstalled {
@@ -410,15 +410,15 @@ func (r *doguReconciler) performAddititionalIngressAnnotationsOperation(ctx cont
 	return r.performOperation(ctx, doguResource, additionalIngressAnnotationsOperationEventProps, k8sv1.DoguStatusInstalled, r.doguManager.SetDoguAdditionalIngressAnnotations)
 }
 
-func (r *doguReconciler) validateSpecName(doguResource *k8sv1.Dogu) *ctrl.Result {
+func (r *doguReconciler) validateSpecName(doguResource *k8sv1.Dogu) (success bool, result *ctrl.Result) {
 	simpleName := core.GetSimpleDoguName(doguResource.Spec.Name)
 
 	if doguResource.ObjectMeta.Name != simpleName {
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, SpecNameValidationEventReason, "Dogu resource does not follow naming rules: The dogu's simple name (without the namespace) must equal the resource name. Resource name: %s ; Simple name: %s", doguResource.Name, simpleName)
-		return &ctrl.Result{}
+		return false, &ctrl.Result{}
 	}
 
-	return nil
+	return true, nil
 }
 
 func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {
