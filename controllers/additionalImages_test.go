@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"k8s.io/client-go/kubernetes/fake"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,19 +10,18 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
 
 func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 	t.Run("should fail on non-existing configmap", func(t *testing.T) {
-		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
+		fakeClient := fake.NewSimpleClientset()
 		// given
 		sut := newAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
+		_, err := sut.imageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -35,11 +35,11 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 				Namespace: testNamespace,
 			},
 		}
-		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(invalidCM).Build()
+		fakeClient := fake.NewSimpleClientset(invalidCM)
 		sut := newAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
+		_, err := sut.imageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -54,11 +54,11 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 			},
 			Data: map[string]string{config.ChownInitImageConfigmapNameKey: "busybox:::::123"},
 		}
-		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(invalidCM).Build()
+		fakeClient := fake.NewSimpleClientset(invalidCM)
 		sut := newAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
+		_, err := sut.imageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -73,11 +73,11 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 			},
 			Data: map[string]string{config.ChownInitImageConfigmapNameKey: "busybox:123"},
 		}
-		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(validCM).Build()
+		fakeClient := fake.NewSimpleClientset(validCM)
 		sut := newAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		actual, err := sut.ImageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
+		actual, err := sut.imageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
 
 		// then
 		require.NoError(t, err)

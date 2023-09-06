@@ -20,16 +20,16 @@ var imageTagValidationString = "^(?:(?=[^:\\/]{1,253})(?!-)[a-zA-Z0-9-]{1,63}(?<
 var imageTagValidationRegexp, _ = regexp2.Compile(imageTagValidationString, regexp2.None)
 
 type additionalImageGetter struct {
-	configmapClient *kubernetes.Clientset
+	configmapClient kubernetes.Interface
 	namespace       string
 }
 
-func newAdditionalImageGetter(client *kubernetes.Clientset, namespace string) *additionalImageGetter {
+func newAdditionalImageGetter(client kubernetes.Interface, namespace string) *additionalImageGetter {
 	return &additionalImageGetter{configmapClient: client, namespace: namespace}
 }
 
-// ImageForKey returns a container image reference as found in OperatorAdditionalImagesConfigmapName.
-func (adig *additionalImageGetter) ImageForKey(ctx context.Context, key string) (string, error) {
+// imageForKey returns a container image reference as found in OperatorAdditionalImagesConfigmapName.
+func (adig *additionalImageGetter) imageForKey(ctx context.Context, key string) (string, error) {
 	configMap, err := adig.configmapClient.CoreV1().
 		ConfigMaps(adig.namespace).
 		Get(ctx, config.OperatorAdditionalImagesConfigmapName, metav1.GetOptions{})

@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"k8s.io/client-go/kubernetes"
+	fake2 "k8s.io/client-go/kubernetes/fake"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -130,9 +132,20 @@ func TestDoguManager_Upgrade(t *testing.T) {
 func TestNewDoguManager(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldGetConfigDelegate := ctrl.GetConfig
-	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+	oldClientSetGetter := clientSetGetter
+	defer func() {
+		ctrl.GetConfig = oldGetConfigDelegate
+		clientSetGetter = oldClientSetGetter
+	}()
+	ctrl.GetConfig = func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	}
 	ctrl.GetConfigOrDie = func() *rest.Config {
-		return &rest.Config{}
+		getConfig, err := ctrl.GetConfig()
+		if err != nil {
+			panic(err)
+		}
+		return getConfig
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -140,7 +153,10 @@ func TestNewDoguManager(t *testing.T) {
 		additionalImages := createConfigMap(
 			config.OperatorAdditionalImagesConfigmapName,
 			map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"})
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(additionalImages).Build()
+		clientSetGetter = func(c *rest.Config) (kubernetes.Interface, error) {
+			return fake2.NewSimpleClientset(additionalImages), nil
+		}
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = testNamespace
 		cesRegistry := cesmocks.NewRegistry(t)

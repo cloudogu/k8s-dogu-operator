@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,6 +24,10 @@ import (
 
 // NewManager is an alias mainly used for testing the main package
 var NewManager = NewDoguManager
+
+var clientSetGetter = func(c *rest.Config) (kubernetes.Interface, error) {
+	return kubernetes.NewForConfig(c)
+}
 
 // DoguManager is a central unit in the process of handling dogu custom resources
 // The DoguManager creates, updates and deletes dogus
@@ -48,17 +52,18 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
-		if err != nil {
-			return nil, fmt.Errorf("failed to find controller REST config: %w", err)
-		}
+		return nil, err
 	}
 
-	clientSet, err := kubernetes.NewForConfig(restConfig)
+	clientSet, err := clientSetGetter(restConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	// At this point, the operator's client is only ready AFTER the operator's Start(...) was called.
 	// Instead we must use our own client to avoid an immediate cache error: "the cache is not started, can not read objects"
 	imageGetter := newAdditionalImageGetter(clientSet, operatorConfig.Namespace)
-	additionalImageChownInitContainer, err := imageGetter.ImageForKey(ctx, config.ChownInitImageConfigmapNameKey)
+	additionalImageChownInitContainer, err := imageGetter.imageForKey(ctx, config.ChownInitImageConfigmapNameKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
