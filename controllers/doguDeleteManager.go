@@ -10,9 +10,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
@@ -34,25 +33,15 @@ type doguDeleteManager struct {
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*doguDeleteManager, error) {
-	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
-	}
-
-	_, _, _, excecutor, _, _, _, _, resourceGenerator, err := initManagerObjects(client, operatorConfig, cesRegistry, doguRemoteRegistry)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize dogu delete manager objects: %w", err)
-	}
-
+func NewDoguDeleteManager(client client.Client, _ *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *managerSet, recorder record.EventRecorder) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
-		localDoguFetcher:      cesreg.NewLocalDoguFetcher(cesRegistry.DoguRegistry()),
-		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, excecutor, client),
+		localDoguFetcher:      mgrSet.localDoguFetcher,
+		doguRegistrator:       mgrSet.doguRegistrator,
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.localDoguFetcher, mgrSet.commandExecutor, client),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
 		eventRecorder:         recorder,
-	}, nil
+	}
 }
 
 // Delete deletes the given dogu along with all those Kubernetes resources that the dogu operator initially created.

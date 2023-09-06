@@ -21,13 +21,8 @@ import (
 
 func TestNewRemover(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		// given
-		registryMock := cesmocks.NewRegistry(t)
-		doguRegistryMock := cesmocks.NewDoguRegistry(t)
-		registryMock.On("DoguRegistry").Return(doguRegistryMock)
-
 		// when
-		result := NewRemover(registryMock, nil, nil)
+		result := NewRemover(nil, nil, nil, nil)
 
 		// then
 		require.NotNil(t, result)

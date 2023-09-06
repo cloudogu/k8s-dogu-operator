@@ -4,17 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry"
+
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 // Remover removes a dogu's service account.
@@ -26,8 +25,7 @@ type remover struct {
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client) *remover {
-	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
+func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client) *remover {
 	return &remover{
 		client:      client,
 		registry:    registry,

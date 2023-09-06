@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
@@ -33,20 +34,11 @@ type doguSupportManager struct {
 }
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.
-func NewDoguSupportManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry registry.Registry, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
-	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
-	}
-	_, _, _, _, _, _, _, _, resourceGenerator, err := initManagerObjects(client, operatorConfig, cesRegistry, doguRemoteRegistry)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize dogu support manager objects: %w", err)
-	}
-
+func NewDoguSupportManager(client client.Client, _ *config.OperatorConfig, cesRegistry registry.Registry, mgrSet *managerSet, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
 	return &doguSupportManager{
 		client:                       client,
 		doguRegistry:                 cesRegistry.DoguRegistry(),
-		podTemplateResourceGenerator: resourceGenerator,
+		podTemplateResourceGenerator: mgrSet.doguResourceGenerator,
 		eventRecorder:                eventRecorder,
 	}, nil
 }

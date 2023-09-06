@@ -75,8 +75,6 @@ func TestNewDoguSupportManager(t *testing.T) {
 	k8sClient := fake.NewClientBuilder().Build()
 	cesRegistry := regmocks.NewRegistry(t)
 	doguRegistry := regmocks.NewDoguRegistry(t)
-	globalConfig := regmocks.NewConfigurationContext(t)
-	cesRegistry.On("GlobalConfig").Return(globalConfig)
 	cesRegistry.On("DoguRegistry").Return(doguRegistry)
 	recorder := extMocks.NewEventRecorder(t)
 	opConfig := &config.OperatorConfig{
@@ -85,9 +83,10 @@ func TestNewDoguSupportManager(t *testing.T) {
 		DockerRegistry: config.DockerRegistryData{},
 		Version:        &cesappcore.Version{Raw: "1.0.0"},
 	}
+	mgrSet := &managerSet{}
 
 	// when
-	manager, err := NewDoguSupportManager(k8sClient, opConfig, cesRegistry, recorder)
+	manager, err := NewDoguSupportManager(k8sClient, opConfig, cesRegistry, mgrSet, recorder)
 
 	// then
 	require.NotNil(t, manager)

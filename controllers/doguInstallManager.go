@@ -15,12 +15,11 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	reg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
@@ -50,38 +49,24 @@ type doguInstallManager struct {
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
-func NewDoguInstallManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*doguInstallManager, error) {
-	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
-	}
-
-	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
-
-	restConfig, collectApplier, fileExtractor, executor, serviceAccountCreator, localDoguFetcher, resourceDoguFetcher, upserter, resourceGenerator, err := initManagerObjects(client, operatorConfig, cesRegistry, doguRemoteRegistry)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize dogu install manager objects: %w", err)
-	}
-
-	doguRegistrator := reg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator)
-
+func NewDoguInstallManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *managerSet, eventRecorder record.EventRecorder) *doguInstallManager {
 	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
 
 	return &doguInstallManager{
 		client:                client,
 		recorder:              eventRecorder,
-		localDoguFetcher:      localDoguFetcher,
-		resourceDoguFetcher:   resourceDoguFetcher,
-		imageRegistry:         imageRegistry,
-		doguRegistrator:       doguRegistrator,
+		localDoguFetcher:      mgrSet.localDoguFetcher,
+		resourceDoguFetcher:   mgrSet.resourceDoguFetcher,
+		imageRegistry:         mgrSet.imageRegistry,
+		doguRegistrator:       mgrSet.doguRegistrator,
 		dependencyValidator:   dependencyValidator,
-		serviceAccountCreator: serviceAccountCreator,
+		serviceAccountCreator: mgrSet.serviceAccountCreator,
 		doguSecretHandler:     resource.NewDoguSecretsWriter(client, cesRegistry),
-		fileExtractor:         fileExtractor,
-		collectApplier:        collectApplier,
-		resourceUpserter:      upserter,
-		execPodFactory:        exec.NewExecPodFactory(client, restConfig, executor),
-	}, nil
+		fileExtractor:         mgrSet.fileExtractor,
+		collectApplier:        mgrSet.collectApplier,
+		resourceUpserter:      mgrSet.resourceUpserter,
+		execPodFactory:        exec.NewExecPodFactory(client, mgrSet.restConfig, mgrSet.commandExecutor),
+	}
 }
 
 // Install installs a given Dogu Resource. This includes fetching the dogu.json and the container image. With the

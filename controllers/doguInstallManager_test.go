@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"k8s.io/client-go/rest"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -114,44 +113,17 @@ func TestNewDoguInstallManager(t *testing.T) {
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
-		cesRegistry := cesmocks.NewRegistry(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
-		globalConfig := cesmocks.NewConfigurationContext(t)
-		eventRecorder := extMocks.NewEventRecorder(t)
+		cesRegistry := cesmocks.NewRegistry(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
-
-		// when
-		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, eventRecorder)
-
-		// then
-		require.NoError(t, err)
-		require.NotNil(t, doguManager)
-	})
-
-	t.Run("fail when creating client", func(t *testing.T) {
-		// given
-
-		// override default controller method to return a config that fail the client creation
-		oldGetConfigDelegate := ctrl.GetConfig
-		defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
-		ctrl.GetConfig = func() (*rest.Config, error) {
-			return nil, assert.AnError
-		}
-
-		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
-		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
-		cesRegistry := &cesmocks.Registry{}
+		mgrSet := &managerSet{}
 		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when
-		doguManager, err := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, eventRecorder)
+		doguManager := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 
 		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		require.Nil(t, doguManager)
+		require.NotNil(t, doguManager)
 	})
 }
 

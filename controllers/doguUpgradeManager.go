@@ -5,117 +5,47 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesreg "github.com/cloudogu/cesapp-lib/registry"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
-	"github.com/cloudogu/k8s-apply-lib/apply"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
-func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry,
-	eventRecorder record.EventRecorder) (*doguUpgradeManager, error) {
-	doguRemoteRegistry, err := cesremote.New(operatorConfig.GetRemoteConfiguration(), operatorConfig.GetRemoteCredentials())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
-	}
-
-	imageRegistry := imageregistry.NewCraneContainerImageRegistry(operatorConfig.DockerRegistry.Username, operatorConfig.DockerRegistry.Password)
-
-	restConfig, collectApplier, fileExtractor, executor, serviceAccountCreator, df, rdf, upserter, _, err := initManagerObjects(client, operatorConfig, cesRegistry, doguRemoteRegistry)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize dogu upgrade manager objects: %w", err)
-	}
-
+func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, mgrSet *managerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
-	doguChecker := health.NewDoguChecker(client, df)
+	doguChecker := health.NewDoguChecker(client, mgrSet.localDoguFetcher)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
 	upgradeExecutor, _ := upgrade.NewUpgradeExecutor(
 		client,
-		restConfig,
-		executor,
+		mgrSet.restConfig,
+		mgrSet.commandExecutor,
 		eventRecorder,
-		imageRegistry,
-		collectApplier,
-		fileExtractor,
-		serviceAccountCreator,
+		mgrSet.imageRegistry,
+		mgrSet.collectApplier,
+		mgrSet.fileExtractor,
+		mgrSet.serviceAccountCreator,
 		cesRegistry,
-		upserter,
+		mgrSet.resourceUpserter,
 	)
 
 	return &doguUpgradeManager{
 		client:              client,
 		eventRecorder:       eventRecorder,
-		localDoguFetcher:    df,
-		resourceDoguFetcher: rdf,
+		localDoguFetcher:    mgrSet.localDoguFetcher,
+		resourceDoguFetcher: mgrSet.resourceDoguFetcher,
 		premisesChecker:     premisesChecker,
 		upgradeExecutor:     upgradeExecutor,
-	}, nil
-}
-
-func initManagerObjects(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, doguRemoteRegistry cesremote.Registry) (restConfig *rest.Config, collectApplier cloudogu.CollectApplier, fileExtractor cloudogu.FileExtractor, commandExcecutor cloudogu.CommandExecutor, serviceAccountCreator cloudogu.ServiceAccountCreator, localDoguFetcher cloudogu.LocalDoguFetcher, resourceDoguFetcher cloudogu.ResourceDoguFetcher, resourceUpserter cloudogu.ResourceUpserter, doguResourceGenerator cloudogu.DoguResourceGenerator, error error) {
-	restConfig, err := ctrl.GetConfig()
-	if err != nil {
-		if err != nil {
-			return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("failed to find controller REST config: %w", err)
-		}
 	}
-
-	clientSet, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("failed to find cluster config: %w", err)
-	}
-	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("failed to create K8s applier: %w", err)
-	}
-	// we need this as we add dogu resource owner-references to every custom object.
-	err = k8sv1.AddToScheme(scheme)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("failed to add apply scheme: %w", err)
-	}
-	collectApplier = resource.NewCollectApplier(applier)
-
-	fileExtractor = exec.NewPodFileExtractor(client, restConfig, clientSet)
-
-	doguLocalRegistry := cesRegistry.DoguRegistry()
-
-	executor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator = serviceaccount.NewCreator(cesRegistry, executor, client)
-
-	df := cesregistry.NewLocalDoguFetcher(doguLocalRegistry)
-	rdf := cesregistry.NewResourceDoguFetcher(client, doguRemoteRegistry)
-
-	requirementsGenerator := resource.NewRequirementsGenerator(cesRegistry)
-	hostAliasGenerator := alias.NewHostAliasGenerator(cesRegistry.GlobalConfig())
-	additionalImageGetter := util.NewAdditionalImageGetter(client, operatorConfig.Namespace)
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImageGetter)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("cannot create resource generator: %w", err)
-	}
-
-	upserter := resource.NewUpserter(client, resourceGenerator)
-	return restConfig, collectApplier, fileExtractor, executor, serviceAccountCreator, df, rdf, upserter, resourceGenerator, nil
 }
 
 type doguUpgradeManager struct {

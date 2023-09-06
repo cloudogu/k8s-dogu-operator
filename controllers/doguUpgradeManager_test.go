@@ -9,7 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,42 +62,19 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
 	ctrl.GetConfig = createTestRestConfig
 
-	t.Run("fail when no valid kube config was found", func(t *testing.T) {
-		// given
-
-		// override default controller method to return a config that fail the client creation
-		oldGetConfigDelegate := ctrl.GetConfig
-		defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
-		ctrl.GetConfig = func() (*rest.Config, error) {
-			return &rest.Config{ExecProvider: &api.ExecConfig{}, AuthProvider: &api.AuthProviderConfig{}}, nil
-		}
-
-		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
-
-		// when
-		doguManager, err := NewDoguUpgradeManager(nil, operatorConfig, nil, nil)
-
-		// then
-		require.Error(t, err)
-		require.Nil(t, doguManager)
-	})
-
 	t.Run("should implement upgradeManager", func(t *testing.T) {
 		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
-		globalConfig := cesmocks.NewConfigurationContext(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
+		mgrSet := &managerSet{}
 
 		// when
-		actual, err := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
+		actual := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, mgrSet, nil)
 
 		// then
-		require.NoError(t, err)
 		require.NotNil(t, actual)
 		assert.Implements(t, (*cloudogu.UpgradeManager)(nil), actual)
 	})

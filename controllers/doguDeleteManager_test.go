@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	regclient "go.etcd.io/etcd/client/v2"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -68,41 +66,13 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-		globalConfig := cesmocks.NewConfigurationContext(t)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
+		mgrSet := &managerSet{}
 
 		// when
-		doguManager, err := NewDoguDeleteManager(client, operatorConfig, cesRegistry, nil)
+		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil)
 
 		// then
-		require.NoError(t, err)
 		require.NotNil(t, doguManager)
-	})
-
-	t.Run("fail when creating client", func(t *testing.T) {
-		// given
-
-		// override default controller method to return a config that fail the client creation
-		oldGetConfigDelegate := ctrl.GetConfig
-		defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
-		ctrl.GetConfig = func() (*rest.Config, error) {
-			return nil, assert.AnError
-		}
-
-		client := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
-		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
-		cesRegistry := cesmocks.NewRegistry(t)
-
-		// when
-		doguManager, err := NewDoguDeleteManager(client, operatorConfig, cesRegistry, nil)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		require.Nil(t, doguManager)
 	})
 }
 
