@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	regclient "go.etcd.io/etcd/client/v2"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -19,7 +17,6 @@ import (
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
@@ -67,15 +64,7 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
 		ctrl.GetConfig = createTestRestConfig
 
-		addImagesConfigmap := &v1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      util.OperatorAdditionalImagesConfigmapName,
-				Namespace: testNamespace,
-			},
-			Data: map[string]string{util.ChownInitImageConfigmapNameKey: "busybox:123"},
-		}
-
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(addImagesConfigmap).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
