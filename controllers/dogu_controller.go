@@ -215,6 +215,8 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 			return nil, err
 		}
 	case k8sv1.DoguStatusInstalling:
+		fallthrough
+	case k8sv1.DoguStatusUpgrading:
 		operations = append(operations, Wait)
 		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
 		if err != nil {

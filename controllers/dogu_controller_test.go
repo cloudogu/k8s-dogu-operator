@@ -216,6 +216,41 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		assert.Equal(t, []operation{Wait}, operations)
 	})
 
+	t.Run("upgrading should return wait", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv1.DoguSpec{Name: "official/ledogu", Version: "42.0.0-1"},
+			Status: k8sv1.DoguStatus{
+				Status: k8sv1.DoguStatusUpgrading,
+			},
+		}
+
+		recorder := extMocks.NewEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher.On("FetchInstalled", "ledogu").Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(nil, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{Wait}, operations)
+	})
+
 	t.Run("installed with changed ingress annotation should return IngressAnnotationChange", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv1.Dogu{
