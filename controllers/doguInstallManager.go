@@ -49,23 +49,23 @@ type doguInstallManager struct {
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
-func NewDoguInstallManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *managerSet, eventRecorder record.EventRecorder) *doguInstallManager {
+func NewDoguInstallManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguInstallManager {
 	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
 
 	return &doguInstallManager{
 		client:                client,
 		recorder:              eventRecorder,
-		localDoguFetcher:      mgrSet.localDoguFetcher,
-		resourceDoguFetcher:   mgrSet.resourceDoguFetcher,
-		imageRegistry:         mgrSet.imageRegistry,
-		doguRegistrator:       mgrSet.doguRegistrator,
+		localDoguFetcher:      mgrSet.LocalDoguFetcher,
+		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
+		imageRegistry:         mgrSet.ImageRegistry,
+		doguRegistrator:       mgrSet.DoguRegistrator,
 		dependencyValidator:   dependencyValidator,
-		serviceAccountCreator: mgrSet.serviceAccountCreator,
+		serviceAccountCreator: mgrSet.ServiceAccountCreator,
 		doguSecretHandler:     resource.NewDoguSecretsWriter(client, cesRegistry),
-		fileExtractor:         mgrSet.fileExtractor,
-		collectApplier:        mgrSet.collectApplier,
-		resourceUpserter:      mgrSet.resourceUpserter,
-		execPodFactory:        exec.NewExecPodFactory(client, mgrSet.restConfig, mgrSet.commandExecutor),
+		fileExtractor:         mgrSet.FileExtractor,
+		collectApplier:        mgrSet.CollectApplier,
+		resourceUpserter:      mgrSet.ResourceUpserter,
+		execPodFactory:        exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
 	}
 }
 

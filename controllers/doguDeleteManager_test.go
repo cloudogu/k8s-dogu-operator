@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,7 +67,7 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
-		mgrSet := &managerSet{}
+		mgrSet := &util.ManagerSet{}
 
 		// when
 		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil)

@@ -55,19 +55,25 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		saCreator := mocks.NewServiceAccountCreator(t)
 		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
-		doguRegistry := regmock.NewDoguRegistry(t)
 		mockRegistry := regmock.NewRegistry(t)
-		mockRegistry.On("DoguRegistry").Return(doguRegistry, nil)
 		eventRecorder := extMocks.NewEventRecorder(t)
 		commandExecutor := mocks.NewCommandExecutor(t)
 		mockUpserter := mocks.NewResourceUpserter(t)
+		mgrSet := &util.ManagerSet{
+			RestConfig:            testRestConfig,
+			ImageRegistry:         imageRegMock,
+			ServiceAccountCreator: saCreator,
+			FileExtractor:         k8sFileEx,
+			CollectApplier:        applier,
+			CommandExecutor:       commandExecutor,
+			ResourceUpserter:      mockUpserter,
+		}
 
 		// when
-		actual, err := NewUpgradeExecutor(myClient, testRestConfig, commandExecutor, eventRecorder, imageRegMock, applier, k8sFileEx, saCreator, mockRegistry, mockUpserter)
+		actual := NewUpgradeExecutor(myClient, mockRegistry, mgrSet, eventRecorder)
 
 		// then
 		require.NotNil(t, actual)
-		require.NoError(t, err)
 		assert.IsType(t, &upgradeExecutor{}, actual)
 	})
 }

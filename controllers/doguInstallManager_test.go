@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -116,7 +117,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		doguRegistry := cesmocks.NewDoguRegistry(t)
 		cesRegistry := cesmocks.NewRegistry(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-		mgrSet := &managerSet{}
+		mgrSet := &util.ManagerSet{}
 		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when

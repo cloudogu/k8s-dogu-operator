@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,11 +35,11 @@ type doguSupportManager struct {
 }
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.
-func NewDoguSupportManager(client client.Client, _ *config.OperatorConfig, cesRegistry registry.Registry, mgrSet *managerSet, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
+func NewDoguSupportManager(client client.Client, _ *config.OperatorConfig, cesRegistry registry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
 	return &doguSupportManager{
 		client:                       client,
 		doguRegistry:                 cesRegistry.DoguRegistry(),
-		podTemplateResourceGenerator: mgrSet.doguResourceGenerator,
+		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
 		eventRecorder:                eventRecorder,
 	}, nil
 }

@@ -3,6 +3,7 @@ package controllers
 import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
 
@@ -83,7 +84,7 @@ func TestNewDoguSupportManager(t *testing.T) {
 		DockerRegistry: config.DockerRegistryData{},
 		Version:        &cesappcore.Version{Raw: "1.0.0"},
 	}
-	mgrSet := &managerSet{}
+	mgrSet := &util.ManagerSet{}
 
 	// when
 	manager, err := NewDoguSupportManager(k8sClient, opConfig, cesRegistry, mgrSet, recorder)

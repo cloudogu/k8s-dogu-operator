@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,12 +34,12 @@ type doguDeleteManager struct {
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, _ *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *managerSet, recorder record.EventRecorder) *doguDeleteManager {
+func NewDoguDeleteManager(client client.Client, _ *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
-		localDoguFetcher:      mgrSet.localDoguFetcher,
-		doguRegistrator:       mgrSet.doguRegistrator,
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.localDoguFetcher, mgrSet.commandExecutor, client),
+		localDoguFetcher:      mgrSet.LocalDoguFetcher,
+		doguRegistrator:       mgrSet.DoguRegistrator,
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
 		eventRecorder:         recorder,
 	}

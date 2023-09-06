@@ -3,30 +3,23 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	registry "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
 )
 
 // NewManager is an alias mainly used for testing the main package
@@ -81,7 +74,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
 	}
 
-	mgrSet, err := newManagerSet(restConfig, client, clientSet, operatorConfig, cesRegistry, applier, additionalImages)
+	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, operatorConfig, cesRegistry, applier, additionalImages)
 	if err != nil {
 		return nil, fmt.Errorf("could not create manager set: %w", err)
 	}
@@ -169,60 +162,4 @@ func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, d
 // HandleSupportMode handles the support flag in the dogu spec.
 func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
 	return m.supportManager.HandleSupportMode(ctx, doguResource)
-}
-
-// managerSet contains functors that are repeatedly used by different dogu operator managers.
-type managerSet struct {
-	restConfig            *rest.Config
-	collectApplier        cloudogu.CollectApplier
-	fileExtractor         cloudogu.FileExtractor
-	commandExecutor       cloudogu.CommandExecutor
-	serviceAccountCreator cloudogu.ServiceAccountCreator
-	localDoguFetcher      cloudogu.LocalDoguFetcher
-	resourceDoguFetcher   cloudogu.ResourceDoguFetcher
-	doguResourceGenerator cloudogu.DoguResourceGenerator
-	resourceUpserter      cloudogu.ResourceUpserter
-	doguRegistrator       cloudogu.DoguRegistrator
-	imageRegistry         cloudogu.ImageRegistry
-}
-
-func newManagerSet(restConfig *rest.Config, client client.Client, clientSet *kubernetes.Clientset, config *config.OperatorConfig, cesreg cesregistry.Registry, applier *apply.Applier, additionalImages map[string]string) (*managerSet, error) {
-	collectApplier := resource.NewCollectApplier(applier)
-	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
-	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator := serviceaccount.NewCreator(cesreg, commandExecutor, client)
-	localDoguFetcher := registry.NewLocalDoguFetcher(cesreg.DoguRegistry())
-
-	doguRemoteRegistry, err := cesremote.New(config.GetRemoteConfiguration(), config.GetRemoteCredentials())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
-	}
-
-	resourceDoguFetcher := registry.NewResourceDoguFetcher(client, doguRemoteRegistry)
-
-	requirementsGenerator := resource.NewRequirementsGenerator(cesreg)
-	hostAliasGenerator := alias.NewHostAliasGenerator(cesreg.GlobalConfig())
-	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImages)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create resource generator: %w", err)
-	}
-
-	upserter := resource.NewUpserter(client, doguResourceGenerator)
-
-	doguRegistrator := registry.NewCESDoguRegistrator(client, cesreg, doguResourceGenerator)
-	imageRegistry := imageregistry.NewCraneContainerImageRegistry(config.DockerRegistry.Username, config.DockerRegistry.Password)
-
-	return &managerSet{
-		restConfig:            restConfig,
-		collectApplier:        collectApplier,
-		fileExtractor:         fileExtractor,
-		commandExecutor:       commandExecutor,
-		serviceAccountCreator: serviceAccountCreator,
-		localDoguFetcher:      localDoguFetcher,
-		resourceDoguFetcher:   resourceDoguFetcher,
-		doguResourceGenerator: doguResourceGenerator,
-		resourceUpserter:      upserter,
-		doguRegistrator:       doguRegistrator,
-		imageRegistry:         imageRegistry,
-	}, nil
 }

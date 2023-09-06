@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -69,7 +70,7 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 		cesRegistry := cesmocks.NewRegistry(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-		mgrSet := &managerSet{}
+		mgrSet := &util.ManagerSet{}
 
 		// when
 		actual := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, mgrSet, nil)

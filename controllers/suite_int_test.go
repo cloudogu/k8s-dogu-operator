@@ -6,6 +6,7 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	v1 "k8s.io/api/core/v1"
 	"os"
 	"path/filepath"
@@ -219,7 +220,22 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	upgradeExecutor, _ := upgrade.NewUpgradeExecutor(k8sClient, cfg, CommandExecutor, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock, upserter)
+
+	mgrSet := &util.ManagerSet{
+		RestConfig:            ctrl.GetConfigOrDie(),
+		ImageRegistry:         ImageRegistryMock,
+		ServiceAccountCreator: serviceAccountCreator,
+		FileExtractor:         fileExtract,
+		CollectApplier:        collectApplier,
+		CommandExecutor:       CommandExecutor,
+		ResourceUpserter:      upserter,
+		DoguRegistrator:       doguRegistrator,
+		LocalDoguFetcher:      localDoguFetcher,
+		DoguResourceGenerator: resourceGenerator,
+		ResourceDoguFetcher:   remoteDoguFetcher,
+	}
+
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, CesRegistryMock, mgrSet, eventRecorder)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,

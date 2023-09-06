@@ -6,7 +6,6 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,7 +16,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
@@ -49,22 +47,19 @@ type upgradeExecutor struct {
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
-func NewUpgradeExecutor(client client.Client, config *rest.Config, commandExecutor cloudogu.CommandExecutor, eventRecorder record.EventRecorder, imageRegistry cloudogu.ImageRegistry, collectApplier cloudogu.CollectApplier, k8sFileExtractor cloudogu.FileExtractor, serviceAccountCreator cloudogu.ServiceAccountCreator, registry registry.Registry, resourceUpserter cloudogu.ResourceUpserter) (*upgradeExecutor, error) {
-	var noSecretGeneratorForUpgrades cloudogu.SecretResourceGenerator
-	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, noSecretGeneratorForUpgrades)
-
+func NewUpgradeExecutor(client client.Client, cesRegistry registry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *upgradeExecutor {
 	return &upgradeExecutor{
 		client:                client,
 		eventRecorder:         eventRecorder,
-		imageRegistry:         imageRegistry,
-		collectApplier:        collectApplier,
-		k8sFileExtractor:      k8sFileExtractor,
-		serviceAccountCreator: serviceAccountCreator,
-		doguRegistrator:       doguReg,
-		resourceUpserter:      resourceUpserter,
-		execPodFactory:        exec.NewExecPodFactory(client, config, commandExecutor),
-		doguCommandExecutor:   commandExecutor,
-	}, nil
+		imageRegistry:         mgrSet.ImageRegistry,
+		collectApplier:        mgrSet.CollectApplier,
+		k8sFileExtractor:      mgrSet.FileExtractor,
+		serviceAccountCreator: mgrSet.ServiceAccountCreator,
+		doguRegistrator:       mgrSet.DoguRegistrator,
+		resourceUpserter:      mgrSet.ResourceUpserter,
+		execPodFactory:        exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
+		doguCommandExecutor:   mgrSet.CommandExecutor,
+	}
 }
 
 // Upgrade executes all necessary steps to update a dogu to a new version.

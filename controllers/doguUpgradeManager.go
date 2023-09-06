@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -20,29 +21,23 @@ import (
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
-func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, mgrSet *managerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
+func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
-	doguChecker := health.NewDoguChecker(client, mgrSet.localDoguFetcher)
+	doguChecker := health.NewDoguChecker(client, mgrSet.LocalDoguFetcher)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
-	upgradeExecutor, _ := upgrade.NewUpgradeExecutor(
+	upgradeExecutor := upgrade.NewUpgradeExecutor(
 		client,
-		mgrSet.restConfig,
-		mgrSet.commandExecutor,
-		eventRecorder,
-		mgrSet.imageRegistry,
-		mgrSet.collectApplier,
-		mgrSet.fileExtractor,
-		mgrSet.serviceAccountCreator,
 		cesRegistry,
-		mgrSet.resourceUpserter,
+		mgrSet,
+		eventRecorder,
 	)
 
 	return &doguUpgradeManager{
 		client:              client,
 		eventRecorder:       eventRecorder,
-		localDoguFetcher:    mgrSet.localDoguFetcher,
-		resourceDoguFetcher: mgrSet.resourceDoguFetcher,
+		localDoguFetcher:    mgrSet.LocalDoguFetcher,
+		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
 		premisesChecker:     premisesChecker,
 		upgradeExecutor:     upgradeExecutor,
 	}
