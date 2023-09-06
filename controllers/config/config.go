@@ -17,6 +17,13 @@ const (
 
 const cacheDir = "/tmp/dogu-registry-cache"
 
+const (
+	// OperatorAdditionalImagesConfigmapName contains the configmap name which consists of auxiliary yet necessary container images.
+	OperatorAdditionalImagesConfigmapName = "k8s-dogu-operator-additional-images"
+	// ChownInitImageConfigmapNameKey contains the key to retrieve the chown init container image from the OperatorAdditionalImagesConfigmapName configmap.
+	ChownInitImageConfigmapNameKey = "chownInitImage"
+)
+
 var Stage = StageProduction
 
 var (

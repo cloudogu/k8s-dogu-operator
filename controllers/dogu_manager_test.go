@@ -4,20 +4,23 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestDoguManager_SetDoguAdditionalIngressAnnotations(t *testing.T) {
@@ -126,17 +129,20 @@ func TestDoguManager_Upgrade(t *testing.T) {
 
 func TestNewDoguManager(t *testing.T) {
 	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
+	oldGetConfigDelegate := ctrl.GetConfig
+	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
 	ctrl.GetConfigOrDie = func() *rest.Config {
 		return &rest.Config{}
 	}
 
 	t.Run("success", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
+		additionalImages := createConfigMap(
+			config.OperatorAdditionalImagesConfigmapName,
+			map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"})
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(additionalImages).Build()
 		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
+		operatorConfig.Namespace = testNamespace
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
@@ -155,9 +161,12 @@ func TestNewDoguManager(t *testing.T) {
 
 	t.Run("successfully set default key provider", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
+		additionalImages := createConfigMap(
+			config.OperatorAdditionalImagesConfigmapName,
+			map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"})
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(additionalImages).Build()
 		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
+		operatorConfig.Namespace = testNamespace
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
@@ -180,7 +189,7 @@ func TestNewDoguManager(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
 		eventRecorder := extMocks.NewEventRecorder(t)
-		operatorConfig.Namespace = "test"
+		operatorConfig.Namespace = testNamespace
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.On("Exists", "key_provider").Return(true, assert.AnError)
@@ -199,7 +208,7 @@ func TestNewDoguManager(t *testing.T) {
 		// given
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
+		operatorConfig.Namespace = testNamespace
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.On("Exists", "key_provider").Return(false, nil)
@@ -216,4 +225,14 @@ func TestNewDoguManager(t *testing.T) {
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to set default key provider")
 	})
+}
+
+func createConfigMap(name string, data map[string]string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: testNamespace,
+		},
+		Data: data,
+	}
 }

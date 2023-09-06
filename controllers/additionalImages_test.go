@@ -1,7 +1,6 @@
-package util
+package controllers
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -11,21 +10,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-)
 
-var (
-	testNamespace = "test-namespace"
-	testCtx       = context.Background()
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
 
 func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 	t.Run("should fail on non-existing configmap", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		// given
-		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
+		sut := newAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, ChownInitImageConfigmapNameKey)
+		_, err := sut.ImageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -35,15 +31,15 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 		// given
 		invalidCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      OperatorAdditionalImagesConfigmapName,
+				Name:      config.OperatorAdditionalImagesConfigmapName,
 				Namespace: testNamespace,
 			},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(invalidCM).Build()
-		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
+		sut := newAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, ChownInitImageConfigmapNameKey)
+		_, err := sut.ImageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -53,16 +49,16 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 		// given
 		invalidCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      OperatorAdditionalImagesConfigmapName,
+				Name:      config.OperatorAdditionalImagesConfigmapName,
 				Namespace: testNamespace,
 			},
-			Data: map[string]string{ChownInitImageConfigmapNameKey: "busybox:::::123"},
+			Data: map[string]string{config.ChownInitImageConfigmapNameKey: "busybox:::::123"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(invalidCM).Build()
-		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
+		sut := newAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		_, err := sut.ImageForKey(testCtx, ChownInitImageConfigmapNameKey)
+		_, err := sut.ImageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
 
 		// then
 		require.Error(t, err)
@@ -72,16 +68,16 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 		// given
 		validCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      OperatorAdditionalImagesConfigmapName,
+				Name:      config.OperatorAdditionalImagesConfigmapName,
 				Namespace: testNamespace,
 			},
-			Data: map[string]string{ChownInitImageConfigmapNameKey: "busybox:123"},
+			Data: map[string]string{config.ChownInitImageConfigmapNameKey: "busybox:123"},
 		}
 		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(validCM).Build()
-		sut := NewAdditionalImageGetter(fakeClient, testNamespace)
+		sut := newAdditionalImageGetter(fakeClient, testNamespace)
 
 		// when
-		actual, err := sut.ImageForKey(testCtx, ChownInitImageConfigmapNameKey)
+		actual, err := sut.ImageForKey(testCtx, config.ChownInitImageConfigmapNameKey)
 
 		// then
 		require.NoError(t, err)

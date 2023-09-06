@@ -25,7 +25,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-host-change/pkg/alias"
 )
@@ -54,12 +53,12 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	}
 
 	ctx := context.Background()
-	imageGetter := util.NewAdditionalImageGetter(client, operatorConfig.Namespace)
-	additionalImageChownInitContainer, err := imageGetter.ImageForKey(ctx, util.ChownInitImageConfigmapNameKey)
+	imageGetter := newAdditionalImageGetter(client, operatorConfig.Namespace)
+	additionalImageChownInitContainer, err := imageGetter.ImageForKey(ctx, config.ChownInitImageConfigmapNameKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
-	additionalImages := map[string]string{util.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
 
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {

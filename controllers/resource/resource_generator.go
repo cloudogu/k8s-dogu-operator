@@ -2,7 +2,6 @@ package resource
 
 import (
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"strconv"
 	"strings"
 
@@ -18,6 +17,7 @@ import (
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
@@ -64,7 +64,7 @@ func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
 func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
-	chownInitImage := r.additionalImages[util.ChownInitImageConfigmapNameKey]
+	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
 	podTemplate, err := r.GetPodTemplate(doguResource, dogu, chownInitImage)
 	if err != nil {
 		return nil, err

@@ -34,7 +34,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
@@ -148,9 +147,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	hostAliasGeneratorMock := &extMocks.HostAliasGenerator{}
 	hostAliasGeneratorMock.On("Generate").Return(nil, nil)
 
-	additionalImageGetter := &mocks.AdditionalImageNameGetter{}
-	additionalImageGetter.EXPECT().ImageForKey(mock.Anything, util.ChownInitImageConfigmapNameKey).Return("busybox:1.36", nil)
-	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, additionalImageGetter)
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"}
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, additionalImages)
 
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())

@@ -123,6 +123,11 @@ func getTestScheme() *runtime.Scheme {
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
+		Kind:    "ConfigMaps",
+	}, &v1.ConfigMapList{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
 		Kind:    "Event",
 	}, &eventV1.Event{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
