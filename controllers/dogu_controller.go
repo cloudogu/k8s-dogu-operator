@@ -159,7 +159,7 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 	case ExpandVolume:
 		return r.performVolumeOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeAdditionalIngressAnnotations:
-		return r.performAddititionalIngressAnnotationsOperation(ctx, doguResource, requeueForMultipleOperations)
+		return r.performAdditionalIngressAnnotationsOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
@@ -441,7 +441,7 @@ func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResourc
 	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusPVCResizing, r.doguManager.SetDoguDataVolumeSize, shouldRequeue)
 }
 
-func (r *doguReconciler) performAddititionalIngressAnnotationsOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+func (r *doguReconciler) performAdditionalIngressAnnotationsOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
 	additionalIngressAnnotationsOperationEventProps := operationEventProperties{
 		successReason: AdditionalIngressAnnotationsChangeEventReason,
 		errorReason:   ErrorOnAdditionalIngressAnnotationsChangeEventReason,
