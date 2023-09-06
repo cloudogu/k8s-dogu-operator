@@ -147,7 +147,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			registry: regMock,
 		}
 
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Millisecond*50)
+		ctx, cancelFunc := context.WithTimeout(testCtx, time.Millisecond*50)
 
 		// when
 		err := sut.Start(ctx)
@@ -198,7 +198,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			requirementsGen: generator,
 		}
 
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*2)
+		ctx, cancelFunc := context.WithTimeout(testCtx, time.Second*2)
 
 		// when
 		err := sut.Start(ctx)
@@ -248,7 +248,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			registry: regMock,
 		}
 
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*2)
+		ctx, cancelFunc := context.WithTimeout(testCtx, time.Second*2)
 
 		// when
 		err := sut.Start(ctx)
@@ -270,7 +270,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
 		require.Error(t, err)
@@ -300,7 +300,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
 		assert.ErrorContains(t, err, "failed to get dogu.json of dogu [dogu1] from registry")
@@ -332,7 +332,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
 		assert.ErrorContains(t, err, "failed to get deployment of dogu [test/dogu1]")
@@ -373,7 +373,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
 		require.Error(t, err)
@@ -419,7 +419,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
 		require.Error(t, err)
@@ -459,7 +459,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
 		require.NoError(t, err)
