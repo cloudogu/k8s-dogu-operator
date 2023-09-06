@@ -46,13 +46,6 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	}
 
 	ctx := context.Background()
-	imageGetter := newAdditionalImageGetter(client, operatorConfig.Namespace)
-	additionalImageChownInitContainer, err := imageGetter.ImageForKey(ctx, config.ChownInitImageConfigmapNameKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get additional images: %w", err)
-	}
-	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
-
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
 		if err != nil {
@@ -61,6 +54,16 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 	}
 
 	clientSet, err := kubernetes.NewForConfig(restConfig)
+
+	// At this point, the operator's client is only ready AFTER the operator's Start(...) was called.
+	// Instead we must use our own client to avoid an immediate cache error: "the cache is not started, can not read objects"
+	imageGetter := newAdditionalImageGetter(clientSet, operatorConfig.Namespace)
+	additionalImageChownInitContainer, err := imageGetter.ImageForKey(ctx, config.ChownInitImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	}
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)
 	}

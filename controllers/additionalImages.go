@@ -3,10 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/dlclark/regexp2"
 
@@ -22,19 +20,19 @@ var imageTagValidationString = "^(?:(?=[^:\\/]{1,253})(?!-)[a-zA-Z0-9-]{1,63}(?<
 var imageTagValidationRegexp, _ = regexp2.Compile(imageTagValidationString, regexp2.None)
 
 type additionalImageGetter struct {
-	configmapClient client.Client
+	configmapClient *kubernetes.Clientset
 	namespace       string
 }
 
-func newAdditionalImageGetter(client client.Client, namespace string) *additionalImageGetter {
+func newAdditionalImageGetter(client *kubernetes.Clientset, namespace string) *additionalImageGetter {
 	return &additionalImageGetter{configmapClient: client, namespace: namespace}
 }
 
 // ImageForKey returns a container image reference as found in OperatorAdditionalImagesConfigmapName.
 func (adig *additionalImageGetter) ImageForKey(ctx context.Context, key string) (string, error) {
-	configMap := corev1.ConfigMap{}
-	id := types.NamespacedName{Name: config.OperatorAdditionalImagesConfigmapName, Namespace: adig.namespace}
-	err := adig.configmapClient.Get(ctx, id, &configMap)
+	configMap, err := adig.configmapClient.CoreV1().
+		ConfigMaps(adig.namespace).
+		Get(ctx, config.OperatorAdditionalImagesConfigmapName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("error while getting configmap '%s': %w", config.OperatorAdditionalImagesConfigmapName, err)
 	}
