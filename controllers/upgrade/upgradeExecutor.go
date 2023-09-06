@@ -12,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -47,7 +46,7 @@ type upgradeExecutor struct {
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
-func NewUpgradeExecutor(client client.Client, cesRegistry registry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *upgradeExecutor {
+func NewUpgradeExecutor(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *upgradeExecutor {
 	return &upgradeExecutor{
 		client:                client,
 		eventRecorder:         eventRecorder,

@@ -55,7 +55,6 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		saCreator := mocks.NewServiceAccountCreator(t)
 		k8sFileEx := mocks.NewFileExtractor(t)
 		applier := mocks.NewCollectApplier(t)
-		mockRegistry := regmock.NewRegistry(t)
 		eventRecorder := extMocks.NewEventRecorder(t)
 		commandExecutor := mocks.NewCommandExecutor(t)
 		mockUpserter := mocks.NewResourceUpserter(t)
@@ -70,7 +69,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		}
 
 		// when
-		actual := NewUpgradeExecutor(myClient, mockRegistry, mgrSet, eventRecorder)
+		actual := NewUpgradeExecutor(myClient, mgrSet, eventRecorder)
 
 		// then
 		require.NotNil(t, actual)

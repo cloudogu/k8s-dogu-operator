@@ -235,7 +235,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		ResourceDoguFetcher:   remoteDoguFetcher,
 	}
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, CesRegistryMock, mgrSet, eventRecorder)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,

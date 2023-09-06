@@ -26,12 +26,7 @@ func NewDoguUpgradeManager(client client.Client, operatorConfig *config.Operator
 	doguChecker := health.NewDoguChecker(client, mgrSet.LocalDoguFetcher)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(
-		client,
-		cesRegistry,
-		mgrSet,
-		eventRecorder,
-	)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder)
 
 	return &doguUpgradeManager{
 		client:              client,
