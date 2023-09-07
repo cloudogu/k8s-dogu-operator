@@ -64,8 +64,7 @@ func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
 func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
-	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
-	podTemplate, err := r.GetPodTemplate(doguResource, dogu, chownInitImage)
+	podTemplate, err := r.GetPodTemplate(doguResource, dogu)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +102,7 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 }
 
 // GetPodTemplate returns a pod template for the given dogu.
-func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu, chownInitImage string) (*corev1.PodTemplateSpec, error) {
+func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
 	volumes, err := createVolumes(doguResource, dogu)
 	if err != nil {
 		return nil, err
@@ -117,6 +116,8 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 				FieldPath: "metadata.name",
 			},
 		}}}
+
+	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
 
 	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage)
 	if err != nil {

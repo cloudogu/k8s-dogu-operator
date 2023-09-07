@@ -48,7 +48,7 @@ type CollectApplier interface {
 // PodTemplateResourceGenerator is used to generate pod templates.
 type PodTemplateResourceGenerator interface {
 	// GetPodTemplate returns a pod template for the given dogu.
-	GetPodTemplate(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu, chownInitImage string) (*v1.PodTemplateSpec, error)
+	GetPodTemplate(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*v1.PodTemplateSpec, error)
 }
 
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.
