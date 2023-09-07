@@ -54,7 +54,7 @@ const (
 )
 
 const (
-	NameValidationEventReason = "NameValidation"
+	FailedNameValidationEventReason = "FailedNameValidation"
 )
 
 const handleRequeueErrMsg = "failed to handle requeue: %w"
@@ -466,7 +466,7 @@ func (r *doguReconciler) validateName(doguResource *k8sv1.Dogu) (success bool, r
 	simpleName := core.GetSimpleDoguName(doguResource.Spec.Name)
 
 	if doguResource.ObjectMeta.Name != simpleName {
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, NameValidationEventReason, "Dogu resource does not follow naming rules: The dogu's simple name (without the namespace) must equal the resource name. Resource name: %s ; Simple name: %s", doguResource.Name, simpleName)
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedNameValidationEventReason, "Dogu resource does not follow naming rules: The dogu's simple name (without the namespace) must equal the resource name. Resource name: %s ; Simple name: %s", doguResource.Name, simpleName)
 		return false, &ctrl.Result{}
 	}
 
