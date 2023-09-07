@@ -1,5 +1,4 @@
 //go:build k8s_integration
-// +build k8s_integration
 
 package controllers
 
@@ -184,8 +183,6 @@ var _ = ginkgo.BeforeSuite(func() {
 		client:                k8sClient,
 		recorder:              eventRecorder,
 		resourceUpserter:      upserter,
-		doguRemoteRegistry:    DoguRemoteRegistryMock,
-		doguLocalRegistry:     EtcdDoguRegistry,
 		resourceDoguFetcher:   remoteDoguFetcher,
 		imageRegistry:         ImageRegistryMock,
 		doguRegistrator:       doguRegistrator,
@@ -200,10 +197,8 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	deleteManager := &doguDeleteManager{
 		client:                k8sClient,
-		imageRegistry:         ImageRegistryMock,
 		doguRegistrator:       doguRegistrator,
 		serviceAccountRemover: serviceAccountRemover,
-		doguSecretHandler:     doguSecretHandler,
 		localDoguFetcher:      localDoguFetcher,
 		exposedPortRemover:    exposedPortRemover,
 	}

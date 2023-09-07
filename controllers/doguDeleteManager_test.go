@@ -39,7 +39,6 @@ func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 	doguDeleteManager := &doguDeleteManager{
 		client:                k8sClient,
 		localDoguFetcher:      doguFetcher,
-		imageRegistry:         imageRegistry,
 		doguRegistrator:       doguRegistrator,
 		serviceAccountRemover: serviceAccountRemover,
 		exposedPortRemover:    exposedPortRemover,
