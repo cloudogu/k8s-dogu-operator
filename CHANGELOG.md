@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#118] Make implicitly used init container images explicit and configurable
    - this release adds a mandatory ConfigMap `k8s-dogu-operator-additional-images` which contains additionally used images
    - see the [operations docs](docs/operations/installing_operator_into_cluster_en.md) for more information
+- [#125] Validate that `metadata.Name` equals simple dogu name in `spec.Name`.
 
 ### Fixed
 - [#121] Operator cannot recognize multiple changes/required operations at once.

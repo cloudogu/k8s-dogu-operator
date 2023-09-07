@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -782,6 +783,38 @@ func Test_doguReconciler_checkForAdditionalIngressAnnotations(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get service of dogu [test]")
 	})
+}
+
+func Test_doguReconciler_validateSpecName(t *testing.T) {
+	tests := []struct {
+		name         string
+		recorderFunc func(t *testing.T) record.EventRecorder
+		doguResource *k8sv1.Dogu
+		wantSuccess  bool
+	}{
+		{
+			name: "should fail validation",
+			recorderFunc: func(t *testing.T) record.EventRecorder {
+				recorder := extMocks.NewEventRecorder(t)
+				recorder.EXPECT().Eventf(mock.Anything, "Warning", "FailedNameValidation", "Dogu resource does not follow naming rules: The dogu's simple name '%s' must be the same as the resource name '%s'.", "invalid-example", "example")
+				return recorder
+			},
+			doguResource: &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "example"}, Spec: k8sv1.DoguSpec{Name: "testing/invalid-example"}},
+			wantSuccess:  false,
+		},
+		{
+			name:         "should succeed validation",
+			recorderFunc: func(t *testing.T) record.EventRecorder { return extMocks.NewEventRecorder(t) },
+			doguResource: &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "example"}, Spec: k8sv1.DoguSpec{Name: "testing/example"}},
+			wantSuccess:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &doguReconciler{recorder: tt.recorderFunc(t)}
+			assert.Equal(t, tt.wantSuccess, r.validateName(tt.doguResource))
+		})
+	}
 }
 
 func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
