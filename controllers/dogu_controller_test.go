@@ -796,7 +796,7 @@ func Test_doguReconciler_validateSpecName(t *testing.T) {
 			name: "should fail validation",
 			recorderFunc: func(t *testing.T) record.EventRecorder {
 				recorder := extMocks.NewEventRecorder(t)
-				recorder.EXPECT().Eventf(mock.Anything, "Warning", "FailedNameValidation", "Dogu resource does not follow naming rules: The dogu's simple name (without the namespace) must equal the resource name. Resource name: %s ; Simple name: %s", "example", "invalid-example")
+				recorder.EXPECT().Eventf(mock.Anything, "Warning", "FailedNameValidation", "Dogu resource does not follow naming rules: The dogu's simple name '%s' must be the same as the resource name '%s'.", "invalid-example", "example")
 				return recorder
 			},
 			doguResource: &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "example"}, Spec: k8sv1.DoguSpec{Name: "testing/invalid-example"}},

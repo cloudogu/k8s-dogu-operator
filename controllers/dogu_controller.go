@@ -465,8 +465,8 @@ func (r *doguReconciler) performAdditionalIngressAnnotationsOperation(ctx contex
 func (r *doguReconciler) validateName(doguResource *k8sv1.Dogu) (success bool) {
 	simpleName := core.GetSimpleDoguName(doguResource.Spec.Name)
 
-	if doguResource.ObjectMeta.Name != simpleName {
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedNameValidationEventReason, "Dogu resource does not follow naming rules: The dogu's simple name (without the namespace) must equal the resource name. Resource name: %s ; Simple name: %s", doguResource.Name, simpleName)
+	if doguResource.Name != simpleName {
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedNameValidationEventReason, "Dogu resource does not follow naming rules: The dogu's simple name '%s' must be the same as the resource name '%s'.", simpleName, doguResource.Name)
 		return false
 	}
 
