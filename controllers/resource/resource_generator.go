@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -217,25 +216,6 @@ func buildDeploymentSpec(selectorLabels map[string]string, podTemplate *corev1.P
 		},
 		Template: *podTemplate,
 	}
-}
-
-func createLivenessProbe(dogu *core.Dogu) *corev1.Probe {
-	for _, healthCheck := range dogu.HealthChecks {
-		if healthCheck.Type == "tcp" {
-			return &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{Port: intstr.IntOrString{IntVal: int32(healthCheck.Port)}},
-				},
-				TimeoutSeconds:   1,
-				PeriodSeconds:    10,
-				SuccessThreshold: 1,
-				// Setting this value to low makes some dogus unable to start that require a certain amount of time.
-				// The default value is set to 30 min.
-				FailureThreshold: 6 * 30,
-			}
-		}
-	}
-	return nil
 }
 
 // CreateStartupProbe returns a container start-up probe for the given dogu if it contains a state healthcheck.

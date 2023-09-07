@@ -147,11 +147,7 @@ func (u *upserter) waitForExistingPVCToBeTerminated(ctx context.Context, pvcObje
 }
 
 func pvcRetry(err error) bool {
-	if strings.Contains(err.Error(), errMsgFailedToGetPVC) {
-		return false
-	}
-
-	return true
+	return !strings.Contains(err.Error(), errMsgFailedToGetPVC)
 }
 
 func (u *upserter) updateOrInsert(ctx context.Context, objectKey client.ObjectKey,

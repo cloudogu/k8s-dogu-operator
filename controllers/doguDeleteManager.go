@@ -25,10 +25,8 @@ const finalizerName = "dogu-finalizer"
 type doguDeleteManager struct {
 	client                client.Client
 	localDoguFetcher      cloudogu.LocalDoguFetcher
-	imageRegistry         cloudogu.ImageRegistry
 	doguRegistrator       cloudogu.DoguRegistrator
 	serviceAccountRemover cloudogu.ServiceAccountRemover
-	doguSecretHandler     cloudogu.DoguSecretHandler
 	exposedPortRemover    cloudogu.ExposePortRemover
 	eventRecorder         record.EventRecorder
 }
