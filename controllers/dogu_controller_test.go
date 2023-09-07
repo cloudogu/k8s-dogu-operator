@@ -791,7 +791,6 @@ func Test_doguReconciler_validateSpecName(t *testing.T) {
 		recorderFunc func(t *testing.T) record.EventRecorder
 		doguResource *k8sv1.Dogu
 		wantSuccess  bool
-		wantResult   *ctrl.Result
 	}{
 		{
 			name: "should fail validation",
@@ -802,22 +801,18 @@ func Test_doguReconciler_validateSpecName(t *testing.T) {
 			},
 			doguResource: &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "example"}, Spec: k8sv1.DoguSpec{Name: "testing/invalid-example"}},
 			wantSuccess:  false,
-			wantResult:   &ctrl.Result{},
 		},
 		{
 			name:         "should succeed validation",
 			recorderFunc: func(t *testing.T) record.EventRecorder { return extMocks.NewEventRecorder(t) },
 			doguResource: &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "example"}, Spec: k8sv1.DoguSpec{Name: "testing/example"}},
 			wantSuccess:  true,
-			wantResult:   nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &doguReconciler{recorder: tt.recorderFunc(t)}
-			success, result := r.validateName(tt.doguResource)
-			assert.Equal(t, tt.wantSuccess, success)
-			assert.Equal(t, tt.wantResult, result)
+			assert.Equal(t, tt.wantSuccess, r.validateName(tt.doguResource))
 		})
 	}
 }
