@@ -45,8 +45,17 @@ type CollectApplier interface {
 	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error
 }
 
+// PodTemplateResourceGenerator is used to generate pod templates.
+type PodTemplateResourceGenerator interface {
+	// GetPodTemplate returns a pod template for the given dogu.
+	GetPodTemplate(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*v1.PodTemplateSpec, error)
+}
+
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.
 type DoguResourceGenerator interface {
+	SecretResourceGenerator
+	PodTemplateResourceGenerator
+
 	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
 	CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
 	// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
@@ -56,6 +65,12 @@ type DoguResourceGenerator interface {
 	CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *image.ConfigFile) (*v1.Service, error)
 	// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
 	CreateDoguPVC(doguResource *k8sv1.Dogu) (*v1.PersistentVolumeClaim, error)
+}
+
+// SecretResourceGenerator is used to generate kubernetes secret resources
+type SecretResourceGenerator interface {
+	// CreateDoguSecret generates a secret for the dogu resource containing the given data.
+	CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*v1.Secret, error)
 }
 
 // ExposePortAdder is used to expose exposed services from the dogu.

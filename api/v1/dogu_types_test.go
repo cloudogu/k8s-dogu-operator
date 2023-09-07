@@ -368,7 +368,7 @@ func TestDogu_GetPrivateKeySecret(t *testing.T) {
 
 	t.Run("fail to get private key secret", func(t *testing.T) {
 		// given
-		fakeClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 
 		// when
 		_, err := testDogu.GetPrivateKeySecret(context.TODO(), fakeClient)

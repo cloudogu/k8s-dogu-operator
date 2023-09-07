@@ -147,11 +147,11 @@ ${K8S_HELM_RELEASE_TGZ}: ${BINARY_HELM} ${K8S_HELM_TARGET}/templates/$(ARTIFACT_
 	@${BINARY_HELM} package ${K8S_HELM_TARGET} -d ${K8S_HELM_TARGET} ${BINARY_HELM_ADDITIONAL_PACK_ARGS}
 
 .PHONY: k8s-helm-create-temp-dependencies
-k8s-helm-create-temp-dependencies: ${K8S_HELM_TARGET}/Chart.yaml
+k8s-helm-create-temp-dependencies: ${BINARY_YQ} ${K8S_HELM_TARGET}/Chart.yaml
 # we use helm dependencies internally but never use them as "official" dependency because the namespace may differ
 # instead we create empty dependencies to satisfy the helm package call and delete the whole directory from the chart.tgz later-on.
 	@echo "Create helm temp dependencies (if they exist)"
-	@for dep in `yq -e '.dependencies[].name // ""' ${K8S_HELM_TARGET}/Chart.yaml`; do \
+	@for dep in `${BINARY_YQ} -e '.dependencies[].name // ""' ${K8S_HELM_TARGET}/Chart.yaml`; do \
 		mkdir -p ${K8S_HELM_TARGET}/${K8S_HELM_TARGET_DEP_DIR}/$${dep} ; \
 		sed "s|replaceme|$${dep}|g" $(BUILD_DIR)/make/k8s-helm-temp-chart.yaml > ${K8S_HELM_TARGET}/${K8S_HELM_TARGET_DEP_DIR}/$${dep}/Chart.yaml ; \
 	done

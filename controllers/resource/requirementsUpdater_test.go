@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	v1 "k8s.io/api/core/v1"
@@ -17,7 +18,6 @@ import (
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
-	"github.com/hashicorp/go-multierror"
 	coreosclient "go.etcd.io/etcd/client/v2"
 
 	"github.com/stretchr/testify/assert"
@@ -147,7 +147,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			registry: regMock,
 		}
 
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Millisecond*50)
+		ctx, cancelFunc := context.WithTimeout(testCtx, time.Millisecond*50)
 
 		// when
 		err := sut.Start(ctx)
@@ -198,7 +198,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			requirementsGen: generator,
 		}
 
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*2)
+		ctx, cancelFunc := context.WithTimeout(testCtx, time.Second*2)
 
 		// when
 		err := sut.Start(ctx)
@@ -248,7 +248,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			registry: regMock,
 		}
 
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*2)
+		ctx, cancelFunc := context.WithTimeout(testCtx, time.Second*2)
 
 		// when
 		err := sut.Start(ctx)
@@ -270,7 +270,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
 		require.Error(t, err)
@@ -300,16 +300,12 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
-		var myMultiError *multierror.Error
-		require.ErrorAs(t, err, &myMultiError)
-
-		assert.Len(t, myMultiError.Errors, 3)
-		assert.Contains(t, myMultiError.Errors[0].Error(), "failed to get dogu.json of dogu [dogu1] from registry")
-		assert.Contains(t, myMultiError.Errors[1].Error(), "failed to get dogu.json of dogu [dogu2] from registry")
-		assert.Contains(t, myMultiError.Errors[2].Error(), "failed to get dogu.json of dogu [dogu3] from registry")
+		assert.ErrorContains(t, err, "failed to get dogu.json of dogu [dogu1] from registry")
+		assert.ErrorContains(t, err, "failed to get dogu.json of dogu [dogu2] from registry")
+		assert.ErrorContains(t, err, "failed to get dogu.json of dogu [dogu3] from registry")
 	})
 
 	t.Run("trigger fail on retrieving dogu deployments", func(t *testing.T) {
@@ -336,16 +332,12 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
-		var myMultiError *multierror.Error
-		require.ErrorAs(t, err, &myMultiError)
-
-		assert.Len(t, myMultiError.Errors, 3)
-		assert.Contains(t, myMultiError.Errors[0].Error(), "failed to get deployment of dogu [test/dogu1]")
-		assert.Contains(t, myMultiError.Errors[1].Error(), "failed to get deployment of dogu [test/dogu2]")
-		assert.Contains(t, myMultiError.Errors[2].Error(), "failed to get deployment of dogu [test/dogu3]")
+		assert.ErrorContains(t, err, "failed to get deployment of dogu [test/dogu1]")
+		assert.ErrorContains(t, err, "failed to get deployment of dogu [test/dogu2]")
+		assert.ErrorContains(t, err, "failed to get deployment of dogu [test/dogu3]")
 	})
 
 	t.Run("trigger fail on generating resource requirements", func(t *testing.T) {
@@ -360,9 +352,12 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 
 		generator := mocks.NewResourceRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
-		generator.EXPECT().Generate(dj1).Return(v1.ResourceRequirements{}, assert.AnError)
-		generator.EXPECT().Generate(dj2).Return(v1.ResourceRequirements{}, assert.AnError)
-		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, assert.AnError)
+		testErr1 := errors.New("error1 occurred: wrong bitsize")
+		testErr2 := errors.New("error2 occurred: out of entropy")
+		testErr3 := errors.New("error3 failed to fail: bad luck")
+		generator.EXPECT().Generate(dj1).Return(v1.ResourceRequirements{}, testErr1)
+		generator.EXPECT().Generate(dj2).Return(v1.ResourceRequirements{}, testErr2)
+		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, testErr3)
 
 		regMock := extMocks.NewConfigurationRegistry(t)
 		doguRegMock := extMocks.NewDoguRegistry(t)
@@ -378,16 +373,17 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
-		var myMultiError *multierror.Error
-		require.ErrorAs(t, err, &myMultiError)
-
-		assert.Len(t, myMultiError.Errors, 3)
-		assert.ErrorIs(t, myMultiError.Errors[0], assert.AnError)
-		assert.ErrorIs(t, myMultiError.Errors[1], assert.AnError)
-		assert.ErrorIs(t, myMultiError.Errors[2], assert.AnError)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to generate resource requirements of dogu")
+		assert.ErrorContains(t, err, "test/dogu1")
+		assert.ErrorContains(t, err, "test/dogu2")
+		assert.ErrorContains(t, err, "test/dogu3")
+		assert.ErrorIs(t, err, testErr1)
+		assert.ErrorIs(t, err, testErr2)
+		assert.ErrorIs(t, err, testErr3)
 	})
 
 	t.Run("trigger fail on updating deployment", func(t *testing.T) {
@@ -423,16 +419,14 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
-		var myMultiError *multierror.Error
-		require.ErrorAs(t, err, &myMultiError)
-
-		assert.Len(t, myMultiError.Errors, 3)
-		assert.ErrorIs(t, myMultiError.Errors[0], assert.AnError)
-		assert.ErrorIs(t, myMultiError.Errors[1], assert.AnError)
-		assert.ErrorIs(t, myMultiError.Errors[2], assert.AnError)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "test/dogu1")
+		assert.ErrorContains(t, err, "test/dogu2")
+		assert.ErrorContains(t, err, "test/dogu3")
 	})
 
 	t.Run("trigger success", func(t *testing.T) {
@@ -465,7 +459,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		}
 
 		// when
-		err := sut.triggerSync(context.Background())
+		err := sut.triggerSync(testCtx)
 
 		// then
 		require.NoError(t, err)

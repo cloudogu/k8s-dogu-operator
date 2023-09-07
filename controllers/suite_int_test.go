@@ -6,6 +6,7 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	v1 "k8s.io/api/core/v1"
 	"os"
 	"path/filepath"
@@ -146,7 +147,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	requirementsGen.EXPECT().Generate(mock.Anything).Return(v1.ResourceRequirements{}, nil)
 	hostAliasGeneratorMock := &extMocks.HostAliasGenerator{}
 	hostAliasGeneratorMock.On("Generate").Return(nil, nil)
-	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock)
+
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"}
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, additionalImages)
 
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -169,7 +172,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
-	upserter := resource.NewUpserter(k8sClient, requirementsGen, hostAliasGeneratorMock)
+	upserter := resource.NewUpserter(k8sClient, resourceGenerator)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
@@ -217,7 +220,22 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, cfg, CommandExecutor, eventRecorder, ImageRegistryMock, collectApplier, fileExtract, serviceAccountCreator, CesRegistryMock)
+
+	mgrSet := &util.ManagerSet{
+		RestConfig:            ctrl.GetConfigOrDie(),
+		ImageRegistry:         ImageRegistryMock,
+		ServiceAccountCreator: serviceAccountCreator,
+		FileExtractor:         fileExtract,
+		CollectApplier:        collectApplier,
+		CommandExecutor:       CommandExecutor,
+		ResourceUpserter:      upserter,
+		DoguRegistrator:       doguRegistrator,
+		LocalDoguFetcher:      localDoguFetcher,
+		DoguResourceGenerator: resourceGenerator,
+		ResourceDoguFetcher:   remoteDoguFetcher,
+	}
+
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,
@@ -229,11 +247,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	supportManager := &doguSupportManager{
-		client:            k8sManager.GetClient(),
-		scheme:            k8sManager.GetScheme(),
-		doguRegistry:      EtcdDoguRegistry,
-		resourceGenerator: resourceGenerator,
-		eventRecorder:     eventRecorder,
+		client:                       k8sManager.GetClient(),
+		doguRegistry:                 EtcdDoguRegistry,
+		podTemplateResourceGenerator: resourceGenerator,
+		eventRecorder:                eventRecorder,
 	}
 
 	doguManager := &DoguManager{

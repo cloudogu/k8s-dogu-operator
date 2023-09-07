@@ -8,8 +8,6 @@ import (
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 
-	"github.com/hashicorp/go-multierror"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -123,26 +121,15 @@ func shouldRequeue(err error) bool {
 		return false
 	}
 
-	for _, checkErr := range getAllErrorsFromChain(err) {
-		var requeueableError requeuableError
-		if errors.As(checkErr, &requeueableError) {
-			if requeueableError.Requeue() {
+	var requeueableError requeuableError
+	if errors.As(err, &requeueableError) {
+		if requeueableError.Requeue() {
 
-				return true
-			}
+			return true
 		}
 	}
 
 	return false
-}
-
-func getAllErrorsFromChain(err error) []error {
-	multiError, ok := err.(*multierror.Error)
-	if !ok {
-		return []error{err}
-	}
-
-	return multiError.Errors
 }
 
 func (d *doguRequeueHandler) fireRequeueEvent(ctx context.Context, doguResource *k8sv1.Dogu, result ctrl.Result) error {

@@ -3,47 +3,45 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
-
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/cesapp-lib/registry"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
 
 const SupportModeEnvVar = "SUPPORT_MODE"
 
 // podTemplateResourceGenerator is used to generate pod templates.
 type podTemplateResourceGenerator interface {
-	GetPodTemplate(*k8sv1.Dogu, *core.Dogu) (*corev1.PodTemplateSpec, error)
+	GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error)
 }
 
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
-	client            client.Client
-	scheme            *runtime.Scheme
-	doguRegistry      registry.DoguRegistry
-	resourceGenerator podTemplateResourceGenerator
-	eventRecorder     record.EventRecorder
+	client                       client.Client
+	doguRegistry                 registry.DoguRegistry
+	podTemplateResourceGenerator podTemplateResourceGenerator
+	eventRecorder                record.EventRecorder
 }
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.
-func NewDoguSupportManager(client client.Client, cesRegistry registry.Registry, eventRecorder record.EventRecorder) *doguSupportManager {
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), resource.NewRequirementsGenerator(cesRegistry), alias.NewHostAliasGenerator(cesRegistry.GlobalConfig()))
+func NewDoguSupportManager(client client.Client, _ *config.OperatorConfig, cesRegistry registry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
 	return &doguSupportManager{
-		client:            client,
-		doguRegistry:      cesRegistry.DoguRegistry(),
-		resourceGenerator: resourceGenerator,
-		eventRecorder:     eventRecorder,
-	}
+		client:                       client,
+		doguRegistry:                 cesRegistry.DoguRegistry(),
+		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
+		eventRecorder:                eventRecorder,
+	}, nil
 }
 
 // HandleSupportMode handles the support flag in the dogu spec and returns whether the support modes changed during the
@@ -67,7 +65,6 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 		return false, nil
 	}
 
-	logger.Info(fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
 	err = dsm.updateDeployment(ctx, doguResource, deployment)
 	if err != nil {
 		return false, err
@@ -78,20 +75,23 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 }
 
 func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *k8sv1.Dogu, deployment *appsv1.Deployment) error {
+	logger := log.FromContext(ctx)
 	dogu, err := dsm.doguRegistry.Get(doguResource.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
 	}
 
-	podTemplate, err := dsm.resourceGenerator.GetPodTemplate(doguResource, dogu)
+	podTemplate, err := dsm.podTemplateResourceGenerator.GetPodTemplate(doguResource, dogu)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get pod template for dogu %s in support action: %w", doguResource.Name, err)
 	}
+
 	if doguResource.Spec.SupportMode {
 		setDoguPodTemplateInSupportMode(doguResource, podTemplate)
 	}
 
 	deployment.Spec.Template = *podTemplate
+	logger.Info(fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
 	err = dsm.client.Update(ctx, deployment)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu deployment %s: %w", doguResource.Name, err)

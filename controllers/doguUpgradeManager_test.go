@@ -1,7 +1,22 @@
 package controllers
 
 import (
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"testing"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 
@@ -11,22 +26,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
-
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd/api"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const defaultNamespace = ""
@@ -36,8 +35,8 @@ var deploymentTypeMeta = metav1.TypeMeta{
 	Kind:       "Deployment",
 }
 
-func createTestRestConfig() *rest.Config {
-	return &rest.Config{}
+func createTestRestConfig() (*rest.Config, error) {
+	return &rest.Config{}, nil
 }
 
 func createReadyDeployment(doguName string) *appsv1.Deployment {
@@ -60,30 +59,9 @@ func createDeployment(doguName string, replicas, replicasReady int32) *appsv1.De
 
 func TestNewDoguUpgradeManager(t *testing.T) {
 	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
-
-	t.Run("fail when no valid kube config was found", func(t *testing.T) {
-		// given
-
-		// override default controller method to return a config that fail the client creation
-		oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-		defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-		ctrl.GetConfigOrDie = func() *rest.Config {
-			return &rest.Config{ExecProvider: &api.ExecConfig{}, AuthProvider: &api.AuthProviderConfig{}}
-		}
-
-		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = "test"
-
-		// when
-		doguManager, err := NewDoguUpgradeManager(nil, operatorConfig, nil, nil)
-
-		// then
-		require.Error(t, err)
-		require.Nil(t, doguManager)
-	})
+	oldGetConfigDelegate := ctrl.GetConfig
+	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
+	ctrl.GetConfig = createTestRestConfig
 
 	t.Run("should implement upgradeManager", func(t *testing.T) {
 		myClient := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build()
@@ -91,15 +69,13 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
-		globalConfig := cesmocks.NewConfigurationContext(t)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
+		mgrSet := &util.ManagerSet{}
 
 		// when
-		actual, err := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, nil)
+		actual := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, mgrSet, nil)
 
 		// then
-		require.NoError(t, err)
 		require.NotNil(t, actual)
 		assert.Implements(t, (*cloudogu.UpgradeManager)(nil), actual)
 	})
@@ -129,7 +105,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	// override default controller method to retrieve a kube config
 	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
 	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = createTestRestConfig
+	ctrl.GetConfig = createTestRestConfig
 
 	operatorConfig := &config.OperatorConfig{}
 	operatorConfig.Namespace = testNamespace

@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#118] Make implicitly used init container images explicit and configurable
+   - this release adds a mandatory ConfigMap `k8s-dogu-operator-additional-images` which contains additionally used images
+   - see the [operations docs](docs/operations/installing_operator_into_cluster_en.md) for more information
+
 ### Fixed
 - [#121] Operator cannot recognize multiple changes/required operations at once.
   - Now multiple required operations are detected and after the first operation is done, a requeue is triggered to execute the other ones.
