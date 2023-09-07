@@ -3,7 +3,7 @@ commonLabels:
   app: ces
   app.kubernetes.io/name: k8s-dogu-operator
 
-bases:
+resources:
 - ../crd
 
 patchesStrategicMerge:

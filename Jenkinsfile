@@ -120,6 +120,9 @@ node('docker') {
             }
 
             stageAutomaticRelease()
+        } catch(Exception e) {
+            k3d.collectAndArchiveLogs()
+            throw e
         } finally {
             stage('Remove k3d cluster') {
                 k3d.deleteK3d()

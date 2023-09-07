@@ -3,23 +3,31 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-apply-lib/apply"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 // NewManager is an alias mainly used for testing the main package
 var NewManager = NewDoguManager
+
+var clientSetGetter = func(c *rest.Config) (kubernetes.Interface, error) {
+	return kubernetes.NewForConfig(c)
+}
 
 // DoguManager is a central unit in the process of handling dogu custom resources
 // The DoguManager creates, updates and deletes dogus
@@ -41,22 +49,60 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, fmt.Errorf("failed to validate key provider: %w", err)
 	}
 
-	installManager, err := NewDoguInstallManager(client, operatorConfig, cesRegistry, eventRecorder)
+	ctx := context.Background()
+	restConfig, err := ctrl.GetConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	upgradeManager, err := NewDoguUpgradeManager(client, operatorConfig, cesRegistry, eventRecorder)
+	clientSet, err := clientSetGetter(restConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	deleteManager, err := NewDoguDeleteManager(client, cesRegistry)
+	// At this point, the operator's client is only ready AFTER the operator's Start(...) was called.
+	// Instead we must use our own client to avoid an immediate cache error: "the cache is not started, can not read objects"
+	imageGetter := newAdditionalImageGetter(clientSet, operatorConfig.Namespace)
+	additionalImageChownInitContainer, err := imageGetter.imageForKey(ctx, config.ChownInitImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	}
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to find cluster config: %w", err)
+	}
+	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
+	}
+	// we need this as we add dogu resource owner-references to every custom object.
+	err = k8sv1.AddToScheme(scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
+	}
+
+	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, operatorConfig, cesRegistry, applier, additionalImages)
+	if err != nil {
+		return nil, fmt.Errorf("could not create manager set: %w", err)
+	}
+
+	installManager := NewDoguInstallManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}
 
-	supportManager := NewDoguSupportManager(client, cesRegistry, eventRecorder)
+	upgradeManager := NewDoguUpgradeManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	if err != nil {
+		return nil, err
+	}
+
+	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	if err != nil {
+		return nil, err
+	}
+
+	supportManager, _ := NewDoguSupportManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 
 	volumeManager := NewDoguVolumeManager(client, eventRecorder)
 

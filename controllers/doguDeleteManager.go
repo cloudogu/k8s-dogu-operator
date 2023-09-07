@@ -3,21 +3,20 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
-	"k8s.io/client-go/kubernetes"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	cesreg "github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
 )
 
 const finalizerName = "dogu-finalizer"
@@ -31,26 +30,19 @@ type doguDeleteManager struct {
 	serviceAccountRemover cloudogu.ServiceAccountRemover
 	doguSecretHandler     cloudogu.DoguSecretHandler
 	exposedPortRemover    cloudogu.ExposePortRemover
+	eventRecorder         record.EventRecorder
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, cesRegistry cesregistry.Registry) (*doguDeleteManager, error) {
-	resourceGenerator := resource.NewResourceGenerator(client.Scheme(), resource.NewRequirementsGenerator(cesRegistry), alias.NewHostAliasGenerator(cesRegistry.GlobalConfig()))
-
-	restConfig := ctrl.GetConfigOrDie()
-	clientSet, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find cluster config: %w", err)
-	}
-	executor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-
+func NewDoguDeleteManager(client client.Client, _ *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
-		localDoguFetcher:      cesreg.NewLocalDoguFetcher(cesRegistry.DoguRegistry()),
-		doguRegistrator:       cesreg.NewCESDoguRegistrator(client, cesRegistry, resourceGenerator),
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, executor, client),
+		localDoguFetcher:      mgrSet.LocalDoguFetcher,
+		doguRegistrator:       mgrSet.DoguRegistrator,
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
-	}, nil
+		eventRecorder:         recorder,
+	}
 }
 
 // Delete deletes the given dogu along with all those Kubernetes resources that the dogu operator initially created.

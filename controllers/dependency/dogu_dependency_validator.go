@@ -2,16 +2,16 @@ package dependency
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
+
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // dependencyValidationError is returned when a given dependency cloud not be validated.
@@ -51,13 +51,13 @@ func (dc *doguDependencyValidator) ValidateAllDependencies(ctx context.Context, 
 	deps := dogu.GetDependenciesOfType(core.DependencyTypeDogu)
 	err := dc.validateDoguDependencies(ctx, deps, false)
 	if err != nil {
-		allProblems = multierror.Append(err)
+		allProblems = errors.Join(allProblems, err)
 	}
 
 	optionalDeps := dogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu)
 	err = dc.validateDoguDependencies(ctx, optionalDeps, true)
 	if err != nil {
-		allProblems = multierror.Append(err)
+		allProblems = errors.Join(allProblems, err)
 	}
 
 	return allProblems
@@ -73,7 +73,7 @@ func (dc *doguDependencyValidator) validateDoguDependencies(ctx context.Context,
 				sourceError: err,
 				dependency:  doguDependency,
 			}
-			problems = multierror.Append(problems, &dependencyError)
+			problems = errors.Join(problems, &dependencyError)
 		}
 	}
 	return problems
@@ -87,14 +87,14 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 		if optional && registry.IsKeyNotFoundError(err) {
 			return nil // not installed => no error as this is ok for optional dependencies
 		}
-		return errors.Wrapf(err, "failed to resolve dependencies %s", doguDependency.Name)
+		return fmt.Errorf("failed to resolve dependencies %s: %w", doguDependency.Name, err)
 	}
 
 	if localDependency == nil {
 		if optional {
 			return nil // not installed => no error as this is ok for optional dependencies
 		}
-		return errors.Errorf("dependency %s seems not to be installed", doguDependency.Name)
+		return fmt.Errorf("dependency %s seems not to be installed", doguDependency.Name)
 	}
 
 	// it does not count as an error if no version is specified as the field is optional
@@ -104,20 +104,20 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 
 	localDependencyVersion, err := core.ParseVersion(localDependency.Version)
 	if err != nil {
-		return errors.Wrapf(err, "failed to parse version of dependency %s", localDependency.Name)
+		return fmt.Errorf("failed to parse version of dependency %s: %w", localDependency.Name, err)
 	}
 
 	comparator, err := core.ParseVersionComparator(doguDependency.Version)
 	if err != nil {
-		return errors.Wrapf(err, "failed to parse ParseVersionComparator of version %s for doguDependency %s", doguDependency.Version, doguDependency.Name)
+		return fmt.Errorf("failed to parse ParseVersionComparator of version %s for doguDependency %s: %w", doguDependency.Version, doguDependency.Name, err)
 	}
 
 	allows, err := comparator.Allows(localDependencyVersion)
 	if err != nil {
-		return errors.Wrapf(err, "An error occurred when comparing the versions")
+		return fmt.Errorf("an error occurred when comparing the versions: %w", err)
 	}
 	if !allows {
-		return errors.Errorf("%s parsed Version does not fulfill version requirement of %s dogu %s", localDependency.Version, doguDependency.Version, doguDependency.Name)
+		return fmt.Errorf("%s parsed Version does not fulfill version requirement of %s dogu %s", localDependency.Version, doguDependency.Version, doguDependency.Name)
 	}
 
 	return nil

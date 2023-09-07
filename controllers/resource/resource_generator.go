@@ -2,11 +2,9 @@ package resource
 
 import (
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"strconv"
 	"strings"
 
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,10 +13,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
 
 const (
@@ -36,8 +37,7 @@ const (
 )
 
 const (
-	chownInitContainerName  = "dogu-volume-chown-init"
-	chownInitContainerImage = "busybox:1.36"
+	chownInitContainerName = "dogu-volume-chown-init"
 )
 
 // kubernetesServiceAccountKind describes a service account on kubernetes.
@@ -49,14 +49,16 @@ type resourceGenerator struct {
 	scheme                *runtime.Scheme
 	requirementsGenerator cloudogu.ResourceRequirementsGenerator
 	hostAliasGenerator    thirdParty.HostAliasGenerator
+	additionalImages      map[string]string
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
 	return &resourceGenerator{
 		scheme:                scheme,
 		requirementsGenerator: requirementsGenerator,
 		hostAliasGenerator:    hostAliasGenerator,
+		additionalImages:      additionalImages,
 	}
 }
 
@@ -114,29 +116,12 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 				FieldPath: "metadata.name",
 			},
 		}}}
-	var startupProbe *corev1.Probe
-	var livenessProbe *corev1.Probe
-	var command []string
-	var args []string
-	startupProbe = CreateStartupProbe(dogu)
-	livenessProbe = createLivenessProbe(dogu)
-	pullPolicy := corev1.PullIfNotPresent
-	if config.Stage == config.StageDevelopment {
-		pullPolicy = corev1.PullAlways
-	}
 
-	allLabels := GetAppLabel().Add(doguResource.GetPodLabels())
+	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
 
-	// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
-	enableServiceLinks := false
-
-	chownContainer, err := getChownInitContainer(dogu, doguResource)
+	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage)
 	if err != nil {
 		return nil, err
-	}
-	var initContainers []corev1.Container
-	if chownContainer != nil {
-		initContainers = append(initContainers, *chownContainer)
 	}
 
 	hostAliases, err := r.hostAliasGenerator.Generate()
@@ -149,41 +134,32 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		return nil, err
 	}
 
-	podTemplate := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: allLabels,
-		},
-		Spec: corev1.PodSpec{
-			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
-			Hostname:           doguResource.Name,
-			HostAliases:        hostAliases,
-			Volumes:            volumes,
-			EnableServiceLinks: &enableServiceLinks,
-			InitContainers:     initContainers,
-			Containers: []corev1.Container{{
-				Command:         command,
-				Args:            args,
-				LivenessProbe:   livenessProbe,
-				StartupProbe:    startupProbe,
-				Name:            doguResource.Name,
-				Image:           dogu.Image + ":" + dogu.Version,
-				ImagePullPolicy: pullPolicy,
-				VolumeMounts:    volumeMounts,
-				Env:             envVars,
-				Resources:       resourceRequirements,
-			}},
-		},
-	}
-
-	accountName, ok := getKubernetesServiceAccount(dogu)
-	if ok {
-		podTemplate.Spec.ServiceAccountName = accountName
-	}
+	podTemplate := newPodSpecBuilder(doguResource, dogu).
+		labels(GetAppLabel().Add(doguResource.GetPodLabels())).
+		hostAliases(hostAliases).
+		volumes(volumes).
+		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
+		enableServiceLinks(false).
+		initContainers(chownContainer).
+		containerEmptyCommandAndArgs().
+		containerLivenessProbe().
+		containerStartupProbe().
+		containerPullPolicy().
+		containerVolumeMounts(volumeMounts).
+		containerEnvVars(envVars).
+		containerResourceRequirements(resourceRequirements).
+		serviceAccount().
+		build()
 
 	return podTemplate, nil
 }
 
-func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.Container, error) {
+func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu, chownInitImage string) (*corev1.Container, error) {
+	noInitContainerNeeded := chownInitImage == ""
+	if noInitContainerNeeded {
+		return nil, nil
+	}
+
 	// Skip chown volumes with dogu-operator client because these are volumes from configmaps and read only.
 	filteredVolumes := filterVolumesWithClient(dogu.Volumes, doguOperatorClient)
 	if len(filteredVolumes) == 0 {
@@ -201,19 +177,20 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu) (*corev1.C
 			return nil, fmt.Errorf("failed to parse group id %s from volume %s: %w", volume.Group, volume.Name, err)
 		}
 
-		if uid > 0 && gid > 0 {
-			mkdirCommand := fmt.Sprintf("mkdir -p \"%s\"", volume.Path)
-			chownCommand := fmt.Sprintf("chown -R %s:%s \"%s\"", volume.Owner, volume.Group, volume.Path)
-			commands = append(commands, mkdirCommand)
-			commands = append(commands, chownCommand)
-		} else {
+		isNotRootOwned := uid <= 0 || gid <= 0
+		if isNotRootOwned {
 			return nil, fmt.Errorf("owner %d or group %d are not greater than 0", uid, gid)
 		}
+
+		mkdirCommand := fmt.Sprintf("mkdir -p \"%s\"", volume.Path)
+		chownCommand := fmt.Sprintf("chown -R %s:%s \"%s\"", volume.Owner, volume.Group, volume.Path)
+		commands = append(commands, mkdirCommand)
+		commands = append(commands, chownCommand)
 	}
 
 	return &corev1.Container{
 		Name:         chownInitContainerName,
-		Image:        chownInitContainerImage,
+		Image:        chownInitImage,
 		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
 		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
 	}, nil
@@ -230,16 +207,6 @@ func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume
 	}
 
 	return filteredList
-}
-
-func getKubernetesServiceAccount(dogu *core.Dogu) (string, bool) {
-	for _, account := range dogu.ServiceAccounts {
-		if account.Kind == kubernetesServiceAccountKind && account.Type == doguOperatorClient {
-			return dogu.GetSimpleName(), true
-		}
-	}
-
-	return "", false
 }
 
 func buildDeploymentSpec(selectorLabels map[string]string, podTemplate *corev1.PodTemplateSpec) appsv1.DeploymentSpec {
@@ -271,6 +238,8 @@ func createLivenessProbe(dogu *core.Dogu) *corev1.Probe {
 	return nil
 }
 
+// CreateStartupProbe returns a container start-up probe for the given dogu if it contains a state healthcheck.
+// Otherwise, it returns nil.
 func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
 	for _, healthCheck := range dogu.HealthChecks {
 		if healthCheck.Type == "state" {

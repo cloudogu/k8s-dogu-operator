@@ -38,9 +38,6 @@ var ldapUpgradeDoguDescriptorBytes []byte
 //go:embed testdata/image-config.json
 var imageConfigBytes []byte
 
-//go:embed testdata/ldap_expectedPodTemplate_support_on.yaml
-var expectedPodTemplateSupportOnBytes []byte
-
 func readDoguCr(t *testing.T, bytes []byte) *corev1.Dogu {
 	t.Helper()
 
@@ -90,18 +87,6 @@ func readDoguDevelopmentMap(t *testing.T, devMapBytes []byte) *corev1.Developmen
 	return &doguDevMap
 }
 
-func readLdapDoguExpectedPodTemplateSupportOn(t *testing.T) *v1.PodTemplateSpec {
-	t.Helper()
-
-	data := &v1.PodTemplateSpec{}
-	err := yaml.Unmarshal(expectedPodTemplateSupportOnBytes, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return data
-}
-
 func getTestScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 
@@ -135,6 +120,11 @@ func getTestScheme() *runtime.Scheme {
 		Version: "v1",
 		Kind:    "ConfigMap",
 	}, &v1.ConfigMap{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "ConfigMaps",
+	}, &v1.ConfigMapList{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",

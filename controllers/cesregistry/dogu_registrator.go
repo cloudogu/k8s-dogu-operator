@@ -2,6 +2,7 @@ package cesregistry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
@@ -9,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
