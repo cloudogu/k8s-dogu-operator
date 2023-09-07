@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
-	"github.com/cloudogu/k8s-apply-lib/apply"
-
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
@@ -35,7 +33,7 @@ type ManagerSet struct {
 }
 
 // NewManagerSet creates a new ManagerSet.
-func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, config *config.OperatorConfig, cesreg registry.Registry, applier *apply.Applier, additionalImages map[string]string) (*ManagerSet, error) {
+func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, config *config.OperatorConfig, cesreg registry.Registry, applier cloudogu.Applier, additionalImages map[string]string) (*ManagerSet, error) {
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
@@ -52,9 +50,6 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	requirementsGenerator := resource.NewRequirementsGenerator(cesreg)
 	hostAliasGenerator := alias.NewHostAliasGenerator(cesreg.GlobalConfig())
 	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImages)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create resource generator: %w", err)
-	}
 
 	upserter := resource.NewUpserter(client, doguResourceGenerator)
 
