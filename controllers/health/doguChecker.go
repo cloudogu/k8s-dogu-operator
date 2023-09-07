@@ -2,6 +2,7 @@ package health
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -9,7 +10,6 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
-	"github.com/hashicorp/go-multierror"
 	v1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -50,7 +50,7 @@ type doguChecker struct {
 // CheckWithResource returns nil if the dogu's replica exist and are ready. If the dogu is unhealthy an error of type
 // *health.DoguHealthError is returned:
 //
-//  if e, ok := err.(*health.DoguHealthError); ok { ... }
+//	if e, ok := err.(*health.DoguHealthError); ok { ... }
 func (dc *doguChecker) CheckWithResource(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	return dc.checkByNameAndK8sObjectKey(ctx, doguResource.Name, doguResource.GetObjectKey())
 }
@@ -58,23 +58,23 @@ func (dc *doguChecker) CheckWithResource(ctx context.Context, doguResource *k8sv
 // CheckDependenciesRecursive checks mandatory and optional dogu dependencies for health and returns an error if at
 // least one dogu is not healthy.
 func (dc *doguChecker) CheckDependenciesRecursive(ctx context.Context, localDoguRoot *core.Dogu, currentK8sNamespace string) error {
-	var result *multierror.Error
+	var result error
 
 	err := dc.checkMandatoryRecursive(ctx, localDoguRoot, currentK8sNamespace)
 	if err != nil {
-		result = multierror.Append(result, err)
+		result = errors.Join(result, err)
 	}
 
 	err = dc.checkOptionalRecursive(ctx, localDoguRoot, currentK8sNamespace)
 	if err != nil {
-		result = multierror.Append(result, err)
+		result = errors.Join(result, err)
 	}
 
-	return result.ErrorOrNil()
+	return result
 }
 
 func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *core.Dogu, currentK8sNamespace string) error {
-	var result *multierror.Error
+	var result error
 
 	for _, dependency := range localDogu.GetDependenciesOfType(core.DependencyTypeDogu) {
 		localDependencyDoguName := dependency.Name
@@ -83,28 +83,28 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName)
 		if err != nil {
 			err2 := fmt.Errorf("error getting registry key for %s: %w", localDependencyDoguName, err)
-			result = multierror.Append(result, err2)
+			result = errors.Join(result, err2)
 			// with no dogu information at hand we have no data on dependencies and must continue with the next dogu
 			continue
 		}
 
 		err = dc.checkByNameAndK8sObjectKey(ctx, localDependencyDoguName, objectKey)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = errors.Join(result, err)
 		}
 
 		err = dc.CheckDependenciesRecursive(ctx, dependencyDogu, currentK8sNamespace)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = errors.Join(result, err)
 		}
 	}
 
-	return result.ErrorOrNil()
+	return result
 }
 
 func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *core.Dogu, currentK8sNamespace string) error {
 	const optional = true
-	var result *multierror.Error
+	var result error
 
 	for _, dependency := range localDogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu) {
 		localDependencyDoguName := dependency.Name
@@ -116,23 +116,23 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 				// optional dogus may not be installed, so continue and do nothing
 			} else {
 				// with no dogu information at hand we have no data on dependencies and must continue with the next dogu
-				result = multierror.Append(result, err)
+				result = errors.Join(result, err)
 			}
 			continue
 		}
 
 		err = dc.checkByNameAndK8sObjectKey(ctx, localDependencyDoguName, objectKey)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = errors.Join(result, err)
 		}
 
 		err = dc.CheckDependenciesRecursive(ctx, dependencyDogu, currentK8sNamespace)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = errors.Join(result, err)
 		}
 	}
 
-	return result.ErrorOrNil()
+	return result
 }
 
 func (dc *doguChecker) checkByNameAndK8sObjectKey(ctx context.Context, doguName string, objectKey client.ObjectKey) error {

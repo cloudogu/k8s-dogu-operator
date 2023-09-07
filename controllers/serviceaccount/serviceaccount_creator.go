@@ -8,20 +8,17 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/keys"
 	"github.com/cloudogu/cesapp-lib/registry"
 
-	"github.com/pkg/errors"
+	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 // doguKind describes a service account on a dogu.
@@ -205,7 +202,7 @@ func serviceAccountExists(registryCredentialPath string,
 
 	exists, err := doguConfig.Exists(registryCredentialPath)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to check if service account already exists")
+		return false, fmt.Errorf("failed to check if service account already exists: %w", err)
 	}
 	if exists {
 		return true, nil

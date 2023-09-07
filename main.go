@@ -14,7 +14,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -31,7 +35,7 @@ var (
 	scheme = runtime.NewScheme()
 	// set up the logger before the actual logger is instantiated
 	// the logger will be replaced later-on with a more sophisticated instance
-	setupLog             = ctrl.Log.WithName("setup")
+	startupLog           = ctrl.Log.WithName("k8s-dogu-operator")
 	metricsAddr          string
 	enableLeaderElection bool
 	probeAddr            string
@@ -52,7 +56,7 @@ func init() {
 func main() {
 	err := startDoguOperator()
 	if err != nil {
-		setupLog.Error(err, "failed to operate dogu operator")
+		startupLog.Error(err, "failed to operate dogu operator")
 		os.Exit(1)
 	}
 }
@@ -129,10 +133,12 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 			"Enabling this will ensure there is only one active controller manager.")
 
 	options := ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
-		Namespace:              operatorConfig.Namespace,
+		Scheme:  scheme,
+		Metrics: server.Options{BindAddress: metricsAddr},
+		Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{
+			operatorConfig.Namespace: {},
+		}},
+		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "951e217a.cloudogu.com",
@@ -142,7 +148,7 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 }
 
 func startK8sManager(k8sManager manager.Manager) error {
-	setupLog.Info("starting manager")
+	startupLog.Info("starting manager")
 	err := k8sManager.Start(ctrl.SetupSignalHandler())
 	if err != nil {
 		return fmt.Errorf("failed to start manager: %w", err)

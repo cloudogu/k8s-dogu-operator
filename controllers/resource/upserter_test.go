@@ -13,7 +13,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -24,12 +23,10 @@ import (
 func TestNewUpserter(t *testing.T) {
 	// given
 	mockClient := extMocks.NewK8sClient(t)
-	mockClient.On("Scheme").Return(new(runtime.Scheme))
-	requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
-	generator := extMocks.NewHostAliasGenerator(t)
+	mockResourceGenerator := mocks.NewDoguResourceGenerator(t)
 
 	// when
-	upserter := NewUpserter(mockClient, requirementsGenerator, generator)
+	upserter := NewUpserter(mockClient, mockResourceGenerator)
 
 	// then
 	require.NotNil(t, upserter)
@@ -97,7 +94,7 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 
 		mockClient := extMocks.NewK8sClient(t)
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu).Return(nil, assert.AnError)
+		generator.EXPECT().CreateDoguDeployment(doguResource, dogu).Return(nil, assert.AnError)
 		upserter := upserter{
 			client:    mockClient,
 			generator: generator,
@@ -115,10 +112,10 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 		dogu := readLdapDogu(t)
 
 		mockClient := extMocks.NewK8sClient(t)
-		mockClient.On("Get", ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}).Return(assert.AnError)
+		mockClient.EXPECT().Get(ctx, doguResource.GetObjectKey(), &appsv1.Deployment{}).Return(assert.AnError)
 
 		generator := mocks.NewDoguResourceGenerator(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu).Return(readLdapDoguExpectedDeployment(t), nil)
+		generator.EXPECT().CreateDoguDeployment(doguResource, dogu).Return(readLdapDoguExpectedDeployment(t), nil)
 		upserter := upserter{
 			client:    mockClient,
 			generator: generator,
@@ -139,7 +136,7 @@ func Test_upserter_UpsertDoguDeployment(t *testing.T) {
 
 		generator := mocks.NewDoguResourceGenerator(t)
 		generatedDeployment := readLdapDoguExpectedDeployment(t)
-		generator.On("CreateDoguDeployment", doguResource, dogu).Return(generatedDeployment, nil)
+		generator.EXPECT().CreateDoguDeployment(doguResource, dogu).Return(generatedDeployment, nil)
 		upserter := upserter{
 			client:    testClient,
 			generator: generator,

@@ -2,12 +2,12 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -38,9 +38,7 @@ type upserter struct {
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator) *upserter {
-	schema := client.Scheme()
-	generator := NewResourceGenerator(schema, requirementsGenerator, hostAliasGenerator)
+func NewUpserter(client client.Client, generator cloudogu.DoguResourceGenerator) *upserter {
 	exposedPortAdder := NewDoguExposedPortHandler(client)
 	return &upserter{client: client, generator: generator, exposedPortAdder: exposedPortAdder}
 }
@@ -142,7 +140,7 @@ func (u *upserter) waitForExistingPVCToBeTerminated(ctx context.Context, pvcObje
 		}
 
 		log.FromContext(ctx).Info(fmt.Sprintf("wait for pvc %s to be terminated", pvcObjectKey.Name))
-		return errors.New(fmt.Sprintf("pvc %s still exists", pvcObjectKey.Name))
+		return fmt.Errorf("pvc %s still exists", pvcObjectKey.Name)
 	})
 
 	return err

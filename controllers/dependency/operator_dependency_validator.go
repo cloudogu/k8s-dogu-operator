@@ -1,11 +1,11 @@
 package dependency
 
 import (
+	"context"
+	"errors"
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 const K8sDoguOperatorClientDependencyName = "k8s-dogu-operator"
@@ -23,7 +23,7 @@ func NewOperatorDependencyValidator(version *core.Version) *operatorDependencyVa
 }
 
 // ValidateAllDependencies looks into all client dependencies (mandatory- and optional ones) and checks weather they're
-// all installed an that in the correct version
+// all installed and that in the correct version
 func (odv *operatorDependencyValidator) ValidateAllDependencies(_ context.Context, dogu *core.Dogu) error {
 	var allProblems error
 
@@ -31,7 +31,7 @@ func (odv *operatorDependencyValidator) ValidateAllDependencies(_ context.Contex
 	errOptionalDependencies := odv.validateOptionalDependencies(dogu)
 
 	if errMandatoryDependencies != nil || errOptionalDependencies != nil {
-		allProblems = multierror.Append(errMandatoryDependencies, errOptionalDependencies)
+		allProblems = errors.Join(errMandatoryDependencies, errOptionalDependencies)
 	}
 	return allProblems
 }
@@ -61,7 +61,7 @@ func (odv *operatorDependencyValidator) validateMandatoryDependencies(dogu *core
 
 			if !allows {
 				dependencyError := dependencyValidationError{
-					sourceError: errors.Errorf("%s parsed version does not fulfill version requirement of %s dogu %s", dependency.Version, odv.version.Raw, dependency.Name),
+					sourceError: fmt.Errorf("%s parsed version does not fulfill version requirement of %s dogu %s", dependency.Version, odv.version.Raw, dependency.Name),
 					dependency:  dependency,
 				}
 				return &dependencyError

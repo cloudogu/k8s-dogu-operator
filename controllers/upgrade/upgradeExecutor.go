@@ -3,22 +3,18 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
@@ -50,33 +46,18 @@ type upgradeExecutor struct {
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
-func NewUpgradeExecutor(
-	client client.Client,
-	config *rest.Config,
-	commandExecutor cloudogu.CommandExecutor,
-	eventRecorder record.EventRecorder,
-	imageRegistry cloudogu.ImageRegistry,
-	collectApplier cloudogu.CollectApplier,
-	k8sFileExtractor cloudogu.FileExtractor,
-	serviceAccountCreator cloudogu.ServiceAccountCreator,
-	registry registry.Registry,
-) *upgradeExecutor {
-	doguReg := cesregistry.NewCESDoguRegistrator(client, registry, nil)
-	requirementsGenerator := resource.NewRequirementsGenerator(registry)
-	hostAliasGenerator := alias.NewHostAliasGenerator(registry.GlobalConfig())
-	upserter := resource.NewUpserter(client, requirementsGenerator, hostAliasGenerator)
-
+func NewUpgradeExecutor(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *upgradeExecutor {
 	return &upgradeExecutor{
 		client:                client,
 		eventRecorder:         eventRecorder,
-		imageRegistry:         imageRegistry,
-		collectApplier:        collectApplier,
-		k8sFileExtractor:      k8sFileExtractor,
-		serviceAccountCreator: serviceAccountCreator,
-		doguRegistrator:       doguReg,
-		resourceUpserter:      upserter,
-		execPodFactory:        exec.NewExecPodFactory(client, config, commandExecutor),
-		doguCommandExecutor:   commandExecutor,
+		imageRegistry:         mgrSet.ImageRegistry,
+		collectApplier:        mgrSet.CollectApplier,
+		k8sFileExtractor:      mgrSet.FileExtractor,
+		serviceAccountCreator: mgrSet.ServiceAccountCreator,
+		doguRegistrator:       mgrSet.DoguRegistrator,
+		resourceUpserter:      mgrSet.ResourceUpserter,
+		execPodFactory:        exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
+		doguCommandExecutor:   mgrSet.CommandExecutor,
 	}
 }
 

@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.36.0] - 2023-09-07
+### Added
+- [#118] Make implicitly used init container images explicit and configurable
+   - this release adds a mandatory ConfigMap `k8s-dogu-operator-additional-images` which contains additionally used images
+   - see the [operations docs](docs/operations/installing_operator_into_cluster_en.md) for more information
+- [#125] Validate that `metadata.Name` equals simple dogu name in `spec.Name`.
+
+### Fixed
+- [#121] Operator cannot recognize multiple changes/required operations at once.
+  - Now multiple required operations are detected and after the first operation is done, a requeue is triggered to execute the other ones.
+- [#117] Fix waiting for PVC to be resized on "AzureDisk"-storage
+  - The conditions "FileSystemResizePending" has to be checked for storage-interfaces (like "AzureDisk") that require a file system expansion before the additional space of an expanded volume is usable by pods.
+
 ## [v0.35.1] - 2023-08-31
 ### Added
 - [#119] Add "k8s-etcd" as a dependency to the helm-chart

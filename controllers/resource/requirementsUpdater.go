@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -10,8 +11,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/hashicorp/go-multierror"
-
 	coreosclient "go.etcd.io/etcd/client/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,7 +87,7 @@ func (hlu *requirementsUpdater) triggerSync(ctx context.Context) error {
 	for _, dogu := range installedDogus.Items {
 		doguJson, err := hlu.registry.DoguRegistry().Get(dogu.GetName())
 		if err != nil {
-			result = multierror.Append(result, fmt.Errorf("failed to get dogu.json of dogu [%s] from registry: %w", dogu.Name, err))
+			result = errors.Join(result, fmt.Errorf("failed to get dogu.json of dogu [%s] from registry: %w", dogu.Name, err))
 			continue
 		}
 
@@ -96,13 +95,13 @@ func (hlu *requirementsUpdater) triggerSync(ctx context.Context) error {
 		doguDeployment := &v1.Deployment{}
 		err = hlu.client.Get(ctx, doguIdentifier, doguDeployment)
 		if err != nil {
-			result = multierror.Append(result, fmt.Errorf("failed to get deployment of dogu [%s/%s] from cluster: %w", dogu.Namespace, dogu.Name, err))
+			result = errors.Join(result, fmt.Errorf("failed to get deployment of dogu [%s/%s] from cluster: %w", dogu.Namespace, dogu.Name, err))
 			continue
 		}
 
 		requirements, err := hlu.requirementsGen.Generate(doguJson)
 		if err != nil {
-			result = multierror.Append(result, fmt.Errorf("failed to generate resource requirements of dogu [%s/%s] in cluster: %w", dogu.Namespace, dogu.Name, err))
+			result = errors.Join(result, fmt.Errorf("failed to generate resource requirements of dogu [%s/%s] in cluster: %w", dogu.Namespace, dogu.Name, err))
 			continue
 		}
 
@@ -110,7 +109,7 @@ func (hlu *requirementsUpdater) triggerSync(ctx context.Context) error {
 
 		err = hlu.client.Update(ctx, doguDeployment)
 		if err != nil {
-			result = multierror.Append(result, fmt.Errorf("failed to update deployment of dogu [%s/%s] in cluster: %w", dogu.Namespace, dogu.Name, err))
+			result = errors.Join(result, fmt.Errorf("failed to update deployment of dogu [%s/%s] in cluster: %w", dogu.Namespace, dogu.Name, err))
 			continue
 		}
 	}

@@ -23,11 +23,12 @@ Zu beachten ist, dass der Wert von `dataVolumeSize` der Norm von
 [Kubernetes-Quantities](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/) entsprechen 
 muss.
 
-Startet der Prozess zur Vergrößerung des Volumes, wird zunächst der `dogu-operator` das `persistentVolumeClaim` des
-Dogus selektieren und die neue Größe aktualisieren. In Kubernetes is eine echte Vergrößerung des Volumes allerdings nur
-möglich, wenn alle Pods, die das Volume verwenden, heruntergefahren werden. Als nächsten Schritt wird der `dogu-operator`
-das Deployment des Dogus auf **0** skalieren und **alle** Pods des Dogus herunterfahren. Anschließend wird gewartet bis der 
-Storage-Controller das Volume vergrößert und danach wieder auf die ursprüngliche Anzahl von Replicas hochskaliert.
+In Kubernetes ist eine echte Vergrößerung des Volumes allerdings nur möglich, wenn alle Pods, die das Volume verwenden,
+heruntergefahren werden. Als erster Schritt wird der `k8s-dogu-operator` das Deployment des Dogus auf **0** skaliert und
+**alle** Pods des Dogus heruntergefahren. Anschließend startet der Prozess zur Vergrößerung des Volumes.
+Der `k8s-dogu-operator` aktualisiert die gewünschte Größe im `persistentVolumeClaim` des Dogus. Anschließend wird
+gewartet bis der Storage-Controller das Volume vergrößert und die gewünschte Größe erreicht wurde. Danach skaliert
+der `k8s-dogu-operator` das Deployment des Dogus wieder auf die ursprüngliche Anzahl von Replicas.
 
 ### Info
 - Das Vergrößern der Volumes kann mehrere Minuten bis Stunden in Anspruch nehmen.

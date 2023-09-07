@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.20.3 as builder
+FROM golang:1.21 AS builder
 
 WORKDIR /workspace
 
@@ -38,7 +38,7 @@ RUN make compile-generic
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="0.35.1"
+      VERSION="0.36.0"
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .

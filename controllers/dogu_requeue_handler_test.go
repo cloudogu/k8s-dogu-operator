@@ -3,17 +3,9 @@ package controllers
 import (
 	"context"
 	"errors"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"testing"
 	"time"
-
-	"github.com/hashicorp/go-multierror"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +14,13 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 type myRequeueableError struct{}
@@ -170,8 +169,8 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 
 		fakeNonCacheClient := fake2.NewSimpleClientset(event)
-		eventRecorder := &extMocks.EventRecorder{}
-		eventRecorder.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
+		eventRecorder := extMocks.NewEventRecorder(t)
+		eventRecorder.EXPECT().Eventf(mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
 		handler := doguRequeueHandler{
 			client:         fakeClient,
@@ -182,8 +181,8 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 		myError := errors.New("my not requeue-able error")
 		myError2 := myRequeueableError{}
-		myMultipleErrors := new(multierror.Error)
-		myMultipleErrors.Errors = []error{myError, myError2}
+		var myMultipleErrors error
+		myMultipleErrors = errors.Join(myMultipleErrors, myError, myError2)
 
 		requeueCalled := false
 		onRequeue := func(doguResource *k8sv1.Dogu) {
@@ -197,7 +196,6 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, result.RequeueAfter, time.Second*10)
 		assert.True(t, requeueCalled, "Requeue was not called.")
-		mock.AssertExpectationsForObjects(t, eventRecorder)
 
 		eventList, err := fakeNonCacheClient.CoreV1().Events(namespace).List(context.Background(), metav1.ListOptions{})
 		require.NoError(t, err)
@@ -223,5 +221,5 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	assert.NotNil(t, handler)
-	assert.Implements(t, (*requeueHandler)(nil), handler)
+	assert.Implements(t, (*cloudogu.RequeueHandler)(nil), handler)
 }

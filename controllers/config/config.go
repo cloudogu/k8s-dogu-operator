@@ -17,6 +17,13 @@ const (
 
 const cacheDir = "/tmp/dogu-registry-cache"
 
+const (
+	// OperatorAdditionalImagesConfigmapName contains the configmap name which consists of auxiliary yet necessary container images.
+	OperatorAdditionalImagesConfigmapName = "k8s-dogu-operator-additional-images"
+	// ChownInitImageConfigmapNameKey contains the key to retrieve the chown init container image from the OperatorAdditionalImagesConfigmapName configmap.
+	ChownInitImageConfigmapNameKey = "chownInitImage"
+)
+
 var Stage = StageProduction
 
 var (
@@ -109,7 +116,7 @@ func NewOperatorConfig(version string) (*OperatorConfig, error) {
 func readNamespace() (string, error) {
 	namespace, err := getEnvVar(envVarNamespace)
 	if err != nil {
-		return "", fmt.Errorf("failed to get env var [%s]: %w", envVarNamespace, err)
+		return "", newEnvVarError(envVarNamespace, err)
 	}
 
 	return namespace, nil
@@ -118,19 +125,19 @@ func readNamespace() (string, error) {
 func readDoguRegistryData() (DoguRegistryData, error) {
 	endpoint, err := getEnvVar(envVarDoguRegistryEndpoint)
 	if err != nil {
-		return DoguRegistryData{}, fmt.Errorf("failed to get env var [%s]: %w", envVarDoguRegistryEndpoint, err)
+		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryEndpoint, err)
 	}
 	// remove tailing slash
 	endpoint = strings.TrimSuffix(endpoint, "/")
 
 	username, err := getEnvVar(envVarDoguRegistryUsername)
 	if err != nil {
-		return DoguRegistryData{}, fmt.Errorf("failed to get env var [%s]: %w", envVarDoguRegistryUsername, err)
+		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryUsername, err)
 	}
 
 	password, err := getEnvVar(envVarDoguRegistryPassword)
 	if err != nil {
-		return DoguRegistryData{}, fmt.Errorf("failed to get env var [%s]: %w", envVarDoguRegistryPassword, err)
+		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryPassword, err)
 	}
 
 	urlschema, err := getEnvVar(envVarDoguRegistryURLSchema)
@@ -150,7 +157,7 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 func readDockerRegistryData() (DockerRegistryData, error) {
 	dockerRegistryData, err := getEnvVar(envVarDockerRegistry)
 	if err != nil {
-		return DockerRegistryData{}, fmt.Errorf("failed to get env var [%s]: %w", envVarDockerRegistry, err)
+		return DockerRegistryData{}, newEnvVarError(envVarDockerRegistry, err)
 	}
 
 	var secretData DockerRegistrySecretData
@@ -201,4 +208,8 @@ func (o *OperatorConfig) GetRemoteCredentials() *core.Credentials {
 		Username: o.DoguRegistry.Username,
 		Password: o.DoguRegistry.Password,
 	}
+}
+
+func newEnvVarError(envVar string, err error) error {
+	return fmt.Errorf("failed to get env var [%s]: %w", envVar, err)
 }

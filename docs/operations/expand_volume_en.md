@@ -21,11 +21,12 @@ Setting `dataVolumeSize` and updating the Dogu resource will start the process t
 Note that the value of `dataVolumeSize` must match the norm of 
 [Kubernetes Quantities](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/).
 
-If the process starts to increase the size of the volume, first the `dogu-operator` will select the `persistentVolumeClaim` 
-of the Dogus and update the new size. In Kubernetes, however, true volume growth is only possible if all the pods using
-the volume are shut down. The next step the `dogu-operator` will scale the deployment of the dogu to **0** and shut 
-down **all** dogu pods. Then it will wait until the storage controller increases the volume and then scales it back up 
-to the original number of replicas.
+In Kubernetes, however, a true increase in volume size is only possible if all pods using the volume, are shut down. As
+a first step, the `k8s-dogu-operator` scales the deployment of the Dogus to **0** and shuts down **all** pods of the
+Dogus shut down. Then the process to scale up the volume starts. The `k8s-dogu-operator` updates the desired size in
+the `persistentVolumeClaim` of the Dogus. Then it waits until the storage controller enlarges the volume and the desired
+size is reached. After that, the `k8s-dogu-operator` scales the deployment of the Dogus back to the original number of
+replicas.
 
 ### Info
 - Enlarging volumes can take several minutes to hours.

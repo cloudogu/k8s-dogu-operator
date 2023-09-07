@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
+
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -51,32 +53,41 @@ const (
 	ErrorOnRequeueEventReason = "ErrRequeue"
 )
 
+const (
+	FailedNameValidationEventReason = "FailedNameValidation"
+)
+
 const handleRequeueErrMsg = "failed to handle requeue: %w"
 
 type operation string
+
+func operationsContain(operations []operation, contain operation) bool {
+	for _, op := range operations {
+		if op == contain {
+			return true
+		}
+	}
+	return false
+}
 
 const (
 	Install                            = operation("Install")
 	Upgrade                            = operation("Upgrade")
 	Delete                             = operation("Delete")
-	Ignore                             = operation("Ignore")
+	Wait                               = operation("Wait")
 	ExpandVolume                       = operation("ExpandVolume")
 	ChangeAdditionalIngressAnnotations = operation("ChangeAdditionalIngressAnnotations")
 )
+
+const waitTimeout = 5 * time.Second
 
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
 	client             client.Client
 	doguManager        cloudogu.DoguManager
-	doguRequeueHandler requeueHandler
+	doguRequeueHandler cloudogu.RequeueHandler
 	recorder           record.EventRecorder
 	fetcher            cloudogu.LocalDoguFetcher
-}
-
-// requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
-type requeueHandler interface {
-	// Handle takes an error and handles the requeue process for the current dogu operation.
-	Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, err error, onRequeue func(dogu *k8sv1.Dogu)) (result ctrl.Result, requeueErr error)
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
@@ -111,6 +122,11 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
 
+	hasValidName := r.validateName(doguResource)
+	if !hasValidName {
+		return finishOperation()
+	}
+
 	if doguResource.Status.Status != k8sv1.DoguStatusNotInstalled {
 		supportResult, err := r.handleSupportMode(ctx, doguResource)
 		if supportResult != nil {
@@ -118,25 +134,41 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	requiredOperation, err := r.evaluateRequiredOperation(ctx, doguResource)
+	requiredOperations, err := r.evaluateRequiredOperations(ctx, doguResource)
 	if err != nil {
 		return requeueWithError(fmt.Errorf("failed to evaluate required operation: %w", err))
 	}
-	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s; Status %+v", doguResource.Namespace, doguResource.Name, requiredOperation, doguResource.Status))
 
-	switch requiredOperation {
+	return r.executeRequiredOperation(ctx, requiredOperations, doguResource)
+}
+
+func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredOperations []operation, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	if len(requiredOperations) == 0 {
+		logger.Info(fmt.Sprintf("Nothing to be done for Dogu %s/%s with Status %s", doguResource.Namespace, doguResource.Name, doguResource.Status.Status))
+		return finishOperation()
+	}
+
+	logger.Info(fmt.Sprintf("Required operation for Dogu %s/%s is: %s; Status %+v", doguResource.Namespace, doguResource.Name, requiredOperations[0], doguResource.Status))
+
+	requeueForMultipleOperations := len(requiredOperations) > 1
+	switch requiredOperations[0] {
+	case Wait:
+		if requeueForMultipleOperations {
+			return requeueOrFinishOperation(ctrl.Result{Requeue: true, RequeueAfter: waitTimeout})
+		}
+
+		return finishOperation()
 	case Install:
 		return r.performInstallOperation(ctx, doguResource)
 	case Upgrade:
-		return r.performUpgradeOperation(ctx, doguResource)
+		return r.performUpgradeOperation(ctx, doguResource, requeueForMultipleOperations)
 	case Delete:
 		return r.performDeleteOperation(ctx, doguResource)
-	case Ignore:
-		return finishOperation()
 	case ExpandVolume:
-		return r.performVolumeOperation(ctx, doguResource)
+		return r.performVolumeOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeAdditionalIngressAnnotations:
-		return r.performAddititionalIngressAnnotationsOperation(ctx, doguResource)
+		return r.performAdditionalIngressAnnotationsOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
@@ -155,8 +187,13 @@ func (r *doguReconciler) handleSupportMode(ctx context.Context, doguResource *k8
 	// Do not care about other operations if the mode has changed. Data changes with activated support mode won't and shouldn't be processed.
 	logger.Info(fmt.Sprintf("Check if support mode changed for dogu %s", doguResource.Name))
 	if supportModeChanged {
-		r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode has changed. Ignoring other events.")
-		return &ctrl.Result{}, nil
+		if doguResource.Spec.SupportMode {
+			r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode switched on. Ignoring other events.")
+			return &ctrl.Result{}, nil
+		}
+
+		r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Support mode switched off. Resuming processing of other events.")
+		return &ctrl.Result{Requeue: true}, nil
 	}
 
 	// Do not care about other operations if the support mode is currently active.
@@ -169,59 +206,79 @@ func (r *doguReconciler) handleSupportMode(ctx context.Context, doguResource *k8
 	return nil, nil
 }
 
-func (r *doguReconciler) evaluateRequiredOperation(ctx context.Context, doguResource *k8sv1.Dogu) (operation, error) {
+func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguResource *k8sv1.Dogu) ([]operation, error) {
 	logger := log.FromContext(ctx)
 	if doguResource.DeletionTimestamp != nil && !doguResource.DeletionTimestamp.IsZero() {
-		return Delete, nil
+		return []operation{Delete}, nil
 	}
 
+	var err error
+	var operations []operation
 	switch doguResource.Status.Status {
 	case k8sv1.DoguStatusNotInstalled:
-		return Install, nil
+		return []operation{Install}, nil
 	case k8sv1.DoguStatusPVCResizing:
-		return ExpandVolume, nil
-	case k8sv1.DoguStatusInstalled:
-		isVolumeExpansion, err := r.checkForVolumeExpansion(ctx, doguResource)
+		operations = append(operations, ExpandVolume)
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
 		if err != nil {
-			return Ignore, err
+			return nil, err
 		}
-
-		if isVolumeExpansion {
-			return ExpandVolume, nil
-		}
-
-		ingressAnnotationsChanged, err := r.checkForAdditionalIngressAnnotations(ctx, doguResource)
-		if err != nil {
-			return Ignore, err
-		}
-
-		if ingressAnnotationsChanged {
-			return ChangeAdditionalIngressAnnotations, nil
-		}
-
-		// Checking if the resource spec field has changed is unnecessary because we
-		// use a predicate to filter update events where specs don't change
-		upgradeable, err := checkUpgradeability(doguResource, r.fetcher)
-		if err != nil {
-			printError := strings.ReplaceAll(err.Error(), "\n", "")
-			r.recorder.Eventf(doguResource, v1.EventTypeWarning, operatorEventReason, "Could not check if dogu needs to be upgraded: %s", printError)
-
-			return Ignore, err
-		}
-
-		if upgradeable {
-			return Upgrade, nil
-		}
-
-		return Ignore, nil
 	case k8sv1.DoguStatusInstalling:
-		return Ignore, nil
+		fallthrough
+	case k8sv1.DoguStatusUpgrading:
+		operations = append(operations, Wait)
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
+	case k8sv1.DoguStatusInstalled:
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
 	case k8sv1.DoguStatusDeleting:
-		return Ignore, nil
+		return []operation{}, nil
 	default:
-		logger.Info(fmt.Sprintf("Found unknown operation for dogu status: %s", doguResource.Status.Status))
-		return Ignore, nil
+		logger.Info(fmt.Sprintf("Cannot evaluate required operation for unknown dogu status: %s", doguResource.Status.Status))
+		return []operation{}, nil
 	}
+
+	return operations, nil
+}
+
+func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context, doguResource *k8sv1.Dogu, operations []operation) ([]operation, error) {
+	isVolumeExpansion, err := r.checkForVolumeExpansion(ctx, doguResource)
+	if err != nil {
+		return nil, err
+	}
+
+	if isVolumeExpansion && !operationsContain(operations, ExpandVolume) {
+		operations = append(operations, ExpandVolume)
+	}
+
+	ingressAnnotationsChanged, err := r.checkForAdditionalIngressAnnotations(ctx, doguResource)
+	if err != nil {
+		return nil, err
+	}
+
+	if ingressAnnotationsChanged {
+		operations = append(operations, ChangeAdditionalIngressAnnotations)
+	}
+
+	// Checking if the resource spec field has changed is unnecessary because we
+	// use a predicate to filter update events where specs don't change
+	upgradeable, err := checkUpgradeability(doguResource, r.fetcher)
+	if err != nil {
+		printError := strings.ReplaceAll(err.Error(), "\n", "")
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, operatorEventReason, "Could not check if dogu needs to be upgraded: %s", printError)
+
+		return nil, err
+	}
+
+	if upgradeable {
+		operations = append(operations, Upgrade)
+	}
+	return operations, nil
 }
 
 func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
@@ -306,7 +363,7 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8sv1.Dogu,
 	eventProperties operationEventProperties, requeueDoguStatus string,
-	operation func(context.Context, *k8sv1.Dogu) error) (ctrl.Result, error) {
+	operation func(context.Context, *k8sv1.Dogu) error, shouldRequeue bool) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	operationError := operation(ctx, doguResource)
@@ -332,6 +389,10 @@ func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8s
 		return requeueWithError(fmt.Errorf(handleRequeueErrMsg, handleErr))
 	}
 
+	if shouldRequeue {
+		result.Requeue = true
+	}
+
 	return requeueOrFinishOperation(result)
 }
 
@@ -350,7 +411,7 @@ func (r *doguReconciler) performInstallOperation(ctx context.Context, doguResour
 		operationVerb: "install",
 	}
 	return r.performOperation(ctx, doguResource, installOperationEventProps, k8sv1.DoguStatusNotInstalled,
-		r.doguManager.Install)
+		r.doguManager.Install, false)
 }
 
 func (r *doguReconciler) performDeleteOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
@@ -361,10 +422,10 @@ func (r *doguReconciler) performDeleteOperation(ctx context.Context, doguResourc
 		operationVerb: "delete",
 	}
 	return r.performOperation(ctx, doguResource, deleteOperationEventProps, k8sv1.DoguStatusInstalled,
-		r.doguManager.Delete)
+		r.doguManager.Delete, false)
 }
 
-func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
 	upgradeOperationEventProps := operationEventProperties{
 		successReason: upgrade.EventReason,
 		errorReason:   upgrade.ErrorOnFailedUpgradeEventReason,
@@ -374,10 +435,10 @@ func (r *doguReconciler) performUpgradeOperation(ctx context.Context, doguResour
 	// revert to Installed in case of requeueing after an error so that a upgrade
 	// can be tried again.
 	return r.performOperation(ctx, doguResource, upgradeOperationEventProps, k8sv1.DoguStatusInstalled,
-		r.doguManager.Upgrade)
+		r.doguManager.Upgrade, shouldRequeue)
 }
 
-func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
 	volumeExpansionOperationEventProps := operationEventProperties{
 		successReason: VolumeExpansionEventReason,
 		errorReason:   ErrorOnVolumeExpansionEventReason,
@@ -386,10 +447,10 @@ func (r *doguReconciler) performVolumeOperation(ctx context.Context, doguResourc
 	}
 
 	// revert to resizing in case of requeueing after an error so that the size check can be done again.
-	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusPVCResizing, r.doguManager.SetDoguDataVolumeSize)
+	return r.performOperation(ctx, doguResource, volumeExpansionOperationEventProps, k8sv1.DoguStatusPVCResizing, r.doguManager.SetDoguDataVolumeSize, shouldRequeue)
 }
 
-func (r *doguReconciler) performAddititionalIngressAnnotationsOperation(ctx context.Context, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
+func (r *doguReconciler) performAdditionalIngressAnnotationsOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
 	additionalIngressAnnotationsOperationEventProps := operationEventProperties{
 		successReason: AdditionalIngressAnnotationsChangeEventReason,
 		errorReason:   ErrorOnAdditionalIngressAnnotationsChangeEventReason,
@@ -398,7 +459,18 @@ func (r *doguReconciler) performAddititionalIngressAnnotationsOperation(ctx cont
 	}
 
 	// revert to Installed in case of requeueing after an error so that the change check can be done again.
-	return r.performOperation(ctx, doguResource, additionalIngressAnnotationsOperationEventProps, k8sv1.DoguStatusInstalled, r.doguManager.SetDoguAdditionalIngressAnnotations)
+	return r.performOperation(ctx, doguResource, additionalIngressAnnotationsOperationEventProps, k8sv1.DoguStatusInstalled, r.doguManager.SetDoguAdditionalIngressAnnotations, shouldRequeue)
+}
+
+func (r *doguReconciler) validateName(doguResource *k8sv1.Dogu) (success bool) {
+	simpleName := core.GetSimpleDoguName(doguResource.Spec.Name)
+
+	if doguResource.Name != simpleName {
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedNameValidationEventReason, "Dogu resource does not follow naming rules: The dogu's simple name '%s' must be the same as the resource name '%s'.", simpleName, doguResource.Name)
+		return false
+	}
+
+	return true
 }
 
 func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {

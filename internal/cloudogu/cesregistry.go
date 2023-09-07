@@ -3,8 +3,6 @@ package cloudogu
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
-
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 )
@@ -31,10 +29,4 @@ type DoguRegistrator interface {
 	RegisterDoguVersion(dogu *cesappcore.Dogu) error
 	// UnregisterDogu removes a registration of a dogu from the local dogu registry.
 	UnregisterDogu(dogu string) error
-}
-
-// SecretResourceGenerator is used to generate kubernetes secret resources
-type SecretResourceGenerator interface {
-	// CreateDoguSecret generates a secret for the dogu resource containing the given data.
-	CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error)
 }

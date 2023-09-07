@@ -168,7 +168,7 @@ func Test_scaleDownStep_Execute(t *testing.T) {
 		deploy, err = dogu.GetDeployment(context.TODO(), client)
 		require.NoError(t, err)
 		assert.Equal(t, int32(0), *deploy.Spec.Replicas)
-		assert.Equal(t, "Wait for resize", state)
+		assert.Equal(t, "Edit PVC", state)
 	})
 
 	t.Run("fail to get deployment", func(t *testing.T) {
@@ -186,7 +186,7 @@ func Test_scaleDownStep_Execute(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get deployment for dogu ldap")
-		assert.Equal(t, "Scale down", state)
+		assert.Equal(t, "", state)
 	})
 }
 
@@ -216,7 +216,7 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		pvc, err := dogu.GetDataPVC(context.TODO(), client)
 		require.NoError(t, err)
 		assert.True(t, pvc.Spec.Resources.Requests.Storage().Equal(wantedCapacity))
-		assert.Equal(t, "Scale down", state)
+		assert.Equal(t, "Wait for resize", state)
 	})
 
 	t.Run("fail to get dogu pvc", func(t *testing.T) {
@@ -238,7 +238,7 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get data pvc for dogu ldap")
-		assert.Equal(t, "", stage)
+		assert.Equal(t, "Edit PVC", stage)
 	})
 
 	t.Run("fail to parse quantity", func(t *testing.T) {
@@ -254,18 +254,14 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to parse to quantity")
-		assert.Equal(t, "", stage)
+		assert.Equal(t, "Edit PVC", stage)
 	})
 }
 
 func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+	t.Run("success for capacity available", func(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
-		oldSize := dogu.Spec.Resources.DataVolumeSize
-		defer func() {
-			dogu.Spec.Resources.DataVolumeSize = oldSize
-		}()
 		dogu.Spec.Resources.DataVolumeSize = "1Gi"
 		requests := map[corev1.ResourceName]resource.Quantity{}
 		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
@@ -284,7 +280,37 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 		assert.Equal(t, "Scale up", state)
 	})
 
-	t.Run("fail to get pvc ", func(t *testing.T) {
+	t.Run("success for condition FileSystemResizePending has status true", func(t *testing.T) {
+		// given
+		dogu := readDoguCr(t, ldapCrBytes)
+		dogu.Spec.Resources.DataVolumeSize = "1Gi"
+		requests := map[corev1.ResourceName]resource.Quantity{}
+		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		doguPvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: *dogu.GetObjectMeta(),
+			Status: corev1.PersistentVolumeClaimStatus{
+				Conditions: []corev1.PersistentVolumeClaimCondition{
+					{Type: corev1.PersistentVolumeClaimFileSystemResizePending, Status: corev1.ConditionTrue},
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				Resources: corev1.ResourceRequirements{Requests: requests},
+			},
+		}
+		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
+		recorder := extMocks.NewEventRecorder(t)
+		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
+		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
+
+		// when
+		state, err := sut.Execute(context.TODO(), dogu)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "Scale up", state)
+	})
+
+	t.Run("fail to get pvc", func(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		client := fake.NewClientBuilder().Build()
@@ -303,10 +329,6 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 
 	t.Run("fail to parse quantity", func(t *testing.T) {
 		dogu := readDoguCr(t, ldapCrBytes)
-		oldSize := dogu.Spec.Resources.DataVolumeSize
-		defer func() {
-			dogu.Spec.Resources.DataVolumeSize = oldSize
-		}()
 		dogu.Spec.Resources.DataVolumeSize = "1Gsdfsdfi"
 		client := fake.NewClientBuilder().Build()
 		recorder := extMocks.NewEventRecorder(t)
@@ -321,18 +343,74 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 		assert.Equal(t, "Wait for resize", stage)
 	})
 
+	t.Run("should return requeue error if status of condition FileSystemResizePending is false", func(t *testing.T) {
+		// given
+		dogu := readDoguCr(t, ldapCrBytes)
+		dogu.Spec.Resources.DataVolumeSize = "1Gi"
+		requests := map[corev1.ResourceName]resource.Quantity{}
+		requests[corev1.ResourceStorage] = resource.MustParse("0.5Gi")
+		doguPvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: *dogu.GetObjectMeta(),
+			Status: corev1.PersistentVolumeClaimStatus{
+				Conditions: []corev1.PersistentVolumeClaimCondition{
+					{Type: corev1.PersistentVolumeClaimFileSystemResizePending, Status: corev1.ConditionFalse},
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				Resources: corev1.ResourceRequirements{Requests: requests},
+			},
+		}
+		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
+		recorder := extMocks.NewEventRecorder(t)
+		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
+		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
+
+		// when
+		_, err := sut.Execute(context.TODO(), dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "pvc resizing is in progress")
+	})
+
 	t.Run("should return requeue error if size is not changed", func(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
-		oldSize := dogu.Spec.Resources.DataVolumeSize
-		defer func() {
-			dogu.Spec.Resources.DataVolumeSize = oldSize
-		}()
 		dogu.Spec.Resources.DataVolumeSize = "1Gi"
 		requests := map[corev1.ResourceName]resource.Quantity{}
 		requests[corev1.ResourceStorage] = resource.MustParse("0.5Gi")
 		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}, Spec: corev1.PersistentVolumeClaimSpec{
 			Resources: corev1.ResourceRequirements{Requests: requests}}}
+		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
+		recorder := extMocks.NewEventRecorder(t)
+		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
+		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
+
+		// when
+		_, err := sut.Execute(context.TODO(), dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "pvc resizing is in progress")
+	})
+
+	t.Run("should return requeue error if size is not changed and there is no condition FileSystemResizePending", func(t *testing.T) {
+		// given
+		dogu := readDoguCr(t, ldapCrBytes)
+		dogu.Spec.Resources.DataVolumeSize = "1Gi"
+		requests := map[corev1.ResourceName]resource.Quantity{}
+		requests[corev1.ResourceStorage] = resource.MustParse("0.5Gi")
+		doguPvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: *dogu.GetObjectMeta(),
+			Status: corev1.PersistentVolumeClaimStatus{
+				Conditions: []corev1.PersistentVolumeClaimCondition{
+					{Type: corev1.PersistentVolumeClaimResizing, Status: corev1.ConditionTrue},
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				Resources: corev1.ResourceRequirements{Requests: requests},
+			},
+		}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
 		recorder := extMocks.NewEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
