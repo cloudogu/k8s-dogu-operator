@@ -86,7 +86,7 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 		return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
 	}
 
-	result := ctrl.Result{RequeueAfter: requeueTime}
+	result := ctrl.Result{Requeue: true, RequeueAfter: requeueTime}
 	err := d.fireRequeueEvent(ctx, doguResource, result)
 	if err != nil {
 		return ctrl.Result{}, err

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"testing"
 	"time"
 
@@ -220,5 +221,5 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	assert.NotNil(t, handler)
-	assert.Implements(t, (*requeueHandler)(nil), handler)
+	assert.Implements(t, (*cloudogu.RequeueHandler)(nil), handler)
 }

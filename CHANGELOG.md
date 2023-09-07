@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - see the [operations docs](docs/operations/installing_operator_into_cluster_en.md) for more information
 
 ### Fixed
+- [#121] Operator cannot recognize multiple changes/required operations at once.
+  - Now multiple required operations are detected and after the first operation is done, a requeue is triggered to execute the other ones.
 - [#117] Fix waiting for PVC to be resized on "AzureDisk"-storage
   - The conditions "FileSystemResizePending" has to be checked for storage-interfaces (like "AzureDisk") that require a file system expansion before the additional space of an expanded volume is usable by pods.
 
