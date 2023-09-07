@@ -125,8 +125,8 @@ spec:
 
 > [!IMPORTANT]
 > `metadata.name` und der einfache Name des Dogus in `spec.name` müssen gleich sein.
-> Der einfache Name ist der Teil nach dem Schrägstrich (`/`), also ohne den Namespace.
-> Zum Beispiel wäre für eine dogu mit `spec.name` von `k8s/nginx-ingress` der `metadata.name` `nginx-ingress` in Ordnung, während `nginx` nicht in Ordnung wäre.
+> Der einfache Name ist der Teil nach dem Schrägstrich (`/`), also ohne den Dogu-Namespace.
+> Zum Beispiel wäre für ein Dogu mit `spec.name` von `k8s/nginx-ingress` der `metadata.name` `nginx-ingress` in Ordnung, während `nginx` nicht in Ordnung wäre.
 
 Um das LDAP-Dogu zu installieren, reicht ein einfacher Aufruf:
 
