@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - [#130] updated go dependencies
+
 ### Fixed
 - [#130] deprecation warning for argument `logtostderr` in kube-rbac-proxy
+
+## [v0.37.0] - 2023-09-15
+### Changed
+- [#128] Move component-dependencies to helm-annotations
+
 ### Removed
 - [#130] deprecated argument `logtostderr` from kube-rbac-proxy
 - this release cleans up unused code parts that are no longer required: no functionality has been changed
