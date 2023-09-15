@@ -24,6 +24,8 @@ import (
 
 var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36"}
 
+const testChownInitContainerImage = "busybox:1.36"
+
 func TestNewResourceGenerator(t *testing.T) {
 	// given
 	registry := cesmocks.NewRegistry(t)
@@ -326,23 +328,6 @@ func TestResourceGenerator_GetDoguSecret(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to set controller reference:")
 	})
 }
-
-func Test_createLivenessProbe(t *testing.T) {
-	t.Run("should should return nil for a dogu without tcp probes", func(t *testing.T) {
-		dogu := readLdapDogu(t)
-		dogu.HealthChecks = []core.HealthCheck{{
-			Type: "http",
-		}}
-
-		// when
-		actual := createLivenessProbe(dogu)
-
-		// then
-		require.Nil(t, actual)
-	})
-}
-
-const testChownInitContainerImage = "busybox:1.36"
 
 func Test_getChownInitContainer(t *testing.T) {
 	t.Run("success with whitespace in volume path", func(t *testing.T) {

@@ -135,10 +135,10 @@ func (c *CesDoguRegistrator) registerNewKeys(ctx context.Context, doguResource *
 		return c.createKeyPair(ctx, doguResource, dogu, keyProvider)
 	}
 
-	return c.recreatePubKey(secret, err, keyProvider, dogu)
+	return c.recreatePubKey(secret, keyProvider, dogu)
 }
 
-func (c *CesDoguRegistrator) recreatePubKey(secret *corev1.Secret, err error, keyProvider *keys.KeyProvider, dogu *core.Dogu) error {
+func (c *CesDoguRegistrator) recreatePubKey(secret *corev1.Secret, keyProvider *keys.KeyProvider, dogu *core.Dogu) error {
 	existingPrivateKey := secret.Data["private.pem"]
 	keyPair, err := keyProvider.FromPrivateKey(existingPrivateKey)
 	if err != nil {

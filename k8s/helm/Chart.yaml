@@ -23,9 +23,7 @@ version: 0.0.0-replaceme
 # It is recommended to use it with quotes.
 appVersion: "0.0.0-replaceme"
 
-dependencies:
-# For k8s-etcd it is important to include "prerelease"-versions like "3.5.7-4", so there must be a "-0" after the patch-version.
-# see https://helm.sh/docs/chart_best_practices/dependencies/#prerelease-versions for more information
-  - name: "k8s-etcd"
-    version: "^3.5.x-0"
-    condition: false
+annotations:
+  # For k8s-etcd it is important to include "prerelease"-versions like "3.5.7-4", so there must be a "-0" after the patch-version.
+  # see https://helm.sh/docs/chart_best_practices/dependencies/#prerelease-versions for more information
+  "k8s.cloudogu.com/ces-dependency/k8s-etcd": "^3.5.x-0"
