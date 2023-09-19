@@ -6,11 +6,19 @@ endif
 
 ## Variables
 
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
+
 BINARY_YQ = $(UTILITY_BIN_PATH)/yq
 
 # The productive tag of the image
 IMAGE ?=
 
+# Set production as default stage. Use "development" as stage in your .env file to generate artifacts
+# with development images pointing to K3S_CLUSTER_FQDN.
+STAGE?=production
 K3S_CLUSTER_FQDN?=k3ces.local
 K3S_LOCAL_REGISTRY_PORT?=30099
 K3CES_REGISTRY_URL_PREFIX="${K3S_CLUSTER_FQDN}:${K3S_LOCAL_REGISTRY_PORT}"
@@ -66,7 +74,6 @@ K8S_PRE_GENERATE_TARGETS ?= k8s-create-temporary-resource
 .PHONY: k8s-generate
 k8s-generate: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGETS) ## Generates the final resource yaml.
 	@echo "Applying general transformations..."
-	@sed -i "s/'{{ .Namespace }}'/$(NAMESPACE)/" $(K8S_RESOURCE_TEMP_YAML)
 	@if [[ ${STAGE} == "development" ]]; then \
 	  $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE_DEV)\"" $(K8S_RESOURCE_TEMP_YAML); \
 	else \
@@ -77,6 +84,7 @@ k8s-generate: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGET
 .PHONY: k8s-apply
 k8s-apply: k8s-generate image-import $(K8S_POST_GENERATE_TARGETS) ## Applies all generated K8s resources to the current cluster and namespace.
 	@echo "Apply generated K8s resources..."
+	@sed -i "s/'{{ .Namespace }}'/$(NAMESPACE)/" $(K8S_RESOURCE_TEMP_YAML)
 	@kubectl apply -f $(K8S_RESOURCE_TEMP_YAML) --namespace=${NAMESPACE}
 
 ##@ K8s - Docker
@@ -118,6 +126,9 @@ check_defined = \
 __check_defined = \
     $(if $(value $1),, \
       $(error Undefined $1$(if $2, ($2))))
+
+.PHONY: install-yq ## Installs the yq YAML editor.
+install-yq: ${BINARY_YQ}
 
 ${BINARY_YQ}: $(UTILITY_BIN_PATH) ## Download yq locally if necessary.
 	$(call go-get-tool,$(BINARY_YQ),github.com/mikefarah/yq/v4@v4.25.1)
