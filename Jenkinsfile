@@ -247,7 +247,6 @@ void stageAutomaticRelease() {
                                 sh ".bin/helm push target/helm/${repositoryName}-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/" 
                                  sh ".bin/helm push target/helm-crd/${repositoryName}-crd-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
                             }
-                            }
                         }
         }
 
