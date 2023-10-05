@@ -15,14 +15,9 @@
 
 # This script requires the k8s.mk script
 include $(WORKDIR)/build/make/k8s-component.mk
+include $(WORKDIR)/build/make/k8s-crd.mk
 
 ## Variables
-
-# Setting SHELL to bash allows bash commands to be executed by recipes.
-# This is a requirement for 'setup-envtest.sh' in the test target.
-# Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
-.SHELLFLAGS = -ec
 
 # make sure to create a statically linked binary otherwise it may quit with
 # "exec user process caused: no such file or directory"
