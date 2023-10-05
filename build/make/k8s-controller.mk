@@ -15,6 +15,7 @@
 
 # This script requires the k8s.mk script
 include $(WORKDIR)/build/make/k8s-component.mk
+include $(WORKDIR)/build/make/k8s-crd.mk
 
 ## Variables
 

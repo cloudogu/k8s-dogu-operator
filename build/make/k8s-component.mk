@@ -40,6 +40,7 @@ ${K8S_HELM_TARGET}/Chart.yaml: $(K8S_RESOURCE_TEMP_FOLDER) k8s-generate
 	@rm -drf ${K8S_HELM_TARGET}  # delete folder, so the chart is newly created.
 	@mkdir -p ${K8S_HELM_TARGET}/templates
 	@cp $(K8S_RESOURCE_TEMP_YAML) ${K8S_HELM_TARGET}/templates
+	@${BINARY_YQ} 'select(document_index != (select(.kind == "CustomResourceDefinition") | document_index))' $(K8S_RESOURCE_TEMP_YAML) > ${K8S_HELM_TARGET}/templates/$(ARTIFACT_ID)_$(VERSION).yaml # select all documents without the CRD
 	@sed -i "s/'{{ .Namespace }}'/'{{ .Release.Namespace }}'/" ${K8S_HELM_TARGET}/templates/$(ARTIFACT_ID)_$(VERSION).yaml
 	@cp -r ${K8S_HELM_RESSOURCES}/** ${K8S_HELM_TARGET}
 	@if [[ ${STAGE} == "development" ]]; then \

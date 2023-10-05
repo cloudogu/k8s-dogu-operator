@@ -195,14 +195,13 @@ void stageStaticAnalysisSonarQube() {
 
 void stageAutomaticRelease() {
     if (gitflow.isReleaseBranch()) {
-        String releaseVersion = git.getSimpleBranchName()
-        String dockerReleaseVersion = releaseVersion.split("v")[1]
         String controllerVersion = makefile.getVersion()
+        String releaseVersion = "v${controllerVersion}".toString()
 
         stage('Build & Push Image') {
-            def dockerImage = docker.build("cloudogu/${repositoryName}:${dockerReleaseVersion}")
+            def dockerImage = docker.build("cloudogu/${repositoryName}:${controllerVersion}")
             docker.withRegistry('https://registry.hub.docker.com/', 'dockerHubCredentials') {
-                dockerImage.push("${dockerReleaseVersion}")
+                dockerImage.push("${controllerVersion}")
             }
         }
 
@@ -237,11 +236,16 @@ void stageAutomaticRelease() {
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
+                            // Package operator-chart & crd-chart
                             make 'helm-package-release'
+                            make 'crd-helm-package'
 
+                            // Push charts
                             withCredentials([usernamePassword(credentialsId: 'harborhelmchartpush', usernameVariable: 'HARBOR_USERNAME', passwordVariable: 'HARBOR_PASSWORD')]) {
                                 sh ".bin/helm registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'"
+
                                 sh ".bin/helm push target/helm/${repositoryName}-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
+                                sh ".bin/helm push target/helm-crd/${repositoryName}-crd-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
                             }
                         }
         }
