@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-controller-manager
+  labels:
+    control-plane: controller-manager
+  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+    {{- include "k8s-dogu-operator.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        control-plane: controller-manager
+      {{- include "k8s-dogu-operator.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - args:
+          - --secure-listen-address=0.0.0.0:8443
+          - --upstream=http://127.0.0.1:8080/
+          - --v=0
+        image: {{ .Values.kubeRbacProxy.image.repository }}:{{ .Values.kubeRbacProxy.image.tag | default .Chart.AppVersion }}
+        name: kube-rbac-proxy
+        ports:
+        - containerPort: 8443
+          name: https
+          protocol: TCP
+        resources:
+          limits: {{- toYaml .Values.kubeRbacProxy.resourceLimits | nindent
+          12 }}
+          requests: {{- toYaml .Values.kubeRbacProxy.resourceRequests | nindent
+          12 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+      - args:
+          - --health-probe-bind-address=:8081
+          - --metrics-bind-address=127.0.0.1:8080
+          - --leader-elect
+        env:
+        - name: STAGE
+          value: {{ quote .Values.manager.env.stage | default "production"}}
+        - name: LOG_LEVEL
+          value: {{ quote .Values.manager.env.logLevel | default "info" }}
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: DOGU_REGISTRY_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              key: endpoint
+              name: k8s-dogu-operator-dogu-registry
+        - name: DOGU_REGISTRY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: k8s-dogu-operator-dogu-registry
+        - name: DOGU_REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: k8s-dogu-operator-dogu-registry
+        - name: DOGU_REGISTRY_URLSCHEMA
+          valueFrom:
+            secretKeyRef:
+              key: urlschema
+              name: k8s-dogu-operator-dogu-registry
+              optional: true
+        - name: DOCKER_REGISTRY
+          valueFrom:
+            secretKeyRef:
+              key: .dockerconfigjson
+              name: k8s-dogu-operator-docker-registry
+        image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.manager.imagePullPolicy }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: manager
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits: {{- toYaml .Values.controllerManager.resourceLimits | nindent
+          12 }}
+          requests: {{- toYaml .Values.controllerManager.resourceRequests | nindent
+          12 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - mountPath: /etc/ssl/certs/dogu-registry-cert.pem
+          name: dogu-registry-cert
+          subPath: dogu-registry-cert.pem
+        - mountPath: /etc/ssl/certs/docker-registry-cert.pem
+          name: docker-registry-cert
+          subPath: docker-registry-cert.pem
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: {{ include "k8s-dogu-operator.name" . }}-controller-manager
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: docker-registry-cert
+        secret:
+          optional: true
+          secretName: docker-registry-cert
+      - name: dogu-registry-cert
+        secret:
+          optional: true
+          secretName: dogu-registry-cert

@@ -1,0 +1,28 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-manager-role
+  labels:
+  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-manager-rolebinding
+  labels:
+  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: '{{ include "k8s-dogu-operator.name" . }}-manager-role'
+subjects:
+- kind: ServiceAccount
+  name: '{{ include "k8s-dogu-operator.name" . }}-controller-manager'
+  namespace: '{{ .Release.Namespace }}'
