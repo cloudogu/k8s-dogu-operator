@@ -1,0 +1,329 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: backup
+  labels:
+    app: ces
+spec:
+  name: premium/backup
+  version: 1.9.3-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: sonar
+  labels:
+    app: ces
+spec:
+  name: official/sonar
+  version: 9.9.1-6
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: redmine
+  labels:
+    app: ces
+spec:
+  name: official/redmine
+  version: 4.2.9-4
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: usermgt
+  labels:
+    app: ces
+spec:
+  name: official/usermgt
+  version: 1.10.1-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: smeagol
+  labels:
+    app: ces
+spec:
+  name: official/smeagol
+  version: 1.7.1-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: scm
+  labels:
+    app: ces
+spec:
+  name: official/scm
+  version: 2.46.0-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: nexus
+  labels:
+    app: ces
+spec:
+  name: official/nexus
+  version: 3.59.0-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: jenkins
+  labels:
+    app: ces
+spec:
+  name: official/jenkins
+  version: 2.414.2-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: cockpit
+  labels:
+    app: ces
+spec:
+  name: official/cockpit
+  version: 2.0.2-7
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: cas
+  labels:
+    app: ces
+spec:
+  name: official/cas
+  version: 6.6.12-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: plantuml
+  labels:
+    app: ces
+spec:
+  name: official/plantuml
+  version: 2023.10-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: nginx
+  labels:
+    app: ces
+spec:
+  name: official/nginx
+  version: 1.23.2-7
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: registrator
+  labels:
+    app: ces
+spec:
+  name: official/registrator
+  version: 0.10.0-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: postgresql
+  labels:
+    app: ces
+spec:
+  name: official/postgresql
+  version: 12.15-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: postfix
+  labels:
+    app: ces
+spec:
+  name: official/postfix
+  version: 3.6.4-5
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: ldap
+  labels:
+    app: ces
+spec:
+  name: official/ldap
+  version: 2.6.2-6
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: swaggerui
+  labels:
+    app: ces
+spec:
+  name: official/swaggerui
+  version: 4.9.0-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: jira
+  labels:
+    app: ces
+spec:
+  name: premium/jira
+  version: 9.4.6-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: confluence
+  labels:
+    app: ces
+spec:
+  name: premium/confluence
+  version: 7.19.11-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: ldap-mapper
+  labels:
+    app: ces
+spec:
+  name: official/ldap-mapper
+  version: 1.3.0
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: easyredmine
+  labels:
+    app: ces
+spec:
+  name: itz-bund/easyredmine
+  version: 12.10.1-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: monitoring
+  labels:
+    app: ces
+spec:
+  name: premium/monitoring
+  version: 0.3.0-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: gotenberg
+  labels:
+    app: ces
+spec:
+  name: official/gotenberg
+  version: 7.9.2-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: redis
+  labels:
+    app: ces
+spec:
+  name: official/redis
+  version: 6.2.12-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: mysql
+  labels:
+    app: ces
+spec:
+  name: official/mysql
+  version: 8.0.33-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: teamscale
+  labels:
+    app: ces
+spec:
+  name: itz-bund/teamscale
+  version: 8.9.7-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: bluespice
+  labels:
+    app: ces
+spec:
+  name: hallowelt/bluespice
+  version: 4.3.2-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: bluespice-pdfrenderer
+  labels:
+    app: ces
+spec:
+  name: hallowelt/bluespice-pdfrenderer
+  version: 4.2.1-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: drawio
+  labels:
+    app: ces
+spec:
+  name: hallowelt/drawio
+  version: 20.3.7-2
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: elasticsearch
+  labels:
+    app: ces
+spec:
+  name: official/elasticsearch
+  version: 6.8.23-3
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: admin
+  labels:
+    app: ces
+spec:
+  name: premium/admin
+  version: 2.8.3-1
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: portainer
+  labels:
+    app: ces
+spec:
+  name: premium/portainer
+  version: 2.17.1-3
+---
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: baseline
+  labels:
+    app: ces
+spec:
+  name: itz-bund/baseline
+  version: 1.4.0-1
