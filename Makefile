@@ -8,8 +8,6 @@ GOTAG=1.21
 MAKEFILES_VERSION=8.5.0
 LINT_VERSION=v1.52.1
 
-ADDITIONAL_CLEAN=dist-clean
-
 include build/make/variables.mk
 include build/make/self-update.mk
 include build/make/dependencies-gomod.mk
