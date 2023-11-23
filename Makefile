@@ -35,9 +35,7 @@ build-boot: image-import k8s-apply kill-operator-pod ## Builds a new version of 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	@echo "Generate manifests..."
-	@$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	@make template-crd-labels
-	@cp config/crd/bases/k8s.cloudogu.com_dogus.yaml api/v1/
+	@$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=api/v1
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy* method implementations.
@@ -46,13 +44,11 @@ generate: controller-gen ## Generate code containing DeepCopy* method implementa
 
 ##@ Deployment
 
-.PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+.PHONY: install-crd
+install: manifests crd-helm-chart-import  ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 
 .PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	@$(KUSTOMIZE) build config/crd | kubectl delete --wait=false --ignore-not-found=true -f -
+uninstall: manifests crd-component-delete ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	@kubectl patch crd/dogus.k8s.cloudogu.com -p '{"metadata":{"finalizers":[]}}' --type=merge || true
 
 .PHONY: setup-etcd-port-forward
