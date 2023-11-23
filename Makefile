@@ -23,7 +23,7 @@ include build/make/digital-signature.mk
 K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
 PRE_COMPILE=generate
 
-K8S_RESOURCE_TEMP_FOLDER ?= $(TARGET_DIR)
+K8S_CRD_COMPONENT_SOURCE=${WORKDIR}/k8s/helm-crd/templates/dogu-crd.yaml
 K8S_PRE_GENERATE_TARGETS=k8s-create-temporary-resource template-stage template-dev-only-image-pull-policy template-log-level
 
 include build/make/k8s-controller.mk

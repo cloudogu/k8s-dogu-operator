@@ -26,7 +26,7 @@ K3CES_REGISTRY_URL_PREFIX="${K3S_CLUSTER_FQDN}:${K3S_LOCAL_REGISTRY_PORT}"
 # Variables for the temporary yaml files. These are used as template to generate a development resource containing
 # the current namespace and the dev image.
 K8S_RESOURCE_TEMP_FOLDER ?= $(TARGET_DIR)/make/k8s
-K8S_RESOURCE_TEMP_YAML ?= $(K8S_RESOURCE_TEMP_FOLDER)/$(ARTIFACT_ID)_$(VERSION).yaml
+#K8S_RESOURCE_TEMP_YAML ?= $(K8S_RESOURCE_TEMP_FOLDER)/$(ARTIFACT_ID)_$(VERSION).yaml
 
 ##@ K8s - Variables
 
@@ -60,32 +60,33 @@ check-insecure-cluster-registry:
 ${K8S_RESOURCE_TEMP_FOLDER}:
 	@mkdir -p $@
 
-.PHONY: k8s-delete
-k8s-delete: k8s-generate $(K8S_POST_GENERATE_TARGETS) ## Deletes all dogu related resources from the K8s cluster.
-	@echo "Delete old dogu resources..."
-	@kubectl delete -f $(K8S_RESOURCE_TEMP_YAML) --wait=false --ignore-not-found=true --namespace=${NAMESPACE}
-
-# The additional targets executed after the generate target, executed before each apply and delete. The generate target
-# produces a temporary yaml. This yaml is accessible via K8S_RESOURCE_TEMP_YAML an can be changed before the apply/delete.
-K8S_POST_GENERATE_TARGETS ?=
-# The additional targets executed before the generate target, executed before each apply and delete.
-K8S_PRE_GENERATE_TARGETS ?= k8s-create-temporary-resource
-
-.PHONY: k8s-generate
-k8s-generate: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGETS) ## Generates the final resource yaml.
-	@echo "Applying general transformations..."
-	@if [[ ${STAGE} == "development" ]]; then \
-	  $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE_DEV)\"" $(K8S_RESOURCE_TEMP_YAML); \
-	else \
-	  $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE)\"" $(K8S_RESOURCE_TEMP_YAML); \
-	fi
-	@echo "Done."
-
-.PHONY: k8s-apply
-k8s-apply: k8s-generate image-import $(K8S_POST_GENERATE_TARGETS) ## Applies all generated K8s resources to the current cluster and namespace.
-	@echo "Apply generated K8s resources..."
-	@sed -i "s/'{{ .Namespace }}'/$(NAMESPACE)/" $(K8S_RESOURCE_TEMP_YAML)
-	@kubectl apply -f $(K8S_RESOURCE_TEMP_YAML) --namespace=${NAMESPACE}
+# TODO delete this block when updating/applying/deleting works with helm-generate targets
+#.PHONY: k8s-delete
+#k8s-delete: k8s-generate $(K8S_POST_GENERATE_TARGETS) ## Deletes all dogu related resources from the K8s cluster.
+#	@echo "Delete old dogu resources..."
+#	@kubectl delete -f $(K8S_RESOURCE_TEMP_YAML) --wait=false --ignore-not-found=true --namespace=${NAMESPACE}
+#
+## The additional targets executed after the generate target, executed before each apply and delete. The generate target
+## produces a temporary yaml. This yaml is accessible via K8S_RESOURCE_TEMP_YAML an can be changed before the apply/delete.
+#K8S_POST_GENERATE_TARGETS ?=
+## The additional targets executed before the generate target, executed before each apply and delete.
+#K8S_PRE_GENERATE_TARGETS ?= k8s-create-temporary-resource
+#
+#.PHONY: k8s-generate
+#k8s-generate: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER) $(K8S_PRE_GENERATE_TARGETS) ## Generates the final resource yaml.
+#	@echo "Applying general transformations..."
+#	@if [[ ${STAGE} == "development" ]]; then \
+#	  $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE_DEV)\"" $(K8S_RESOURCE_TEMP_YAML); \
+#	else \
+#	  $(BINARY_YQ) -i e "(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.image == \"*$(ARTIFACT_ID)*\").image)=\"$(IMAGE)\"" $(K8S_RESOURCE_TEMP_YAML); \
+#	fi
+#	@echo "Done."
+#
+#.PHONY: k8s-apply
+#k8s-apply: k8s-generate image-import $(K8S_POST_GENERATE_TARGETS) ## Applies all generated K8s resources to the current cluster and namespace.
+#	@echo "Apply generated K8s resources..."
+#	@sed -i "s/'{{ .Namespace }}'/$(NAMESPACE)/" $(K8S_RESOURCE_TEMP_YAML)
+#	@kubectl apply -f $(K8S_RESOURCE_TEMP_YAML) --namespace=${NAMESPACE}
 
 ##@ K8s - Docker
 

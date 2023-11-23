@@ -1,22 +1,24 @@
 ARTIFACT_CRD_ID=$(ARTIFACT_ID)-crd
 DEV_CRD_VERSION?=${VERSION}-dev
-K8S_HELM_CRD_TARGET ?= $(K8S_RESOURCE_TEMP_FOLDER)/helm-crd
-K8S_HELM_CRD_RESSOURCES ?= k8s/helm-crd
+K8S_HELM_CRD_TARGET?=$(K8S_RESOURCE_TEMP_FOLDER)/helm-crd
+K8S_HELM_CRD_RESSOURCES?=k8s/helm-crd
 K8S_HELM_CRD_RELEASE_TGZ=${K8S_HELM_CRD_TARGET}/${ARTIFACT_CRD_ID}-${VERSION}.tgz
 K8S_HELM_CRD_DEV_RELEASE_TGZ=${K8S_HELM_CRD_TARGET}/${ARTIFACT_CRD_ID}-${DEV_CRD_VERSION}.tgz
 
 K8S_RESOURCE_CRD_COMPONENT ?= "${K8S_RESOURCE_TEMP_FOLDER}/component-${ARTIFACT_CRD_ID}-${VERSION}.yaml"
 K8S_RESOURCE_COMPONENT_CR_TEMPLATE_YAML ?= $(WORKDIR)/build/make/k8s-component.tpl
+K8S_CRD_COMPONENT_SOURCE?=${K8S_HELM_CRD_RESSOURCES}/no-file-configured
 
 ##@ K8s - CRD targets
 
 .PHONY: crd-helm-generate-chart ## Generates the helm crd-chart
-crd-helm-generate-chart: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER) k8s-generate
+crd-helm-generate-chart: ${BINARY_YQ} ${K8S_RESOURCE_TEMP_FOLDER} validate-crd-chart validate-crd ${K8S_HELM_CRD_TARGET}/Chart.yaml
+
+${K8S_HELM_CRD_TARGET}/Chart.yaml:
 	@echo "Generate helm crd-chart..."
 	@rm -drf ${K8S_HELM_CRD_TARGET}  # delete folder, so the chart is newly created.
 	@mkdir -p ${K8S_HELM_CRD_TARGET}/templates
 	@cp -r ${K8S_HELM_CRD_RESSOURCES}/** ${K8S_HELM_CRD_TARGET}
-	@${BINARY_YQ} 'select(.kind == "CustomResourceDefinition")' $(K8S_RESOURCE_TEMP_YAML) > ${K8S_HELM_CRD_TARGET}/templates/$(ARTIFACT_CRD_ID)_$(VERSION).yaml
 	@sed -i 's/name: artifact-crd-replaceme/name: ${ARTIFACT_CRD_ID}/' ${K8S_HELM_CRD_TARGET}/Chart.yaml
 	@if [[ ${STAGE} == "development" ]]; then \
 	  sed -i 's/appVersion: "0.0.0-replaceme"/appVersion: "${DEV_CRD_VERSION}"/' ${K8S_HELM_CRD_TARGET}/Chart.yaml; \
@@ -25,6 +27,20 @@ crd-helm-generate-chart: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER) k8s-generate
 	  sed -i 's/appVersion: "0.0.0-replaceme"/appVersion: "${VERSION}"/' ${K8S_HELM_CRD_TARGET}/Chart.yaml; \
       sed -i 's/version: 0.0.0-replaceme/version: ${VERSION}/' ${K8S_HELM_CRD_TARGET}/Chart.yaml; \
 	fi
+
+.PHONY: validate-crd-chart
+validate-crd-chart:
+	@if [ ! -f ${K8S_HELM_CRD_RESSOURCES}/Chart.yaml ] ; then \
+       echo "Could not find make CRD source Helm chart under \$${K8S_HELM_CRD_RESSOURCES}/Chart.yaml" ; \
+       exit 23 ; \
+    fi
+
+.PHONY: validate-crd
+validate-crd:
+	@if [ ! -f ${K8S_CRD_COMPONENT_SOURCE} ] ; then \
+       echo "Could not find make CRD source. Did you point 'K8S_CRD_COMPONENT_SOURCE' to your source CRD file?" ; \
+       exit 24 ; \
+    fi
 
 .PHONY: crd-helm-apply
 crd-helm-apply: ${BINARY_HELM} check-k8s-namespace-env-var crd-helm-generate-chart $(K8S_POST_GENERATE_TARGETS) ## Generates and installs the helm crd-chart.
