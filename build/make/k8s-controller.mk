@@ -70,7 +70,7 @@ k8s-integration-test: $(K8S_INTEGRATION_TEST_DIR) manifests generate envtest ## 
  k8s-create-temporary-resource: $(K8S_RESOURCE_TEMP_FOLDER) manifests kustomize
 	@echo "Generating temporary k8s resources $(K8S_RESOURCE_TEMP_YAML)..."
 	cd $(WORKDIR)/config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE)
-	$(KUSTOMIZE) build config/default > $(K8S_RESOURCE_TEMP_YAML)
+	#$(KUSTOMIZE) build config/default > $(K8S_RESOURCE_TEMP_YAML)
 	@echo "Done."
 
 ##@ K8s - Download Kubernetes Utility Tools
