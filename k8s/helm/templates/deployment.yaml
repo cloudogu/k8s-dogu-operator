@@ -48,9 +48,9 @@ spec:
           - --leader-elect
         env:
         - name: STAGE
-          value: {{ quote .Values.manager.env.stage | default "production"}}
+          value: {{ quote .Values.controllerManager.env.stage | default "production"}}
         - name: LOG_LEVEL
-          value: {{ quote .Values.manager.env.logLevel | default "info" }}
+          value: {{ quote .Values.controllerManager.env.logLevel | default "info" }}
         - name: NAMESPACE
           valueFrom:
             fieldRef:
@@ -82,7 +82,7 @@ spec:
               key: .dockerconfigjson
               name: k8s-dogu-operator-docker-registry
         image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag | default .Chart.AppVersion }}
-        imagePullPolicy: {{ .Values.manager.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy }}
         livenessProbe:
           httpGet:
             path: /healthz
