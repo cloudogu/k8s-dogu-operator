@@ -11,8 +11,8 @@ Kubernetes 1.4+.
 {{/* All-in-one labels */}}
 {{- define "k8s-dogu-operator.labels" -}}
 app: ces
-helm.sh/chart: {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{ include "k8s-dogu-operator.selectorLabels" . }}
+helm.sh/chart: {{- printf " %s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
