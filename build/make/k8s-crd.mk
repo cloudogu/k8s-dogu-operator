@@ -7,7 +7,10 @@ K8S_HELM_CRD_DEV_RELEASE_TGZ=${K8S_HELM_CRD_TARGET}/${ARTIFACT_CRD_ID}-${DEV_CRD
 
 K8S_RESOURCE_CRD_COMPONENT ?= "${K8S_RESOURCE_TEMP_FOLDER}/component-${ARTIFACT_CRD_ID}-${VERSION}.yaml"
 K8S_RESOURCE_COMPONENT_CR_TEMPLATE_YAML ?= $(WORKDIR)/build/make/k8s-component.tpl
-K8S_CRD_COMPONENT_SOURCE?=${K8S_HELM_CRD_RESSOURCES}/no-file-configured
+# K8S_CRD_COMPONENT_SOURCE must contain an absolute path(s) to CRD YAML files which will be created by ${CONTROLLER_GEN}.
+K8S_CRD_COMPONENT_SOURCE?=${K8S_HELM_CRD_RESSOURCES}/no-files-configured
+# K8S_COPY_CRD_TARGET_DIR may contain an secondary directory to which all generated CRD YAMLs will be (additionally) copied.
+K8S_COPY_CRD_TARGET_DIR?=
 
 ##@ K8s - CRD targets
 
@@ -17,6 +20,9 @@ manifests: ${K8S_CRD_COMPONENT_SOURCE} ## Generate WebhookConfiguration, Cluster
 ${K8S_CRD_COMPONENT_SOURCE}: ${CRD_SRC_GO} ${CONTROLLER_GEN}
 	@echo "Generate manifests..."
 	@$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=k8s/helm-crd/templates
+	@if [ "${K8S_COPY_CRD_TARGET_DIR}" != "" ] ; then \
+  		cp ${K8S_CRD_COMPONENT_SOURCE} ${K8S_COPY_CRD_TARGET_DIR}; \
+  	  fi
 
 .PHONY: crd-helm-generate-chart ## Generates the Helm CRD chart
 crd-helm-generate-chart: validate-crd-chart validate-crd ${K8S_HELM_CRD_TARGET}/Chart.yaml

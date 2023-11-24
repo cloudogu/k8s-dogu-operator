@@ -23,6 +23,7 @@ PRE_COMPILE=generate
 
 K8S_COMPONENT_TARGET_VALUES=${WORKDIR}/${TARGET_DIR}/k8s/helm/values.yaml
 CRD_SRC_GO=$(WORKDIR)/api/v1/dogu_types.go
+K8S_COPY_CRD_TARGET_DIR=$(WORKDIR)/api/v1
 K8S_CRD_COMPONENT_SOURCE=${WORKDIR}/k8s/helm-crd/templates/k8s.cloudogu.com_dogus.yaml
 K8S_PRE_GENERATE_TARGETS=template-stage template-dev-only-image-pull-policy template-log-level
 
