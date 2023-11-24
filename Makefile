@@ -22,7 +22,8 @@ K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
 PRE_COMPILE=generate
 
 K8S_COMPONENT_TARGET_VALUES=${WORKDIR}/${TARGET_DIR}/k8s/helm/values.yaml
-K8S_CRD_COMPONENT_SOURCE=${WORKDIR}/k8s/helm-crd/templates/dogu-crd.yaml
+CRD_SRC_GO=$(WORKDIR)/api/v1/dogu_types.go
+K8S_CRD_COMPONENT_SOURCE=${WORKDIR}/k8s/helm-crd/templates/k8s.cloudogu.com_dogus.yaml
 K8S_PRE_GENERATE_TARGETS=template-stage template-dev-only-image-pull-policy template-log-level
 
 include build/make/k8s-controller.mk
@@ -32,24 +33,12 @@ build-boot: image-import k8s-apply kill-operator-pod ## Builds a new version of 
 
 ##@ Controller specific targets
 
-.PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	@echo "Generate manifests..."
-	@$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=api/v1
-
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy* method implementations.
 	@echo "Auto-generate deepcopy functions..."
 	@$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 ##@ Deployment
-
-.PHONY: install-crd
-install: manifests crd-helm-chart-import  ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-
-.PHONY: uninstall
-uninstall: manifests crd-component-delete ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	@kubectl patch crd/dogus.k8s.cloudogu.com -p '{"metadata":{"finalizers":[]}}' --type=merge || true
 
 .PHONY: setup-etcd-port-forward
 setup-etcd-port-forward:

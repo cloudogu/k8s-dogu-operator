@@ -77,15 +77,21 @@ k8s-integration-test: $(K8S_INTEGRATION_TEST_DIR) manifests generate envtest ## 
 
 CONTROLLER_GEN = $(UTILITY_BIN_PATH)/controller-gen
 .PHONY: controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
+controller-gen: ${CONTROLLER_GEN} ## Download controller-gen locally if necessary.
+
+${CONTROLLER_GEN}:
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.13.0)
 
 KUSTOMIZE = $(UTILITY_BIN_PATH)/kustomize
 .PHONY: kustomize
-kustomize: ## Download kustomize locally if necessary.
+kustomize: ${KUSTOMIZE} ## Download kustomize locally if necessary.
+
+${KUSTOMIZE}:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.7)
 
 ENVTEST = $(UTILITY_BIN_PATH)/setup-envtest
 .PHONY: envtest
-envtest: ## Download envtest-setup locally if necessary.
+envtest: ${ENVTEST} ## Download envtest-setup locally if necessary.
+
+${ENVTEST}:
 	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)

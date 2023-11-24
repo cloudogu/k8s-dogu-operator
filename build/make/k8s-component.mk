@@ -31,8 +31,8 @@ helm-init-chart: ${BINARY_HELM} ## Creates a Chart.yaml-template with zero value
 	@sed -i 's/appVersion: ".*"/appVersion: "0.0.0-replaceme"/' ${K8S_HELM_RESSOURCES}/Chart.yaml
 	@sed -i 's/version: .*/version: 0.0.0-replaceme/' ${K8S_HELM_RESSOURCES}/Chart.yaml
 
-.PHONY: helm-generate-chart
-helm-generate-chart: ${K8S_HELM_TARGET}/Chart.yaml ## Generates the final helm chart.
+.PHONY: helm-generate
+helm-generate: ${K8S_HELM_TARGET}/Chart.yaml ## Generates the final helm chart.
 
 # this is phony because of it is easier this way than the makefile-single-run way
 .PHONY: ${K8S_HELM_TARGET}/Chart.yaml
@@ -62,9 +62,6 @@ validate-chart:
 
 ##@ K8s - Helm dev targets
 
-.PHONY: helm-generate
-helm-generate: helm-generate-chart ## Generates the final helm chart with development URLs.
-
 .PHONY: helm-apply
 helm-apply: ${BINARY_HELM} check-k8s-namespace-env-var image-import helm-generate $(K8S_POST_GENERATE_TARGETS) ## Generates and installs the Helm chart.
 	@echo "Apply generated helm chart"
@@ -79,7 +76,7 @@ helm-delete: ${BINARY_HELM} check-k8s-namespace-env-var ## Uninstalls the curren
 helm-reinstall: helm-delete helm-apply ## Uninstalls the current helm chart and reinstalls it.
 
 .PHONY: helm-chart-import
-helm-chart-import: check-all-vars check-k8s-artifact-id helm-generate-chart helm-package-release image-import ## Imports the currently available chart into the cluster-local registry.
+helm-chart-import: check-all-vars check-k8s-artifact-id helm-generate helm-package-release image-import ## Imports the currently available chart into the cluster-local registry.
 	@if [[ ${STAGE} == "development" ]]; then \
 		echo "Import ${K8S_HELM_DEV_RELEASE_TGZ} into K8s cluster ${K3CES_REGISTRY_URL_PREFIX}..."; \
 		${BINARY_HELM} push ${K8S_HELM_DEV_RELEASE_TGZ} oci://${K3CES_REGISTRY_URL_PREFIX}/${K8S_HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
@@ -100,7 +97,7 @@ ${K8S_HELM_TARGET}/templates/$(ARTIFACT_ID)_$(VERSION).yaml: $(K8S_PRE_GENERATE_
 .PHONY: helm-package-release
 helm-package-release: helm-delete-existing-tgz ${K8S_HELM_RELEASE_TGZ} ## Generates and packages the helm chart with release URLs.
 
-${K8S_HELM_RELEASE_TGZ}: ${BINARY_HELM} helm-generate-chart $(K8S_POST_GENERATE_TARGETS) ## Generates and packages the helm chart with release URLs.
+${K8S_HELM_RELEASE_TGZ}: ${BINARY_HELM} helm-generate $(K8S_POST_GENERATE_TARGETS) ## Generates and packages the helm chart with release URLs.
 	@echo "Package generated helm chart"
 	@if [[ ${STAGE} == "development" ]]; then \
   		echo "WARNING: You are using a development environment" ; \

@@ -11,6 +11,13 @@ K8S_CRD_COMPONENT_SOURCE?=${K8S_HELM_CRD_RESSOURCES}/no-file-configured
 
 ##@ K8s - CRD targets
 
+.PHONY: manifests
+manifests: ${K8S_CRD_COMPONENT_SOURCE} ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+
+${K8S_CRD_COMPONENT_SOURCE}: ${CRD_SRC_GO} ${CONTROLLER_GEN}
+	@echo "Generate manifests..."
+	@$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=k8s/helm-crd/templates
+
 .PHONY: crd-helm-generate-chart ## Generates the Helm CRD chart
 crd-helm-generate-chart: validate-crd-chart validate-crd ${K8S_HELM_CRD_TARGET}/Chart.yaml
 
@@ -47,7 +54,7 @@ validate-crd:
     fi
 
 .PHONY: crd-helm-apply
-crd-helm-apply: ${BINARY_HELM} check-k8s-namespace-env-var crd-helm-generate-chart $(K8S_POST_GENERATE_TARGETS) ## Generates and installs the Helm CRD chart.
+crd-helm-apply: ${K8S_CRD_COMPONENT_SOURCE} ${BINARY_HELM} check-k8s-namespace-env-var crd-helm-generate-chart $(K8S_POST_GENERATE_TARGETS) ## Generates and installs the Helm CRD chart.
 	@echo "Apply generated Helm CRD chart"
 	@${BINARY_HELM} upgrade -i ${ARTIFACT_CRD_ID} ${K8S_HELM_CRD_TARGET} ${BINARY_HELM_ADDITIONAL_UPGR_ARGS} --namespace ${NAMESPACE}
 
@@ -57,7 +64,7 @@ crd-helm-delete: ${BINARY_HELM} check-k8s-namespace-env-var ## Uninstalls the cu
 	@${BINARY_HELM} uninstall ${ARTIFACT_CRD_ID} --namespace=${NAMESPACE} ${BINARY_HELM_ADDITIONAL_UNINST_ARGS} || true
 
 .PHONY: crd-helm-package
-crd-helm-package: ${BINARY_HELM} crd-helm-delete-existing-tgz ${K8S_HELM_CRD_RELEASE_TGZ} ## Generates and packages the Helm CRD chart.
+crd-helm-package: crd-helm-delete-existing-tgz ${K8S_HELM_CRD_RELEASE_TGZ} ## Generates and packages the Helm CRD chart.
 
 .PHONY: crd-helm-delete-existing-tgz
 crd-helm-delete-existing-tgz: ## Remove an existing Helm CRD package.
