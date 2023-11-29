@@ -26,7 +26,7 @@ spec:
           - --secure-listen-address=0.0.0.0:8443
           - --upstream=http://127.0.0.1:8080/
           - --v=0
-        image: {{ .Values.kubeRbacProxy.image.repository }}:{{ .Values.kubeRbacProxy.image.tag | default .Chart.AppVersion }}
+        image: {{ .Values.kubeRbacProxy.image.repository }}:{{ .Values.kubeRbacProxy.image.tag }}
         name: kube-rbac-proxy
         ports:
         - containerPort: 8443
@@ -81,7 +81,7 @@ spec:
             secretKeyRef:
               key: .dockerconfigjson
               name: k8s-dogu-operator-docker-registry
-        image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag | default .Chart.AppVersion }}
+        image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}
         imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy }}
         livenessProbe:
           httpGet:
