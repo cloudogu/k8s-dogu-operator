@@ -2,8 +2,19 @@
 # a collection of helpful functions to update coder workspaces for rapid development
 set -e -u -x -o pipefail
 
+function getContainerBin() {
+  if [ -x "$(command -v podman)" ]; then
+    echo "podman";
+  else
+    echo "docker";
+  fi
+}
+
 function getCoderUser() {
-  coder users show me -o json | jq -r '.username'
+  # check if coder is installed, so that there is no problem with build and release targets if this is called before
+  if [ -x "$(command -v coder)" ]; then
+    coder users show me -o json | jq -r '.username';
+  fi
 }
 
 function getAllWorkspaces() {
@@ -40,23 +51,27 @@ function generateUniqueWorkspaceName() {
 
 function buildImage() {
   local tag="$1"
-  local buildDir="${2:-./build}"
-  local secretDir="${3:-./secretArgs}"
+  local containerBuildDir="${2:-./container}"
+  local secretDir="${3:-./secrets}"
   local containerExec="${4:-podman}"
-  local secretArgs=()
+
   # include build-secrets if there are any
-  # shellcheck disable=SC2231
-  for secretPath in $secretDir/*; do
-    # do not match .sh scripts
-    [[ $secretPath == *.sh ]] && continue
-    local secretName
-    secretName=$(basename "$secretPath")
-    secretArgs+=("--secret=id=$secretName,src=$secretDir/$secretName")
-  done
+  local secretArgs=()
+  if [ -d "$secretDir" ]; then
+    # shellcheck disable=SC2231
+    for secretPath in $secretDir/*; do
+      # do not match .sh scripts
+      [[ $secretPath == *.sh ]] && continue
+      local secretName
+      secretName=$(basename "$secretPath")
+      secretArgs+=("--secret=id=$secretName,src=$secretDir/$secretName")
+    done
+  fi
+
   if [ "$containerExec" = "podman" ]; then
-    $containerExec build -t "$tag" --pull=newer "$buildDir" "${secretArgs[@]}"
+    $containerExec build -t "$tag" --pull=newer "$containerBuildDir" "${secretArgs[@]}"
   else
-    $containerExec build -t "$tag" --pull "$buildDir" "${secretArgs[@]}"
+    $containerExec build -t "$tag" --pull "$containerBuildDir" "${secretArgs[@]}"
   fi
 }
 

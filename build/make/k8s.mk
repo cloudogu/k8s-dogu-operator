@@ -6,12 +6,17 @@ endif
 
 ## Variables
 
+BINARY_YQ = $(UTILITY_BIN_PATH)/yq
+BINARY_YQ_4_VERSION?=v4.40.3
+BINARY_HELM = $(UTILITY_BIN_PATH)/helm
+BINARY_HELM_VERSION?=v3.13.0
+CONTROLLER_GEN = $(UTILITY_BIN_PATH)/controller-gen
+CONTROLLER_GEN_VERSION?=v0.13.0
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
-
-BINARY_YQ = $(UTILITY_BIN_PATH)/yq
 
 # The productive tag of the image
 IMAGE ?=
@@ -22,12 +27,12 @@ STAGE?=production
 K3S_CLUSTER_FQDN?=k3ces.local
 K3S_LOCAL_REGISTRY_PORT?=30099
 K3CES_REGISTRY_URL_PREFIX="${K3S_CLUSTER_FQDN}:${K3S_LOCAL_REGISTRY_PORT}"
+## Image URL to use all building/pushing image targets
+IMAGE_DEV?=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}
 
 # Variables for the temporary yaml files. These are used as template to generate a development resource containing
 # the current namespace and the dev image.
-K8S_RESOURCE_TEMP_FOLDER ?= $(WORKDIR)/$(TARGET_DIR)/k8s
-# K8S_RESOURCE_TEMP_YAML is used by non-component artifacts like k8s-dogus.
-K8S_RESOURCE_TEMP_YAML ?= $(K8S_RESOURCE_TEMP_FOLDER)/$(ARTIFACT_ID)_$(VERSION).yaml
+K8S_RESOURCE_TEMP_FOLDER ?= $(TARGET_DIR)/k8s
 
 ##@ K8s - Variables
 
@@ -102,8 +107,31 @@ __check_defined = \
     $(if $(value $1),, \
       $(error Undefined $1$(if $2, ($2))))
 
+##@ K8s - Download Utilities
+
 .PHONY: install-yq ## Installs the yq YAML editor.
 install-yq: ${BINARY_YQ}
 
-${BINARY_YQ}: $(UTILITY_BIN_PATH) ## Download yq locally if necessary.
-	$(call go-get-tool,$(BINARY_YQ),github.com/mikefarah/yq/v4@v4.25.1)
+${BINARY_YQ}: $(UTILITY_BIN_PATH)
+	$(call go-get-tool,$(BINARY_YQ),github.com/mikefarah/yq/v4@${BINARY_YQ_4_VERSION})
+
+##@ K8s - Download Kubernetes Utilities
+
+.PHONY: install-helm ## Download helm locally if necessary.
+install-helm: ${BINARY_HELM}
+
+${BINARY_HELM}: $(UTILITY_BIN_PATH)
+	$(call go-get-tool,$(BINARY_HELM),helm.sh/helm/v3/cmd/helm@${BINARY_HELM_VERSION})
+
+.PHONY: controller-gen
+controller-gen: ${CONTROLLER_GEN} ## Download controller-gen locally if necessary.
+
+${CONTROLLER_GEN}:
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@${CONTROLLER_GEN_VERSION})
+
+ENVTEST = $(UTILITY_BIN_PATH)/setup-envtest
+.PHONY: envtest
+envtest: ${ENVTEST} ## Download envtest-setup locally if necessary.
+
+${ENVTEST}:
+	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)

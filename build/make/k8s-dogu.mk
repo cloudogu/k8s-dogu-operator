@@ -18,7 +18,7 @@ include $(BUILD_DIR)/make/k8s.mk
 ##@ K8s - EcoSystem
 
 .PHONY: build
-build: image-import install-dogu-descriptor k8s-apply ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
+build: image-import install-dogu-descriptor create-dogu-resource apply-dogu-resource ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 ##@ K8s - Dogu - Resource
 
@@ -26,13 +26,18 @@ build: image-import install-dogu-descriptor k8s-apply ## Builds a new version of
 K8S_RESOURCE_PRODUCTIVE_FOLDER ?= $(WORKDIR)/k8s
 K8S_RESOURCE_PRODUCTIVE_YAML ?= $(K8S_RESOURCE_PRODUCTIVE_FOLDER)/$(ARTIFACT_ID).yaml
 K8S_RESOURCE_DOGU_CR_TEMPLATE_YAML ?= $(BUILD_DIR)/make/k8s-dogu.tpl
+K8S_RESOURCE_DOGU ?= $(K8S_RESOURCE_TEMP_FOLDER)/$(ARTIFACT_ID).yaml
 # The pre generation script creates a k8s resource yaml containing the dogu crd and the content from the k8s folder.
-.PHONY: k8s-create-temporary-resource
- k8s-create-temporary-resource: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER)
-	@echo "Generating temporary K8s resources $(K8S_RESOURCE_TEMP_YAML)..."
-	@rm -f $(K8S_RESOURCE_TEMP_YAML)
-	@sed "s|NAMESPACE|$(ARTIFACT_NAMESPACE)|g" $(K8S_RESOURCE_DOGU_CR_TEMPLATE_YAML) | sed "s|NAME|$(ARTIFACT_ID)|g"  | sed "s|VERSION|$(VERSION)|g" >> $(K8S_RESOURCE_TEMP_YAML)
+.PHONY: create-dogu-resource
+create-dogu-resource: ${BINARY_YQ} $(K8S_RESOURCE_TEMP_FOLDER)
+	@echo "Generating temporary K8s resources $(K8S_RESOURCE_DOGU)..."
+	@rm -f $(K8S_RESOURCE_DOGU)
+	@sed "s|NAMESPACE|$(ARTIFACT_NAMESPACE)|g" $(K8S_RESOURCE_DOGU_CR_TEMPLATE_YAML) | sed "s|NAME|$(ARTIFACT_ID)|g"  | sed "s|VERSION|$(VERSION)|g" >> $(K8S_RESOURCE_DOGU)
 	@echo "Done."
+
+.PHONY: apply-dogu-resource
+apply-dogu-resource:
+	@kubectl apply -f "$(K8S_RESOURCE_DOGU)"
 
 ##@ K8s - Dogu
 
