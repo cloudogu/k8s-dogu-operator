@@ -13,7 +13,7 @@ PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
 K8S_COMPONENT_TARGET_VALUES = ${HELM_TARGET_DIR}/values.yaml
 CRD_SOURCE = ${HELM_CRD_SOURCE_DIR}/templates/k8s.cloudogu.com_dogus.yaml
-HELM_PRE_APPLY_TARGETS = template-stage template-image-pull-policy template-log-level template-image
+HELM_PRE_APPLY_TARGETS = template-stage template-image-pull-policy template-log-level
 CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
 HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
 HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo
@@ -78,13 +78,6 @@ template-image-pull-policy: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
   		echo "Setting PULL POLICY to always!" ;\
 		$(BINARY_YQ) -i e ".controllerManager.imagePullPolicy=\"Always\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-	fi
-
-.PHONY: template-image
-template-image: $(BINARY_YQ)
-	@if [[ ${STAGE} == "development" ]]; then \
-  		echo "Setting image to in values!" ;\
-		$(BINARY_YQ) -i e ".controllerManager.image.repository=\"${IMAGE_DEV}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 	fi
 
 .PHONY: kill-operator-pod
