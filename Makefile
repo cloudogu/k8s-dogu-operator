@@ -30,7 +30,7 @@ include build/make/digital-signature.mk
 include build/make/k8s-controller.mk
 
 .PHONY: build-boot
-build-boot: k8s-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
+build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 .PHONY: crd-add-labels
 crd-add-labels: $(BINARY_YQ)
