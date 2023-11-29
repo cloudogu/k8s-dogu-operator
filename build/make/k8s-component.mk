@@ -8,36 +8,38 @@ BINARY_HELM_ADDITIONAL_UNINST_ARGS?=
 BINARY_HELM_ADDITIONAL_UPGR_ARGS?=
 
 K8S_HELM_TARGET ?= $(K8S_RESOURCE_TEMP_FOLDER)/helm
-K8S_HELM_RESSOURCES ?= k8s/helm
+K8S_HELM_SOURCE_DIR ?= k8s/helm
 K8S_HELM_RELEASE_TGZ=${K8S_HELM_TARGET}/${ARTIFACT_ID}-${VERSION}.tgz
 K8S_HELM_DEV_RELEASE_TGZ=${K8S_HELM_TARGET}/${ARTIFACT_ID}-${COMPONENT_DEV_VERSION}.tgz
 K8S_HELM_ARTIFACT_NAMESPACE?=k8s
 
 K8S_RESOURCE_COMPONENT ?= "${K8S_RESOURCE_TEMP_FOLDER}/component-${ARTIFACT_ID}-${VERSION}.yaml"
 K8S_RESOURCE_COMPONENT_CR_TEMPLATE_YAML ?= $(BUILD_DIR)/make/k8s-component.tpl
+# HELM_PRE_GENERATE_TARGETS allows to execute targets that affect Helm source files AND Helm target files.
 HELM_PRE_GENERATE_TARGETS ?=
-HELM_PRE_APPLY_TARGETS ?=
+# HELM_POST_GENERATE_TARGETS allows to execute targets that only affect Helm target files.
 HELM_POST_GENERATE_TARGETS ?=
+HELM_PRE_APPLY_TARGETS ?=
 COMPONENT_PRE_APPLY_TARGETS ?=
 
 ##@ K8s - Helm general
 .PHONY: helm-init-chart
 helm-init-chart: ${BINARY_HELM} ## Creates a Chart.yaml-template with zero values
-	@echo "Initialize ${K8S_HELM_RESSOURCES}/Chart.yaml..."
-	@mkdir -p ${K8S_HELM_RESSOURCES}/tmp/
-	@${BINARY_HELM} create ${K8S_HELM_RESSOURCES}/tmp/${ARTIFACT_ID}
-	@cp ${K8S_HELM_RESSOURCES}/tmp/${ARTIFACT_ID}/Chart.yaml ${K8S_HELM_RESSOURCES}/
-	@rm -dr ${K8S_HELM_RESSOURCES}/tmp
-	@sed -i 's/appVersion: ".*"/appVersion: "0.0.0-replaceme"/' ${K8S_HELM_RESSOURCES}/Chart.yaml
-	@sed -i 's/version: .*/version: 0.0.0-replaceme/' ${K8S_HELM_RESSOURCES}/Chart.yaml
+	@echo "Initialize ${K8S_HELM_SOURCE_DIR}/Chart.yaml..."
+	@mkdir -p ${K8S_HELM_SOURCE_DIR}/tmp/
+	@${BINARY_HELM} create ${K8S_HELM_SOURCE_DIR}/tmp/${ARTIFACT_ID}
+	@cp ${K8S_HELM_SOURCE_DIR}/tmp/${ARTIFACT_ID}/Chart.yaml ${K8S_HELM_SOURCE_DIR}/
+	@rm -dr ${K8S_HELM_SOURCE_DIR}/tmp
+	@sed -i 's/appVersion: ".*"/appVersion: "0.0.0-replaceme"/' ${K8S_HELM_SOURCE_DIR}/Chart.yaml
+	@sed -i 's/version: .*/version: 0.0.0-replaceme/' ${K8S_HELM_SOURCE_DIR}/Chart.yaml
 
 .PHONY: helm-generate
-helm-generate: ${K8S_HELM_TARGET}/Chart.yaml ## Generates the final helm chart.
+helm-generate: ${K8S_HELM_TARGET}/Chart.yaml ${HELM_POST_GENERATE_TARGETS} ## Generates the final helm chart.
 
 # this is phony because of it is easier this way than the makefile-single-run way
 .PHONY: ${K8S_HELM_TARGET}/Chart.yaml
-${K8S_HELM_TARGET}/Chart.yaml: $(K8S_RESOURCE_TEMP_FOLDER) validate-chart copy-helm-templates ${HELM_PRE_GENERATE_TARGETS}
-	@echo "Generate helm chart..."
+${K8S_HELM_TARGET}/Chart.yaml: $(K8S_RESOURCE_TEMP_FOLDER) validate-chart ${HELM_PRE_GENERATE_TARGETS} copy-helm-files
+	@echo "Generate Helm chart..."
 	@if [[ ${STAGE} == "development" ]]; then \
   	  sed -i 's/appVersion: "0.0.0-replaceme"/appVersion: '$(COMPONENT_DEV_VERSION)'/' ${K8S_HELM_TARGET}/Chart.yaml; \
   	  sed -i 's/version: 0.0.0-replaceme/version:  '$(COMPONENT_DEV_VERSION)'/' ${K8S_HELM_TARGET}/Chart.yaml; \
@@ -46,23 +48,23 @@ ${K8S_HELM_TARGET}/Chart.yaml: $(K8S_RESOURCE_TEMP_FOLDER) validate-chart copy-h
       sed -i 's/version: 0.0.0-replaceme/version: ${VERSION}/' ${K8S_HELM_TARGET}/Chart.yaml; \
     fi
 
-.PHONY: copy-helm-templates
-copy-helm-templates:
+.PHONY: copy-helm-files
+copy-helm-files:
 	@echo "Copying Helm files..."
 	@rm -drf ${K8S_HELM_TARGET}  # delete folder, so the chart is newly created.
 	@mkdir -p ${K8S_HELM_TARGET}/templates
-	@cp -r ${K8S_HELM_RESSOURCES}/** ${K8S_HELM_TARGET}
+	@cp -r ${K8S_HELM_SOURCE_DIR}/** ${K8S_HELM_TARGET}
 
 .PHONY: validate-chart
 validate-chart:
-	@if [ ! -f ${K8S_HELM_RESSOURCES}/Chart.yaml ] ; then \
-       echo "Could not find source Helm chart under \$${K8S_HELM_RESSOURCES}/Chart.yaml" ; \
+	@if [ ! -f ${K8S_HELM_SOURCE_DIR}/Chart.yaml ] ; then \
+       echo "Could not find source Helm chart under \$${K8S_HELM_SOURCE_DIR}/Chart.yaml" ; \
        exit 22 ; \
     fi
 
 .PHONY: helm-update-dependencies
 helm-update-dependencies: ${BINARY_HELM} ## Update Helm chart dependencies
-	@$(BINARY_HELM) dependency update "${K8S_HELM_RESSOURCES}"
+	@$(BINARY_HELM) dependency update "${K8S_HELM_SOURCE_DIR}"
 
 ##@ K8s - Helm dev targets
 

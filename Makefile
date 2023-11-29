@@ -10,11 +10,13 @@ LINT_VERSION=v1.52.1
 K8S_RUN_PRE_TARGETS = install setup-etcd-port-forward
 PRE_COMPILE = generate-deepcopy
 
-K8S_COMPONENT_TARGET_VALUES = ${WORKDIR}/${TARGET_DIR}/k8s/helm/values.yaml
-K8S_CRD_COMPONENT_SOURCE = ${WORKDIR}/k8s/helm-crd/templates/k8s.cloudogu.com_dogus.yaml
+K8S_COMPONENT_SOURCE_VALUES = k8s/helm/values.yaml
+K8S_COMPONENT_TARGET_VALUES = ${TARGET_DIR}/k8s/helm/values.yaml
+K8S_CRD_COMPONENT_SOURCE = k8s/helm-crd/templates/k8s.cloudogu.com_dogus.yaml
 K8S_PRE_GENERATE_TARGETS = template-stage template-image-pull-policy template-log-level template-image
-HELM_PRE_APPLY_TARGETS =
 K8S_CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
+HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
+HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo
 
 include build/make/variables.mk
 include build/make/self-update.mk
@@ -40,6 +42,18 @@ crd-add-labels: $(BINARY_YQ)
 crd-copy-for-go-embedding:
 	@echo "Copy CRD to api/v1/"
 	@cp ${K8S_CRD_COMPONENT_SOURCE} api/v1/
+
+.PHONY: helm-values-update-image-version
+helm-values-update-image-version: $(BINARY_YQ)
+	@echo "Updating the image version in source values.yaml to ${VERSION}..."
+	@$(BINARY_YQ) -i e ".controllerManager.image.tag = \"${VERSION}\"" ${K8S_COMPONENT_SOURCE_VALUES}
+
+.PHONY: helm-values-replace-image-repo
+helm-values-replace-image-repo: $(BINARY_YQ)
+	@if [[ ${STAGE} == "development" ]]; then \
+      		echo "Setting dev image repo in target values.yaml!" ;\
+    		$(BINARY_YQ) -i e ".controllerManager.image.repository=\"${IMAGE_DEV}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+    	fi
 
 ##@ Deployment
 
