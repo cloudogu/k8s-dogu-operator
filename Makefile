@@ -10,11 +10,11 @@ LINT_VERSION=v1.52.1
 K8S_RUN_PRE_TARGETS = install setup-etcd-port-forward
 PRE_COMPILE = generate-deepcopy
 
-K8S_COMPONENT_SOURCE_VALUES = k8s/helm/values.yaml
-K8S_COMPONENT_TARGET_VALUES = ${TARGET_DIR}/k8s/helm/values.yaml
-K8S_CRD_COMPONENT_SOURCE = k8s/helm-crd/templates/k8s.cloudogu.com_dogus.yaml
-K8S_PRE_GENERATE_TARGETS = template-stage template-image-pull-policy template-log-level template-image
-K8S_CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
+K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
+K8S_COMPONENT_TARGET_VALUES = ${HELM_TARGET_DIR}/values.yaml
+CRD_SOURCE = ${HELM_CRD_SOURCE_DIR}/templates/k8s.cloudogu.com_dogus.yaml
+HELM_PRE_APPLY_TARGETS = template-stage template-image-pull-policy template-log-level template-image
+CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
 HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
 HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo
 
@@ -35,23 +35,23 @@ build-boot: k8s-apply kill-operator-pod ## Builds a new version of the dogu and 
 .PHONY: crd-add-labels
 crd-add-labels: $(BINARY_YQ)
 	@echo "Adding labels to CRD..."
-	@$(BINARY_YQ) -i e ".metadata.labels |= ({\"app\": \"ces\"} + .)" ${K8S_CRD_COMPONENT_SOURCE}
-	@$(BINARY_YQ) -i e ".metadata.labels |= ({\"app.kubernetes.io/name\": \"k8s-dogu-operator\"} + .)" ${K8S_CRD_COMPONENT_SOURCE}
+	@$(BINARY_YQ) -i e ".metadata.labels.app = \"ces\"" ${CRD_SOURCE}
+	@$(BINARY_YQ) -i e ".metadata.labels.\"app.kubernetes.io/name\" = \"k8s-dogu-operator\"" ${CRD_SOURCE}
 
 .PHONY: crd-copy-for-go-embedding
 crd-copy-for-go-embedding:
 	@echo "Copy CRD to api/v1/"
-	@cp ${K8S_CRD_COMPONENT_SOURCE} api/v1/
+	@cp ${CRD_SOURCE} api/v1/
 
 .PHONY: helm-values-update-image-version
 helm-values-update-image-version: $(BINARY_YQ)
-	@echo "Updating the image version in source values.yaml to ${VERSION}..."
+	@echo "Updating the image version in source ${K8S_COMPONENT_SOURCE_VALUES} to ${VERSION}..."
 	@$(BINARY_YQ) -i e ".controllerManager.image.tag = \"${VERSION}\"" ${K8S_COMPONENT_SOURCE_VALUES}
 
 .PHONY: helm-values-replace-image-repo
 helm-values-replace-image-repo: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
-      		echo "Setting dev image repo in target values.yaml!" ;\
+      		echo "Setting dev image repo in target ${K8S_COMPONENT_TARGET_VALUES}!" ;\
     		$(BINARY_YQ) -i e ".controllerManager.image.repository=\"${IMAGE_DEV}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
     	fi
 
@@ -84,7 +84,7 @@ template-image-pull-policy: $(BINARY_YQ)
 template-image: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
   		echo "Setting image to in values!" ;\
-		$(BINARY_YQ) -i e ".controllerManager.image=\"${IMAGE_DEV}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".controllerManager.image.repository=\"${IMAGE_DEV}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 	fi
 
 .PHONY: kill-operator-pod

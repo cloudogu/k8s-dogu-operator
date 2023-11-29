@@ -6,8 +6,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.13.0
   name: dogus.k8s.cloudogu.com
   labels:
-    app.kubernetes.io/name: k8s-dogu-operator
     app: ces
+    app.kubernetes.io/name: k8s-dogu-operator
 spec:
   group: k8s.cloudogu.com
   names:
