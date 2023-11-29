@@ -1,12 +1,20 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
 VERSION=0.38.0
-## Image URL to use all building/pushing image targets
-IMAGE_DEV=${K3CES_REGISTRY_URL_PREFIX}/${ARTIFACT_ID}:${VERSION}
+
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG=1.21
 MAKEFILES_VERSION=8.5.0
 LINT_VERSION=v1.52.1
+
+K8S_RUN_PRE_TARGETS = install setup-etcd-port-forward
+PRE_COMPILE = generate-deepcopy
+
+K8S_COMPONENT_TARGET_VALUES = ${WORKDIR}/${TARGET_DIR}/k8s/helm/values.yaml
+K8S_CRD_COMPONENT_SOURCE = ${WORKDIR}/k8s/helm-crd/templates/k8s.cloudogu.com_dogus.yaml
+K8S_PRE_GENERATE_TARGETS = template-stage template-image-pull-policy template-log-level template-image
+HELM_PRE_APPLY_TARGETS =
+K8S_CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
 
 include build/make/variables.mk
 include build/make/self-update.mk
@@ -17,27 +25,21 @@ include build/make/test-unit.mk
 include build/make/static-analysis.mk
 include build/make/clean.mk
 include build/make/digital-signature.mk
-
-K8S_RUN_PRE_TARGETS=install setup-etcd-port-forward
-PRE_COMPILE=generate
-
-K8S_COMPONENT_TARGET_VALUES=${WORKDIR}/${TARGET_DIR}/k8s/helm/values.yaml
-CRD_SRC_GO=$(WORKDIR)/api/v1/dogu_types.go
-K8S_COPY_CRD_TARGET_DIR=$(WORKDIR)/api/v1
-K8S_CRD_COMPONENT_SOURCE=${WORKDIR}/k8s/helm-crd/templates/k8s.cloudogu.com_dogus.yaml
-K8S_PRE_GENERATE_TARGETS=template-stage template-dev-only-image-pull-policy template-log-level
-
 include build/make/k8s-controller.mk
 
 .PHONY: build-boot
-build-boot: image-import k8s-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
+build-boot: k8s-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
-##@ Controller specific targets
+.PHONY: crd-add-labels
+crd-add-labels: $(BINARY_YQ)
+	@echo "Adding labels to CRD..."
+	@$(BINARY_YQ) -i e ".metadata.labels |= ({\"app\": \"ces\"} + .)" ${K8S_CRD_COMPONENT_SOURCE}
+	@$(BINARY_YQ) -i e ".metadata.labels |= ({\"app.kubernetes.io/name\": \"k8s-dogu-operator\"} + .)" ${K8S_CRD_COMPONENT_SOURCE}
 
-.PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy* method implementations.
-	@echo "Auto-generate deepcopy functions..."
-	@$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+.PHONY: crd-copy-for-go-embedding
+crd-copy-for-go-embedding:
+	@echo "Copy CRD to api/v1/"
+	@cp ${K8S_CRD_COMPONENT_SOURCE} api/v1/
 
 ##@ Deployment
 
@@ -47,18 +49,29 @@ setup-etcd-port-forward:
 
 .PHONY: template-stage
 template-stage: $(BINARY_YQ)
-	@echo "Setting STAGE env in deployment to ${STAGE}!"
-	@$(BINARY_YQ) -i e ".controllerManager.env.stage=\"${STAGE}\"" ${K8S_COMPONENT_TARGET_VALUES}
+	@if [[ ${STAGE} == "development" ]]; then \
+  		echo "Setting STAGE env in deployment to ${STAGE}!" ;\
+		$(BINARY_YQ) -i e ".controllerManager.env.stage=\"${STAGE}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+	fi
 
 .PHONY: template-log-level
 template-log-level: $(BINARY_YQ)
 	@echo "Setting LOG_LEVEL env in deployment to ${LOG_LEVEL}!"
 	@$(BINARY_YQ) -i e ".controllerManager.env.logLevel=\"${LOG_LEVEL}\"" ${K8S_COMPONENT_TARGET_VALUES}
 
-.PHONY: template-dev-only-image-pull-policy
-template-dev-only-image-pull-policy: $(BINARY_YQ)
-	@echo "Setting PULL POLICY to always!"
-	@$(BINARY_YQ) -i e ".controllerManager.imagePullPolicy=\"Always\"" ${K8S_COMPONENT_TARGET_VALUES}
+.PHONY: template-image-pull-policy
+template-image-pull-policy: $(BINARY_YQ)
+	@if [[ ${STAGE} == "development" ]]; then \
+  		echo "Setting PULL POLICY to always!" ;\
+		$(BINARY_YQ) -i e ".controllerManager.imagePullPolicy=\"Always\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+	fi
+
+.PHONY: template-image
+template-image: $(BINARY_YQ)
+	@if [[ ${STAGE} == "development" ]]; then \
+  		echo "Setting image to in values!" ;\
+		$(BINARY_YQ) -i e ".controllerManager.image=\"${IMAGE_DEV}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+	fi
 
 .PHONY: kill-operator-pod
 kill-operator-pod:
