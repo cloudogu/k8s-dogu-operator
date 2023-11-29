@@ -3,7 +3,7 @@ additionalImages:
   chownInitImage: busybox:1.36
 controllerManager:
   image:
-    repository: k3ces.local:30099/k8s-dogu-operator
+    repository: cloudogu/k8s-dogu-operator
     tag: 0.38.0
   imagePullPolicy: Always
   env:
