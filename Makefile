@@ -45,13 +45,13 @@ crd-copy-for-go-embedding:
 
 .PHONY: helm-values-update-image-version
 helm-values-update-image-version: $(BINARY_YQ)
-	@echo "Updating the image version in source ${K8S_COMPONENT_SOURCE_VALUES} to ${VERSION}..."
+	@echo "Updating the image version in source value.yaml to ${VERSION}..."
 	@$(BINARY_YQ) -i e ".controllerManager.image.tag = \"${VERSION}\"" ${K8S_COMPONENT_SOURCE_VALUES}
 
 .PHONY: helm-values-replace-image-repo
 helm-values-replace-image-repo: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
-      		echo "Setting dev image repo in target ${K8S_COMPONENT_TARGET_VALUES}!" ;\
+      		echo "Setting dev image repo in target value.yaml!" ;\
     		$(BINARY_YQ) -i e ".controllerManager.image.repository=\"${IMAGE_DEV}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
     	fi
 
