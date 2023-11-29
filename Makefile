@@ -36,7 +36,7 @@ build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version 
 crd-add-labels: $(BINARY_YQ)
 	@echo "Adding labels to CRD..."
 	@$(BINARY_YQ) -i e ".metadata.labels.app = \"ces\"" ${CRD_SOURCE}
-	@$(BINARY_YQ) -i e ".metadata.labels.\"app.kubernetes.io/name\" = \"k8s-dogu-operator\"" ${CRD_SOURCE}
+	@$(BINARY_YQ) -i e ".metadata.labels.\"app.kubernetes.io/name\" = \"${ARTIFACT_ID}\"" ${CRD_SOURCE}
 
 .PHONY: crd-copy-for-go-embedding
 crd-copy-for-go-embedding:
@@ -83,7 +83,7 @@ template-image-pull-policy: $(BINARY_YQ)
 .PHONY: kill-operator-pod
 kill-operator-pod:
 	@echo "Restarting k8s-dogu-operator!"
-	@kubectl -n ${NAMESPACE} delete pods -l 'app.kubernetes.io/name=k8s-dogu-operator'
+	@kubectl -n ${NAMESPACE} delete pods -l 'app.kubernetes.io/name=${ARTIFACT_ID}'
 
 ##@ Debug
 
