@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('github.com/cloudogu/ces-build-lib@1.67.0')
+@Library('github.com/cloudogu/ces-build-lib@1.68.0')
 import com.cloudogu.ces.cesbuildlib.*
 
 // Creating necessary git objects
@@ -66,18 +66,21 @@ node('docker') {
                             }
 
                             stage('Generate k8s Resources') {
-                                make 'k8s-create-temporary-resource'
-                                archiveArtifacts 'target/*.yaml'
+                                make 'crd-helm-generate'
+                                make 'helm-generate'
+                                archiveArtifacts 'target/k8s/**/*'
+                            }
+
+                            stage("Lint helm") {
+                                make 'crd-helm-lint'
+                                make 'helm-lint'
                             }
                         }
-
-        stage("Lint k8s Resources") {
-            stageLintK8SResources()
-        }
 
         stage('SonarQube') {
             stageStaticAnalysisSonarQube()
         }
+
 
         K3d k3d = new K3d(this, "${WORKSPACE}", "${WORKSPACE}/k3d", env.PATH)
 
@@ -93,12 +96,12 @@ node('docker') {
                 imageName = k3d.buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion)
             }
 
-            GString sourceDeploymentYaml = "target/${repositoryName}_${controllerVersion}.yaml"
             stage('Update development resources') {
-                docker.image('mikefarah/yq:4.22.1')
+                def repository = imageName.substring(0, imageName.lastIndexOf(":"))
+                docker.image("golang:${goVersion}")
                         .mountJenkinsUser()
                         .inside("--volume ${WORKSPACE}:/workdir -w /workdir") {
-                            sh "yq -i '(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.name == \"manager\")).image=\"${imageName}\"' ${sourceDeploymentYaml}"
+                            sh "IMAGE_DEV=${repository} make helm-values-replace-image-repo"
                         }
             }
 
@@ -112,7 +115,8 @@ node('docker') {
             }
 
             stage('Deploy Manager') {
-                k3d.kubectl("apply -f ${sourceDeploymentYaml}")
+                k3d.helm("install ${repositoryName}-crd ${helmCRDChartDir}")
+                k3d.helm("install ${repositoryName} ${helmChartDir}")
             }
 
             stage('Wait for Ready Rollout') {
@@ -134,8 +138,8 @@ node('docker') {
 void gitWithCredentials(String command) {
     withCredentials([usernamePassword(credentialsId: 'cesmarvin', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
         sh(
-                script: "git -c credential.helper=\"!f() { echo username='\$GIT_AUTH_USR'; echo password='\$GIT_AUTH_PSW'; }; f\" " + command,
-                returnStdout: true
+            script: "git -c credential.helper=\"!f() { echo username='\$GIT_AUTH_USR'; echo password='\$GIT_AUTH_PSW'; }; f\" " + command,
+            returnStdout: true
         )
     }
 }
@@ -214,20 +218,9 @@ void stageAutomaticRelease() {
         }
 
         stage('Regenerate resources for release') {
-            new Docker(this)
-                    .image("golang:${goVersion}")
-                    .mountJenkinsUser()
-                    .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
-                            {
-                                make 'k8s-create-temporary-resource'
-                            }
-        }
-
-        stage('Push to Registry') {
-            GString targetOperatorResourceYaml = "target/${repositoryName}_${controllerVersion}.yaml"
-
-            DoguRegistry registry = new DoguRegistry(this)
-            registry.pushK8sYaml(targetOperatorResourceYaml, repositoryName, "k8s", "${controllerVersion}")
+            make 'crd-helm-generate'
+            make 'helm-generate'
+            archiveArtifacts 'target/k8s/**/*'
         }
 
         stage('Push Helm chart to Harbor') {
@@ -236,7 +229,6 @@ void stageAutomaticRelease() {
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
-                            // Package operator-chart & crd-chart
                             make 'helm-package-release'
                             make 'crd-helm-package'
 
