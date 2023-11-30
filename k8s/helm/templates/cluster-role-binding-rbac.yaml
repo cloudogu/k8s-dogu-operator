@@ -3,7 +3,7 @@ kind: ClusterRoleBinding
 metadata:
   name: '{{ include "k8s-dogu-operator.name" . }}-cluster-role-binding'
   labels:
-  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

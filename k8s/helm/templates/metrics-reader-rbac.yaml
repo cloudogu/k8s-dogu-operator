@@ -3,7 +3,7 @@ kind: ClusterRole
 metadata:
   name: {{ include "k8s-dogu-operator.name" . }}-metrics-reader
   labels:
-  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
 - nonResourceURLs:
   - /metrics

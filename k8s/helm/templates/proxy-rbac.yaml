@@ -3,7 +3,7 @@ kind: Role
 metadata:
   name: {{ include "k8s-dogu-operator.name" . }}-proxy-role
   labels:
-  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
 - apiGroups:
   - authentication.k8s.io

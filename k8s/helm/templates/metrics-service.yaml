@@ -4,7 +4,7 @@ metadata:
   name: {{ include "k8s-dogu-operator.name" . }}-controller-manager-metrics-service
   labels:
     control-plane: controller-manager
-  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 spec:
   ports:
     - name: https

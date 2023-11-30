@@ -3,7 +3,7 @@ kind: Role
 metadata:
   name: {{ include "k8s-dogu-operator.name" . }}-manager-role
   labels:
-  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
 - apiGroups:
   - '*'
@@ -17,7 +17,7 @@ kind: RoleBinding
 metadata:
   name: {{ include "k8s-dogu-operator.name" . }}-manager-rolebinding
   labels:
-  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

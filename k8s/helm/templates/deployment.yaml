@@ -4,13 +4,13 @@ metadata:
   name: {{ include "k8s-dogu-operator.name" . }}-controller-manager
   labels:
     control-plane: controller-manager
-  {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
       control-plane: controller-manager
-    {{- include "k8s-dogu-operator.selectorLabels" . | nindent 6 }}
+      {{- include "k8s-dogu-operator.selectorLabels" . | nindent 6 }}
   strategy:
     type: Recreate
   template:
@@ -19,7 +19,7 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: controller-manager
-      {{- include "k8s-dogu-operator.selectorLabels" . | nindent 8 }}
+        {{- include "k8s-dogu-operator.selectorLabels" . | nindent 8 }}
     spec:
       containers:
       - args:
@@ -33,10 +33,8 @@ spec:
           name: https
           protocol: TCP
         resources:
-          limits: {{- toYaml .Values.kubeRbacProxy.resourceLimits | nindent
-          12 }}
-          requests: {{- toYaml .Values.kubeRbacProxy.resourceRequests | nindent
-          12 }}
+          limits: {{- toYaml .Values.kubeRbacProxy.resourceLimits | nindent 12 }}
+          requests: {{- toYaml .Values.kubeRbacProxy.resourceRequests | nindent 12 }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -82,7 +80,7 @@ spec:
               key: .dockerconfigjson
               name: k8s-dogu-operator-docker-registry
         image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}
-        imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent"}}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -97,10 +95,8 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 10
         resources:
-          limits: {{- toYaml .Values.controllerManager.resourceLimits | nindent
-          12 }}
-          requests: {{- toYaml .Values.controllerManager.resourceRequests | nindent
-          12 }}
+          limits: {{- toYaml .Values.controllerManager.resourceLimits | nindent 12 }}
+          requests: {{- toYaml .Values.controllerManager.resourceRequests | nindent 12 }}
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
