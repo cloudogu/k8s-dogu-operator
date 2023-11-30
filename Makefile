@@ -7,7 +7,7 @@ GOTAG=1.21
 MAKEFILES_VERSION=9.0.0
 LINT_VERSION=v1.52.1
 
-K8S_RUN_PRE_TARGETS = install setup-etcd-port-forward
+K8S_RUN_PRE_TARGETS = setup-etcd-port-forward
 PRE_COMPILE = generate-deepcopy
 
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
