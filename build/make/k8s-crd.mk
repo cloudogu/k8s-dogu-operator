@@ -80,6 +80,10 @@ crd-helm-chart-import: check-all-vars check-k8s-artifact-id crd-helm-generate cr
     fi
 	@echo "Done."
 
+.PHONY: crd-helm-lint
+crd-helm-lint: $(BINARY_HELM) crd-helm-generate
+	@$(BINARY_HELM) lint "${HELM_CRD_TARGET_DIR}"
+
 .PHONY: crd-component-generate
 crd-component-generate: ${K8S_RESOURCE_TEMP_FOLDER} ## Generate the CRD component YAML resource.
 	@echo "Generating temporary K8s crd-component resource: ${K8S_RESOURCE_CRD_COMPONENT}"

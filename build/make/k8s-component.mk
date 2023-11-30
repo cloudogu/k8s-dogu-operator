@@ -113,10 +113,16 @@ helm-delete-existing-tgz: ## Remove an existing Helm package from the target dir
 	@echo "Delete ${HELM_RELEASE_TGZ}*"
 	@rm -f ${HELM_RELEASE_TGZ}*
 
+##@ K8s - Helm lint targets
+
+.PHONY: helm-lint
+helm-lint: $(BINARY_HELM) helm-generate
+	@$(BINARY_HELM) lint "${HELM_TARGET_DIR}"
+
 ##@ K8s - Component dev targets
 
 .PHONY: component-generate
-component-generate: ${K8S_RESOURCE_TEMP_FOLDER} ${K8S_RESOURCE_COMPONENT_CR_TEMPLATE_YAML} ${COMPONENT_POST_GENERATE_TARGETS} ## Generate the component yaml resource.
+component-generate: ${K8S_RESOURCE_COMPONENT_CR_TEMPLATE_YAML} ${COMPONENT_POST_GENERATE_TARGETS} ## Generate the component yaml resource.
 
 ${K8S_RESOURCE_COMPONENT_CR_TEMPLATE_YAML}: ${K8S_RESOURCE_TEMP_FOLDER}
 	@echo "Generating temporary K8s component resource: ${K8S_RESOURCE_COMPONENT}"
