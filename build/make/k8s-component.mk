@@ -75,7 +75,7 @@ helm-update-dependencies: ${BINARY_HELM} ## Update Helm chart dependencies
 .PHONY: helm-apply
 helm-apply: ${BINARY_HELM} check-k8s-namespace-env-var ${IMAGE_IMPORT_TARGET} helm-generate ${HELM_PRE_APPLY_TARGETS} ## Generates and installs the Helm chart.
 	@echo "Apply generated helm chart"
-	${BINARY_HELM} upgrade -i ${ARTIFACT_ID} ${HELM_TARGET_DIR} ${BINARY_HELM_ADDITIONAL_UPGR_ARGS} --namespace ${NAMESPACE}
+	@${BINARY_HELM} upgrade -i ${ARTIFACT_ID} ${HELM_TARGET_DIR} ${BINARY_HELM_ADDITIONAL_UPGR_ARGS} --namespace ${NAMESPACE}
 
 .PHONY: helm-delete
 helm-delete: ${BINARY_HELM} check-k8s-namespace-env-var ## Uninstalls the current Helm chart.
