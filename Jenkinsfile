@@ -26,6 +26,9 @@ registry_namespace = "k8s"
 productionReleaseBranch = "main"
 developmentBranch = "develop"
 currentBranch = "${env.BRANCH_NAME}"
+k8sTargetDir = "target/k8s"
+helmChartDir = "${k8sTargetDir}/helm"
+helmCRDChartDir = "${k8sTargetDir}/helm-crd"
 
 node('docker') {
     timestamps {
@@ -68,7 +71,7 @@ node('docker') {
                             stage('Generate k8s Resources') {
                                 make 'crd-helm-generate'
                                 make 'helm-generate'
-                                archiveArtifacts 'target/k8s/**/*'
+                                archiveArtifacts "${k8sTargetDir}/**/*"
                             }
 
                             stage("Lint helm") {
@@ -115,9 +118,6 @@ node('docker') {
             }
 
             stage('Deploy Manager') {
-                helmTargetDir = "target/k8s"
-                helmChartDir = "${helmTargetDir}/helm"
-                helmCRDChartDir = "${helmTargetDir}/helm-crd"
                 k3d.helm("install ${repositoryName}-crd ${helmCRDChartDir}")
                 k3d.helm("install ${repositoryName} ${helmChartDir}")
             }
@@ -223,7 +223,7 @@ void stageAutomaticRelease() {
         stage('Regenerate resources for release') {
             make 'crd-helm-generate'
             make 'helm-generate'
-            archiveArtifacts 'target/k8s/**/*'
+            archiveArtifacts "${k8sTargetDir}/**/*"
         }
 
         stage('Push Helm chart to Harbor') {
@@ -239,8 +239,8 @@ void stageAutomaticRelease() {
                             withCredentials([usernamePassword(credentialsId: 'harborhelmchartpush', usernameVariable: 'HARBOR_USERNAME', passwordVariable: 'HARBOR_PASSWORD')]) {
                                 sh ".bin/helm registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'"
 
-                                sh ".bin/helm push target/helm/${repositoryName}-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
-                                sh ".bin/helm push target/helm-crd/${repositoryName}-crd-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
+                                sh ".bin/helm push ${helmChartDir}/${repositoryName}-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
+                                sh ".bin/helm push ${helmCRDChartDir}/${repositoryName}-crd-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
                             }
                         }
         }
