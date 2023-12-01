@@ -4,7 +4,7 @@ VERSION=0.38.0
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG=1.21
-MAKEFILES_VERSION=9.0.0
+MAKEFILES_VERSION=9.0.1
 LINT_VERSION=v1.52.1
 
 K8S_RUN_PRE_TARGETS = setup-etcd-port-forward
@@ -17,6 +17,8 @@ HELM_PRE_APPLY_TARGETS = template-stage template-image-pull-policy template-log-
 CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
 HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
 HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo
+IMAGE_IMPORT_TARGET=image-import
+CHECK_VAR_TARGETS=check-all_vars
 
 include build/make/variables.mk
 include build/make/self-update.mk
@@ -31,12 +33,6 @@ include build/make/k8s-controller.mk
 
 .PHONY: build-boot
 build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
-
-.PHONY: crd-add-labels
-crd-add-labels: $(BINARY_YQ)
-	@echo "Adding labels to CRD..."
-	@$(BINARY_YQ) -i e ".metadata.labels.app = \"ces\"" ${CRD_SOURCE}
-	@$(BINARY_YQ) -i e ".metadata.labels.\"app.kubernetes.io/name\" = \"${ARTIFACT_ID}\"" ${CRD_SOURCE}
 
 .PHONY: crd-copy-for-go-embedding
 crd-copy-for-go-embedding:
