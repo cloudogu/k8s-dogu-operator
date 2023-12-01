@@ -9,7 +9,6 @@ LINT_VERSION=v1.52.1
 
 K8S_RUN_PRE_TARGETS = setup-etcd-port-forward
 PRE_COMPILE = generate-deepcopy
-
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
 K8S_COMPONENT_TARGET_VALUES = ${HELM_TARGET_DIR}/values.yaml
 CRD_SOURCE = ${HELM_CRD_SOURCE_DIR}/templates/k8s.cloudogu.com_dogus.yaml

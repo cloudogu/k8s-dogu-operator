@@ -115,6 +115,9 @@ node('docker') {
             }
 
             stage('Deploy Manager') {
+                helmTargetDir = "target/k8s"
+                helmChartDir = "${helmTargetDir}/helm"
+                helmCRDChartDir = "${helmTargetDir}/helm-crd"
                 k3d.helm("install ${repositoryName}-crd ${helmCRDChartDir}")
                 k3d.helm("install ${repositoryName} ${helmChartDir}")
             }
