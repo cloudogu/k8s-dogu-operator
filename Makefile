@@ -17,7 +17,7 @@ CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
 HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
 HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo
 IMAGE_IMPORT_TARGET=image-import
-CHECK_VAR_TARGETS=check-all_vars
+CHECK_VAR_TARGETS=check-all-vars
 
 include build/make/variables.mk
 include build/make/self-update.mk
