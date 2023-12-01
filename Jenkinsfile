@@ -232,7 +232,7 @@ void stageAutomaticRelease() {
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
-                            make 'helm-package-release'
+                            make 'helm-package'
                             make 'crd-helm-package'
 
                             // Push charts
