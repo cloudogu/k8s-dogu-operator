@@ -84,7 +84,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	ginkgo.By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "k8s", "helm-crd", "templates")},
 		ErrorIfCRDPathMissing: true,
 	}
 
