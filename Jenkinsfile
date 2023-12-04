@@ -220,12 +220,6 @@ void stageAutomaticRelease() {
             gpg.createSignature()
         }
 
-        stage('Regenerate resources for release') {
-            make 'crd-helm-generate'
-            make 'helm-generate'
-            archiveArtifacts "${k8sTargetDir}/**/*"
-        }
-
         stage('Push Helm chart to Harbor') {
             new Docker(this)
                 .image("golang:${goVersion}")
@@ -234,6 +228,7 @@ void stageAutomaticRelease() {
                         {
                             make 'helm-package'
                             make 'crd-helm-package'
+                            archiveArtifacts "${k8sTargetDir}/**/*"
 
                             // Push charts
                             withCredentials([usernamePassword(credentialsId: 'harborhelmchartpush', usernameVariable: 'HARBOR_USERNAME', passwordVariable: 'HARBOR_PASSWORD')]) {
