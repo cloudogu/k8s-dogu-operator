@@ -10,7 +10,7 @@ update_versions_modify_files() {
   componentPatchTplYAML=k8s/helm/component-patch-tpl.yaml
 
   yq -i ".controllerManager.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
-  yq -i ".values.images.backup-operator |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
+  yq -i ".values.images.dogu-operator |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
 }
 
 update_versions_stage_modified_files() {
