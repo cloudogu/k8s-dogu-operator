@@ -104,7 +104,7 @@ node('docker') {
                 docker.image("golang:${goVersion}")
                         .mountJenkinsUser()
                         .inside("--volume ${WORKSPACE}:/workdir -w /workdir") {
-                            sh "IMAGE_DEV=${repository} make helm-values-replace-image-repo"
+                            sh "STAGE=development IMAGE_DEV=${repository} make helm-values-replace-image-repo"
                         }
             }
 
@@ -129,7 +129,7 @@ node('docker') {
             stageAutomaticRelease()
         } catch(Exception e) {
             k3d.collectAndArchiveLogs()
-            throw e
+            throw e as java.lang.Throwable
         } finally {
             stage('Remove k3d cluster') {
                 k3d.deleteK3d()
