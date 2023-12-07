@@ -17,5 +17,5 @@ update_versions_stage_modified_files() {
   valuesYAML=k8s/helm/values.yaml
   componentPatchTplYAML=k8s/helm/component-patch-tpl.yaml
 
-  git add "${valuesYAML} ${componentPatchTplYAML}"
+  git add "${valuesYAML}" "${componentPatchTplYAML}"
 }
