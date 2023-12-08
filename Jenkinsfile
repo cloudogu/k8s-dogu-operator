@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('github.com/cloudogu/ces-build-lib@1.67.0')
+@Library('github.com/cloudogu/ces-build-lib@1.68.0')
 import com.cloudogu.ces.cesbuildlib.*
 
 // Creating necessary git objects
@@ -26,6 +26,9 @@ registry_namespace = "k8s"
 productionReleaseBranch = "main"
 developmentBranch = "develop"
 currentBranch = "${env.BRANCH_NAME}"
+k8sTargetDir = "target/k8s"
+helmChartDir = "${k8sTargetDir}/helm"
+helmCRDChartDir = "${k8sTargetDir}/helm-crd"
 
 node('docker') {
     timestamps {
@@ -66,18 +69,21 @@ node('docker') {
                             }
 
                             stage('Generate k8s Resources') {
-                                make 'k8s-create-temporary-resource'
-                                archiveArtifacts 'target/*.yaml'
+                                make 'crd-helm-generate'
+                                make 'helm-generate'
+                                archiveArtifacts "${k8sTargetDir}/**/*"
+                            }
+
+                            stage("Lint helm") {
+                                make 'crd-helm-lint'
+                                make 'helm-lint'
                             }
                         }
-
-        stage("Lint k8s Resources") {
-            stageLintK8SResources()
-        }
 
         stage('SonarQube') {
             stageStaticAnalysisSonarQube()
         }
+
 
         K3d k3d = new K3d(this, "${WORKSPACE}", "${WORKSPACE}/k3d", env.PATH)
 
@@ -88,17 +94,17 @@ node('docker') {
                 k3d.startK3d()
             }
 
-            def imageName
+            def imageName = ""
             stage('Build & Push Image') {
                 imageName = k3d.buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion)
             }
 
-            GString sourceDeploymentYaml = "target/${repositoryName}_${controllerVersion}.yaml"
             stage('Update development resources') {
-                docker.image('mikefarah/yq:4.22.1')
+                def repository = imageName.substring(0, imageName.lastIndexOf(":"))
+                docker.image("golang:${goVersion}")
                         .mountJenkinsUser()
                         .inside("--volume ${WORKSPACE}:/workdir -w /workdir") {
-                            sh "yq -i '(select(.kind == \"Deployment\").spec.template.spec.containers[]|select(.name == \"manager\")).image=\"${imageName}\"' ${sourceDeploymentYaml}"
+                            sh "STAGE=development IMAGE_DEV=${repository} make helm-values-replace-image-repo"
                         }
             }
 
@@ -112,7 +118,8 @@ node('docker') {
             }
 
             stage('Deploy Manager') {
-                k3d.kubectl("apply -f ${sourceDeploymentYaml}")
+                k3d.helm("install ${repositoryName}-crd ${helmCRDChartDir}")
+                k3d.helm("install ${repositoryName} ${helmChartDir}")
             }
 
             stage('Wait for Ready Rollout') {
@@ -122,7 +129,7 @@ node('docker') {
             stageAutomaticRelease()
         } catch(Exception e) {
             k3d.collectAndArchiveLogs()
-            throw e
+            throw e as java.lang.Throwable
         } finally {
             stage('Remove k3d cluster') {
                 k3d.deleteK3d()
@@ -134,8 +141,8 @@ node('docker') {
 void gitWithCredentials(String command) {
     withCredentials([usernamePassword(credentialsId: 'cesmarvin', usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW')]) {
         sh(
-                script: "git -c credential.helper=\"!f() { echo username='\$GIT_AUTH_USR'; echo password='\$GIT_AUTH_PSW'; }; f\" " + command,
-                returnStdout: true
+            script: "git -c credential.helper=\"!f() { echo username='\$GIT_AUTH_USR'; echo password='\$GIT_AUTH_PSW'; }; f\" " + command,
+            returnStdout: true
         )
     }
 }
@@ -213,39 +220,22 @@ void stageAutomaticRelease() {
             gpg.createSignature()
         }
 
-        stage('Regenerate resources for release') {
-            new Docker(this)
-                    .image("golang:${goVersion}")
-                    .mountJenkinsUser()
-                    .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
-                            {
-                                make 'k8s-create-temporary-resource'
-                            }
-        }
-
-        stage('Push to Registry') {
-            GString targetOperatorResourceYaml = "target/${repositoryName}_${controllerVersion}.yaml"
-
-            DoguRegistry registry = new DoguRegistry(this)
-            registry.pushK8sYaml(targetOperatorResourceYaml, repositoryName, "k8s", "${controllerVersion}")
-        }
-
         stage('Push Helm chart to Harbor') {
             new Docker(this)
                 .image("golang:${goVersion}")
                 .mountJenkinsUser()
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
-                            // Package operator-chart & crd-chart
-                            make 'helm-package-release'
+                            make 'helm-package'
                             make 'crd-helm-package'
+                            archiveArtifacts "${k8sTargetDir}/**/*"
 
                             // Push charts
                             withCredentials([usernamePassword(credentialsId: 'harborhelmchartpush', usernameVariable: 'HARBOR_USERNAME', passwordVariable: 'HARBOR_PASSWORD')]) {
                                 sh ".bin/helm registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'"
 
-                                sh ".bin/helm push target/helm/${repositoryName}-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
-                                sh ".bin/helm push target/helm-crd/${repositoryName}-crd-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
+                                sh ".bin/helm push ${helmChartDir}/${repositoryName}-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
+                                sh ".bin/helm push ${helmCRDChartDir}/${repositoryName}-crd-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
                             }
                         }
         }

@@ -6,15 +6,16 @@ set -o pipefail
 # this function will be sourced from release.sh and be called from release_functions.sh
 update_versions_modify_files() {
   newReleaseVersion="${1}"
-  kustomizationYAML=config/manager/kustomization.yaml
+  valuesYAML=k8s/helm/values.yaml
+  componentPatchTplYAML=k8s/helm/component-patch-tpl.yaml
 
-  yq "with(.images[] | select(.name == \"controller\") ; .newTag = \"${newReleaseVersion}\")" "${kustomizationYAML}" \
-    > tmpfile \
-    && mv tmpfile "${kustomizationYAML}"
+  yq -i ".controllerManager.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
+  yq -i ".values.images.doguOperator |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
 }
 
 update_versions_stage_modified_files() {
-  kustomizationYAML=config/manager/kustomization.yaml
+  valuesYAML=k8s/helm/values.yaml
+  componentPatchTplYAML=k8s/helm/component-patch-tpl.yaml
 
-  git add "${kustomizationYAML}"
+  git add "${valuesYAML}" "${componentPatchTplYAML}"
 }

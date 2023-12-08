@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.39.0] - 2023-12-08
+### Added
+- [#137] Patch-template for mirroring this operator and its images
+### Changed
+- [#135] Replace monolithic K8s resource YAML into Helm templates
+- Update Makefiles to 9.0.1
+
 ## [v0.38.0] - 2023-10-05
 ### Added
 - [#133] Add CRD-Release to Jenkinsfile

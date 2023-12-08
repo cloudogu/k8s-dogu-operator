@@ -1,0 +1,16 @@
+apiVersion: v1
+values:
+  images:
+    doguOperator: cloudogu/k8s-dogu-operator:0.39.0
+    kubeRbacProxy: gcr.io/kubebuilder/kube-rbac-proxy:v0.14.1
+patches:
+  values.yaml:
+    additionalImages:
+    kubeRbacProxy:
+      image:
+        repository: "{{ registryFrom .images.kubeRbacProxy }}/{{ repositoryFrom .images.kubeRbacProxy }}"
+        tag: "{{ tagFrom .images.kubeRbacProxy }}"
+    controllerManager:
+      image:
+        repository: "{{ registryFrom .images.doguOperator }}/{{ repositoryFrom .images.doguOperator }}"
+        tag: "{{ tagFrom .images.doguOperator }}"
