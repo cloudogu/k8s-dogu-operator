@@ -3,9 +3,11 @@ values:
   images:
     doguOperator: cloudogu/k8s-dogu-operator:0.39.0
     kubeRbacProxy: gcr.io/kubebuilder/kube-rbac-proxy:v0.14.1
+    chownInitImage: busybox:1.36
 patches:
   values.yaml:
     additionalImages:
+      chownInitImage: "{{ .images.chownInitImage }}"
     kubeRbacProxy:
       image:
         repository: "{{ registryFrom .images.kubeRbacProxy }}/{{ repositoryFrom .images.kubeRbacProxy }}"
