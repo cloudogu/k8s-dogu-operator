@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.39.1] - 2023-12-12
+### Fixed
+- [#139] Fix missing value for attribute `chownInitImage` in patch templates.
+
 ## [v0.39.0] - 2023-12-08
 ### Added
 - [#137] Patch-template for mirroring this operator and its images
