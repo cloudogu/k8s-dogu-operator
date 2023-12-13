@@ -17,40 +17,82 @@ kept up to date.
 version: 3
 
 k8s:
+  cache-directory: .ces-mirror/cache/k8s
+  components:
+    k8s/k8s-snapshot-controller:
+      - "5.0.1-5"
+    k8s/k8s-snapshot-controller-crd:
+      - "5.0.1-5"
+    k8s/k8s-cert-manager-crd:
+      - "1.13.1-2"
+    k8s/k8s-cert-manager:
+      - "1.13.1-2"
+    k8s/k8s-velero:
+      - "5.0.2-4"
+    k8s/k8s-component-operator:
+      - "0.7.0"
+    k8s/k8s-component-operator-crd:
+      - "0.7.0"
+    k8s/k8s-backup-operator-crd:
+      - "0.9.0"
+    k8s/k8s-dogu-operator:
+      - "0.39.1"
+    k8s/k8s-dogu-operator-crd:
+      - "0.39.1"
+    k8s/k8s-loki:
+      - "2.9.1-4"
+    k8s/k8s-minio:
+      - "2023.9.23-5"
+    k8s/k8s-promtail:
+      - "2.9.1-2"
+    k8s/k8s-backup-operator:
+      - "0.9.0"
+    k8s/k8s-host-change:
+      - "0.3.2"
+    k8s/k8s-ces-setup:
+      - "0.20.1"
+    k8s/k8s-ces-control:
+      - "0.5.0"
+    k8s/k8s-longhorn:
+      - "1.5.1-3"
+    k8s/k8s-etcd:
+      - "3.5.9-2"
+    k8s/k8s-service-discovery:
+      - "0.15.0"
   source:
-    components:
-      endpoint: https://dogu.cloudogu.com/api/v1/k8s
+    component-index:
+      endpoint: https://registry.cloudogu.com/
       username: TODO
       password: TODO
   target:
-    registry:
-      endpoint: 192.168.56.10
-      username: ces-admin
-      password: ces-admin
-      insecure: true
-    webserver:
+    component-index:
       type: remote
-      endpoint: https://192.168.56.10/nexus/repository/k8s
+      endpoint: https://192.168.56.10
       username: ces-admin
       password: ces-admin
       insecure: true
-
+    registry:
+      endpoint: https://192.168.56.10
+      username: ces-admin
+      password: ces-admin
+      insecure: true
 dogu:
+  cache-directory: .ces-mirror/cache/dogus
   dogus:
-    official/postgresql:
-      - 12.10-1
-      - 12.13-1
-    official/postfix:
-      - 3.6.4-3
     official/ldap:
-      - 2.6.2-3
-    official/cas:
-      - 6.5.8-1
+      - 2.6.2-6
+    official/postfix:
+      - 3.6.4-6
     k8s/nginx-static:
-      - 1.23.1-3
+      - 1.23.1-5
     k8s/nginx-ingress:
-      - 1.5.1-2
-
+      - 1.6.4-4
+    official/cas:
+      - 6.6.12-1
+    official/postgresql:
+      - 12.15-2
+    official/redmine:
+      - 5.0.5-2
   docker:
     endpoint: unix:///var/run/docker.sock
   source:

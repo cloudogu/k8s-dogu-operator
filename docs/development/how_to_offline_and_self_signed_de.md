@@ -23,11 +23,11 @@ k8s:
     k8s/k8s-snapshot-controller-crd:
       - "5.0.1-5"
     k8s/k8s-cert-manager-crd:
-      - "1.13.1-1"
+      - "1.13.1-2"
     k8s/k8s-cert-manager:
-      - "1.13.1-1"
+      - "1.13.1-2"
     k8s/k8s-velero:
-      - "5.0.2-3"
+      - "5.0.2-4"
     k8s/k8s-component-operator:
       - "0.7.0"
     k8s/k8s-component-operator-crd:
@@ -39,9 +39,9 @@ k8s:
     k8s/k8s-dogu-operator-crd:
       - "0.39.1"
     k8s/k8s-loki:
-      - "2.9.1-3"
+      - "2.9.1-4"
     k8s/k8s-minio:
-      - "2023.9.23-4"
+      - "2023.9.23-5"
     k8s/k8s-promtail:
       - "2.9.1-2"
     k8s/k8s-backup-operator:
@@ -49,7 +49,7 @@ k8s:
     k8s/k8s-host-change:
       - "0.3.2"
     k8s/k8s-ces-setup:
-      - "0.20.0"
+      - "0.20.1"
     k8s/k8s-ces-control:
       - "0.5.0"
     k8s/k8s-longhorn:
@@ -59,7 +59,7 @@ k8s:
     k8s/k8s-service-discovery:
       - "0.15.0"
   source:
-    components:
+    component-index:
       endpoint: https://registry.cloudogu.com/
       username: TODO
       password: TODO
