@@ -85,87 +85,158 @@ dogu:
 - `go run . sync k8s`
 
 
-## Preparation k8s-Ecosystem
+### Create certificate as secret in cluster
 
-### K3S
+`kubectl --namespace ecosystem create secret generic dogu-registry-cert --from-file=dogu-registry-cert.pem=k8s-ecosystem/cert.pem`
 
-- Configure setup.json in `k8s-ecosystem` that any completed is `false`
-- `vagrant up`
-- Export the certificate from the (legacy) ecosystem `etcdctl get config/_global/certificate/server.crt` and copy it to `k8s-ecosystem/cert.pem`
-- Certificate distribution:
-    - `vagrant ssh main`
-    - `sudo cp /vagrant/cert.pem /etc/ssl/certs/cert.pem`
-    - Edit registries.yaml s.u.
-    - `sudo systemctl restart k3s`
-    - `vagrant ssh worker-0`
-    - `sudo cp /vagrant/cert.pem /etc/ssl/certs/cert.pem`
-    - Edit registries.yaml s.u.
-    - `sudo systemctl restart k3s-agent`
+## Apply Setup
 
-`/etc/rancher/k3s/registries.yaml`:
+### Configuration values.yaml
+
+Create a `values.yaml` with following content:
 
 ```yaml
-configs:
-  "192.168.56.10":
-    auth:
-      username: ces-admin
-      password: ces-admin
-    tls:
-      ca_file: /etc/ssl/certs/cert.pem
+components:
+  # Use longhorn if your cluster has no storage provisioner.
+  k8s-longhorn:
+    version: latest
+    helmRepositoryNamespace: k8s
+    deployNamespace: longhorn-system
+  k8s-etcd:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-dogu-operator:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-dogu-operator-crd:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-service-discovery:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-snapshot-controller:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-snapshot-controller-crd:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-velero:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-backup-operator:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-backup-operator-crd:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-cert-manager:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-cert-manager-crd:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-minio:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-promtail:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-loki:
+    version: latest
+    helmRepositoryNamespace: k8s
+  k8s-ces-control:
+    version: latest
+    helmRepositoryNamespace: k8s
+#  k8s-host-change:
+#    version: latest
+#    helmRepositoryNamespace: k8s
+
+# Credentials for the docker registry used by the components.
+# It is mandatory to set username and password.
+docker_registry_secret:
+  url: 192.168.56.10
+  username: ces-admin
+  password: ces-admin
+
+# Credentials for the dogu registry used by the components.
+# It is mandatory to set username and password.
+dogu_registry_secret:
+  url: https://192.168.56.10/nexus/repository/dogus
+  username: ces-admin
+  password: ces-admin
+  urlschema: index
+
+# Credentials for the helm registry used by the components.
+# It is mandatory to set username and password.
+helm_registry_secret:
+  host: 192.168.56.10
+  schema: oci
+  plainHttp: "false"
+  insecureTls: "true"
+  username: ces-admin
+  password: ces-admin
+
+setup_json: |
+  {
+    "naming": {
+      "fqdn": "",
+      "domain": "k3ces.local",
+      "certificateType": "selfsigned",
+      "relayHost": "yourrelayhost.com",
+      "useInternalIp": false,
+      "internalIp": "",
+      "completed": true
+    },
+    "dogus": {
+      "defaultDogu": "ldap",
+      "install": [
+        "official/ldap",
+        "official/postfix",
+        "k8s/nginx-static",
+        "k8s/nginx-ingress",
+        "official/cas",
+        "official/postgresql",
+        "official/redmine"
+      ],
+      "completed": true
+    },
+    "admin": {
+      "username": "ces-admin",
+      "mail": "admin@admin.admin",
+      "password": "ces-admin",
+      "adminGroup": "cesAdmin",
+      "adminMember": true,
+      "sendWelcomeMail": false,
+      "completed": true
+    },
+    "userBackend": {
+      "dsType": "embedded",
+      "server": "",
+      "attributeID": "uid",
+      "attributeGivenName": "",
+      "attributeSurname": "",
+      "attributeFullname": "cn",
+      "attributeMail": "mail",
+      "attributeGroup": "memberOf",
+      "baseDN": "",
+      "searchFilter": "(objectClass=person)",
+      "connectionDN": "",
+      "password": "",
+      "host": "ldap",
+      "port": "389",
+      "loginID": "",
+      "loginPassword": "",
+      "encryption": "",
+      "groupBaseDN": "",
+      "groupSearchFilter": "",
+      "groupAttributeName": "",
+      "groupAttributeDescription": "",
+      "groupAttributeMember": "",
+      "completed": true
+    }
+  }
 ```
 
-### Configuration certificate and registries
+### Execute Setup
 
-```bash
-kubectl --namespace ecosystem create secret generic docker-registry-cert --from-file=docker-registry-cert.pem=cert.pem
-kubectl --namespace ecosystem create secret generic dogu-registry-cert --from-file=dogu-registry-cert.pem=cert.pem
-```
-
-- Delete secrets `k8s-dogu-operator-dogu-registry` and `k8s-dogu-operator-docker-registry`
-
-```bash
-kubectl --namespace ecosystem delete secret k8s-dogu-operator-dogu-registry
-kubectl --namespace ecosystem delete secret k8s-dogu-operator-docker-registry
-
-# do not forget to adjust th endpoint towards the chosen Nexus repository
-kubectl --namespace ecosystem create secret generic k8s-dogu-operator-dogu-registry \
---from-literal=endpoint="https://192.168.56.10/nexus/repository/mirror" \
---from-literal=username="ces-admin" \
---from-literal=password="ces-admin" \
---from-literal=urlschema="index"
-
-kubectl --namespace ecosystem create secret docker-registry k8s-dogu-operator-docker-registry \
- --docker-server="192.168.56.10" \
- --docker-username="ces-admin" \
- --docker-password="ces-admin" \
- --docker-email="myemail@test.com"
-```
-
-### Update setup configuration
-
-- Setup-Config:
-```yaml
-#
-# The default configuration map for the ces-setup. Should always be deployed before the setup itself.
-#
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: k8s-ces-setup-config
-  labels:
-    app: ces
-    app.kubernetes.io/name: k8s-ces-setup
-data:
-  k8s-ces-setup.yaml: |
-    log_level: "DEBUG"
-    dogu_operator_url: https://192.168.56.10/nexus/repository/k8s/k8s/k8s-dogu-operator/0.25.0
-    service_discovery_url: https://192.168.56.10/nexus/repository/k8s/k8s/k8s-service-discovery/0.9.0
-    etcd_server_url: https://raw.githubusercontent.com/cloudogu/k8s-etcd/develop/manifests/etcd.yaml
-    etcd_client_image_repo: bitnami/etcd:3.5.2-debian-10-r0
-    key_provider: pkcs1v15
-```
-
-- `make build`
-
-Execute setup:
-- `curl -I --request POST --url http://192.168.56.2:30080/api/v1/setup`
+`helm install k8s-ces-setup oci://192.168.56.10/k8s/k8s-ces-setup --version 0.20.0 -f values.yaml --insecure-skip-tls-verify`
