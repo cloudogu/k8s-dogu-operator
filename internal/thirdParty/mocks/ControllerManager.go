@@ -129,49 +129,6 @@ func (_c *ControllerManager_AddHealthzCheck_Call) RunAndReturn(run func(string, 
 	return _c
 }
 
-// AddMetricsExtraHandler provides a mock function with given fields: path, handler
-func (_m *ControllerManager) AddMetricsExtraHandler(path string, handler http.Handler) error {
-	ret := _m.Called(path, handler)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, http.Handler) error); ok {
-		r0 = rf(path, handler)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// ControllerManager_AddMetricsExtraHandler_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddMetricsExtraHandler'
-type ControllerManager_AddMetricsExtraHandler_Call struct {
-	*mock.Call
-}
-
-// AddMetricsExtraHandler is a helper method to define mock.On call
-//   - path string
-//   - handler http.Handler
-func (_e *ControllerManager_Expecter) AddMetricsExtraHandler(path interface{}, handler interface{}) *ControllerManager_AddMetricsExtraHandler_Call {
-	return &ControllerManager_AddMetricsExtraHandler_Call{Call: _e.mock.On("AddMetricsExtraHandler", path, handler)}
-}
-
-func (_c *ControllerManager_AddMetricsExtraHandler_Call) Run(run func(path string, handler http.Handler)) *ControllerManager_AddMetricsExtraHandler_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(http.Handler))
-	})
-	return _c
-}
-
-func (_c *ControllerManager_AddMetricsExtraHandler_Call) Return(_a0 error) *ControllerManager_AddMetricsExtraHandler_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *ControllerManager_AddMetricsExtraHandler_Call) RunAndReturn(run func(string, http.Handler) error) *ControllerManager_AddMetricsExtraHandler_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // AddReadyzCheck provides a mock function with given fields: name, check
 func (_m *ControllerManager) AddReadyzCheck(name string, check healthz.Checker) error {
 	ret := _m.Called(name, check)
