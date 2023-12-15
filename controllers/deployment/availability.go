@@ -8,6 +8,10 @@ type AvailabilityChecker struct{}
 
 // IsAvailable checks whether the deployment has reached its desired state and is available.
 func (ac *AvailabilityChecker) IsAvailable(deployment *appsv1.Deployment) bool {
+	// if replicas is nil, it is defaulted to 1
+	if deployment.Spec.Replicas == nil && deployment.Status.UpdatedReplicas < 1 {
+		return false
+	}
 	if deployment.Spec.Replicas != nil && deployment.Status.UpdatedReplicas < *deployment.Spec.Replicas {
 		return false
 	}
