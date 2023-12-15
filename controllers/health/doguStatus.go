@@ -3,10 +3,10 @@ package health
 import (
 	"context"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
 
+	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
