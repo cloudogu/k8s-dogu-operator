@@ -33,7 +33,7 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName string,
 	if available {
 		dogu.Status.Health = doguv1.AvailableHealthStatus
 	} else {
-		dogu.Status.Health = doguv1.NotAvailableHealthStatus
+		dogu.Status.Health = doguv1.UnavailableHealthStatus
 	}
 
 	_, err = dsw.doguClient.UpdateStatus(ctx, dogu, metav1api.UpdateOptions{})

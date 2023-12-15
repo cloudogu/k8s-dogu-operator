@@ -84,9 +84,9 @@ type DoguResources struct {
 type HealthStatus string
 
 const (
-	PendingHealthStatus      HealthStatus = ""
-	AvailableHealthStatus    HealthStatus = "available"
-	NotAvailableHealthStatus HealthStatus = "not available"
+	PendingHealthStatus     HealthStatus = ""
+	AvailableHealthStatus   HealthStatus = "available"
+	UnavailableHealthStatus HealthStatus = "unavailable"
 )
 
 // DoguStatus defines the observed state of a Dogu.
