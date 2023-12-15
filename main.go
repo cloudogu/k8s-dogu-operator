@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	reg "github.com/cloudogu/cesapp-lib/registry"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -12,6 +13,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -181,19 +183,45 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
 
+	k8sClientSet, err := kubernetes.NewForConfig(k8sManager.GetConfig())
+	if err != nil {
+		return fmt.Errorf("failed to create k8s client set: %w", err)
+	}
+
+	ecosystemClientSet, err := ecoSystem.NewForConfig(k8sManager.GetConfig())
+	if err != nil {
+		return fmt.Errorf("failed to create ecosystem client set: %w", err)
+	}
+
 	doguManager, err := controllers.NewManager(k8sManager.GetClient(), operatorConfig, cesReg, eventRecorder)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu manager: %w", err)
 	}
 
-	reconciler, err := controllers.NewDoguReconciler(k8sManager.GetClient(), doguManager, eventRecorder, operatorConfig.Namespace, cesReg.DoguRegistry())
+	doguReconciler, err := controllers.NewDoguReconciler(
+		k8sManager.GetClient(),
+		doguManager,
+		eventRecorder,
+		operatorConfig.Namespace,
+		cesReg.DoguRegistry(),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
 	}
 
-	err = reconciler.SetupWithManager(k8sManager)
+	err = doguReconciler.SetupWithManager(k8sManager)
 	if err != nil {
-		return fmt.Errorf("failed to setup reconciler with manager: %w", err)
+		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
+	}
+
+	deploymentReconciler := controllers.NewDeploymentReconciler(
+		k8sClientSet.AppsV1().Deployments(operatorConfig.Namespace),
+		ecosystemClientSet.Dogus(operatorConfig.Namespace),
+		eventRecorder,
+	)
+	err = deploymentReconciler.SetupWithManager(k8sManager)
+	if err != nil {
+		return fmt.Errorf("failed to setup deployment reconciler with manager: %w", err)
 	}
 
 	return nil

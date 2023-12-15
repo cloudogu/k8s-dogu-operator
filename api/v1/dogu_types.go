@@ -81,6 +81,14 @@ type DoguResources struct {
 	DataVolumeSize string `json:"dataVolumeSize,omitempty"`
 }
 
+type HealthStatus string
+
+const (
+	PendingHealthStatus      HealthStatus = ""
+	AvailableHealthStatus    HealthStatus = "available"
+	NotAvailableHealthStatus HealthStatus = "not available"
+)
+
 // DoguStatus defines the observed state of a Dogu.
 type DoguStatus struct {
 	// Status represents the state of the Dogu in the ecosystem
@@ -89,6 +97,8 @@ type DoguStatus struct {
 	RequeueTime time.Duration `json:"requeueTime"`
 	// RequeuePhase is the actual phase of the dogu resource used for a currently running async process.
 	RequeuePhase string `json:"requeuePhase"`
+	// Health describes the health status of the dogu
+	Health HealthStatus `json:"health,omitempty"`
 }
 
 // NextRequeue increases the requeue time of the dogu status and returns the new requeue time

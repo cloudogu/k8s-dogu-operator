@@ -24,15 +24,3 @@ type DependencyValidator interface {
 	// ValidateDependencies is used to check if dogu dependencies are installed.
 	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
 }
-
-// DoguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
-type DoguHealthChecker interface {
-	// CheckWithResource returns nil if the dogu described by the resource is up and running.
-	CheckWithResource(ctx context.Context, doguResource *k8sv1.Dogu) error
-}
-
-// DoguRecursiveHealthChecker includes functionality to check if a dogus dependencies are up and running.
-type DoguRecursiveHealthChecker interface {
-	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
-	CheckDependenciesRecursive(ctx context.Context, fromDogu *cesappcore.Dogu, currentK8sNamespace string) error
-}
