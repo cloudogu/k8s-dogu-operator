@@ -203,7 +203,7 @@ docker_registry_secret:
 # Credentials for the dogu registry used by the components.
 # It is mandatory to set username and password.
 dogu_registry_secret:
-  url: https://192.168.56.10/nexus/repository/dogus
+  url: https://192.168.56.10/nexus/repository/mirror
   username: ces-admin
   password: ces-admin
   urlschema: index
@@ -281,4 +281,6 @@ setup_json: |
 
 ### Execute Setup
 
-`helm install k8s-ces-setup oci://192.168.56.10/k8s/k8s-ces-setup --version 0.20.0 -f values.yaml --insecure-skip-tls-verify`
+`helm registry login 192.168.56.10 --insecure`
+
+`helm install k8s-ces-setup oci://192.168.56.10/k8s/k8s-ces-setup --version 0.20.1 -f values.yaml --insecure-skip-tls-verify`
