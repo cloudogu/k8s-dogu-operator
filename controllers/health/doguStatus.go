@@ -20,7 +20,7 @@ type DoguStatusUpdater struct {
 }
 
 func NewDoguStatusUpdater(doguClient ecoSystem.DoguInterface, recorder record.EventRecorder) *DoguStatusUpdater {
-	return &DoguStatusUpdater{doguClient: doguClient}
+	return &DoguStatusUpdater{doguClient: doguClient, recorder: recorder}
 }
 
 // UpdateStatus sets the health status of the dogu according to whether if it's available or not.
