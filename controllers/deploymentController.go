@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/go-logr/logr"
 	"k8s.io/client-go/tools/record"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -41,34 +42,35 @@ func NewDeploymentReconciler(deployClient appsv1client.DeploymentInterface, dogu
 func (dr *DeploymentReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	deployment, err := dr.getDeployment(ctx, request)
+	deployment, err := dr.deployClient.Get(ctx, request.Name, metav1api.GetOptions{})
 	if err != nil {
-		logger.Info(fmt.Sprintf("failed to get deployment %q: %s", request.NamespacedName, err))
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return finishOrRequeue(logger,
+			client.IgnoreNotFound(
+				fmt.Errorf("failed to get deployment %q: %w", request.NamespacedName, err),
+			),
+		)
 	}
 
 	if !hasDoguLabel(deployment) {
 		// ignore non dogu deployments
-		return ctrl.Result{}, nil
+		return finishOperation()
 	}
 	logger.Info(fmt.Sprintf("Found dogu deployment: [%s]", deployment.Name))
 
 	err = dr.updateDoguHealth(ctx, deployment)
 	if err != nil {
-		logger.Info(fmt.Sprintf("failed to update dogu health for deployment %q: %s", request.NamespacedName, err))
-		return ctrl.Result{}, err
+		return finishOrRequeue(logger, fmt.Errorf("failed to update dogu health for deployment %q: %w", request.NamespacedName, err))
 	}
 
-	return ctrl.Result{}, nil
+	return finishOperation()
 }
 
-func (dr *DeploymentReconciler) getDeployment(ctx context.Context, req ctrl.Request) (*appsv1.Deployment, error) {
-	deployment, err := dr.deployClient.Get(ctx, req.Name, metav1api.GetOptions{})
+func finishOrRequeue(logger logr.Logger, err error) (ctrl.Result, error) {
 	if err != nil {
-		return nil, fmt.Errorf("failed to get deployment: %w", err)
+		logger.Error(err, "reconcile failed")
 	}
 
-	return deployment, nil
+	return ctrl.Result{}, err
 }
 
 func hasDoguLabel(deployment client.Object) bool {
