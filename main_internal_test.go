@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"os"
 	"testing"
 
@@ -116,7 +117,7 @@ func Test_startDoguOperator(t *testing.T) {
 
 	oldDoguManager := controllers.NewManager
 	defer func() { controllers.NewManager = oldDoguManager }()
-	controllers.NewManager = func(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*controllers.DoguManager, error) {
+	controllers.NewManager = func(client client.Client, doguClient ecoSystem.DoguInterface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*controllers.DoguManager, error) {
 		return &controllers.DoguManager{}, nil
 	}
 
@@ -133,6 +134,7 @@ func Test_startDoguOperator(t *testing.T) {
 		"GetScheme":            {ReturnValue: scheme},
 		"GetClient":            {ReturnValue: myClient},
 		"GetCache":             {ReturnValue: nil},
+		"GetConfig":            {ReturnValue: &rest.Config{}},
 		"Add":                  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 		"AddHealthzCheck":      {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
 		"AddReadyzCheck":       {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},

@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/v2"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -23,11 +21,6 @@ import (
 )
 
 const testNamespace = "test-namespace"
-
-var deploymentTypeMeta = metav1.TypeMeta{
-	APIVersion: "apps/v1",
-	Kind:       "Deployment",
-}
 
 var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
 var testCtx = context.Background()
@@ -43,10 +36,14 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 	t.Run("should succeed", func(t *testing.T) {
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		doguClientMock := mocks.NewDoguInterface(t)
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
+		ldapResource.Status.Health = "available"
+
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
+
 		sut := NewDoguChecker(doguClientMock, localFetcher)
 
 		// when
@@ -56,12 +53,15 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		require.NoError(t, err)
 		localFetcher.AssertExpectations(t)
 	})
-	t.Run("should fail because of unready replicas", func(t *testing.T) {
+	t.Run("should fail to get dogu cr", func(t *testing.T) {
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		doguClientMock := mocks.NewDoguInterface(t)
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
+
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(nil, assert.AnError)
+
 		sut := NewDoguChecker(doguClientMock, localFetcher)
 
 		// when
@@ -69,7 +69,27 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "dogu ldap appears unhealthy (desired replicas: 1, ready: 0)")
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to get dogu resource \"ldap\"")
+		localFetcher.AssertExpectations(t)
+	})
+	t.Run("should fail because of unready replicas", func(t *testing.T) {
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+
+		ldapResource := readTestDataLdapCr(t)
+		ldapResource.Namespace = testNamespace
+
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
+
+		sut := NewDoguChecker(doguClientMock, localFetcher)
+
+		// when
+		err := sut.CheckByName(testCtx, ldapResource.Name)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "dogu failed a health check: dogu \"ldap\" appears unhealthy")
 		localFetcher.AssertExpectations(t)
 	})
 }
@@ -816,20 +836,6 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		})
 	})
-}
-
-func createDeployment(doguName string, replicas, replicasReady int32) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		TypeMeta: deploymentTypeMeta,
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguName,
-			Namespace: testNamespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: "somethingNonEmptyToo"}},
-		},
-		Status: appsv1.DeploymentStatus{Replicas: replicas, ReadyReplicas: replicasReady},
-	}
 }
 
 func createTestRestConfig() (*rest.Config, error) {

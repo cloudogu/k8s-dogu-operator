@@ -73,7 +73,7 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 		mgrSet := &util.ManagerSet{}
 
 		// when
-		actual := NewDoguUpgradeManager(myClient, operatorConfig, cesRegistry, mgrSet, nil)
+		actual := NewDoguUpgradeManager(myClient, nil, operatorConfig, cesRegistry, mgrSet, nil)
 
 		// then
 		require.NotNil(t, actual)

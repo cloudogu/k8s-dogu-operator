@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	corev1 "k8s.io/api/core/v1"
@@ -21,9 +22,9 @@ import (
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
-func NewDoguUpgradeManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
+func NewDoguUpgradeManager(client client.Client, doguClient ecoSystem.DoguInterface, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
-	doguChecker := health.NewDoguChecker(client, mgrSet.LocalDoguFetcher)
+	doguChecker := health.NewDoguChecker(doguClient, mgrSet.LocalDoguFetcher)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder)

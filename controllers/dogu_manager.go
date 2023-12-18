@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,7 +44,7 @@ type DoguManager struct {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*DoguManager, error) {
+func NewDoguManager(client client.Client, doguClient ecoSystem.DoguInterface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	err := validateKeyProvider(cesRegistry.GlobalConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate key provider: %w", err)
@@ -92,7 +93,7 @@ func NewDoguManager(client client.Client, operatorConfig *config.OperatorConfig,
 		return nil, err
 	}
 
-	upgradeManager := NewDoguUpgradeManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	upgradeManager := NewDoguUpgradeManager(client, doguClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}

@@ -193,7 +193,14 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 		return fmt.Errorf("failed to create ecosystem client set: %w", err)
 	}
 
-	doguManager, err := controllers.NewManager(k8sManager.GetClient(), operatorConfig, cesReg, eventRecorder)
+	doguClient := ecosystemClientSet.Dogus(operatorConfig.Namespace)
+	doguManager, err := controllers.NewManager(
+		k8sManager.GetClient(),
+		doguClient,
+		operatorConfig,
+		cesReg,
+		eventRecorder,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu manager: %w", err)
 	}
@@ -216,7 +223,7 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 
 	deploymentReconciler := controllers.NewDeploymentReconciler(
 		k8sClientSet.AppsV1().Deployments(operatorConfig.Namespace),
-		ecosystemClientSet.Dogus(operatorConfig.Namespace),
+		doguClient,
 		eventRecorder,
 	)
 	err = deploymentReconciler.SetupWithManager(k8sManager)
