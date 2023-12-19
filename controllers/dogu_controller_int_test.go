@@ -494,6 +494,16 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			return err == nil
 		}()).To(BeTrue())
 
+		By("Wait for Dogu health status to be available")
+		Eventually(func() string {
+			dogu, err := ecosystemClientSet.Dogus(upgradeLdapFromDoguLookupKey.Namespace).Get(ctx, upgradeLdapFromDoguLookupKey.Name, v1.GetOptions{})
+			if err != nil {
+				return err.Error()
+			}
+
+			return string(dogu.Status.Health)
+		}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(Equal("available"))
+
 		By("Update dogu resource with new version")
 		Expect(func() bool {
 			return getObjectFromCluster(ctx, installedLdapDoguCr, upgradeLdapFromDoguLookupKey)
