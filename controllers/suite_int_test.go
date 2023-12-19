@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -42,7 +43,8 @@ import (
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-var k8sClientSet *ecoSystem.EcoSystemV1Alpha1Client
+var ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client
+var k8sClientSet thirdParty.ClientSet
 var testEnv *envtest.Environment
 var cancel context.CancelFunc
 
@@ -114,7 +116,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClient = k8sManager.GetClient()
 	gomega.Expect(k8sClient).ToNot(gomega.BeNil())
 
-	k8sClientSet, err = ecoSystem.NewForConfig(cfg)
+	ecosystemClientSet, err = ecoSystem.NewForConfig(cfg)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+	k8sClientSet, err = kubernetes.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	DoguRemoteRegistryMock = &extMocks.RemoteRegistry{}
@@ -213,7 +218,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		eventRecorder: eventRecorder,
 	}
 
-	doguHealthChecker := health.NewDoguChecker(k8sClient, localDoguFetcher)
+	doguHealthChecker := health.NewDoguChecker(ecosystemClientSet, localDoguFetcher)
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
 
 	mgrSet := &util.ManagerSet{
@@ -259,11 +264,16 @@ var _ = ginkgo.BeforeSuite(func() {
 		ingressAnnotationsManager: ingressAnnotationManager,
 	}
 
-	reconciler, err := NewDoguReconciler(k8sClient, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)
+	doguReconciler, err := NewDoguReconciler(k8sClient, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	err = reconciler.SetupWithManager(k8sManager)
+	err = doguReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+	deploymentReconciler := NewDeploymentReconciler(k8sClientSet, ecosystemClientSet, eventRecorder)
+
+	err = deploymentReconciler.SetupWithManager(k8sManager)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	go func() {
 		err = k8sManager.Start(ctx)

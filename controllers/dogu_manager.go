@@ -44,7 +44,7 @@ type DoguManager struct {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, doguClient ecoSystem.DoguInterface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*DoguManager, error) {
+func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	err := validateKeyProvider(cesRegistry.GlobalConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate key provider: %w", err)
@@ -93,7 +93,7 @@ func NewDoguManager(client client.Client, doguClient ecoSystem.DoguInterface, op
 		return nil, err
 	}
 
-	upgradeManager := NewDoguUpgradeManager(client, doguClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	upgradeManager := NewDoguUpgradeManager(client, ecosystemClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}

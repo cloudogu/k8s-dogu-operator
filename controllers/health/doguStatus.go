@@ -3,6 +3,7 @@ package health
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 
 	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,17 +16,18 @@ import (
 const statusUpdateEventReason = "HealthStatusUpdate"
 
 type DoguStatusUpdater struct {
-	doguClient ecoSystem.DoguInterface
-	recorder   record.EventRecorder
+	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
+	recorder        record.EventRecorder
 }
 
-func NewDoguStatusUpdater(doguClient ecoSystem.DoguInterface, recorder record.EventRecorder) *DoguStatusUpdater {
-	return &DoguStatusUpdater{doguClient: doguClient, recorder: recorder}
+func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder) *DoguStatusUpdater {
+	return &DoguStatusUpdater{ecosystemClient: ecosystemClient, recorder: recorder}
 }
 
 // UpdateStatus sets the health status of the dogu according to whether if it's available or not.
-func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName string, available bool) error {
-	dogu, err := dsw.doguClient.Get(ctx, doguName, metav1api.GetOptions{})
+func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error {
+	doguClient := dsw.ecosystemClient.Dogus(doguName.Namespace)
+	dogu, err := doguClient.Get(ctx, doguName.Name, metav1api.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
 	}
@@ -36,7 +38,7 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName string,
 		dogu.Status.Health = doguv1.UnavailableHealthStatus
 	}
 
-	_, err = dsw.doguClient.UpdateStatus(ctx, dogu, metav1api.UpdateOptions{})
+	_, err = doguClient.UpdateStatus(ctx, dogu, metav1api.UpdateOptions{})
 	if err != nil {
 		message := fmt.Sprintf("failed to update dogu %q with health status %q", doguName, dogu.Status.Health)
 		dsw.recorder.Event(dogu, v1.EventTypeWarning, statusUpdateEventReason, message)

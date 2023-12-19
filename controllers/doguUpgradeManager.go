@@ -22,9 +22,9 @@ import (
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
-func NewDoguUpgradeManager(client client.Client, doguClient ecoSystem.DoguInterface, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
+func NewDoguUpgradeManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
 	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
-	doguChecker := health.NewDoguChecker(doguClient, mgrSet.LocalDoguFetcher)
+	doguChecker := health.NewDoguChecker(ecosystemClient, mgrSet.LocalDoguFetcher)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder)

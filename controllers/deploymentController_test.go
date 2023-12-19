@@ -21,12 +21,12 @@ import (
 func TestNewDeploymentReconciler(t *testing.T) {
 	t.Run("should not be empty", func(t *testing.T) {
 		// given
-		deployClientMock := extMocks.NewDeploymentInterface(t)
-		doguClientMock := mocks.NewDoguInterface(t)
+		clientSetMock := extMocks.NewClientSet(t)
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		recorderMock := extMocks.NewEventRecorder(t)
 
 		// when
-		actual := NewDeploymentReconciler(deployClientMock, doguClientMock, recorderMock)
+		actual := NewDeploymentReconciler(clientSetMock, ecosystemClientMock, recorderMock)
 
 		// then
 		assert.NotEmpty(t, actual)
@@ -83,9 +83,13 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 
 		deployClientMock := extMocks.NewDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(nil, assert.AnError)
+		appsV1Client := extMocks.NewAppsV1Interface(t)
+		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
+		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		sut := &DeploymentReconciler{
-			deployClient: deployClientMock,
+			k8sClientSet: clientSetMock,
 		}
 
 		// when
@@ -108,9 +112,13 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 
 		deployClientMock := extMocks.NewDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(nil, notFoundErr)
+		appsV1Client := extMocks.NewAppsV1Interface(t)
+		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
+		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		sut := &DeploymentReconciler{
-			deployClient: deployClientMock,
+			k8sClientSet: clientSetMock,
 		}
 
 		// when
@@ -133,9 +141,13 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 
 		deployClientMock := extMocks.NewDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "not-a-dogu", metav1.GetOptions{}).Return(deployment, nil)
+		appsV1Client := extMocks.NewAppsV1Interface(t)
+		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
+		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		sut := &DeploymentReconciler{
-			deployClient: deployClientMock,
+			k8sClientSet: clientSetMock,
 		}
 
 		// when
@@ -158,15 +170,19 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 
 		deployClientMock := extMocks.NewDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
+		appsV1Client := extMocks.NewAppsV1Interface(t)
+		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
+		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
 
 		doguHealthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
-		doguHealthUpdaterMock.EXPECT().UpdateStatus(testCtx, "my-dogu", true).Return(assert.AnError)
+		doguHealthUpdaterMock.EXPECT().UpdateStatus(testCtx, types.NamespacedName{Namespace: "", Name: "my-dogu"}, true).Return(assert.AnError)
 
 		sut := &DeploymentReconciler{
-			deployClient:            deployClientMock,
+			k8sClientSet:            clientSetMock,
 			availabilityChecker:     deployAvailCheckMock,
 			doguHealthStatusUpdater: doguHealthUpdaterMock,
 		}
@@ -193,15 +209,19 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 
 		deployClientMock := extMocks.NewDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
+		appsV1Client := extMocks.NewAppsV1Interface(t)
+		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
+		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(false)
 
 		doguHealthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
-		doguHealthUpdaterMock.EXPECT().UpdateStatus(testCtx, "my-dogu", false).Return(nil)
+		doguHealthUpdaterMock.EXPECT().UpdateStatus(testCtx, types.NamespacedName{Namespace: "", Name: "my-dogu"}, false).Return(nil)
 
 		sut := &DeploymentReconciler{
-			deployClient:            deployClientMock,
+			k8sClientSet:            clientSetMock,
 			availabilityChecker:     deployAvailCheckMock,
 			doguHealthStatusUpdater: doguHealthUpdaterMock,
 		}

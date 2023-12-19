@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
@@ -34,15 +35,15 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(doguClient ecoSystem.DoguInterface, localFetcher cloudogu.LocalDoguFetcher) *doguChecker {
+func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, localFetcher cloudogu.LocalDoguFetcher) *doguChecker {
 	return &doguChecker{
-		doguClient:        doguClient,
+		ecosystemClient:   ecosystemClient,
 		doguLocalRegistry: localFetcher,
 	}
 }
 
 type doguChecker struct {
-	doguClient        ecoSystem.DoguInterface
+	ecosystemClient   ecoSystem.EcoSystemV1Alpha1Interface
 	doguLocalRegistry cloudogu.LocalDoguFetcher
 }
 
@@ -51,8 +52,10 @@ type doguChecker struct {
 //
 //	var doguHealthError *health.DoguHealthError
 //	if errors.As(err, doguHealthError) { ... }
-func (dc *doguChecker) CheckByName(ctx context.Context, doguName string) error {
-	doguResource, err := dc.doguClient.Get(ctx, doguName, metav1api.GetOptions{})
+func (dc *doguChecker) CheckByName(ctx context.Context, doguName types.NamespacedName) error {
+	doguResource, err := dc.ecosystemClient.
+		Dogus(doguName.Namespace).
+		Get(ctx, doguName.Name, metav1api.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
 	}
@@ -67,15 +70,15 @@ func (dc *doguChecker) CheckByName(ctx context.Context, doguName string) error {
 
 // CheckDependenciesRecursive checks mandatory and optional dogu dependencies for health and returns an error if at
 // least one dogu is not healthy.
-func (dc *doguChecker) CheckDependenciesRecursive(ctx context.Context, localDoguRoot *core.Dogu) error {
+func (dc *doguChecker) CheckDependenciesRecursive(ctx context.Context, localDoguRoot *core.Dogu, namespace string) error {
 	var result error
 
-	err := dc.checkMandatoryRecursive(ctx, localDoguRoot)
+	err := dc.checkMandatoryRecursive(ctx, localDoguRoot, namespace)
 	if err != nil {
 		result = errors.Join(result, err)
 	}
 
-	err = dc.checkOptionalRecursive(ctx, localDoguRoot)
+	err = dc.checkOptionalRecursive(ctx, localDoguRoot, namespace)
 	if err != nil {
 		result = errors.Join(result, err)
 	}
@@ -83,15 +86,15 @@ func (dc *doguChecker) CheckDependenciesRecursive(ctx context.Context, localDogu
 	return result
 }
 
-func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *core.Dogu) error {
+func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *core.Dogu, namespace string) error {
 	var result error
 
 	for _, dependency := range localDogu.GetDependenciesOfType(core.DependencyTypeDogu) {
-		localDependencyDoguName := dependency.Name
+		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
-		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName)
+		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName.Name)
 		if err != nil {
-			err2 := fmt.Errorf("error getting registry key for %s: %w", localDependencyDoguName, err)
+			err2 := fmt.Errorf("error getting registry key for %q: %w", localDependencyDoguName, err)
 			result = errors.Join(result, err2)
 			// with no dogu information at hand we have no data on dependencies and must continue with the next dogu
 			continue
@@ -102,7 +105,7 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 			result = errors.Join(result, err)
 		}
 
-		err = dc.CheckDependenciesRecursive(ctx, dependencyDogu)
+		err = dc.CheckDependenciesRecursive(ctx, dependencyDogu, namespace)
 		if err != nil {
 			result = errors.Join(result, err)
 		}
@@ -111,14 +114,14 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 	return result
 }
 
-func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *core.Dogu) error {
+func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *core.Dogu, namespace string) error {
 	const optional = true
 	var result error
 
 	for _, dependency := range localDogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu) {
-		localDependencyDoguName := dependency.Name
+		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
-		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName)
+		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName.Name)
 		if err != nil {
 			if optional && registry.IsKeyNotFoundError(err) {
 				// optional dogus may not be installed, so continue and do nothing
@@ -134,7 +137,7 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 			result = errors.Join(result, err)
 		}
 
-		err = dc.CheckDependenciesRecursive(ctx, dependencyDogu)
+		err = dc.CheckDependenciesRecursive(ctx, dependencyDogu, namespace)
 		if err != nil {
 			result = errors.Join(result, err)
 		}

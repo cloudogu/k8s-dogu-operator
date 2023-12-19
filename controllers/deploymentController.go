@@ -3,19 +3,19 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
-	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	deploy "github.com/cloudogu/k8s-dogu-operator/controllers/deployment"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
@@ -24,16 +24,16 @@ const legacyDoguLabel = "dogu"
 
 // DeploymentReconciler watches every Deployment object in the cluster and writes the state of dogus into their respective custom resources.
 type DeploymentReconciler struct {
-	deployClient            appsv1client.DeploymentInterface
+	k8sClientSet            thirdParty.ClientSet
 	availabilityChecker     cloudogu.DeploymentAvailabilityChecker
 	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater
 }
 
-func NewDeploymentReconciler(deployClient appsv1client.DeploymentInterface, doguClient ecoSystem.DoguInterface, recorder record.EventRecorder) *DeploymentReconciler {
+func NewDeploymentReconciler(k8sClientSet thirdParty.ClientSet, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder) *DeploymentReconciler {
 	return &DeploymentReconciler{
-		deployClient:            deployClient,
-		availabilityChecker:     &deploy.AvailabilityChecker{},
-		doguHealthStatusUpdater: health.NewDoguStatusUpdater(doguClient, recorder),
+		k8sClientSet:            k8sClientSet,
+		availabilityChecker:     &health.AvailabilityChecker{},
+		doguHealthStatusUpdater: health.NewDoguStatusUpdater(ecosystemClient, recorder),
 	}
 }
 
@@ -42,7 +42,9 @@ func NewDeploymentReconciler(deployClient appsv1client.DeploymentInterface, dogu
 func (dr *DeploymentReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	deployment, err := dr.deployClient.Get(ctx, request.Name, metav1api.GetOptions{})
+	deployment, err := dr.k8sClientSet.
+		AppsV1().Deployments(request.Namespace).
+		Get(ctx, request.Name, metav1api.GetOptions{})
 	if err != nil {
 		return finishOrRequeue(logger,
 			client.IgnoreNotFound(
@@ -85,7 +87,9 @@ func hasDoguLabel(deployment client.Object) bool {
 
 func (dr *DeploymentReconciler) updateDoguHealth(ctx context.Context, doguDeployment *appsv1.Deployment) error {
 	doguAvailable := dr.availabilityChecker.IsAvailable(doguDeployment)
-	return dr.doguHealthStatusUpdater.UpdateStatus(ctx, doguDeployment.Name, doguAvailable)
+	return dr.doguHealthStatusUpdater.UpdateStatus(ctx,
+		types.NamespacedName{Name: doguDeployment.Name, Namespace: doguDeployment.Namespace},
+		doguAvailable)
 }
 
 // SetupWithManager sets up the controller with the Manager.

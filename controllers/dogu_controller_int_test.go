@@ -484,10 +484,12 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		assertRessourceStatus(upgradeLdapFromDoguLookupKey, "installed")
 
-		By("Patch Deployment to contain at least one healthy replica")
+		By("Patch Deployment to be available")
 		Expect(func() bool {
 			deployment.Status.Replicas = 1
 			deployment.Status.ReadyReplicas = 1
+			deployment.Status.AvailableReplicas = 1
+			deployment.Status.UpdatedReplicas = 1
 			err := k8sClient.Status().Update(testCtx, deployment)
 			return err == nil
 		}()).To(BeTrue())
@@ -557,9 +559,7 @@ func setExecPodRunning(ctx context.Context, doguName string) {
 
 	Eventually(func() bool {
 		err := k8sClient.List(ctx, podList)
-		if err != nil {
-			return false
-		}
+		Expect(err).ToNot(HaveOccurred())
 		for _, pod := range podList.Items {
 			if strings.Contains(pod.Name, doguName+"-execpod") && pod.Status.Phase != corev1.PodRunning {
 				pod.Status.Phase = corev1.PodRunning
@@ -592,19 +592,19 @@ func createDoguPod(ctx context.Context, doguCr *k8sv1.Dogu, podLabels k8sv1.CesM
 }
 
 func installDoguCr(ctx context.Context, doguCr *k8sv1.Dogu) {
-	doguClient := k8sClientSet.Dogus(doguCr.Namespace)
+	doguClient := ecosystemClientSet.Dogus(doguCr.Namespace)
 	_, err := doguClient.Create(ctx, doguCr, v1.CreateOptions{})
 	Expect(err).Should(Succeed())
 }
 
 func updateDoguCr(ctx context.Context, doguCr *k8sv1.Dogu) {
-	doguClient := k8sClientSet.Dogus(doguCr.Namespace)
+	doguClient := ecosystemClientSet.Dogus(doguCr.Namespace)
 	_, err := doguClient.Update(ctx, doguCr, v1.UpdateOptions{})
 	Expect(err).Should(Succeed())
 }
 
 func deleteDoguCr(ctx context.Context, doguCr *k8sv1.Dogu, deleteAdditional bool) {
-	doguClient := k8sClientSet.Dogus(doguCr.Namespace)
+	doguClient := ecosystemClientSet.Dogus(doguCr.Namespace)
 	err := doguClient.Delete(ctx, doguCr.Name, v1.DeleteOptions{})
 	Expect(err).Should(Succeed())
 

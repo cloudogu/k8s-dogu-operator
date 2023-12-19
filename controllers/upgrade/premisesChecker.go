@@ -65,12 +65,12 @@ func (pc *premisesChecker) Check(
 		return err
 	}
 
-	err = pc.doguHealthChecker.CheckByName(ctx, doguResource.Name)
+	err = pc.doguHealthChecker.CheckByName(ctx, doguResource.GetObjectKey())
 	if err != nil {
 		return &requeueablePremisesError{wrapped: err}
 	}
 
-	err = pc.checkDependencyDogusHealthy(ctx, localDogu)
+	err = pc.checkDependencyDogusHealthy(ctx, localDogu, doguResource.Namespace)
 	if err != nil {
 		return &requeueablePremisesError{wrapped: err}
 	}
@@ -81,13 +81,14 @@ func (pc *premisesChecker) Check(
 func (pc *premisesChecker) checkDependencyDogusHealthy(
 	ctx context.Context,
 	localDogu *core.Dogu,
+	namespace string,
 ) error {
 	err := pc.dependencyValidator.ValidateDependencies(ctx, localDogu)
 	if err != nil {
 		return err
 	}
 
-	return pc.doguRecursiveHealthChecker.CheckDependenciesRecursive(ctx, localDogu)
+	return pc.doguRecursiveHealthChecker.CheckDependenciesRecursive(ctx, localDogu, namespace)
 
 }
 

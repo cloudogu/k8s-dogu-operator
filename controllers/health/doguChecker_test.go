@@ -43,11 +43,13 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 		doguClientMock := mocks.NewDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(doguClientMock, localFetcher)
+		sut := NewDoguChecker(ecosystemClientMock, localFetcher)
 
 		// when
-		err := sut.CheckByName(testCtx, ldapResource.Name)
+		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
 
 		// then
 		require.NoError(t, err)
@@ -61,16 +63,18 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 		doguClientMock := mocks.NewDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(nil, assert.AnError)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(doguClientMock, localFetcher)
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
-		err := sut.CheckByName(testCtx, ldapResource.Name)
+		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
 
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to get dogu resource \"ldap\"")
+		assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/ldap\"")
 		localFetcher.AssertExpectations(t)
 	})
 	t.Run("should fail because of unready replicas", func(t *testing.T) {
@@ -81,11 +85,13 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 		doguClientMock := mocks.NewDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(doguClientMock, localFetcher)
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
-		err := sut.CheckByName(testCtx, ldapResource.Name)
+		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
 
 		// then
 		require.Error(t, err)
@@ -143,11 +149,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(doguClientMock, localFetcher)
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
-		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 		// then
 		require.NoError(t, err)
@@ -193,11 +201,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		doguClientMock := mocks.NewDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "testDogu2", metav1.GetOptions{}).Return(dependencyResource2, nil)
 		doguClientMock.EXPECT().Get(testCtx, "testDogu3", metav1.GetOptions{}).Return(dependencyResource3, nil)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(doguClientMock, localFetcher)
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
-		err := sut.CheckDependenciesRecursive(testCtx, testDogu)
+		err := sut.CheckDependenciesRecursive(testCtx, testDogu, testNamespace)
 
 		// then
 		require.NoError(t, err)
@@ -242,18 +252,20 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(nil, notFoundError)
 		doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(doguClientMock, localFetcher)
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
-		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 		// then
 		require.Error(t, err)
 		assert.Equal(t, 2, countMultiErrors(err))
-		assert.ErrorContains(t, err, "error getting registry key for postgresql")                                              // the wrapping error
-		assert.ErrorContains(t, err, "dogu \"optional1\" appears unhealthy")                                                   // wrapped error 1
-		assert.ErrorContains(t, err, `failed to get dogu resource "mandatory2": Dogu.k8s.cloudogu.com "mandatory2" not found`) // wrapped error 2
+		assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/postgresql\"")                                          // the wrapping error
+		assert.ErrorContains(t, err, "dogu \"optional1\" appears unhealthy")                                                                  // wrapped error 1
+		assert.ErrorContains(t, err, `failed to get dogu resource "test-namespace/mandatory2": Dogu.k8s.cloudogu.com "mandatory2" not found`) // wrapped error 2
 	})
 
 	t.Run("on direct dependencies", func(t *testing.T) {
@@ -294,16 +306,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "error getting registry key for postgresql")
+				assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/postgresql\"")
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but dogu resource does not exist", func(t *testing.T) {
 				/*
@@ -344,16 +358,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "failed to get dogu resource \"postgresql\"")
+				assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/postgresql\"")
 				assert.ErrorContains(t, err, `Dogu.k8s.cloudogu.com "postgresql" not found`)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but is not ready", func(t *testing.T) {
@@ -393,11 +409,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
@@ -445,11 +463,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
@@ -483,11 +503,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.NoError(t, err)
@@ -531,16 +553,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "failed to get dogu resource \"postgresql\"")
+				assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/postgresql\"")
 				assert.ErrorContains(t, err, `Dogu.k8s.cloudogu.com "postgresql" not found`)
 			})
 		})
@@ -582,16 +606,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "error getting registry key for mandatory2")
+				assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/mandatory2\"")
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but dogu resource does not exist", func(t *testing.T) {
 				/*
@@ -633,16 +659,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(nil, notFoundError)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "failed to get dogu resource \"mandatory2\"")
+				assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/mandatory2\"")
 				assert.ErrorContains(t, err, `Dogu.k8s.cloudogu.com "mandatory2" not found`)
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but is not ready", func(t *testing.T) {
@@ -682,11 +710,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
@@ -732,11 +762,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
@@ -781,16 +813,18 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(nil, notFoundError)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "failed to get dogu resource \"optional1\"")
+				assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/optional1\"")
 				assert.ErrorContains(t, err, `Dogu.k8s.cloudogu.com "optional1" not found`)
 			})
 			t.Run("should succeed when at least one optional dependency dogu is not installed", func(t *testing.T) {
@@ -824,11 +858,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(doguClientMock, localFetcher)
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
-				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu)
+				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
 
 				// then
 				require.NoError(t, err)

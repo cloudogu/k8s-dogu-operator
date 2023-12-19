@@ -2,6 +2,7 @@ package cloudogu
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/types"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 
@@ -15,17 +16,17 @@ type DeploymentAvailabilityChecker interface {
 
 type DoguHealthStatusUpdater interface {
 	// UpdateStatus sets the health status of the dogu according to whether if it's available or not.
-	UpdateStatus(ctx context.Context, doguName string, available bool) error
+	UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error
 }
 
 // DoguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
 type DoguHealthChecker interface {
 	// CheckByName returns nil if the dogu described by the resource is up and running.
-	CheckByName(ctx context.Context, doguName string) error
+	CheckByName(ctx context.Context, doguName types.NamespacedName) error
 }
 
 // DoguRecursiveHealthChecker includes functionality to check if a dogus dependencies are up and running.
 type DoguRecursiveHealthChecker interface {
 	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
-	CheckDependenciesRecursive(ctx context.Context, fromDogu *cesappcore.Dogu) error
+	CheckDependenciesRecursive(ctx context.Context, fromDogu *cesappcore.Dogu, namespace string) error
 }

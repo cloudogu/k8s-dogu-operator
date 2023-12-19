@@ -117,7 +117,7 @@ func Test_startDoguOperator(t *testing.T) {
 
 	oldDoguManager := controllers.NewManager
 	defer func() { controllers.NewManager = oldDoguManager }()
-	controllers.NewManager = func(client client.Client, doguClient ecoSystem.DoguInterface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*controllers.DoguManager, error) {
+	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*controllers.DoguManager, error) {
 		return &controllers.DoguManager{}, nil
 	}
 
