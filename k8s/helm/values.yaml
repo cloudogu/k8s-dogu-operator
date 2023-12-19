@@ -9,6 +9,7 @@ controllerManager:
   env:
     logLevel: debug
     stage: development
+    doguStartupProbeTimeout: 1
   resourceLimits:
     cpu: 500m
     memory: 128Mi

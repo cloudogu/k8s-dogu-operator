@@ -2,6 +2,8 @@ package resource
 
 import (
 	"fmt"
+	"os"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 	"strings"
 
@@ -41,6 +43,11 @@ const (
 
 // kubernetesServiceAccountKind describes a service account on kubernetes.
 const kubernetesServiceAccountKind = "k8s"
+
+const (
+	startupProbeTimoutEnv      = "DOGU_STARTUP_PROBE_TIMEOUT"
+	defaultStartupProbeTimeout = 1
+)
 
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
@@ -221,13 +228,15 @@ func buildDeploymentSpec(selectorLabels map[string]string, podTemplate *corev1.P
 // CreateStartupProbe returns a container start-up probe for the given dogu if it contains a state healthcheck.
 // Otherwise, it returns nil.
 func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
+	timeoutSeconds := getStartupProbeTimeout()
+
 	for _, healthCheck := range dogu.HealthChecks {
 		if healthCheck.Type == "state" {
 			return &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{Command: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
 				},
-				TimeoutSeconds:   1,
+				TimeoutSeconds:   timeoutSeconds,
 				PeriodSeconds:    10,
 				SuccessThreshold: 1,
 				// Setting this value to low makes some dogus unable to start that require a certain amount of time.
@@ -237,6 +246,21 @@ func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
 		}
 	}
 	return nil
+}
+
+func getStartupProbeTimeout() int32 {
+	timeoutSeconds := defaultStartupProbeTimeout
+	timeoutSecondsStr, found := os.LookupEnv(startupProbeTimoutEnv)
+	if found {
+		var err error
+		timeoutSeconds, err = strconv.Atoi(timeoutSecondsStr)
+		if err != nil {
+			log.Log.Error(err, fmt.Sprintf("failed to convert dogu startup probe timeout %q to int: defaulting to %q", timeoutSecondsStr, defaultStartupProbeTimeout))
+			timeoutSeconds = 1
+		}
+	}
+
+	return int32(timeoutSeconds)
 }
 
 // GetAppLabel returns an app label which all CES resource may receive for general selection.
