@@ -4,11 +4,12 @@ additionalImages:
 controllerManager:
   image:
     repository: cloudogu/k8s-dogu-operator
-    tag: 0.39.1
+    tag: 0.39.2
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug
     stage: development
+    doguStartupProbeTimeout: 1
   resourceLimits:
     cpu: 500m
     memory: 128Mi

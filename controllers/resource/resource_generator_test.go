@@ -400,3 +400,24 @@ func Test_getChownInitContainer(t *testing.T) {
 		assert.Nil(t, actual)
 	})
 }
+
+func Test_getStartupProbeTimeout(t *testing.T) {
+	tests := []struct {
+		name       string
+		setEnv     bool
+		timeoutEnv string
+		want       int32
+	}{
+		{name: "should be 1 if not set", setEnv: false, want: 1},
+		{name: "should be 1 if unparseable", setEnv: true, timeoutEnv: "banana", want: 1},
+		{name: "should parse correctly", setEnv: true, timeoutEnv: "123", want: 123},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setEnv {
+				t.Setenv(startupProbeTimoutEnv, tt.timeoutEnv)
+			}
+			assert.Equalf(t, tt.want, getStartupProbeTimeout(), "getStartupProbeTimeout()")
+		})
+	}
+}

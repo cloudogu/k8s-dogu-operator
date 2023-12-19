@@ -79,6 +79,8 @@ spec:
             secretKeyRef:
               key: .dockerconfigjson
               name: k8s-dogu-operator-docker-registry
+        - name: DOGU_STARTUP_PROBE_TIMEOUT
+          value: {{ quote .Values.controllerManager.env.doguStartupProbeTimeout | default "1" }}
         image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}
         imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent"}}
         livenessProbe:

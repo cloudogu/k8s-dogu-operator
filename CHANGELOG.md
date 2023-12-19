@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.39.2] - 2023-12-19
+### Fixed
+- [#145] Dogu startupProbe timeouts in airgapped environments
+### Added
+- [#145] Configurable startupProbe timeout
+
 ## [v0.39.1] - 2023-12-12
 ### Fixed
 - [#139] Fix missing value for attribute `chownInitImage` in patch templates.
