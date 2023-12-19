@@ -57,7 +57,7 @@ func (dr *DeploymentReconciler) Reconcile(ctx context.Context, request ctrl.Requ
 		// ignore non dogu deployments
 		return finishOperation()
 	}
-	logger.Info(fmt.Sprintf("Found dogu deployment: [%s]", deployment.Name))
+	logger.Info(fmt.Sprintf("Found dogu deployment %q", deployment.Name))
 
 	err = dr.updateDoguHealth(ctx, deployment)
 	if err != nil {
@@ -87,6 +87,7 @@ func hasDoguLabel(deployment client.Object) bool {
 
 func (dr *DeploymentReconciler) updateDoguHealth(ctx context.Context, doguDeployment *appsv1.Deployment) error {
 	doguAvailable := dr.availabilityChecker.IsAvailable(doguDeployment)
+	log.FromContext(ctx).Info(fmt.Sprintf("dogu deployment %q is %s", doguDeployment.Name, (map[bool]string{true: "available", false: "unavailable"})[doguAvailable]))
 	return dr.doguHealthStatusUpdater.UpdateStatus(ctx,
 		types.NamespacedName{Name: doguDeployment.Name, Namespace: doguDeployment.Namespace},
 		doguAvailable)
