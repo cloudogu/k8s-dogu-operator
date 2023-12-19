@@ -228,6 +228,27 @@ func buildDeploymentSpec(selectorLabels map[string]string, podTemplate *corev1.P
 // CreateStartupProbe returns a container start-up probe for the given dogu if it contains a state healthcheck.
 // Otherwise, it returns nil.
 func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
+	timeoutSeconds := getStartupProbeTimeout()
+
+	for _, healthCheck := range dogu.HealthChecks {
+		if healthCheck.Type == "state" {
+			return &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					Exec: &corev1.ExecAction{Command: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
+				},
+				TimeoutSeconds:   timeoutSeconds,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				// Setting this value to low makes some dogus unable to start that require a certain amount of time.
+				// The default value is set to 30 min.
+				FailureThreshold: 6 * 30,
+			}
+		}
+	}
+	return nil
+}
+
+func getStartupProbeTimeout() int32 {
 	timeoutSeconds := defaultStartupProbeTimeout
 	timeoutSecondsStr, found := os.LookupEnv(startupProbeTimoutEnv)
 	if found {
@@ -239,22 +260,7 @@ func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
 		}
 	}
 
-	for _, healthCheck := range dogu.HealthChecks {
-		if healthCheck.Type == "state" {
-			return &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					Exec: &corev1.ExecAction{Command: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
-				},
-				TimeoutSeconds:   int32(timeoutSeconds),
-				PeriodSeconds:    10,
-				SuccessThreshold: 1,
-				// Setting this value to low makes some dogus unable to start that require a certain amount of time.
-				// The default value is set to 30 min.
-				FailureThreshold: 6 * 30,
-			}
-		}
-	}
-	return nil
+	return int32(timeoutSeconds)
 }
 
 // GetAppLabel returns an app label which all CES resource may receive for general selection.
