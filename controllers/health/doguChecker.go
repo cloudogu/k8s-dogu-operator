@@ -51,7 +51,7 @@ type doguChecker struct {
 // If the dogu is unhealthy, an error of type *health.DoguHealthError is returned:
 //
 //	var doguHealthError *health.DoguHealthError
-//	if errors.As(err, doguHealthError) { ... }
+//	if errors.As(err, &doguHealthError) { ... }
 func (dc *doguChecker) CheckByName(ctx context.Context, doguName types.NamespacedName) error {
 	doguResource, err := dc.ecosystemClient.
 		Dogus(doguName.Namespace).
