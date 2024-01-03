@@ -68,6 +68,9 @@ spec:
             status:
               description: DoguStatus defines the observed state of a Dogu.
               properties:
+                health:
+                  description: Health describes the health status of the dogu
+                  type: string
                 requeuePhase:
                   description: RequeuePhase is the actual phase of the dogu resource used for a currently running async process.
                   type: string

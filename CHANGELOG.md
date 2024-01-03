@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.40.0] - 2024-01-03
+### Added
+- [#143] Track health on dogu CR
+
 ## [v0.39.2] - 2023-12-19
 ### Fixed
 - [#145] Dogu startupProbe timeouts in airgapped environments

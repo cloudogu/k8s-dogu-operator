@@ -168,7 +168,7 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
-		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		// when
-		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.NoError(t, err)
@@ -212,7 +212,7 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
-		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.Error(t, err)
@@ -233,7 +233,7 @@ func TestNewDoguManager(t *testing.T) {
 		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when
-		doguManager, err := NewDoguManager(client, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.Error(t, err)
