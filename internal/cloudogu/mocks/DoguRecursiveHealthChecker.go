@@ -22,13 +22,13 @@ func (_m *DoguRecursiveHealthChecker) EXPECT() *DoguRecursiveHealthChecker_Expec
 	return &DoguRecursiveHealthChecker_Expecter{mock: &_m.Mock}
 }
 
-// CheckDependenciesRecursive provides a mock function with given fields: ctx, fromDogu, currentK8sNamespace
-func (_m *DoguRecursiveHealthChecker) CheckDependenciesRecursive(ctx context.Context, fromDogu *core.Dogu, currentK8sNamespace string) error {
-	ret := _m.Called(ctx, fromDogu, currentK8sNamespace)
+// CheckDependenciesRecursive provides a mock function with given fields: ctx, fromDogu, namespace
+func (_m *DoguRecursiveHealthChecker) CheckDependenciesRecursive(ctx context.Context, fromDogu *core.Dogu, namespace string) error {
+	ret := _m.Called(ctx, fromDogu, namespace)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu, string) error); ok {
-		r0 = rf(ctx, fromDogu, currentK8sNamespace)
+		r0 = rf(ctx, fromDogu, namespace)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,12 +44,12 @@ type DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call struct {
 // CheckDependenciesRecursive is a helper method to define mock.On call
 //   - ctx context.Context
 //   - fromDogu *core.Dogu
-//   - currentK8sNamespace string
-func (_e *DoguRecursiveHealthChecker_Expecter) CheckDependenciesRecursive(ctx interface{}, fromDogu interface{}, currentK8sNamespace interface{}) *DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call {
-	return &DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call{Call: _e.mock.On("CheckDependenciesRecursive", ctx, fromDogu, currentK8sNamespace)}
+//   - namespace string
+func (_e *DoguRecursiveHealthChecker_Expecter) CheckDependenciesRecursive(ctx interface{}, fromDogu interface{}, namespace interface{}) *DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call {
+	return &DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call{Call: _e.mock.On("CheckDependenciesRecursive", ctx, fromDogu, namespace)}
 }
 
-func (_c *DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call) Run(run func(ctx context.Context, fromDogu *core.Dogu, currentK8sNamespace string)) *DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call {
+func (_c *DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call) Run(run func(ctx context.Context, fromDogu *core.Dogu, namespace string)) *DoguRecursiveHealthChecker_CheckDependenciesRecursive_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*core.Dogu), args[2].(string))
 	})

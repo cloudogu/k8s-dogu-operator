@@ -2,29 +2,25 @@ package health
 
 import (
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/v2"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
 const testNamespace = "test-namespace"
-
-var deploymentTypeMeta = metav1.TypeMeta{
-	APIVersion: "apps/v1",
-	Kind:       "Deployment",
-}
 
 var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
 var testCtx = context.Background()
@@ -40,35 +36,66 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 	t.Run("should succeed", func(t *testing.T) {
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		testDeployment := createDeployment("ldap", 1, 1)
-		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
-		sut := NewDoguChecker(myClient, localFetcher)
+		ldapResource.Status.Health = "available"
+
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+		sut := NewDoguChecker(ecosystemClientMock, localFetcher)
 
 		// when
-		err := sut.CheckWithResource(testCtx, ldapResource)
+		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
 
 		// then
 		require.NoError(t, err)
 		localFetcher.AssertExpectations(t)
 	})
-	t.Run("should fail because of unready replicas", func(t *testing.T) {
+	t.Run("should fail to get dogu cr", func(t *testing.T) {
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		testDeployment := createDeployment("ldap", 1, 0)
-		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(testDeployment).Build()
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
-		sut := NewDoguChecker(myClient, localFetcher)
+
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(nil, assert.AnError)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
-		err := sut.CheckWithResource(testCtx, ldapResource)
+		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "dogu ldap appears unhealthy (desired replicas: 1, ready: 0)")
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/ldap\"")
+		localFetcher.AssertExpectations(t)
+	})
+	t.Run("should fail because of unready replicas", func(t *testing.T) {
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+
+		ldapResource := readTestDataLdapCr(t)
+		ldapResource.Namespace = testNamespace
+
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
+
+		// when
+		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "dogu failed a health check: dogu \"ldap\" appears unhealthy")
 		localFetcher.AssertExpectations(t)
 	})
 }
@@ -109,19 +136,23 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
-		dependentDeployment := createDeployment("redmine", 1, 0)
-		dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-		dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-		dependencyDeployment3 := createDeployment("mandatory2", 1, 1)
-		dependencyDeployment4 := createDeployment("optional1", 1, 1)
-		dependencyDeployment5 := createDeployment("optional2", 1, 1)
 
-		myClient := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-			Build()
+		dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-		sut := NewDoguChecker(myClient, localFetcher)
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+		doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+		doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+		doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+		doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -164,16 +195,16 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		localFetcher.EXPECT().FetchInstalled("testDogu2").Once().Return(testDogu2, nil)
 		localFetcher.EXPECT().FetchInstalled("testDogu3").Once().Return(testDogu3, nil)
 
-		dependentDeployment := createDeployment("testDogu", 1, 0)
-		dependencyDeployment1 := createDeployment("testDogu2", 1, 1)
-		dependencyDeployment2 := createDeployment("testDogu3", 1, 1)
+		dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu2"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu3"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-		myClient := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2).
-			Build()
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, "testDogu2", metav1.GetOptions{}).Return(dependencyResource2, nil)
+		doguClientMock.EXPECT().Get(testCtx, "testDogu3", metav1.GetOptions{}).Return(dependencyResource3, nil)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(myClient, localFetcher)
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, testDogu, testNamespace)
@@ -208,19 +239,23 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
-		dependentDeployment := createDeployment("redmine", 1, 0)
-		// dependencyDeployment1 postgresql was not even asked because of missing registry config
-		dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-		// dependencyDeployment3 deployment mandatory2 is missing
-		dependencyDeployment4 := createDeployment("optional1", 1, 0) // is not ready
-		dependencyDeployment5 := createDeployment("optional2", 1, 1)
 
-		myClient := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(dependentDeployment, dependencyDeployment2, dependencyDeployment4, dependencyDeployment5).
-			Build()
+		// dependencyResource1 postgresql was not even asked because of missing registry config
+		dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+		// dependencyResource3 mandatory2 is missing
+		notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "mandatory2")
+		dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "unavailable"}}
+		dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-		sut := NewDoguChecker(myClient, localFetcher)
+		doguClientMock := mocks.NewDoguInterface(t)
+		doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+		doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(nil, notFoundError)
+		doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+		doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+		ecosystemClient := mocks.NewEcosystemInterface(t)
+		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -228,9 +263,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Equal(t, 2, countMultiErrors(err))
-		assert.ErrorContains(t, err, "error getting registry key for postgresql")                                    // the wrapping error
-		assert.ErrorContains(t, err, "dogu optional1 appears unhealthy")                                             // wrapped error 1
-		assert.ErrorContains(t, err, `dogu mandatory2 health check failed: deployments.apps "mandatory2" not found`) // wrapped error 2
+		assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/postgresql\"")                                          // the wrapping error
+		assert.ErrorContains(t, err, "dogu \"optional1\" appears unhealthy")                                                                  // wrapped error 1
+		assert.ErrorContains(t, err, `failed to get dogu resource "test-namespace/mandatory2": Dogu.k8s.cloudogu.com "mandatory2" not found`) // wrapped error 2
 	})
 
 	t.Run("on direct dependencies", func(t *testing.T) {
@@ -259,19 +294,22 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				// dependencyDeployment1 is not even existing
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("mandatory2", 1, 1)
-				dependencyDeployment4 := createDeployment("optional1", 1, 1)
-				dependencyDeployment5 := createDeployment("optional2", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-					Build()
+				// dependencyResource1 is not even existing
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -279,9 +317,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "error getting registry key for postgresql")
+				assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/postgresql\"")
 			})
-			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment does not exist", func(t *testing.T) {
+			t.Run("should fail when at least one mandatory dependency dogu is installed but dogu resource does not exist", func(t *testing.T) {
 				/*
 					redmine
 					+-m-> ❌️postgresql
@@ -306,19 +344,24 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				// dependencyDeployment1 does not exist
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("mandatory2", 1, 1)
-				dependencyDeployment4 := createDeployment("optional1", 1, 1)
-				dependencyDeployment5 := createDeployment("optional2", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-					Build()
+				// dependencyResource1 does not exist
+				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "postgresql")
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(nil, notFoundError)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -326,10 +369,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "dogu postgresql health check failed")
-				assert.ErrorContains(t, err, `deployments.apps "postgresql" not found`)
+				assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/postgresql\"")
+				assert.ErrorContains(t, err, `Dogu.k8s.cloudogu.com "postgresql" not found`)
 			})
-			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment is not ready", func(t *testing.T) {
+			t.Run("should fail when at least one mandatory dependency dogu is installed but is not ready", func(t *testing.T) {
 				/*
 					redmine
 					+-m-> ❌️postgresql
@@ -353,19 +396,23 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 0) // boom
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("mandatory2", 1, 1)
-				dependencyDeployment4 := createDeployment("optional1", 1, 1)
-				dependencyDeployment5 := createDeployment("optional2", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "unavailable"}} // boom
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -373,11 +420,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "dogu postgresql appears unhealthy (desired replicas: 1, ready: 0)")
+				assert.ErrorContains(t, err, "dogu \"postgresql\" appears unhealthy")
 			})
 		})
 		t.Run("which are optional", func(t *testing.T) {
-			t.Run("should fail when at least one optional dependency dogu is installed but deployment is not ready", func(t *testing.T) {
+			t.Run("should fail when at least one optional dependency dogu is installed but is not ready", func(t *testing.T) {
 				/*
 					redmine
 					+-m-> ☑️postgresql
@@ -403,19 +450,23 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("optional1", 1, 0)
-				dependencyDeployment4 := createDeployment("mandatory2", 1, 1)
-				dependencyDeployment5 := createDeployment("optional2", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "unavailable"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -423,7 +474,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "dogu optional1 appears unhealthy (desired replicas: 1, ready: 0)")
+				assert.ErrorContains(t, err, "dogu \"optional1\" appears unhealthy")
 			})
 			t.Run("should succeed when at least one optional dependency dogu is not installed", func(t *testing.T) {
 				/*
@@ -445,16 +496,17 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("optional1").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -462,7 +514,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.NoError(t, err)
 			})
-			t.Run("should fail when at least one optional dependency dogu is installed but deployment does not exist", func(t *testing.T) {
+			t.Run("should fail when at least one optional dependency dogu is installed but dogu resource does not exist", func(t *testing.T) {
 				/*
 					redmine
 					+-m-> ☑️postgresql
@@ -487,19 +539,24 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				// dependencyDeployment1 does not exist
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("mandatory2", 1, 1)
-				dependencyDeployment4 := createDeployment("optional1", 1, 1)
-				dependencyDeployment5 := createDeployment("optional2", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-					Build()
+				// dependencyResource1 does not exist
+				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "postgresql")
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(nil, notFoundError)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -507,8 +564,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "dogu postgresql health check failed")
-				assert.ErrorContains(t, err, `deployments.apps "postgresql" not found`)
+				assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/postgresql\"")
+				assert.ErrorContains(t, err, `Dogu.k8s.cloudogu.com "postgresql" not found`)
 			})
 		})
 	})
@@ -538,19 +595,21 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("mandatory2", 1, 1)
-				dependencyDeployment4 := createDeployment("optional1", 1, 1)
-				dependencyDeployment5 := createDeployment("optional2", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -558,9 +617,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "error getting registry key for mandatory2")
+				assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/mandatory2\"")
 			})
-			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment does not exist", func(t *testing.T) {
+			t.Run("should fail when at least one mandatory dependency dogu is installed but dogu resource does not exist", func(t *testing.T) {
 				/*
 					redmine
 					+-m-> ☑️postgresql
@@ -586,19 +645,24 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("optional1", 1, 1)
-				dependencyDeployment4 := createDeployment("optional2", 1, 1)
-				// dependencyDeployment5 does not exists
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				// dependencyResource3 does not exists
+				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "mandatory2")
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(nil, notFoundError)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -606,10 +670,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "dogu mandatory2 health check failed")
-				assert.ErrorContains(t, err, `deployments.apps "mandatory2" not found`)
+				assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/mandatory2\"")
+				assert.ErrorContains(t, err, `Dogu.k8s.cloudogu.com "mandatory2" not found`)
 			})
-			t.Run("should fail when at least one mandatory dependency dogu is installed but deployment is not ready", func(t *testing.T) {
+			t.Run("should fail when at least one mandatory dependency dogu is installed but is not ready", func(t *testing.T) {
 				/*
 					redmine
 					+-m-> ☑️postgresql
@@ -633,19 +697,23 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("optional1", 1, 1)
-				dependencyDeployment4 := createDeployment("optional2", 1, 1)
-				dependencyDeployment5 := createDeployment("mandatory2", 1, 0) // boom
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "unavailable"}} // boom
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -653,11 +721,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "dogu mandatory2 appears unhealthy (desired replicas: 1, ready: 0)")
+				assert.ErrorContains(t, err, "dogu \"mandatory2\" appears unhealthy")
 			})
 		})
 		t.Run("which are optional", func(t *testing.T) {
-			t.Run("should fail when at least one optional dependency dogu is installed but deployment is not ready", func(t *testing.T) {
+			t.Run("should fail when at least one optional dependency dogu is installed but is not ready", func(t *testing.T) {
 				/*
 					redmine
 					+-m-> ☑️postgresql
@@ -681,19 +749,23 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("optional1", 1, 1)
-				dependencyDeployment4 := createDeployment("optional2", 1, 0)
-				dependencyDeployment5 := createDeployment("mandatory2", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment4, dependencyDeployment5).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "unavailable"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -701,9 +773,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "dogu optional2 appears unhealthy (desired replicas: 1, ready: 0)")
+				assert.ErrorContains(t, err, "dogu \"optional2\" appears unhealthy")
 			})
-			t.Run("should fail when at least one optional dependency dogu is installed but deployment does not exist", func(t *testing.T) {
+			t.Run("should fail when at least one optional dependency dogu is installed but dogu resource does not exist", func(t *testing.T) {
 				/*
 					redmine
 					+-m-> ☑️postgresql
@@ -727,19 +799,24 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("optional1", 1, 1)
-				// dependencyDeployment4 is missing
-				dependencyDeployment5 := createDeployment("mandatory2", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3, dependencyDeployment5).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				// dependencyResource4 is missing
+				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "optional1")
+				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(nil, notFoundError)
+				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -747,8 +824,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "dogu optional2 health check failed")
-				assert.ErrorContains(t, err, `deployments.apps "optional2" not found`)
+				assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/optional1\"")
+				assert.ErrorContains(t, err, `Dogu.k8s.cloudogu.com "optional1" not found`)
 			})
 			t.Run("should succeed when at least one optional dependency dogu is not installed", func(t *testing.T) {
 				/*
@@ -772,17 +849,19 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				localFetcher.EXPECT().FetchInstalled("optional2").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
-				dependentDeployment := createDeployment("redmine", 1, 0)
-				dependencyDeployment1 := createDeployment("postgresql", 1, 1)
-				dependencyDeployment2 := createDeployment("mandatory1", 1, 1)
-				dependencyDeployment3 := createDeployment("optional1", 1, 1)
 
-				myClient := fake.NewClientBuilder().
-					WithScheme(getTestScheme()).
-					WithObjects(dependentDeployment, dependencyDeployment1, dependencyDeployment2, dependencyDeployment3).
-					Build()
+				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
 
-				sut := NewDoguChecker(myClient, localFetcher)
+				doguClientMock := mocks.NewDoguInterface(t)
+				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
+				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
+				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
+				ecosystemClient := mocks.NewEcosystemInterface(t)
+				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+
+				sut := NewDoguChecker(ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -793,20 +872,6 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		})
 	})
-}
-
-func createDeployment(doguName string, replicas, replicasReady int32) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		TypeMeta: deploymentTypeMeta,
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguName,
-			Namespace: testNamespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{ServiceAccountName: "somethingNonEmptyToo"}},
-		},
-		Status: appsv1.DeploymentStatus{Replicas: replicas, ReadyReplicas: replicasReady},
-	}
 }
 
 func createTestRestConfig() (*rest.Config, error) {
