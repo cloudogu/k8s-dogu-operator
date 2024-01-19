@@ -201,7 +201,7 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		dogu.Spec.Resources.DataVolumeSize = "1Gi"
 		requests := make(map[corev1.ResourceName]resource.Quantity)
 		requests[corev1.ResourceStorage] = resource.MustParse("0.5Gi")
-		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.ResourceRequirements{Requests: requests}}}
+		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: requests}}}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
 		recorder := extMocks.NewEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Update dogu data PVC request storage...")
@@ -266,7 +266,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 		requests := map[corev1.ResourceName]resource.Quantity{}
 		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
 		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}, Spec: corev1.PersistentVolumeClaimSpec{
-			Resources: corev1.ResourceRequirements{Requests: requests}}}
+			Resources: corev1.VolumeResourceRequirements{Requests: requests}}}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
 		recorder := extMocks.NewEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
@@ -294,7 +294,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				Resources: corev1.ResourceRequirements{Requests: requests},
+				Resources: corev1.VolumeResourceRequirements{Requests: requests},
 			},
 		}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
@@ -357,7 +357,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				Resources: corev1.ResourceRequirements{Requests: requests},
+				Resources: corev1.VolumeResourceRequirements{Requests: requests},
 			},
 		}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
@@ -380,7 +380,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 		requests := map[corev1.ResourceName]resource.Quantity{}
 		requests[corev1.ResourceStorage] = resource.MustParse("0.5Gi")
 		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}, Spec: corev1.PersistentVolumeClaimSpec{
-			Resources: corev1.ResourceRequirements{Requests: requests}}}
+			Resources: corev1.VolumeResourceRequirements{Requests: requests}}}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
 		recorder := extMocks.NewEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
@@ -408,7 +408,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				Resources: corev1.ResourceRequirements{Requests: requests},
+				Resources: corev1.VolumeResourceRequirements{Requests: requests},
 			},
 		}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
