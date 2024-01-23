@@ -663,7 +663,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		resources := make(map[v1.ResourceName]resource.Quantity)
 		resources[v1.ResourceStorage] = resource.MustParse("1Gi")
 		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(),
-			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.ResourceRequirements{Requests: resources}}}
+			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.VolumeResourceRequirements{Requests: resources}}}
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
@@ -682,7 +682,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		resources := make(map[v1.ResourceName]resource.Quantity)
 		resources[v1.ResourceStorage] = resource.MustParse("2Gi")
 		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(),
-			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.ResourceRequirements{Requests: resources}}}
+			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.VolumeResourceRequirements{Requests: resources}}}
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
@@ -701,7 +701,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		resources := make(map[v1.ResourceName]resource.Quantity)
 		resources[v1.ResourceStorage] = resource.MustParse("3Gi")
 		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(),
-			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.ResourceRequirements{Requests: resources}}}
+			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.VolumeResourceRequirements{Requests: resources}}}
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
