@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.41.0] - 2024-01-23
+### Changed
+- Update go dependencies
+- Particularly update the k8s-libraries to v0.29.1
+- [#141] Improve documentation for running an offline Cloudogu EcoSystem.
+
 ## [v0.40.0] - 2024-01-03
 ### Added
 - [#143] Track health on dogu CR
