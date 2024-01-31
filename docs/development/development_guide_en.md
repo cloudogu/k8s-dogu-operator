@@ -12,6 +12,14 @@
 6. Delete any existing dogu operator deployments to avoid concurrency issues
    - `kubectl -n=ecosystem delete deployment k8s-dogu-operator`
 
+### Debugging with IntelliJ
+
+1. Follow steps above except `make run`
+2. Use the IntelliJ-section of the .env-template
+3. print your set of env-variables with `make print-debug-info`
+4. copy the result in your intelliJ run configuration as environment
+5. start main.go in debug-mode
+
 ## Makefile-Targets
 
 The command `make help` prints all available targets and their descriptions in the command line.

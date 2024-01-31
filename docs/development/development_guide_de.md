@@ -13,6 +13,14 @@
 6. Löschen Sie eventuelle Dogu-Operator-Deployments im Cluster, um Parallelisierungsfehler auszuschließen
    - `kubectl delete deployment k8s-dogu-operator`
 
+### Debugging mit IntelliJ
+
+1. Folgen Sie die oben beschriebenen Schritte, mit Ausnahme von `make run`
+2. Benutzen Sie den Abschnitt zu IntelliJ aus dem .env-template
+3. Lassen Sie sich Ihre Umgebungsvariablen mit `make print-debug-info` ausgeben
+4. Kopieren Sie sich das Ergebnis in Ihre intelliJ Startkonfiguration
+5. Starten Sie die main.go im Debug-mode
+
 ## Makefile-Targets
 
 Der Befehl `make help` gibt alle verfügbaren Targets und deren Beschreibungen in der Kommandozeile aus.
