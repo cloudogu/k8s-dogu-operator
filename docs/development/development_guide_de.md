@@ -9,9 +9,11 @@
    Umgebungsvariablendatei mit persönlichen Informationen anzulegen
 4. Erzeugen Sie einen etcd Port-Forward
    - `kubectl -n=ecosystem port-forward etcd-0 4001:2379`
-5. Führen Sie `make run` aus, um den dogu-Operator lokal auszuführen
-6. Löschen Sie eventuelle Dogu-Operator-Deployments im Cluster, um Parallelisierungsfehler auszuschließen
-   - `kubectl delete deployment k8s-dogu-operator`
+5. Löschen Sie den Dogu-Operator im Cluster, um Parallelisierungsfehler auszuschließen
+   - `kubectl delete component k8s-dogu-operator`
+6. Erstellen Sie benötigte Debugging-Ressourcen:
+   - `kubectl apply -f config/debug`
+7. Führen Sie `make run` aus, um den dogu-Operator lokal auszuführen
 
 ### Debugging mit IntelliJ
 
