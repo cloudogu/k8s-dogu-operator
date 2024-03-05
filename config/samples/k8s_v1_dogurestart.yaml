@@ -1,0 +1,6 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: DoguRestart
+metadata:
+  name: dogurestart-sample
+spec:
+ doguName: ldap

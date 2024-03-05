@@ -3,23 +3,27 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	reg "github.com/cloudogu/cesapp-lib/registry"
+
+	"github.com/google/uuid"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/google/uuid"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
-	"os"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -118,7 +122,6 @@ func configureManager(k8sManager manager.Manager, operatorConfig *config.Operato
 		return fmt.Errorf("failed to configure reconciler: %w", err)
 	}
 
-	// +kubebuilder:scaffold:builder
 	err = addChecks(k8sManager)
 	if err != nil {
 		return fmt.Errorf("failed to add checks to the manager: %w", err)
@@ -229,6 +232,15 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 	if err != nil {
 		return fmt.Errorf("failed to setup deployment reconciler with manager: %w", err)
 	}
+
+	if err = (&controllers.DoguRestartReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager); err != nil {
+		return fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
+	}
+
+	// +kubebuilder:scaffold:builder
 
 	return nil
 }

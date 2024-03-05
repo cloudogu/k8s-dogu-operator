@@ -11,7 +11,8 @@ K8S_RUN_PRE_TARGETS = setup-etcd-port-forward
 PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
 K8S_COMPONENT_TARGET_VALUES = ${HELM_TARGET_DIR}/values.yaml
-CRD_SOURCE = ${HELM_CRD_SOURCE_DIR}/templates/k8s.cloudogu.com_dogus.yaml
+CRD_DOGU_SOURCE = ${HELM_CRD_SOURCE_DIR}/templates/k8s.cloudogu.com_dogus.yaml
+CRD_RESTART_SOURCE = ${HELM_CRD_SOURCE_DIR}/templates/k8s.cloudogu.com_dogurestarts.yaml
 HELM_PRE_APPLY_TARGETS = template-stage template-image-pull-policy template-log-level
 CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
 HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
@@ -36,7 +37,7 @@ build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version 
 .PHONY: crd-copy-for-go-embedding
 crd-copy-for-go-embedding:
 	@echo "Copy CRD to api/v1/"
-	@cp ${CRD_SOURCE} api/v1/
+	@cp ${CRD_DOGU_SOURCE} api/v1/
 
 .PHONY: helm-values-update-image-version
 helm-values-update-image-version: $(BINARY_YQ)
