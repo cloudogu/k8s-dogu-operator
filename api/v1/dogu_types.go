@@ -52,6 +52,8 @@ type DoguSpec struct {
 	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
 	// a crash loop).
 	SupportMode bool `json:"supportMode,omitempty"`
+	// Stopped indicates whether the dogu should be running (stopped=false) or not (stopped=true).
+	Stopped bool `json:"stopped,omitempty"`
 	// UpgradeConfig contains options to manipulate the upgrade process.
 	UpgradeConfig UpgradeConfig `json:"upgradeConfig,omitempty"`
 	// AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
@@ -99,6 +101,8 @@ type DoguStatus struct {
 	RequeuePhase string `json:"requeuePhase"`
 	// Health describes the health status of the dogu
 	Health HealthStatus `json:"health,omitempty"`
+	// Stopped shows if the dogu has been stopped or not.
+	Stopped bool `json:"stopped,omitempty"`
 }
 
 // NextRequeue increases the requeue time of the dogu status and returns the new requeue time
