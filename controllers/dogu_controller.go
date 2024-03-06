@@ -81,7 +81,7 @@ const (
 	StopDogu                           = operation("StopDogu")
 )
 
-const waitTimeout = 5 * time.Second
+const requeueWaitTimeout = 5 * time.Second
 
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
@@ -157,7 +157,7 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 	switch requiredOperations[0] {
 	case Wait:
 		if requeueForMultipleOperations {
-			return requeueOrFinishOperation(ctrl.Result{Requeue: true, RequeueAfter: waitTimeout})
+			return requeueOrFinishOperation(ctrl.Result{Requeue: true, RequeueAfter: requeueWaitTimeout})
 		}
 
 		return finishOperation()
@@ -171,6 +171,10 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 		return r.performVolumeOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeAdditionalIngressAnnotations:
 		return r.performAdditionalIngressAnnotationsOperation(ctx, doguResource, requeueForMultipleOperations)
+	case StartDogu:
+		return r.performStartDoguOperation(ctx, doguResource, requeueForMultipleOperations)
+	case StopDogu:
+		return r.performStopDoguOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
@@ -479,6 +483,24 @@ func (r *doguReconciler) performAdditionalIngressAnnotationsOperation(ctx contex
 
 	// revert to Installed in case of requeueing after an error so that the change check can be done again.
 	return r.performOperation(ctx, doguResource, additionalIngressAnnotationsOperationEventProps, k8sv1.DoguStatusInstalled, r.doguManager.SetDoguAdditionalIngressAnnotations, shouldRequeue)
+}
+
+func (r *doguReconciler) performStartDoguOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	return r.performOperation(ctx, doguResource, operationEventProperties{
+		successReason: StartDoguEventReason,
+		errorReason:   ErrorOnStartDoguEventReason,
+		operationName: "StartDogu",
+		operationVerb: "start dogu",
+	}, k8sv1.DoguStatusInstalled, r.doguManager.StartDogu, shouldRequeue)
+}
+
+func (r *doguReconciler) performStopDoguOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	return r.performOperation(ctx, doguResource, operationEventProperties{
+		successReason: StopDoguEventReason,
+		errorReason:   ErrorOnStopDoguEventReason,
+		operationName: "StopDogu",
+		operationVerb: "stop dogu",
+	}, k8sv1.DoguStatusInstalled, r.doguManager.StopDogu, shouldRequeue)
 }
 
 func (r *doguReconciler) validateName(doguResource *k8sv1.Dogu) (success bool) {

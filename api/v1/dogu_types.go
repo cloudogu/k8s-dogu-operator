@@ -132,6 +132,8 @@ const (
 	DoguStatusDeleting     = "deleting"
 	DoguStatusInstalled    = "installed"
 	DoguStatusPVCResizing  = "resizing PVC"
+	DoguStatusStarting     = "starting"
+	DoguStatusStopping     = "stopping"
 )
 
 // +kubebuilder:object:root=true

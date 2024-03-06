@@ -43,6 +43,18 @@ type AdditionalIngressAnnotationsManager interface {
 	SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *v1.Dogu) error
 }
 
+// StartDoguManager includes functionality to start (stopped) dogus.
+type StartDoguManager interface {
+	// StartDogu scales up a stopped dogu.
+	StartDogu(ctx context.Context, doguResource *v1.Dogu) error
+}
+
+// StopDoguManager includes functionality to stop running dogus.
+type StopDoguManager interface {
+	// StopDogu scales down a running dogu to 0.
+	StopDogu(ctx context.Context, doguResource *v1.Dogu) error
+}
+
 // DoguManager abstracts the simple dogu operations in a k8s CES.
 type DoguManager interface {
 	InstallManager
@@ -51,6 +63,8 @@ type DoguManager interface {
 	VolumeManager
 	AdditionalIngressAnnotationsManager
 	SupportManager
+	StartDoguManager
+	StopDoguManager
 }
 
 // RequeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
