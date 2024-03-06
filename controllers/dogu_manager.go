@@ -172,11 +172,13 @@ func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, d
 	return m.ingressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
 }
 
+// StartDogu scales a stopped dogu to 1.
 func (m *DoguManager) StartDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Starting dogu...")
 	return m.startStopManager.StartDogu(ctx, doguResource)
 }
 
+// StopDogu scales a running dogu to 0.
 func (m *DoguManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Stopping dogu...")
 	return m.startStopManager.StopDogu(ctx, doguResource)

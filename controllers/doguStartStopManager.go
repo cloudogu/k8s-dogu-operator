@@ -48,7 +48,7 @@ func newDoguStartStopManager(clientSet thirdParty.ClientSet, doguClient cloudogu
 
 // StartDogu scales a stopped dogu to 1.
 func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	err := m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusStarting)
+	err := m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusStarting, doguResource.Status.Stopped)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv
 		return fmt.Errorf("failed while starting dogu %q: %w", doguResource.Name, err)
 	}
 
-	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled)
+	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, false)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv
 
 // StopDogu scales a running dogu to 0.
 func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	err := m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusStopping)
+	err := m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusStopping, doguResource.Status.Stopped)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1
 		return fmt.Errorf("failed while stopping dogu %q: %w", doguResource.Name, err)
 	}
 
-	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled)
+	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, true)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1
 	return nil
 }
 
-func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, status string) error {
+func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, status string, stopped bool) error {
 	err := retry.OnConflict(func() error {
 		latestDoguResource, err := m.doguClient.Dogus(doguResource.Namespace).Get(ctx, doguResource.Name, metav1.GetOptions{})
 		if err != nil {
@@ -94,6 +94,7 @@ func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguRe
 		}
 
 		latestDoguResource.Status.Status = status
+		latestDoguResource.Status.Stopped = stopped
 
 		_, err = m.doguClient.Dogus(doguResource.Namespace).UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 		return err
