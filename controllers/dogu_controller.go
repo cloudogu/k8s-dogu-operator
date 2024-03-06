@@ -77,6 +77,8 @@ const (
 	Wait                               = operation("Wait")
 	ExpandVolume                       = operation("ExpandVolume")
 	ChangeAdditionalIngressAnnotations = operation("ChangeAdditionalIngressAnnotations")
+	StartDogu                          = operation("StartDogu")
+	StopDogu                           = operation("StopDogu")
 )
 
 const waitTimeout = 5 * time.Second
@@ -247,6 +249,10 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 }
 
 func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context, doguResource *k8sv1.Dogu, operations []operation) ([]operation, error) {
+	if checkShouldStartDogu(doguResource) {
+		operations = append(operations, StartDogu)
+	}
+
 	isVolumeExpansion, err := r.checkForVolumeExpansion(ctx, doguResource)
 	if err != nil {
 		return nil, err
@@ -278,7 +284,20 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 	if upgradeable {
 		operations = append(operations, Upgrade)
 	}
+
+	if checkShouldStopDogu(doguResource) {
+		operations = append(operations, StopDogu)
+	}
+
 	return operations, nil
+}
+
+func checkShouldStopDogu(doguResource *k8sv1.Dogu) bool {
+	return doguResource.Spec.Stopped && (!doguResource.Status.Stopped)
+}
+
+func checkShouldStartDogu(doguResource *k8sv1.Dogu) bool {
+	return (!doguResource.Spec.Stopped) && doguResource.Status.Stopped
 }
 
 func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
@@ -474,6 +493,11 @@ func (r *doguReconciler) validateName(doguResource *k8sv1.Dogu) (success bool) {
 }
 
 func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {
+	// only upgrade if the dogu is running
+	if doguResource.Status.Stopped {
+		return false, nil
+	}
+
 	fromDogu, err := fetcher.FetchInstalled(doguResource.Name)
 	if err != nil {
 		return false, err
