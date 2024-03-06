@@ -55,6 +55,12 @@ type StopDoguManager interface {
 	StopDogu(ctx context.Context, doguResource *v1.Dogu) error
 }
 
+// DoguStartStopManager includes functionality to start and stop dogus.
+type DoguStartStopManager interface {
+	StartDoguManager
+	StopDoguManager
+}
+
 // DoguManager abstracts the simple dogu operations in a k8s CES.
 type DoguManager interface {
 	InstallManager

@@ -40,6 +40,7 @@ type DoguManager struct {
 	volumeManager             cloudogu.VolumeManager
 	ingressAnnotationsManager cloudogu.AdditionalIngressAnnotationsManager
 	supportManager            cloudogu.SupportManager
+	startStopManager          cloudogu.DoguStartStopManager
 	recorder                  record.EventRecorder
 }
 
@@ -109,6 +110,8 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 
 	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
 
+	startStopManager := newDoguStartStopManager(clientSet, ecosystemClient)
+
 	return &DoguManager{
 		scheme:                    client.Scheme(),
 		installManager:            installManager,
@@ -117,6 +120,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		supportManager:            supportManager,
 		volumeManager:             volumeManager,
 		ingressAnnotationsManager: ingressAnnotationsManager,
+		startStopManager:          startStopManager,
 		recorder:                  eventRecorder,
 	}, nil
 }
@@ -166,6 +170,16 @@ func (m *DoguManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k
 func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, AdditionalIngressAnnotationsChangeEventReason, "Start additional ingress annotations change...")
 	return m.ingressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
+}
+
+func (m *DoguManager) StartDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Starting dogu...")
+	return m.startStopManager.StartDogu(ctx, doguResource)
+}
+
+func (m *DoguManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Stopping dogu...")
+	return m.startStopManager.StopDogu(ctx, doguResource)
 }
 
 // HandleSupportMode handles the support flag in the dogu spec.

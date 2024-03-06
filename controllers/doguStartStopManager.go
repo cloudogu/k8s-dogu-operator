@@ -36,14 +36,18 @@ const (
 
 const containerStateCrashLoop = "CrashLoopBackOff"
 
-// DoguStartStopManager includes functionality to start and stop dogus.
-type DoguStartStopManager struct {
+// doguStartStopManager includes functionality to start and stop dogus.
+type doguStartStopManager struct {
 	clientSet  thirdParty.ClientSet
 	doguClient cloudogu.EcosystemInterface
 }
 
+func newDoguStartStopManager(clientSet thirdParty.ClientSet, doguClient cloudogu.EcosystemInterface) *doguStartStopManager {
+	return &doguStartStopManager{clientSet: clientSet, doguClient: doguClient}
+}
+
 // StartDogu scales a stopped dogu to 1.
-func (m *DoguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	err := m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusStarting)
 	if err != nil {
 		return err
@@ -63,7 +67,7 @@ func (m *DoguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv
 }
 
 // StopDogu scales a running dogu to 0.
-func (m *DoguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	err := m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusStopping)
 	if err != nil {
 		return err
@@ -82,7 +86,7 @@ func (m *DoguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1
 	return nil
 }
 
-func (m *DoguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, status string) error {
+func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, status string) error {
 	err := retry.OnConflict(func() error {
 		latestDoguResource, err := m.doguClient.Dogus(doguResource.Namespace).Get(ctx, doguResource.Name, metav1.GetOptions{})
 		if err != nil {
@@ -101,7 +105,7 @@ func (m *DoguStartStopManager) updateStatusWithRetry(ctx context.Context, doguRe
 	return nil
 }
 
-func (m *DoguStartStopManager) scaleDeployment(ctx context.Context, doguName types.NamespacedName, replicas int32, waitForRollout bool) error {
+func (m *doguStartStopManager) scaleDeployment(ctx context.Context, doguName types.NamespacedName, replicas int32, waitForRollout bool) error {
 	scale := &scalingv1.Scale{ObjectMeta: metav1.ObjectMeta{Name: doguName.Name, Namespace: doguName.Namespace}, Spec: scalingv1.ScaleSpec{Replicas: replicas}}
 	_, err := m.clientSet.AppsV1().Deployments(doguName.Namespace).UpdateScale(ctx, doguName.Name, scale, metav1.UpdateOptions{})
 	if err != nil {
@@ -115,7 +119,7 @@ func (m *DoguStartStopManager) scaleDeployment(ctx context.Context, doguName typ
 	return nil
 }
 
-func (m *DoguStartStopManager) waitForDeploymentRollout(ctx context.Context, doguName types.NamespacedName) error {
+func (m *doguStartStopManager) waitForDeploymentRollout(ctx context.Context, doguName types.NamespacedName) error {
 	timeoutTimer := time.NewTimer(scaleDeploymentWaitTimeout)
 	// Use a ticker instead of a kubernetes watch because the watch does not notify on status changes.
 	ticker := time.NewTicker(scaleDeploymentWaitInterval)
@@ -139,7 +143,7 @@ func (m *DoguStartStopManager) waitForDeploymentRollout(ctx context.Context, dog
 	}
 }
 
-func (m *DoguStartStopManager) doWaitForDeploymentRollout(ctx context.Context, doguName types.NamespacedName) (rolledOut bool, stopWait bool, err error) {
+func (m *doguStartStopManager) doWaitForDeploymentRollout(ctx context.Context, doguName types.NamespacedName) (rolledOut bool, stopWait bool, err error) {
 	logrus.Info(fmt.Sprintf("check rollout status for deployment %s", doguName))
 	deployment, getErr := m.clientSet.AppsV1().Deployments(doguName.Namespace).Get(ctx, doguName.Name, metav1.GetOptions{})
 	if getErr != nil {
@@ -172,7 +176,7 @@ func stopWaitChannels(timer *time.Timer, ticker *time.Ticker) {
 	ticker.Stop()
 }
 
-func (m *DoguStartStopManager) isDoguContainerInCrashLoop(ctx context.Context, doguName types.NamespacedName) (bool, error) {
+func (m *doguStartStopManager) isDoguContainerInCrashLoop(ctx context.Context, doguName types.NamespacedName) (bool, error) {
 	list, getErr := m.clientSet.CoreV1().Pods(doguName.Namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("dogu.name=%s", doguName)})
 	if getErr != nil {
 		return false, fmt.Errorf("failed to get pods of deployment %q", doguName)
