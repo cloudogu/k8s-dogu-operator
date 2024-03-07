@@ -14,7 +14,8 @@ import (
 // DoguRestartSpec defines the desired state of DoguRestart
 type DoguRestartSpec struct {
 	// DoguName references the dogu that should get restarted.
-	DoguName string `json:"doguName,omitempty"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Dogu name is immutable"
+	DoguName string `json:"doguName"`
 }
 
 // DoguRestartStatus defines the observed state of DoguRestart

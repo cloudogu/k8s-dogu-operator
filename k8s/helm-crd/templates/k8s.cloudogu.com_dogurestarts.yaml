@@ -36,6 +36,11 @@ spec:
                 doguName:
                   description: DoguName references the dogu that should get restarted.
                   type: string
+                  x-kubernetes-validations:
+                    - message: Dogu name is immutable
+                      rule: self == oldSelf
+              required:
+                - doguName
               type: object
             status:
               description: DoguRestartStatus defines the observed state of DoguRestart
