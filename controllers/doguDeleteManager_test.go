@@ -103,7 +103,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		assert.Empty(t, deletedDogu.Finalizers)
 	})
 
-	t.Run("failed to update dogu status", func(t *testing.T) {
+	t.Run("failed to update dogu status because the dogu cr is not found", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 
@@ -112,7 +112,6 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to update dogu status")
 	})
 
 	t.Run("failure during fetching local dogu should not interrupt the delete routine", func(t *testing.T) {

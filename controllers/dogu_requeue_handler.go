@@ -80,8 +80,7 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 		onRequeue(doguResource)
 	}
 
-	doguResource.Status.RequeuePhase = getRequeuePhase(originalErr)
-	updateError := doguResource.Update(ctx, d.client)
+	updateError := doguResource.ChangeRequeuePhaseWithRetry(ctx, d.client, getRequeuePhase(originalErr))
 	if updateError != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
 	}

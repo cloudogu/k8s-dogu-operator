@@ -90,7 +90,7 @@ func createAsyncSteps(executor cloudogu.AsyncExecutor, client client.Client, rec
 
 // SetDoguDataVolumeSize sets the quantity from the doguResource in the dogu data PVC.
 func (d *doguVolumeManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	err := doguResource.ChangeState(ctx, d.client, k8sv1.DoguStatusPVCResizing)
+	err := doguResource.ChangeStateWithRetry(ctx, d.client, k8sv1.DoguStatusPVCResizing)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (d *doguVolumeManager) SetDoguDataVolumeSize(ctx context.Context, doguResou
 		return err
 	}
 
-	return doguResource.ChangeState(ctx, d.client, k8sv1.DoguStatusInstalled)
+	return doguResource.ChangeStateWithRetry(ctx, d.client, k8sv1.DoguStatusInstalled)
 }
 
 type editPVCStep struct {
@@ -188,8 +188,7 @@ func (s *scaleUpStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, er
 		return s.GetStartCondition(), err
 	}
 
-	dogu.Status.RequeuePhase = ""
-	err = dogu.Update(ctx, s.client)
+	err = dogu.ChangeRequeuePhaseWithRetry(ctx, s.client, "")
 	if err != nil {
 		return "", err
 	}

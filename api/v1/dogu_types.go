@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"time"
@@ -208,10 +209,42 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	return nil
 }
 
+// ChangeRequeuePhase changes the requeue phase of this dogu resource and applies it to the cluster state.
+func (d *Dogu) ChangeRequeuePhase(ctx context.Context, client client.Client, phase string) error {
+	d.Status.RequeuePhase = phase
+	return d.Update(ctx, client)
+}
+
+// ChangeRequeuePhaseWithRetry refreshes the dogu resource and tries to set the requeue phase. If a conflict error occurs
+// this method will retry the operation.
+func (d *Dogu) ChangeRequeuePhaseWithRetry(ctx context.Context, client client.Client, phase string) error {
+	return retry.OnConflict(func() error {
+		err := client.Get(ctx, d.GetObjectKey(), d)
+		if err != nil {
+			return err
+		}
+
+		return d.ChangeRequeuePhase(ctx, client, phase)
+	})
+}
+
 // ChangeState changes the state of this dogu resource and applies it to the cluster state.
 func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
 	d.Status.Status = newStatus
 	return d.Update(ctx, client)
+}
+
+// ChangeStateWithRetry refreshes the dogu resource and tries to set the state. If a conflict error occurs
+// this method will retry the operation.
+func (d *Dogu) ChangeStateWithRetry(ctx context.Context, client client.Client, newStatus string) error {
+	return retry.OnConflict(func() error {
+		err := client.Get(ctx, d.GetObjectKey(), d)
+		if err != nil {
+			return err
+		}
+
+		return d.ChangeState(ctx, client, newStatus)
+	})
 }
 
 // GetPodLabels returns labels that select a pod being associated with this dogu.
