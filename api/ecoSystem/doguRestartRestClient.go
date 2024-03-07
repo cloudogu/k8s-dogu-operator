@@ -2,19 +2,23 @@ package ecoSystem
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"time"
+
+	"github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
 type DoguRestartInterface interface {
 	Create(ctx context.Context, dogu *v1.DoguRestart, opts metav1.CreateOptions) (*v1.DoguRestart, error)
 	Update(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (*v1.DoguRestart, error)
 	UpdateStatus(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (*v1.DoguRestart, error)
+	UpdateStatusWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifyStatusFn func(v1.DoguRestartStatus) v1.DoguRestartStatus, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.DoguRestart, error)
@@ -100,8 +104,7 @@ func (d *doguRestartClient) Update(ctx context.Context, dogu *v1.DoguRestart, op
 	return
 }
 
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+// UpdateStatus updates the status of the resource.
 func (d *doguRestartClient) UpdateStatus(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error) {
 	result = &v1.DoguRestart{}
 	err = d.client.Put().
@@ -114,6 +117,33 @@ func (d *doguRestartClient) UpdateStatus(ctx context.Context, dogu *v1.DoguResta
 		Do(ctx).
 		Into(result)
 	return
+}
+
+// UpdateStatusWithRetry updates the status of the resource, retrying if a conflict error arises.
+func (d *doguRestartClient) UpdateStatusWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifyStatusFn func(v1.DoguRestartStatus) v1.DoguRestartStatus, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error) {
+	firstTry := true
+
+	var currentObj *v1.DoguRestart
+	err = retry.OnConflict(func() error {
+		if firstTry {
+			firstTry = false
+			currentObj = doguRestart.DeepCopy()
+		} else {
+			currentObj, err = d.Get(ctx, doguRestart.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+		}
+
+		currentObj.Status = modifyStatusFn(currentObj.Status)
+		currentObj, err = d.UpdateStatus(ctx, currentObj, opts)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return currentObj, nil
 }
 
 // Delete takes name of the dogu restart and deletes it. Returns an error if one occurs.

@@ -21,8 +21,22 @@ type DoguRestartSpec struct {
 // DoguRestartStatus defines the observed state of DoguRestart
 type DoguRestartStatus struct {
 	// Phase tracks the state of the restart process.
-	Phase string `json:"phase,omitempty"`
+	Phase RestartStatusPhase `json:"phase,omitempty"`
 }
+
+type RestartStatusPhase string
+
+const (
+	RestartStatusPhaseNew           RestartStatusPhase = ""
+	RestartStatusPhaseStopping      RestartStatusPhase = "stopping"
+	RestartStatusPhaseStopped       RestartStatusPhase = "stopped"
+	RestartStatusPhaseStarting      RestartStatusPhase = "starting"
+	RestartStatusPhaseCompleted     RestartStatusPhase = "completed"
+	RestartStatusPhaseDoguNotFound  RestartStatusPhase = "dogu not found"
+	RestartStatusPhaseFailedGetDogu RestartStatusPhase = "failed getting dogu"
+	RestartStatusPhaseFailedStop    RestartStatusPhase = "stop failed"
+	RestartStatusPhaseFailedStart   RestartStatusPhase = "start failed"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
