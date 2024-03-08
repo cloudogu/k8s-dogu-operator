@@ -1,6 +1,8 @@
 apiVersion: k8s.cloudogu.com/v1
 kind: DoguRestart
 metadata:
-  name: dogurestart-sample
+  # This does not work with `kubectl apply`.
+  # Use `kubectl create` instead.
+  generateName: ldap-restart-
 spec:
  doguName: ldap
