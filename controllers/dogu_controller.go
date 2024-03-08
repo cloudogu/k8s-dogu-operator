@@ -380,8 +380,8 @@ func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8s
 	}
 
 	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, operationError,
-		func(dogu *k8sv1.Dogu) {
-			doguResource.Status.Status = requeueDoguStatus
+		func(dogu *k8sv1.Dogu) error {
+			return doguResource.ChangeStateWithRetry(ctx, r.client, requeueDoguStatus)
 		})
 	if handleErr != nil {
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason,

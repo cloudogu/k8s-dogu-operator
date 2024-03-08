@@ -25,21 +25,21 @@ func (_m *RequeueHandler) EXPECT() *RequeueHandler_Expecter {
 }
 
 // Handle provides a mock function with given fields: ctx, contextMessage, doguResource, err, onRequeue
-func (_m *RequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *v1.Dogu, err error, onRequeue func(*v1.Dogu)) (reconcile.Result, error) {
+func (_m *RequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *v1.Dogu, err error, onRequeue func(*v1.Dogu) error) (reconcile.Result, error) {
 	ret := _m.Called(ctx, contextMessage, doguResource, err, onRequeue)
 
 	var r0 reconcile.Result
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *v1.Dogu, error, func(*v1.Dogu)) (reconcile.Result, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *v1.Dogu, error, func(*v1.Dogu) error) (reconcile.Result, error)); ok {
 		return rf(ctx, contextMessage, doguResource, err, onRequeue)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, *v1.Dogu, error, func(*v1.Dogu)) reconcile.Result); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *v1.Dogu, error, func(*v1.Dogu) error) reconcile.Result); ok {
 		r0 = rf(ctx, contextMessage, doguResource, err, onRequeue)
 	} else {
 		r0 = ret.Get(0).(reconcile.Result)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, *v1.Dogu, error, func(*v1.Dogu)) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, *v1.Dogu, error, func(*v1.Dogu) error) error); ok {
 		r1 = rf(ctx, contextMessage, doguResource, err, onRequeue)
 	} else {
 		r1 = ret.Error(1)
@@ -58,14 +58,14 @@ type RequeueHandler_Handle_Call struct {
 //   - contextMessage string
 //   - doguResource *v1.Dogu
 //   - err error
-//   - onRequeue func(*v1.Dogu)
+//   - onRequeue func(*v1.Dogu) error
 func (_e *RequeueHandler_Expecter) Handle(ctx interface{}, contextMessage interface{}, doguResource interface{}, err interface{}, onRequeue interface{}) *RequeueHandler_Handle_Call {
 	return &RequeueHandler_Handle_Call{Call: _e.mock.On("Handle", ctx, contextMessage, doguResource, err, onRequeue)}
 }
 
-func (_c *RequeueHandler_Handle_Call) Run(run func(ctx context.Context, contextMessage string, doguResource *v1.Dogu, err error, onRequeue func(*v1.Dogu))) *RequeueHandler_Handle_Call {
+func (_c *RequeueHandler_Handle_Call) Run(run func(ctx context.Context, contextMessage string, doguResource *v1.Dogu, err error, onRequeue func(*v1.Dogu) error)) *RequeueHandler_Handle_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*v1.Dogu), args[3].(error), args[4].(func(*v1.Dogu)))
+		run(args[0].(context.Context), args[1].(string), args[2].(*v1.Dogu), args[3].(error), args[4].(func(*v1.Dogu) error))
 	})
 	return _c
 }
@@ -75,7 +75,7 @@ func (_c *RequeueHandler_Handle_Call) Return(result reconcile.Result, requeueErr
 	return _c
 }
 
-func (_c *RequeueHandler_Handle_Call) RunAndReturn(run func(context.Context, string, *v1.Dogu, error, func(*v1.Dogu)) (reconcile.Result, error)) *RequeueHandler_Handle_Call {
+func (_c *RequeueHandler_Handle_Call) RunAndReturn(run func(context.Context, string, *v1.Dogu, error, func(*v1.Dogu) error) (reconcile.Result, error)) *RequeueHandler_Handle_Call {
 	_c.Call.Return(run)
 	return _c
 }

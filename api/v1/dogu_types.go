@@ -102,6 +102,25 @@ type DoguStatus struct {
 	Health HealthStatus `json:"health,omitempty"`
 }
 
+func (d *Dogu) NextRequeueWithRetry(ctx context.Context, client client.Client) (time.Duration, error) {
+	var requeueTime time.Duration
+	err := retry.OnConflict(func() error {
+		fetchErr := d.refreshDoguValue(ctx, client)
+		if fetchErr != nil {
+			return fetchErr
+		}
+		requeueTime = d.Status.NextRequeue()
+
+		return d.Update(ctx, client)
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return requeueTime, err
+}
+
 // NextRequeue increases the requeue time of the dogu status and returns the new requeue time
 func (ds *DoguStatus) NextRequeue() time.Duration {
 	if ds.RequeueTime == 0 {
