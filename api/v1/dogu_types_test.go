@@ -494,3 +494,57 @@ func TestDogu_ChangeRequeuePhaseWithRetry1(t *testing.T) {
 		assert.ErrorContains(t, err, "dogus.k8s.cloudogu.com \"postgresql\" not found")
 	})
 }
+
+func TestDogu_NextRequeueWithRetry(t *testing.T) {
+	t.Run("success on conflict; requeue time was reset", func(t *testing.T) {
+		// given
+		sut := v1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "postgresql",
+				Namespace:       "ecosystem",
+				ResourceVersion: "1",
+			},
+			Status: v1.DoguStatus{
+				RequeueTime: time.Second * 40,
+			},
+		}
+
+		newDogu := &v1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "postgresql",
+				Namespace:       "ecosystem",
+				ResourceVersion: "2",
+			},
+			Status: v1.DoguStatus{
+				RequeueTime: 0,
+			},
+		}
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(newDogu).WithStatusSubresource(&v1.Dogu{}).Build()
+
+		// when
+		retry, err := sut.NextRequeueWithRetry(testCtx, fakeClient)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, time.Second*10, retry)
+	})
+
+	t.Run("should return error on get error", func(t *testing.T) {
+		// given
+		sut := &v1.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "postgresql",
+				Namespace: "ecosystem",
+			},
+		}
+
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
+
+		// when
+		_, err := sut.NextRequeueWithRetry(testCtx, fakeClient)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "dogus.k8s.cloudogu.com \"postgresql\" not found")
+	})
+}
