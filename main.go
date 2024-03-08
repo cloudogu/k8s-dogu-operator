@@ -233,10 +233,8 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 		return fmt.Errorf("failed to setup deployment reconciler with manager: %w", err)
 	}
 
-	if err = (&controllers.DoguRestartReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager); err != nil {
+	if err = controllers.NewDoguRestartReconciler(ecosystemClientSet, eventRecorder).
+		SetupWithManager(k8sManager); err != nil {
 		return fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
 	}
 

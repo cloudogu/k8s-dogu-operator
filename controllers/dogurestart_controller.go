@@ -23,6 +23,10 @@ type DoguRestartReconciler struct {
 	recorder  record.EventRecorder
 }
 
+func NewDoguRestartReconciler(clientSet ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder) *DoguRestartReconciler {
+	return &DoguRestartReconciler{clientSet: clientSet, recorder: recorder}
+}
+
 type restartInstruction struct {
 	op      restartOperation
 	err     error

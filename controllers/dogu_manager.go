@@ -184,6 +184,14 @@ func (m *DoguManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) er
 	return m.startStopManager.StopDogu(ctx, doguResource)
 }
 
+func (m *DoguManager) CheckStarted(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	return m.startStopManager.CheckStarted(ctx, doguResource)
+}
+
+func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	return m.startStopManager.CheckStopped(ctx, doguResource)
+}
+
 // HandleSupportMode handles the support flag in the dogu spec.
 func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
 	return m.supportManager.HandleSupportMode(ctx, doguResource)
