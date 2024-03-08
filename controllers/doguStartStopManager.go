@@ -176,9 +176,9 @@ func (m *doguStartStopManager) checkForDeploymentRollout(ctx context.Context, do
 }
 
 func (m *doguStartStopManager) isDoguContainerInCrashLoop(ctx context.Context, doguName types.NamespacedName) (bool, error) {
-	list, getErr := m.clientSet.CoreV1().Pods(doguName.Namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("dogu.name=%s", doguName)})
+	list, getErr := m.clientSet.CoreV1().Pods(doguName.Namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("dogu.name=%s", doguName.Name)})
 	if getErr != nil {
-		return false, fmt.Errorf("failed to get pods of deployment %q", doguName)
+		return false, fmt.Errorf("failed to get pods of deployment %q: %w", doguName, getErr)
 	}
 
 	for _, pod := range list.Items {
