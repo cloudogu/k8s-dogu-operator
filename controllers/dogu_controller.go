@@ -79,6 +79,8 @@ const (
 	ChangeAdditionalIngressAnnotations = operation("ChangeAdditionalIngressAnnotations")
 	StartDogu                          = operation("StartDogu")
 	StopDogu                           = operation("StopDogu")
+	CheckStarted                       = operation("CheckStarted")
+	CheckStopped                       = operation("CheckStopped")
 )
 
 const requeueWaitTimeout = 5 * time.Second
@@ -175,6 +177,10 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 		return r.performStartDoguOperation(ctx, doguResource, requeueForMultipleOperations)
 	case StopDogu:
 		return r.performStopDoguOperation(ctx, doguResource, requeueForMultipleOperations)
+	case CheckStarted:
+		return r.performCheckStartedOperation(ctx, doguResource, requeueForMultipleOperations)
+	case CheckStopped:
+		return r.performCheckStoppedOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
@@ -223,6 +229,18 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 	switch doguResource.Status.Status {
 	case k8sv1.DoguStatusNotInstalled:
 		return []operation{Install}, nil
+	case k8sv1.DoguStatusStarting:
+		operations = append(operations, CheckStarted)
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
+	case k8sv1.DoguStatusStopping:
+		operations = append(operations, CheckStopped)
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
 	case k8sv1.DoguStatusPVCResizing:
 		operations = append(operations, ExpandVolume)
 		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
@@ -501,6 +519,24 @@ func (r *doguReconciler) performStopDoguOperation(ctx context.Context, doguResou
 		operationName: "StopDogu",
 		operationVerb: "stop dogu",
 	}, k8sv1.DoguStatusInstalled, r.doguManager.StopDogu, shouldRequeue)
+}
+
+func (r *doguReconciler) performCheckStoppedOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	return r.performOperation(ctx, doguResource, operationEventProperties{
+		successReason: CheckStoppedEventReason,
+		errorReason:   ErrorOnCheckStoppedEventReason,
+		operationName: "CheckStopped",
+		operationVerb: "check if dogu stopped",
+	}, k8sv1.DoguStatusStopping, r.doguManager.CheckStopped, shouldRequeue)
+}
+
+func (r *doguReconciler) performCheckStartedOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	return r.performOperation(ctx, doguResource, operationEventProperties{
+		successReason: CheckStartedEventReason,
+		errorReason:   ErrorOnCheckStartedEventReason,
+		operationName: "CheckStarted",
+		operationVerb: "check if dogu started",
+	}, k8sv1.DoguStatusStarting, r.doguManager.CheckStarted, shouldRequeue)
 }
 
 func (r *doguReconciler) validateName(doguResource *k8sv1.Dogu) (success bool) {

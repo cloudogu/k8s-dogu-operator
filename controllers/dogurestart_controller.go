@@ -55,6 +55,7 @@ const (
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
 func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	// TODO: add garbage collection (keep last 3 completed CRs of each dogu)
 	instruction := r.evaluate(ctx, req)
 	return r.execute(ctx, instruction)
 }
@@ -76,10 +77,23 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 	instruction.restart = doguRestart
 	logger.Info("dogu restart ressource has been found")
 
-	// ignore cases
 	switch doguRestart.Status.Phase {
 	case k8sv1.RestartStatusPhaseCompleted,
 		k8sv1.RestartStatusPhaseDoguNotFound:
+		instruction.op = ignore
+		return // early exit to prevent unnecessary dogu loading
+	case k8sv1.RestartStatusPhaseStopping:
+		instruction.op = checkStopped
+	case k8sv1.RestartStatusPhaseStarting:
+		instruction.op = checkStarted
+	case k8sv1.RestartStatusPhaseStopped,
+		k8sv1.RestartStatusPhaseFailedStart:
+		instruction.op = stop
+	case k8sv1.RestartStatusPhaseNew,
+		k8sv1.RestartStatusPhaseFailedStop:
+		instruction.op = start
+	default:
+		logger.Info("no operation determined for dogu restart")
 		instruction.op = ignore
 		return
 	}
@@ -98,57 +112,7 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 
 	instruction.dogu = dogu
 
-	if doguRestart.Status.Phase == k8sv1.RestartStatusPhaseStopping {
-		instruction.op = checkStopped
-		return
-	}
-
-	if doguRestart.Status.Phase == k8sv1.RestartStatusPhaseStarting {
-		instruction.op = checkStarted
-		return
-	}
-
-	if shouldStop(doguRestart, dogu) {
-		instruction.op = stop
-		return
-	}
-
-	if shouldStart(doguRestart, dogu) {
-		instruction.op = start
-		return
-	}
-
-	logger.Info("no operation determined for dogu restart")
-	instruction.op = ignore
 	return
-}
-
-func shouldStart(restart *k8sv1.DoguRestart, dogu *k8sv1.Dogu) bool {
-	if dogu.Status.Stopped {
-		return true
-	}
-
-	switch restart.Status.Phase {
-	case k8sv1.RestartStatusPhaseStopped,
-		k8sv1.RestartStatusPhaseFailedStart:
-		return true
-	}
-
-	return false
-}
-
-func shouldStop(restart *k8sv1.DoguRestart, dogu *k8sv1.Dogu) bool {
-	if dogu.Status.Stopped {
-		return false
-	}
-
-	switch restart.Status.Phase {
-	case k8sv1.RestartStatusPhaseNew,
-		k8sv1.RestartStatusPhaseFailedStop:
-		return true
-	}
-
-	return false
 }
 
 func (r *DoguRestartReconciler) execute(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {

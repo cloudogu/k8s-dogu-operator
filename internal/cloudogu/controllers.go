@@ -45,14 +45,18 @@ type AdditionalIngressAnnotationsManager interface {
 
 // StartDoguManager includes functionality to start (stopped) dogus.
 type StartDoguManager interface {
-	// StartDogu scales up a stopped dogu.
+	// StartDogu scales up a dogu to 1.
 	StartDogu(ctx context.Context, doguResource *v1.Dogu) error
+	// CheckStarted checks if the dogu has been successfully scaled to 1.
+	CheckStarted(ctx context.Context, doguResource *v1.Dogu) error
 }
 
 // StopDoguManager includes functionality to stop running dogus.
 type StopDoguManager interface {
-	// StopDogu scales down a running dogu to 0.
+	// StopDogu scales down a dogu to 0.
 	StopDogu(ctx context.Context, doguResource *v1.Dogu) error
+	// CheckStopped checks if the dogu has been successfully scaled to 0.
+	CheckStopped(ctx context.Context, doguResource *v1.Dogu) error
 }
 
 // DoguStartStopManager includes functionality to start and stop dogus.

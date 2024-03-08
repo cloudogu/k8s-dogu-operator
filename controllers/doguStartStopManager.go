@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-
 	scalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,7 +13,6 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
 const (
@@ -26,12 +24,11 @@ const (
 	// StopDoguEventReason is the reason string for firing stop dogu events.
 	StopDoguEventReason = "StopDogu"
 	// ErrorOnStopDoguEventReason is the error string for firing stop dogu error events.
-	ErrorOnStopDoguEventReason = "ErrStopDogu"
-)
-
-const (
-	scaleDeploymentWaitTimeout  = time.Minute * 10
-	scaleDeploymentWaitInterval = time.Second * 5
+	ErrorOnStopDoguEventReason     = "ErrStopDogu"
+	CheckStartedEventReason        = "CheckStarted"
+	ErrorOnCheckStartedEventReason = "ErrCheckStarted"
+	CheckStoppedEventReason        = "CheckStopped"
+	ErrorOnCheckStoppedEventReason = "ErrCheckStopped"
 )
 
 const containerStateCrashLoop = "CrashLoopBackOff"
@@ -40,6 +37,58 @@ const containerStateCrashLoop = "CrashLoopBackOff"
 type doguStartStopManager struct {
 	clientSet  thirdParty.ClientSet
 	doguClient cloudogu.EcosystemInterface
+}
+
+type deploymentNotYetScaledError struct {
+	doguName string
+}
+
+func (n deploymentNotYetScaledError) Error() string {
+	return fmt.Sprintf("the deployment of dogu %q has not yet been scaled to its desired number of replicas", n.doguName)
+}
+
+func (n deploymentNotYetScaledError) Requeue() bool {
+	return true
+}
+
+func (n deploymentNotYetScaledError) GetRequeueTime() time.Duration {
+	return requeueWaitTimeout
+}
+
+func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	rolledOut, err := m.checkForDeploymentRollout(ctx, doguResource.GetObjectKey())
+	if err != nil {
+		return fmt.Errorf("failed to start dogu %q: %w", doguResource.GetObjectKey(), err)
+	}
+
+	if !rolledOut {
+		return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
+	}
+
+	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, false)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	rolledOut, err := m.checkForDeploymentRollout(ctx, doguResource.GetObjectKey())
+	if err != nil {
+		return fmt.Errorf("failed to stop dogu %q: %w", doguResource.GetObjectKey(), err)
+	}
+
+	if !rolledOut {
+		return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
+	}
+
+	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, true)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func newDoguStartStopManager(clientSet thirdParty.ClientSet, doguClient cloudogu.EcosystemInterface) *doguStartStopManager {
@@ -53,14 +102,9 @@ func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv
 		return err
 	}
 
-	err = m.scaleDeployment(ctx, doguResource.GetObjectKey(), 1, true)
+	err = m.scaleDeployment(ctx, doguResource.GetObjectKey(), 1)
 	if err != nil {
-		return fmt.Errorf("failed while starting dogu %q: %w", doguResource.Name, err)
-	}
-
-	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, false)
-	if err != nil {
-		return err
+		return fmt.Errorf("failed to start dogu %q: %w", doguResource.Name, err)
 	}
 
 	return nil
@@ -73,108 +117,62 @@ func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1
 		return err
 	}
 
-	err = m.scaleDeployment(ctx, doguResource.GetObjectKey(), 0, true)
+	err = m.scaleDeployment(ctx, doguResource.GetObjectKey(), 0)
 	if err != nil {
 		return fmt.Errorf("failed while stopping dogu %q: %w", doguResource.Name, err)
 	}
 
-	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, true)
+	return nil
+}
+
+func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, phase string, stopped bool) error {
+	_, err := m.doguClient.Dogus(doguResource.Namespace).UpdateStatusWithRetry(ctx, doguResource, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+		status.Status = phase
+		status.Stopped = stopped
+		return status
+	}, metav1.UpdateOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update status of dogu %q to %q: %w", doguResource.Name, phase, err)
 	}
 
 	return nil
 }
 
-func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, status string, stopped bool) error {
-	err := retry.OnConflict(func() error {
-		latestDoguResource, err := m.doguClient.Dogus(doguResource.Namespace).Get(ctx, doguResource.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		latestDoguResource.Status.Status = status
-		latestDoguResource.Status.Stopped = stopped
-
-		_, err = m.doguClient.Dogus(doguResource.Namespace).UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
-		return err
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update status of dogu %q to %q: %w", doguResource.Name, status, err)
-	}
-
-	return nil
-}
-
-func (m *doguStartStopManager) scaleDeployment(ctx context.Context, doguName types.NamespacedName, replicas int32, waitForRollout bool) error {
+func (m *doguStartStopManager) scaleDeployment(ctx context.Context, doguName types.NamespacedName, replicas int32) error {
 	scale := &scalingv1.Scale{ObjectMeta: metav1.ObjectMeta{Name: doguName.Name, Namespace: doguName.Namespace}, Spec: scalingv1.ScaleSpec{Replicas: replicas}}
 	_, err := m.clientSet.AppsV1().Deployments(doguName.Namespace).UpdateScale(ctx, doguName.Name, scale, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to scale deployment %q to %d: %s", doguName, replicas, err.Error())
 	}
 
-	if waitForRollout {
-		return m.waitForDeploymentRollout(ctx, doguName)
-	}
-
 	return nil
 }
 
-func (m *doguStartStopManager) waitForDeploymentRollout(ctx context.Context, doguName types.NamespacedName) error {
-	timeoutTimer := time.NewTimer(scaleDeploymentWaitTimeout)
-	// Use a ticker instead of a kubernetes watch because the watch does not notify on status changes.
-	ticker := time.NewTicker(scaleDeploymentWaitInterval)
-	for {
-		select {
-		case <-ticker.C:
-			rolledOut, stopWait, err := m.doWaitForDeploymentRollout(ctx, doguName)
-			if err != nil {
-				stopWaitChannels(timeoutTimer, ticker)
-				return err
-			}
-
-			if stopWait || rolledOut {
-				stopWaitChannels(timeoutTimer, ticker)
-				return nil
-			}
-		case <-timeoutTimer.C:
-			ticker.Stop()
-			return fmt.Errorf("failed to wait for deployment %q rollout: timeout reached", doguName)
-		}
-	}
-}
-
-func (m *doguStartStopManager) doWaitForDeploymentRollout(ctx context.Context, doguName types.NamespacedName) (rolledOut bool, stopWait bool, err error) {
+func (m *doguStartStopManager) checkForDeploymentRollout(ctx context.Context, doguName types.NamespacedName) (rolledOut bool, err error) {
 	logrus.Info(fmt.Sprintf("check rollout status for deployment %s", doguName))
 	deployment, getErr := m.clientSet.AppsV1().Deployments(doguName.Namespace).Get(ctx, doguName.Name, metav1.GetOptions{})
 	if getErr != nil {
-		return false, true, fmt.Errorf("failed to get deployment %s: %w", doguName, getErr)
+		return false, fmt.Errorf("failed to get deployment %q: %w", doguName, getErr)
 	}
 
 	isInCrashLoop, err := m.isDoguContainerInCrashLoop(ctx, doguName)
 	if err != nil || isInCrashLoop {
-		return false, true, err
+		return false, err
 	}
 
-	if deployment.Spec.Replicas != nil && deployment.Status.UpdatedReplicas < *deployment.Spec.Replicas {
+	switch {
+	case deployment.Spec.Replicas != nil && deployment.Status.UpdatedReplicas < *deployment.Spec.Replicas:
 		logrus.Info(fmt.Sprintf("waiting for deployment %q rollout to finish: %d out of %d new replicas have been updated", deployment.Name, deployment.Status.UpdatedReplicas, *deployment.Spec.Replicas))
-		return false, false, nil
-	}
-	if deployment.Status.Replicas > deployment.Status.UpdatedReplicas {
+	case deployment.Status.Replicas > deployment.Status.UpdatedReplicas:
 		logrus.Info(fmt.Sprintf("waiting for deployment %q rollout to finish: %d old replicas are pending termination", deployment.Name, deployment.Status.Replicas-deployment.Status.UpdatedReplicas))
-		return false, false, nil
-	}
-	if deployment.Status.AvailableReplicas < deployment.Status.UpdatedReplicas {
+	case deployment.Status.AvailableReplicas < deployment.Status.UpdatedReplicas:
 		logrus.Info(fmt.Sprintf("waiting for deployment %q rollout to finish: %d of %d updated replicas are available", deployment.Name, deployment.Status.AvailableReplicas, deployment.Status.UpdatedReplicas))
-		return false, false, nil
+	default:
+		logrus.Info(fmt.Sprintf("deployment %q successfully rolled out", deployment.Name))
+		return true, nil
 	}
-	logrus.Info(fmt.Sprintf("deployment %q successfully rolled out", deployment.Name))
-	return true, true, nil
-}
 
-func stopWaitChannels(timer *time.Timer, ticker *time.Ticker) {
-	timer.Stop()
-	ticker.Stop()
+	return false, nil
 }
 
 func (m *doguStartStopManager) isDoguContainerInCrashLoop(ctx context.Context, doguName types.NamespacedName) (bool, error) {
