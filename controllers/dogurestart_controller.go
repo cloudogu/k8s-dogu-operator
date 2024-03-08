@@ -122,8 +122,7 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 func (r *DoguRestartReconciler) execute(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).
 		WithName("DoguRestartReconciler.execute").
-		WithValues("doguRestart", instruction.req.NamespacedName).
-		WithValues("dogu", instruction.dogu.Name)
+		WithValues("doguRestart", instruction.req.NamespacedName)
 	switch instruction.op {
 	case ignore:
 		logger.Info("nothing to do for dogu restart, ignoring")
