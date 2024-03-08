@@ -1,7 +1,3 @@
-/*
-This file was generated with "make generate-deepcopy".
-*/
-
 package controllers
 
 import (
