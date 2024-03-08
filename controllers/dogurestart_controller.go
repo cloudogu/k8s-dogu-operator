@@ -92,10 +92,10 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 		instruction.op = checkStarted
 	case k8sv1.RestartStatusPhaseStopped,
 		k8sv1.RestartStatusPhaseFailedStart:
-		instruction.op = stop
+		instruction.op = start
 	case k8sv1.RestartStatusPhaseNew,
 		k8sv1.RestartStatusPhaseFailedStop:
-		instruction.op = start
+		instruction.op = stop
 	default:
 		logger.Info("no operation determined for dogu restart")
 		instruction.op = ignore
