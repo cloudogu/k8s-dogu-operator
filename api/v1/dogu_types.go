@@ -219,10 +219,13 @@ func (d *Dogu) ChangeRequeuePhase(ctx context.Context, client client.Client, pha
 // this method will retry the operation.
 func (d *Dogu) ChangeRequeuePhaseWithRetry(ctx context.Context, client client.Client, phase string) error {
 	return retry.OnConflict(func() error {
-		err := client.Get(ctx, d.GetObjectKey(), d)
+		freshDogu := &Dogu{}
+		err := client.Get(ctx, d.GetObjectKey(), freshDogu)
 		if err != nil {
 			return err
 		}
+
+		*d = *freshDogu
 
 		return d.ChangeRequeuePhase(ctx, client, phase)
 	})
