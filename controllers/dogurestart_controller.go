@@ -166,7 +166,8 @@ func (r *DoguRestartReconciler) checkStopped(ctx context.Context, instruction re
 			return status
 		}, metav1.UpdateOptions{})
 
-		return ctrl.Result{}, statusErr
+		// directly start after stop
+		return ctrl.Result{Requeue: true}, statusErr
 	}
 
 	logger.Info("dogu not yet stopped, requeue")
@@ -234,7 +235,8 @@ func (r *DoguRestartReconciler) handleStop(ctx context.Context, instruction rest
 	}
 
 	r.recorder.Event(instruction.restart, v1.EventTypeNormal, "Stopping", "initiated stop of dogu")
-	return ctrl.Result{}, nil
+	// requeue to check if stopped
+	return ctrl.Result{RequeueAfter: requeueWaitTimeout}, nil
 }
 
 func (r *DoguRestartReconciler) handleStart(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
@@ -276,7 +278,8 @@ func (r *DoguRestartReconciler) handleStart(ctx context.Context, instruction res
 	}
 
 	r.recorder.Event(instruction.restart, v1.EventTypeNormal, "Starting", "initiated start of dogu")
-	return ctrl.Result{}, nil
+	// requeue to check if started
+	return ctrl.Result{RequeueAfter: requeueWaitTimeout}, nil
 }
 
 func (r *DoguRestartReconciler) handleGetDoguFailed(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
