@@ -219,16 +219,24 @@ func (d *Dogu) ChangeRequeuePhase(ctx context.Context, client client.Client, pha
 // this method will retry the operation.
 func (d *Dogu) ChangeRequeuePhaseWithRetry(ctx context.Context, client client.Client, phase string) error {
 	return retry.OnConflict(func() error {
-		freshDogu := &Dogu{}
-		err := client.Get(ctx, d.GetObjectKey(), freshDogu)
+		err := d.refreshDoguValue(ctx, client)
 		if err != nil {
 			return err
 		}
 
-		*d = *freshDogu
-
 		return d.ChangeRequeuePhase(ctx, client, phase)
 	})
+}
+
+func (d *Dogu) refreshDoguValue(ctx context.Context, client client.Client) error {
+	dogu := &Dogu{}
+	err := client.Get(ctx, d.GetObjectKey(), dogu)
+	if err != nil {
+		return err
+	}
+	*d = *dogu
+
+	return nil
 }
 
 // ChangeState changes the state of this dogu resource and applies it to the cluster state.
@@ -241,7 +249,7 @@ func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus 
 // this method will retry the operation.
 func (d *Dogu) ChangeStateWithRetry(ctx context.Context, client client.Client, newStatus string) error {
 	return retry.OnConflict(func() error {
-		err := client.Get(ctx, d.GetObjectKey(), d)
+		err := d.refreshDoguValue(ctx, client)
 		if err != nil {
 			return err
 		}
