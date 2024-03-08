@@ -17,6 +17,7 @@ import (
 type DoguRestartInterface interface {
 	Create(ctx context.Context, dogu *v1.DoguRestart, opts metav1.CreateOptions) (*v1.DoguRestart, error)
 	Update(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (*v1.DoguRestart, error)
+	UpdateSpecWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifySpecFn func(spec v1.DoguRestartSpec) v1.DoguRestartSpec, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error)
 	UpdateStatus(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (*v1.DoguRestart, error)
 	UpdateStatusWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifyStatusFn func(v1.DoguRestartStatus) v1.DoguRestartStatus, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
@@ -102,6 +103,33 @@ func (d *doguRestartClient) Update(ctx context.Context, dogu *v1.DoguRestart, op
 		Do(ctx).
 		Into(result)
 	return
+}
+
+// UpdateSpecWithRetry updates the spec of the resource, retrying if a conflict error arises.
+func (d *doguRestartClient) UpdateSpecWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifySpecFn func(spec v1.DoguRestartSpec) v1.DoguRestartSpec, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error) {
+	firstTry := true
+
+	var currentObj *v1.DoguRestart
+	err = retry.OnConflict(func() error {
+		if firstTry {
+			firstTry = false
+			currentObj = doguRestart.DeepCopy()
+		} else {
+			currentObj, err = d.Get(ctx, doguRestart.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+		}
+
+		currentObj.Spec = modifySpecFn(currentObj.Spec)
+		currentObj, err = d.Update(ctx, currentObj, opts)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return currentObj, nil
 }
 
 // UpdateStatus updates the status of the resource.
