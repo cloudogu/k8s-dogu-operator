@@ -109,7 +109,7 @@ func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv
 		return fmt.Errorf("failed to start dogu %q: %w", doguResource.Name, err)
 	}
 
-	return nil
+	return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 }
 
 // StopDogu scales a running dogu to 0.
@@ -124,7 +124,7 @@ func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1
 		return fmt.Errorf("failed while stopping dogu %q: %w", doguResource.Name, err)
 	}
 
-	return nil
+	return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 }
 
 func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, phase string, stopped bool) error {
