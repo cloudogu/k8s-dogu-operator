@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -23,8 +25,9 @@ import (
 
 // doguKind describes a service account on a dogu.
 const (
-	doguKind = "dogu"
-	cesKind  = "ces"
+	doguKind      = "dogu"
+	cesKind       = "ces"
+	componentKind = "component"
 )
 
 const (
@@ -34,20 +37,22 @@ const (
 
 // creator is the unit to handle the creation of service accounts
 type creator struct {
-	client      client.Client
-	registry    registry.Registry
-	doguFetcher cloudogu.LocalDoguFetcher
-	executor    cloudogu.CommandExecutor
+	client        client.Client
+	registry      registry.Registry
+	doguFetcher   cloudogu.LocalDoguFetcher
+	executor      cloudogu.CommandExecutor
+	secretsClient v12.SecretInterface
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client) *creator {
+func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client, secretsClient v12.SecretInterface) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &creator{
-		client:      client,
-		registry:    registry,
-		doguFetcher: localFetcher,
-		executor:    commandExecutor,
+		client:        client,
+		registry:      registry,
+		doguFetcher:   localFetcher,
+		executor:      commandExecutor,
+		secretsClient: secretsClient,
 	}
 }
 
@@ -64,6 +69,11 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 			fallthrough
 		case doguKind:
 			err := c.createDoguServiceAccount(ctx, dogu, doguConfig, serviceAccount, registryCredentialPath)
+			if err != nil {
+				return err
+			}
+		case componentKind:
+			err := c.createComponentServiceAccount(ctx, dogu, doguConfig, serviceAccount, registryCredentialPath)
 			if err != nil {
 				return err
 			}
@@ -347,4 +357,84 @@ func (c *creator) parseServiceCommandOutput(output io.Reader) (map[string]string
 	}
 
 	return serviceAccountSettings, nil
+}
+
+func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.Dogu, doguConfig registry.ConfigurationContext, serviceAccount core.ServiceAccount, registryCredentialPath string) error {
+	logger := log.FromContext(ctx)
+	exists, err := serviceAccountExists(registryCredentialPath, doguConfig)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+
+	saIsOptional := c.isOptionalServiceAccount(dogu, serviceAccount.Type)
+
+	// get pod for component of service account
+	labels := map[string]string{"app": "ces", "app.kubernetes.io/name": serviceAccount.Type}
+	logger.Info(fmt.Sprintf("checking for pod with labels: %v", labels))
+
+	service, err := v1.GetServiceForLabels(ctx, c.client, labels)
+	if err != nil && saIsOptional {
+		logger.Info("Skipping creation of service account % because the service was not found and the service account is optional", serviceAccount.Type)
+		return nil
+	}
+	if err != nil && !saIsOptional {
+		return fmt.Errorf("failed to get pod for labels %v: %w", labels, err)
+	}
+
+	logger.Info("found service: " + service.Name)
+
+	port := getAnnotationOrDefault(service, "ces.cloudogu.com/serviceaccount-port", "8080")
+	path := getAnnotationOrDefault(service, "ces.cloudogu.com/serviceaccount-path", "/serviceaccounts")
+	apiKeySecretName := getAnnotationOrDefault(service, "ces.cloudogu.com/serviceaccount-secret-name", "")
+	apiKeySecretKey := getAnnotationOrDefault(service, "ces.cloudogu.com/serviceaccount-secret-key", "apiKey")
+
+	saApiURL := fmt.Sprintf("http://%s:%s%s", service.Spec.ClusterIP, port, path)
+
+	logger.Info("created baseURl: " + saApiURL)
+
+	apiKey, err := c.readApiKeySecret(ctx, apiKeySecretName, apiKeySecretKey)
+
+	logger.Info("got ApiKey: " + apiKey)
+
+	apiClient := newApiClient(saApiURL, apiKey)
+
+	saCreds, err := apiClient.createServiceAccount(dogu.GetSimpleName(), nil)
+	if err != nil {
+		return fmt.Errorf("failed to get credetials for service account: %w", err)
+	}
+
+	logger.Info(fmt.Sprintf("got credentials: %v", saCreds))
+
+	err = c.saveServiceAccount(serviceAccount, doguConfig, saCreds)
+	if err != nil {
+		return fmt.Errorf("failed to save the service account credentials: %w", err)
+	}
+
+	return nil
+}
+
+func (c *creator) readApiKeySecret(ctx context.Context, secretName string, secretKey string) (string, error) {
+	secret, err := c.secretsClient.Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("error reading apiKeySecret %s: %w", secretName, err)
+	}
+
+	apiKey, exists := secret.Data[secretKey]
+	if !exists {
+		return "", fmt.Errorf("could not find key '%s' in secret '%s'", secretKey, secretName)
+	}
+
+	return string(apiKey), nil
+}
+
+func getAnnotationOrDefault(pod *corev1.Service, name string, defaultValue string) string {
+	value := pod.Annotations[name]
+	if value == "" {
+		return defaultValue
+	}
+
+	return value
 }
