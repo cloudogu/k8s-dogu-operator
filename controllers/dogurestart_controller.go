@@ -41,7 +41,9 @@ const (
 	ignore                     restartOperation = "ignore"
 	wait                       restartOperation = "wait"
 	stop                       restartOperation = "stop"
+	checkStopped               restartOperation = "check if dogu is stopped"
 	start                      restartOperation = "start"
+	checkStarted               restartOperation = "check if dogu is started"
 	handleDoguNotFound         restartOperation = "handle dogu not found"
 	handleGetDoguFailed        restartOperation = "handle get dogu failed"
 	handleGetDoguRestartFailed restartOperation = "handle get dogu restart failed"
@@ -62,7 +64,9 @@ func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) (instruction restartInstruction) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).
+		WithName("DoguRestartReconciler.evaluate").
+		WithValues("doguRestart", req.NamespacedName)
 
 	instruction.req = req
 
@@ -74,7 +78,7 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 	}
 
 	instruction.restart = doguRestart
-	logger.Info(fmt.Sprintf("dogu restart ressource %q has been found", req.NamespacedName))
+	logger.Info("dogu restart ressource has been found")
 
 	// ignore cases
 	switch doguRestart.Status.Phase {
@@ -84,7 +88,7 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 		return
 	}
 
-	dogu, err := r.clientSet.Dogus(doguRestart.Namespace).Get(ctx, doguRestart.Name, metav1.GetOptions{})
+	dogu, err := r.clientSet.Dogus(doguRestart.Namespace).Get(ctx, doguRestart.Spec.DoguName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		instruction.op = handleDoguNotFound
 		instruction.err = err
@@ -98,81 +102,248 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 
 	instruction.dogu = dogu
 
-	// wait if any other operations are running
-	switch doguRestart.Status.Phase {
-	case k8sv1.RestartStatusPhaseStarting,
-		k8sv1.RestartStatusPhaseStopping:
-		instruction.op = wait
-		return
-	}
-	if dogu.Status.Status != k8sv1.DoguStatusInstalled {
-		instruction.op = wait
+	if doguRestart.Status.Phase == k8sv1.RestartStatusPhaseStopping {
+		instruction.op = checkStopped
 		return
 	}
 
-	switch doguRestart.Status.Phase {
-	// check if stop is necessary
-	case k8sv1.RestartStatusPhaseNew,
-		k8sv1.RestartStatusPhaseFailedStop:
+	if doguRestart.Status.Phase == k8sv1.RestartStatusPhaseStarting {
+		instruction.op = checkStarted
+		return
+	}
+
+	if shouldStop(doguRestart, dogu) {
 		instruction.op = stop
 		return
-	// check if start is necessary
-	case k8sv1.RestartStatusPhaseStopped,
-		k8sv1.RestartStatusPhaseFailedStart:
+	}
+
+	if shouldStart(doguRestart, dogu) {
 		instruction.op = start
 		return
 	}
 
-	// TODO check if other operations are necessary or status phases have to be synchronized
+	logger.Info("no operation determined for dogu restart")
 	instruction.op = ignore
 	return
 }
 
+func shouldStart(restart *k8sv1.DoguRestart, dogu *k8sv1.Dogu) bool {
+	if dogu.Status.Stopped {
+		return true
+	}
+
+	switch restart.Status.Phase {
+	case k8sv1.RestartStatusPhaseStopped,
+		k8sv1.RestartStatusPhaseFailedStart:
+		return true
+	}
+
+	return false
+}
+
+func shouldStop(restart *k8sv1.DoguRestart, dogu *k8sv1.Dogu) bool {
+	if dogu.Status.Stopped {
+		return false
+	}
+
+	switch restart.Status.Phase {
+	case k8sv1.RestartStatusPhaseNew,
+		k8sv1.RestartStatusPhaseFailedStop:
+		return true
+	}
+
+	return false
+}
+
 func (r *DoguRestartReconciler) execute(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).
+		WithName("DoguRestartReconciler.execute").
+		WithValues("doguRestart", instruction.req.NamespacedName).
+		WithValues("dogu", instruction.dogu.Name)
 	switch instruction.op {
 	case ignore:
-		logger.Info(fmt.Sprintf("nothing to do for restart %q, ignoring", instruction.restart.Name))
+		logger.Info("nothing to do for dogu restart, ignoring")
 		return ctrl.Result{}, nil
 	case wait:
-		logger.Info(fmt.Sprintf("restart %q or its dogu have running operations, requeue scheduled", instruction.restart.Name))
+		logger.Info("dogu restart or its dogu have running operations, requeue scheduled")
 		return ctrl.Result{RequeueAfter: requeueWaitTimeout}, nil
+	case checkStopped:
+		return r.checkStopped(ctx, instruction)
+	case checkStarted:
+		return r.checkStarted(ctx, instruction)
 	case stop:
-		// TODO implement
-		return ctrl.Result{}, nil
+		return r.handleStop(ctx, instruction)
 	case start:
-		// TODO implement
-		return ctrl.Result{}, nil
+		return r.handleStart(ctx, instruction)
 	case handleGetDoguRestartFailed:
-		logger.Error(instruction.err, fmt.Sprintf("failed to get dogu restart %q", instruction.req.NamespacedName))
+		logger.Error(instruction.err, "failed to get dogu restart")
 		return ctrl.Result{}, client.IgnoreNotFound(instruction.err)
 	case handleDoguNotFound:
-		r.recorder.Event(instruction.restart, v1.EventTypeWarning, "DoguNotFound", "Dogu to restart was not found.")
-
-		_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
-			status.Phase = k8sv1.RestartStatusPhaseDoguNotFound
-			return status
-		}, metav1.UpdateOptions{})
-		if statusErr != nil {
-			logger.Error(statusErr, fmt.Sprintf("failed to update status of dogu restart %q", instruction.req.NamespacedName))
-		}
-
-		// cannot restart, no retry necessary
-		return ctrl.Result{}, nil
+		return r.handleDoguNotFound(ctx, instruction)
 	case handleGetDoguFailed:
-		r.recorder.Event(instruction.restart, v1.EventTypeWarning, "FailedGetDogu", "Could not get ressource of dogu to restart.")
-
-		_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
-			status.Phase = k8sv1.RestartStatusPhaseFailedGetDogu
-			return status
-		}, metav1.UpdateOptions{})
-
-		// retry
-		return ctrl.Result{}, errors.Join(instruction.err, statusErr)
+		return r.handleGetDoguFailed(ctx, instruction)
 	default:
 		logger.Info(fmt.Sprintf("unknown restart operation %q, ignoring", instruction.op))
 		return ctrl.Result{}, nil
 	}
+}
+
+func (r *DoguRestartReconciler) checkStopped(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
+	logger := log.FromContext(ctx).
+		WithName("DoguRestartReconciler.checkStopped").
+		WithValues("doguRestart", instruction.req.NamespacedName).
+		WithValues("dogu", instruction.dogu.Name)
+
+	if instruction.dogu.Status.Stopped {
+		r.recorder.Event(instruction.restart, v1.EventTypeNormal, "Stopped", "dogu stopped, restarting")
+		logger.Info("dogu stopped, setting stopped phase")
+
+		_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+			status.Phase = k8sv1.RestartStatusPhaseStopped
+			return status
+		}, metav1.UpdateOptions{})
+
+		return ctrl.Result{}, statusErr
+	}
+
+	logger.Info("dogu not yet stopped, requeue")
+	return ctrl.Result{RequeueAfter: requeueWaitTimeout}, nil
+}
+
+func (r *DoguRestartReconciler) checkStarted(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
+	logger := log.FromContext(ctx).
+		WithName("DoguRestartReconciler.checkStarted").
+		WithValues("doguRestart", instruction.req.NamespacedName).
+		WithValues("dogu", instruction.dogu.Name)
+
+	if instruction.dogu.Status.Stopped {
+		r.recorder.Event(instruction.restart, v1.EventTypeNormal, "Started", "dogu started, restart completed")
+		logger.Info("dogu started, setting completed phase")
+
+		_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+			status.Phase = k8sv1.RestartStatusPhaseCompleted
+			return status
+		}, metav1.UpdateOptions{})
+
+		return ctrl.Result{}, statusErr
+	}
+
+	logger.Info("dogu not yet started, requeue")
+	return ctrl.Result{RequeueAfter: requeueWaitTimeout}, nil
+}
+
+func (r *DoguRestartReconciler) handleStop(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
+	restartClient := r.clientSet.DoguRestarts(instruction.restart.Namespace)
+	logger := log.FromContext(ctx).
+		WithName("DoguRestartReconciler.handleStop").
+		WithValues("doguRestart", instruction.req.NamespacedName).
+		WithValues("dogu", instruction.dogu.Name)
+
+	// set stopped field in dogu
+	_, err := r.clientSet.Dogus(instruction.dogu.Namespace).UpdateSpecWithRetry(ctx, instruction.dogu, func(spec k8sv1.DoguSpec) k8sv1.DoguSpec {
+		spec.Stopped = true
+		return spec
+	}, metav1.UpdateOptions{})
+	if err != nil {
+		r.recorder.Event(instruction.restart, v1.EventTypeWarning, "Stopping", "failed to stop dogu")
+		logger.Error(err, "failed to set stopped field in dogu")
+
+		_, statusErr := restartClient.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+			status.Phase = k8sv1.RestartStatusPhaseFailedStop
+			return status
+		}, metav1.UpdateOptions{})
+		if statusErr != nil {
+			logger.Error(statusErr, "failed to set stop failed status in restart")
+			return ctrl.Result{}, errors.Join(err, statusErr)
+		}
+
+		return ctrl.Result{}, err
+	}
+
+	// set stopping status
+	_, err = restartClient.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+		status.Phase = k8sv1.RestartStatusPhaseStopping
+		return status
+	}, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error(err, "failed to set stopping status for restart")
+		return ctrl.Result{}, err
+	}
+
+	r.recorder.Event(instruction.restart, v1.EventTypeNormal, "Stopping", "initiated stop of dogu")
+	return ctrl.Result{}, nil
+}
+
+func (r *DoguRestartReconciler) handleStart(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
+	restartClient := r.clientSet.DoguRestarts(instruction.restart.Namespace)
+	logger := log.FromContext(ctx).
+		WithName("DoguRestartReconciler.handleStart").
+		WithValues("doguRestart", instruction.req.NamespacedName).
+		WithValues("dogu", instruction.dogu.Name)
+
+	// unset stopped field in dogu
+	_, err := r.clientSet.Dogus(instruction.dogu.Namespace).UpdateSpecWithRetry(ctx, instruction.dogu, func(spec k8sv1.DoguSpec) k8sv1.DoguSpec {
+		spec.Stopped = false
+		return spec
+	}, metav1.UpdateOptions{})
+	if err != nil {
+		r.recorder.Event(instruction.restart, v1.EventTypeWarning, "Starting", "failed to start dogu")
+		logger.Error(err, "failed to unset stopped field in dogu")
+
+		_, statusErr := restartClient.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+			status.Phase = k8sv1.RestartStatusPhaseFailedStart
+			return status
+		}, metav1.UpdateOptions{})
+		if statusErr != nil {
+			logger.Error(statusErr, "failed to set start failed status in restart")
+			return ctrl.Result{}, errors.Join(err, statusErr)
+		}
+
+		return ctrl.Result{}, err
+	}
+
+	// set starting status
+	_, err = restartClient.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+		status.Phase = k8sv1.RestartStatusPhaseStarting
+		return status
+	}, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error(err, "failed to set starting status for restart")
+		return ctrl.Result{}, err
+	}
+
+	r.recorder.Event(instruction.restart, v1.EventTypeNormal, "Starting", "initiated start of dogu")
+	return ctrl.Result{}, nil
+}
+
+func (r *DoguRestartReconciler) handleGetDoguFailed(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
+	r.recorder.Event(instruction.restart, v1.EventTypeWarning, "FailedGetDogu", "Could not get ressource of dogu to restart.")
+
+	_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+		status.Phase = k8sv1.RestartStatusPhaseFailedGetDogu
+		return status
+	}, metav1.UpdateOptions{})
+
+	// retry
+	return ctrl.Result{}, errors.Join(instruction.err, statusErr)
+}
+
+func (r *DoguRestartReconciler) handleDoguNotFound(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
+	logger := log.FromContext(ctx).
+		WithName("DoguRestartReconciler.handleDoguNotFound").
+		WithValues("doguRestart", instruction.req.NamespacedName)
+	r.recorder.Event(instruction.restart, v1.EventTypeWarning, "DoguNotFound", "Dogu to restart was not found.")
+
+	_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+		status.Phase = k8sv1.RestartStatusPhaseDoguNotFound
+		return status
+	}, metav1.UpdateOptions{})
+	if statusErr != nil {
+		logger.Error(statusErr, "failed to update status of dogu restart")
+	}
+
+	// cannot restart, no retry necessary
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
