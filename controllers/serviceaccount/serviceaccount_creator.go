@@ -375,23 +375,23 @@ func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.
 	labels := map[string]string{"app": "ces", "app.kubernetes.io/name": serviceAccount.Type}
 	logger.Info(fmt.Sprintf("checking for pod with labels: %v", labels))
 
-	pod, err := v1.GetPodForLabels(ctx, c.client, labels)
+	service, err := v1.GetServiceForLabels(ctx, c.client, labels)
 	if err != nil && saIsOptional {
-		logger.Info("Skipping creation of service account % because the pod was not found and the service account is optional", serviceAccount.Type)
+		logger.Info("Skipping creation of service account % because the service was not found and the service account is optional", serviceAccount.Type)
 		return nil
 	}
 	if err != nil && !saIsOptional {
 		return fmt.Errorf("failed to get pod for labels %v: %w", labels, err)
 	}
 
-	logger.Info("found pod: " + pod.Name)
+	logger.Info("found service: " + service.Name)
 
-	port := getAnnotationOrDefault(pod, "ces.cloudogu.com/serviceaccount-port", "8080")
-	path := getAnnotationOrDefault(pod, "ces.cloudogu.com/serviceaccount-path", "/serviceaccounts")
-	apiKeySecretName := getAnnotationOrDefault(pod, "ces.cloudogu.com/serviceaccount-secret-name", "")
-	apiKeySecretKey := getAnnotationOrDefault(pod, "ces.cloudogu.com/serviceaccount-secret-key", "apiKey")
+	port := getAnnotationOrDefault(service, "ces.cloudogu.com/serviceaccount-port", "8080")
+	path := getAnnotationOrDefault(service, "ces.cloudogu.com/serviceaccount-path", "/serviceaccounts")
+	apiKeySecretName := getAnnotationOrDefault(service, "ces.cloudogu.com/serviceaccount-secret-name", "")
+	apiKeySecretKey := getAnnotationOrDefault(service, "ces.cloudogu.com/serviceaccount-secret-key", "apiKey")
 
-	saApiURL := fmt.Sprintf("http://%s:%s%s", pod.Status.PodIP, port, path)
+	saApiURL := fmt.Sprintf("http://%s:%s%s", service.Spec.ClusterIP, port, path)
 
 	logger.Info("created baseURl: " + saApiURL)
 
@@ -430,7 +430,7 @@ func (c *creator) readApiKeySecret(ctx context.Context, secretName string, secre
 	return string(apiKey), nil
 }
 
-func getAnnotationOrDefault(pod *corev1.Pod, name string, defaultValue string) string {
+func getAnnotationOrDefault(pod *corev1.Service, name string, defaultValue string) string {
 	value := pod.Annotations[name]
 	if value == "" {
 		return defaultValue
