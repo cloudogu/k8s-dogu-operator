@@ -26,7 +26,7 @@ func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, 
 }
 
 // UpdateStatus sets the health status of the dogu according to whether if it's available or not.
-func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error {
+func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.NamespacedName, isAvailable bool) error {
 	doguClient := dsw.ecosystemClient.Dogus(doguName.Namespace)
 
 	return retry.OnConflict(func() error {
@@ -35,11 +35,7 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.N
 			return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
 		}
 
-		if available {
-			dogu.Status.Health = doguv1.AvailableHealthStatus
-		} else {
-			dogu.Status.Health = doguv1.UnavailableHealthStatus
-		}
+		dogu.Status.Health = doguv1.GetHealthStatus(isAvailable)
 
 		_, err = doguClient.UpdateStatus(ctx, dogu, metav1api.UpdateOptions{})
 		if err != nil {

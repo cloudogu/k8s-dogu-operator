@@ -99,6 +99,8 @@ type DoguStatus struct {
 	RequeuePhase string `json:"requeuePhase"`
 	// Health describes the health status of the dogu
 	Health HealthStatus `json:"health,omitempty"`
+	// Installed version of the dogu (e.g. 2.4.48-3)
+	InstalledVersion string `json:"installedVersion,omitempty"`
 }
 
 // NextRequeue increases the requeue time of the dogu status and returns the new requeue time
@@ -214,6 +216,12 @@ func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus 
 	return d.Update(ctx, client)
 }
 
+// ChangeState changes the state of this dogu resource and applies it to the cluster state.
+func (d *Dogu) UpdateInstalledVersion(ctx context.Context, client client.Client, newStatus string) error {
+	d.Status.InstalledVersion = d.Spec.Version
+	return d.Update(ctx, client)
+}
+
 // GetPodLabels returns labels that select a pod being associated with this dogu.
 func (d *Dogu) GetPodLabels() CesMatchingLabels {
 	return map[string]string{
@@ -326,4 +334,12 @@ func (cml CesMatchingLabels) Add(moreLabels CesMatchingLabels) CesMatchingLabels
 	}
 
 	return result
+}
+
+func GetHealthStatus(available bool) HealthStatus {
+	if available {
+		return AvailableHealthStatus
+	} else {
+		return UnavailableHealthStatus
+	}
 }
