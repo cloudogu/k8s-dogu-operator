@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (see [here](docs/development/development_guide_en.md) or [here](.env.template))
 
 ### Fixed
-- [#152] Fix a bug where the health routine marked a dogu as available if the deployment was scaled to 0.
+- [#152] The health routine no longer marks a dogu as available if the deployment was scaled to 0.
 
 ## [v0.41.0] - 2024-01-23
 ### Changed
