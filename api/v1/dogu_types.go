@@ -228,8 +228,8 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	return nil
 }
 
-// ChangeRequeuePhase changes the requeue phase of this dogu resource and applies it to the cluster state.
-func (d *Dogu) ChangeRequeuePhase(ctx context.Context, client client.Client, phase string) error {
+// changeRequeuePhase changes the requeue phase of this dogu resource and applies it to the cluster state.
+func (d *Dogu) changeRequeuePhase(ctx context.Context, client client.Client, phase string) error {
 	d.Status.RequeuePhase = phase
 	return d.Update(ctx, client)
 }
@@ -243,7 +243,7 @@ func (d *Dogu) ChangeRequeuePhaseWithRetry(ctx context.Context, client client.Cl
 			return err
 		}
 
-		return d.ChangeRequeuePhase(ctx, client, phase)
+		return d.changeRequeuePhase(ctx, client, phase)
 	})
 }
 
@@ -258,8 +258,8 @@ func (d *Dogu) refreshDoguValue(ctx context.Context, client client.Client) error
 	return nil
 }
 
-// ChangeState changes the state of this dogu resource and applies it to the cluster state.
-func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
+// changeState changes the state of this dogu resource and applies it to the cluster state.
+func (d *Dogu) changeState(ctx context.Context, client client.Client, newStatus string) error {
 	d.Status.Status = newStatus
 	return d.Update(ctx, client)
 }
@@ -273,7 +273,7 @@ func (d *Dogu) ChangeStateWithRetry(ctx context.Context, client client.Client, n
 			return err
 		}
 
-		return d.ChangeState(ctx, client, newStatus)
+		return d.changeState(ctx, client, newStatus)
 	})
 }
 

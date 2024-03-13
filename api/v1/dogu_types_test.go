@@ -103,38 +103,6 @@ func TestDogu_GetSecretObjectKey(t *testing.T) {
 	assert.Equal(t, "testnamespace", key.Namespace)
 }
 
-func Test_Dogu_ChangeState(t *testing.T) {
-	ctx := context.TODO()
-
-	t.Run("should set the dogu resource's status to upgrade", func(t *testing.T) {
-		sut := &v1.Dogu{}
-		mockClient := extMocks.NewK8sClient(t)
-		statusMock := extMocks.NewK8sSubResourceWriter(t)
-		mockClient.EXPECT().Status().Return(statusMock)
-		statusMock.On("Update", ctx, sut).Return(nil)
-
-		// when
-		err := sut.ChangeState(ctx, mockClient, v1.DoguStatusUpgrading)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, v1.DoguStatusUpgrading, sut.Status.Status)
-	})
-	t.Run("should fail on client error", func(t *testing.T) {
-		sut := &v1.Dogu{}
-		mockClient := extMocks.NewK8sClient(t)
-		statusMock := extMocks.NewK8sSubResourceWriter(t)
-		mockClient.EXPECT().Status().Return(statusMock)
-		statusMock.On("Update", ctx, sut).Return(assert.AnError)
-
-		// when
-		err := sut.ChangeState(ctx, mockClient, v1.DoguStatusUpgrading)
-
-		// then
-		require.ErrorIs(t, err, assert.AnError)
-	})
-}
-
 func TestDogu_GetObjectKey(t *testing.T) {
 	actual := testDogu.GetObjectKey()
 
