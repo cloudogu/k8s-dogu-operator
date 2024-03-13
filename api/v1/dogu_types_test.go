@@ -405,7 +405,7 @@ func TestDogu_ChangeRequeuePhaseWithRetry(t *testing.T) {
 	})
 }
 
-func TestDogu_ChangeRequeuePhaseWithRetry1(t *testing.T) {
+func TestDogu_ChangeStateWithRetry(t *testing.T) {
 	t.Run("success on conflict", func(t *testing.T) {
 		// given
 		resourceVersion := "1"
