@@ -6,6 +6,4 @@ metadata:
     app: ces
 spec:
   name: official/usermgt
-  version: 1.7.0-1
-  resources:
-    dataVolumeSize: "6Gi"
+  version: 1.13.0-1
