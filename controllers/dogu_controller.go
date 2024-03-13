@@ -495,7 +495,7 @@ func (r *doguReconciler) validateVolumeSize(doguResource *k8sv1.Dogu) (success b
 	}
 
 	if quantity.Format != resource.BinarySI {
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeSIValidationEventReason, "Dogu resource volume size format is not Binary-SI: %s", quantity)
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeSIValidationEventReason, "Dogu resource volume size format is not Binary-SI ("Mi" or "Gi"): %s", quantity)
 		return false
 	}
 
