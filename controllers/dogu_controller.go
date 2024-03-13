@@ -54,7 +54,9 @@ const (
 )
 
 const (
-	FailedNameValidationEventReason = "FailedNameValidation"
+	FailedNameValidationEventReason              = "FailedNameValidation"
+	FailedVolumeSizeParsingValidationEventReason = "FailedVolumeSizeParsingValidation"
+	FailedVolumeSizeSIValidationEventReason      = "FailedVolumeSizeSIValidation"
 )
 
 const handleRequeueErrMsg = "failed to handle requeue: %w"
@@ -122,8 +124,8 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been found", doguResource.Namespace, doguResource.Name))
 
-	hasValidName := r.validateName(doguResource)
-	if !hasValidName {
+	valid := r.validateDogu(doguResource)
+	if !valid {
 		return finishOperation()
 	}
 
@@ -140,6 +142,13 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	return r.executeRequiredOperation(ctx, requiredOperations, doguResource)
+}
+
+func (r *doguReconciler) validateDogu(doguResource *k8sv1.Dogu) bool {
+	hasValidName := r.validateName(doguResource)
+	hasValidVolumeSize := r.validateVolumeSize(doguResource)
+
+	return hasValidName && hasValidVolumeSize
 }
 
 func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredOperations []operation, doguResource *k8sv1.Dogu) (ctrl.Result, error) {
@@ -467,6 +476,26 @@ func (r *doguReconciler) validateName(doguResource *k8sv1.Dogu) (success bool) {
 
 	if doguResource.Name != simpleName {
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedNameValidationEventReason, "Dogu resource does not follow naming rules: The dogu's simple name '%s' must be the same as the resource name '%s'.", simpleName, doguResource.Name)
+		return false
+	}
+
+	return true
+}
+
+func (r *doguReconciler) validateVolumeSize(doguResource *k8sv1.Dogu) (success bool) {
+	size := doguResource.Spec.Resources.DataVolumeSize
+	if len(size) == 0 {
+		return true
+	}
+
+	quantity, err := resource.ParseQuantity(size)
+	if err != nil {
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeParsingValidationEventReason, "Dogu resource volume size parsing error: %s", size)
+		return false
+	}
+
+	if quantity.Format != resource.BinarySI {
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeSIValidationEventReason, "Dogu resource volume size format is not Binary-SI (\"Mi\" or \"Gi\"): %s", quantity)
 		return false
 	}
 

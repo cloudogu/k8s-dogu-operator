@@ -8,6 +8,7 @@ import (
 
 func TestAvailabilityChecker_IsAvailable(t *testing.T) {
 	var one int32 = 1
+	var zero int32 = 0
 	tests := []struct {
 		name       string
 		deployment *appsv1.Deployment
@@ -36,6 +37,11 @@ func TestAvailabilityChecker_IsAvailable(t *testing.T) {
 		{
 			name:       "should return false if available replicas is less than updated replicas",
 			deployment: &appsv1.Deployment{Status: appsv1.DeploymentStatus{Replicas: 1, UpdatedReplicas: 1, AvailableReplicas: 0}},
+			want:       false,
+		},
+		{
+			name:       "should return false if deployment is scaled to 0",
+			deployment: &appsv1.Deployment{Spec: appsv1.DeploymentSpec{Replicas: &zero}},
 			want:       false,
 		},
 		{

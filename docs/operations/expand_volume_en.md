@@ -16,6 +16,8 @@ spec:
     dataVolumeSize: 2Gi
 ```
 
+> The sizes of the volumes must be specified in binary format (e.g. Mi or Gi).
+
 Setting `dataVolumeSize` and updating the Dogu resource will start the process to increase the volume size.
 
 Note that the value of `dataVolumeSize` must match the norm of 

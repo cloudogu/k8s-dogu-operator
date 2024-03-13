@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#149] Clarified escaping rules for running the operator locally
   (see [here](docs/development/development_guide_en.md) or [here](.env.template))
+### Changed
+- [#154] Only accept dogu volume sizes in binary format.
+### Fixed
+- [#152] The health routine no longer marks a dogu as available if the deployment was scaled to 0.
 
 ### Changed
 - [#156] Stabilized process when updating the status of the dogu cr.
