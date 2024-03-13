@@ -9,26 +9,21 @@ import (
 	"path"
 )
 
-type apiClient struct {
-	baseUrl string
-	apiKey  string
+type serviceAccountApiClient interface {
+	createServiceAccount(baseUrl string, apiKey string, consumer string, params []string) (Credentials, error)
+	deleteServiceAccount(baseUrl string, apiKey string, consumer string) error
 }
 
-func newApiClient(baseUrl string, apiKey string) *apiClient {
-	return &apiClient{
-		baseUrl: baseUrl,
-		apiKey:  apiKey,
-	}
-}
+type apiClient struct{}
 
 type createRequest struct {
-	Consumer string            `json:"consumer"`
-	Params   map[string]string `json:"params"`
+	Consumer string   `json:"consumer"`
+	Params   []string `json:"params"`
 }
 
 type Credentials map[string]string
 
-func (ac *apiClient) createServiceAccount(consumer string, params map[string]string) (Credentials, error) {
+func (ac *apiClient) createServiceAccount(baseUrl string, apiKey string, consumer string, params []string) (Credentials, error) {
 	jsonData, err := json.Marshal(createRequest{
 		Consumer: consumer,
 		Params:   params,
@@ -37,13 +32,13 @@ func (ac *apiClient) createServiceAccount(consumer string, params map[string]str
 		return nil, fmt.Errorf("error marshaling json-body: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", ac.baseUrl, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", baseUrl, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-CES-SA-API-KEY", ac.apiKey)
+	req.Header.Set("X-CES-SA-API-KEY", apiKey)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -70,13 +65,13 @@ func (ac *apiClient) createServiceAccount(consumer string, params map[string]str
 	return credentials, nil
 }
 
-func (ac *apiClient) deleteServiceAccount(consumer string) error {
-	req, err := http.NewRequest("DELETE", path.Join(ac.baseUrl, consumer), nil)
+func (ac *apiClient) deleteServiceAccount(baseUrl string, apiKey string, consumer string) error {
+	req, err := http.NewRequest("DELETE", path.Join(baseUrl, consumer), nil)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
 
-	req.Header.Set("X-CES-SA-API-KEY", ac.apiKey)
+	req.Header.Set("X-CES-SA-API-KEY", apiKey)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
