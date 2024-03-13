@@ -22,6 +22,49 @@ func (_m *StopDoguManager) EXPECT() *StopDoguManager_Expecter {
 	return &StopDoguManager_Expecter{mock: &_m.Mock}
 }
 
+// CheckStopped provides a mock function with given fields: ctx, doguResource
+func (_m *StopDoguManager) CheckStopped(ctx context.Context, doguResource *v1.Dogu) error {
+	ret := _m.Called(ctx, doguResource)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Dogu) error); ok {
+		r0 = rf(ctx, doguResource)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// StopDoguManager_CheckStopped_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckStopped'
+type StopDoguManager_CheckStopped_Call struct {
+	*mock.Call
+}
+
+// CheckStopped is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguResource *v1.Dogu
+func (_e *StopDoguManager_Expecter) CheckStopped(ctx interface{}, doguResource interface{}) *StopDoguManager_CheckStopped_Call {
+	return &StopDoguManager_CheckStopped_Call{Call: _e.mock.On("CheckStopped", ctx, doguResource)}
+}
+
+func (_c *StopDoguManager_CheckStopped_Call) Run(run func(ctx context.Context, doguResource *v1.Dogu)) *StopDoguManager_CheckStopped_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*v1.Dogu))
+	})
+	return _c
+}
+
+func (_c *StopDoguManager_CheckStopped_Call) Return(_a0 error) *StopDoguManager_CheckStopped_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *StopDoguManager_CheckStopped_Call) RunAndReturn(run func(context.Context, *v1.Dogu) error) *StopDoguManager_CheckStopped_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // StopDogu provides a mock function with given fields: ctx, doguResource
 func (_m *StopDoguManager) StopDogu(ctx context.Context, doguResource *v1.Dogu) error {
 	ret := _m.Called(ctx, doguResource)
