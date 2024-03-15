@@ -26,6 +26,18 @@ type DoguRestartStatus struct {
 
 type RestartStatusPhase string
 
+func (rsp RestartStatusPhase) IsFailed() bool {
+	return rsp != RestartStatusPhaseNew && !rsp.isInProgress() && !rsp.isSuccessful()
+}
+
+func (rsp RestartStatusPhase) isInProgress() bool {
+	return rsp == RestartStatusPhaseStarting || rsp == RestartStatusPhaseStopping || rsp == RestartStatusPhaseStopped
+}
+
+func (rsp RestartStatusPhase) isSuccessful() bool {
+	return rsp == RestartStatusPhaseCompleted
+}
+
 const (
 	RestartStatusPhaseNew           RestartStatusPhase = ""
 	RestartStatusPhaseStopping      RestartStatusPhase = "stopping"
@@ -38,8 +50,8 @@ const (
 	RestartStatusPhaseFailedStart   RestartStatusPhase = "start failed"
 )
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // DoguRestart is the Schema for the dogurestarts API
 type DoguRestart struct {
@@ -50,7 +62,7 @@ type DoguRestart struct {
 	Status DoguRestartStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // DoguRestartList contains a list of DoguRestart
 type DoguRestartList struct {

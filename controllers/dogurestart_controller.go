@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,12 +20,18 @@ import (
 
 // DoguRestartReconciler reconciles a DoguRestart object
 type DoguRestartReconciler struct {
-	clientSet ecoSystem.EcoSystemV1Alpha1Interface
-	recorder  record.EventRecorder
+	doguInterface        cloudogu.DoguInterface
+	doguRestartInterface cloudogu.DoguRestartInterface
+	garbageCollector     DoguRestartGarbageCollector
+	recorder             record.EventRecorder
 }
 
-func NewDoguRestartReconciler(clientSet ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder) *DoguRestartReconciler {
-	return &DoguRestartReconciler{clientSet: clientSet, recorder: recorder}
+type DoguRestartGarbageCollector interface {
+	DoGarbageCollection(ctx context.Context, doguName string) error
+}
+
+func NewDoguRestartReconciler(doguRestartInterface ecoSystem.DoguRestartInterface, doguInterface ecoSystem.DoguInterface, recorder record.EventRecorder, gc DoguRestartGarbageCollector) *DoguRestartReconciler {
+	return &DoguRestartReconciler{doguRestartInterface: doguRestartInterface, doguInterface: doguInterface, recorder: recorder, garbageCollector: gc}
 }
 
 type restartInstruction struct {
@@ -49,9 +56,9 @@ const (
 	handleGetDoguRestartFailed restartOperation = "handle get dogu restart failed"
 )
 
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogurestarts,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogurestarts/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogurestarts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogurestarts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogurestarts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogurestarts/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -59,9 +66,24 @@ const (
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
 func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// TODO: add garbage collection (keep last 3 completed CRs of each dogu)
 	instruction := r.evaluate(ctx, req)
-	return r.execute(ctx, instruction)
+
+	var errs []error
+	execute, err := r.execute(ctx, instruction)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("failed to execute restart instruction for dogurestart %q: %w", instruction.restart.Name, err))
+	}
+
+	// If the restart is in progress there is no need to collect garbage. Only on terminated objects (failed or successful restarts).
+	// Garbage collection is not implement as a restart operation because the process does not belong to a single restart.
+	if !execute.Requeue && execute.RequeueAfter == 0 {
+		err = r.garbageCollector.DoGarbageCollection(ctx, instruction.restart.Spec.DoguName)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to do garbagecollection for dogurestart %q: %w", instruction.restart.Name, err))
+		}
+	}
+
+	return execute, errors.Join(errs...)
 }
 
 func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) (instruction restartInstruction) {
@@ -71,7 +93,7 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 
 	instruction.req = req
 
-	doguRestart, err := r.clientSet.DoguRestarts(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
+	doguRestart, err := r.doguRestartInterface.Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
 		instruction.op = handleGetDoguRestartFailed
 		instruction.err = err
@@ -102,7 +124,7 @@ func (r *DoguRestartReconciler) evaluate(ctx context.Context, req ctrl.Request) 
 		return
 	}
 
-	dogu, err := r.clientSet.Dogus(doguRestart.Namespace).Get(ctx, doguRestart.Spec.DoguName, metav1.GetOptions{})
+	dogu, err := r.doguInterface.Get(ctx, doguRestart.Spec.DoguName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		instruction.op = handleDoguNotFound
 		instruction.err = err
@@ -161,7 +183,7 @@ func (r *DoguRestartReconciler) checkStopped(ctx context.Context, instruction re
 		r.recorder.Event(instruction.restart, v1.EventTypeNormal, "Stopped", "dogu stopped, restarting")
 		logger.Info("dogu stopped, setting stopped phase")
 
-		_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+		_, statusErr := r.doguRestartInterface.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
 			status.Phase = k8sv1.RestartStatusPhaseStopped
 			return status
 		}, metav1.UpdateOptions{})
@@ -180,11 +202,11 @@ func (r *DoguRestartReconciler) checkStarted(ctx context.Context, instruction re
 		WithValues("doguRestart", instruction.req.NamespacedName).
 		WithValues("dogu", instruction.dogu.Name)
 
-	if instruction.dogu.Status.Stopped {
+	if !instruction.dogu.Status.Stopped {
 		r.recorder.Event(instruction.restart, v1.EventTypeNormal, "Started", "dogu started, restart completed")
 		logger.Info("dogu started, setting completed phase")
 
-		_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+		_, statusErr := r.doguRestartInterface.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
 			status.Phase = k8sv1.RestartStatusPhaseCompleted
 			return status
 		}, metav1.UpdateOptions{})
@@ -197,14 +219,13 @@ func (r *DoguRestartReconciler) checkStarted(ctx context.Context, instruction re
 }
 
 func (r *DoguRestartReconciler) handleStop(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
-	restartClient := r.clientSet.DoguRestarts(instruction.restart.Namespace)
 	logger := log.FromContext(ctx).
 		WithName("DoguRestartReconciler.handleStop").
 		WithValues("doguRestart", instruction.req.NamespacedName).
 		WithValues("dogu", instruction.dogu.Name)
 
 	// set stopped field in dogu
-	_, err := r.clientSet.Dogus(instruction.dogu.Namespace).UpdateSpecWithRetry(ctx, instruction.dogu, func(spec k8sv1.DoguSpec) k8sv1.DoguSpec {
+	_, err := r.doguInterface.UpdateSpecWithRetry(ctx, instruction.dogu, func(spec k8sv1.DoguSpec) k8sv1.DoguSpec {
 		spec.Stopped = true
 		return spec
 	}, metav1.UpdateOptions{})
@@ -212,7 +233,7 @@ func (r *DoguRestartReconciler) handleStop(ctx context.Context, instruction rest
 		r.recorder.Event(instruction.restart, v1.EventTypeWarning, "Stopping", "failed to stop dogu")
 		logger.Error(err, "failed to set stopped field in dogu")
 
-		_, statusErr := restartClient.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+		_, statusErr := r.doguRestartInterface.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
 			status.Phase = k8sv1.RestartStatusPhaseFailedStop
 			return status
 		}, metav1.UpdateOptions{})
@@ -225,7 +246,7 @@ func (r *DoguRestartReconciler) handleStop(ctx context.Context, instruction rest
 	}
 
 	// set stopping status
-	_, err = restartClient.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+	_, err = r.doguRestartInterface.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
 		status.Phase = k8sv1.RestartStatusPhaseStopping
 		return status
 	}, metav1.UpdateOptions{})
@@ -240,14 +261,13 @@ func (r *DoguRestartReconciler) handleStop(ctx context.Context, instruction rest
 }
 
 func (r *DoguRestartReconciler) handleStart(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
-	restartClient := r.clientSet.DoguRestarts(instruction.restart.Namespace)
 	logger := log.FromContext(ctx).
 		WithName("DoguRestartReconciler.handleStart").
 		WithValues("doguRestart", instruction.req.NamespacedName).
 		WithValues("dogu", instruction.dogu.Name)
 
 	// unset stopped field in dogu
-	_, err := r.clientSet.Dogus(instruction.dogu.Namespace).UpdateSpecWithRetry(ctx, instruction.dogu, func(spec k8sv1.DoguSpec) k8sv1.DoguSpec {
+	_, err := r.doguInterface.UpdateSpecWithRetry(ctx, instruction.dogu, func(spec k8sv1.DoguSpec) k8sv1.DoguSpec {
 		spec.Stopped = false
 		return spec
 	}, metav1.UpdateOptions{})
@@ -255,7 +275,7 @@ func (r *DoguRestartReconciler) handleStart(ctx context.Context, instruction res
 		r.recorder.Event(instruction.restart, v1.EventTypeWarning, "Starting", "failed to start dogu")
 		logger.Error(err, "failed to unset stopped field in dogu")
 
-		_, statusErr := restartClient.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+		_, statusErr := r.doguRestartInterface.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
 			status.Phase = k8sv1.RestartStatusPhaseFailedStart
 			return status
 		}, metav1.UpdateOptions{})
@@ -268,7 +288,7 @@ func (r *DoguRestartReconciler) handleStart(ctx context.Context, instruction res
 	}
 
 	// set starting status
-	_, err = restartClient.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+	_, err = r.doguRestartInterface.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
 		status.Phase = k8sv1.RestartStatusPhaseStarting
 		return status
 	}, metav1.UpdateOptions{})
@@ -285,7 +305,7 @@ func (r *DoguRestartReconciler) handleStart(ctx context.Context, instruction res
 func (r *DoguRestartReconciler) handleGetDoguFailed(ctx context.Context, instruction restartInstruction) (ctrl.Result, error) {
 	r.recorder.Event(instruction.restart, v1.EventTypeWarning, "FailedGetDogu", "Could not get ressource of dogu to restart.")
 
-	_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+	_, statusErr := r.doguRestartInterface.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
 		status.Phase = k8sv1.RestartStatusPhaseFailedGetDogu
 		return status
 	}, metav1.UpdateOptions{})
@@ -300,7 +320,7 @@ func (r *DoguRestartReconciler) handleDoguNotFound(ctx context.Context, instruct
 		WithValues("doguRestart", instruction.req.NamespacedName)
 	r.recorder.Event(instruction.restart, v1.EventTypeWarning, "DoguNotFound", "Dogu to restart was not found.")
 
-	_, statusErr := r.clientSet.DoguRestarts(instruction.req.Namespace).UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+	_, statusErr := r.doguRestartInterface.UpdateStatusWithRetry(ctx, instruction.restart, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
 		status.Phase = k8sv1.RestartStatusPhaseDoguNotFound
 		return status
 	}, metav1.UpdateOptions{})

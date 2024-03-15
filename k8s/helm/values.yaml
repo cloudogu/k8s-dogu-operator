@@ -10,6 +10,8 @@ controllerManager:
     logLevel: debug
     stage: development
     doguStartupProbeTimeout: 1
+    doguRestartSuccessfulHistoryLimit: 3
+    doguRestartFailedHistoryLimit: 3
   resourceLimits:
     cpu: 500m
     memory: 128Mi
