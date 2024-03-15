@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/client-go/kubernetes"
 
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,15 +23,19 @@ type remover struct {
 	registry    registry.Registry
 	doguFetcher cloudogu.LocalDoguFetcher
 	executor    cloudogu.CommandExecutor
+	clientSet   kubernetes.Interface
+	apiClient   serviceAccountApiClient
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client) *remover {
+func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface) *remover {
 	return &remover{
 		client:      client,
 		registry:    registry,
 		doguFetcher: localFetcher,
 		executor:    commandExecutor,
+		clientSet:   clientSet,
+		apiClient:   &apiClient{},
 	}
 }
 
@@ -45,6 +50,11 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 			fallthrough
 		case doguKind:
 			err := r.removeDoguServiceAccount(ctx, dogu, serviceAccount)
+			if err != nil {
+				allProblems = errors.Join(allProblems, err)
+			}
+		case componentKind:
+			err := r.removeComponentServiceAccount(ctx, dogu, serviceAccount)
 			if err != nil {
 				allProblems = errors.Join(allProblems, err)
 			}

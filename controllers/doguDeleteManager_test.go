@@ -69,7 +69,7 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		mgrSet := &util.ManagerSet{}
 
 		// when
-		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil)
+		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil, nil)
 
 		// then
 		require.NotNil(t, doguManager)

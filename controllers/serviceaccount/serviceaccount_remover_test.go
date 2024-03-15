@@ -22,7 +22,7 @@ import (
 func TestNewRemover(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// when
-		result := NewRemover(nil, nil, nil, nil)
+		result := NewRemover(nil, nil, nil, nil, nil)
 
 		// then
 		require.NotNil(t, result)
@@ -420,6 +420,30 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		// assert.ErrorContains(t, err, )
+	})
+
+	t.Run("failed to remove components sa", func(t *testing.T) {
+		// given
+		doguConfig := cesmocks.NewConfigurationContext(t)
+		doguConfig.Mock.On("Exists", "sa-k8s-prometheus").Return(false, assert.AnError)
+		registry := cesmocks.NewRegistry(t)
+		registry.On("DoguConfig", "grafana").Return(doguConfig)
+		remover := remover{registry: registry}
+
+		dogu := &core.Dogu{
+			Name: "official/grafana",
+			ServiceAccounts: []core.ServiceAccount{
+				{Kind: "component", Type: "k8s-prometheus"},
+			},
+		}
+
+		// when
+		err := remover.RemoveAll(context.TODO(), dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to check if service account already exists:")
 	})
 }
 
