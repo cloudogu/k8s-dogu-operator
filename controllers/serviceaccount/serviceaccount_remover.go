@@ -25,10 +25,11 @@ type remover struct {
 	executor    cloudogu.CommandExecutor
 	clientSet   kubernetes.Interface
 	apiClient   serviceAccountApiClient
+	namespace   string
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface) *remover {
+func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
 	return &remover{
 		client:      client,
 		registry:    registry,
@@ -36,6 +37,7 @@ func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetch
 		executor:    commandExecutor,
 		clientSet:   clientSet,
 		apiClient:   &apiClient{},
+		namespace:   namespace,
 	}
 }
 

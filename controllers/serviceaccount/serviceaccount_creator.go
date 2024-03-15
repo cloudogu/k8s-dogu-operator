@@ -42,10 +42,11 @@ type creator struct {
 	executor    cloudogu.CommandExecutor
 	clientSet   kubernetes.Interface
 	apiClient   serviceAccountApiClient
+	namespace   string
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface) *creator {
+func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &creator{
 		client:      client,
@@ -54,6 +55,7 @@ func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExec
 		executor:    commandExecutor,
 		clientSet:   clientSet,
 		apiClient:   &apiClient{},
+		namespace:   namespace,
 	}
 }
 

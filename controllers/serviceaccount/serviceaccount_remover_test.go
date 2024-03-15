@@ -22,7 +22,7 @@ import (
 func TestNewRemover(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// when
-		result := NewRemover(nil, nil, nil, nil, nil)
+		result := NewRemover(nil, nil, nil, nil, nil, "")
 
 		// then
 		require.NotNil(t, result)

@@ -132,7 +132,7 @@ func TestNewCreator(t *testing.T) {
 		registryMock.On("DoguRegistry").Return(doguRegistryMock)
 
 		// when
-		result := NewCreator(registryMock, nil, nil, nil)
+		result := NewCreator(registryMock, nil, nil, nil, "")
 
 		// then
 		assert.NotNil(t, result)

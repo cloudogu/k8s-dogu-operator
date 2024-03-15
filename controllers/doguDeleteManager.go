@@ -33,12 +33,12 @@ type doguDeleteManager struct {
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, _ *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder, clientSet kubernetes.Interface) *doguDeleteManager {
+func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder, clientSet kubernetes.Interface) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,
 		doguRegistrator:       mgrSet.DoguRegistrator,
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client, clientSet),
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client, clientSet, operatorConfig.Namespace),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
 		eventRecorder:         recorder,
 	}

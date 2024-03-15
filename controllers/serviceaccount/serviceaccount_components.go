@@ -32,7 +32,7 @@ func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.
 
 	// get service for component of service account
 	labelSelector := fmt.Sprintf("%s=%s", saLabelProviderSvc, serviceAccount.Type)
-	servicesClient := c.clientSet.CoreV1().Services("") //get services from all namespaces
+	servicesClient := c.clientSet.CoreV1().Services(c.namespace)
 	service, err := getServiceForLabels(ctx, servicesClient, labelSelector)
 	if err != nil && saIsOptional {
 		logger.Info("Skipping creation of service account % because the service was not found and the service account is optional", serviceAccount.Type)
@@ -139,7 +139,7 @@ func (r *remover) removeComponentServiceAccount(ctx context.Context, dogu *core.
 
 	// get service for component of service account
 	labelSelector := fmt.Sprintf("%s=%s", saLabelProviderSvc, serviceAccount.Type)
-	servicesClient := r.clientSet.CoreV1().Services("") //get services from all namespaces
+	servicesClient := r.clientSet.CoreV1().Services(r.namespace)
 	service, err := getServiceForLabels(ctx, servicesClient, labelSelector)
 	if err != nil {
 		return fmt.Errorf("failed to get service: %w", err)
