@@ -50,7 +50,7 @@ func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// If the restart is in progress there is no need to collect garbage. Only on terminated objects (failed or successful restarts).
 	// Garbage collection is not implement as a restart operation because the process does not belong to a single restart.
-	if !result.Requeue && result.RequeueAfter == 0 {
+	if !result.Requeue && result.RequeueAfter == 0 && instruction.restart != nil {
 		err = r.garbageCollector.DoGarbageCollection(ctx, instruction.restart.Spec.DoguName)
 		if err != nil {
 			return result, fmt.Errorf("failed to do garbagecollection for dogurestart %q: %w", req.NamespacedName, err)
