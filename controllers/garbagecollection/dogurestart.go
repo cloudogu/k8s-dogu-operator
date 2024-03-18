@@ -23,13 +23,23 @@ func NewDoguRestartGarbageCollector(doguRestartInterface ecoSystem.DoguRestartIn
 }
 
 const (
-	restartSuccessfulHistoryLimitEnv      = "DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT"
-	restartFailedHistoryLimitEnv          = "DOGU_RESTART_FAILED_HISTORY_LIMIT"
-	fallbackRestartSuccessfulHistoryLimit = 3
-	fallbackRestartFailedHistoryLimit     = 3
+	restartSuccessfulHistoryLimitEnv         = "DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT"
+	restartFailedHistoryLimitEnv             = "DOGU_RESTART_FAILED_HISTORY_LIMIT"
+	restartGarbageCollectionDisabledEnv      = "DOGU_RESTART_GARBAGE_COLLECTION_DISABLED"
+	fallbackRestartSuccessfulHistoryLimit    = 3
+	fallbackRestartFailedHistoryLimit        = 3
+	fallbackRestartGarbageCollectionDisabled = false
 )
 
 func (r *DoguRestartGarbageCollector) DoGarbageCollection(ctx context.Context, doguName string) error {
+	disabled, err := r.garbageCollectionDisabled()
+	if err != nil {
+		return err
+	}
+	if disabled {
+		return nil
+	}
+
 	restarts, err := r.getDoguRestartsForDogu(ctx, doguName)
 	if err != nil {
 		return err
@@ -67,13 +77,17 @@ func (r *DoguRestartGarbageCollector) truncateDoguRestartHistory(ctx context.Con
 	}
 
 	historyLimit := fallbackHistoryLimit
-	env, b := os.LookupEnv(limitEnv)
-	if b {
+	env, found := os.LookupEnv(limitEnv)
+	if found {
 		atoi, errConvert := strconv.Atoi(env)
 		if errConvert != nil {
 			return fmt.Errorf("failed to convert history limit %q of dogu restarts: %w", env, errConvert)
 		}
 		historyLimit = atoi
+	}
+
+	if historyLimit < 0 {
+		return fmt.Errorf("failed to execute garbage collection because the limit is less than 0: %d", historyLimit)
 	}
 
 	amountOfItemsToDelete := len(items) - historyLimit
@@ -108,4 +122,18 @@ func (r *DoguRestartGarbageCollector) getDoguRestartsForDogu(ctx context.Context
 	}
 
 	return list.Items, nil
+}
+
+func (r *DoguRestartGarbageCollector) garbageCollectionDisabled() (bool, error) {
+	garbageCollectionDisabled := fallbackRestartGarbageCollectionDisabled
+	env, found := os.LookupEnv(restartGarbageCollectionDisabledEnv)
+	if found {
+		var errConvert error
+		garbageCollectionDisabled, errConvert = strconv.ParseBool(env)
+		if errConvert != nil {
+			return false, fmt.Errorf("failed to convert garbage collection disabled flag %q of dogu restarts: %w", env, errConvert)
+		}
+	}
+
+	return garbageCollectionDisabled, nil
 }

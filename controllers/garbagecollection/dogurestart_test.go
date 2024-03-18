@@ -5,6 +5,7 @@ import (
 	"fmt"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -15,6 +16,94 @@ import (
 var testCtx = context.Background()
 
 func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
+	t.Run("should return on invalid gc disabled flag", func(t *testing.T) {
+		// given
+		err := os.Setenv("DOGU_RESTART_GARBAGE_COLLECTION_DISABLED", "2")
+		require.NoError(t, err)
+		defer func() {
+			unsetErr := os.Unsetenv("DOGU_RESTART_GARBAGE_COLLECTION_DISABLED")
+			require.NoError(t, unsetErr)
+		}()
+
+		doguName := "ldap"
+		sut := DoguRestartGarbageCollector{}
+
+		// when
+		err = sut.DoGarbageCollection(testCtx, doguName)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to convert garbage collection disabled flag \"2\" of dogu restarts")
+	})
+
+	t.Run("should do nothing if gc is disabled", func(t *testing.T) {
+		// given
+		err := os.Setenv("DOGU_RESTART_GARBAGE_COLLECTION_DISABLED", "true")
+		require.NoError(t, err)
+		defer func() {
+			unsetErr := os.Unsetenv("DOGU_RESTART_GARBAGE_COLLECTION_DISABLED")
+			require.NoError(t, unsetErr)
+		}()
+
+		doguName := "ldap"
+		sut := DoguRestartGarbageCollector{}
+
+		// when
+		err = sut.DoGarbageCollection(testCtx, doguName)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("should execute gc with disabled flag false", func(t *testing.T) {
+		// given
+		err := os.Setenv("DOGU_RESTART_GARBAGE_COLLECTION_DISABLED", "false")
+		require.NoError(t, err)
+		defer func() {
+			unsetErr := os.Unsetenv("DOGU_RESTART_GARBAGE_COLLECTION_DISABLED")
+			require.NoError(t, unsetErr)
+		}()
+
+		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		list := &v1.DoguRestartList{Items: []v1.DoguRestart{}}
+		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(list, nil)
+
+		doguName := "ldap"
+		sut := DoguRestartGarbageCollector{doguRestartInterface: doguRestartInterfaceMock}
+
+		// when
+		err = sut.DoGarbageCollection(testCtx, doguName)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("should return an error on invalid limit", func(t *testing.T) {
+		// given
+		envErr := os.Setenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT", "-2")
+		require.NoError(t, envErr)
+
+		defer func() {
+			unsetErr := os.Unsetenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT")
+			require.NoError(t, unsetErr)
+		}()
+
+		doguName := "ldap"
+		now := metav1.Now()
+		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		list := &v1.DoguRestartList{Items: []v1.DoguRestart{getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second))}}
+		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(list, nil)
+
+		sut := DoguRestartGarbageCollector{doguRestartInterface: doguRestartInterfaceMock}
+
+		// when
+		err := sut.DoGarbageCollection(testCtx, doguName)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to execute garbage collection because the limit is less than 0: -2")
+	})
+
 	t.Run("Should keep last 3 successful resources for dogu (default)", func(t *testing.T) {
 		// given
 		doguName := "ldap"
@@ -77,11 +166,11 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 	t.Run("Should keep last n successful resources for dogu", func(t *testing.T) {
 		// given
-		envErr := os.Setenv(restartSuccessfulHistoryLimitEnv, "2")
+		envErr := os.Setenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT", "2")
 		require.NoError(t, envErr)
 
 		defer func() {
-			unsetErr := os.Unsetenv(restartSuccessfulHistoryLimitEnv)
+			unsetErr := os.Unsetenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT")
 			require.NoError(t, unsetErr)
 		}()
 
@@ -116,11 +205,11 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 	t.Run("Should keep last n failed resources for dogu", func(t *testing.T) {
 		// given
-		envErr := os.Setenv(restartFailedHistoryLimitEnv, "2")
+		envErr := os.Setenv("DOGU_RESTART_FAILED_HISTORY_LIMIT", "2")
 		require.NoError(t, envErr)
 
 		defer func() {
-			unsetErr := os.Unsetenv(restartFailedHistoryLimitEnv)
+			unsetErr := os.Unsetenv("DOGU_RESTART_FAILED_HISTORY_LIMIT")
 			require.NoError(t, unsetErr)
 		}()
 
