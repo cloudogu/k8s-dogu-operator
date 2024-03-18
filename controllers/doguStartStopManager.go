@@ -66,8 +66,6 @@ func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k
 		return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 	}
 
-	// TODO add event
-
 	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, false)
 	if err != nil {
 		return err
