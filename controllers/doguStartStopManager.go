@@ -35,8 +35,9 @@ const containerStateCrashLoop = "CrashLoopBackOff"
 
 // doguStartStopManager includes functionality to start and stop dogus.
 type doguStartStopManager struct {
-	clientSet  thirdParty.ClientSet
-	doguClient cloudogu.EcosystemInterface
+	doguInterface       cloudogu.DoguInterface
+	deploymentInterface thirdParty.DeploymentInterface
+	podInterface        thirdParty.PodInterface
 }
 
 type deploymentNotYetScaledError struct {
@@ -93,8 +94,8 @@ func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k
 	return nil
 }
 
-func newDoguStartStopManager(clientSet thirdParty.ClientSet, doguClient cloudogu.EcosystemInterface) *doguStartStopManager {
-	return &doguStartStopManager{clientSet: clientSet, doguClient: doguClient}
+func newDoguStartStopManager(doguInterface cloudogu.DoguInterface, deploymentInterface thirdParty.DeploymentInterface, podInterface thirdParty.PodInterface) *doguStartStopManager {
+	return &doguStartStopManager{doguInterface: doguInterface, deploymentInterface: deploymentInterface, podInterface: podInterface}
 }
 
 // StartDogu scales a stopped dogu to 1.
@@ -128,7 +129,7 @@ func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1
 }
 
 func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, phase string, stopped bool) error {
-	_, err := m.doguClient.Dogus(doguResource.Namespace).UpdateStatusWithRetry(ctx, doguResource, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+	_, err := m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
 		status.Status = phase
 		status.Stopped = stopped
 		return status
@@ -142,7 +143,7 @@ func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguRe
 
 func (m *doguStartStopManager) scaleDeployment(ctx context.Context, doguName types.NamespacedName, replicas int32) error {
 	scale := &scalingv1.Scale{ObjectMeta: metav1.ObjectMeta{Name: doguName.Name, Namespace: doguName.Namespace}, Spec: scalingv1.ScaleSpec{Replicas: replicas}}
-	_, err := m.clientSet.AppsV1().Deployments(doguName.Namespace).UpdateScale(ctx, doguName.Name, scale, metav1.UpdateOptions{})
+	_, err := m.deploymentInterface.UpdateScale(ctx, doguName.Name, scale, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to scale deployment %q to %d: %s", doguName, replicas, err.Error())
 	}
@@ -152,7 +153,7 @@ func (m *doguStartStopManager) scaleDeployment(ctx context.Context, doguName typ
 
 func (m *doguStartStopManager) checkForDeploymentRollout(ctx context.Context, doguName types.NamespacedName) (rolledOut bool, err error) {
 	logrus.Info(fmt.Sprintf("check rollout status for deployment %s", doguName))
-	deployment, getErr := m.clientSet.AppsV1().Deployments(doguName.Namespace).Get(ctx, doguName.Name, metav1.GetOptions{})
+	deployment, getErr := m.deploymentInterface.Get(ctx, doguName.Name, metav1.GetOptions{})
 	if getErr != nil {
 		return false, fmt.Errorf("failed to get deployment %q: %w", doguName, getErr)
 	}
@@ -178,7 +179,7 @@ func (m *doguStartStopManager) checkForDeploymentRollout(ctx context.Context, do
 }
 
 func (m *doguStartStopManager) isDoguContainerInCrashLoop(ctx context.Context, doguName types.NamespacedName) (bool, error) {
-	list, getErr := m.clientSet.CoreV1().Pods(doguName.Namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("dogu.name=%s", doguName.Name)})
+	list, getErr := m.podInterface.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("dogu.name=%s", doguName.Name)})
 	if getErr != nil {
 		return false, fmt.Errorf("failed to get pods of deployment %q: %w", doguName, getErr)
 	}
