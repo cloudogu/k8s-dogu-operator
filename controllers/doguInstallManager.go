@@ -22,7 +22,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
 const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
@@ -70,8 +69,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 
-	doguResource.Status = k8sv1.DoguStatus{RequeueTime: doguResource.Status.RequeueTime, Status: k8sv1.DoguStatusInstalling}
-	err := doguResource.Update(ctx, m.client)
+	err := doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusInstalled)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
@@ -134,7 +132,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
 
-	err = updateStatusInstalled(ctx, doguResource, m.client)
+	err = doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusInstalled)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
@@ -147,20 +145,6 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	return nil
-}
-
-func updateStatusInstalled(ctx context.Context, doguResource *k8sv1.Dogu, client client.Client) error {
-	err := retry.OnConflict(func() error {
-		err := client.Get(ctx, doguResource.GetObjectKey(), doguResource)
-		if err != nil {
-			return err
-		}
-
-		doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
-		err = doguResource.Update(ctx, client)
-		return err
-	})
-	return err
 }
 
 func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error {

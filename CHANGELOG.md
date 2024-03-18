@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#151] Add field `stopped` in Dogu to start or stop the Dogu.
 - [#151] Add new CRD `DoguRestart` to trigger a dogu restart.
   - The reconciler uses the `stopped` field from the Dogu.
+### Changed
+- [#154] Only accept dogu volume sizes in binary format.
+- [#156] Stabilized process when updating the status of the dogu cr.
+### Fixed
+- [#152] The health routine no longer marks a dogu as available if the deployment was scaled to 0.
 
 ## [v0.41.0] - 2024-01-23
 ### Changed
