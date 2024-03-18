@@ -397,3 +397,90 @@ func Test_doguRestartClient_UpdateSpecWithRetry(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func Test_doguRestartClient_UpdateStatusWithRetry(t *testing.T) {
+	t.Run("should retry on conflict error", func(t *testing.T) {
+		// given
+		dogu := &k8sv1.DoguRestart{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}}
+
+		firstPut := true
+
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			// First update return conflict error
+			if request.Method == http.MethodPut && firstPut {
+				firstPut = false
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogurestarts/toUpdate/status", request.URL.Path)
+
+				bytes, err := io.ReadAll(request.Body)
+				require.NoError(t, err)
+
+				updatedDoguRestart := &k8sv1.DoguRestart{}
+				require.NoError(t, json.Unmarshal(bytes, updatedDoguRestart))
+				assert.Equal(t, "toUpdate", updatedDoguRestart.Name)
+				assert.Equal(t, k8sv1.RestartStatusPhaseCompleted, updatedDoguRestart.Status.Phase)
+
+				writer.Header().Add("content-type", "application/json")
+				conflict := errors.NewConflict(schema.GroupResource{}, "toUpdate", assert.AnError)
+
+				marshal, err := json.Marshal(conflict)
+				require.NoError(t, err)
+
+				writer.WriteHeader(409)
+				_, err = writer.Write(marshal)
+				require.NoError(t, err)
+				return
+			}
+
+			// Get
+			if request.Method == http.MethodGet {
+				assert.Equal(t, "GET", request.Method)
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogurestarts/toUpdate", request.URL.Path)
+				assert.Equal(t, http.NoBody, request.Body)
+
+				writer.Header().Add("content-type", "application/json")
+				doguRestart := &k8sv1.DoguRestart{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Spec: k8sv1.DoguRestartSpec{DoguName: "cas"}}
+				doguRestartBytes, err := json.Marshal(doguRestart)
+				require.NoError(t, err)
+				writer.WriteHeader(200)
+				_, err = writer.Write(doguRestartBytes)
+				require.NoError(t, err)
+				return
+			}
+
+			// Retry
+			if request.Method == http.MethodPut && !firstPut {
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogurestarts/toUpdate/status", request.URL.Path)
+
+				bytes, err := io.ReadAll(request.Body)
+				require.NoError(t, err)
+
+				updatedDoguRestart := &k8sv1.DoguRestart{}
+				require.NoError(t, json.Unmarshal(bytes, updatedDoguRestart))
+				assert.Equal(t, "toUpdate", updatedDoguRestart.Name)
+				assert.Equal(t, k8sv1.RestartStatusPhaseCompleted, updatedDoguRestart.Status.Phase)
+
+				writer.Header().Add("content-type", "application/json")
+				writer.WriteHeader(200)
+				_, err = writer.Write(bytes)
+				require.NoError(t, err)
+				return
+			}
+		}))
+
+		config := rest.Config{
+			Host: server.URL,
+		}
+		client, err := NewForConfig(&config)
+		require.NoError(t, err)
+		dClient := client.DoguRestarts("test")
+
+		// when
+		_, err = dClient.UpdateStatusWithRetry(context.TODO(), dogu, func(status k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus {
+			status.Phase = k8sv1.RestartStatusPhaseCompleted
+			return status
+		}, v1.UpdateOptions{})
+
+		// then
+		require.NoError(t, err)
+	})
+}
