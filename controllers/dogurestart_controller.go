@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
@@ -44,10 +43,9 @@ func NewDoguRestartReconciler(doguRestartInterface ecoSystem.DoguRestartInterfac
 func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	instruction := r.createRestartInstruction(ctx, req)
 
-	var errs []error
 	result, err := instruction.execute(ctx)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("failed to execute restart instruction for dogurestart %q: %w", instruction.restart.Name, err))
+		return result, fmt.Errorf("failed to execute restart instruction for dogurestart %q: %w", req.NamespacedName, err)
 	}
 
 	// If the restart is in progress there is no need to collect garbage. Only on terminated objects (failed or successful restarts).
@@ -55,11 +53,11 @@ func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if !result.Requeue && result.RequeueAfter == 0 {
 		err = r.garbageCollector.DoGarbageCollection(ctx, instruction.restart.Spec.DoguName)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to do garbagecollection for dogurestart %q: %w", instruction.restart.Name, err))
+			return result, fmt.Errorf("failed to do garbagecollection for dogurestart %q: %w", req.NamespacedName, err)
 		}
 	}
 
-	return result, errors.Join(errs...)
+	return result, nil
 }
 
 func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, req ctrl.Request) (instruction restartInstruction) {
