@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#149] Clarified escaping rules for running the operator locally
   (see [here](docs/development/development_guide_en.md) or [here](.env.template))
+- [#151] Add field `stopped` in Dogu to start or stop the Dogu.
+- [#151] Add new CRD `DoguRestart` to trigger a dogu restart.
+  - The reconciler uses the `stopped` field from the Dogu.
 
 ## [v0.41.0] - 2024-01-23
 ### Changed
