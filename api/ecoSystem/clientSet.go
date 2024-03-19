@@ -10,6 +10,7 @@ import (
 
 type EcoSystemV1Alpha1Interface interface {
 	Dogus(namespace string) DoguInterface
+	DoguRestarts(namespace string) DoguRestartInterface
 }
 
 type EcoSystemV1Alpha1Client struct {
@@ -42,6 +43,13 @@ func NewForConfig(c *rest.Config) (*EcoSystemV1Alpha1Client, error) {
 
 func (c *EcoSystemV1Alpha1Client) Dogus(namespace string) DoguInterface {
 	return &doguClient{
+		client: c.restClient,
+		ns:     namespace,
+	}
+}
+
+func (c *EcoSystemV1Alpha1Client) DoguRestarts(namespace string) DoguRestartInterface {
+	return &doguRestartClient{
 		client: c.restClient,
 		ns:     namespace,
 	}

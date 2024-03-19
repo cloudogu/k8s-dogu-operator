@@ -2,19 +2,24 @@ package ecoSystem
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"time"
+
+	"github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
 type DoguInterface interface {
 	Create(ctx context.Context, dogu *v1.Dogu, opts metav1.CreateOptions) (*v1.Dogu, error)
 	Update(ctx context.Context, dogu *v1.Dogu, opts metav1.UpdateOptions) (*v1.Dogu, error)
+	UpdateSpecWithRetry(ctx context.Context, dogu *v1.Dogu, modifySpecFn func(spec v1.DoguSpec) v1.DoguSpec, opts metav1.UpdateOptions) (result *v1.Dogu, err error)
 	UpdateStatus(ctx context.Context, dogu *v1.Dogu, opts metav1.UpdateOptions) (*v1.Dogu, error)
+	UpdateStatusWithRetry(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1.UpdateOptions) (result *v1.Dogu, err error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Dogu, error)
@@ -100,6 +105,33 @@ func (d *doguClient) Update(ctx context.Context, dogu *v1.Dogu, opts metav1.Upda
 	return
 }
 
+// UpdateSpecWithRetry updates the spec of the resource, retrying if a conflict error arises.
+func (d *doguClient) UpdateSpecWithRetry(ctx context.Context, dogu *v1.Dogu, modifySpecFn func(spec v1.DoguSpec) v1.DoguSpec, opts metav1.UpdateOptions) (result *v1.Dogu, err error) {
+	firstTry := true
+
+	var currentObj *v1.Dogu
+	err = retry.OnConflict(func() error {
+		if firstTry {
+			firstTry = false
+			currentObj = dogu.DeepCopy()
+		} else {
+			currentObj, err = d.Get(ctx, dogu.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+		}
+
+		currentObj.Spec = modifySpecFn(currentObj.Spec)
+		currentObj, err = d.Update(ctx, currentObj, opts)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return currentObj, nil
+}
+
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (d *doguClient) UpdateStatus(ctx context.Context, dogu *v1.Dogu, opts metav1.UpdateOptions) (result *v1.Dogu, err error) {
@@ -114,6 +146,33 @@ func (d *doguClient) UpdateStatus(ctx context.Context, dogu *v1.Dogu, opts metav
 		Do(ctx).
 		Into(result)
 	return
+}
+
+// UpdateStatusWithRetry updates the status of the resource, retrying if a conflict error arises.
+func (d *doguClient) UpdateStatusWithRetry(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1.UpdateOptions) (result *v1.Dogu, err error) {
+	firstTry := true
+
+	var currentObj *v1.Dogu
+	err = retry.OnConflict(func() error {
+		if firstTry {
+			firstTry = false
+			currentObj = dogu.DeepCopy()
+		} else {
+			currentObj, err = d.Get(ctx, dogu.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+		}
+
+		currentObj.Status = modifyStatusFn(currentObj.Status)
+		currentObj, err = d.UpdateStatus(ctx, currentObj, opts)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return currentObj, nil
 }
 
 // Delete takes name of the dogu and deletes it. Returns an error if one occurs.

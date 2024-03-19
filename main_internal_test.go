@@ -128,6 +128,11 @@ func Test_startDoguOperator(t *testing.T) {
 		Version: "v1",
 		Kind:    "dogu",
 	}, &v1.Dogu{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogurestart",
+	}, &v1.DoguRestart{})
 	myClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	defaultMockDefinitions := map[string]mockDefinition{
