@@ -15,4 +15,3 @@ A service account is also created here using a fixed exec command. However, this
 ## Component
 These service accounts are provided by components.
 The components provide an HTTP API for administration.
-The exact procedure is described in [ADR-0015](https://github.com/cloudogu/k8s-ecosystem-architecture/blob/main/adrs/0015-komponenten-service-accounts.md)

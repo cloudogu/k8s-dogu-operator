@@ -15,4 +15,3 @@ Hier wird ebenfalls per fest vorgegebenen exec-Befehl ein Service-Account erstel
 ## Component
 Diese Service Accounts werden von Komponenten bereitgestellt.
 Für die Verwaltung stellen die Komponenten eine HTTP-API bereit.
-Das genaue Vorgehen ist im [ADR-0015](https://github.com/cloudogu/k8s-ecosystem-architecture/blob/main/adrs/0015-komponenten-service-accounts.md) beschrieben
