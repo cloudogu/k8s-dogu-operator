@@ -132,7 +132,7 @@ func TestNewCreator(t *testing.T) {
 		registryMock.On("DoguRegistry").Return(doguRegistryMock)
 
 		// when
-		result := NewCreator(registryMock, nil, nil)
+		result := NewCreator(registryMock, nil, nil, nil, "")
 
 		// then
 		assert.NotNil(t, result)
@@ -851,6 +851,32 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to set encrypted sa value of key")
+	})
+
+	t.Run("fail to create component service account", func(t *testing.T) {
+		// given
+		doguConfig := cesmocks.NewConfigurationContext(t)
+		doguConfig.Mock.On("Exists", "sa-k8s-prometheus").Return(false, assert.AnError)
+
+		registry := cesmocks.NewRegistry(t)
+		registry.Mock.On("DoguConfig", "grafana").Return(doguConfig)
+
+		serviceAccountCreator := creator{
+			registry: registry,
+		}
+		dogu := &core.Dogu{
+			Name: "official/grafana",
+			ServiceAccounts: []core.ServiceAccount{
+				{Kind: "component", Type: "k8s-prometheus"},
+			},
+		}
+
+		// when
+		err := serviceAccountCreator.CreateAll(ctx, dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to check if service account already exists")
 	})
 }
 

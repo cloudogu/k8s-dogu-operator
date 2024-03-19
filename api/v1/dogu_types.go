@@ -240,7 +240,7 @@ func (d *Dogu) changeRequeuePhase(ctx context.Context, client client.Client, pha
 	return d.Update(ctx, client)
 }
 
-// ChangeRequeuePhaseWithRetry refreshes the dogu resource and tries to set the requeue phase. 
+// ChangeRequeuePhaseWithRetry refreshes the dogu resource and tries to set the requeue phase.
 // If a conflict error occurs this method will retry the operation.
 func (d *Dogu) ChangeRequeuePhaseWithRetry(ctx context.Context, client client.Client, phase string) error {
 	return retry.OnConflict(func() error {

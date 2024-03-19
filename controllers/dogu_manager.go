@@ -99,7 +99,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, err
 	}
 
-	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder, clientSet)
 	if err != nil {
 		return nil, err
 	}
