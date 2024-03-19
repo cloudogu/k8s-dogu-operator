@@ -13,6 +13,7 @@ import (
 	scalingv1 "k8s.io/api/autoscaling/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"testing"
 	"time"
 )
@@ -278,5 +279,48 @@ func Test_doguStartStopManager_StopDogu(t *testing.T) {
 		assert.ErrorContains(t, err, "the deployment of dogu \"test/cas\" has not yet been scaled to its desired number of replicas")
 		var requeueError deploymentNotYetScaledError
 		errors.As(err, &requeueError)
+	})
+}
+
+func Test_doguStartStopManager_checkForDeploymentRollout(t *testing.T) {
+	t.Run("should return false if container is in crash loop", func(t *testing.T) {
+		// given
+		dogu := types.NamespacedName{Name: "cas", Namespace: "test"}
+
+		crashPod := v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "cas",
+				Namespace: "test",
+			},
+			Status: v1.PodStatus{
+				ContainerStatuses: []v1.ContainerStatus{
+					{
+						Name: "cas",
+						State: v1.ContainerState{
+							Waiting: &v1.ContainerStateWaiting{
+								Reason:  "CrashLoopBackOff",
+								Message: "",
+							},
+						},
+					},
+				},
+			},
+		}
+		podList := &v1.PodList{Items: []v1.Pod{crashPod}}
+
+		podInterfaceMock := mocks.NewPodInterface(t)
+		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
+
+		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, nil)
+
+		sut := doguStartStopManager{deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
+
+		// when
+		result, err := sut.checkForDeploymentRollout(testCtx, dogu)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, result)
 	})
 }
