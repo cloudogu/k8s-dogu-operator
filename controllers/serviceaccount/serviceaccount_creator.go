@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"k8s.io/client-go/kubernetes"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -23,8 +24,9 @@ import (
 
 // doguKind describes a service account on a dogu.
 const (
-	doguKind = "dogu"
-	cesKind  = "ces"
+	doguKind      = "dogu"
+	cesKind       = "ces"
+	componentKind = "component"
 )
 
 const (
@@ -38,16 +40,22 @@ type creator struct {
 	registry    registry.Registry
 	doguFetcher cloudogu.LocalDoguFetcher
 	executor    cloudogu.CommandExecutor
+	clientSet   kubernetes.Interface
+	apiClient   serviceAccountApiClient
+	namespace   string
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client) *creator {
+func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
 	return &creator{
 		client:      client,
 		registry:    registry,
 		doguFetcher: localFetcher,
 		executor:    commandExecutor,
+		clientSet:   clientSet,
+		apiClient:   &apiClient{},
+		namespace:   namespace,
 	}
 }
 
@@ -64,6 +72,11 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 			fallthrough
 		case doguKind:
 			err := c.createDoguServiceAccount(ctx, dogu, doguConfig, serviceAccount, registryCredentialPath)
+			if err != nil {
+				return err
+			}
+		case componentKind:
+			err := c.createComponentServiceAccount(ctx, dogu, doguConfig, serviceAccount, registryCredentialPath)
 			if err != nil {
 				return err
 			}

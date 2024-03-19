@@ -37,7 +37,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	serviceAccountCreator := serviceaccount.NewCreator(cesreg, commandExecutor, client)
+	serviceAccountCreator := serviceaccount.NewCreator(cesreg, commandExecutor, client, clientSet, config.Namespace)
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(cesreg.DoguRegistry())
 
 	doguRemoteRegistry, err := cesremote.New(config.GetRemoteConfiguration(), config.GetRemoteCredentials())
