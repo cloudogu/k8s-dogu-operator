@@ -1,8 +1,10 @@
 package health
 
 import (
+	"context"
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/types"
 	"testing"
 
@@ -50,7 +52,11 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 
 		doguClientMock := mocks.NewDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-		doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(nil, assert.AnError)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1api.UpdateOptions{}).Return(nil, assert.AnError).
+			Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1api.UpdateOptions) {
+				status := modifyStatusFn(dogu.Status)
+				assert.Equal(t, v1.DoguStatus{Status: "", RequeueTime: 0, RequeuePhase: "", Health: "available", Stopped: false}, status)
+			})
 		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
@@ -75,7 +81,11 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 
 			doguClientMock := mocks.NewDoguInterface(t)
 			doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-			doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(dogu, nil)
+			doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1api.UpdateOptions{}).Return(nil, nil).
+				Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1api.UpdateOptions) {
+					status := modifyStatusFn(dogu.Status)
+					assert.Equal(t, v1.DoguStatus{Status: "", RequeueTime: 0, RequeuePhase: "", Health: "available", Stopped: false}, status)
+				})
 			ecosystemClientMock := mocks.NewEcosystemInterface(t)
 			ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
@@ -98,7 +108,11 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 
 			doguClientMock := mocks.NewDoguInterface(t)
 			doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-			doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(dogu, nil)
+			doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1api.UpdateOptions{}).Return(nil, nil).
+				Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1api.UpdateOptions) {
+					status := modifyStatusFn(dogu.Status)
+					assert.Equal(t, v1.DoguStatus{Status: "", RequeueTime: 0, RequeuePhase: "", Health: "unavailable", Stopped: false}, status)
+				})
 			ecosystemClientMock := mocks.NewEcosystemInterface(t)
 			ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 

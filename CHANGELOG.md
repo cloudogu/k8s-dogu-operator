@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#156] Stabilized process when updating the status of the dogu cr.
 ### Fixed
 - [#152] The health routine no longer marks a dogu as available if the deployment was scaled to 0.
+- [#153] Fix dogu status of restart routine.
 
 ## [v0.41.0] - 2024-01-23
 ### Changed

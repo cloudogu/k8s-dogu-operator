@@ -55,6 +55,7 @@ var (
 	DoguRemoteRegistryMock *extMocks.RemoteRegistry
 	EtcdDoguRegistry       *extMocks.DoguRegistry
 	k8sClient              thirdParty.K8sClient
+	DoguInterfaceMock      *mocks.DoguInterface
 )
 
 const TimeoutInterval = time.Second * 10
@@ -125,6 +126,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	DoguRemoteRegistryMock = &extMocks.RemoteRegistry{}
 	EtcdDoguRegistry = &extMocks.DoguRegistry{}
 	ImageRegistryMock = &mocks.ImageRegistry{}
+	DoguInterfaceMock = &mocks.DoguInterface{}
 
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)
@@ -264,7 +266,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		ingressAnnotationsManager: ingressAnnotationManager,
 	}
 
-	doguReconciler, err := NewDoguReconciler(k8sClient, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)
+	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = doguReconciler.SetupWithManager(k8sManager)
