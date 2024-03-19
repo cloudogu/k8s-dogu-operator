@@ -111,7 +111,7 @@ func Test_Dogu_ChangeState(t *testing.T) {
 		mockClient := extMocks.NewK8sClient(t)
 		statusMock := extMocks.NewK8sSubResourceWriter(t)
 		mockClient.EXPECT().Status().Return(statusMock)
-		statusMock.On("Update", ctx, sut).Return(nil)
+		statusMock.On("UpdateStatusWithRetry", ctx, sut).Return(nil)
 
 		// when
 		err := sut.ChangeState(ctx, mockClient, v1.DoguStatusUpgrading)
@@ -125,7 +125,7 @@ func Test_Dogu_ChangeState(t *testing.T) {
 		mockClient := extMocks.NewK8sClient(t)
 		statusMock := extMocks.NewK8sSubResourceWriter(t)
 		mockClient.EXPECT().Status().Return(statusMock)
-		statusMock.On("Update", ctx, sut).Return(assert.AnError)
+		statusMock.On("UpdateStatusWithRetry", ctx, sut).Return(assert.AnError)
 
 		// when
 		err := sut.ChangeState(ctx, mockClient, v1.DoguStatusUpgrading)

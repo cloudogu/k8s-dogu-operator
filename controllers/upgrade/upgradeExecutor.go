@@ -345,11 +345,30 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter clo
 		return err
 	}
 
+	// Set the health status to 'unavailable' early, to prevent setting the new installed version while the health
+	// status is still 'available' (which would lead to a false healthy upgrade being displayed).
+	err = ue.setHealthStatusUnavailable(ctx, toDoguResource, err)
+	if err != nil {
+		return err
+	}
+
 	_, err = upserter.UpsertDoguPVCs(ctx, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (ue *upgradeExecutor) setHealthStatusUnavailable(ctx context.Context, toDoguResource *k8sv1.Dogu, err error) error {
+	ue.normalEventf(toDoguResource, "Test Event - Remove later...")
+	err = toDoguResource.UpdateStatusWithRetry(ctx, ue.client, func(d *k8sv1.Dogu) { d.Status.Health = k8sv1.UnavailableHealthStatus })
+	if err != nil {
+		message := fmt.Sprintf("failed to update dogu %q with health status %q", toDoguResource.Spec.Name, toDoguResource.Status.Health)
+		ue.eventRecorder.Event(toDoguResource, corev1.EventTypeWarning, EventReason, message)
+		return fmt.Errorf("%s: %w", message, err)
+	}
+	ue.eventRecorder.Eventf(toDoguResource, corev1.EventTypeNormal, EventReason, "successfully updated health status to %q", toDoguResource.Status.Health)
 	return nil
 }
 

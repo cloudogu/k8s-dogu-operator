@@ -82,6 +82,11 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 		return err
 	}
 
+	err = doguResource.UpdateInstalledVersion(ctx, dum.client)
+	if err != nil {
+		return err
+	}
+
 	if developmentDoguMap != nil {
 		err = developmentDoguMap.DeleteFromCluster(ctx, dum.client)
 		if err != nil {

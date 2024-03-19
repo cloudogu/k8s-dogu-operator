@@ -46,8 +46,8 @@ func NewDoguDeleteManager(client client.Client, _ *config.OperatorConfig, cesReg
 // Delete deletes the given dogu along with all those Kubernetes resources that the dogu operator initially created.
 func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
-	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting}
-	err := doguResource.Update(ctx, m.client)
+	updateDoguStatusFn := func(d *k8sv1.Dogu) { d.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting} }
+	err := doguResource.UpdateStatusWithRetry(ctx, m.client, updateDoguStatusFn)
 	if err != nil {
 		return err
 	}

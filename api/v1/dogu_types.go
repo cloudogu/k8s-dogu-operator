@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"time"
@@ -200,11 +201,21 @@ func (d *Dogu) GetObjectMeta() *metav1.ObjectMeta {
 	}
 }
 
-// Update updates the dogu's status property in the cluster state.
-func (d *Dogu) Update(ctx context.Context, client client.Client) error {
-	updateError := client.Status().Update(ctx, d)
+// UpdateStatusWithRetry updates the dogu's status property in the cluster state.
+func (d *Dogu) UpdateStatusWithRetry(ctx context.Context, client client.Client, updateStatus func(*Dogu)) error {
+	updateError := retry.OnConflict(func() error {
+		reloadDogu := &Dogu{}
+		err := client.Get(ctx, d.GetObjectKey(), reloadDogu)
+		if err != nil {
+			return err
+		}
+		*d = *reloadDogu
+
+		updateStatus(d)
+		return client.Status().Update(ctx, d)
+	})
 	if updateError != nil {
-		return fmt.Errorf("failed to update dogu status: %w", updateError)
+		return fmt.Errorf("1failed to update dogu status: %w", updateError)
 	}
 
 	return nil
@@ -212,14 +223,12 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 
 // ChangeState changes the state of this dogu resource and applies it to the cluster state.
 func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
-	d.Status.Status = newStatus
-	return d.Update(ctx, client)
+	return d.UpdateStatusWithRetry(ctx, client, func(d *Dogu) { d.Status.Status = newStatus })
 }
 
-// ChangeState changes the state of this dogu resource and applies it to the cluster state.
-func (d *Dogu) UpdateInstalledVersion(ctx context.Context, client client.Client, newStatus string) error {
-	d.Status.InstalledVersion = d.Spec.Version
-	return d.Update(ctx, client)
+// UpdateInstalledVersion changes the installed Version of this dogu resource to the desired one and applies it to the cluster state.
+func (d *Dogu) UpdateInstalledVersion(ctx context.Context, client client.Client) error {
+	return d.UpdateStatusWithRetry(ctx, client, func(d *Dogu) { d.Status.InstalledVersion = d.Spec.Version })
 }
 
 // GetPodLabels returns labels that select a pod being associated with this dogu.
