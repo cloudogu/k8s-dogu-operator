@@ -202,7 +202,7 @@ func (d *Dogu) GetObjectMeta() *metav1.ObjectMeta {
 }
 
 // UpdateStatusWithRetry updates the dogu's status property in the cluster state.
-func (d *Dogu) UpdateStatusWithRetry(ctx context.Context, client client.Client, updateStatus func(*Dogu)) error {
+func (d *Dogu) UpdateStatusWithRetry(ctx context.Context, client client.Client, updateStatusFn func(*Dogu)) error {
 	updateError := retry.OnConflict(func() error {
 		reloadDogu := &Dogu{}
 		err := client.Get(ctx, d.GetObjectKey(), reloadDogu)
@@ -211,11 +211,11 @@ func (d *Dogu) UpdateStatusWithRetry(ctx context.Context, client client.Client, 
 		}
 		*d = *reloadDogu
 
-		updateStatus(d)
+		updateStatusFn(d)
 		return client.Status().Update(ctx, d)
 	})
 	if updateError != nil {
-		return fmt.Errorf("1failed to update dogu status: %w", updateError)
+		return fmt.Errorf("failed to update dogu status: %w", updateError)
 	}
 
 	return nil
