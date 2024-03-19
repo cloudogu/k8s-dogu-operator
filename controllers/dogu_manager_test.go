@@ -167,8 +167,11 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
+		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
+		ecosystemClientSetMock.EXPECT().Dogus(testNamespace).Return(nil)
+
 		// when
-		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.NoError(t, err)
@@ -192,8 +195,11 @@ func TestNewDoguManager(t *testing.T) {
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
+		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
+		ecosystemClientSetMock.EXPECT().Dogus(testNamespace).Return(nil)
+
 		// when
-		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder)
 
 		// then
 		require.NoError(t, err)

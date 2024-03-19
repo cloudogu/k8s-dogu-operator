@@ -20,6 +20,50 @@ func (_m *EcosystemInterface) EXPECT() *EcosystemInterface_Expecter {
 	return &EcosystemInterface_Expecter{mock: &_m.Mock}
 }
 
+// DoguRestarts provides a mock function with given fields: namespace
+func (_m *EcosystemInterface) DoguRestarts(namespace string) ecoSystem.DoguRestartInterface {
+	ret := _m.Called(namespace)
+
+	var r0 ecoSystem.DoguRestartInterface
+	if rf, ok := ret.Get(0).(func(string) ecoSystem.DoguRestartInterface); ok {
+		r0 = rf(namespace)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ecoSystem.DoguRestartInterface)
+		}
+	}
+
+	return r0
+}
+
+// EcosystemInterface_DoguRestarts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoguRestarts'
+type EcosystemInterface_DoguRestarts_Call struct {
+	*mock.Call
+}
+
+// DoguRestarts is a helper method to define mock.On call
+//   - namespace string
+func (_e *EcosystemInterface_Expecter) DoguRestarts(namespace interface{}) *EcosystemInterface_DoguRestarts_Call {
+	return &EcosystemInterface_DoguRestarts_Call{Call: _e.mock.On("DoguRestarts", namespace)}
+}
+
+func (_c *EcosystemInterface_DoguRestarts_Call) Run(run func(namespace string)) *EcosystemInterface_DoguRestarts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *EcosystemInterface_DoguRestarts_Call) Return(_a0 ecoSystem.DoguRestartInterface) *EcosystemInterface_DoguRestarts_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *EcosystemInterface_DoguRestarts_Call) RunAndReturn(run func(string) ecoSystem.DoguRestartInterface) *EcosystemInterface_DoguRestarts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Dogus provides a mock function with given fields: namespace
 func (_m *EcosystemInterface) Dogus(namespace string) ecoSystem.DoguInterface {
 	ret := _m.Called(namespace)
