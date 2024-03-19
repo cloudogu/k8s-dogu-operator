@@ -54,7 +54,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 			recorder:       eventRecorder,
 		}
 
-		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
+		onRequeue := func(doguResource *k8sv1.Dogu) error { doguResource.Labels["test"] = "true"; return nil }
 
 		// when
 		result, err := handler.Handle(context.Background(), "my context", doguResource, nil, onRequeue)
@@ -86,7 +86,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 			recorder:       eventRecorder,
 		}
 
-		onRequeue := func(doguResource *k8sv1.Dogu) { doguResource.Labels["test"] = "true" }
+		onRequeue := func(doguResource *k8sv1.Dogu) error { doguResource.Labels["test"] = "true"; return nil }
 
 		// when
 		result, err := handler.Handle(context.Background(), "my context", doguResource, assert.AnError, onRequeue)
@@ -130,8 +130,9 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		myError := myRequeueableError{}
 
 		requeueCalled := false
-		onRequeue := func(doguResource *k8sv1.Dogu) {
+		onRequeue := func(doguResource *k8sv1.Dogu) error {
 			requeueCalled = true
+			return nil
 		}
 
 		// when
@@ -185,8 +186,9 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		myMultipleErrors = errors.Join(myMultipleErrors, myError, myError2)
 
 		requeueCalled := false
-		onRequeue := func(doguResource *k8sv1.Dogu) {
+		onRequeue := func(doguResource *k8sv1.Dogu) error {
 			requeueCalled = true
+			return nil
 		}
 
 		// when

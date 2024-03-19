@@ -70,18 +70,23 @@ func NewDoguRequeueHandler(client client.Client, recorder record.EventRecorder, 
 }
 
 // Handle takes an error and handles the requeue process for the current dogu operation.
-func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, originalErr error, onRequeue func(dogu *k8sv1.Dogu)) (ctrl.Result, error) {
+func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, originalErr error, onRequeue func(dogu *k8sv1.Dogu) error) (ctrl.Result, error) {
 	if !shouldRequeue(originalErr) {
 		return ctrl.Result{}, nil
 	}
 
-	requeueTime := getRequeueTime(doguResource, originalErr)
+	requeueTime, timeErr := getRequeueTime(ctx, doguResource, d.client, originalErr)
+	if timeErr != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get requeue time: %w", timeErr)
+	}
 	if onRequeue != nil {
-		onRequeue(doguResource)
+		onRequeueErr := onRequeue(doguResource)
+		if onRequeueErr != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to call onRequeue handler: %w", onRequeueErr)
+		}
 	}
 
-	doguResource.Status.RequeuePhase = getRequeuePhase(originalErr)
-	updateError := doguResource.Update(ctx, d.client)
+	updateError := doguResource.ChangeRequeuePhaseWithRetry(ctx, d.client, getRequeuePhase(originalErr))
 	if updateError != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
 	}
@@ -107,13 +112,18 @@ func getRequeuePhase(err error) string {
 	return ""
 }
 
-func getRequeueTime(dogu *k8sv1.Dogu, err error) time.Duration {
+func getRequeueTime(ctx context.Context, dogu *k8sv1.Dogu, client client.Client, err error) (time.Duration, error) {
 	var errorWithTime requeuableErrorWithTime
 	if errors.As(err, &errorWithTime) {
-		return errorWithTime.GetRequeueTime()
+		return errorWithTime.GetRequeueTime(), nil
 	}
 
-	return dogu.Status.NextRequeue()
+	requeueTime, timeErr := dogu.NextRequeueWithRetry(ctx, client)
+	if timeErr != nil {
+		return 0, timeErr
+	}
+
+	return requeueTime, nil
 }
 
 func shouldRequeue(err error) bool {
