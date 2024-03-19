@@ -361,14 +361,13 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter clo
 }
 
 func (ue *upgradeExecutor) setHealthStatusUnavailable(ctx context.Context, toDoguResource *k8sv1.Dogu, err error) error {
-	ue.normalEventf(toDoguResource, "Test Event - Remove later...")
 	err = toDoguResource.UpdateStatusWithRetry(ctx, ue.client, func(d *k8sv1.Dogu) { d.Status.Health = k8sv1.UnavailableHealthStatus })
 	if err != nil {
 		message := fmt.Sprintf("failed to update dogu %q with health status %q", toDoguResource.Spec.Name, toDoguResource.Status.Health)
 		ue.eventRecorder.Event(toDoguResource, corev1.EventTypeWarning, EventReason, message)
 		return fmt.Errorf("%s: %w", message, err)
 	}
-	ue.eventRecorder.Eventf(toDoguResource, corev1.EventTypeNormal, EventReason, "successfully updated health status to %q", toDoguResource.Status.Health)
+	ue.normalEventf(toDoguResource, "Successfully updated health status to %q", toDoguResource.Status.Health)
 	return nil
 }
 
