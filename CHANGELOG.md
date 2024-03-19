@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#149] Clarified escaping rules for running the operator locally
   (see [here](docs/development/development_guide_en.md) or [here](.env.template))
+- [#162] Add start and shutdown handler to refresh the dogu health states.
 ### Changed
 - [#154] Only accept dogu volume sizes in binary format.
 ### Fixed
