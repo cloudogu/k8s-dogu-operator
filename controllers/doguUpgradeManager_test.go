@@ -116,6 +116,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		upgradeVersion := "4.2.3-11"
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
+		redmineCr.Status.InstalledVersion = "4.2.3-9"
 
 		redmineDoguInstalled := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
@@ -159,6 +160,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		// any other mocks assert their expectations during t.CleanUp()
+		assert.Equal(t, redmineCr.Spec.Version, redmineCr.Status.InstalledVersion)
 	})
 	t.Run("should succeed on upgrade from a self-developed dogu", func(t *testing.T) {
 		// given

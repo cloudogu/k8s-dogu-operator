@@ -132,6 +132,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
 		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+		assert.NotEqual(t, ldapCr.Spec.Version, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -169,6 +170,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		assert.Equal(t, ldapCr.Spec.Version, ldapCr.Status.InstalledVersion)
 	})
 
 	t.Run("successfully install dogu with custom descriptor", func(t *testing.T) {
