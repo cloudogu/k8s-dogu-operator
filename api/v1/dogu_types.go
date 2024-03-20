@@ -345,7 +345,7 @@ func (cml CesMatchingLabels) Add(moreLabels CesMatchingLabels) CesMatchingLabels
 	return result
 }
 
-func GetHealthStatus(available bool) HealthStatus {
+func SelectHealthStatus(available bool) HealthStatus {
 	if available {
 		return AvailableHealthStatus
 	} else {

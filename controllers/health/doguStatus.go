@@ -35,7 +35,7 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.N
 			return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
 		}
 
-		dogu.Status.Health = doguv1.GetHealthStatus(isAvailable)
+		dogu.Status.Health = doguv1.SelectHealthStatus(isAvailable)
 
 		_, err = doguClient.UpdateStatus(ctx, dogu, metav1api.UpdateOptions{})
 		if err != nil {
