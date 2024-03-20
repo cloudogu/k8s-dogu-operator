@@ -506,3 +506,20 @@ func TestDogu_GetPrivateKeySecret(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to get private key secret for dogu")
 	})
 }
+
+func Test_Dogu_SelectHealthStatus(t *testing.T) {
+	t.Run("should select available if isAvailable", func(t *testing.T) {
+		// when
+		healthStatus := v1.SelectHealthStatus(true)
+
+		// then
+		assert.Equal(t, v1.AvailableHealthStatus, healthStatus)
+	})
+	t.Run("should select unavailable if not isAvailable", func(t *testing.T) {
+		// when
+		healthStatus := v1.SelectHealthStatus(false)
+
+		// then
+		assert.Equal(t, v1.UnavailableHealthStatus, healthStatus)
+	})
+}

@@ -1784,3 +1784,32 @@ func Test_deleteExecPod(t *testing.T) {
 		// mocks will be asserted during t.CleanUp
 	})
 }
+
+func Test_upgradeExecutor_setHealthStatusUnavailable(t *testing.T) {
+	t.Run("should fail", func(t *testing.T) {
+		// given
+		toDoguResource := readTestDataRedmineCr(t)
+
+		clientMock := extMocks.NewK8sClient(t)
+		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
+
+		errMessage := fmt.Sprintf("failed to update dogu %q with health status %q", toDoguResource.Spec.Name, k8sv1.UnavailableHealthStatus)
+
+		eventRecorder := extMocks.NewEventRecorder(t)
+		eventRecorder.
+			On("Event", toDoguResource, corev1.EventTypeWarning, EventReason, errMessage).Once()
+
+		sut := &upgradeExecutor{
+			client:        clientMock,
+			eventRecorder: eventRecorder,
+		}
+
+		// when
+		err := sut.setHealthStatusUnavailable(testCtx, toDoguResource)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, errMessage)
+	})
+}

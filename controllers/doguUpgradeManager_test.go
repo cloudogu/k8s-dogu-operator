@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/stretchr/testify/mock"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -409,5 +410,116 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		// any other mocks assert their expectations during t.CleanUp()
+	})
+	t.Run("should fail on first change state error", func(t *testing.T) {
+		// given
+		redmineCr := readDoguCr(t, redmineCrBytes)
+		recorderMock := extMocks.NewEventRecorder(t)
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		resourceFetcher := mocks.NewResourceDoguFetcher(t)
+		premChecker := mocks.NewPremisesChecker(t)
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+
+		clientMock := extMocks.NewK8sClient(t)
+		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
+
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut.resourceDoguFetcher = resourceFetcher
+
+		// when
+		err := sut.Upgrade(testCtx, redmineCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to update dogu status: ")
+	})
+	t.Run("should fail on second change state error", func(t *testing.T) {
+		// given
+		redmineCr := readDoguCr(t, redmineCrBytes)
+		upgradeVersion := "4.2.3-11"
+		redmineCr.Spec.Version = upgradeVersion
+
+		redmineDoguInstalled := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade.Version = upgradeVersion
+
+		recorderMock := extMocks.NewEventRecorder(t)
+		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
+
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher.On("FetchInstalled", "").Return(redmineDoguInstalled, nil)
+
+		resourceFetcher := mocks.NewResourceDoguFetcher(t)
+		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
+
+		premChecker := mocks.NewPremisesChecker(t)
+		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
+
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
+
+		clientMock := extMocks.NewK8sClient(t)
+		statusMock := extMocks.NewK8sSubResourceWriter(t)
+		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil).Once()
+		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
+		clientMock.EXPECT().Status().Return(statusMock)
+		statusMock.On("Update", testCtx, redmineCr).Return(nil)
+
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut.resourceDoguFetcher = resourceFetcher
+
+		// when
+		err := sut.Upgrade(testCtx, redmineCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to update dogu status: ")
+	})
+	t.Run("should fail on update installed version error", func(t *testing.T) {
+		// given
+		redmineCr := readDoguCr(t, redmineCrBytes)
+		upgradeVersion := "4.2.3-11"
+		redmineCr.Spec.Version = upgradeVersion
+
+		redmineDoguInstalled := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
+		redmineDoguUpgrade.Version = upgradeVersion
+
+		recorderMock := extMocks.NewEventRecorder(t)
+		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
+		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
+
+		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher.On("FetchInstalled", "").Return(redmineDoguInstalled, nil)
+
+		resourceFetcher := mocks.NewResourceDoguFetcher(t)
+		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
+
+		premChecker := mocks.NewPremisesChecker(t)
+		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
+
+		upgradeExec := mocks.NewUpgradeExecutor(t)
+		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
+
+		clientMock := extMocks.NewK8sClient(t)
+		statusMock := extMocks.NewK8sSubResourceWriter(t)
+		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil).Twice()
+		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
+		clientMock.EXPECT().Status().Return(statusMock).Twice()
+		statusMock.On("Update", testCtx, redmineCr).Return(nil).Twice()
+
+		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut.resourceDoguFetcher = resourceFetcher
+
+		// when
+		err := sut.Upgrade(testCtx, redmineCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to update dogu status: ")
 	})
 }
