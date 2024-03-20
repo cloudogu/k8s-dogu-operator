@@ -9,14 +9,13 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
-	"time"
 )
 
 func TestShutdownHandler_Start(t *testing.T) {
 	t.Run("should update all dogu health status to unknown on shutdown", func(t *testing.T) {
 		// given
-		doneCtx, cancelFunc := context.WithCancel(context.Background())
-
+		doneCtx, cancelFunc := context.WithCancel(testCtx)
+		cancelFunc()
 		expectedContext := context.WithoutCancel(doneCtx)
 		doguInterfaceMock := mocks.NewDoguInterface(t)
 
@@ -43,13 +42,6 @@ func TestShutdownHandler_Start(t *testing.T) {
 				assert.Equal(t, v1.UnknownHealthStatus, status.Health)
 			})
 
-		timer := time.NewTimer(time.Second)
-
-		go func() {
-			<-timer.C
-			cancelFunc()
-		}()
-
 		sut := ShutdownHandler{doguInterface: doguInterfaceMock}
 
 		// when
@@ -61,19 +53,13 @@ func TestShutdownHandler_Start(t *testing.T) {
 
 	t.Run("should return error on list error", func(t *testing.T) {
 		// given
-		doneCtx, cancelFunc := context.WithCancel(context.Background())
+		doneCtx, cancelFunc := context.WithCancel(testCtx)
+		cancelFunc()
 
 		expectedContext := context.WithoutCancel(doneCtx)
 		doguInterfaceMock := mocks.NewDoguInterface(t)
 
 		doguInterfaceMock.EXPECT().List(expectedContext, metav1.ListOptions{}).Return(nil, assert.AnError)
-
-		timer := time.NewTimer(time.Second)
-
-		go func() {
-			<-timer.C
-			cancelFunc()
-		}()
 
 		sut := ShutdownHandler{doguInterface: doguInterfaceMock}
 
@@ -87,7 +73,8 @@ func TestShutdownHandler_Start(t *testing.T) {
 
 	t.Run("should join update errors", func(t *testing.T) {
 		// given
-		doneCtx, cancelFunc := context.WithCancel(context.Background())
+		doneCtx, cancelFunc := context.WithCancel(testCtx)
+		cancelFunc()
 
 		expectedContext := context.WithoutCancel(doneCtx)
 		doguInterfaceMock := mocks.NewDoguInterface(t)
@@ -114,13 +101,6 @@ func TestShutdownHandler_Start(t *testing.T) {
 				status := modifyStatusFn(ldapDogu.Status)
 				assert.Equal(t, v1.UnknownHealthStatus, status.Health)
 			})
-
-		timer := time.NewTimer(time.Second)
-
-		go func() {
-			<-timer.C
-			cancelFunc()
-		}()
 
 		sut := ShutdownHandler{doguInterface: doguInterfaceMock}
 
