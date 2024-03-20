@@ -19,7 +19,7 @@ func NewShutdownHandler(doguInterface ecoSystem.DoguInterface) *ShutdownHandler 
 }
 
 func (s *ShutdownHandler) Start(ctx context.Context) error {
-	logger := log.FromContext(ctx).WithName("shutdown handler")
+	logger := log.FromContext(ctx).WithName("health shutdown handler")
 	<-ctx.Done()
 	logger.Info("shutdown detected, handling health status")
 
