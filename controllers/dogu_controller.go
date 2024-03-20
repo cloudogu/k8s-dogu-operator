@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"strings"
 	"time"
@@ -94,11 +96,12 @@ type doguReconciler struct {
 	doguRequeueHandler cloudogu.RequeueHandler
 	recorder           record.EventRecorder
 	fetcher            cloudogu.LocalDoguFetcher
+	doguInterface      ecoSystem.DoguInterface
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localRegistry registry.DoguRegistry) (*doguReconciler, error) {
-	doguRequeueHandler, err := NewDoguRequeueHandler(client, eventRecorder, namespace)
+func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localRegistry registry.DoguRegistry) (*doguReconciler, error) {
+	doguRequeueHandler, err := NewDoguRequeueHandler(doguInterface, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +113,7 @@ func NewDoguReconciler(client client.Client, doguManager cloudogu.DoguManager, e
 		doguRequeueHandler: doguRequeueHandler,
 		recorder:           eventRecorder,
 		fetcher:            localDoguFetcher,
+		doguInterface:      doguInterface,
 	}, nil
 }
 
@@ -431,7 +435,11 @@ func (r *doguReconciler) performOperation(ctx context.Context, doguResource *k8s
 
 	result, handleErr := r.doguRequeueHandler.Handle(ctx, contextMessageOnError, doguResource, operationError,
 		func(dogu *k8sv1.Dogu) error {
-			return doguResource.ChangeStateWithRetry(ctx, r.client, requeueDoguStatus)
+			_, err := r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+				status.Status = requeueDoguStatus
+				return status
+			}, metav1.UpdateOptions{})
+			return err
 		})
 	if handleErr != nil {
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnRequeueEventReason,
@@ -518,7 +526,7 @@ func (r *doguReconciler) performStartDoguOperation(ctx context.Context, doguReso
 		errorReason:   ErrorOnStartDoguEventReason,
 		operationName: "StartDogu",
 		operationVerb: "start dogu",
-	}, k8sv1.DoguStatusInstalled, r.doguManager.StartDogu, shouldRequeue)
+	}, k8sv1.DoguStatusStarting, r.doguManager.StartDogu, shouldRequeue)
 }
 
 func (r *doguReconciler) performStopDoguOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {
@@ -527,7 +535,7 @@ func (r *doguReconciler) performStopDoguOperation(ctx context.Context, doguResou
 		errorReason:   ErrorOnStopDoguEventReason,
 		operationName: "StopDogu",
 		operationVerb: "stop dogu",
-	}, k8sv1.DoguStatusInstalled, r.doguManager.StopDogu, shouldRequeue)
+	}, k8sv1.DoguStatusStopping, r.doguManager.StopDogu, shouldRequeue)
 }
 
 func (r *doguReconciler) performCheckStoppedOperation(ctx context.Context, doguResource *k8sv1.Dogu, shouldRequeue bool) (ctrl.Result, error) {

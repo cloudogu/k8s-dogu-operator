@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"time"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -42,15 +42,15 @@ type requeuableErrorWithState interface {
 
 // doguRequeueHandler is responsible to requeue a dogu resource after it failed.
 type doguRequeueHandler struct {
-	client client.Client
 	// nonCacheClient is required to list all events while filtering them by their fields.
 	nonCacheClient kubernetes.Interface
 	namespace      string
 	recorder       record.EventRecorder
+	doguInterface  ecoSystem.DoguInterface
 }
 
 // NewDoguRequeueHandler creates a new dogu requeue handler.
-func NewDoguRequeueHandler(client client.Client, recorder record.EventRecorder, namespace string) (*doguRequeueHandler, error) {
+func NewDoguRequeueHandler(doguInterface ecoSystem.DoguInterface, recorder record.EventRecorder, namespace string) (*doguRequeueHandler, error) {
 	clusterConfig, err := ctrl.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load cluster configuration: %w", err)
@@ -62,7 +62,7 @@ func NewDoguRequeueHandler(client client.Client, recorder record.EventRecorder, 
 	}
 
 	return &doguRequeueHandler{
-		client:         client,
+		doguInterface:  doguInterface,
 		nonCacheClient: clientSet,
 		namespace:      namespace,
 		recorder:       recorder,
@@ -75,7 +75,7 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 		return ctrl.Result{}, nil
 	}
 
-	requeueTime, timeErr := getRequeueTime(ctx, doguResource, d.client, originalErr)
+	requeueTime, timeErr := getRequeueTime(ctx, doguResource, d.doguInterface, originalErr)
 	if timeErr != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get requeue time: %w", timeErr)
 	}
@@ -86,7 +86,10 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 		}
 	}
 
-	updateError := doguResource.ChangeRequeuePhaseWithRetry(ctx, d.client, getRequeuePhase(originalErr))
+	_, updateError := d.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+		status.RequeuePhase = getRequeuePhase(originalErr)
+		return status
+	}, metav1.UpdateOptions{})
 	if updateError != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
 	}
@@ -112,13 +115,18 @@ func getRequeuePhase(err error) string {
 	return ""
 }
 
-func getRequeueTime(ctx context.Context, dogu *k8sv1.Dogu, client client.Client, err error) (time.Duration, error) {
+func getRequeueTime(ctx context.Context, dogu *k8sv1.Dogu, doguInterface ecoSystem.DoguInterface, err error) (time.Duration, error) {
 	var errorWithTime requeuableErrorWithTime
 	if errors.As(err, &errorWithTime) {
 		return errorWithTime.GetRequeueTime(), nil
 	}
 
-	requeueTime, timeErr := dogu.NextRequeueWithRetry(ctx, client)
+	var requeueTime time.Duration
+	_, timeErr := doguInterface.UpdateStatusWithRetry(ctx, dogu, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+		requeueTime = dogu.Status.NextRequeue()
+		status.RequeueTime = requeueTime
+		return status
+	}, metav1.UpdateOptions{})
 	if timeErr != nil {
 		return 0, timeErr
 	}

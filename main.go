@@ -210,6 +210,7 @@ func configureReconciler(k8sManager manager.Manager, operatorConfig *config.Oper
 
 	doguReconciler, err := controllers.NewDoguReconciler(
 		k8sManager.GetClient(),
+		ecosystemClientSet.Dogus(operatorConfig.Namespace),
 		doguManager,
 		eventRecorder,
 		operatorConfig.Namespace,
