@@ -90,6 +90,7 @@ const (
 	PendingHealthStatus     HealthStatus = ""
 	AvailableHealthStatus   HealthStatus = "available"
 	UnavailableHealthStatus HealthStatus = "unavailable"
+	UnknownHealthStatus     HealthStatus = "unknown"
 )
 
 // DoguStatus defines the observed state of a Dogu.
