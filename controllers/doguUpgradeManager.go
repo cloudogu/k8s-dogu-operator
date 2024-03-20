@@ -51,7 +51,7 @@ type doguUpgradeManager struct {
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	err := doguResource.ChangeState(ctx, dum.client, k8sv1.DoguStatusUpgrading)
+	err := doguResource.ChangeStateWithRetry(ctx, dum.client, k8sv1.DoguStatusUpgrading)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	}
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
 
-	err = doguResource.ChangeState(ctx, dum.client, k8sv1.DoguStatusInstalled)
+	err = doguResource.ChangeStateWithRetry(ctx, dum.client, k8sv1.DoguStatusInstalled)
 	if err != nil {
 		return err
 	}

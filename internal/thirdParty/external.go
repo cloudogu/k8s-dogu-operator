@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -66,8 +67,16 @@ type DeploymentInterface interface {
 	appsv1client.DeploymentInterface
 }
 
+type PodInterface interface {
+	v1.PodInterface
+}
+
 type AppsV1Interface interface {
 	appsv1client.AppsV1Interface
+}
+
+type CoreV1Interface interface {
+	v1.CoreV1Interface
 }
 
 type ClientSet interface {

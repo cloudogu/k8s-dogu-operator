@@ -69,10 +69,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 
-	updateStatusInstallingFn := func(d *k8sv1.Dogu) {
-		d.Status = k8sv1.DoguStatus{RequeueTime: doguResource.Status.RequeueTime, Status: k8sv1.DoguStatusInstalling}
-	}
-	err := doguResource.UpdateStatusWithRetry(ctx, m.client, updateStatusInstallingFn)
+	err := doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusInstalled)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
@@ -135,7 +132,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
 
-	err = updateStatusInstalled(ctx, doguResource, m.client)
+	err = doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusInstalled)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}

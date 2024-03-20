@@ -11,3 +11,7 @@ type EcosystemInterface interface {
 type DoguInterface interface {
 	ecoSystem.DoguInterface
 }
+
+type DoguRestartInterface interface {
+	ecoSystem.DoguRestartInterface
+}

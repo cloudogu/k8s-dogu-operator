@@ -44,6 +44,7 @@ func (c mockeryGinkgoLogger) FailNow() {
 
 var _ = Describe("Dogu Upgrade Tests", func() {
 	t := &testing.T{}
+
 	mockeryT := &mockeryGinkgoLogger{}
 
 	// Install testdata
@@ -80,6 +81,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	Context("Handle dogu resource", func() {
 		It("Setup mocks and test data", func() {
+			*DoguInterfaceMock = mocks.DoguInterface{}
+			DoguInterfaceMock.EXPECT().UpdateStatusWithRetry(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(
+				func(ctx context.Context, dogu *k8sv1.Dogu, modifyStatusFn func(k8sv1.DoguStatus) k8sv1.DoguStatus, opts v1.UpdateOptions) {
+					modifyStatusFn(dogu.Status)
+				})
 			*ImageRegistryMock = mocks.ImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil)
 			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
