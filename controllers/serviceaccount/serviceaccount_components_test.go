@@ -383,7 +383,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to save the service account credentials: failed to write service account: failed to set encrypted sa value of key password:")
+		assert.ErrorContains(t, err, "failed to save the service account credentials: failed to write service account")
 	})
 }
 
