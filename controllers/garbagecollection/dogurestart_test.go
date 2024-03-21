@@ -107,6 +107,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 	t.Run("Should keep last 3 successful resources for dogu (default)", func(t *testing.T) {
 		// given
 		doguName := "ldap"
+		otherDoguName := "cas"
 		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
 
 		now := metav1.Now()
@@ -118,6 +119,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
 				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseCompleted, now.Add(time.Second*5)),
 				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseCompleted, now.Add(time.Second*4)),
+				getDoguRestartWithCreationTimestamp(otherDoguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
 			},
 		}
 
@@ -137,6 +139,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 	t.Run("Should keep last 3 failed resources for dogu (default)", func(t *testing.T) {
 		// given
 		doguName := "ldap"
+		otherDoguName := "cas"
 		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
 
 		now := metav1.Now()
@@ -148,6 +151,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseFailedStart, now.Add(time.Second)),
 				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseFailedStop, now.Add(time.Second*5)),
 				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseFailedStop, now.Add(time.Second*4)),
+				getDoguRestartWithCreationTimestamp(otherDoguName, "1", v1.RestartStatusPhaseFailedStop, now.Add(time.Second)),
 			},
 		}
 
