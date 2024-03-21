@@ -74,6 +74,9 @@ spec:
                 health:
                   description: Health describes the health status of the dogu
                   type: string
+                installedVersion:
+                  description: Installed version of the dogu (e.g. 2.4.48-3)
+                  type: string
                 requeuePhase:
                   description: RequeuePhase is the actual phase of the dogu resource used for a currently running async process.
                   type: string

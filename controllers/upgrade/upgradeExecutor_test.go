@@ -51,6 +51,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			Build()
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		imageRegMock := mocks.NewImageRegistry(t)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		k8sFileEx := mocks.NewFileExtractor(t)
@@ -69,7 +70,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		}
 
 		// when
-		actual := NewUpgradeExecutor(myClient, mgrSet, eventRecorder)
+		actual := NewUpgradeExecutor(myClient, mgrSet, eventRecorder, ecosystemClientMock)
 
 		// then
 		require.NotNil(t, actual)
@@ -110,6 +111,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
+			WithStatusSubresource(&k8sv1.Dogu{}).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -159,14 +161,25 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Successfully updated health status to %q", k8sv1.UnavailableHealthStatus).Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Reverting to original startup probe values...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
 		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+				toDoguResource.Status = f(toDoguResource.Status)
+				return toDoguResource, nil
+			})
+
 		sut := &upgradeExecutor{
 			client:                myClient,
+			ecosystemClient:       ecosystemClientMock,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
 			k8sFileExtractor:      k8sFileEx,
@@ -183,6 +196,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		assert.Equal(t, k8sv1.UnavailableHealthStatus, toDoguResource.Status.Health)
 		// mocks will be asserted during t.CleanUp
 	})
 	t.Run("should fail during revert startup probe", func(t *testing.T) {
@@ -201,6 +215,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
+			WithStatusSubresource(&k8sv1.Dogu{}).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -250,14 +265,24 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Successfully updated health status to %q", k8sv1.UnavailableHealthStatus).Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Reverting to original startup probe values...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
 		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			toDoguResource.Status = f(toDoguResource.Status)
+			return toDoguResource, nil
+		})
+
 		sut := &upgradeExecutor{
 			client:                myClient,
+			ecosystemClient:       ecosystemClientMock,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
 			k8sFileExtractor:      k8sFileEx,
@@ -293,6 +318,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
+			WithStatusSubresource(&k8sv1.Dogu{}).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -585,6 +611,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			myClient := fake.NewClientBuilder().
 				WithScheme(getTestScheme()).
 				WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
+				WithStatusSubresource(&k8sv1.Dogu{}).
 				Build()
 
 			registrator := mocks.NewDoguRegistrator(t)
@@ -628,13 +655,23 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Copying optional pre-upgrade scripts...").Once().
 				On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional pre-upgrade scripts...").Once().
 				On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once().
-				On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once()
+				On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once().
+				On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Successfully updated health status to %q", k8sv1.UnavailableHealthStatus).Once()
 
 			execPodFactory := mocks.NewExecPodFactory(t)
 			execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
+			ecosystemClientMock := mocks.NewEcosystemInterface(t)
+			doguClientMock := mocks.NewDoguInterface(t)
+			ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+			doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+				toDoguResource.Status = f(toDoguResource.Status)
+				return toDoguResource, nil
+			})
+
 			sut := &upgradeExecutor{
 				client:                myClient,
+				ecosystemClient:       ecosystemClientMock,
 				imageRegistry:         imageRegMock,
 				collectApplier:        applier,
 				k8sFileExtractor:      k8sFileEx,
@@ -672,6 +709,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			WithObjects(toDoguResource, dependentDeployment, dependencyDeployment, redmineOldPod, redmineUpgradePod).
+			WithStatusSubresource(&k8sv1.Dogu{}).
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
@@ -721,13 +759,23 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Extracting optional custom K8s resources...").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying/Updating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml").Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Updating dogu resources in the cluster...").Once().
+			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Successfully updated health status to %q", k8sv1.UnavailableHealthStatus).Once().
 			On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once()
 
 		execPodFactory := mocks.NewExecPodFactory(t)
 		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			toDoguResource.Status = f(toDoguResource.Status)
+			return toDoguResource, nil
+		})
+
 		sut := &upgradeExecutor{
 			client:                myClient,
+			ecosystemClient:       ecosystemClientMock,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
 			k8sFileExtractor:      k8sFileEx,
@@ -1772,5 +1820,36 @@ func Test_deleteExecPod(t *testing.T) {
 
 		// then
 		// mocks will be asserted during t.CleanUp
+	})
+}
+
+func Test_upgradeExecutor_setHealthStatusUnavailable(t *testing.T) {
+	t.Run("should fail", func(t *testing.T) {
+		// given
+		toDoguResource := readTestDataRedmineCr(t)
+
+		errMessage := fmt.Sprintf("failed to update dogu %q with health status %q", toDoguResource.Spec.Name, k8sv1.UnavailableHealthStatus)
+
+		eventRecorder := extMocks.NewEventRecorder(t)
+		eventRecorder.
+			On("Event", toDoguResource, corev1.EventTypeWarning, EventReason, errMessage).Once()
+
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).Return(toDoguResource, assert.AnError)
+
+		sut := &upgradeExecutor{
+			ecosystemClient: ecosystemClientMock,
+			eventRecorder:   eventRecorder,
+		}
+
+		// when
+		err := sut.setHealthStatusUnavailable(testCtx, toDoguResource)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, errMessage)
 	})
 }

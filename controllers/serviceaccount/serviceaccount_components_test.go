@@ -369,8 +369,9 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.On("Exists", "/sa/k8s-prometheus").Return(false, nil)
 		doguConfig.Mock.On("Get", "public.pem").Return(validPubKey, nil)
-		doguConfig.Mock.On("Set", "/sa-k8s-prometheus/username", mock.Anything).Return(nil)
-		doguConfig.Mock.On("Set", "/sa-k8s-prometheus/password", mock.Anything).Return(assert.AnError)
+		// The credentials are saved in a map, and thus we cannot know if the username or password is saved first
+		doguConfig.Mock.On("Set", mock.AnythingOfType("string"), mock.Anything).Return(nil).Once()
+		doguConfig.Mock.On("Set", mock.AnythingOfType("string"), mock.Anything).Return(assert.AnError).Once()
 
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
@@ -382,7 +383,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to save the service account credentials: failed to write service account: failed to set encrypted sa value of key password:")
+		assert.ErrorContains(t, err, "failed to save the service account credentials: failed to write service account")
 	})
 }
 
