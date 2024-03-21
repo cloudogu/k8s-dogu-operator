@@ -443,7 +443,6 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
 
 		sut := newTestDoguUpgradeManager(clientMock, nil, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
-		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
 		err := sut.Upgrade(testCtx, redmineCr)
