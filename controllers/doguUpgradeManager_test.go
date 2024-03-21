@@ -160,7 +160,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		doguClientMock := mocks.NewDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
 		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v1.Dogu, f func(v1.DoguStatus) v1.DoguStatus, options metav1.UpdateOptions) (*v1.Dogu, error) {
-			redmineCr.Status.InstalledVersion = upgradeVersion
+			redmineCr.Status = f(redmineCr.Status)
 			return redmineCr, nil
 		})
 		sut := newTestDoguUpgradeManager(clientMock, ecosystemClientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
@@ -226,7 +226,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		doguClientMock := mocks.NewDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
 		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v1.Dogu, f func(v1.DoguStatus) v1.DoguStatus, options metav1.UpdateOptions) (*v1.Dogu, error) {
-			redmineCr.Status.InstalledVersion = upgradeVersion
+			redmineCr.Status = f(redmineCr.Status)
 			return redmineCr, nil
 		})
 
@@ -486,7 +486,6 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		statusMock.On("Update", testCtx, redmineCr).Return(nil)
 
 		sut := newTestDoguUpgradeManager(clientMock, nil, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
-		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
 		err := sut.Upgrade(testCtx, redmineCr)
@@ -533,7 +532,6 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).Return(redmineCr, assert.AnError)
 
 		sut := newTestDoguUpgradeManager(clientMock, ecosystemClientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
-		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
 		err := sut.Upgrade(testCtx, redmineCr)

@@ -171,10 +171,11 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		doguClientMock := mocks.NewDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
-		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
-			toDoguResource.Status.Health = k8sv1.UnavailableHealthStatus
-			return toDoguResource, nil
-		})
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+				toDoguResource.Status = f(toDoguResource.Status)
+				return toDoguResource, nil
+			})
 
 		sut := &upgradeExecutor{
 			client:                myClient,
@@ -275,7 +276,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		doguClientMock := mocks.NewDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
 		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
-			toDoguResource.Status.Health = k8sv1.UnavailableHealthStatus
+			toDoguResource.Status = f(toDoguResource.Status)
 			return toDoguResource, nil
 		})
 
@@ -664,7 +665,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			doguClientMock := mocks.NewDoguInterface(t)
 			ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
 			doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
-				toDoguResource.Status.Health = k8sv1.UnavailableHealthStatus
+				toDoguResource.Status = f(toDoguResource.Status)
 				return toDoguResource, nil
 			})
 
@@ -768,7 +769,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		doguClientMock := mocks.NewDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
 		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
-			toDoguResource.Status.Health = k8sv1.UnavailableHealthStatus
+			toDoguResource.Status = f(toDoguResource.Status)
 			return toDoguResource, nil
 		})
 

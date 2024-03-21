@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -140,6 +142,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
 		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+		assert.Empty(t, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -148,7 +151,11 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.EXPECT().WriteDoguSecretsToRegistry(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
-		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).Return(ldapCr, nil)
+		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+				dogu.Status = f(dogu.Status)
+				return dogu, nil
+			})
 
 		yamlResult := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
 		managerWithMocks.fileExtractorMock.EXPECT().ExtractK8sResourcesFromContainer(mock.Anything, mock.Anything).Return(yamlResult, nil)
@@ -179,6 +186,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		assert.Equal(t, "2.4.48-4", ldapCr.Status.InstalledVersion)
 	})
 
 	t.Run("successfully install dogu with custom descriptor", func(t *testing.T) {
@@ -273,7 +281,6 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to handle dogu secrets from setup", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -291,6 +298,51 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to write dogu secrets from setup")
+	})
+
+	t.Run("failed to handle update installed version", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
+		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
+		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.doguSecretHandlerMock.EXPECT().WriteDoguSecretsToRegistry(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
+		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).Return(nil, assert.AnError)
+
+		yamlResult := make(map[string]string, 0)
+		managerWithMocks.fileExtractorMock.EXPECT().ExtractK8sResourcesFromContainer(mock.Anything, mock.Anything).Return(yamlResult, nil)
+		ldapCr.ResourceVersion = ""
+		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
+
+		upserterExpecter := managerWithMocks.resourceUpserter.EXPECT()
+		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+
+		recorderExpecter := managerWithMocks.recorder.EXPECT()
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
+		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
+		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
+		execPod := mocks.NewExecPod(t)
+		execPod.EXPECT().Create(testCtx).Return(nil)
+		execPod.EXPECT().Delete(testCtx).Return(nil)
+		managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
+
+		// when
+		err := managerWithMocks.installManager.Install(testCtx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to update dogu installed version")
 	})
 
 	t.Run("failed to create service accounts", func(t *testing.T) {

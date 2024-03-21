@@ -76,7 +76,6 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 	t.Run("should succeed to update health status of dogu", func(t *testing.T) {
 		t.Run("available", func(t *testing.T) {
 			// given
-			const expectedHealthStatus = v1.HealthStatus("available")
 			dogu := &v1.Dogu{ObjectMeta: metav1api.ObjectMeta{Name: "my-dogu", Namespace: testNamespace}}
 
 			doguClientMock := mocks.NewDoguInterface(t)
@@ -85,13 +84,12 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 				Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1api.UpdateOptions) {
 					status := modifyStatusFn(dogu.Status)
 					assert.Equal(t, v1.DoguStatus{Status: "", RequeueTime: 0, RequeuePhase: "", Health: "available", Stopped: false}, status)
-					dogu.Status.Health = status.Health
 				})
 			ecosystemClientMock := mocks.NewEcosystemInterface(t)
 			ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 			recorderMock := extMocks.NewEventRecorder(t)
-			recorderMock.EXPECT().Eventf(dogu, "Normal", "HealthStatusUpdate", "successfully updated health status to %q", expectedHealthStatus)
+			recorderMock.EXPECT().Eventf(dogu, "Normal", "HealthStatusUpdate", "successfully updated health status to %q", v1.AvailableHealthStatus)
 
 			sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
 
@@ -100,11 +98,9 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			assert.Equal(t, expectedHealthStatus, dogu.Status.Health)
 		})
 		t.Run("unavailable", func(t *testing.T) {
 			// given
-			const expectedHealthStatus = v1.HealthStatus("unavailable")
 			dogu := &v1.Dogu{ObjectMeta: metav1api.ObjectMeta{Name: "my-dogu", Namespace: testNamespace}}
 
 			doguClientMock := mocks.NewDoguInterface(t)
@@ -113,13 +109,12 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 				Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1api.UpdateOptions) {
 					status := modifyStatusFn(dogu.Status)
 					assert.Equal(t, v1.DoguStatus{Status: "", RequeueTime: 0, RequeuePhase: "", Health: "unavailable", Stopped: false}, status)
-					dogu.Status.Health = status.Health
 				})
 			ecosystemClientMock := mocks.NewEcosystemInterface(t)
 			ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 			recorderMock := extMocks.NewEventRecorder(t)
-			recorderMock.EXPECT().Eventf(dogu, "Normal", "HealthStatusUpdate", "successfully updated health status to %q", expectedHealthStatus)
+			recorderMock.EXPECT().Eventf(dogu, "Normal", "HealthStatusUpdate", "successfully updated health status to %q", v1.UnavailableHealthStatus)
 
 			sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
 
@@ -128,7 +123,6 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			assert.Equal(t, expectedHealthStatus, dogu.Status.Health)
 		})
 	})
 }
