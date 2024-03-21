@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
@@ -22,11 +23,11 @@ func TestNewDeploymentReconciler(t *testing.T) {
 	t.Run("should not be empty", func(t *testing.T) {
 		// given
 		clientSetMock := extMocks.NewClientSet(t)
-		ecosystemClientMock := mocks.NewEcosystemInterface(t)
-		recorderMock := extMocks.NewEventRecorder(t)
+		availabilityCheckerMock := &health.AvailabilityChecker{}
+		healthStatusUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
 
 		// when
-		actual := NewDeploymentReconciler(clientSetMock, ecosystemClientMock, recorderMock)
+		actual := NewDeploymentReconciler(clientSetMock, availabilityCheckerMock, healthStatusUpdaterMock)
 
 		// then
 		assert.NotEmpty(t, actual)

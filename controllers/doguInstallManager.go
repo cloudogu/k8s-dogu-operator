@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 
@@ -22,7 +24,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
 const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
@@ -30,6 +31,7 @@ const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
 	client                thirdParty.K8sClient
+	ecosystemClient       ecoSystem.EcoSystemV1Alpha1Interface
 	recorder              record.EventRecorder
 	localDoguFetcher      cloudogu.LocalDoguFetcher
 	resourceDoguFetcher   cloudogu.ResourceDoguFetcher
@@ -45,11 +47,12 @@ type doguInstallManager struct {
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
-func NewDoguInstallManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguInstallManager {
+func NewDoguInstallManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguInstallManager {
 	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
 
 	return &doguInstallManager{
 		client:                client,
+		ecosystemClient:       ecosystemClient,
 		recorder:              eventRecorder,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,
 		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
@@ -70,8 +73,7 @@ func NewDoguInstallManager(client client.Client, operatorConfig *config.Operator
 func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
 
-	doguResource.Status = k8sv1.DoguStatus{RequeueTime: doguResource.Status.RequeueTime, Status: k8sv1.DoguStatusInstalling}
-	err := doguResource.Update(ctx, m.client)
+	err := doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusInstalling)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
@@ -134,9 +136,19 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
 
-	err = updateStatusInstalled(ctx, doguResource, m.client)
+	err = doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusInstalled)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
+	}
+
+	updateInstalledVersionFn := func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+		status.InstalledVersion = doguResource.Spec.Version
+		return status
+	}
+	doguResource, err = m.ecosystemClient.Dogus(doguResource.Namespace).
+		UpdateStatusWithRetry(ctx, doguResource, updateInstalledVersionFn, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update dogu installed version: %w", err)
 	}
 
 	if developmentDoguMap != nil {
@@ -147,20 +159,6 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	}
 
 	return nil
-}
-
-func updateStatusInstalled(ctx context.Context, doguResource *k8sv1.Dogu, client client.Client) error {
-	err := retry.OnConflict(func() error {
-		err := client.Get(ctx, doguResource.GetObjectKey(), doguResource)
-		if err != nil {
-			return err
-		}
-
-		doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusInstalled}
-		err = doguResource.Update(ctx, client)
-		return err
-	})
-	return err
 }
 
 func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error {

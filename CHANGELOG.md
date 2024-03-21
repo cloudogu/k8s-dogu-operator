@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.0] - 2024-03-21
+### Added
+- [#149] Clarified escaping rules for running the operator locally
+  (see [here](docs/development/development_guide_en.md) or [here](.env.template))
+- [#151] Add field `stopped` in Dogu to start or stop the Dogu.
+- [#151] Add new CRD `DoguRestart` to trigger a dogu restart.
+  - The reconciler uses the `stopped` field from the Dogu.
+- [#159] Manage Service Accounts provided by components
+- [#162] Add start and shutdown handler to refresh the dogu health states.
+- [#158] Add installed version to dogus status to be able to check the exact state of the dogu.
+
+### Changed
+- [#154] Only accept dogu volume sizes in binary format.
+- [#156] Stabilized process when updating the status of the dogu cr.
+
+### Fixed
+- [#152] The health routine no longer marks a dogu as available if the deployment was scaled to 0.
+- [#153] Fix dogu status of restart routine.
+- [#167] Select dogu restart resources pro dogu for garbage collection.
+
 ## [v0.41.0] - 2024-01-23
 ### Changed
 - Update go dependencies

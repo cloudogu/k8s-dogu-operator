@@ -81,6 +81,12 @@ spec:
               name: k8s-dogu-operator-docker-registry
         - name: DOGU_STARTUP_PROBE_TIMEOUT
           value: {{ quote .Values.controllerManager.env.doguStartupProbeTimeout | default "1" }}
+        - name: DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT
+          value: {{ quote .Values.controllerManager.env.doguRestartSuccessfulHistoryLimit | default "3" }}
+        - name: DOGU_RESTART_FAILED_HISTORY_LIMIT
+          value: {{ quote .Values.controllerManager.env.doguRestartFailedHistoryLimit | default "3" }}
+        - name: DOGU_RESTART_GARBAGE_COLLECTION_DISABLED
+          value: {{ quote .Values.controllerManager.env.doguRestartGarbageCollectionDisabled | default false }}
         image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}
         imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent"}}
         livenessProbe:

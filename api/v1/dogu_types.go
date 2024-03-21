@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"time"
@@ -52,6 +53,8 @@ type DoguSpec struct {
 	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
 	// a crash loop).
 	SupportMode bool `json:"supportMode,omitempty"`
+	// Stopped indicates whether the dogu should be running (stopped=false) or not (stopped=true).
+	Stopped bool `json:"stopped,omitempty"`
 	// UpgradeConfig contains options to manipulate the upgrade process.
 	UpgradeConfig UpgradeConfig `json:"upgradeConfig,omitempty"`
 	// AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
@@ -87,6 +90,7 @@ const (
 	PendingHealthStatus     HealthStatus = ""
 	AvailableHealthStatus   HealthStatus = "available"
 	UnavailableHealthStatus HealthStatus = "unavailable"
+	UnknownHealthStatus     HealthStatus = "unknown"
 )
 
 // DoguStatus defines the observed state of a Dogu.
@@ -99,6 +103,29 @@ type DoguStatus struct {
 	RequeuePhase string `json:"requeuePhase"`
 	// Health describes the health status of the dogu
 	Health HealthStatus `json:"health,omitempty"`
+	// Installed version of the dogu (e.g. 2.4.48-3)
+	InstalledVersion string `json:"installedVersion,omitempty"`
+	// Stopped shows if the dogu has been stopped or not.
+	Stopped bool `json:"stopped,omitempty"`
+}
+
+func (d *Dogu) NextRequeueWithRetry(ctx context.Context, client client.Client) (time.Duration, error) {
+	var requeueTime time.Duration
+	err := retry.OnConflict(func() error {
+		fetchErr := d.refreshDoguValue(ctx, client)
+		if fetchErr != nil {
+			return fetchErr
+		}
+		requeueTime = d.Status.NextRequeue()
+
+		return d.Update(ctx, client)
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return requeueTime, err
 }
 
 // NextRequeue increases the requeue time of the dogu status and returns the new requeue time
@@ -128,6 +155,8 @@ const (
 	DoguStatusDeleting     = "deleting"
 	DoguStatusInstalled    = "installed"
 	DoguStatusPVCResizing  = "resizing PVC"
+	DoguStatusStarting     = "starting"
+	DoguStatusStopping     = "stopping"
 )
 
 // +kubebuilder:object:root=true
@@ -208,10 +237,53 @@ func (d *Dogu) Update(ctx context.Context, client client.Client) error {
 	return nil
 }
 
-// ChangeState changes the state of this dogu resource and applies it to the cluster state.
-func (d *Dogu) ChangeState(ctx context.Context, client client.Client, newStatus string) error {
+// changeRequeuePhase changes the requeue phase of this dogu resource and applies it to the cluster state.
+func (d *Dogu) changeRequeuePhase(ctx context.Context, client client.Client, phase string) error {
+	d.Status.RequeuePhase = phase
+	return d.Update(ctx, client)
+}
+
+// ChangeRequeuePhaseWithRetry refreshes the dogu resource and tries to set the requeue phase.
+// If a conflict error occurs this method will retry the operation.
+func (d *Dogu) ChangeRequeuePhaseWithRetry(ctx context.Context, client client.Client, phase string) error {
+	return retry.OnConflict(func() error {
+		err := d.refreshDoguValue(ctx, client)
+		if err != nil {
+			return err
+		}
+
+		return d.changeRequeuePhase(ctx, client, phase)
+	})
+}
+
+func (d *Dogu) refreshDoguValue(ctx context.Context, client client.Client) error {
+	dogu := &Dogu{}
+	err := client.Get(ctx, d.GetObjectKey(), dogu)
+	if err != nil {
+		return err
+	}
+	*d = *dogu
+
+	return nil
+}
+
+// changeState changes the state of this dogu resource and applies it to the cluster state.
+func (d *Dogu) changeState(ctx context.Context, client client.Client, newStatus string) error {
 	d.Status.Status = newStatus
 	return d.Update(ctx, client)
+}
+
+// ChangeStateWithRetry refreshes the dogu resource and tries to set the state.
+// If a conflict error occurs this method will retry the operation.
+func (d *Dogu) ChangeStateWithRetry(ctx context.Context, client client.Client, newStatus string) error {
+	return retry.OnConflict(func() error {
+		err := d.refreshDoguValue(ctx, client)
+		if err != nil {
+			return err
+		}
+
+		return d.changeState(ctx, client, newStatus)
+	})
 }
 
 // GetPodLabels returns labels that select a pod being associated with this dogu.

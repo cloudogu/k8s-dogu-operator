@@ -560,7 +560,7 @@ func Test_buildResourceDiff(t *testing.T) {
 		{
 			name: "upgrade-diff",
 			args: args{objOld: oldDoguResource, objNew: newDoguResource},
-			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:        \"ns/dogu\",\n- \t\tVersion:     \"1.2.3-4\",\n+ \t\tVersion:     \"1.2.3-5\",\n  \t\tResources:   {},\n  \t\tSupportMode: false,\n  \t\t... // 2 identical fields\n  \t},\n  \tStatus: {},\n  }\n",
+			want: "  &v1.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v1.DoguSpec{\n  \t\tName:        \"ns/dogu\",\n- \t\tVersion:     \"1.2.3-4\",\n+ \t\tVersion:     \"1.2.3-5\",\n  \t\tResources:   {},\n  \t\tSupportMode: false,\n  \t\t... // 3 identical fields\n  \t},\n  \tStatus: {},\n  }\n",
 		},
 		{
 			name: "delete-diff",
@@ -1128,4 +1128,51 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, ctrl.Result{Requeue: true}, actual)
 	})
+}
+
+func Test_doguReconciler_validateVolumeSize(t *testing.T) {
+	type args struct {
+		doguResource *k8sv1.Dogu
+	}
+	tests := []struct {
+		name         string
+		args         args
+		recorderFunc func(t *testing.T) record.EventRecorder
+		wantSuccess  bool
+	}{
+		{
+			name:         "success with Binary-SI",
+			args:         args{doguResource: &k8sv1.Dogu{Spec: k8sv1.DoguSpec{Resources: k8sv1.DoguResources{DataVolumeSize: "2Gi"}}}},
+			recorderFunc: func(t *testing.T) record.EventRecorder { return extMocks.NewEventRecorder(t) },
+			wantSuccess:  true,
+		},
+		{
+			name: "should fail on invalid size",
+			args: args{doguResource: &k8sv1.Dogu{Spec: k8sv1.DoguSpec{Resources: k8sv1.DoguResources{DataVolumeSize: "2invalidGi"}}}},
+			recorderFunc: func(t *testing.T) record.EventRecorder {
+				recorder := extMocks.NewEventRecorder(t)
+				recorder.EXPECT().Eventf(mock.Anything, "Warning", "FailedVolumeSizeParsingValidation", "Dogu resource volume size parsing error: %s", "2invalidGi")
+				return recorder
+			},
+			wantSuccess: false,
+		},
+		{
+			name: "should fail on non Binary-SI",
+			args: args{doguResource: &k8sv1.Dogu{Spec: k8sv1.DoguSpec{Resources: k8sv1.DoguResources{DataVolumeSize: "2G"}}}},
+			recorderFunc: func(t *testing.T) record.EventRecorder {
+				recorder := extMocks.NewEventRecorder(t)
+				recorder.EXPECT().Eventf(mock.Anything, "Warning", "FailedVolumeSizeSIValidation", "Dogu resource volume size format is not Binary-SI (\"Mi\" or \"Gi\"): %s", resource.MustParse("2G"))
+				return recorder
+			},
+			wantSuccess: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &doguReconciler{
+				recorder: tt.recorderFunc(t),
+			}
+			assert.Equalf(t, tt.wantSuccess, r.validateVolumeSize(tt.args.doguResource), "validateVolumeSize(%v)", tt.args.doguResource)
+		})
+	}
 }

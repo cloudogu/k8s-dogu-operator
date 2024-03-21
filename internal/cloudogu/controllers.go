@@ -43,6 +43,28 @@ type AdditionalIngressAnnotationsManager interface {
 	SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *v1.Dogu) error
 }
 
+// StartDoguManager includes functionality to start (stopped) dogus.
+type StartDoguManager interface {
+	// StartDogu scales up a dogu to 1.
+	StartDogu(ctx context.Context, doguResource *v1.Dogu) error
+	// CheckStarted checks if the dogu has been successfully scaled to 1.
+	CheckStarted(ctx context.Context, doguResource *v1.Dogu) error
+}
+
+// StopDoguManager includes functionality to stop running dogus.
+type StopDoguManager interface {
+	// StopDogu scales down a dogu to 0.
+	StopDogu(ctx context.Context, doguResource *v1.Dogu) error
+	// CheckStopped checks if the dogu has been successfully scaled to 0.
+	CheckStopped(ctx context.Context, doguResource *v1.Dogu) error
+}
+
+// DoguStartStopManager includes functionality to start and stop dogus.
+type DoguStartStopManager interface {
+	StartDoguManager
+	StopDoguManager
+}
+
 // DoguManager abstracts the simple dogu operations in a k8s CES.
 type DoguManager interface {
 	InstallManager
@@ -51,10 +73,12 @@ type DoguManager interface {
 	VolumeManager
 	AdditionalIngressAnnotationsManager
 	SupportManager
+	StartDoguManager
+	StopDoguManager
 }
 
 // RequeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
 type RequeueHandler interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
-	Handle(ctx context.Context, contextMessage string, doguResource *v1.Dogu, err error, onRequeue func(dogu *v1.Dogu)) (result ctrl.Result, requeueErr error)
+	Handle(ctx context.Context, contextMessage string, doguResource *v1.Dogu, err error, onRequeue func(dogu *v1.Dogu) error) (result ctrl.Result, requeueErr error)
 }

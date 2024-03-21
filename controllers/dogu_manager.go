@@ -40,6 +40,7 @@ type DoguManager struct {
 	volumeManager             cloudogu.VolumeManager
 	ingressAnnotationsManager cloudogu.AdditionalIngressAnnotationsManager
 	supportManager            cloudogu.SupportManager
+	startStopManager          cloudogu.DoguStartStopManager
 	recorder                  record.EventRecorder
 }
 
@@ -88,7 +89,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, fmt.Errorf("could not create manager set: %w", err)
 	}
 
-	installManager := NewDoguInstallManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	installManager := NewDoguInstallManager(client, ecosystemClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, err
 	}
 
-	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder, clientSet)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +110,8 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 
 	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
 
+	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
+
 	return &DoguManager{
 		scheme:                    client.Scheme(),
 		installManager:            installManager,
@@ -117,6 +120,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		supportManager:            supportManager,
 		volumeManager:             volumeManager,
 		ingressAnnotationsManager: ingressAnnotationsManager,
+		startStopManager:          startStopManager,
 		recorder:                  eventRecorder,
 	}, nil
 }
@@ -166,6 +170,36 @@ func (m *DoguManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k
 func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, AdditionalIngressAnnotationsChangeEventReason, "Start additional ingress annotations change...")
 	return m.ingressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
+}
+
+// StartDogu scales a stopped dogu to 1.
+func (m *DoguManager) StartDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Starting dogu...")
+	return m.startStopManager.StartDogu(ctx, doguResource)
+}
+
+// StopDogu scales a running dogu to 0.
+func (m *DoguManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Stopping dogu...")
+	return m.startStopManager.StopDogu(ctx, doguResource)
+}
+
+func (m *DoguManager) CheckStarted(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	err := m.startStopManager.CheckStarted(ctx, doguResource)
+	if err == nil {
+		m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Dogu started.")
+	}
+
+	return err
+}
+
+func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv1.Dogu) error {
+	err := m.startStopManager.CheckStopped(ctx, doguResource)
+	if err == nil {
+		m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Dogu stopped.")
+	}
+
+	return err
 }
 
 // HandleSupportMode handles the support flag in the dogu spec.

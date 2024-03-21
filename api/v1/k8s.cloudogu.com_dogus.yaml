@@ -48,6 +48,9 @@ spec:
                       description: dataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume expansion. This includes a downtime for the respective dogu. The default size for volumes is "2Gi". It is not possible to lower the volume size after an expansion. This will introduce an inconsistent state for the dogu.
                       type: string
                   type: object
+                stopped:
+                  description: Stopped indicates whether the dogu should be running (stopped=false) or not (stopped=true).
+                  type: boolean
                 supportMode:
                   description: SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from a crash loop).
                   type: boolean
@@ -71,6 +74,9 @@ spec:
                 health:
                   description: Health describes the health status of the dogu
                   type: string
+                installedVersion:
+                  description: Installed version of the dogu (e.g. 2.4.48-3)
+                  type: string
                 requeuePhase:
                   description: RequeuePhase is the actual phase of the dogu resource used for a currently running async process.
                   type: string
@@ -81,6 +87,9 @@ spec:
                 status:
                   description: Status represents the state of the Dogu in the ecosystem
                   type: string
+                stopped:
+                  description: Stopped shows if the dogu has been stopped or not.
+                  type: boolean
               required:
                 - requeuePhase
                 - requeueTime

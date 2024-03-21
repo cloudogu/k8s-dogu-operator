@@ -55,6 +55,7 @@ var (
 	DoguRemoteRegistryMock *extMocks.RemoteRegistry
 	EtcdDoguRegistry       *extMocks.DoguRegistry
 	k8sClient              thirdParty.K8sClient
+	DoguInterfaceMock      *mocks.DoguInterface
 )
 
 const TimeoutInterval = time.Second * 10
@@ -125,6 +126,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	DoguRemoteRegistryMock = &extMocks.RemoteRegistry{}
 	EtcdDoguRegistry = &extMocks.DoguRegistry{}
 	ImageRegistryMock = &mocks.ImageRegistry{}
+	DoguInterfaceMock = &mocks.DoguInterface{}
 
 	doguConfigurationContext := &cesmocks.ConfigurationContext{}
 	doguConfigurationContext.On("Set", mock.Anything, mock.Anything).Return(nil)
@@ -186,6 +188,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	installManager := &doguInstallManager{
 		client:                k8sClient,
+		ecosystemClient:       ecosystemClientSet,
 		recorder:              eventRecorder,
 		resourceUpserter:      upserter,
 		resourceDoguFetcher:   remoteDoguFetcher,
@@ -235,10 +238,11 @@ var _ = ginkgo.BeforeSuite(func() {
 		ResourceDoguFetcher:   remoteDoguFetcher,
 	}
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder, ecosystemClientSet)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,
+		ecosystemClient:     ecosystemClientSet,
 		eventRecorder:       eventRecorder,
 		premisesChecker:     upgradePremiseChecker,
 		localDoguFetcher:    localDoguFetcher,
@@ -264,13 +268,14 @@ var _ = ginkgo.BeforeSuite(func() {
 		ingressAnnotationsManager: ingressAnnotationManager,
 	}
 
-	doguReconciler, err := NewDoguReconciler(k8sClient, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)
+	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = doguReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	deploymentReconciler := NewDeploymentReconciler(k8sClientSet, ecosystemClientSet, eventRecorder)
+	updater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder)
+	deploymentReconciler := NewDeploymentReconciler(k8sClientSet, &health.AvailabilityChecker{}, updater)
 
 	err = deploymentReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())

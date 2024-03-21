@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,12 +33,12 @@ type doguDeleteManager struct {
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, _ *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder) *doguDeleteManager {
+func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder, clientSet kubernetes.Interface) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,
 		doguRegistrator:       mgrSet.DoguRegistrator,
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client),
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client, clientSet, operatorConfig.Namespace),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
 		eventRecorder:         recorder,
 	}
@@ -46,8 +47,7 @@ func NewDoguDeleteManager(client client.Client, _ *config.OperatorConfig, cesReg
 // Delete deletes the given dogu along with all those Kubernetes resources that the dogu operator initially created.
 func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
 	logger := log.FromContext(ctx)
-	doguResource.Status = k8sv1.DoguStatus{Status: k8sv1.DoguStatusDeleting}
-	err := doguResource.Update(ctx, m.client)
+	err := doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusDeleting)
 	if err != nil {
 		return err
 	}

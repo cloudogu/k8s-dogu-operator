@@ -8,9 +8,19 @@
 3. Open the file `.env.template` and follow the instructions to create an env file with your personal data
 4. Make an etcd port forward
    - `kubectl -n=ecosystem port-forward etcd-0 4001:2379`
-5. Run `make run` to run the dogu operator locally
-6. Delete any existing dogu operator deployments to avoid concurrency issues
-   - `kubectl -n=ecosystem delete deployment k8s-dogu-operator`
+5. Delete the existing dogu operator from the cluster to avoid concurrency issues
+   - `kubectl delete component k8s-dogu-operator`
+6. Create necessary debug resources:
+   - `kubectl apply -f config/debug`
+7. Run `make run` to run the dogu operator locally
+
+### Debugging with IntelliJ
+
+1. Follow steps above except `make run`
+2. Use the IntelliJ-section of the .env-template
+3. print your set of env-variables with `make print-debug-info`
+4. copy the result in your intelliJ run configuration as environment
+5. start main.go in debug-mode
 
 ## Makefile-Targets
 
