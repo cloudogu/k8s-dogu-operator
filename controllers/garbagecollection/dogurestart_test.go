@@ -150,7 +150,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		require.NoError(t, envErr)
 
 		defer func() {
-			unsetErr := os.Unsetenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT")
+			unsetErr := os.Unsetenv("DOGU_RESTART_FAILED_HISTORY_LIMIT")
 			require.NoError(t, unsetErr)
 		}()
 
