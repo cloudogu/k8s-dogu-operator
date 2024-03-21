@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -27,10 +28,11 @@ func NewDoguUpgradeManager(client client.Client, ecosystemClient ecoSystem.EcoSy
 	doguChecker := health.NewDoguChecker(ecosystemClient, mgrSet.LocalDoguFetcher)
 	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder, ecosystemClient)
 
 	return &doguUpgradeManager{
 		client:              client,
+		ecosystemClient:     ecosystemClient,
 		eventRecorder:       eventRecorder,
 		localDoguFetcher:    mgrSet.LocalDoguFetcher,
 		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
@@ -41,8 +43,9 @@ func NewDoguUpgradeManager(client client.Client, ecosystemClient ecoSystem.EcoSy
 
 type doguUpgradeManager struct {
 	// general purpose
-	client        client.Client
-	eventRecorder record.EventRecorder
+	client          client.Client
+	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
+	eventRecorder   record.EventRecorder
 	// upgrade business
 	premisesChecker     cloudogu.PremisesChecker
 	localDoguFetcher    cloudogu.LocalDoguFetcher
@@ -82,7 +85,12 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 		return err
 	}
 
-	err = doguResource.UpdateInstalledVersion(ctx, dum.client)
+	updateInstalledVersionFn := func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+		status.InstalledVersion = doguResource.Spec.Version
+		return status
+	}
+	doguResource, err = dum.ecosystemClient.Dogus(doguResource.Namespace).
+		UpdateStatusWithRetry(ctx, doguResource, updateInstalledVersionFn, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}

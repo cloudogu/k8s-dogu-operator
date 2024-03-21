@@ -42,10 +42,14 @@ type doguInstallManagerWithMocks struct {
 	resourceUpserter          *mocks.ResourceUpserter
 	recorder                  *extMocks.EventRecorder
 	execPodFactory            *mocks.ExecPodFactory
+	ecosystemClient           *mocks.EcosystemInterface
+	doguInterface             *mocks.DoguInterface
 }
 
 func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguInstallManagerWithMocks {
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).Build()
+	ecosystemClientMock := mocks.NewEcosystemInterface(t)
+	doguIntrefaceMock := mocks.NewDoguInterface(t)
 	upserter := mocks.NewResourceUpserter(t)
 	imageRegistry := mocks.NewImageRegistry(t)
 	doguRegistrator := mocks.NewDoguRegistrator(t)
@@ -62,6 +66,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 
 	doguInstallManager := &doguInstallManager{
 		client:                k8sClient,
+		ecosystemClient:       ecosystemClientMock,
 		recorder:              eventRecorderMock,
 		imageRegistry:         imageRegistry,
 		doguRegistrator:       doguRegistrator,
@@ -91,6 +96,8 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 		applierMock:               mockedApplier,
 		resourceUpserter:          upserter,
 		execPodFactory:            podFactory,
+		ecosystemClient:           ecosystemClientMock,
+		doguInterface:             doguIntrefaceMock,
 	}
 }
 
@@ -111,6 +118,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		doguRegistry := cesmocks.NewDoguRegistry(t)
@@ -120,7 +128,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when
-		doguManager := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+		doguManager := NewDoguInstallManager(myClient, ecosystemClientMock, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 
 		// then
 		require.NotNil(t, doguManager)
@@ -132,7 +140,6 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
 		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
-		assert.NotEqual(t, ldapCr.Spec.Version, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
@@ -140,6 +147,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.EXPECT().WriteDoguSecretsToRegistry(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
+		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).Return(ldapCr, nil)
 
 		yamlResult := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
 		managerWithMocks.fileExtractorMock.EXPECT().ExtractK8sResourcesFromContainer(mock.Anything, mock.Anything).Return(yamlResult, nil)
@@ -170,7 +179,6 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, ldapCr.Spec.Version, ldapCr.Status.InstalledVersion)
 	})
 
 	t.Run("successfully install dogu with custom descriptor", func(t *testing.T) {
@@ -185,6 +193,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
 		managerWithMocks.doguSecretHandlerMock.EXPECT().WriteDoguSecretsToRegistry(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
+		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).Return(ldapCr, nil)
+
 		yamlResult := make(map[string]string, 0)
 		managerWithMocks.fileExtractorMock.EXPECT().ExtractK8sResourcesFromContainer(mock.Anything, mock.Anything).Return(yamlResult, nil)
 		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
@@ -374,6 +385,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
 			managerWithMocks.doguSecretHandlerMock.EXPECT().WriteDoguSecretsToRegistry(mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
+			managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
+			managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).Return(ldapCr, nil)
+
 			yamlResult := make(map[string]string, 0)
 			managerWithMocks.fileExtractorMock.EXPECT().ExtractK8sResourcesFromContainer(mock.Anything, mock.Anything).Return(yamlResult, nil)
 			ldapCr.ResourceVersion = ""

@@ -188,6 +188,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	installManager := &doguInstallManager{
 		client:                k8sClient,
+		ecosystemClient:       ecosystemClientSet,
 		recorder:              eventRecorder,
 		resourceUpserter:      upserter,
 		resourceDoguFetcher:   remoteDoguFetcher,
@@ -237,10 +238,11 @@ var _ = ginkgo.BeforeSuite(func() {
 		ResourceDoguFetcher:   remoteDoguFetcher,
 	}
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder, ecosystemClientSet)
 
 	upgradeManager := &doguUpgradeManager{
 		client:              k8sClient,
+		ecosystemClient:     ecosystemClientSet,
 		eventRecorder:       eventRecorder,
 		premisesChecker:     upgradePremiseChecker,
 		localDoguFetcher:    localDoguFetcher,

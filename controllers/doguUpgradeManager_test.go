@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"context"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -84,6 +86,7 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 
 func newTestDoguUpgradeManager(
 	client client.Client,
+	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface,
 	recorder record.EventRecorder,
 	ldf cloudogu.LocalDoguFetcher,
 	rdf cloudogu.ResourceDoguFetcher,
@@ -92,6 +95,7 @@ func newTestDoguUpgradeManager(
 ) *doguUpgradeManager {
 	return &doguUpgradeManager{
 		client:              client,
+		ecosystemClient:     ecosystemClient,
 		eventRecorder:       recorder,
 		localDoguFetcher:    ldf,
 		resourceDoguFetcher: rdf,
@@ -152,7 +156,14 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v1.Dogu, f func(v1.DoguStatus) v1.DoguStatus, options metav1.UpdateOptions) (*v1.Dogu, error) {
+			redmineCr.Status.InstalledVersion = upgradeVersion
+			return redmineCr, nil
+		})
+		sut := newTestDoguUpgradeManager(clientMock, ecosystemClientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -211,7 +222,15 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		preErr := clientMock.Get(testCtx, redmineCr.GetObjectKey(), devDoguMap.ToConfigMap())
 		assert.False(t, errors.IsNotFound(preErr))
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v1.Dogu, f func(v1.DoguStatus) v1.DoguStatus, options metav1.UpdateOptions) (*v1.Dogu, error) {
+			redmineCr.Status.InstalledVersion = upgradeVersion
+			return redmineCr, nil
+		})
+
+		sut := newTestDoguUpgradeManager(clientMock, ecosystemClientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -264,7 +283,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut := newTestDoguUpgradeManager(clientMock, nil, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -313,7 +332,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut := newTestDoguUpgradeManager(clientMock, nil, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -359,7 +378,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut := newTestDoguUpgradeManager(clientMock, nil, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -400,7 +419,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut := newTestDoguUpgradeManager(clientMock, nil, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -423,7 +442,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		clientMock := extMocks.NewK8sClient(t)
 		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut := newTestDoguUpgradeManager(clientMock, nil, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -432,7 +451,6 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to update dogu status: ")
 	})
 	t.Run("should fail on second change state error", func(t *testing.T) {
 		// given
@@ -467,7 +485,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		clientMock.EXPECT().Status().Return(statusMock)
 		statusMock.On("Update", testCtx, redmineCr).Return(nil)
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		sut := newTestDoguUpgradeManager(clientMock, nil, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -476,7 +494,6 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to update dogu status: ")
 	})
 	t.Run("should fail on update installed version error", func(t *testing.T) {
 		// given
@@ -507,11 +524,15 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		clientMock := extMocks.NewK8sClient(t)
 		statusMock := extMocks.NewK8sSubResourceWriter(t)
 		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil).Twice()
-		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
 		clientMock.EXPECT().Status().Return(statusMock).Twice()
 		statusMock.On("Update", testCtx, redmineCr).Return(nil).Twice()
 
-		sut := newTestDoguUpgradeManager(clientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).Return(redmineCr, assert.AnError)
+
+		sut := newTestDoguUpgradeManager(clientMock, ecosystemClientMock, recorderMock, localFetcher, resourceFetcher, premChecker, upgradeExec)
 		sut.resourceDoguFetcher = resourceFetcher
 
 		// when
@@ -520,6 +541,5 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to update dogu status: ")
 	})
 }

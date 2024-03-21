@@ -3,9 +3,6 @@ package v1_test
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/mock"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"testing"
 	"time"
 

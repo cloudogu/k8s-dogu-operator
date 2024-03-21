@@ -89,7 +89,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, fmt.Errorf("could not create manager set: %w", err)
 	}
 
-	installManager := NewDoguInstallManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	installManager := NewDoguInstallManager(client, ecosystemClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}

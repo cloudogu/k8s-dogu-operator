@@ -3,9 +3,11 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,6 +36,7 @@ const preUpgradeScriptDir = "/tmp/pre-upgrade"
 
 type upgradeExecutor struct {
 	client                client.Client
+	ecosystemClient       ecoSystem.EcoSystemV1Alpha1Interface
 	eventRecorder         record.EventRecorder
 	imageRegistry         cloudogu.ImageRegistry
 	collectApplier        cloudogu.CollectApplier
@@ -46,9 +49,15 @@ type upgradeExecutor struct {
 }
 
 // NewUpgradeExecutor creates a new upgrade executor.
-func NewUpgradeExecutor(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *upgradeExecutor {
+func NewUpgradeExecutor(
+	client client.Client,
+	mgrSet *util.ManagerSet,
+	eventRecorder record.EventRecorder,
+	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface,
+) *upgradeExecutor {
 	return &upgradeExecutor{
 		client:                client,
+		ecosystemClient:       ecosystemClient,
 		eventRecorder:         eventRecorder,
 		imageRegistry:         mgrSet.ImageRegistry,
 		collectApplier:        mgrSet.CollectApplier,
@@ -361,7 +370,11 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter clo
 }
 
 func (ue *upgradeExecutor) setHealthStatusUnavailable(ctx context.Context, toDoguResource *k8sv1.Dogu) error {
-	err := toDoguResource.UpdateStatusWithRetry(ctx, ue.client, func(d *k8sv1.Dogu) { d.Status.Health = k8sv1.UnavailableHealthStatus })
+	toDoguResource, err := ue.ecosystemClient.Dogus(toDoguResource.Namespace).UpdateStatusWithRetry(ctx, toDoguResource,
+		func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+			status.Health = k8sv1.UnavailableHealthStatus
+			return status
+		}, metav1.UpdateOptions{})
 	if err != nil {
 		message := fmt.Sprintf("failed to update dogu %q with health status %q", toDoguResource.Spec.Name, k8sv1.UnavailableHealthStatus)
 		ue.eventRecorder.Event(toDoguResource, corev1.EventTypeWarning, EventReason, message)

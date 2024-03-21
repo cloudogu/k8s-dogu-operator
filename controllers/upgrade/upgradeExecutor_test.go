@@ -51,6 +51,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			Build()
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		imageRegMock := mocks.NewImageRegistry(t)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		k8sFileEx := mocks.NewFileExtractor(t)
@@ -69,7 +70,7 @@ func TestNewUpgradeExecutor(t *testing.T) {
 		}
 
 		// when
-		actual := NewUpgradeExecutor(myClient, mgrSet, eventRecorder)
+		actual := NewUpgradeExecutor(myClient, mgrSet, eventRecorder, ecosystemClientMock)
 
 		// then
 		require.NotNil(t, actual)
@@ -167,8 +168,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		execPodFactory := mocks.NewExecPodFactory(t)
 		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			toDoguResource.Status.Health = k8sv1.UnavailableHealthStatus
+			return toDoguResource, nil
+		})
+
 		sut := &upgradeExecutor{
 			client:                myClient,
+			ecosystemClient:       ecosystemClientMock,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
 			k8sFileExtractor:      k8sFileEx,
@@ -261,8 +271,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		execPodFactory := mocks.NewExecPodFactory(t)
 		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			toDoguResource.Status.Health = k8sv1.UnavailableHealthStatus
+			return toDoguResource, nil
+		})
+
 		sut := &upgradeExecutor{
 			client:                myClient,
+			ecosystemClient:       ecosystemClientMock,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
 			k8sFileExtractor:      k8sFileEx,
@@ -641,8 +660,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			execPodFactory := mocks.NewExecPodFactory(t)
 			execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
+			ecosystemClientMock := mocks.NewEcosystemInterface(t)
+			doguClientMock := mocks.NewDoguInterface(t)
+			ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+			doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+				toDoguResource.Status.Health = k8sv1.UnavailableHealthStatus
+				return toDoguResource, nil
+			})
+
 			sut := &upgradeExecutor{
 				client:                myClient,
+				ecosystemClient:       ecosystemClientMock,
 				imageRegistry:         imageRegMock,
 				collectApplier:        applier,
 				k8sFileExtractor:      k8sFileEx,
@@ -736,8 +764,17 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		execPodFactory := mocks.NewExecPodFactory(t)
 		execPodFactory.On("NewExecPod", toDoguResource, toDogu).Return(execPod, nil)
 
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			toDoguResource.Status.Health = k8sv1.UnavailableHealthStatus
+			return toDoguResource, nil
+		})
+
 		sut := &upgradeExecutor{
 			client:                myClient,
+			ecosystemClient:       ecosystemClientMock,
 			imageRegistry:         imageRegMock,
 			collectApplier:        applier,
 			k8sFileExtractor:      k8sFileEx,
@@ -1790,18 +1827,20 @@ func Test_upgradeExecutor_setHealthStatusUnavailable(t *testing.T) {
 		// given
 		toDoguResource := readTestDataRedmineCr(t)
 
-		clientMock := extMocks.NewK8sClient(t)
-		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
-
 		errMessage := fmt.Sprintf("failed to update dogu %q with health status %q", toDoguResource.Spec.Name, k8sv1.UnavailableHealthStatus)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 		eventRecorder.
 			On("Event", toDoguResource, corev1.EventTypeWarning, EventReason, errMessage).Once()
 
+		ecosystemClientMock := mocks.NewEcosystemInterface(t)
+		doguClientMock := mocks.NewDoguInterface(t)
+		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, toDoguResource, mock.Anything, mock.Anything).Return(toDoguResource, assert.AnError)
+
 		sut := &upgradeExecutor{
-			client:        clientMock,
-			eventRecorder: eventRecorder,
+			ecosystemClient: ecosystemClientMock,
+			eventRecorder:   eventRecorder,
 		}
 
 		// when
