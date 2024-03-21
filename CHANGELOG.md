@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - [#152] The health routine no longer marks a dogu as available if the deployment was scaled to 0.
 - [#153] Fix dogu status of restart routine.
+- [#167] Select dogu restart resources pro dogu for garbage collection.
 
 ## [v0.41.0] - 2024-01-23
 ### Changed

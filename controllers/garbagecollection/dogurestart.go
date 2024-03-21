@@ -114,14 +114,14 @@ func (r *DoguRestartGarbageCollector) getDoguRestartsForDogu(ctx context.Context
 		return nil, fmt.Errorf("failed to list dogu restarts for dogu %q: %w", doguName, err)
 	}
 
-	var items []k8sv1.DoguRestart
+	var restartsForDogu []k8sv1.DoguRestart
 	for _, item := range list.Items {
 		if item.Spec.DoguName == doguName {
-			items = append(items, item)
+			restartsForDogu = append(restartsForDogu, item)
 		}
 	}
 
-	return list.Items, nil
+	return restartsForDogu, nil
 }
 
 func (r *DoguRestartGarbageCollector) garbageCollectionDisabled() (bool, error) {

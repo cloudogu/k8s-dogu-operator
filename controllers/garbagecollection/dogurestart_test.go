@@ -107,6 +107,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 	t.Run("Should keep last 3 successful resources for dogu (default)", func(t *testing.T) {
 		// given
 		doguName := "ldap"
+		otherDoguName := "cas"
 		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
 
 		now := metav1.Now()
@@ -118,6 +119,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
 				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseCompleted, now.Add(time.Second*5)),
 				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseCompleted, now.Add(time.Second*4)),
+				getDoguRestartWithCreationTimestamp(otherDoguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
 			},
 		}
 
@@ -134,9 +136,59 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("Should keep last n successful and failed resources for different dogus", func(t *testing.T) {
+		// given
+		envErr := os.Setenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT", "1")
+		require.NoError(t, envErr)
+
+		defer func() {
+			unsetErr := os.Unsetenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT")
+			require.NoError(t, unsetErr)
+		}()
+
+		envErr = os.Setenv("DOGU_RESTART_FAILED_HISTORY_LIMIT", "1")
+		require.NoError(t, envErr)
+
+		defer func() {
+			unsetErr := os.Unsetenv("DOGU_RESTART_FAILED_HISTORY_LIMIT")
+			require.NoError(t, unsetErr)
+		}()
+
+		doguName := "ldap"
+		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+
+		now := metav1.Now()
+
+		restartList := &v1.DoguRestartList{
+			Items: []v1.DoguRestart{
+				getDoguRestartWithCreationTimestamp(doguName, "3", v1.RestartStatusPhaseCompleted, now.Add(time.Second*3)),
+				getDoguRestartWithCreationTimestamp(doguName, "2", v1.RestartStatusPhaseCompleted, now.Add(time.Second*2)),
+				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
+				getDoguRestartWithCreationTimestamp(doguName, "6", v1.RestartStatusPhaseFailedGetDogu, now.Add(time.Second*3)),
+				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseFailedStart, now.Add(time.Second*2)),
+				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseFailedStop, now.Add(time.Second)),
+			},
+		}
+
+		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(restartList, nil).Times(1)
+		doguRestartInterfaceMock.EXPECT().Delete(testCtx, fmt.Sprintf("%s-1", doguName), metav1.DeleteOptions{}).Return(nil)
+		doguRestartInterfaceMock.EXPECT().Delete(testCtx, fmt.Sprintf("%s-2", doguName), metav1.DeleteOptions{}).Return(nil)
+		doguRestartInterfaceMock.EXPECT().Delete(testCtx, fmt.Sprintf("%s-4", doguName), metav1.DeleteOptions{}).Return(nil)
+		doguRestartInterfaceMock.EXPECT().Delete(testCtx, fmt.Sprintf("%s-5", doguName), metav1.DeleteOptions{}).Return(nil)
+
+		sut := DoguRestartGarbageCollector{doguRestartInterface: doguRestartInterfaceMock}
+
+		// when
+		err := sut.DoGarbageCollection(testCtx, doguName)
+
+		// then
+		require.NoError(t, err)
+	})
+
 	t.Run("Should keep last 3 failed resources for dogu (default)", func(t *testing.T) {
 		// given
 		doguName := "ldap"
+		otherDoguName := "cas"
 		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
 
 		now := metav1.Now()
@@ -148,6 +200,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseFailedStart, now.Add(time.Second)),
 				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseFailedStop, now.Add(time.Second*5)),
 				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseFailedStop, now.Add(time.Second*4)),
+				getDoguRestartWithCreationTimestamp(otherDoguName, "1", v1.RestartStatusPhaseFailedStop, now.Add(time.Second)),
 			},
 		}
 
