@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#151] Add new CRD `DoguRestart` to trigger a dogu restart.
   - The reconciler uses the `stopped` field from the Dogu.
 - [#159] Manage Service Accounts provided by components
+- [#162] Add start and shutdown handler to refresh the dogu health states.
 
 ### Changed
 - [#154] Only accept dogu volume sizes in binary format.
