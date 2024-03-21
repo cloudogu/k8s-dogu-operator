@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The reconciler uses the `stopped` field from the Dogu.
 - [#159] Manage Service Accounts provided by components
 - [#162] Add start and shutdown handler to refresh the dogu health states.
+- [#158] Add installed version to dogus status to be able to check the exact state of the dogu.
 
 ### Changed
 - [#154] Only accept dogu volume sizes in binary format.
