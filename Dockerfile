@@ -38,7 +38,7 @@ RUN make compile-generic
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="1.0.0"
+      VERSION="1.0.1"
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .
