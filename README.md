@@ -10,7 +10,6 @@ The Cloudogu EcoSystem is an open platform, which lets you choose how and where 
 Want to talk to the Cloudogu team? Need help or support? There are several ways to get in touch with us:
 
 * [Website](https://cloudogu.com)
-* [myCloudogu-Forum](https://forum.cloudogu.com/topic/34?ctx=1)
 * [Email hello@cloudogu.com](mailto:hello@cloudogu.com)
 
 ---
