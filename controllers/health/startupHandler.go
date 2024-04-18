@@ -29,9 +29,8 @@ func NewStartupHandler(doguInterface cloudogu.DoguInterface, deploymentInterface
 }
 
 func (s *StartupHandler) Start(ctx context.Context) error {
-	log.FromContext(ctx).
-		WithName("health startup handler").
-		Info("updating health of all dogus on startup")
+	logger := log.FromContext(ctx)
+	logger.WithName("health startup handler").Info("updating health of all dogus on startup")
 
 	list, err := s.doguInterface.List(ctx, metav1.ListOptions{})
 	if err != nil {
