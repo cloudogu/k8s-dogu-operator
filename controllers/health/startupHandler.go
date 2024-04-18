@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -39,13 +40,19 @@ func (s *StartupHandler) Start(ctx context.Context) error {
 
 	var errs []error
 	for _, dogu := range list.Items {
+		var statusErr error
 		deployment, deployErr := s.deploymentInterface.Get(ctx, dogu.Name, metav1.GetOptions{})
 		if deployErr != nil {
-			errs = append(errs, fmt.Errorf("failed to get deployment %q: %w", dogu.Name, deployErr))
-			continue
+			if !apierrors.IsNotFound(deployErr) {
+				errs = append(errs, fmt.Errorf("failed to get deployment %q: %w", dogu.Name, deployErr))
+			} else {
+				logger.Error(deployErr, "no deployment found for dogu: %s", dogu.Name)
+			}
+			statusErr = s.doguHealthStatusUpdater.UpdateStatus(ctx, types.NamespacedName{Name: dogu.Name, Namespace: dogu.Namespace}, false)
+		} else {
+			doguAvailable := s.availabilityChecker.IsAvailable(deployment)
+			statusErr = s.doguHealthStatusUpdater.UpdateStatus(ctx, types.NamespacedName{Name: dogu.Name, Namespace: dogu.Namespace}, doguAvailable)
 		}
-		doguAvailable := s.availabilityChecker.IsAvailable(deployment)
-		statusErr := s.doguHealthStatusUpdater.UpdateStatus(ctx, types.NamespacedName{Name: deployment.Name, Namespace: deployment.Namespace}, doguAvailable)
 		if statusErr != nil {
 			errs = append(errs, fmt.Errorf("failed to refresh health status of %q: %w", dogu.Name, statusErr))
 		}
