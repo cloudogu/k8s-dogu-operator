@@ -43,10 +43,10 @@ func (s *StartupHandler) Start(ctx context.Context) error {
 		var statusErr error
 		deployment, deployErr := s.deploymentInterface.Get(ctx, dogu.Name, metav1.GetOptions{})
 		if deployErr != nil {
-			if !apierrors.IsNotFound(deployErr) {
-				errs = append(errs, fmt.Errorf("failed to get deployment %q: %w", dogu.Name, deployErr))
-			} else {
+			if apierrors.IsNotFound(deployErr) {
 				logger.Error(deployErr, "no deployment found for dogu: %s", dogu.Name)
+			} else {
+				errs = append(errs, fmt.Errorf("failed to get deployment %q: %w", dogu.Name, deployErr))
 			}
 			statusErr = s.doguHealthStatusUpdater.UpdateStatus(ctx, types.NamespacedName{Name: dogu.Name, Namespace: dogu.Namespace}, false)
 		} else {
