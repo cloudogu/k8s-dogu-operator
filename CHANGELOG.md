@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - [#171] Fix unnecessary creation of dogu PVCs.
+- [#173] Fix start dogu-operator if dogu-cr is in cluster without a deployment
 
 ### Changed
 - [#171] Only create PVCs for dogus with volumes that need backup.

@@ -74,7 +74,7 @@ crd-helm-package: crd-helm-delete-existing-tgz ${HELM_CRD_RELEASE_TGZ} ## Genera
 
 .PHONY: crd-helm-delete-existing-tgz
 crd-helm-delete-existing-tgz: ## Remove an existing Helm CRD package.
-	@rm -f ${HELM_CRD_RELEASE_TGZ}*
+	@rm -f ${HELM_CRD_TARGET_DIR}/${ARTIFACT_CRD_ID}-*.tgz
 
 ${HELM_CRD_RELEASE_TGZ}: ${BINARY_HELM} crd-helm-generate ## Generates and packages the Helm CRD chart.
 	@echo "Package generated helm crd-chart"
