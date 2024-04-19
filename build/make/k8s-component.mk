@@ -115,7 +115,7 @@ ${HELM_RELEASE_TGZ}: ${BINARY_HELM} ${HELM_TARGET_DIR}/Chart.yaml ${HELM_POST_GE
 .PHONY: helm-delete-existing-tgz
 helm-delete-existing-tgz: ## Remove an existing Helm package from the target directory.
 	@echo "Delete ${HELM_RELEASE_TGZ}*"
-	@rm -f ${HELM_RELEASE_TGZ}*
+	@rm -f ${HELM_TARGET_DIR}/${ARTIFACT_ID}-*.tgz
 
 ##@ K8s - Helm lint targets
 

@@ -11,7 +11,7 @@ BINARY_YQ_4_VERSION?=v4.40.3
 BINARY_HELM = $(UTILITY_BIN_PATH)/helm
 BINARY_HELM_VERSION?=v3.13.0
 CONTROLLER_GEN = $(UTILITY_BIN_PATH)/controller-gen
-CONTROLLER_GEN_VERSION?=v0.13.0
+CONTROLLER_GEN_VERSION?=v0.14.0
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
