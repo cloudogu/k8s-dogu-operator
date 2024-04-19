@@ -112,6 +112,9 @@ func TestStartupHandler_Start(t *testing.T) {
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, assert.AnError)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "ldap", metav1.GetOptions{}).Return(nil, assert.AnError)
 
+		healthUpdaterMock.EXPECT().UpdateStatus(testCtx, types.NamespacedName{Name: casDogu.Name, Namespace: casDogu.Namespace}, false).Return(nil)
+		healthUpdaterMock.EXPECT().UpdateStatus(testCtx, types.NamespacedName{Name: ldapDogu.Name, Namespace: ldapDogu.Namespace}, false).Return(nil)
+
 		sut := StartupHandler{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, availabilityChecker: availabilityCheckerMock, doguHealthStatusUpdater: healthUpdaterMock}
 
 		// when
