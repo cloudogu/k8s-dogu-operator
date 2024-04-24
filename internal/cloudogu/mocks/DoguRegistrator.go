@@ -24,13 +24,13 @@ func (_m *DoguRegistrator) EXPECT() *DoguRegistrator_Expecter {
 	return &DoguRegistrator_Expecter{mock: &_m.Mock}
 }
 
-// RegisterDoguVersion provides a mock function with given fields: dogu
-func (_m *DoguRegistrator) RegisterDoguVersion(dogu *core.Dogu) error {
-	ret := _m.Called(dogu)
+// RegisterDoguVersion provides a mock function with given fields: ctx, dogu
+func (_m *DoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core.Dogu) error {
+	ret := _m.Called(ctx, dogu)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*core.Dogu) error); ok {
-		r0 = rf(dogu)
+	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu) error); ok {
+		r0 = rf(ctx, dogu)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,14 +44,15 @@ type DoguRegistrator_RegisterDoguVersion_Call struct {
 }
 
 // RegisterDoguVersion is a helper method to define mock.On call
+//   - ctx context.Context
 //   - dogu *core.Dogu
-func (_e *DoguRegistrator_Expecter) RegisterDoguVersion(dogu interface{}) *DoguRegistrator_RegisterDoguVersion_Call {
-	return &DoguRegistrator_RegisterDoguVersion_Call{Call: _e.mock.On("RegisterDoguVersion", dogu)}
+func (_e *DoguRegistrator_Expecter) RegisterDoguVersion(ctx interface{}, dogu interface{}) *DoguRegistrator_RegisterDoguVersion_Call {
+	return &DoguRegistrator_RegisterDoguVersion_Call{Call: _e.mock.On("RegisterDoguVersion", ctx, dogu)}
 }
 
-func (_c *DoguRegistrator_RegisterDoguVersion_Call) Run(run func(dogu *core.Dogu)) *DoguRegistrator_RegisterDoguVersion_Call {
+func (_c *DoguRegistrator_RegisterDoguVersion_Call) Run(run func(ctx context.Context, dogu *core.Dogu)) *DoguRegistrator_RegisterDoguVersion_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*core.Dogu))
+		run(args[0].(context.Context), args[1].(*core.Dogu))
 	})
 	return _c
 }
@@ -61,7 +62,7 @@ func (_c *DoguRegistrator_RegisterDoguVersion_Call) Return(_a0 error) *DoguRegis
 	return _c
 }
 
-func (_c *DoguRegistrator_RegisterDoguVersion_Call) RunAndReturn(run func(*core.Dogu) error) *DoguRegistrator_RegisterDoguVersion_Call {
+func (_c *DoguRegistrator_RegisterDoguVersion_Call) RunAndReturn(run func(context.Context, *core.Dogu) error) *DoguRegistrator_RegisterDoguVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -110,13 +111,13 @@ func (_c *DoguRegistrator_RegisterNewDogu_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// UnregisterDogu provides a mock function with given fields: dogu
-func (_m *DoguRegistrator) UnregisterDogu(dogu string) error {
-	ret := _m.Called(dogu)
+// UnregisterDogu provides a mock function with given fields: ctx, dogu
+func (_m *DoguRegistrator) UnregisterDogu(ctx context.Context, dogu string) error {
+	ret := _m.Called(ctx, dogu)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(dogu)
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, dogu)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -130,14 +131,15 @@ type DoguRegistrator_UnregisterDogu_Call struct {
 }
 
 // UnregisterDogu is a helper method to define mock.On call
+//   - ctx context.Context
 //   - dogu string
-func (_e *DoguRegistrator_Expecter) UnregisterDogu(dogu interface{}) *DoguRegistrator_UnregisterDogu_Call {
-	return &DoguRegistrator_UnregisterDogu_Call{Call: _e.mock.On("UnregisterDogu", dogu)}
+func (_e *DoguRegistrator_Expecter) UnregisterDogu(ctx interface{}, dogu interface{}) *DoguRegistrator_UnregisterDogu_Call {
+	return &DoguRegistrator_UnregisterDogu_Call{Call: _e.mock.On("UnregisterDogu", ctx, dogu)}
 }
 
-func (_c *DoguRegistrator_UnregisterDogu_Call) Run(run func(dogu string)) *DoguRegistrator_UnregisterDogu_Call {
+func (_c *DoguRegistrator_UnregisterDogu_Call) Run(run func(ctx context.Context, dogu string)) *DoguRegistrator_UnregisterDogu_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -147,7 +149,7 @@ func (_c *DoguRegistrator_UnregisterDogu_Call) Return(_a0 error) *DoguRegistrato
 	return _c
 }
 
-func (_c *DoguRegistrator_UnregisterDogu_Call) RunAndReturn(run func(string) error) *DoguRegistrator_UnregisterDogu_Call {
+func (_c *DoguRegistrator_UnregisterDogu_Call) RunAndReturn(run func(context.Context, string) error) *DoguRegistrator_UnregisterDogu_Call {
 	_c.Call.Return(run)
 	return _c
 }

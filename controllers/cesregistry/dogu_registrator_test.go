@@ -322,7 +322,7 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
 
 		// when
-		err := registrator.RegisterDoguVersion(ldapDogu)
+		err := registrator.RegisterDoguVersion(nil, ldapDogu)
 
 		// then
 		require.NoError(t, err)
@@ -337,7 +337,7 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
 
 		// when
-		err := registrator.RegisterDoguVersion(ldapDogu)
+		err := registrator.RegisterDoguVersion(nil, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -354,7 +354,7 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
 
 		// when
-		err := registrator.RegisterDoguVersion(ldapDogu)
+		err := registrator.RegisterDoguVersion(nil, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -371,7 +371,7 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		registrator := NewCESDoguRegistrator(nil, registryMock, nil)
 
 		// when
-		err := registrator.RegisterDoguVersion(ldapDogu)
+		err := registrator.RegisterDoguVersion(nil, ldapDogu)
 
 		// then
 		require.Error(t, err)
@@ -394,7 +394,7 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, &mocks.SecretResourceGenerator{})
 
 		// when
-		err := registrator.UnregisterDogu("ldap")
+		err := registrator.UnregisterDogu(nil, "ldap")
 
 		// then
 		require.NoError(t, err)
@@ -413,7 +413,7 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, &mocks.SecretResourceGenerator{})
 
 		// when
-		err := registrator.UnregisterDogu("ldap")
+		err := registrator.UnregisterDogu(nil, "ldap")
 
 		// then
 		require.Error(t, err)
@@ -435,7 +435,7 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 		registrator := NewCESDoguRegistrator(client, registryMock, &mocks.SecretResourceGenerator{})
 
 		// when
-		err := registrator.UnregisterDogu("ldap")
+		err := registrator.UnregisterDogu(nil, "ldap")
 
 		// then
 		require.Error(t, err)

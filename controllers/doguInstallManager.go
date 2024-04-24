@@ -17,8 +17,6 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
@@ -47,18 +45,16 @@ type doguInstallManager struct {
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
-func NewDoguInstallManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguInstallManager {
-	dependencyValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
-
+func NewDoguInstallManager(client client.Client, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguInstallManager {
 	return &doguInstallManager{
 		client:                client,
-		ecosystemClient:       ecosystemClient,
+		ecosystemClient:       mgrSet.EcosystemClient,
 		recorder:              eventRecorder,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,
 		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
 		imageRegistry:         mgrSet.ImageRegistry,
 		doguRegistrator:       mgrSet.DoguRegistrator,
-		dependencyValidator:   dependencyValidator,
+		dependencyValidator:   mgrSet.DependencyValidator,
 		serviceAccountCreator: mgrSet.ServiceAccountCreator,
 		doguSecretHandler:     resource.NewDoguSecretsWriter(client, cesRegistry),
 		fileExtractor:         mgrSet.FileExtractor,

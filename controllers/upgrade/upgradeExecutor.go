@@ -147,7 +147,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Do
 }
 
 func registerUpgradedDoguVersion(cesreg cloudogu.DoguRegistrator, toDogu *core.Dogu) error {
-	err := cesreg.RegisterDoguVersion(toDogu)
+	err := cesreg.RegisterDoguVersion(nil, toDogu)
 	if err != nil {
 		return fmt.Errorf("failed to register upgrade: %w", err)
 	}

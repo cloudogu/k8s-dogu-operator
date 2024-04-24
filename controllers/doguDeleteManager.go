@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"k8s.io/client-go/kubernetes"
-
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -33,12 +31,12 @@ type doguDeleteManager struct {
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder, clientSet kubernetes.Interface) *doguDeleteManager {
+func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,
 		doguRegistrator:       mgrSet.DoguRegistrator,
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client, clientSet, operatorConfig.Namespace),
+		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.LocalDoguRegistry, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
 		eventRecorder:         recorder,
 	}
@@ -53,7 +51,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, err := m.localDoguFetcher.FetchInstalled(doguResource.Name)
+	dogu, err := m.localDoguFetcher.FetchInstalled(ctx, doguResource.Name)
 	if err != nil {
 		logger.Error(err, "failed to fetch installed dogu ")
 	}
@@ -66,7 +64,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		}
 
 		logger.Info("Unregister dogu...")
-		err = m.doguRegistrator.UnregisterDogu(doguResource.Name)
+		err = m.doguRegistrator.UnregisterDogu(nil, doguResource.Name)
 		if err != nil {
 			logger.Error(err, "failed to unregister dogu")
 		}

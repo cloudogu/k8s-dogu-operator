@@ -1,4 +1,4 @@
-package cesregistry
+package localregistry
 
 import (
 	"context"
@@ -19,13 +19,12 @@ import (
 )
 
 type ClusterNativeLocalDoguRegistry struct {
-	namespace       string
 	doguClient      ecoSystem.DoguInterface
 	configMapClient corev1client.ConfigMapInterface
 }
 
-func getConfigMapName(doguName QualifiedDoguName) string {
-	return fmt.Sprintf("dogu-spec-%s-%s", doguName.Namespace, doguName.SimpleName)
+func getConfigMapName(dogu *core.Dogu) string {
+	return fmt.Sprintf("dogu-spec-%s-%s", dogu.GetNamespace(), dogu.GetSimpleName())
 }
 
 // Enable makes the dogu spec reachable
@@ -37,7 +36,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) Enable(ctx context.Context, dogu *cor
 			return fmt.Errorf("failed to get dogu cr %q: %w", dogu.Name, err)
 		}
 
-		doguResource.Status.SpecLocation = getConfigMapName(QualifiedName(dogu))
+		doguResource.Status.SpecLocation = getConfigMapName(dogu)
 		_, err = cmr.doguClient.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to update spec location in status of dogu cr %q: %w", dogu.Name, err)
@@ -56,7 +55,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *c
 		jsonErr = fmt.Errorf("failed to serialize dogu.json of %q: %w", dogu.Name, jsonErr)
 	}
 
-	configMapName := getConfigMapName(QualifiedName(dogu))
+	configMapName := getConfigMapName(dogu)
 	return retry.OnConflict(func() error {
 		specConfigMap, getErr := cmr.configMapClient.Get(ctx, configMapName, metav1.GetOptions{})
 		if client.IgnoreNotFound(getErr) != nil {
@@ -70,8 +69,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *c
 		if k8sErrs.IsNotFound(getErr) {
 			specConfigMap = &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      configMapName,
-					Namespace: cmr.namespace,
+					Name: configMapName,
 					Labels: map[string]string{
 						"app":       "ces",
 						"dogu.name": dogu.GetSimpleName(),
@@ -102,30 +100,35 @@ func (cmr *ClusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *c
 //
 // Deletes the backing ConfigMap. Resetting the specLocation field in the dogu resource's status is not necessary
 // as the resource will either be deleted or the field will be overwritten.
-func (cmr *ClusterNativeLocalDoguRegistry) UnregisterAllVersions(ctx context.Context, name QualifiedDoguName) error {
-	err := cmr.configMapClient.Delete(ctx, getConfigMapName(name), metav1.DeleteOptions{})
+func (cmr *ClusterNativeLocalDoguRegistry) UnregisterAllVersions(ctx context.Context, doguName string) error {
+	doguResource, err := cmr.doguClient.Get(ctx, doguName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get CR for dogu %q: %w", doguName, err)
+	}
+
+	err = cmr.configMapClient.Delete(ctx, doguResource.Status.SpecLocation, metav1.DeleteOptions{})
 	if client.IgnoreNotFound(err) != nil {
-		return fmt.Errorf("failed to delete local registry for dogu %q: %w", name, err)
+		return fmt.Errorf("failed to delete local registry for dogu %q: %w", doguName, err)
 	}
 
 	return nil
 }
 
 // Reregister adds the new dogu spec to the local registry, enables it, and deletes all specs referenced by the old dogu name.
-func (cmr *ClusterNativeLocalDoguRegistry) Reregister(ctx context.Context, oldName QualifiedDoguName, newDogu *core.Dogu) error {
-	err := cmr.Register(ctx, newDogu)
+func (cmr *ClusterNativeLocalDoguRegistry) Reregister(ctx context.Context, dogu *core.Dogu) error {
+	err := cmr.UnregisterAllVersions(ctx, dogu.GetSimpleName())
 	if err != nil {
-		return fmt.Errorf("failed to reregister new version of dogu %q: %w", newDogu.Name, err)
+		return fmt.Errorf("failed to unregister old versions of dogu %q: %w", dogu.GetSimpleName(), err)
 	}
 
-	err = cmr.Enable(ctx, newDogu)
+	err = cmr.Register(ctx, dogu)
 	if err != nil {
-		return fmt.Errorf("failed to enable new version of dogu %q: %w", newDogu.Name, err)
+		return fmt.Errorf("failed to reregister new version of dogu %q: %w", dogu.Name, err)
 	}
 
-	err = cmr.UnregisterAllVersions(ctx, oldName)
+	err = cmr.Enable(ctx, dogu)
 	if err != nil {
-		return fmt.Errorf("failed to unregister old versions of dogu %q: %w", oldName, err)
+		return fmt.Errorf("failed to enable new version of dogu %q: %w", dogu.Name, err)
 	}
 
 	return nil
@@ -133,10 +136,10 @@ func (cmr *ClusterNativeLocalDoguRegistry) Reregister(ctx context.Context, oldNa
 
 // GetCurrent retrieves the spec of the referenced dogu's currently installed version
 // through the ConfigMap referenced in the specLocation field of the dogu resource's status.
-func (cmr *ClusterNativeLocalDoguRegistry) GetCurrent(ctx context.Context, name QualifiedDoguName) (*core.Dogu, error) {
-	doguResource, err := cmr.doguClient.Get(ctx, name.SimpleName, metav1.GetOptions{})
+func (cmr *ClusterNativeLocalDoguRegistry) GetCurrent(ctx context.Context, simpleDoguName string) (*core.Dogu, error) {
+	doguResource, err := cmr.doguClient.Get(ctx, simpleDoguName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get CR for dogu %q: %w", name, err)
+		return nil, fmt.Errorf("failed to get CR for dogu %q: %w", simpleDoguName, err)
 	}
 
 	return cmr.getCurrentByDoguResource(ctx, doguResource)
@@ -185,10 +188,10 @@ func (cmr *ClusterNativeLocalDoguRegistry) GetCurrentOfAll(ctx context.Context) 
 
 // IsEnabled checks if the current spec of the referenced dogu is reachable
 // by verifying that the specLocation field in the dogu resource's status is set.
-func (cmr *ClusterNativeLocalDoguRegistry) IsEnabled(ctx context.Context, name QualifiedDoguName) (bool, error) {
-	doguResource, err := cmr.doguClient.Get(ctx, name.SimpleName, metav1.GetOptions{})
+func (cmr *ClusterNativeLocalDoguRegistry) IsEnabled(ctx context.Context, simpleDoguName string) (bool, error) {
+	doguResource, err := cmr.doguClient.Get(ctx, simpleDoguName, metav1.GetOptions{})
 	if err != nil {
-		return false, fmt.Errorf("failed to get CR for dogu %q: %w", name, err)
+		return false, fmt.Errorf("failed to get CR for dogu %q: %w", simpleDoguName, err)
 	}
 
 	return doguResource.Status.SpecLocation != "", nil

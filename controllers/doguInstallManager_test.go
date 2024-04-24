@@ -130,7 +130,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when
-		doguManager := NewDoguInstallManager(myClient, ecosystemClientMock, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+		doguManager := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 
 		// then
 		require.NotNil(t, doguManager)

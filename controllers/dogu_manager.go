@@ -84,22 +84,22 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
 	}
 
-	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, operatorConfig, cesRegistry, applier, additionalImages)
+	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, ecosystemClient, operatorConfig, cesRegistry, applier, additionalImages)
 	if err != nil {
 		return nil, fmt.Errorf("could not create manager set: %w", err)
 	}
 
-	installManager := NewDoguInstallManager(client, ecosystemClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	installManager := NewDoguInstallManager(client, cesRegistry, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}
 
-	upgradeManager := NewDoguUpgradeManager(client, ecosystemClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	upgradeManager := NewDoguUpgradeManager(client, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}
 
-	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder, clientSet)
+	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}

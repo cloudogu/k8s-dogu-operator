@@ -29,7 +29,7 @@ func TestNewManagerSet(t *testing.T) {
 		var addImages map[string]string
 
 		// when
-		actual, err := NewManagerSet(restConfig, client, clientSet, opConfig, reg, applier, addImages)
+		actual, err := NewManagerSet(restConfig, client, clientSet, nil, opConfig, reg, applier, addImages)
 
 		// then
 		require.NoError(t, err)

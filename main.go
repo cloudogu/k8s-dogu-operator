@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/garbagecollection"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	"os"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -207,6 +208,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 	if err != nil {
 		return fmt.Errorf("failed to create CES registry: %w", err)
 	}
+	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(ecosystemClientSet.Dogus(operatorConfig.Namespace), k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), cesReg)
 
 	doguManager, err := controllers.NewManager(
 		k8sManager.GetClient(),
@@ -225,7 +227,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 		doguManager,
 		eventRecorder,
 		operatorConfig.Namespace,
-		cesReg.DoguRegistry(),
+		localDoguRegistry,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
