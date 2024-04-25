@@ -54,30 +54,21 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 	redmineDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 
-	ldapCr.Namespace = "default"
+	ldapCr.Namespace = testNamespace
 	ldapCr.ResourceVersion = ""
 	ldapDoguLookupKey := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
-	cesLoadbalancerLookupKey := types.NamespacedName{Name: "ces-loadbalancer", Namespace: "default"}
-	tcpExposedPortsLookupKey := types.NamespacedName{Name: "tcp-services", Namespace: "default"}
+	cesLoadbalancerLookupKey := types.NamespacedName{Name: "ces-loadbalancer", Namespace: testNamespace}
+	tcpExposedPortsLookupKey := types.NamespacedName{Name: "tcp-services", Namespace: testNamespace}
 
-	redmineCr.Namespace = "default"
+	redmineCr.Namespace = testNamespace
 	redmineCr.ResourceVersion = ""
 
 	ctx := context.TODO()
 
 	// Upgrade testdata
-	upgradeNamespace := "upgrade"
-	upgradeLdapToDoguDescriptor := readDoguDescriptor(t, ldapUpgradeDoguDescriptorBytes)
-	upgradeLdapToDoguDescriptor.Name = upgradeNamespace + "/ldap"
-	ldapToVersion := upgradeLdapToDoguDescriptor.Version
-
-	upgradeLdapFromCr := readDoguCr(t, ldapCrBytes)
-	upgradeLdapFromCr.ResourceVersion = ""
-	upgradeLdapFromCr.Namespace = upgradeNamespace
-
-	upgradeLdapFromDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorBytes)
-	upgradeLdapFromDoguDescriptor.Name = upgradeNamespace + "/ldap"
-	upgradeLdapFromDoguLookupKey := types.NamespacedName{Name: upgradeLdapFromCr.Name, Namespace: upgradeNamespace}
+	upgradeLdapToDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+	ldapToVersion := "2.4.49-1"
+	upgradeLdapToDoguDescriptor.Version = ldapToVersion
 
 	Context("Handle dogu resource", func() {
 		It("Setup mocks and test data", func() {
@@ -107,6 +98,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		})
 
 		It("Should install dogu in cluster", func() {
+			By("Creating namespace")
+			namespace := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testNamespace, Namespace: testNamespace}}
+			err := k8sClient.Create(ctx, namespace)
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Creating dogu resource")
 			installDoguCr(ctx, ldapCr)
 
@@ -355,6 +351,72 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		// 	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		// })
 
+		It("Setup mocks and test data for upgrade", func() {
+			// create mocks
+			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
+			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Once().Return(ldapDogu, nil)
+			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(upgradeLdapToDoguDescriptor, nil)
+
+			*ImageRegistryMock = mocks.ImageRegistry{}
+			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.48-4").Return(imageConfig, nil)
+			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil)
+
+			*EtcdDoguRegistry = extMocks.DoguRegistry{}
+			EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(false, nil)
+			EtcdDoguRegistry.Mock.On("Register", ldapDogu).Once().Return(nil)
+			EtcdDoguRegistry.Mock.On("Enable", ldapDogu).Once().Return(nil)
+			EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapDogu, nil)
+
+			EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(true, nil)
+			EtcdDoguRegistry.Mock.On("Register", upgradeLdapToDoguDescriptor).Once().Return(nil)
+			EtcdDoguRegistry.Mock.On("Enable", upgradeLdapToDoguDescriptor).Once().Return(nil)
+			EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
+
+			archive := bytes.NewBufferString("compressed data")
+			CommandExecutor.
+				On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh"), cloudogu.ContainersStarted).Once().Return(archive, nil).
+				On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/mkdir", "-p", "/tmp/pre-upgrade"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+				On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/tmp/pre-upgrade"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
+				On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/tmp/pre-upgrade/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.PodReady).Once().Return(&bytes.Buffer{}, nil).
+				On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.ContainersStarted).Once().Run(func(args mock.Arguments) {
+				defer GinkgoRecover()
+				assertNewDeploymentVersionWithStartupProbe(ldapDoguLookupKey, ldapToVersion, 1080)
+				assertRessourceStatus(ldapDoguLookupKey, "upgrading")
+			}).Return(&bytes.Buffer{}, nil)
+		})
+
+		It("Should upgrade dogu in cluster", func() {
+			createdDogu := &k8sv1.Dogu{}
+
+			By("Update dogu resource with new version")
+			Expect(func() bool {
+				return getObjectFromCluster(ctx, createdDogu, ldapDoguLookupKey)
+			}()).To(BeTrue())
+
+			upgradedLdapDoguCr := createdDogu
+			oldPodLabels := upgradedLdapDoguCr.GetPodLabels()
+			Expect(func() bool {
+				upgradedLdapDoguCr.Spec.Version = ldapToVersion
+				err := k8sClient.Update(testCtx, upgradedLdapDoguCr)
+				return err == nil
+			}()).To(BeTrue())
+
+			// key take away: We must take all unmocked pod interactions in our own hands because here is no deployment controller
+			setExecPodRunning(ctx, "ldap")
+			createDoguPod(ctx, upgradedLdapDoguCr, oldPodLabels)
+
+			assertNewDeploymentVersionWithStartupProbe(ldapDoguLookupKey, ldapToVersion, 180)
+
+			assertRessourceStatus(ldapDoguLookupKey, "installed")
+
+			deleteDoguCr(ctx, upgradedLdapDoguCr, true)
+
+			Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
+		})
+
 		It("Should delete dogu", func() {
 			deleteDoguCr(ctx, ldapCr, true)
 
@@ -420,127 +482,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	//	Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 	//	Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
 	//})
-
-	It("Setup mocks and test data for upgrade", func() {
-		// create mocks
-		*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
-		DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Once().Return(upgradeLdapFromDoguDescriptor, nil)
-		DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(upgradeLdapToDoguDescriptor, nil)
-
-		*ImageRegistryMock = mocks.ImageRegistry{}
-		ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.48-4").Return(imageConfig, nil)
-		ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil)
-
-		*EtcdDoguRegistry = extMocks.DoguRegistry{}
-		EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(false, nil)
-		EtcdDoguRegistry.Mock.On("Register", upgradeLdapFromDoguDescriptor).Once().Return(nil)
-		EtcdDoguRegistry.Mock.On("Enable", upgradeLdapFromDoguDescriptor).Once().Return(nil)
-		EtcdDoguRegistry.Mock.On("Get", "ldap").Return(upgradeLdapFromDoguDescriptor, nil)
-
-		EtcdDoguRegistry.Mock.On("IsEnabled", "ldap").Once().Return(true, nil)
-		EtcdDoguRegistry.Mock.On("Register", upgradeLdapToDoguDescriptor).Once().Return(nil)
-		EtcdDoguRegistry.Mock.On("Enable", upgradeLdapToDoguDescriptor).Once().Return(nil)
-		EtcdDoguRegistry.Mock.On("Unregister", "ldap").Return(nil)
-
-		archive := bytes.NewBufferString("compressed data")
-		CommandExecutor.
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/tar", "cf", "-", "/pre-upgrade.sh"), cloudogu.ContainersStarted).Once().Return(archive, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/bin/mkdir", "-p", "/tmp/pre-upgrade"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", "/tmp/pre-upgrade"), cloudogu.ContainersStarted).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForPod", mock.Anything, mock.Anything, exec.NewShellCommand("/tmp/pre-upgrade/pre-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.PodReady).Once().Return(&bytes.Buffer{}, nil).
-			On("ExecCommandForDogu", mock.Anything, mock.Anything, exec.NewShellCommand("/post-upgrade.sh", "2.4.48-4", "2.4.49-1"), cloudogu.ContainersStarted).Once().Run(func(args mock.Arguments) {
-			defer GinkgoRecover()
-			assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 1080)
-			assertRessourceStatus(upgradeLdapFromDoguLookupKey, "upgrading")
-		}).Return(&bytes.Buffer{}, nil)
-	})
-
-	It("Should upgrade dogu in cluster", func() {
-		namespace := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: upgradeNamespace, Namespace: upgradeNamespace}}
-		_ = k8sClient.Create(ctx, namespace)
-
-		By("Install ldap dogu resource in version 2.4.48-4")
-		installDoguCr(testCtx, upgradeLdapFromCr)
-
-		By("Expect created dogu")
-		installedLdapDoguCr := &k8sv1.Dogu{}
-		Eventually(func() bool {
-			err := k8sClient.Get(testCtx, upgradeLdapFromDoguLookupKey, installedLdapDoguCr)
-			if err != nil {
-				return false
-			}
-
-			finalizers := installedLdapDoguCr.Finalizers
-			if len(finalizers) == 1 && finalizers[0] == "dogu-finalizer" {
-				return true
-			}
-
-			return false
-		}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-
-		setExecPodRunning(ctx, "ldap")
-
-		By("Wait for resources created deployment")
-		deployment := new(appsv1.Deployment)
-		Eventually(func() bool { return getObjectFromCluster(testCtx, deployment, upgradeLdapFromDoguLookupKey) }).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-		Eventually(func() bool { return getObjectFromCluster(testCtx, &corev1.Service{}, upgradeLdapFromDoguLookupKey) }).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-		Eventually(func() bool {
-			return getObjectFromCluster(testCtx, &corev1.PersistentVolumeClaim{}, upgradeLdapFromDoguLookupKey)
-		}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-
-		secretLookupKey := types.NamespacedName{Name: upgradeLdapFromDoguLookupKey.Name + "-private", Namespace: upgradeLdapFromDoguLookupKey.Namespace}
-		Eventually(func() bool { return getObjectFromCluster(testCtx, &corev1.Secret{}, secretLookupKey) }).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-
-		assertRessourceStatus(upgradeLdapFromDoguLookupKey, "installed")
-
-		By("Patch Deployment to be available")
-		Expect(func() bool {
-			deployment.Status.Replicas = 1
-			deployment.Status.ReadyReplicas = 1
-			deployment.Status.AvailableReplicas = 1
-			deployment.Status.UpdatedReplicas = 1
-			err := k8sClient.Status().Update(testCtx, deployment)
-			return err == nil
-		}()).To(BeTrue())
-
-		By("Wait for Dogu health status to be available")
-		Eventually(func() string {
-			dogu, err := ecosystemClientSet.Dogus(upgradeLdapFromDoguLookupKey.Namespace).Get(ctx, upgradeLdapFromDoguLookupKey.Name, v1.GetOptions{})
-			if err != nil {
-				return err.Error()
-			}
-
-			return string(dogu.Status.Health)
-		}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(Equal("available"))
-
-		By("Update dogu resource with new version")
-		Expect(func() bool {
-			return getObjectFromCluster(ctx, installedLdapDoguCr, upgradeLdapFromDoguLookupKey)
-		}()).To(BeTrue())
-
-		upgradedLdapDoguCr := installedLdapDoguCr
-		oldPodLabels := upgradedLdapDoguCr.GetPodLabels()
-		Expect(func() bool {
-			upgradedLdapDoguCr.Spec.Version = ldapToVersion
-			err := k8sClient.Update(testCtx, upgradedLdapDoguCr)
-			return err == nil
-		}()).To(BeTrue())
-
-		// key take away: We must take all unmocked pod interactions in our own hands because here is no deployment controller
-		setExecPodRunning(ctx, "ldap")
-		createDoguPod(ctx, upgradedLdapDoguCr, oldPodLabels)
-
-		assertNewDeploymentVersionWithStartupProbe(upgradeLdapFromDoguLookupKey, ldapToVersion, 180)
-
-		assertRessourceStatus(upgradeLdapFromDoguLookupKey, "installed")
-
-		deleteDoguCr(ctx, upgradedLdapDoguCr, true)
-
-		Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
-		Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
-		Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
-		Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
-	})
 })
 
 func assertRessourceStatus(ressourceLookupKey types.NamespacedName, expectedStatus string) {
