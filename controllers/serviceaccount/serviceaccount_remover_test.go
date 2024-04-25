@@ -1,7 +1,6 @@
 package serviceaccount
 
 import (
-	"context"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	"testing"
@@ -22,7 +21,7 @@ import (
 func TestNewRemover(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// when
-		result := NewRemover(nil, nil, nil, nil, nil, "")
+		result := NewRemover(nil, nil, nil, nil, nil, nil, "")
 
 		// then
 		require.NotNil(t, result)
@@ -58,13 +57,12 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			WithScheme(getTestScheme()).
 			WithObjects(readyPod).
 			Build()
-		ctx := context.TODO()
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 		doguConfig.Mock.On("DeleteRecursive", "sa-postgresql").Return(nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		hostConfig := cesmocks.NewConfigurationContext(t)
 		hostConfig.On("Exists", "redmine").Return(true, nil)
@@ -72,25 +70,25 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		registry.Mock.On("HostConfig", "k8s-ces-control").Return(hostConfig)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := remover{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptorCesSa)
+		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptorCesSa)
 
 		// then
 		require.NoError(t, err)
@@ -110,36 +108,35 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			WithScheme(getTestScheme()).
 			WithObjects(readyPostgresPod, readyCasPod).
 			Build()
-		ctx := context.TODO()
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, assert.AnError)
 
 		doguConfig.Mock.On("Exists", "sa-cas").Return(true, nil)
 		doguConfig.Mock.On("DeleteRecursive", "sa-cas").Return(nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "cas").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "cas").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		casRemoveSAShellCmd := exec.NewShellCommand(casRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", ctx, readyCasPod, casRemoveSAShellCmd, cloudogu.PodReady).Return(nil, nil)
+			On("ExecCommandForPod", testCtx, readyCasPod, casRemoveSAShellCmd, cloudogu.PodReady).Return(nil, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "cas").Return(casDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "cas").Return(casDescriptor, nil)
 		serviceAccountRemover := remover{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			localDoguRegistry: localDoguRegMock,
+			executor:          commandExecutorMock,
 		}
 
 		// when
-		err := serviceAccountRemover.RemoveAll(ctx, redmineDescriptorTwoSa)
+		err := serviceAccountRemover.RemoveAll(testCtx, redmineDescriptorTwoSa)
 
 		// then
 		require.Error(t, err)
@@ -148,7 +145,6 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("sa dogu does not exist", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, assert.AnError)
 
@@ -158,7 +154,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		serviceAccountCreator := remover{registry: registry}
 
 		// when
-		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -168,7 +164,6 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("skip routine because serviceaccount does not exist in dogu config", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
@@ -178,7 +173,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		serviceAccountCreator := remover{registry: registry}
 
 		// when
-		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -186,21 +181,19 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failed to check if sa dogu is enabled", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, assert.AnError)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, assert.AnError)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		serviceAccountCreator := remover{registry: registry}
+		serviceAccountCreator := remover{registry: registry, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -209,21 +202,19 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("skip routine because sa dogu is not enabled", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
-		serviceAccountCreator := remover{registry: registry}
+		serviceAccountCreator := remover{registry: registry, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -231,23 +222,21 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failed to get dogu.json from service account dogu", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(nil, assert.AnError)
-		serviceAccountCreator := remover{registry: registry, doguFetcher: localFetcher}
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, assert.AnError)
+		serviceAccountCreator := remover{registry: registry, doguFetcher: localFetcher, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -256,26 +245,24 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failed to get service account producer pod", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		cliWithoutReadyPod := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			Build()
-		serviceAccountCreator := remover{client: cliWithoutReadyPod, registry: registry, doguFetcher: localFetcher}
+		serviceAccountCreator := remover{client: cliWithoutReadyPod, registry: registry, doguFetcher: localFetcher, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -284,8 +271,6 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failed because sa dogu does not expose remote command", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
-
 		readyPostgresPod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
 			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
@@ -297,19 +282,18 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(invalidPostgresqlDescriptor, nil)
-		serviceAccountRemover := remover{client: cli, registry: registry, doguFetcher: localFetcher}
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(invalidPostgresqlDescriptor, nil)
+		serviceAccountRemover := remover{client: cli, registry: registry, doguFetcher: localFetcher, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountRemover.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountRemover.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -318,8 +302,6 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failed to execute command", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
-
 		readyPostgresPod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
 			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
@@ -332,26 +314,25 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig.Mock.
 			On("Exists", "sa-postgresql").Return(true, nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.
-			On("DoguConfig", "redmine").Return(doguConfig).
-			On("DoguRegistry").Return(doguRegistry)
+			On("DoguConfig", "redmine").Return(doguConfig)
 
 		postgresRemoveSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", ctx, readyPostgresPod, postgresRemoveSAShellCmd, cloudogu.PodReady).Return(nil, assert.AnError)
+			On("ExecCommandForPod", testCtx, readyPostgresPod, postgresRemoveSAShellCmd, cloudogu.PodReady).Return(nil, assert.AnError)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
-		serviceAccountRemover := remover{client: cli, registry: registry, doguFetcher: localFetcher, executor: commandExecutorMock}
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
+		serviceAccountRemover := remover{client: cli, registry: registry, doguFetcher: localFetcher, executor: commandExecutorMock, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountRemover.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountRemover.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -361,7 +342,6 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failed to delete SA credentials from dogu config", func(t *testing.T) {
 		// given
-		ctx := context.TODO()
 		readyPostgresPod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
 			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
@@ -374,29 +354,29 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 		doguConfig.Mock.On("DeleteRecursive", "sa-postgresql").Return(assert.AnError)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPostgresPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPostgresPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := remover{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.RemoveAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -415,11 +395,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		remover := remover{registry: registry}
 
 		// when
-		err := remover.RemoveAll(context.TODO(), redmineDescriptorCesSa)
+		err := remover.RemoveAll(testCtx, redmineDescriptorCesSa)
 
 		// then
 		require.Error(t, err)
-		// assert.ErrorContains(t, err, )
 	})
 
 	t.Run("failed to remove components sa", func(t *testing.T) {
@@ -438,7 +417,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := remover.RemoveAll(context.TODO(), dogu)
+		err := remover.RemoveAll(testCtx, dogu)
 
 		// then
 		require.Error(t, err)

@@ -31,6 +31,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
+var testCtx = context.TODO()
+
 //go:embed testdata/redmine-cr.yaml
 var redmineBytes []byte
 var redmineCr = &k8sv1.Dogu{}
@@ -128,11 +130,9 @@ func TestNewCreator(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		registryMock := cesmocks.NewRegistry(t)
-		doguRegistryMock := cesmocks.NewDoguRegistry(t)
-		registryMock.On("DoguRegistry").Return(doguRegistryMock)
 
 		// when
-		result := NewCreator(registryMock, nil, nil, nil, "")
+		result := NewCreator(registryMock, nil, nil, nil, nil, "")
 
 		// then
 		assert.NotNil(t, result)
@@ -153,7 +153,6 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	}
 	require.NotNil(t, postgresCreateExposedCmd)
 
-	ctx := context.TODO()
 	readyPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: postgresqlCr.GetPodLabels()},
 		Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
@@ -188,31 +187,31 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Set", "/sa-postgresql/password", mock.Anything).Return(nil)
 		doguConfig.Mock.On("Set", "/sa-postgresql/database", mock.Anything).Return(nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
 		registry.Mock.On("HostConfig", "k8s-ces-control").Return(hostConfig)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd, cloudogu.ContainersStarted).Return(cesControlBuf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, cesControlPod, cesControlCreateSAShellCmd, cloudogu.ContainersStarted).Return(cesControlBuf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			localDoguRegistry: localDoguRegMock,
+			executor:          commandExecutorMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptorCesSa)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptorCesSa)
 
 		// then
 		require.NoError(t, err)
@@ -228,7 +227,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		serviceAccountCreator := creator{registry: registry}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -244,7 +243,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sa := core.ServiceAccount{Kind: "ces", Type: "cesappd"}
 
 		// when
-		err := serviceAccountCreator.createCesControlServiceAccount(ctx, redmineDescriptor, doguConfig, sa,
+		err := serviceAccountCreator.createCesControlServiceAccount(testCtx, redmineDescriptor, doguConfig, sa,
 			"sa-cesappd")
 
 		// then
@@ -265,7 +264,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sa := core.ServiceAccount{Kind: "ces", Type: "cesappd"}
 
 		// when
-		err := serviceAccountCreator.createCesControlServiceAccount(ctx, redmineDescriptor, doguConfig, sa,
+		err := serviceAccountCreator.createCesControlServiceAccount(testCtx, redmineDescriptor, doguConfig, sa,
 			"sa-cesappd")
 
 		// then
@@ -286,7 +285,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sa := core.ServiceAccount{Kind: "ces", Type: "cesappd"}
 
 		// when
-		err := serviceAccountCreator.createCesControlServiceAccount(ctx, redmineDescriptor, doguConfig, sa,
+		err := serviceAccountCreator.createCesControlServiceAccount(testCtx, redmineDescriptor, doguConfig, sa,
 			"sa-cesappd")
 
 		// then
@@ -310,7 +309,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sa := core.ServiceAccount{Kind: "ces", Type: "k8s-ces-control"}
 
 		// when
-		err := serviceAccountCreator.createCesControlServiceAccount(ctx, redmineDescriptorCesSa, doguConfig, sa,
+		err := serviceAccountCreator.createCesControlServiceAccount(testCtx, redmineDescriptorCesSa, doguConfig, sa,
 			"sa-k8s-ces-control")
 
 		// then
@@ -334,7 +333,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sa := core.ServiceAccount{Kind: "ces", Type: "cesappd"}
 
 		// when
-		err := serviceAccountCreator.createCesControlServiceAccount(ctx, redmineDescriptor, doguConfig, sa,
+		err := serviceAccountCreator.createCesControlServiceAccount(testCtx, redmineDescriptor, doguConfig, sa,
 			"sa-cesappd")
 
 		// then
@@ -351,7 +350,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := cesmocks.NewRegistry(t)
 		registry.On("HostConfig", "k8s-ces-control").Return(hostConfig)
 		executor := mocks.NewCommandExecutor(t)
-		executor.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd,
+		executor.Mock.On("ExecCommandForPod", testCtx, cesControlPod, cesControlCreateSAShellCmd,
 			cloudogu.ContainersStarted).Return(cesControlBuf, assert.AnError)
 
 		serviceAccountCreator := creator{
@@ -362,7 +361,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sa := core.ServiceAccount{Kind: "ces", Type: "cesappd"}
 
 		// when
-		err := serviceAccountCreator.createCesControlServiceAccount(ctx, redmineDescriptor, doguConfig, sa,
+		err := serviceAccountCreator.createCesControlServiceAccount(testCtx, redmineDescriptor, doguConfig, sa,
 			"sa-cesappd")
 
 		// then
@@ -379,7 +378,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := cesmocks.NewRegistry(t)
 		registry.On("HostConfig", "k8s-ces-control").Return(hostConfig)
 		executor := mocks.NewCommandExecutor(t)
-		executor.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd,
+		executor.Mock.On("ExecCommandForPod", testCtx, cesControlPod, cesControlCreateSAShellCmd,
 			cloudogu.ContainersStarted).Return(bytes.NewBufferString("invalid:sa:output"), nil)
 
 		serviceAccountCreator := creator{
@@ -390,7 +389,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sa := core.ServiceAccount{Kind: "ces", Type: "cesappd"}
 
 		// when
-		err := serviceAccountCreator.createCesControlServiceAccount(ctx, redmineDescriptor, doguConfig, sa,
+		err := serviceAccountCreator.createCesControlServiceAccount(testCtx, redmineDescriptor, doguConfig, sa,
 			"sa-cesappd")
 
 		// then
@@ -410,7 +409,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry.On("HostConfig", "k8s-ces-control").Return(hostConfig)
 		registry.On("GlobalConfig").Return(globalConfig)
 		executor := mocks.NewCommandExecutor(t)
-		executor.Mock.On("ExecCommandForPod", ctx, cesControlPod, cesControlCreateSAShellCmd,
+		executor.Mock.On("ExecCommandForPod", testCtx, cesControlPod, cesControlCreateSAShellCmd,
 			cloudogu.ContainersStarted).Return(cesControlBuf, nil)
 
 		serviceAccountCreator := creator{
@@ -421,7 +420,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sa := core.ServiceAccount{Kind: "ces", Type: "cesappd"}
 
 		// when
-		err := serviceAccountCreator.createCesControlServiceAccount(ctx, redmineDescriptor, doguConfig, sa,
+		err := serviceAccountCreator.createCesControlServiceAccount(testCtx, redmineDescriptor, doguConfig, sa,
 			"sa-cesappd")
 
 		// then
@@ -440,26 +439,25 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		serviceAccountCreator := creator{registry: registry}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptorCesSa)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptorCesSa)
 
 		// then
 		require.NoError(t, err)
 	})
 	t.Run("failed to check if service account dogu is enabled", func(t *testing.T) {
 		// given
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, assert.AnError)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, assert.AnError)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := creator{registry: registry}
+		serviceAccountCreator := creator{registry: registry, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -468,38 +466,36 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("service account is optional", func(t *testing.T) {
 		// given
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := creator{registry: registry}
+		serviceAccountCreator := creator{registry: registry, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptorOptional)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptorOptional)
 
 		// then
 		require.NoError(t, err)
 	})
 	t.Run("service account is not optional and service account dogu is not enabled", func(t *testing.T) {
 		// given
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(false, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
-		serviceAccountCreator := creator{registry: registry}
+		serviceAccountCreator := creator{registry: registry, localDoguRegistry: localDoguRegMock}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -507,25 +503,25 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("fail to get dogu.json from service account dogu", func(t *testing.T) {
 		// given
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(nil, assert.AnError)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, assert.AnError)
 		serviceAccountCreator := creator{
-			registry:    registry,
-			doguFetcher: localFetcher,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -535,30 +531,30 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("fail to get service account producer pod", func(t *testing.T) {
 		// given
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		cliWithoutReadyPod := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			Build()
 
 		serviceAccountCreator := creator{
-			client:      cliWithoutReadyPod,
-			registry:    registry,
-			doguFetcher: localFetcher,
+			client:            cliWithoutReadyPod,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -567,26 +563,26 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("service account dogu does not expose service-account-create command", func(t *testing.T) {
 		// given
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(invalidPostgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(invalidPostgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -594,31 +590,31 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("fail to exec command", func(t *testing.T) {
 		// given
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, assert.AnError)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, assert.AnError)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -627,33 +623,33 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("fail on invalid executor output", func(t *testing.T) {
 		// given
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
 		invalidBuffer := bytes.NewBufferString("username:user:invalid\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(invalidBuffer, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(invalidBuffer, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -664,8 +660,8 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("", assert.AnError)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
@@ -673,23 +669,23 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -701,8 +697,8 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("invalid", nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
@@ -710,24 +706,24 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -738,8 +734,8 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("", nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
@@ -748,24 +744,24 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -777,8 +773,8 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("", nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
@@ -787,24 +783,24 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -816,8 +812,8 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("", nil)
 
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		doguRegistry.Mock.On("IsEnabled", "postgresql").Return(true, nil)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(false, nil)
@@ -827,25 +823,25 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		registry := cesmocks.NewRegistry(t)
 		registry.Mock.On("DoguConfig", "redmine").Return(doguConfig)
 		registry.Mock.On("GlobalConfig").Return(globalConfig)
-		registry.Mock.On("DoguRegistry").Return(doguRegistry)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := mocks.NewCommandExecutor(t)
 		buf := bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForPod", ctx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
-		localFetcher.Mock.On("FetchInstalled", "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
-			client:      cli,
-			registry:    registry,
-			doguFetcher: localFetcher,
-			executor:    commandExecutorMock,
+			client:            cli,
+			registry:          registry,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, redmineDescriptor)
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
 
 		// then
 		require.Error(t, err)
@@ -872,7 +868,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		}
 
 		// when
-		err := serviceAccountCreator.CreateAll(ctx, dogu)
+		err := serviceAccountCreator.CreateAll(testCtx, dogu)
 
 		// then
 		require.Error(t, err)

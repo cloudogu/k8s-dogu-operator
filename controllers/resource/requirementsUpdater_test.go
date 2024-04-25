@@ -38,9 +38,17 @@ func TestNewRequirementsUpdater(t *testing.T) {
 	t.Run("create with success", func(t *testing.T) {
 		// given
 		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
+		configMapClient := extMocks.NewConfigMapInterface(t)
+		coreV1Client := extMocks.NewCoreV1Interface(t)
+		coreV1Client.EXPECT().ConfigMaps("myNamespace").Return(configMapClient)
+		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+		doguClient := mocks.NewDoguInterface(t)
+		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
+		ecosystemClientSetMock.EXPECT().Dogus("myNamespace").Return(doguClient)
 
 		// when
-		updater, err := NewRequirementsUpdater(clientMock, "myNamespace")
+		updater, err := NewRequirementsUpdater(clientMock, "myNamespace", ecosystemClientSetMock, clientSetMock)
 
 		// then
 		require.NoError(t, err)
@@ -50,9 +58,11 @@ func TestNewRequirementsUpdater(t *testing.T) {
 	t.Run("fail creation based on invalid etcd endpoint", func(t *testing.T) {
 		// given
 		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
+		clientSetMock := extMocks.NewClientSet(t)
+		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
 
 		// when
-		updater, err := NewRequirementsUpdater(clientMock, "(!)//=)!%(?=(")
+		updater, err := NewRequirementsUpdater(clientMock, "(!)//=)!%(?=(", ecosystemClientSetMock, clientSetMock)
 
 		// then
 		require.Error(t, err)
@@ -161,11 +171,10 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 		// given
 		regMock := extMocks.NewConfigurationRegistry(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
-		doguRegMock := extMocks.NewDoguRegistry(t)
-		doguRegMock.EXPECT().Get("dogu1").Return(dj1, nil)
-		doguRegMock.EXPECT().Get("dogu2").Return(dj2, nil)
-		doguRegMock.EXPECT().Get("dogu3").Return(dj3, nil)
-		regMock.EXPECT().DoguRegistry().Return(doguRegMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu1").Return(dj1, nil)
+		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu2").Return(dj2, nil)
+		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu3").Return(dj3, nil)
 
 		watchContextMock := &cesmocks.WatchConfigurationContext{}
 		watchContextMock.On("Watch", mock.Anything, triggerSyncEtcdKeyFullPath, false, mock.Anything).Run(func(args mock.Arguments) {
@@ -193,9 +202,10 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceCPU: resource.MustParse("500m")}}, nil)
 
 		sut := &requirementsUpdater{
-			client:          clientMock,
-			registry:        regMock,
-			requirementsGen: generator,
+			client:            clientMock,
+			registry:          regMock,
+			requirementsGen:   generator,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		ctx, cancelFunc := context.WithTimeout(testCtx, time.Second*2)
@@ -287,16 +297,16 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 
 		generator := mocks.NewResourceRequirementsGenerator(t)
 		regMock := extMocks.NewConfigurationRegistry(t)
-		doguRegMock := extMocks.NewDoguRegistry(t)
-		doguRegMock.EXPECT().Get(d1.Name).Return(nil, assert.AnError)
-		doguRegMock.EXPECT().Get(d2.Name).Return(nil, assert.AnError)
-		doguRegMock.EXPECT().Get(d3.Name).Return(nil, assert.AnError)
-		regMock.EXPECT().DoguRegistry().Return(doguRegMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d1.Name).Return(nil, assert.AnError)
+		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d2.Name).Return(nil, assert.AnError)
+		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d3.Name).Return(nil, assert.AnError)
 
 		sut := &requirementsUpdater{
-			client:          clientMock,
-			requirementsGen: generator,
-			registry:        regMock,
+			client:            clientMock,
+			requirementsGen:   generator,
+			registry:          regMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
@@ -318,17 +328,17 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 
 		generator := mocks.NewResourceRequirementsGenerator(t)
 		regMock := extMocks.NewConfigurationRegistry(t)
-		doguRegMock := extMocks.NewDoguRegistry(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
-		doguRegMock.EXPECT().Get(d1.Name).Return(dj1, nil)
-		doguRegMock.EXPECT().Get(d2.Name).Return(dj2, nil)
-		doguRegMock.EXPECT().Get(d3.Name).Return(dj3, nil)
-		regMock.EXPECT().DoguRegistry().Return(doguRegMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
 
 		sut := &requirementsUpdater{
-			client:          clientMock,
-			requirementsGen: generator,
-			registry:        regMock,
+			client:            clientMock,
+			requirementsGen:   generator,
+			registry:          regMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
@@ -360,16 +370,16 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, testErr3)
 
 		regMock := extMocks.NewConfigurationRegistry(t)
-		doguRegMock := extMocks.NewDoguRegistry(t)
-		doguRegMock.EXPECT().Get(d1.Name).Return(dj1, nil)
-		doguRegMock.EXPECT().Get(d2.Name).Return(dj2, nil)
-		doguRegMock.EXPECT().Get(d3.Name).Return(dj3, nil)
-		regMock.EXPECT().DoguRegistry().Return(doguRegMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
 
 		sut := &requirementsUpdater{
-			client:          clientMock,
-			requirementsGen: generator,
-			registry:        regMock,
+			client:            clientMock,
+			requirementsGen:   generator,
+			registry:          regMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
@@ -406,16 +416,16 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, nil)
 
 		regMock := extMocks.NewConfigurationRegistry(t)
-		doguRegMock := extMocks.NewDoguRegistry(t)
-		doguRegMock.EXPECT().Get(d1.Name).Return(dj1, nil)
-		doguRegMock.EXPECT().Get(d2.Name).Return(dj2, nil)
-		doguRegMock.EXPECT().Get(d3.Name).Return(dj3, nil)
-		regMock.EXPECT().DoguRegistry().Return(doguRegMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
 
 		sut := &requirementsUpdater{
-			client:          clientMock,
-			requirementsGen: generator,
-			registry:        regMock,
+			client:            clientMock,
+			requirementsGen:   generator,
+			registry:          regMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when
@@ -446,16 +456,16 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, nil)
 
 		regMock := extMocks.NewConfigurationRegistry(t)
-		doguRegMock := extMocks.NewDoguRegistry(t)
-		doguRegMock.EXPECT().Get(d1.Name).Return(dj1, nil)
-		doguRegMock.EXPECT().Get(d2.Name).Return(dj2, nil)
-		doguRegMock.EXPECT().Get(d3.Name).Return(dj3, nil)
-		regMock.EXPECT().DoguRegistry().Return(doguRegMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
 
 		sut := &requirementsUpdater{
-			client:          clientMock,
-			requirementsGen: generator,
-			registry:        regMock,
+			client:            clientMock,
+			requirementsGen:   generator,
+			registry:          regMock,
+			localDoguRegistry: localDoguRegMock,
 		}
 
 		// when

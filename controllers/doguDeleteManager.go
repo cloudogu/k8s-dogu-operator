@@ -64,7 +64,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		}
 
 		logger.Info("Unregister dogu...")
-		err = m.doguRegistrator.UnregisterDogu(nil, doguResource.Name)
+		err = m.doguRegistrator.UnregisterDogu(ctx, doguResource.Name)
 		if err != nil {
 			logger.Error(err, "failed to unregister dogu")
 		}

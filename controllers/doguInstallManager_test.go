@@ -120,17 +120,14 @@ func TestNewDoguInstallManager(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		myClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
-		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
-		doguRegistry := cesmocks.NewDoguRegistry(t)
 		cesRegistry := cesmocks.NewRegistry(t)
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 		mgrSet := &util.ManagerSet{}
 		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when
-		doguManager := NewDoguInstallManager(myClient, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+		doguManager := NewDoguInstallManager(myClient, cesRegistry, mgrSet, eventRecorder)
 
 		// then
 		require.NotNil(t, doguManager)

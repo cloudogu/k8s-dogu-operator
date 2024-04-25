@@ -4,6 +4,7 @@ import (
 	"context"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 )
 
 // LocalDoguFetcher includes functionality to search the local dogu registry for a dogu.
@@ -28,4 +29,9 @@ type DoguRegistrator interface {
 	RegisterDoguVersion(ctx context.Context, dogu *cesappcore.Dogu) error
 	// UnregisterDogu removes a registration of a dogu from the local dogu registry.
 	UnregisterDogu(ctx context.Context, dogu string) error
+}
+
+// LocalDoguRegistry abstracts accessing various backends for reading and writing dogu specs (dogu.json).
+type LocalDoguRegistry interface {
+	localregistry.LocalDoguRegistry
 }

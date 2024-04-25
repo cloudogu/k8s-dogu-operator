@@ -2,39 +2,39 @@ package dependency_test
 
 import (
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 )
 
+var testCtx = context.Background()
+
 func TestNewDoguDependencyValidator(t *testing.T) {
 	// given
-	cesRegistryMock := &cesmocks.DoguRegistry{}
+	localDoguRegMock := mocks.NewLocalDoguRegistry(t)
 
 	// when
-	validator := dependency.NewDoguDependencyValidator(cesRegistryMock)
+	validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 
 	// then
 	assert.NotNil(t, validator)
 }
 
 func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
-	ctx := context.Background()
-
 	t.Run("error on not parsable mandatory dependency operation", func(t *testing.T) {
 		// given
 		redmineDogu := &core.Dogu{
 			Name:    "redmine",
 			Version: "1.0.0",
 		}
-		cesRegistryMock := &cesmocks.DoguRegistry{}
-		cesRegistryMock.Mock.On("Get", "redmine").Return(redmineDogu, nil)
-		validator := dependency.NewDoguDependencyValidator(cesRegistryMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
+		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -51,7 +51,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 
 		// when
-		err := validator.ValidateAllDependencies(ctx, dogu)
+		err := validator.ValidateAllDependencies(testCtx, dogu)
 
 		// then
 		require.Error(t, err)
@@ -64,9 +64,9 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "1.0.0",
 		}
-		cesRegistryMock := &cesmocks.DoguRegistry{}
-		cesRegistryMock.Mock.On("Get", "redmine").Return(redmineDogu, nil)
-		validator := dependency.NewDoguDependencyValidator(cesRegistryMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
+		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -83,7 +83,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 
 		// when
-		err := validator.ValidateAllDependencies(ctx, dogu)
+		err := validator.ValidateAllDependencies(testCtx, dogu)
 
 		// then
 		require.Error(t, err)
@@ -96,9 +96,9 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "0.9.0",
 		}
-		cesRegistryMock := &cesmocks.DoguRegistry{}
-		cesRegistryMock.Mock.On("Get", "redmine").Return(redmineDogu, nil)
-		validator := dependency.NewDoguDependencyValidator(cesRegistryMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
+		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -115,7 +115,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 
 		// when
-		err := validator.ValidateAllDependencies(ctx, dogu)
+		err := validator.ValidateAllDependencies(testCtx, dogu)
 
 		// then
 		require.Error(t, err)
@@ -128,9 +128,9 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "1.1.0",
 		}
-		cesRegistryMock := &cesmocks.DoguRegistry{}
-		cesRegistryMock.Mock.On("Get", "redmine").Return(redmineDogu, nil)
-		validator := dependency.NewDoguDependencyValidator(cesRegistryMock)
+		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
+		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -147,7 +147,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 
 		// when
-		err := validator.ValidateAllDependencies(ctx, dogu)
+		err := validator.ValidateAllDependencies(testCtx, dogu)
 
 		// then
 		require.NoError(t, err)

@@ -2,7 +2,6 @@ package cesregistry
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -68,7 +67,7 @@ func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, doguResource *
 		return fmt.Errorf("failed to register keys: %w", err)
 	}
 
-	return c.enableDoguInRegistry(nil, dogu)
+	return c.enableDoguInRegistry(ctx, dogu)
 }
 
 // RegisterDoguVersion registers an upgrade of an existing dogu in a cluster. Use RegisterNewDogu() to complete new
@@ -80,7 +79,7 @@ func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core
 	}
 
 	if !enabled {
-		return errors.New("could not register dogu version: previous version not found")
+		return fmt.Errorf("could not register dogu version: previous version not found")
 	}
 
 	err = c.registerDoguInRegistry(ctx, dogu)
