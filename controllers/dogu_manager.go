@@ -104,7 +104,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, err
 	}
 
-	supportManager, _ := NewDoguSupportManager(client, mgrSet, eventRecorder)
+	supportManager := NewDoguSupportManager(client, mgrSet, eventRecorder)
 
 	volumeManager := NewDoguVolumeManager(client, eventRecorder)
 

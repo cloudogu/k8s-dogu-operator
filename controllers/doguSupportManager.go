@@ -33,13 +33,13 @@ type doguSupportManager struct {
 }
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.
-func NewDoguSupportManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
+func NewDoguSupportManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguSupportManager {
 	return &doguSupportManager{
 		client:                       client,
 		localDoguRegistry:            mgrSet.LocalDoguRegistry,
 		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
 		eventRecorder:                eventRecorder,
-	}, nil
+	}
 }
 
 // HandleSupportMode handles the support flag in the dogu spec and returns whether the support modes changed during the
