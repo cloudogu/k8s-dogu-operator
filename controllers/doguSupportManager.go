@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -13,10 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 )
 
 const SupportModeEnvVar = "SUPPORT_MODE"
@@ -29,16 +27,16 @@ type podTemplateResourceGenerator interface {
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
 	client                       client.Client
-	doguRegistry                 registry.DoguRegistry
+	localDoguRegistry            localregistry.LocalDoguRegistry
 	podTemplateResourceGenerator podTemplateResourceGenerator
 	eventRecorder                record.EventRecorder
 }
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.
-func NewDoguSupportManager(client client.Client, _ *config.OperatorConfig, cesRegistry registry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
+func NewDoguSupportManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) (*doguSupportManager, error) {
 	return &doguSupportManager{
 		client:                       client,
-		doguRegistry:                 cesRegistry.DoguRegistry(),
+		localDoguRegistry:            mgrSet.LocalDoguRegistry,
 		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
 		eventRecorder:                eventRecorder,
 	}, nil
@@ -76,7 +74,7 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 
 func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *k8sv1.Dogu, deployment *appsv1.Deployment) error {
 	logger := log.FromContext(ctx)
-	dogu, err := dsm.doguRegistry.Get(doguResource.Name)
+	dogu, err := dsm.localDoguRegistry.GetCurrent(ctx, doguResource.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
 	}
