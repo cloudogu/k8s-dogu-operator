@@ -35,7 +35,7 @@ const (
 const (
 	doguPodNamespace = "POD_NAMESPACE"
 	doguPodName      = "POD_NAME"
-	doguPodMultiNode = "POD_MULTI_NODE"
+	doguPodMultiNode = "ECOSYSTEM_MULTINODE"
 )
 
 const (
