@@ -53,7 +53,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            - name: POD_MULTI_NODE
+            - name: ECOSYSTEM_MULTINODE
               value: true
           resources: { }
           volumeMounts:
