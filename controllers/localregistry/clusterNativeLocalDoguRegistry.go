@@ -154,7 +154,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) getCurrentByDoguResource(ctx context.
 	doguJson := specConfigMap.Data[doguResource.Status.InstalledVersion]
 
 	var doguSpec *core.Dogu
-	err = json.Unmarshal([]byte(doguJson), doguSpec)
+	err = json.Unmarshal([]byte(doguJson), &doguSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse current dogu.json of %q: %w", doguResource.Spec.Name, err)
 	}
