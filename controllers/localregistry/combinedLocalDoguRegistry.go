@@ -15,38 +15,19 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 )
 
-// LocalDoguRegistry abstracts accessing various backends for reading and writing dogu specs (dogu.json).
-type LocalDoguRegistry interface {
-	// Enable makes the dogu spec reachable.
-	Enable(ctx context.Context, dogu *core.Dogu) error
-	// Register adds the given dogu spec to the local registry.
-	Register(ctx context.Context, dogu *core.Dogu) error
-	// UnregisterAllVersions deletes all versions of the dogu spec from the local registry and makes the spec unreachable.
-	UnregisterAllVersions(ctx context.Context, simpleDoguName string) error
-	// Reregister adds the new dogu spec to the local registry, enables it, and deletes all specs referenced by the old dogu name.
-	// This is used for namespace changes and may contain an empty implementation if this action is not necessary.
-	Reregister(ctx context.Context, newDogu *core.Dogu) error
-	// GetCurrent retrieves the spec of the referenced dogu's currently installed version.
-	GetCurrent(ctx context.Context, simpleDoguName string) (*core.Dogu, error)
-	// GetCurrentOfAll retrieves the specs of all dogus' currently installed versions.
-	GetCurrentOfAll(ctx context.Context) ([]*core.Dogu, error)
-	// IsEnabled checks if the current spec of the referenced dogu is reachable.
-	IsEnabled(ctx context.Context, simpleDoguName string) (bool, error)
-}
-
-// CombinedLocalDoguRegistry combines the ClusterNativeLocalDoguRegistry and EtcdLocalDoguRegistry for backwards-compatability reasons.
+// CombinedLocalDoguRegistry combines the clusterNativeLocalDoguRegistry and etcdLocalDoguRegistry for backwards-compatability reasons.
 type CombinedLocalDoguRegistry struct {
-	cnRegistry   *ClusterNativeLocalDoguRegistry
-	etcdRegistry *EtcdLocalDoguRegistry
+	cnRegistry   LocalDoguRegistry
+	etcdRegistry LocalDoguRegistry
 }
 
 func NewCombinedLocalDoguRegistry(doguClient ecoSystem.DoguInterface, configMapClient v1.ConfigMapInterface, etcdRegistry registry.Registry) *CombinedLocalDoguRegistry {
 	return &CombinedLocalDoguRegistry{
-		cnRegistry: &ClusterNativeLocalDoguRegistry{
+		cnRegistry: &clusterNativeLocalDoguRegistry{
 			doguClient:      doguClient,
 			configMapClient: configMapClient,
 		},
-		etcdRegistry: &EtcdLocalDoguRegistry{
+		etcdRegistry: &etcdLocalDoguRegistry{
 			registry:     etcdRegistry,
 			etcdRegistry: etcdRegistry.DoguRegistry(),
 		}}
@@ -56,12 +37,12 @@ func NewCombinedLocalDoguRegistry(doguClient ecoSystem.DoguInterface, configMapC
 func (cr *CombinedLocalDoguRegistry) Enable(ctx context.Context, dogu *core.Dogu) error {
 	cnErr := cr.cnRegistry.Enable(ctx, dogu)
 	if cnErr != nil {
-		cnErr = fmt.Errorf("failed to enable dogu %q in cluster-native local registry: %w", dogu.GetSimpleName(), cnErr)
+		cnErr = fmt.Errorf("failed to enable dogu %q in cluster-native local registry: %w", dogu.Name, cnErr)
 	}
 
 	etcdErr := cr.etcdRegistry.Enable(ctx, dogu)
 	if etcdErr != nil {
-		etcdErr = fmt.Errorf("failed to enable dogu %q in ETCD local registry (legacy): %w", dogu.GetSimpleName(), etcdErr)
+		etcdErr = fmt.Errorf("failed to enable dogu %q in ETCD local registry (legacy): %w", dogu.Name, etcdErr)
 	}
 
 	return errors.Join(cnErr, etcdErr)
@@ -101,11 +82,11 @@ func (cr *CombinedLocalDoguRegistry) UnregisterAllVersions(ctx context.Context, 
 func (cr *CombinedLocalDoguRegistry) Reregister(ctx context.Context, dogu *core.Dogu) error {
 	cnErr := cr.cnRegistry.Reregister(ctx, dogu)
 	if cnErr != nil {
-		cnErr = fmt.Errorf("failed to reregister dogu %q in cluster-native local registry: %w", dogu.GetSimpleName(), cnErr)
+		cnErr = fmt.Errorf("failed to reregister dogu %q in cluster-native local registry: %w", dogu.Name, cnErr)
 	}
 	etcdErr := cr.etcdRegistry.Reregister(ctx, dogu)
 	if etcdErr != nil {
-		etcdErr = fmt.Errorf("failed to reregister dogu %q in ETCD local registry (legacy): %w", dogu.GetSimpleName(), etcdErr)
+		etcdErr = fmt.Errorf("failed to reregister dogu %q in ETCD local registry (legacy): %w", dogu.Name, etcdErr)
 	}
 
 	return errors.Join(cnErr, etcdErr)
@@ -173,7 +154,7 @@ func (cr *CombinedLocalDoguRegistry) IsEnabled(ctx context.Context, simpleDoguNa
 		logger.Error(err, "dogu is not enabled in cluster-native local registry; checking ETCD as fallback")
 		enabled, err = cr.etcdRegistry.IsEnabled(ctx, simpleDoguName)
 		if err != nil {
-			return false, fmt.Errorf("failed to check if dogu %q is enabled in ETCD local registry (legacy): %w", simpleDoguName, err)
+			return false, fmt.Errorf("failed to check if dogu %q is enabled in ETCD local registry (legacy/fallback): %w", simpleDoguName, err)
 		}
 	}
 

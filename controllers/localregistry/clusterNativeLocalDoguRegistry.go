@@ -18,7 +18,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/retry"
 )
 
-type ClusterNativeLocalDoguRegistry struct {
+type clusterNativeLocalDoguRegistry struct {
 	doguClient      ecoSystem.DoguInterface
 	configMapClient corev1client.ConfigMapInterface
 }
@@ -29,7 +29,7 @@ func getConfigMapName(dogu *core.Dogu) string {
 
 // Enable makes the dogu spec reachable
 // by setting the specLocation field in the dogu resources' status.
-func (cmr *ClusterNativeLocalDoguRegistry) Enable(ctx context.Context, dogu *core.Dogu) error {
+func (cmr *clusterNativeLocalDoguRegistry) Enable(ctx context.Context, dogu *core.Dogu) error {
 	return retry.OnConflict(func() error {
 		doguResource, err := cmr.doguClient.Get(ctx, dogu.GetSimpleName(), metav1.GetOptions{})
 		if err != nil {
@@ -49,7 +49,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) Enable(ctx context.Context, dogu *cor
 // Register adds the given dogu spec to the local registry.
 //
 // Adds the dogu spec to the underlying ConfigMap. Creates the ConfigMap if it does not exist.
-func (cmr *ClusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *core.Dogu) error {
+func (cmr *clusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *core.Dogu) error {
 	doguJson, jsonErr := json.Marshal(dogu)
 	if jsonErr != nil {
 		jsonErr = fmt.Errorf("failed to serialize dogu.json of %q: %w", dogu.Name, jsonErr)
@@ -100,7 +100,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *c
 //
 // Deletes the backing ConfigMap. Resetting the specLocation field in the dogu resource's status is not necessary
 // as the resource will either be deleted or the field will be overwritten.
-func (cmr *ClusterNativeLocalDoguRegistry) UnregisterAllVersions(ctx context.Context, doguName string) error {
+func (cmr *clusterNativeLocalDoguRegistry) UnregisterAllVersions(ctx context.Context, doguName string) error {
 	doguResource, err := cmr.doguClient.Get(ctx, doguName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get CR for dogu %q: %w", doguName, err)
@@ -115,7 +115,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) UnregisterAllVersions(ctx context.Con
 }
 
 // Reregister adds the new dogu spec to the local registry, enables it, and deletes all specs referenced by the old dogu name.
-func (cmr *ClusterNativeLocalDoguRegistry) Reregister(ctx context.Context, dogu *core.Dogu) error {
+func (cmr *clusterNativeLocalDoguRegistry) Reregister(ctx context.Context, dogu *core.Dogu) error {
 	err := cmr.UnregisterAllVersions(ctx, dogu.GetSimpleName())
 	if err != nil {
 		return fmt.Errorf("failed to unregister old versions of dogu %q: %w", dogu.GetSimpleName(), err)
@@ -136,7 +136,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) Reregister(ctx context.Context, dogu 
 
 // GetCurrent retrieves the spec of the referenced dogu's currently installed version
 // through the ConfigMap referenced in the specLocation field of the dogu resource's status.
-func (cmr *ClusterNativeLocalDoguRegistry) GetCurrent(ctx context.Context, simpleDoguName string) (*core.Dogu, error) {
+func (cmr *clusterNativeLocalDoguRegistry) GetCurrent(ctx context.Context, simpleDoguName string) (*core.Dogu, error) {
 	doguResource, err := cmr.doguClient.Get(ctx, simpleDoguName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CR for dogu %q: %w", simpleDoguName, err)
@@ -145,7 +145,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) GetCurrent(ctx context.Context, simpl
 	return cmr.getCurrentByDoguResource(ctx, doguResource)
 }
 
-func (cmr *ClusterNativeLocalDoguRegistry) getCurrentByDoguResource(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, error) {
+func (cmr *clusterNativeLocalDoguRegistry) getCurrentByDoguResource(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, error) {
 	specConfigMap, err := cmr.configMapClient.Get(ctx, doguResource.Status.SpecLocation, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local registry ConfigMap for dogu %q: %w", doguResource.Spec.Name, err)
@@ -164,7 +164,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) getCurrentByDoguResource(ctx context.
 
 // GetCurrentOfAll retrieves the specs of all dogus' currently installed versions
 // through the ConfigMaps referenced in the specLocation field of the dogu resources' status.
-func (cmr *ClusterNativeLocalDoguRegistry) GetCurrentOfAll(ctx context.Context) ([]*core.Dogu, error) {
+func (cmr *clusterNativeLocalDoguRegistry) GetCurrentOfAll(ctx context.Context) ([]*core.Dogu, error) {
 	doguList, err := cmr.doguClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list dogu CRs: %w", err)
@@ -188,7 +188,7 @@ func (cmr *ClusterNativeLocalDoguRegistry) GetCurrentOfAll(ctx context.Context) 
 
 // IsEnabled checks if the current spec of the referenced dogu is reachable
 // by verifying that the specLocation field in the dogu resource's status is set.
-func (cmr *ClusterNativeLocalDoguRegistry) IsEnabled(ctx context.Context, simpleDoguName string) (bool, error) {
+func (cmr *clusterNativeLocalDoguRegistry) IsEnabled(ctx context.Context, simpleDoguName string) (bool, error) {
 	doguResource, err := cmr.doguClient.Get(ctx, simpleDoguName, metav1.GetOptions{})
 	if err != nil {
 		return false, fmt.Errorf("failed to get CR for dogu %q: %w", simpleDoguName, err)
