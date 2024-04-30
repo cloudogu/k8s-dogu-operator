@@ -117,7 +117,15 @@ func (cr *CombinedLocalDoguRegistry) GetCurrent(ctx context.Context, simpleDoguN
 // GetCurrentOfAll retrieves the specs of all dogus' currently installed versions.
 func (cr *CombinedLocalDoguRegistry) GetCurrentOfAll(ctx context.Context) ([]*core.Dogu, error) {
 	cmDogus, cnErr := cr.cnRegistry.GetCurrentOfAll(ctx)
+	if cnErr != nil {
+		cnErr = fmt.Errorf("failed to get all current dogu.jsons from cluster-native local registry: %w", cnErr)
+	}
+
 	etcdDogus, etcdErr := cr.etcdRegistry.GetCurrentOfAll(ctx)
+	if etcdErr != nil {
+		etcdErr = fmt.Errorf("failed to get all current dogu.jsons from ETCD local registry (legacy): %w", etcdErr)
+	}
+
 	if err := errors.Join(cnErr, etcdErr); err != nil {
 		return nil, err
 	}
