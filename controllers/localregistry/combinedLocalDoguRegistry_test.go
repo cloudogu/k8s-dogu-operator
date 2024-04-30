@@ -16,12 +16,26 @@ import (
 )
 
 var testCtx = context.Background()
-var testDogu = &core.Dogu{
+var testDoguLdap = &core.Dogu{
 	Name:        "official/ldap",
 	Version:     "1.2.3-4",
 	DisplayName: "ldap",
 	Description: "some description",
 	Image:       "registry.cloudogu.com/official/ldap:1.2.3-4",
+}
+var testDoguRedmine = &core.Dogu{
+	Name:        "official/redmine",
+	Version:     "1.2.3-4",
+	DisplayName: "redmine",
+	Description: "some description",
+	Image:       "registry.cloudogu.com/official/redmine:1.2.3-4",
+}
+var testDoguPostfix = &core.Dogu{
+	Name:        "official/postfix",
+	Version:     "1.2.3-4",
+	DisplayName: "postfix",
+	Description: "some description",
+	Image:       "registry.cloudogu.com/official/postfix:1.2.3-4",
 }
 
 func TestNewCombinedLocalDoguRegistry(t *testing.T) {
@@ -54,15 +68,15 @@ func TestCombinedLocalDoguRegistry_Enable(t *testing.T) {
 			name: "should fail in cluster-native registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Enable(testCtx, testDogu).Return(assert.AnError)
+				cnRegMock.EXPECT().Enable(testCtx, testDoguLdap).Return(assert.AnError)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Enable(testCtx, testDogu).Return(nil)
+				etcdRegMock.EXPECT().Enable(testCtx, testDoguLdap).Return(nil)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to enable dogu \"official/ldap\" in cluster-native local registry", i)
@@ -72,15 +86,15 @@ func TestCombinedLocalDoguRegistry_Enable(t *testing.T) {
 			name: "should fail in etcd registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Enable(testCtx, testDogu).Return(nil)
+				cnRegMock.EXPECT().Enable(testCtx, testDoguLdap).Return(nil)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Enable(testCtx, testDogu).Return(assert.AnError)
+				etcdRegMock.EXPECT().Enable(testCtx, testDoguLdap).Return(assert.AnError)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to enable dogu \"official/ldap\" in ETCD local registry (legacy)", i)
@@ -90,15 +104,15 @@ func TestCombinedLocalDoguRegistry_Enable(t *testing.T) {
 			name: "should fail in cluster-native and etcd registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Enable(testCtx, testDogu).Return(assert.AnError)
+				cnRegMock.EXPECT().Enable(testCtx, testDoguLdap).Return(assert.AnError)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Enable(testCtx, testDogu).Return(assert.AnError)
+				etcdRegMock.EXPECT().Enable(testCtx, testDoguLdap).Return(assert.AnError)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to enable dogu \"official/ldap\" in ETCD local registry (legacy)", i) &&
@@ -109,15 +123,15 @@ func TestCombinedLocalDoguRegistry_Enable(t *testing.T) {
 			name: "should succeed",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Enable(testCtx, testDogu).Return(nil)
+				cnRegMock.EXPECT().Enable(testCtx, testDoguLdap).Return(nil)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Enable(testCtx, testDogu).Return(nil)
+				etcdRegMock.EXPECT().Enable(testCtx, testDoguLdap).Return(nil)
 				return etcdRegMock
 			},
-			dogu:    testDogu,
+			dogu:    testDoguLdap,
 			wantErr: assert.NoError,
 		},
 	}
@@ -144,15 +158,15 @@ func TestCombinedLocalDoguRegistry_Register(t *testing.T) {
 			name: "should fail in cluster-native registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Register(testCtx, testDogu).Return(assert.AnError)
+				cnRegMock.EXPECT().Register(testCtx, testDoguLdap).Return(assert.AnError)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Register(testCtx, testDogu).Return(nil)
+				etcdRegMock.EXPECT().Register(testCtx, testDoguLdap).Return(nil)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to register dogu \"official/ldap\" in cluster-native local registry", i)
@@ -162,15 +176,15 @@ func TestCombinedLocalDoguRegistry_Register(t *testing.T) {
 			name: "should fail in etcd registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Register(testCtx, testDogu).Return(nil)
+				cnRegMock.EXPECT().Register(testCtx, testDoguLdap).Return(nil)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Register(testCtx, testDogu).Return(assert.AnError)
+				etcdRegMock.EXPECT().Register(testCtx, testDoguLdap).Return(assert.AnError)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to register dogu \"official/ldap\" in ETCD local registry (legacy)", i)
@@ -180,15 +194,15 @@ func TestCombinedLocalDoguRegistry_Register(t *testing.T) {
 			name: "should fail in cluster-native and etcd registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Register(testCtx, testDogu).Return(assert.AnError)
+				cnRegMock.EXPECT().Register(testCtx, testDoguLdap).Return(assert.AnError)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Register(testCtx, testDogu).Return(assert.AnError)
+				etcdRegMock.EXPECT().Register(testCtx, testDoguLdap).Return(assert.AnError)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to register dogu \"official/ldap\" in ETCD local registry (legacy)", i) &&
@@ -199,15 +213,15 @@ func TestCombinedLocalDoguRegistry_Register(t *testing.T) {
 			name: "should succeed",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Register(testCtx, testDogu).Return(nil)
+				cnRegMock.EXPECT().Register(testCtx, testDoguLdap).Return(nil)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Register(testCtx, testDogu).Return(nil)
+				etcdRegMock.EXPECT().Register(testCtx, testDoguLdap).Return(nil)
 				return etcdRegMock
 			},
-			dogu:    testDogu,
+			dogu:    testDoguLdap,
 			wantErr: assert.NoError,
 		},
 	}
@@ -234,15 +248,15 @@ func TestCombinedLocalDoguRegistry_Reregister(t *testing.T) {
 			name: "should fail in cluster-native registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Reregister(testCtx, testDogu).Return(assert.AnError)
+				cnRegMock.EXPECT().Reregister(testCtx, testDoguLdap).Return(assert.AnError)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Reregister(testCtx, testDogu).Return(nil)
+				etcdRegMock.EXPECT().Reregister(testCtx, testDoguLdap).Return(nil)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to reregister dogu \"official/ldap\" in cluster-native local registry", i)
@@ -252,15 +266,15 @@ func TestCombinedLocalDoguRegistry_Reregister(t *testing.T) {
 			name: "should fail in etcd registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Reregister(testCtx, testDogu).Return(nil)
+				cnRegMock.EXPECT().Reregister(testCtx, testDoguLdap).Return(nil)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Reregister(testCtx, testDogu).Return(assert.AnError)
+				etcdRegMock.EXPECT().Reregister(testCtx, testDoguLdap).Return(assert.AnError)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to reregister dogu \"official/ldap\" in ETCD local registry (legacy)", i)
@@ -270,15 +284,15 @@ func TestCombinedLocalDoguRegistry_Reregister(t *testing.T) {
 			name: "should fail in cluster-native and etcd registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Reregister(testCtx, testDogu).Return(assert.AnError)
+				cnRegMock.EXPECT().Reregister(testCtx, testDoguLdap).Return(assert.AnError)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Reregister(testCtx, testDogu).Return(assert.AnError)
+				etcdRegMock.EXPECT().Reregister(testCtx, testDoguLdap).Return(assert.AnError)
 				return etcdRegMock
 			},
-			dogu: testDogu,
+			dogu: testDoguLdap,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to reregister dogu \"official/ldap\" in ETCD local registry (legacy)", i) &&
@@ -289,15 +303,15 @@ func TestCombinedLocalDoguRegistry_Reregister(t *testing.T) {
 			name: "should succeed",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().Reregister(testCtx, testDogu).Return(nil)
+				cnRegMock.EXPECT().Reregister(testCtx, testDoguLdap).Return(nil)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().Reregister(testCtx, testDogu).Return(nil)
+				etcdRegMock.EXPECT().Reregister(testCtx, testDoguLdap).Return(nil)
 				return etcdRegMock
 			},
-			dogu:    testDogu,
+			dogu:    testDoguLdap,
 			wantErr: assert.NoError,
 		},
 	}
@@ -343,7 +357,7 @@ func TestCombinedLocalDoguRegistry_GetCurrent(t *testing.T) {
 			name: "should not find current dogu.json in cluster-native registry and fail for etcd",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, k8sErrs.NewNotFound(schema.GroupResource{}, getConfigMapName(testDogu)))
+				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, k8sErrs.NewNotFound(schema.GroupResource{}, getConfigMapName(testDoguLdap)))
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
@@ -362,23 +376,23 @@ func TestCombinedLocalDoguRegistry_GetCurrent(t *testing.T) {
 			name: "should not find current dogu.json in cluster-native registry and succeed in ETCD registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, k8sErrs.NewNotFound(schema.GroupResource{}, getConfigMapName(testDogu)))
+				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, k8sErrs.NewNotFound(schema.GroupResource{}, getConfigMapName(testDoguLdap)))
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				etcdRegMock := mocks.NewLocalDoguRegistry(t)
-				etcdRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(testDogu, nil)
+				etcdRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(testDoguLdap, nil)
 				return etcdRegMock
 			},
 			simpleDoguName: "ldap",
-			want:           testDogu,
+			want:           testDoguLdap,
 			wantErr:        assert.NoError,
 		},
 		{
 			name: "should get current dogu.json from cluster-native registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(testDogu, nil)
+				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(testDoguLdap, nil)
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
@@ -386,7 +400,7 @@ func TestCombinedLocalDoguRegistry_GetCurrent(t *testing.T) {
 				return etcdRegMock
 			},
 			simpleDoguName: "ldap",
-			want:           testDogu,
+			want:           testDoguLdap,
 			wantErr:        assert.NoError,
 		},
 	}
@@ -510,6 +524,69 @@ func TestCombinedLocalDoguRegistry_IsEnabled(t *testing.T) {
 				return
 			}
 			assert.Equalf(t, tt.want, got, "IsEnabled(%v, %v)", testCtx, tt.simpleDoguName)
+		})
+	}
+}
+
+func TestCombinedLocalDoguRegistry_GetCurrentOfAll(t *testing.T) {
+	tests := []struct {
+		name           string
+		cnRegistryFn   func(t *testing.T) LocalDoguRegistry
+		etcdRegistryFn func(t *testing.T) LocalDoguRegistry
+		want           assert.ValueAssertionFunc
+		wantErr        assert.ErrorAssertionFunc
+	}{
+		{
+			name: "should fail to get from cluster-native and etcd registry",
+			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
+				cnRegMock := mocks.NewLocalDoguRegistry(t)
+				cnRegMock.EXPECT().GetCurrentOfAll(testCtx).Return(nil, assert.AnError)
+				return cnRegMock
+			},
+			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
+				etcdRegMock := mocks.NewLocalDoguRegistry(t)
+				etcdRegMock.EXPECT().GetCurrentOfAll(testCtx).Return(nil, assert.AnError)
+				return etcdRegMock
+			},
+			want: assert.Nil,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorIs(t, err, assert.AnError, i) &&
+					assert.ErrorContains(t, err, "failed to get all current dogu.jsons from cluster-native local registry", i)
+			},
+		},
+		{
+			name: "should merge results correctly",
+			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
+				cnRegMock := mocks.NewLocalDoguRegistry(t)
+				cnRegMock.EXPECT().GetCurrentOfAll(testCtx).Return([]*core.Dogu{testDoguLdap, testDoguRedmine}, nil)
+				return cnRegMock
+			},
+			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
+				etcdRegMock := mocks.NewLocalDoguRegistry(t)
+				etcdRegMock.EXPECT().GetCurrentOfAll(testCtx).Return([]*core.Dogu{testDoguLdap, testDoguPostfix}, nil)
+				return etcdRegMock
+			},
+			want: func(t assert.TestingT, val interface{}, i ...interface{}) bool {
+				return assert.Len(t, val, 3, i) &&
+					assert.Contains(t, val, testDoguLdap, i) &&
+					assert.Contains(t, val, testDoguRedmine, i) &&
+					assert.Contains(t, val, testDoguPostfix, i)
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cr := &CombinedLocalDoguRegistry{
+				cnRegistry:   tt.cnRegistryFn(t),
+				etcdRegistry: tt.etcdRegistryFn(t),
+			}
+			got, err := cr.GetCurrentOfAll(testCtx)
+			if !tt.wantErr(t, err, fmt.Sprintf("GetCurrentOfAll(%v)", testCtx)) {
+				return
+			}
+
+			tt.want(t, got, fmt.Sprintf("GetCurrentOfAll(%v)", testCtx))
 		})
 	}
 }
