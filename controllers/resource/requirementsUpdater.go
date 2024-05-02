@@ -50,7 +50,6 @@ func NewRequirementsUpdater(client client.Client, namespace string, ecosystemCli
 		namespace: namespace,
 		registry:  reg,
 		localDoguRegistry: localregistry.NewCombinedLocalDoguRegistry(
-			ecosystemClientSet.Dogus(namespace),
 			clientSet.CoreV1().ConfigMaps(namespace),
 			reg,
 		),

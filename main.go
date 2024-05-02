@@ -208,7 +208,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 	if err != nil {
 		return fmt.Errorf("failed to create CES registry: %w", err)
 	}
-	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(ecosystemClientSet.Dogus(operatorConfig.Namespace), k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), cesReg)
+	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), cesReg)
 
 	doguManager, err := controllers.NewManager(
 		k8sManager.GetClient(),

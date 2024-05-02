@@ -45,7 +45,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(ecosystemClient.Dogus(config.Namespace), clientSet.CoreV1().ConfigMaps(config.Namespace), cesreg)
+	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace), cesreg)
 	serviceAccountCreator := serviceaccount.NewCreator(cesreg, localDoguRegistry, commandExecutor, client, clientSet, config.Namespace)
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguRegistry)
