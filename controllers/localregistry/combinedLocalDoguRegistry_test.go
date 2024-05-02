@@ -40,7 +40,6 @@ var testDoguPostfix = &core.Dogu{
 
 func TestNewCombinedLocalDoguRegistry(t *testing.T) {
 	// given
-	doguClientMock := mocks.NewDoguInterface(t)
 	cmClientMock := extMocks.NewConfigMapInterface(t)
 
 	etcdDoguRegMock := extMocks.NewDoguRegistry(t)
@@ -48,7 +47,7 @@ func TestNewCombinedLocalDoguRegistry(t *testing.T) {
 	etcdRegMock.EXPECT().DoguRegistry().Return(etcdDoguRegMock)
 
 	// when
-	localReg := NewCombinedLocalDoguRegistry(doguClientMock, cmClientMock, etcdRegMock)
+	localReg := NewCombinedLocalDoguRegistry(cmClientMock, etcdRegMock)
 
 	// then
 	assert.NotEmpty(t, localReg)
@@ -267,7 +266,7 @@ func TestCombinedLocalDoguRegistry_GetCurrent(t *testing.T) {
 			name: "should not find current dogu.json in cluster-native registry and fail for etcd",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, k8sErrs.NewNotFound(schema.GroupResource{}, getConfigMapName(testDoguLdap)))
+				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, k8sErrs.NewNotFound(schema.GroupResource{}, getSpecConfigMapName(testDoguLdap.GetSimpleName())))
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
@@ -286,7 +285,7 @@ func TestCombinedLocalDoguRegistry_GetCurrent(t *testing.T) {
 			name: "should not find current dogu.json in cluster-native registry and succeed in ETCD registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, k8sErrs.NewNotFound(schema.GroupResource{}, getConfigMapName(testDoguLdap)))
+				cnRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, k8sErrs.NewNotFound(schema.GroupResource{}, getSpecConfigMapName(testDoguLdap.GetSimpleName())))
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
@@ -357,10 +356,10 @@ func TestCombinedLocalDoguRegistry_IsEnabled(t *testing.T) {
 			},
 		},
 		{
-			name: "dogu is not enabled in cluster-native registry; fail to check in ETCD registry",
+			name: "spec ConfigMap is not found in cluster-native registry; fail to check in ETCD registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, nil)
+				cnRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, k8sErrs.NewNotFound(schema.GroupResource{}, getSpecConfigMapName(testDoguLdap.GetSimpleName())))
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
@@ -376,10 +375,10 @@ func TestCombinedLocalDoguRegistry_IsEnabled(t *testing.T) {
 			},
 		},
 		{
-			name: "dogu is not enabled in cluster-native registry or ETCD registry",
+			name: "spec ConfigMap is not found in cluster-native registry; not enabled in ETCD registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, nil)
+				cnRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, k8sErrs.NewNotFound(schema.GroupResource{}, getSpecConfigMapName(testDoguLdap.GetSimpleName())))
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
@@ -392,10 +391,10 @@ func TestCombinedLocalDoguRegistry_IsEnabled(t *testing.T) {
 			wantErr:        assert.NoError,
 		},
 		{
-			name: "dogu is not enabled in cluster-native registry or but in ETCD registry",
+			name: "spec ConfigMap is not found in cluster-native registry; enabled in ETCD registry",
 			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
 				cnRegMock := mocks.NewLocalDoguRegistry(t)
-				cnRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, nil)
+				cnRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, k8sErrs.NewNotFound(schema.GroupResource{}, getSpecConfigMapName(testDoguLdap.GetSimpleName())))
 				return cnRegMock
 			},
 			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
@@ -405,6 +404,21 @@ func TestCombinedLocalDoguRegistry_IsEnabled(t *testing.T) {
 			},
 			simpleDoguName: "ldap",
 			want:           true,
+			wantErr:        assert.NoError,
+		},
+		{
+			name: "dogu is not enabled in cluster-native registry",
+			cnRegistryFn: func(t *testing.T) LocalDoguRegistry {
+				cnRegMock := mocks.NewLocalDoguRegistry(t)
+				cnRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, nil)
+				return cnRegMock
+			},
+			etcdRegistryFn: func(t *testing.T) LocalDoguRegistry {
+				etcdRegMock := mocks.NewLocalDoguRegistry(t)
+				return etcdRegMock
+			},
+			simpleDoguName: "ldap",
+			want:           false,
 			wantErr:        assert.NoError,
 		},
 		{

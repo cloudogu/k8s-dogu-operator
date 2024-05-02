@@ -12,7 +12,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 )
 
 // CombinedLocalDoguRegistry combines the clusterNativeLocalDoguRegistry and etcdLocalDoguRegistry for backwards-compatability reasons.
@@ -21,10 +20,9 @@ type CombinedLocalDoguRegistry struct {
 	etcdRegistry LocalDoguRegistry
 }
 
-func NewCombinedLocalDoguRegistry(doguClient ecoSystem.DoguInterface, configMapClient v1.ConfigMapInterface, etcdRegistry registry.Registry) *CombinedLocalDoguRegistry {
+func NewCombinedLocalDoguRegistry(configMapClient v1.ConfigMapInterface, etcdRegistry registry.Registry) *CombinedLocalDoguRegistry {
 	return &CombinedLocalDoguRegistry{
 		cnRegistry: &clusterNativeLocalDoguRegistry{
-			doguClient:      doguClient,
 			configMapClient: configMapClient,
 		},
 		etcdRegistry: &etcdLocalDoguRegistry{
@@ -140,16 +138,16 @@ func (cr *CombinedLocalDoguRegistry) IsEnabled(ctx context.Context, simpleDoguNa
 		WithValues("dogu.name", simpleDoguName)
 
 	enabled, err := cr.cnRegistry.IsEnabled(ctx, simpleDoguName)
-	if err != nil {
-		return false, fmt.Errorf("failed to check if dogu %q is enabled in cluster-native local registry: %w", simpleDoguName, err)
-	}
+	if k8sErrs.IsNotFound(err) {
+		logger.Error(err, "cluster-native local registry not found; checking ETCD as fallback")
 
-	if !enabled {
-		logger.Error(err, "dogu is not enabled in cluster-native local registry; checking ETCD as fallback")
 		enabled, err = cr.etcdRegistry.IsEnabled(ctx, simpleDoguName)
 		if err != nil {
 			return false, fmt.Errorf("failed to check if dogu %q is enabled in ETCD local registry (legacy/fallback): %w", simpleDoguName, err)
 		}
+
+	} else if err != nil {
+		return false, fmt.Errorf("failed to check if dogu %q is enabled in cluster-native local registry: %w", simpleDoguName, err)
 	}
 
 	return enabled, nil
