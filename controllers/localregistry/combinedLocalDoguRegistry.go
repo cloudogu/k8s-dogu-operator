@@ -27,7 +27,7 @@ func NewCombinedLocalDoguRegistry(configMapClient v1.ConfigMapInterface, etcdReg
 		},
 		etcdRegistry: &etcdLocalDoguRegistry{
 			registry:     etcdRegistry,
-			etcdRegistry: etcdRegistry.DoguRegistry(),
+			doguRegistry: etcdRegistry.DoguRegistry(),
 		}}
 }
 
