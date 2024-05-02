@@ -51,13 +51,14 @@ type creator struct {
 func NewCreator(registry registry.Registry, localDoguRegistry localregistry.LocalDoguRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	return &creator{
-		client:      client,
-		registry:    registry,
-		doguFetcher: localFetcher,
-		executor:    commandExecutor,
-		clientSet:   clientSet,
-		apiClient:   &apiClient{},
-		namespace:   namespace,
+		client:            client,
+		registry:          registry,
+		doguFetcher:       localFetcher,
+		executor:          commandExecutor,
+		clientSet:         clientSet,
+		apiClient:         &apiClient{},
+		namespace:         namespace,
+		localDoguRegistry: localDoguRegistry,
 	}
 }
 
