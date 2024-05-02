@@ -114,26 +114,6 @@ func (cmr *clusterNativeLocalDoguRegistry) UnregisterAllVersions(ctx context.Con
 	return nil
 }
 
-// Reregister adds the new dogu spec to the local registry, enables it, and deletes all specs referenced by the old dogu name.
-func (cmr *clusterNativeLocalDoguRegistry) Reregister(ctx context.Context, dogu *core.Dogu) error {
-	err := cmr.UnregisterAllVersions(ctx, dogu.GetSimpleName())
-	if err != nil {
-		return fmt.Errorf("failed to unregister old versions of dogu %q: %w", dogu.GetSimpleName(), err)
-	}
-
-	err = cmr.Register(ctx, dogu)
-	if err != nil {
-		return fmt.Errorf("failed to reregister new version of dogu %q: %w", dogu.Name, err)
-	}
-
-	err = cmr.Enable(ctx, dogu)
-	if err != nil {
-		return fmt.Errorf("failed to enable new version of dogu %q: %w", dogu.Name, err)
-	}
-
-	return nil
-}
-
 // GetCurrent retrieves the spec of the referenced dogu's currently installed version
 // through the ConfigMap referenced in the specLocation field of the dogu resource's status.
 func (cmr *clusterNativeLocalDoguRegistry) GetCurrent(ctx context.Context, simpleDoguName string) (*core.Dogu, error) {

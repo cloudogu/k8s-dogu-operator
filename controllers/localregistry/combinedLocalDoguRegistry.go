@@ -78,20 +78,6 @@ func (cr *CombinedLocalDoguRegistry) UnregisterAllVersions(ctx context.Context, 
 	return errors.Join(cnErr, etcdErr)
 }
 
-// Reregister adds the new dogu spec to the local registry, enables it, and deletes all specs referenced by the old dogu name.
-func (cr *CombinedLocalDoguRegistry) Reregister(ctx context.Context, dogu *core.Dogu) error {
-	cnErr := cr.cnRegistry.Reregister(ctx, dogu)
-	if cnErr != nil {
-		cnErr = fmt.Errorf("failed to reregister dogu %q in cluster-native local registry: %w", dogu.Name, cnErr)
-	}
-	etcdErr := cr.etcdRegistry.Reregister(ctx, dogu)
-	if etcdErr != nil {
-		etcdErr = fmt.Errorf("failed to reregister dogu %q in ETCD local registry (legacy): %w", dogu.Name, etcdErr)
-	}
-
-	return errors.Join(cnErr, etcdErr)
-}
-
 // GetCurrent retrieves the spec of the referenced dogu's currently installed version.
 func (cr *CombinedLocalDoguRegistry) GetCurrent(ctx context.Context, simpleDoguName string) (*core.Dogu, error) {
 	logger := log.FromContext(ctx).

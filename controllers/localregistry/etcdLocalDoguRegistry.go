@@ -40,12 +40,6 @@ func (er *etcdLocalDoguRegistry) UnregisterAllVersions(_ context.Context, simple
 	return nil
 }
 
-// Reregister does nothing in this implementation as the spec location in ETCD is independent of the dogu namespace.
-func (er *etcdLocalDoguRegistry) Reregister(_ context.Context, _ *core.Dogu) error {
-	// not necessary as the location of the specs
-	return nil
-}
-
 // GetCurrent retrieves the spec of the referenced dogu's currently installed version from ETCD.
 func (er *etcdLocalDoguRegistry) GetCurrent(_ context.Context, simpleDoguName string) (*core.Dogu, error) {
 	return er.etcdRegistry.Get(simpleDoguName)

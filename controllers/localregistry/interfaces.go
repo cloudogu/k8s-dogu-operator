@@ -14,9 +14,6 @@ type LocalDoguRegistry interface {
 	Register(ctx context.Context, dogu *core.Dogu) error
 	// UnregisterAllVersions deletes all versions of the dogu spec from the local registry and makes the spec unreachable.
 	UnregisterAllVersions(ctx context.Context, simpleDoguName string) error
-	// Reregister adds the new dogu spec to the local registry, enables it, and deletes all specs referenced by the old dogu name.
-	// This is used for namespace changes and may contain an empty implementation if this action is not necessary.
-	Reregister(ctx context.Context, newDogu *core.Dogu) error
 	// GetCurrent retrieves the spec of the referenced dogu's currently installed version.
 	GetCurrent(ctx context.Context, simpleDoguName string) (*core.Dogu, error)
 	// GetCurrentOfAll retrieves the specs of all dogus' currently installed versions.
