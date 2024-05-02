@@ -42,13 +42,13 @@ func (cmr *clusterNativeLocalDoguRegistry) Enable(ctx context.Context, dogu *cor
 		specConfigMapName := getSpecConfigMapName(dogu.GetSimpleName())
 		specConfigMap, err := cmr.configMapClient.Get(ctx, specConfigMapName, metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to get local registry ConfigMap %q for dogu %q: %w", specConfigMapName, dogu.GetSimpleName(), err)
+			return fmt.Errorf("failed to get local registry for dogu %q: %w", dogu.GetSimpleName(), err)
 		}
 
 		specConfigMap.Data[currentVersionKey] = dogu.Version
 		_, err = cmr.configMapClient.Update(ctx, specConfigMap, metav1.UpdateOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to update local registry ConfigMap %q with new version for dogu %q: %w", specConfigMapName, dogu.GetSimpleName(), err)
+			return fmt.Errorf("failed to update local registry for dogu %q with new version: %w", dogu.GetSimpleName(), err)
 		}
 
 		return nil
@@ -68,7 +68,7 @@ func (cmr *clusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *c
 	return retry.OnConflict(func() error {
 		specConfigMap, getErr := cmr.configMapClient.Get(ctx, specConfigMapName, metav1.GetOptions{})
 		if client.IgnoreNotFound(getErr) != nil {
-			getErr = fmt.Errorf("failed to get local registry for dogu %q: %w", dogu.Name, getErr)
+			getErr = fmt.Errorf("failed to get local registry for dogu %q: %w", dogu.GetSimpleName(), getErr)
 		}
 
 		if jsonErr != nil || client.IgnoreNotFound(getErr) != nil {
@@ -90,7 +90,7 @@ func (cmr *clusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *c
 
 			_, createErr := cmr.configMapClient.Create(ctx, specConfigMap, metav1.CreateOptions{})
 			if createErr != nil {
-				return fmt.Errorf("failed to create local registry entry for dogu %q: %w", dogu.Name, createErr)
+				return fmt.Errorf("failed to create local registry for dogu %q: %w", dogu.GetSimpleName(), createErr)
 			}
 
 			return nil
