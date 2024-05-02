@@ -107,8 +107,6 @@ type DoguStatus struct {
 	InstalledVersion string `json:"installedVersion,omitempty"`
 	// Stopped shows if the dogu has been stopped or not.
 	Stopped bool `json:"stopped,omitempty"`
-	// SpecLocation is the name of the ConfigMap where the dogu.json is stored.
-	SpecLocation string `json:"specLocation,omitempty"`
 }
 
 func (d *Dogu) NextRequeueWithRetry(ctx context.Context, client client.Client) (time.Duration, error) {

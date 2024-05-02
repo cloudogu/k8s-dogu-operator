@@ -104,9 +104,6 @@ spec:
                   description: RequeueTime contains time necessary to perform the next requeue
                   format: int64
                   type: integer
-                specLocation:
-                  description: SpecLocation is the name of the ConfigMap where the dogu.json is stored.
-                  type: string
                 status:
                   description: Status represents the state of the Dogu in the ecosystem
                   type: string
