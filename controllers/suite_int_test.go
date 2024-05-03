@@ -161,7 +161,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(ecosystemClientSet.Dogus(testNamespace), k8sClientSet.CoreV1().ConfigMaps(testNamespace), CesRegistryMock)
+	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(testNamespace), CesRegistryMock)
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, localDoguRegistry)
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
