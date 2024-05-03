@@ -27,9 +27,7 @@ func TestNewManagerSet(t *testing.T) {
 		reg := regMock.NewRegistry(t)
 		reg.On("DoguRegistry").Return(doguReg, nil)
 		reg.On("GlobalConfig").Return(globalReg, nil)
-		doguClient := mocks.NewDoguInterface(t)
 		ecosystemMock := mocks.NewEcosystemInterface(t)
-		ecosystemMock.EXPECT().Dogus("myNamespace").Return(doguClient)
 		applier := mocks.NewApplier(t)
 		var addImages map[string]string
 

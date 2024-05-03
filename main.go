@@ -130,7 +130,7 @@ func configureManager(k8sManager manager.Manager, operatorConfig *config.Operato
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
 	healthStatusUpdater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder)
 
-	if err = resourceRequirementsUpdater(k8sManager, operatorConfig.Namespace, ecosystemClientSet, k8sClientSet); err != nil {
+	if err = resourceRequirementsUpdater(k8sManager, operatorConfig.Namespace, k8sClientSet); err != nil {
 		return fmt.Errorf("failed to create resource requirements updater: %w", err)
 	}
 
@@ -185,8 +185,8 @@ func startK8sManager(k8sManager manager.Manager) error {
 	return nil
 }
 
-func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, ecosystemClientSet ecoSystem.EcoSystemV1Alpha1Interface, clientSet kubernetes.Interface) error {
-	requirementsUpdater, err := resource.NewRequirementsUpdater(k8sManager.GetClient(), namespace, ecosystemClientSet, clientSet)
+func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, clientSet kubernetes.Interface) error {
+	requirementsUpdater, err := resource.NewRequirementsUpdater(k8sManager.GetClient(), namespace, clientSet)
 	if err != nil {
 		return err
 	}

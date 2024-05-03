@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,7 +32,7 @@ type requirementsUpdater struct {
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(client client.Client, namespace string, ecosystemClientSet ecoSystem.EcoSystemV1Alpha1Interface, clientSet kubernetes.Interface) (*requirementsUpdater, error) {
+func NewRequirementsUpdater(client client.Client, namespace string, clientSet kubernetes.Interface) (*requirementsUpdater, error) {
 	endpoint := fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", namespace)
 	reg, err := registry.New(core.Registry{
 		Type:      "etcd",

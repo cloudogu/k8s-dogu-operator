@@ -43,12 +43,9 @@ func TestNewRequirementsUpdater(t *testing.T) {
 		coreV1Client.EXPECT().ConfigMaps("myNamespace").Return(configMapClient)
 		clientSetMock := extMocks.NewClientSet(t)
 		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
-		doguClient := mocks.NewDoguInterface(t)
-		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
-		ecosystemClientSetMock.EXPECT().Dogus("myNamespace").Return(doguClient)
 
 		// when
-		updater, err := NewRequirementsUpdater(clientMock, "myNamespace", ecosystemClientSetMock, clientSetMock)
+		updater, err := NewRequirementsUpdater(clientMock, "myNamespace", clientSetMock)
 
 		// then
 		require.NoError(t, err)
@@ -59,10 +56,9 @@ func TestNewRequirementsUpdater(t *testing.T) {
 		// given
 		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
 		clientSetMock := extMocks.NewClientSet(t)
-		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
 
 		// when
-		updater, err := NewRequirementsUpdater(clientMock, "(!)//=)!%(?=(", ecosystemClientSetMock, clientSetMock)
+		updater, err := NewRequirementsUpdater(clientMock, "(!)//=)!%(?=(", clientSetMock)
 
 		// then
 		require.Error(t, err)
