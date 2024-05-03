@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#171] Only create PVCs for dogus with volumes that need backup.
 - Update go version to 1.22
 - Update go dependencies
+- [#174] Use ConfigMaps in parallel to ETCD for the local dogu registry
 - [#176] Add environment variable `ECOSYSTEM_MULTINODE` to identify if dogu is running in multinode.
 
 ## [v1.0.1] - 2024-03-22
