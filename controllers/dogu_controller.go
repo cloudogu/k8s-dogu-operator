@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -100,13 +99,13 @@ type doguReconciler struct {
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localRegistry registry.DoguRegistry) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localDoguRegistry localregistry.LocalDoguRegistry) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(doguInterface, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localRegistry)
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	return &doguReconciler{
 		client:             client,
 		doguManager:        doguManager,
@@ -308,7 +307,7 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 
 	// Checking if the resource spec field has changed is unnecessary because we
 	// use a predicate to filter update events where specs don't change
-	upgradeable, err := checkUpgradeability(doguResource, r.fetcher)
+	upgradeable, err := checkUpgradeability(ctx, doguResource, r.fetcher)
 	if err != nil {
 		printError := strings.ReplaceAll(err.Error(), "\n", "")
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, operatorEventReason, "Could not check if dogu needs to be upgraded: %s", printError)
@@ -587,13 +586,13 @@ func (r *doguReconciler) validateVolumeSize(doguResource *k8sv1.Dogu) (success b
 	return true
 }
 
-func checkUpgradeability(doguResource *k8sv1.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {
+func checkUpgradeability(ctx context.Context, doguResource *k8sv1.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {
 	// only upgrade if the dogu is running
 	if doguResource.Status.Stopped {
 		return false, nil
 	}
 
-	fromDogu, err := fetcher.FetchInstalled(doguResource.Name)
+	fromDogu, err := fetcher.FetchInstalled(ctx, doguResource.Name)
 	if err != nil {
 		return false, err
 	}

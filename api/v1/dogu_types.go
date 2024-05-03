@@ -103,7 +103,7 @@ type DoguStatus struct {
 	RequeuePhase string `json:"requeuePhase"`
 	// Health describes the health status of the dogu
 	Health HealthStatus `json:"health,omitempty"`
-	// Installed version of the dogu (e.g. 2.4.48-3)
+	// InstalledVersion of the dogu (e.g. 2.4.48-3)
 	InstalledVersion string `json:"installedVersion,omitempty"`
 	// Stopped shows if the dogu has been stopped or not.
 	Stopped bool `json:"stopped,omitempty"`

@@ -92,7 +92,7 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 	for _, dependency := range localDogu.GetDependenciesOfType(core.DependencyTypeDogu) {
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
-		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName.Name)
+		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, localDependencyDoguName.Name)
 		if err != nil {
 			err2 := fmt.Errorf("error getting registry key for %q: %w", localDependencyDoguName, err)
 			result = errors.Join(result, err2)
@@ -121,7 +121,7 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 	for _, dependency := range localDogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu) {
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
-		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(localDependencyDoguName.Name)
+		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, localDependencyDoguName.Name)
 		if err != nil {
 			if optional && registry.IsKeyNotFoundError(err) {
 				// optional dogus may not be installed, so continue and do nothing

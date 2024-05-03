@@ -18,6 +18,11 @@ const doguOperatorClient = "k8s-dogu-operator"
 // configMapParamType describes a volume of type config map.
 const configMapParamType volumeParamsType = "configmap"
 
+const (
+	fmtDoguJsonVolumeName = "%s-dogu-json"
+	doguDependencyType    = "dogu"
+)
+
 // volumeParamsType describes the kind of volume the k8s-dogu-operator should create.
 type volumeParamsType string
 
@@ -39,6 +44,8 @@ type volumeConfigMapContent struct {
 
 func createVolumes(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Volume, error) {
 	volumes := createStaticVolumes(doguResource)
+	volumes = append(volumes, createDoguJsonVolumesFromDependencies(dogu)...)
+	volumes = append(volumes, getDoguJsonVolumeForDogu(dogu.GetSimpleName()))
 
 	volumesFromDogu, err := createDoguVolumes(dogu.Volumes, doguResource)
 	if err != nil {
@@ -48,6 +55,37 @@ func createVolumes(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Volume, 
 	volumes = append(volumes, volumesFromDogu...)
 
 	return volumes, nil
+}
+
+func createDoguJsonVolumesFromDependencies(dogu *core.Dogu) []corev1.Volume {
+	var volumes []corev1.Volume
+	for _, dependency := range dogu.Dependencies {
+		if dependency.Type == doguDependencyType {
+			volumes = append(volumes, getDoguJsonVolumeForDogu(dependency.Name))
+		}
+	}
+	for _, dependency := range dogu.OptionalDependencies {
+		if dependency.Type == doguDependencyType {
+			volumes = append(volumes, getDoguJsonVolumeForDogu(dependency.Name))
+		}
+	}
+
+	return volumes
+}
+
+func getDoguJsonVolumeForDogu(simpleDoguName string) corev1.Volume {
+	optional := true
+	return corev1.Volume{
+		Name: fmt.Sprintf(fmtDoguJsonVolumeName, simpleDoguName),
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: fmt.Sprintf("dogu-spec-%s", simpleDoguName),
+				},
+				Optional: &optional,
+			},
+		},
+	}
 }
 
 func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
@@ -172,8 +210,35 @@ func convertGenericJsonObject(genericObject interface{}, targetObject interface{
 
 func createVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	volumeMounts := createStaticVolumeMounts(doguResource)
+	// mount dogu jsons from dependency dogus so that a dogu can query attributes from other dogus.
+	volumeMounts = append(volumeMounts, createDoguJsonVolumeMountsFromDependencies(dogu)...)
+	volumeMounts = append(volumeMounts, getDoguJsonVolumeMountForDogu(dogu.GetSimpleName()))
 
 	return append(volumeMounts, createDoguVolumeMounts(doguResource, dogu)...)
+}
+
+func createDoguJsonVolumeMountsFromDependencies(dogu *core.Dogu) []corev1.VolumeMount {
+	var volumeMounts []corev1.VolumeMount
+	for _, dependency := range dogu.Dependencies {
+		if dependency.Type == doguDependencyType {
+			volumeMounts = append(volumeMounts, getDoguJsonVolumeMountForDogu(dependency.Name))
+		}
+	}
+	for _, dependency := range dogu.OptionalDependencies {
+		if dependency.Type == doguDependencyType {
+			volumeMounts = append(volumeMounts, getDoguJsonVolumeMountForDogu(dependency.Name))
+		}
+	}
+
+	return volumeMounts
+}
+
+func getDoguJsonVolumeMountForDogu(simpleDoguName string) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      fmt.Sprintf(fmtDoguJsonVolumeName, simpleDoguName),
+		ReadOnly:  true,
+		MountPath: fmt.Sprintf("/etc/ces/dogu_json/%s", simpleDoguName),
+	}
 }
 
 func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {

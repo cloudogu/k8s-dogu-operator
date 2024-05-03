@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	"io"
 	"k8s.io/client-go/kubernetes"
 	"strings"
@@ -36,26 +37,28 @@ const (
 
 // creator is the unit to handle the creation of service accounts
 type creator struct {
-	client      client.Client
-	registry    registry.Registry
-	doguFetcher cloudogu.LocalDoguFetcher
-	executor    cloudogu.CommandExecutor
-	clientSet   kubernetes.Interface
-	apiClient   serviceAccountApiClient
-	namespace   string
+	client            client.Client
+	registry          registry.Registry
+	doguFetcher       cloudogu.LocalDoguFetcher
+	localDoguRegistry localregistry.LocalDoguRegistry
+	executor          cloudogu.CommandExecutor
+	clientSet         kubernetes.Interface
+	apiClient         serviceAccountApiClient
+	namespace         string
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(registry registry.Registry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
-	localFetcher := cesregistry.NewLocalDoguFetcher(registry.DoguRegistry())
+func NewCreator(registry registry.Registry, localDoguRegistry localregistry.LocalDoguRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
+	localFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	return &creator{
-		client:      client,
-		registry:    registry,
-		doguFetcher: localFetcher,
-		executor:    commandExecutor,
-		clientSet:   clientSet,
-		apiClient:   &apiClient{},
-		namespace:   namespace,
+		client:            client,
+		registry:          registry,
+		doguFetcher:       localFetcher,
+		executor:          commandExecutor,
+		clientSet:         clientSet,
+		apiClient:         &apiClient{},
+		namespace:         namespace,
+		localDoguRegistry: localDoguRegistry,
 	}
 }
 
@@ -108,8 +111,7 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 		return nil
 	}
 
-	doguRegistry := c.registry.DoguRegistry()
-	enabled, err := doguRegistry.IsEnabled(serviceAccount.Type)
+	enabled, err := c.localDoguRegistry.IsEnabled(ctx, serviceAccount.Type)
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 	}
@@ -132,7 +134,7 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 }
 
 func (c *creator) create(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, doguConfig registry.ConfigurationContext) error {
-	saDogu, err := c.doguFetcher.FetchInstalled(serviceAccount.Type)
+	saDogu, err := c.doguFetcher.FetchInstalled(ctx, serviceAccount.Type)
 	if err != nil {
 		return fmt.Errorf("failed to get service account dogu.json: %w", err)
 	}

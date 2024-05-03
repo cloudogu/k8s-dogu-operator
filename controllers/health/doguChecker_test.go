@@ -128,12 +128,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		optional2Dogu := readTestDataDogu(t, optional2Bytes)
 		mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-		localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-		localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -192,8 +192,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 
-		localFetcher.EXPECT().FetchInstalled("testDogu2").Once().Return(testDogu2, nil)
-		localFetcher.EXPECT().FetchInstalled("testDogu3").Once().Return(testDogu3, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu2").Once().Return(testDogu2, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu3").Once().Return(testDogu3, nil)
 
 		dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu2"}, Status: doguv1.DoguStatus{Health: "available"}}
 		dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu3"}, Status: doguv1.DoguStatus{Health: "available"}}
@@ -231,12 +231,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		optional2Dogu := readTestDataDogu(t, optional2Bytes)
 		mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-		localFetcher.EXPECT().FetchInstalled("postgresql").Return(nil, registryKeyNotFoundTestErr)
-		localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, registryKeyNotFoundTestErr)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -287,11 +287,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(nil, registryKeyNotFoundTestErr)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -337,11 +337,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -389,11 +389,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -442,12 +442,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -491,9 +491,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -532,11 +532,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -587,12 +587,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -637,12 +637,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -690,11 +690,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -742,11 +742,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -792,11 +792,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -843,10 +843,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
-				localFetcher.EXPECT().FetchInstalled("postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled("mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled("optional2").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 

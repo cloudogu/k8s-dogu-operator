@@ -5,6 +5,7 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -160,7 +161,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, EtcdDoguRegistry)
+	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(testNamespace), CesRegistryMock)
+
+	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, localDoguRegistry)
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
 	serviceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
@@ -169,7 +172,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguSecretHandler := &mocks.DoguSecretHandler{}
 	doguSecretHandler.On("WriteDoguSecretsToRegistry", mock.Anything, mock.Anything).Return(nil)
 
-	doguRegistrator := cesregistry.NewCESDoguRegistrator(k8sClient, CesRegistryMock, resourceGenerator)
+	doguRegistrator := cesregistry.NewCESDoguRegistrator(k8sClient, localDoguRegistry, CesRegistryMock, resourceGenerator)
 
 	yamlResult := make(map[string]string, 0)
 	fileExtract := &mocks.FileExtractor{}
@@ -181,7 +184,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	upserter := resource.NewUpserter(k8sClient, resourceGenerator)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(EtcdDoguRegistry)
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
 	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutor)
 	exposedPortRemover := resource.NewDoguExposedPortHandler(k8sClient)
@@ -252,7 +255,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	supportManager := &doguSupportManager{
 		client:                       k8sManager.GetClient(),
-		doguRegistry:                 EtcdDoguRegistry,
+		localDoguRegistry:            localDoguRegistry,
 		podTemplateResourceGenerator: resourceGenerator,
 		eventRecorder:                eventRecorder,
 	}
@@ -268,7 +271,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		ingressAnnotationsManager: ingressAnnotationManager,
 	}
 
-	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, EtcdDoguRegistry)
+	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, localDoguRegistry)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = doguReconciler.SetupWithManager(k8sManager)

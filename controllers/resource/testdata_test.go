@@ -55,6 +55,21 @@ var expectedNginxIngressOnlyLoadBalancer []byte
 //go:embed testdata/nginx-ingress-scm_expectedLoadbalancer.yaml
 var expectedNginxIngressSCMLoadBalancer []byte
 
+//go:embed testdata/cas-dogu.json
+var casBytes []byte
+
+func readCasDogu(t *testing.T) *core.Dogu {
+	t.Helper()
+
+	data := &core.Dogu{}
+	err := json.Unmarshal(casBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
 func readLdapDogu(t *testing.T) *core.Dogu {
 	t.Helper()
 

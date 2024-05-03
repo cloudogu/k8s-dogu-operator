@@ -67,6 +67,10 @@ type DeploymentInterface interface {
 	appsv1client.DeploymentInterface
 }
 
+type ConfigMapInterface interface {
+	v1.ConfigMapInterface
+}
+
 type PodInterface interface {
 	v1.PodInterface
 }
