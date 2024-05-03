@@ -39,10 +39,9 @@ func getSpecConfigMapName(simpleDoguName string) string {
 // by setting the specLocation field in the dogu resources' status.
 func (cmr *clusterNativeLocalDoguRegistry) Enable(ctx context.Context, dogu *core.Dogu) error {
 	return retry.OnConflict(func() error {
-		specConfigMapName := getSpecConfigMapName(dogu.GetSimpleName())
-		specConfigMap, err := cmr.configMapClient.Get(ctx, specConfigMapName, metav1.GetOptions{})
+		specConfigMap, err := cmr.getSpecConfigMapForDogu(ctx, dogu.GetSimpleName())
 		if err != nil {
-			return fmt.Errorf("failed to get local registry for dogu %q: %w", dogu.GetSimpleName(), err)
+			return err
 		}
 
 		specConfigMap.Data[currentVersionKey] = dogu.Version
@@ -66,11 +65,7 @@ func (cmr *clusterNativeLocalDoguRegistry) Register(ctx context.Context, dogu *c
 
 	specConfigMapName := getSpecConfigMapName(dogu.GetSimpleName())
 	return retry.OnConflict(func() error {
-		specConfigMap, getErr := cmr.configMapClient.Get(ctx, specConfigMapName, metav1.GetOptions{})
-		if client.IgnoreNotFound(getErr) != nil {
-			getErr = fmt.Errorf("failed to get local registry for dogu %q: %w", dogu.GetSimpleName(), getErr)
-		}
-
+		specConfigMap, getErr := cmr.getSpecConfigMapForDogu(ctx, dogu.GetSimpleName())
 		if jsonErr != nil || client.IgnoreNotFound(getErr) != nil {
 			return errors.Join(jsonErr, getErr)
 		}
@@ -131,8 +126,15 @@ func (cmr *clusterNativeLocalDoguRegistry) GetCurrent(ctx context.Context, simpl
 }
 
 func getCurrentFromSpecConfigMap(specConfigMap *corev1.ConfigMap, simpleDoguName string) (*core.Dogu, error) {
-	currentVersion := specConfigMap.Data[currentVersionKey]
-	doguJson := specConfigMap.Data[currentVersion]
+	currentVersion, exists := specConfigMap.Data[currentVersionKey]
+	if !exists {
+		return nil, fmt.Errorf("local dogu registry does not contain currently installed version for dogu %q", simpleDoguName)
+	}
+
+	doguJson, exists := specConfigMap.Data[currentVersion]
+	if !exists {
+		return nil, fmt.Errorf("local dogu registry does not contain dogu.json for currently installed version of dogu %q", simpleDoguName)
+	}
 
 	var doguSpec *core.Dogu
 	err := json.Unmarshal([]byte(doguJson), &doguSpec)
@@ -184,7 +186,7 @@ func (cmr *clusterNativeLocalDoguRegistry) getSpecConfigMapForDogu(ctx context.C
 	specConfigMapName := getSpecConfigMapName(simpleDoguName)
 	specConfigMap, err := cmr.configMapClient.Get(ctx, specConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get local registry ConfigMap %q for dogu %q: %w", specConfigMapName, simpleDoguName, err)
+		return nil, fmt.Errorf("failed to get local registry for dogu %q: %w", simpleDoguName, err)
 	}
 
 	return specConfigMap, nil
