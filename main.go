@@ -3,8 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/garbagecollection"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	"os"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -13,12 +11,16 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/garbagecollection"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+
 	"github.com/google/uuid"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -208,7 +210,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 	if err != nil {
 		return fmt.Errorf("failed to create CES registry: %w", err)
 	}
-	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), cesReg)
+	localDoguRegistry := local.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), cesReg)
 
 	doguManager, err := controllers.NewManager(
 		k8sManager.GetClient(),

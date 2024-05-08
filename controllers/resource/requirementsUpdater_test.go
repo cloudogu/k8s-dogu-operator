@@ -167,7 +167,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 		// given
 		regMock := extMocks.NewConfigurationRegistry(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu1").Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu2").Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu3").Return(dj3, nil)
@@ -293,7 +293,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 
 		generator := mocks.NewResourceRequirementsGenerator(t)
 		regMock := extMocks.NewConfigurationRegistry(t)
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d1.Name).Return(nil, assert.AnError)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d2.Name).Return(nil, assert.AnError)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d3.Name).Return(nil, assert.AnError)
@@ -325,7 +325,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator := mocks.NewResourceRequirementsGenerator(t)
 		regMock := extMocks.NewConfigurationRegistry(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
@@ -366,7 +366,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, testErr3)
 
 		regMock := extMocks.NewConfigurationRegistry(t)
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
@@ -412,7 +412,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, nil)
 
 		regMock := extMocks.NewConfigurationRegistry(t)
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
@@ -452,7 +452,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(dj3).Return(v1.ResourceRequirements{}, nil)
 
 		regMock := extMocks.NewConfigurationRegistry(t)
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)

@@ -5,10 +5,6 @@ package controllers
 import (
 	"context"
 	_ "embed"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,6 +15,9 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,9 +35,11 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -161,7 +162,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(testNamespace), CesRegistryMock)
+	localDoguRegistry := local.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(testNamespace), CesRegistryMock)
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, localDoguRegistry)
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}

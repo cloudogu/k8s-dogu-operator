@@ -1155,7 +1155,7 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 		registryMock := new(regmock.Registry)
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, toDogu.GetSimpleName()).Return(true, nil)
 		localDoguRegMock.EXPECT().Register(testCtx, toDogu).Return(nil)
 		localDoguRegMock.EXPECT().Enable(testCtx, toDogu).Return(nil)
@@ -1177,7 +1177,7 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 
 		doguRegistryMock := new(regmock.DoguRegistry)
 		registryMock := new(regmock.Registry)
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, toDogu.GetSimpleName()).Return(false, nil)
 
 		cesreg := cesregistry.NewCESDoguRegistrator(nil, localDoguRegMock, registryMock, nil)

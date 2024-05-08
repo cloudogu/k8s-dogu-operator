@@ -14,16 +14,16 @@ import (
 	"github.com/cloudogu/cesapp-lib/keys"
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
 type CesDoguRegistrator struct {
 	client            client.Client
 	registry          cesregistry.Registry
-	localDoguRegistry localregistry.LocalDoguRegistry
+	localDoguRegistry thirdParty.LocalDoguRegistry
 	secretGenerator   cloudogu.SecretResourceGenerator
 }
 
@@ -31,7 +31,7 @@ type CesDoguRegistrator struct {
 // generates keypairs
 func NewCESDoguRegistrator(
 	client client.Client,
-	localDoguRegistry localregistry.LocalDoguRegistry,
+	localDoguRegistry thirdParty.LocalDoguRegistry,
 	registry cesregistry.Registry,
 	secretGenerator cloudogu.SecretResourceGenerator,
 ) *CesDoguRegistrator {

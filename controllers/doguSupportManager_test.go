@@ -1,30 +1,30 @@
 package controllers
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
-
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 const namespace = "test"
 
 type doguSupportManagerWithMocks struct {
 	supportManager       *doguSupportManager
-	localDoguRegMock     *mocks.LocalDoguRegistry
+	localDoguRegMock     *extMocks.LocalDoguRegistry
 	k8sClient            client.WithWatch
 	recorderMock         *extMocks.EventRecorder
 	podTemplateGenerator *mocks.PodTemplateResourceGenerator
@@ -35,7 +35,7 @@ func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSu
 
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	podTemplateGenerator := mocks.NewPodTemplateResourceGenerator(t)
-	localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+	localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 	eventRecorder := extMocks.NewEventRecorder(t)
 
 	doguSupportManager := &doguSupportManager{
