@@ -4,20 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
@@ -25,6 +24,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -99,7 +99,7 @@ type doguReconciler struct {
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localDoguRegistry localregistry.LocalDoguRegistry) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localDoguRegistry local.LocalDoguRegistry) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(doguInterface, eventRecorder, namespace)
 	if err != nil {
 		return nil, err

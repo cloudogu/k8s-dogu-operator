@@ -2,7 +2,6 @@ package cesregistry
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +25,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 		dogu := readTestDataDogu(t, redmineBytes)
 
-		localRegDoguContextMock := mocks.NewLocalDoguRegistry(t)
+		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
 		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
 
 		sut := NewLocalDoguFetcher(localRegDoguContextMock)
@@ -43,7 +42,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
 
-		localRegDoguContextMock := mocks.NewLocalDoguRegistry(t)
+		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
 		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(nil, assert.AnError)
 
 		sut := NewLocalDoguFetcher(localRegDoguContextMock)
@@ -67,7 +66,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		}
 		require.Contains(t, dogu.Dependencies, expectedIncompatibleDepNginx)
 
-		localRegDoguContextMock := mocks.NewLocalDoguRegistry(t)
+		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
 		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
 
 		sut := NewLocalDoguFetcher(localRegDoguContextMock)
@@ -106,7 +105,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		dogu.Dependencies = append(dogu.Dependencies, registratorDep)
 		require.Contains(t, dogu.Dependencies, registratorDep)
 
-		localRegDoguContextMock := mocks.NewLocalDoguRegistry(t)
+		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
 		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
 		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 

@@ -2,7 +2,6 @@ package dependency_test
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,13 +9,14 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 var testCtx = context.Background()
 
 func TestNewDoguDependencyValidator(t *testing.T) {
 	// given
-	localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+	localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 
 	// when
 	validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
@@ -32,7 +32,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "1.0.0",
 		}
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
 		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 		dogu := &core.Dogu{
@@ -64,7 +64,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "1.0.0",
 		}
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
 		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 		dogu := &core.Dogu{
@@ -96,7 +96,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "0.9.0",
 		}
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
 		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 		dogu := &core.Dogu{
@@ -128,7 +128,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "1.1.0",
 		}
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
 		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
 		dogu := &core.Dogu{

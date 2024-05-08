@@ -2,23 +2,26 @@ package util
 
 import (
 	"fmt"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
+	"github.com/cloudogu/k8s-host-change/pkg/alias"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ManagerSet contains functors that are repeatedly used by different dogu operator managers.
@@ -37,7 +40,7 @@ type ManagerSet struct {
 	EcosystemClient       cloudogu.EcosystemInterface
 	ClientSet             thirdParty.ClientSet
 	DependencyValidator   cloudogu.DependencyValidator
-	LocalDoguRegistry     localregistry.LocalDoguRegistry
+	LocalDoguRegistry     thirdParty.LocalDoguRegistry
 }
 
 // NewManagerSet creates a new ManagerSet.
@@ -45,7 +48,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	localDoguRegistry := localregistry.NewCombinedLocalDoguRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace), cesreg)
+	localDoguRegistry := local.NewCombinedLocalDoguRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace), cesreg)
 	serviceAccountCreator := serviceaccount.NewCreator(cesreg, localDoguRegistry, commandExecutor, client, clientSet, config.Namespace)
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguRegistry)

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update go dependencies
 - [#174] Use ConfigMaps in parallel to ETCD for the local dogu registry
 - [#176] Add environment variable `ECOSYSTEM_MULTINODE` to identify if dogu is running in multinode.
+- [#179] Use local dogu registry from k8s-registry-lib
 
 ## [v1.0.1] - 2024-03-22
 ### Fixed

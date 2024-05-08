@@ -3,8 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +13,8 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 )
 
 const SupportModeEnvVar = "SUPPORT_MODE"
@@ -27,7 +27,7 @@ type podTemplateResourceGenerator interface {
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
 	client                       client.Client
-	localDoguRegistry            localregistry.LocalDoguRegistry
+	localDoguRegistry            local.LocalDoguRegistry
 	podTemplateResourceGenerator podTemplateResourceGenerator
 	eventRecorder                record.EventRecorder
 }

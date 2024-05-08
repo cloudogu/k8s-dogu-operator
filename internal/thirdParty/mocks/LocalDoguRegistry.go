@@ -270,49 +270,6 @@ func (_c *LocalDoguRegistry_Register_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// Reregister provides a mock function with given fields: ctx, newDogu
-func (_m *LocalDoguRegistry) Reregister(ctx context.Context, newDogu *core.Dogu) error {
-	ret := _m.Called(ctx, newDogu)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu) error); ok {
-		r0 = rf(ctx, newDogu)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// LocalDoguRegistry_Reregister_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Reregister'
-type LocalDoguRegistry_Reregister_Call struct {
-	*mock.Call
-}
-
-// Reregister is a helper method to define mock.On call
-//   - ctx context.Context
-//   - newDogu *core.Dogu
-func (_e *LocalDoguRegistry_Expecter) Reregister(ctx interface{}, newDogu interface{}) *LocalDoguRegistry_Reregister_Call {
-	return &LocalDoguRegistry_Reregister_Call{Call: _e.mock.On("Reregister", ctx, newDogu)}
-}
-
-func (_c *LocalDoguRegistry_Reregister_Call) Run(run func(ctx context.Context, newDogu *core.Dogu)) *LocalDoguRegistry_Reregister_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*core.Dogu))
-	})
-	return _c
-}
-
-func (_c *LocalDoguRegistry_Reregister_Call) Return(_a0 error) *LocalDoguRegistry_Reregister_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *LocalDoguRegistry_Reregister_Call) RunAndReturn(run func(context.Context, *core.Dogu) error) *LocalDoguRegistry_Reregister_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // UnregisterAllVersions provides a mock function with given fields: ctx, simpleDoguName
 func (_m *LocalDoguRegistry) UnregisterAllVersions(ctx context.Context, simpleDoguName string) error {
 	ret := _m.Called(ctx, simpleDoguName)

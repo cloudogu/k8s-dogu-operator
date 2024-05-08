@@ -3,7 +3,6 @@ package dependency_test
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 type validatorCheckerSuccess struct {
@@ -78,7 +78,7 @@ func TestNewCompositeDependencyValidator(t *testing.T) {
 		version, err := core.ParseVersion("0.0.0")
 		require.NoError(t, err)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 
 		// when
 		compositeValidator := dependency.NewCompositeDependencyValidator(&version, localDoguRegMock)

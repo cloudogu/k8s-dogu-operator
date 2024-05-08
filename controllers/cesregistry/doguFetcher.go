@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/localregistry"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,13 +12,13 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 )
 
 // localDoguFetcher abstracts the access to dogu structs from the local dogu registry.
 type localDoguFetcher struct {
-	doguLocalRegistry localregistry.LocalDoguRegistry
+	doguLocalRegistry local.LocalDoguRegistry
 }
 
 // localDoguFetcher abstracts the access to dogu structs from either the remote dogu registry or from a local DevelopmentDoguMap.
@@ -29,7 +28,7 @@ type resourceDoguFetcher struct {
 }
 
 // NewLocalDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
-func NewLocalDoguFetcher(doguLocalRegistry localregistry.LocalDoguRegistry) *localDoguFetcher {
+func NewLocalDoguFetcher(doguLocalRegistry local.LocalDoguRegistry) *localDoguFetcher {
 	return &localDoguFetcher{doguLocalRegistry: doguLocalRegistry}
 }
 

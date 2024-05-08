@@ -1,8 +1,6 @@
 package serviceaccount
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
@@ -12,7 +10,9 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,7 +61,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 		doguConfig.Mock.On("DeleteRecursive", "sa-postgresql").Return(nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		hostConfig := cesmocks.NewConfigurationContext(t)
@@ -114,7 +114,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-cas").Return(true, nil)
 		doguConfig.Mock.On("DeleteRecursive", "sa-cas").Return(nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "cas").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
@@ -184,7 +184,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, assert.AnError)
 
 		registry := cesmocks.NewRegistry(t)
@@ -205,7 +205,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, nil)
 
 		registry := cesmocks.NewRegistry(t)
@@ -225,7 +225,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
@@ -248,7 +248,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
@@ -282,7 +282,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig := cesmocks.NewConfigurationContext(t)
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
@@ -314,7 +314,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig.Mock.
 			On("Exists", "sa-postgresql").Return(true, nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
@@ -354,7 +354,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Exists", "sa-postgresql").Return(true, nil)
 		doguConfig.Mock.On("DeleteRecursive", "sa-postgresql").Return(assert.AnError)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)

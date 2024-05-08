@@ -5,9 +5,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -16,19 +13,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var testCtx = context.TODO()
@@ -187,7 +186,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		doguConfig.Mock.On("Set", "/sa-postgresql/password", mock.Anything).Return(nil)
 		doguConfig.Mock.On("Set", "/sa-postgresql/database", mock.Anything).Return(nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		registry := cesmocks.NewRegistry(t)
@@ -446,7 +445,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("failed to check if service account dogu is enabled", func(t *testing.T) {
 		// given
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, assert.AnError)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -466,7 +465,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("service account is optional", func(t *testing.T) {
 		// given
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -484,7 +483,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("service account is not optional and service account dogu is not enabled", func(t *testing.T) {
 		// given
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -503,7 +502,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("fail to get dogu.json from service account dogu", func(t *testing.T) {
 		// given
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -531,7 +530,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("fail to get service account producer pod", func(t *testing.T) {
 		// given
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -563,7 +562,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("service account dogu does not expose service-account-create command", func(t *testing.T) {
 		// given
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -590,7 +589,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("fail to exec command", func(t *testing.T) {
 		// given
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -623,7 +622,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	})
 	t.Run("fail on invalid executor output", func(t *testing.T) {
 		// given
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -660,7 +659,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("", assert.AnError)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -697,7 +696,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("invalid", nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -734,7 +733,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("", nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -773,7 +772,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("", nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
@@ -812,7 +811,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		globalConfig.Mock.On("Get", "key_provider").Return("", nil)
 
-		localDoguRegMock := mocks.NewLocalDoguRegistry(t)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(true, nil)
 
 		doguConfig := cesmocks.NewConfigurationContext(t)
