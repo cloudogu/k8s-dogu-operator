@@ -35,6 +35,7 @@ const (
 const (
 	doguPodNamespace = "POD_NAMESPACE"
 	doguPodName      = "POD_NAME"
+	doguPodMultiNode = "ECOSYSTEM_MULTINODE"
 )
 
 const (
@@ -121,7 +122,9 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 			FieldRef: &corev1.ObjectFieldSelector{
 				FieldPath: "metadata.name",
 			},
-		}}}
+		}},
+		{Name: doguPodMultiNode, Value: "true"},
+	}
 
 	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
 

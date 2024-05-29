@@ -73,7 +73,7 @@ func NewUpgradeExecutor(
 // Upgrade executes all necessary steps to update a dogu to a new version.
 func (ue *upgradeExecutor) Upgrade(ctx context.Context, toDoguResource *k8sv1.Dogu, fromDogu, toDogu *core.Dogu) error {
 	ue.normalEventf(toDoguResource, "Registering upgraded version %s in local dogu registry...", toDogu.Version)
-	err := registerUpgradedDoguVersion(ue.doguRegistrator, toDogu)
+	err := registerUpgradedDoguVersion(ctx, ue.doguRegistrator, toDogu)
 	if err != nil {
 		return err
 	}
@@ -146,8 +146,8 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv1.Do
 	return nil
 }
 
-func registerUpgradedDoguVersion(cesreg cloudogu.DoguRegistrator, toDogu *core.Dogu) error {
-	err := cesreg.RegisterDoguVersion(toDogu)
+func registerUpgradedDoguVersion(ctx context.Context, cesreg cloudogu.DoguRegistrator, toDogu *core.Dogu) error {
+	err := cesreg.RegisterDoguVersion(ctx, toDogu)
 	if err != nil {
 		return fmt.Errorf("failed to register upgrade: %w", err)
 	}

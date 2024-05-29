@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 type validatorCheckerSuccess struct {
@@ -78,10 +78,10 @@ func TestNewCompositeDependencyValidator(t *testing.T) {
 		version, err := core.ParseVersion("0.0.0")
 		require.NoError(t, err)
 
-		cesRegistryMock := &cesmocks.DoguRegistry{}
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 
 		// when
-		compositeValidator := dependency.NewCompositeDependencyValidator(&version, cesRegistryMock)
+		compositeValidator := dependency.NewCompositeDependencyValidator(&version, localDoguRegMock)
 
 		// then
 		assert.NotNil(t, compositeValidator)

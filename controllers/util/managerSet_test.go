@@ -19,17 +19,20 @@ func TestNewManagerSet(t *testing.T) {
 		restConfig := &rest.Config{}
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		clientSet := fake2.NewSimpleClientset()
-		opConfig := &config.OperatorConfig{}
+		opConfig := &config.OperatorConfig{
+			Namespace: "myNamespace",
+		}
 		doguReg := regMock.NewDoguRegistry(t)
 		globalReg := regMock.NewConfigurationContext(t)
 		reg := regMock.NewRegistry(t)
 		reg.On("DoguRegistry").Return(doguReg, nil)
 		reg.On("GlobalConfig").Return(globalReg, nil)
+		ecosystemMock := mocks.NewEcosystemInterface(t)
 		applier := mocks.NewApplier(t)
 		var addImages map[string]string
 
 		// when
-		actual, err := NewManagerSet(restConfig, client, clientSet, opConfig, reg, applier, addImages)
+		actual, err := NewManagerSet(restConfig, client, clientSet, ecosystemMock, opConfig, reg, applier, addImages)
 
 		// then
 		require.NoError(t, err)

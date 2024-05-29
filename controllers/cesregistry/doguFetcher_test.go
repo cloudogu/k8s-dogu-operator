@@ -17,7 +17,7 @@ import (
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
-var ctx = context.Background()
+var testCtx = context.Background()
 
 func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 	t.Run("should succeed and return installed dogu", func(t *testing.T) {
@@ -25,13 +25,13 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 		dogu := readTestDataDogu(t, redmineBytes)
 
-		localRegDoguContextMock := new(mocks2.DoguRegistry)
-		localRegDoguContextMock.On("Get", "redmine").Return(dogu, nil)
+		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
+		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
 
 		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 
 		// when
-		installedDogu, err := sut.FetchInstalled(doguCr.Name)
+		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
 
 		// then
 		require.NoError(t, err)
@@ -42,13 +42,13 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
 
-		localRegDoguContextMock := new(mocks2.DoguRegistry)
-		localRegDoguContextMock.On("Get", "redmine").Return(nil, assert.AnError)
+		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
+		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(nil, assert.AnError)
 
 		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 
 		// when
-		_, err := sut.FetchInstalled(doguCr.Name)
+		_, err := sut.FetchInstalled(testCtx, doguCr.Name)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -66,13 +66,13 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		}
 		require.Contains(t, dogu.Dependencies, expectedIncompatibleDepNginx)
 
-		localRegDoguContextMock := new(mocks2.DoguRegistry)
-		localRegDoguContextMock.On("Get", "redmine").Return(dogu, nil)
+		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
+		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
 
 		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 
 		// when
-		installedDogu, err := sut.FetchInstalled(doguCr.Name)
+		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
 
 		// then
 		require.NoError(t, err)
@@ -105,12 +105,12 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		dogu.Dependencies = append(dogu.Dependencies, registratorDep)
 		require.Contains(t, dogu.Dependencies, registratorDep)
 
-		localRegDoguContextMock := new(mocks2.DoguRegistry)
-		localRegDoguContextMock.On("Get", "redmine").Return(dogu, nil)
+		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
+		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
 		sut := NewLocalDoguFetcher(localRegDoguContextMock)
 
 		// when
-		installedDogu, err := sut.FetchInstalled(doguCr.Name)
+		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
 
 		// then
 		require.NoError(t, err)
@@ -126,11 +126,11 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 
 		remoteDoguRegistry := new(mocks3.Registry)
 		client := extMocks.NewK8sClient(t)
-		client.EXPECT().Get(ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(assert.AnError)
+		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(assert.AnError)
 		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
 
 		// when
-		_, _, err := sut.FetchWithResource(ctx, doguCr)
+		_, _, err := sut.FetchWithResource(testCtx, doguCr)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -143,14 +143,14 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		resourceNotFoundErr := errors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, doguCr.GetDevelopmentDoguMapKey().Name)
 
 		client := extMocks.NewK8sClient(t)
-		client.EXPECT().Get(ctx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
+		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
 
 		remoteDoguRegistry := new(mocks3.Registry)
 		remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
 		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
 
 		// when
-		_, _, err := sut.FetchWithResource(ctx, doguCr)
+		_, _, err := sut.FetchWithResource(testCtx, doguCr)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -166,7 +166,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		sut := NewResourceDoguFetcher(client, nil)
 
 		// when
-		fetchedDogu, DevelopmentDoguMap, err := sut.FetchWithResource(ctx, doguCr)
+		fetchedDogu, DevelopmentDoguMap, err := sut.FetchWithResource(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -217,7 +217,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
 
 		// when
-		fetchedDogu, cleanup, err := sut.FetchWithResource(ctx, doguCr)
+		fetchedDogu, cleanup, err := sut.FetchWithResource(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -243,7 +243,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		sut := NewResourceDoguFetcher(client, nil)
 
 		// when
-		fetchedDogu, _, err := sut.FetchWithResource(ctx, doguCr)
+		fetchedDogu, _, err := sut.FetchWithResource(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)
@@ -284,7 +284,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		sut := NewResourceDoguFetcher(client, remoteRegMock)
 
 		// when
-		fetchedDogu, _, err := sut.FetchWithResource(ctx, doguCr)
+		fetchedDogu, _, err := sut.FetchWithResource(testCtx, doguCr)
 
 		// then
 		require.NoError(t, err)

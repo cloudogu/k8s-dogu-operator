@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 	coreosclient "go.etcd.io/etcd/client/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,14 +25,15 @@ const (
 
 // requirementsUpdater is responsible to update all resource requirements for dogu deployments when a certain trigger is called.
 type requirementsUpdater struct {
-	client          client.Client
-	namespace       string
-	registry        registry.Registry
-	requirementsGen cloudogu.ResourceRequirementsGenerator
+	client            client.Client
+	namespace         string
+	registry          registry.Registry
+	localDoguRegistry local.LocalDoguRegistry
+	requirementsGen   cloudogu.ResourceRequirementsGenerator
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(client client.Client, namespace string) (*requirementsUpdater, error) {
+func NewRequirementsUpdater(client client.Client, namespace string, clientSet kubernetes.Interface) (*requirementsUpdater, error) {
 	endpoint := fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", namespace)
 	reg, err := registry.New(core.Registry{
 		Type:      "etcd",
@@ -42,9 +46,13 @@ func NewRequirementsUpdater(client client.Client, namespace string) (*requiremen
 	requirementsGen := NewRequirementsGenerator(reg)
 
 	return &requirementsUpdater{
-		client:          client,
-		namespace:       namespace,
-		registry:        reg,
+		client:    client,
+		namespace: namespace,
+		registry:  reg,
+		localDoguRegistry: local.NewCombinedLocalDoguRegistry(
+			clientSet.CoreV1().ConfigMaps(namespace),
+			reg,
+		),
 		requirementsGen: requirementsGen,
 	}, nil
 }
@@ -85,7 +93,7 @@ func (hlu *requirementsUpdater) triggerSync(ctx context.Context) error {
 
 	var result error
 	for _, dogu := range installedDogus.Items {
-		doguJson, err := hlu.registry.DoguRegistry().Get(dogu.GetName())
+		doguJson, err := hlu.localDoguRegistry.GetCurrent(ctx, dogu.GetName())
 		if err != nil {
 			result = errors.Join(result, fmt.Errorf("failed to get dogu.json of dogu [%s] from registry: %w", dogu.Name, err))
 			continue

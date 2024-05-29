@@ -4,6 +4,7 @@ package thirdParty
 
 import (
 	"github.com/go-logr/logr"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/cesapp-lib/remote"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 )
 
 type K8sClient interface {
@@ -63,8 +65,17 @@ type ConfigurationRegistry interface {
 	registry.Registry
 }
 
+// LocalDoguRegistry abstracts accessing various backends for reading and writing dogu specs (dogu.json).
+type LocalDoguRegistry interface {
+	local.LocalDoguRegistry
+}
+
 type DeploymentInterface interface {
 	appsv1client.DeploymentInterface
+}
+
+type ConfigMapInterface interface {
+	v1.ConfigMapInterface
 }
 
 type PodInterface interface {

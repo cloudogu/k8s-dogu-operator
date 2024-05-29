@@ -1,11 +1,11 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=1.0.1
+VERSION=1.1.0
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.21
-MAKEFILES_VERSION=9.0.1
-LINT_VERSION=v1.52.1
+GOTAG=1.22
+MAKEFILES_VERSION=9.0.4
+LINT_VERSION=v1.57.2
 
 K8S_RUN_PRE_TARGETS = setup-etcd-port-forward
 PRE_COMPILE = generate-deepcopy

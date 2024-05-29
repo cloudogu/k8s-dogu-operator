@@ -84,6 +84,8 @@ import (
 
 	schedulingv1beta1 "k8s.io/client-go/kubernetes/typed/scheduling/v1beta1"
 
+	storagemigrationv1alpha1 "k8s.io/client-go/kubernetes/typed/storagemigration/v1alpha1"
+
 	storagev1 "k8s.io/client-go/kubernetes/typed/storage/v1"
 
 	storagev1alpha1 "k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
@@ -2354,6 +2356,49 @@ func (_c *ClientSet_StorageV1beta1_Call) Return(_a0 storagev1beta1.StorageV1beta
 }
 
 func (_c *ClientSet_StorageV1beta1_Call) RunAndReturn(run func() storagev1beta1.StorageV1beta1Interface) *ClientSet_StorageV1beta1_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StoragemigrationV1alpha1 provides a mock function with given fields:
+func (_m *ClientSet) StoragemigrationV1alpha1() storagemigrationv1alpha1.StoragemigrationV1alpha1Interface {
+	ret := _m.Called()
+
+	var r0 storagemigrationv1alpha1.StoragemigrationV1alpha1Interface
+	if rf, ok := ret.Get(0).(func() storagemigrationv1alpha1.StoragemigrationV1alpha1Interface); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(storagemigrationv1alpha1.StoragemigrationV1alpha1Interface)
+		}
+	}
+
+	return r0
+}
+
+// ClientSet_StoragemigrationV1alpha1_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StoragemigrationV1alpha1'
+type ClientSet_StoragemigrationV1alpha1_Call struct {
+	*mock.Call
+}
+
+// StoragemigrationV1alpha1 is a helper method to define mock.On call
+func (_e *ClientSet_Expecter) StoragemigrationV1alpha1() *ClientSet_StoragemigrationV1alpha1_Call {
+	return &ClientSet_StoragemigrationV1alpha1_Call{Call: _e.mock.On("StoragemigrationV1alpha1")}
+}
+
+func (_c *ClientSet_StoragemigrationV1alpha1_Call) Run(run func()) *ClientSet_StoragemigrationV1alpha1_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ClientSet_StoragemigrationV1alpha1_Call) Return(_a0 storagemigrationv1alpha1.StoragemigrationV1alpha1Interface) *ClientSet_StoragemigrationV1alpha1_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ClientSet_StoragemigrationV1alpha1_Call) RunAndReturn(run func() storagemigrationv1alpha1.StoragemigrationV1alpha1Interface) *ClientSet_StoragemigrationV1alpha1_Call {
 	_c.Call.Return(run)
 	return _c
 }

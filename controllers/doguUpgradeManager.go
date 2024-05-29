@@ -12,27 +12,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	cesreg "github.com/cloudogu/cesapp-lib/registry"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
-func NewDoguUpgradeManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesreg.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
-	depValidator := dependency.NewCompositeDependencyValidator(operatorConfig.Version, cesRegistry.DoguRegistry())
-	doguChecker := health.NewDoguChecker(ecosystemClient, mgrSet.LocalDoguFetcher)
-	premisesChecker := upgrade.NewPremisesChecker(depValidator, doguChecker, doguChecker)
+func NewDoguUpgradeManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
+	doguChecker := health.NewDoguChecker(mgrSet.EcosystemClient, mgrSet.LocalDoguFetcher)
+	premisesChecker := upgrade.NewPremisesChecker(mgrSet.DependencyValidator, doguChecker, doguChecker)
 
-	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder, ecosystemClient)
+	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder, mgrSet.EcosystemClient)
 
 	return &doguUpgradeManager{
 		client:              client,
-		ecosystemClient:     ecosystemClient,
+		ecosystemClient:     mgrSet.EcosystemClient,
 		eventRecorder:       eventRecorder,
 		localDoguFetcher:    mgrSet.LocalDoguFetcher,
 		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
@@ -107,7 +102,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 }
 
 func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
-	fromDogu, err := dum.localDoguFetcher.FetchInstalled(doguResource.Name)
+	fromDogu, err := dum.localDoguFetcher.FetchInstalled(ctx, doguResource.Name)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
 	}

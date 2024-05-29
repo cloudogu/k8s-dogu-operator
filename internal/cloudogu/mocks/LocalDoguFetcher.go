@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,25 +22,25 @@ func (_m *LocalDoguFetcher) EXPECT() *LocalDoguFetcher_Expecter {
 	return &LocalDoguFetcher_Expecter{mock: &_m.Mock}
 }
 
-// FetchInstalled provides a mock function with given fields: doguName
-func (_m *LocalDoguFetcher) FetchInstalled(doguName string) (*core.Dogu, error) {
-	ret := _m.Called(doguName)
+// FetchInstalled provides a mock function with given fields: ctx, doguName
+func (_m *LocalDoguFetcher) FetchInstalled(ctx context.Context, doguName string) (*core.Dogu, error) {
+	ret := _m.Called(ctx, doguName)
 
 	var r0 *core.Dogu
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*core.Dogu, error)); ok {
-		return rf(doguName)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*core.Dogu, error)); ok {
+		return rf(ctx, doguName)
 	}
-	if rf, ok := ret.Get(0).(func(string) *core.Dogu); ok {
-		r0 = rf(doguName)
+	if rf, ok := ret.Get(0).(func(context.Context, string) *core.Dogu); ok {
+		r0 = rf(ctx, doguName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*core.Dogu)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(doguName)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, doguName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -52,14 +54,15 @@ type LocalDoguFetcher_FetchInstalled_Call struct {
 }
 
 // FetchInstalled is a helper method to define mock.On call
+//   - ctx context.Context
 //   - doguName string
-func (_e *LocalDoguFetcher_Expecter) FetchInstalled(doguName interface{}) *LocalDoguFetcher_FetchInstalled_Call {
-	return &LocalDoguFetcher_FetchInstalled_Call{Call: _e.mock.On("FetchInstalled", doguName)}
+func (_e *LocalDoguFetcher_Expecter) FetchInstalled(ctx interface{}, doguName interface{}) *LocalDoguFetcher_FetchInstalled_Call {
+	return &LocalDoguFetcher_FetchInstalled_Call{Call: _e.mock.On("FetchInstalled", ctx, doguName)}
 }
 
-func (_c *LocalDoguFetcher_FetchInstalled_Call) Run(run func(doguName string)) *LocalDoguFetcher_FetchInstalled_Call {
+func (_c *LocalDoguFetcher_FetchInstalled_Call) Run(run func(ctx context.Context, doguName string)) *LocalDoguFetcher_FetchInstalled_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -69,7 +72,7 @@ func (_c *LocalDoguFetcher_FetchInstalled_Call) Return(installedDogu *core.Dogu,
 	return _c
 }
 
-func (_c *LocalDoguFetcher_FetchInstalled_Call) RunAndReturn(run func(string) (*core.Dogu, error)) *LocalDoguFetcher_FetchInstalled_Call {
+func (_c *LocalDoguFetcher_FetchInstalled_Call) RunAndReturn(run func(context.Context, string) (*core.Dogu, error)) *LocalDoguFetcher_FetchInstalled_Call {
 	_c.Call.Return(run)
 	return _c
 }

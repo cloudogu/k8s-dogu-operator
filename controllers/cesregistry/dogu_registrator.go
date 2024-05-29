@@ -2,14 +2,10 @@ package cesregistry
 
 import (
 	"context"
-	"errors"
 	"fmt"
-
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,24 +15,31 @@ import (
 	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
 type CesDoguRegistrator struct {
-	client          client.Client
-	registry        cesregistry.Registry
-	doguRegistry    cesregistry.DoguRegistry
-	secretGenerator cloudogu.SecretResourceGenerator
+	client            client.Client
+	registry          cesregistry.Registry
+	localDoguRegistry thirdParty.LocalDoguRegistry
+	secretGenerator   cloudogu.SecretResourceGenerator
 }
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, secretGenerator cloudogu.SecretResourceGenerator) *CesDoguRegistrator {
+func NewCESDoguRegistrator(
+	client client.Client,
+	localDoguRegistry thirdParty.LocalDoguRegistry,
+	registry cesregistry.Registry,
+	secretGenerator cloudogu.SecretResourceGenerator,
+) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
-		client:          client,
-		registry:        registry,
-		doguRegistry:    registry.DoguRegistry(),
-		secretGenerator: secretGenerator,
+		client:            client,
+		registry:          registry,
+		localDoguRegistry: localDoguRegistry,
+		secretGenerator:   secretGenerator,
 	}
 }
 
@@ -44,7 +47,7 @@ func NewCESDoguRegistrator(client client.Client, registry cesregistry.Registry, 
 // dogu.
 func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
-	enabled, err := c.doguRegistry.IsEnabled(dogu.GetSimpleName())
+	enabled, err := c.localDoguRegistry.IsEnabled(ctx, dogu.GetSimpleName())
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu is already installed and enabled: %w", err)
 	}
@@ -54,7 +57,7 @@ func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, doguResource *
 		return nil
 	}
 
-	err = c.registerDoguInRegistry(dogu)
+	err = c.registerDoguInRegistry(ctx, dogu)
 	if err != nil {
 		return err
 	}
@@ -64,54 +67,49 @@ func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, doguResource *
 		return fmt.Errorf("failed to register keys: %w", err)
 	}
 
-	return c.enableDoguInRegistry(dogu)
+	return c.enableDoguInRegistry(ctx, dogu)
 }
 
 // RegisterDoguVersion registers an upgrade of an existing dogu in a cluster. Use RegisterNewDogu() to complete new
 // dogu installations.
-func (c *CesDoguRegistrator) RegisterDoguVersion(dogu *core.Dogu) error {
-	enabled, err := c.doguRegistry.IsEnabled(dogu.GetSimpleName())
+func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core.Dogu) error {
+	enabled, err := c.localDoguRegistry.IsEnabled(ctx, dogu.GetSimpleName())
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu is already installed and enabled: %w", err)
 	}
 
 	if !enabled {
-		return errors.New("could not register dogu version: previous version not found")
+		return fmt.Errorf("could not register dogu version: previous version not found")
 	}
 
-	err = c.registerDoguInRegistry(dogu)
+	err = c.registerDoguInRegistry(ctx, dogu)
 	if err != nil {
 		return err
 	}
 
-	return c.enableDoguInRegistry(dogu)
+	return c.enableDoguInRegistry(ctx, dogu)
 }
 
 // UnregisterDogu deletes a dogu from the dogu registry
-func (c *CesDoguRegistrator) UnregisterDogu(dogu string) error {
-	err := c.registry.DoguConfig(dogu).RemoveAll()
-	if err != nil && !cesregistry.IsKeyNotFoundError(err) {
-		return fmt.Errorf("failed to remove dogu config: %w", err)
-	}
-
-	err = c.doguRegistry.Unregister(dogu)
-	if err != nil && !cesregistry.IsKeyNotFoundError(err) {
+func (c *CesDoguRegistrator) UnregisterDogu(ctx context.Context, dogu string) error {
+	err := c.localDoguRegistry.UnregisterAllVersions(ctx, dogu)
+	if err != nil {
 		return fmt.Errorf("failed to unregister dogu %s: %w", dogu, err)
 	}
 
 	return nil
 }
 
-func (c *CesDoguRegistrator) enableDoguInRegistry(dogu *core.Dogu) error {
-	err := c.doguRegistry.Enable(dogu)
+func (c *CesDoguRegistrator) enableDoguInRegistry(ctx context.Context, dogu *core.Dogu) error {
+	err := c.localDoguRegistry.Enable(ctx, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to enable dogu: %w", err)
 	}
 	return nil
 }
 
-func (c *CesDoguRegistrator) registerDoguInRegistry(dogu *core.Dogu) error {
-	err := c.doguRegistry.Register(dogu)
+func (c *CesDoguRegistrator) registerDoguInRegistry(ctx context.Context, dogu *core.Dogu) error {
+	err := c.localDoguRegistry.Register(ctx, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu %s: %w", dogu.GetSimpleName(), err)
 	}

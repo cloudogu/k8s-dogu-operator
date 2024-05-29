@@ -115,7 +115,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -219,7 +219,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -322,7 +322,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -405,7 +405,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				Build()
 
 			registrator := mocks.NewDoguRegistrator(t)
-			registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+			registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 			saCreator := mocks.NewServiceAccountCreator(t)
 			saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 			imageRegMock := mocks.NewImageRegistry(t)
@@ -467,7 +467,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				Build()
 
 			registrator := mocks.NewDoguRegistrator(t)
-			registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+			registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 			saCreator := mocks.NewServiceAccountCreator(t)
 			saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 			imageRegMock := mocks.NewImageRegistry(t)
@@ -530,7 +530,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				Build()
 
 			registrator := mocks.NewDoguRegistrator(t)
-			registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+			registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 			saCreator := mocks.NewServiceAccountCreator(t)
 			saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 			imageRegMock := mocks.NewImageRegistry(t)
@@ -615,7 +615,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				Build()
 
 			registrator := mocks.NewDoguRegistrator(t)
-			registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+			registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 			saCreator := mocks.NewServiceAccountCreator(t)
 			saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 			imageRegMock := mocks.NewImageRegistry(t)
@@ -713,7 +713,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -815,7 +815,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -885,7 +885,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -948,7 +948,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -1012,7 +1012,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(nil)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -1065,7 +1065,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(nil)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(nil)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		saCreator.On("CreateAll", testCtx, toDogu).Return(assert.AnError)
 		imageRegMock := mocks.NewImageRegistry(t)
@@ -1116,7 +1116,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Build()
 
 		registrator := mocks.NewDoguRegistrator(t)
-		registrator.On("RegisterDoguVersion", toDogu).Return(assert.AnError)
+		registrator.EXPECT().RegisterDoguVersion(testCtx, toDogu).Return(assert.AnError)
 		saCreator := mocks.NewServiceAccountCreator(t)
 		imageRegMock := mocks.NewImageRegistry(t)
 		k8sFileEx := mocks.NewFileExtractor(t)
@@ -1154,22 +1154,20 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
-		doguRegistryMock := new(regmock.DoguRegistry)
 		registryMock := new(regmock.Registry)
-		registryMock.On("DoguRegistry").Return(doguRegistryMock)
-		doguRegistryMock.On("IsEnabled", toDogu.GetSimpleName()).Return(true, nil)
-		doguRegistryMock.On("Register", toDogu).Return(nil)
-		doguRegistryMock.On("Enable", toDogu).Return(nil)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, toDogu.GetSimpleName()).Return(true, nil)
+		localDoguRegMock.EXPECT().Register(testCtx, toDogu).Return(nil)
+		localDoguRegMock.EXPECT().Enable(testCtx, toDogu).Return(nil)
 
-		cesreg := cesregistry.NewCESDoguRegistrator(nil, registryMock, nil)
+		cesreg := cesregistry.NewCESDoguRegistrator(nil, localDoguRegMock, registryMock, nil)
 
 		// when
-		err := registerUpgradedDoguVersion(cesreg, toDogu)
+		err := registerUpgradedDoguVersion(testCtx, cesreg, toDogu)
 
 		// then
 		require.NoError(t, err)
 		registryMock.AssertExpectations(t)
-		doguRegistryMock.AssertExpectations(t)
 	})
 	t.Run("should fail", func(t *testing.T) {
 		toDoguCr := readTestDataRedmineCr(t)
@@ -1179,13 +1177,13 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 
 		doguRegistryMock := new(regmock.DoguRegistry)
 		registryMock := new(regmock.Registry)
-		registryMock.On("DoguRegistry").Return(doguRegistryMock)
-		doguRegistryMock.On("IsEnabled", toDogu.GetSimpleName()).Return(false, nil)
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().IsEnabled(testCtx, toDogu.GetSimpleName()).Return(false, nil)
 
-		cesreg := cesregistry.NewCESDoguRegistrator(nil, registryMock, nil)
+		cesreg := cesregistry.NewCESDoguRegistrator(nil, localDoguRegMock, registryMock, nil)
 
 		// when
-		err := registerUpgradedDoguVersion(cesreg, toDogu)
+		err := registerUpgradedDoguVersion(testCtx, cesreg, toDogu)
 
 		// then
 		require.Error(t, err)

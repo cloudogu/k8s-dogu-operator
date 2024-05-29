@@ -32,9 +32,6 @@ var ldapDoguDescriptorBytes []byte
 //go:embed testdata/ldap-descriptor-cm.yaml
 var ldapDoguDevelopmentMapBytes []byte
 
-//go:embed testdata/ldap-dogu-upgrade.json
-var ldapUpgradeDoguDescriptorBytes []byte
-
 //go:embed testdata/image-config.json
 var imageConfigBytes []byte
 

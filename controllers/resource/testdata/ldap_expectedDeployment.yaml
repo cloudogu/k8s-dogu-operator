@@ -53,6 +53,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: ECOSYSTEM_MULTINODE
+              value: true
           resources: { }
           volumeMounts:
             - mountPath: /etc/ces/node_master
@@ -61,6 +63,9 @@ spec:
               subPath: node_master
             - mountPath: /private
               name: ldap-private
+              readOnly: true
+            - mountPath: /etc/ces/dogu_json/ldap
+              name: ldap-dogu-json
               readOnly: true
             - mountPath: /var/lib/openldap
               name: ldap-data
@@ -102,6 +107,10 @@ spec:
           secret:
             defaultMode: 484
             secretName: ldap-private
+        - name: ldap-dogu-json
+          configMap:
+            name: dogu-spec-ldap
+            optional: true
         - name: ldap-data
           persistentVolumeClaim:
             claimName: ldap

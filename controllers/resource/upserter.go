@@ -85,7 +85,15 @@ func (u *upserter) UpsertDoguExposedService(ctx context.Context, doguResource *k
 
 // UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
 func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*v1.PersistentVolumeClaim, error) {
-	if len(dogu.Volumes) > 0 {
+	shouldCreatePVC := false
+	for _, volume := range dogu.Volumes {
+		if volume.NeedsBackup {
+			shouldCreatePVC = true
+			break
+		}
+	}
+
+	if shouldCreatePVC {
 		newPVC, err := u.generator.CreateDoguPVC(doguResource)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate pvc: %w", err)
