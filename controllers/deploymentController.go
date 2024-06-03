@@ -138,7 +138,7 @@ func (dr *DeploymentReconciler) UpdateDoguInHealthConfigMap(ctx context.Context,
 				newData = make(map[string]string)
 			}
 			for _, status := range pod.Status.ContainerStatuses {
-				newData[doguDeployment.Name] = "unavailable"
+				newData[doguDeployment.Name] = ""
 				if *status.Started {
 					newData[doguDeployment.Name] = state
 					break
