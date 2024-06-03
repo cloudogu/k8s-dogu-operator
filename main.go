@@ -244,6 +244,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 		k8sClientSet,
 		availabilityChecker,
 		healthStatusUpdater,
+		localDoguRegistry,
 	)
 	err = deploymentReconciler.SetupWithManager(k8sManager)
 	if err != nil {
