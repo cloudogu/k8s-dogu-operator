@@ -28,10 +28,11 @@ type doguDeleteManager struct {
 	serviceAccountRemover cloudogu.ServiceAccountRemover
 	exposedPortRemover    cloudogu.ExposePortRemover
 	eventRecorder         record.EventRecorder
+	k8sClientSet          thirdParty.ClientSet
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder) *doguDeleteManager {
+func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder, k8sClientSet thirdParty.ClientSet) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,
@@ -39,6 +40,7 @@ func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorC
 		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.LocalDoguRegistry, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
 		eventRecorder:         recorder,
+		k8sClientSet:          k8sClientSet,
 	}
 }
 

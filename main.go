@@ -218,6 +218,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 		operatorConfig,
 		cesReg,
 		eventRecorder,
+		k8sClientSet,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu manager: %w", err)
