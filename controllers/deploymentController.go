@@ -12,6 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strings"
 
 	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
@@ -88,6 +89,11 @@ func hasDoguLabel(deployment client.Object) bool {
 
 func (dr *DeploymentReconciler) updateDoguHealth(ctx context.Context, doguDeployment *appsv1.Deployment) error {
 	doguAvailable := dr.availabilityChecker.IsAvailable(doguDeployment)
+	err := dr.UpdateDoguInHealthConfigMap(ctx, doguDeployment)
+	if err != nil {
+		return err
+	}
+
 	log.FromContext(ctx).Info(fmt.Sprintf("dogu deployment %q is %s", doguDeployment.Name, (map[bool]string{true: "available", false: "unavailable"})[doguAvailable]))
 	return dr.doguHealthStatusUpdater.UpdateStatus(ctx,
 		types.NamespacedName{Name: doguDeployment.Name, Namespace: doguDeployment.Namespace},
@@ -99,4 +105,55 @@ func (dr *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.Deployment{}).
 		Complete(dr)
+}
+
+func (dr *DeploymentReconciler) UpdateDoguInHealthConfigMap(ctx context.Context, doguDeployment *appsv1.Deployment) error {
+	namespace := doguDeployment.Namespace
+
+	// Read out ConfigMap
+	stateConfigMap, err := dr.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, "k8s-dogu-operator-dogu-health", metav1api.GetOptions{})
+
+	// Get all pods to deployment
+	pods, err := dr.k8sClientSet.CoreV1().Pods(namespace).List(ctx, metav1api.ListOptions{
+		LabelSelector: metav1api.FormatLabelSelector(doguDeployment.Spec.Selector),
+	})
+
+	d, _ := dr.localDoguRegistry.GetCurrent(ctx, doguDeployment.Name)
+	isState := false
+	state := "ready"
+	for _, healthCheck := range d.HealthChecks {
+		if healthCheck.Type == "state" {
+			isState = true
+			if healthCheck.State != "" {
+				state = healthCheck.State
+			}
+			break
+		}
+	}
+
+	for _, pod := range pods.Items {
+		if strings.Contains(pod.Name, doguDeployment.Name) && isState {
+			newData := stateConfigMap.Data
+			if err != nil || newData == nil {
+				newData = make(map[string]string)
+			}
+			for _, status := range pod.Status.ContainerStatuses {
+				newData[doguDeployment.Name] = "unavailable"
+				if *status.Started {
+					newData[doguDeployment.Name] = state
+					break
+				}
+			}
+			stateConfigMap.Data = newData
+
+			// Update the ConfigMap
+			_, err = dr.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+			if err != nil {
+				log.FromContext(ctx).Error(err, "failed to remove health state out of configMap")
+			}
+			break
+		}
+	}
+
+	return nil
 }
