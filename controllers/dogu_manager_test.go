@@ -163,6 +163,7 @@ func TestNewDoguManager(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
 		eventRecorder := extMocks.NewEventRecorder(t)
+		k8sClientSet := extMocks.ClientSet{}
 		globalConfig.On("Exists", "key_provider").Return(true, nil)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 		cesRegistry.On("DoguRegistry").Return(doguRegistry)
@@ -171,7 +172,7 @@ func TestNewDoguManager(t *testing.T) {
 		ecosystemClientSetMock.EXPECT().Dogus(testNamespace).Return(nil)
 
 		// when
-		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder, &k8sClientSet)
 
 		// then
 		require.NoError(t, err)
@@ -190,6 +191,7 @@ func TestNewDoguManager(t *testing.T) {
 		globalConfig := cesmocks.NewConfigurationContext(t)
 		doguRegistry := cesmocks.NewDoguRegistry(t)
 		eventRecorder := extMocks.NewEventRecorder(t)
+		k8sClientSet := extMocks.ClientSet{}
 		globalConfig.On("Exists", "key_provider").Return(false, nil)
 		globalConfig.On("Set", "key_provider", "pkcs1v15").Return(nil)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
@@ -199,7 +201,7 @@ func TestNewDoguManager(t *testing.T) {
 		ecosystemClientSetMock.EXPECT().Dogus(testNamespace).Return(nil)
 
 		// when
-		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder, &k8sClientSet)
 
 		// then
 		require.NoError(t, err)
@@ -214,11 +216,12 @@ func TestNewDoguManager(t *testing.T) {
 		operatorConfig.Namespace = testNamespace
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
+		k8sClientSet := extMocks.ClientSet{}
 		globalConfig.On("Exists", "key_provider").Return(true, assert.AnError)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 
 		// when
-		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder, &k8sClientSet)
 
 		// then
 		require.Error(t, err)
@@ -233,13 +236,14 @@ func TestNewDoguManager(t *testing.T) {
 		operatorConfig.Namespace = testNamespace
 		cesRegistry := cesmocks.NewRegistry(t)
 		globalConfig := cesmocks.NewConfigurationContext(t)
+		k8sClientSet := extMocks.ClientSet{}
 		globalConfig.On("Exists", "key_provider").Return(false, nil)
 		globalConfig.On("Set", "key_provider", "pkcs1v15").Return(assert.AnError)
 		cesRegistry.On("GlobalConfig").Return(globalConfig)
 		eventRecorder := extMocks.NewEventRecorder(t)
 
 		// when
-		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder, &k8sClientSet)
 
 		// then
 		require.Error(t, err)
