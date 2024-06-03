@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -76,6 +78,12 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		if err != nil {
 			logger.Error(err, "failed to remove exposed ports")
 		}
+
+		logger.Info("Remove health state out of ConfigMap")
+		err := m.DeleteDoguOutOfHealthConfigMap(ctx, doguResource.Name)
+		if err != nil {
+			logger.Error(err, "failed to remove health state out of configMap")
+		}
 	}
 
 	logger.Info("Remove finalizer...")
@@ -87,4 +95,21 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
 
 	return nil
+}
+
+func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, doguName string) error {
+	namespace := "ecosystem"
+	stateConfigMap, err := m.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, "k8s-dogu-operator-dogu-health", metav1api.GetOptions{})
+
+	newData := stateConfigMap.Data
+	if err != nil || newData == nil {
+		newData = make(map[string]string)
+	}
+	delete(newData, doguName)
+
+	stateConfigMap.Data = newData
+
+	// Update the ConfigMap
+	_, err = m.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+	return err
 }
