@@ -110,9 +110,19 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		},
 	}
 
+	doguHealthVolume := corev1.Volume{
+		Name: doguHealth,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: doguHealthConfigMap},
+			},
+		},
+	}
+
 	return []corev1.Volume{
 		nodeMasterVolume,
 		privateVolume,
+		doguHealthVolume,
 	}
 }
 
