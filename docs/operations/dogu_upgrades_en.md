@@ -101,18 +101,18 @@ The size of the pre-upgrade script is only limited by the RAM (random access mem
 Unlike the pre-upgrade script, the post-upgrade script is subject to only minor constraints because the script is usually already in its execution location.
 The post-upgrade script is executed in the new dogu at the end of the upgrade process.
 The dogu is responsible for waiting for the post-upgrade script to finish.
-This is where the use of the dogu state has proven helpful:
+This is where the use of the local dogu config has proven helpful:
 
 ```bash
 # post-upgrade.sh
-doguctl state "upgrading
+doguctl config "local_state" "upgrading"
 # upgrade routines go here...
-doguctl state "starting
+doguctl state "local_state" "starting"
 ```
 
 ```bash
 # startup.sh
-while [[ "$(doguctl state)" == "upgrading" ]]; do
+while [[ "$(doguctl config "local_state")" == "upgrading" ]]; do
   echo "Upgrade script is running. Waiting..."
   sleep 3
 done
