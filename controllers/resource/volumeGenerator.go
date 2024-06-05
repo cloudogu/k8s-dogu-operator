@@ -220,12 +220,6 @@ func convertGenericJsonObject(genericObject interface{}, targetObject interface{
 
 func createVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	volumeMounts := createStaticVolumeMounts(doguResource)
-	for _, check := range dogu.HealthChecks {
-		if check.Type == "State" {
-			volumeMounts = append(volumeMounts, createStateVolumeMount(doguResource))
-			break
-		}
-	}
 
 	// mount dogu jsons from dependency dogus so that a dogu can query attributes from other dogus.
 	volumeMounts = append(volumeMounts, createDoguJsonVolumeMountsFromDependencies(dogu)...)
@@ -252,17 +246,14 @@ func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
 			ReadOnly:  true,
 			MountPath: "/etc/ces/health",
 		},
+		{
+			Name:      doguResource.GetEphemeralDataVolumeName(),
+			ReadOnly:  false,
+			MountPath: "/var/ces/state",
+			SubPath:   "state",
+		},
 	}
 	return doguVolumeMounts
-}
-
-func createStateVolumeMount(doguResource *k8sv1.Dogu) corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      doguResource.GetEphemeralDataVolumeName(),
-		ReadOnly:  false,
-		MountPath: "/var/ces/state",
-		SubPath:   "state",
-	}
 }
 
 func createDoguJsonVolumeMountsFromDependencies(dogu *core.Dogu) []corev1.VolumeMount {
