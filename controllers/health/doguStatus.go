@@ -3,6 +3,11 @@ package health
 import (
 	"context"
 	"fmt"
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	appsv1 "k8s.io/api/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,10 +23,15 @@ const statusUpdateEventReason = "HealthStatusUpdate"
 type DoguStatusUpdater struct {
 	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
 	recorder        record.EventRecorder
+	k8sClientSet    thirdParty.ClientSet
 }
 
-func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder) *DoguStatusUpdater {
-	return &DoguStatusUpdater{ecosystemClient: ecosystemClient, recorder: recorder}
+func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder, k8sClientSet thirdParty.ClientSet) *DoguStatusUpdater {
+	return &DoguStatusUpdater{
+		ecosystemClient: ecosystemClient,
+		recorder:        recorder,
+		k8sClientSet:    k8sClientSet,
+	}
 }
 
 // UpdateStatus sets the health status of the dogu according to whether if it's available or not.
@@ -50,5 +60,57 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.N
 	}
 
 	dsw.recorder.Eventf(dogu, v1.EventTypeNormal, statusUpdateEventReason, "successfully updated health status to %q", desiredHealthStatus)
+	return nil
+}
+
+func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDeployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error {
+	namespace := doguDeployment.Namespace
+
+	// Read out ConfigMap
+	stateConfigMap, err := dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, "k8s-dogu-operator-dogu-health", metav1api.GetOptions{})
+	//TODO error handling
+
+	// Get all pods to deployment
+	pods, err := dsw.k8sClientSet.CoreV1().Pods(namespace).List(ctx, metav1api.ListOptions{
+		LabelSelector: metav1api.FormatLabelSelector(doguDeployment.Spec.Selector),
+	})
+	//TODO error handling
+
+	isState := false
+	state := "ready"
+	for _, healthCheck := range doguJson.HealthChecks {
+		if healthCheck.Type == "state" {
+			isState = true
+			if healthCheck.State != "" {
+				state = healthCheck.State
+			}
+			break
+		}
+	}
+
+	for _, pod := range pods.Items {
+		if strings.Contains(pod.Name, doguDeployment.Name) && isState {
+			newData := stateConfigMap.Data
+			if err != nil || newData == nil {
+				newData = make(map[string]string)
+			}
+			for _, status := range pod.Status.ContainerStatuses {
+				newData[doguDeployment.Name] = ""
+				if *status.Started {
+					newData[doguDeployment.Name] = state
+					break
+				}
+			}
+			stateConfigMap.Data = newData
+
+			// Update the ConfigMap
+			_, err = dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+			if err != nil {
+				log.FromContext(ctx).Error(err, "failed to remove health state out of configMap")
+			}
+			break
+		}
+	}
+
 	return nil
 }

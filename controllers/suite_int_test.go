@@ -278,8 +278,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	err = doguReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	updater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder)
-	deploymentReconciler := NewDeploymentReconciler(k8sClientSet, &health.AvailabilityChecker{}, updater)
+	updater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder, nil)
+	deploymentReconciler := NewDeploymentReconciler(k8sClientSet, &health.AvailabilityChecker{}, updater, localDoguRegistry)
 
 	err = deploymentReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())

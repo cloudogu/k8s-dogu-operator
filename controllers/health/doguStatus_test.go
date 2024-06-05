@@ -22,7 +22,7 @@ func TestNewDoguStatusUpdater(t *testing.T) {
 	recorderMock := extMocks.NewEventRecorder(t)
 
 	// when
-	actual := NewDoguStatusUpdater(ecosystemClientMock, recorderMock)
+	actual := NewDoguStatusUpdater(ecosystemClientMock, recorderMock, nil)
 
 	// then
 	assert.NotEmpty(t, actual)

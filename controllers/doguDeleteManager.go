@@ -34,7 +34,14 @@ type doguDeleteManager struct {
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder, k8sClientSet thirdParty.ClientSet) *doguDeleteManager {
+func NewDoguDeleteManager(
+	client client.Client,
+	operatorConfig *config.OperatorConfig,
+	cesRegistry cesregistry.Registry,
+	mgrSet *util.ManagerSet,
+	recorder record.EventRecorder,
+	k8sClientSet thirdParty.ClientSet,
+) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,
@@ -80,7 +87,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		}
 
 		logger.Info("Remove health state out of ConfigMap")
-		err := m.DeleteDoguOutOfHealthConfigMap(ctx, doguResource.Name)
+		err := m.DeleteDoguOutOfHealthConfigMap(ctx, doguResource)
 		if err != nil {
 			logger.Error(err, "failed to remove health state out of configMap")
 		}
@@ -97,19 +104,24 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	return nil
 }
 
-func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, doguName string) error {
-	namespace := "ecosystem"
+func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *k8sv1.Dogu) error {
+	namespace := dogu.Namespace
+	//TODO: besser als das hier?
 	stateConfigMap, err := m.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, "k8s-dogu-operator-dogu-health", metav1api.GetOptions{})
+	//stateConfigMap := &corev1.ConfigMap{}
+	//cmKey := types.NamespacedName{Namespace: namespace, Name: "k8s-dogu-operator-dogu-health"}
+	//err := m.client.Get(ctx, cmKey, stateConfigMap, &client.GetOptions{})
 
 	newData := stateConfigMap.Data
 	if err != nil || newData == nil {
 		newData = make(map[string]string)
 	}
-	delete(newData, doguName)
+	delete(newData, dogu.Name)
 
 	stateConfigMap.Data = newData
 
 	// Update the ConfigMap
-	_, err = m.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+	//_, err = m.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+	err = m.client.Update(ctx, stateConfigMap, &client.UpdateOptions{})
 	return err
 }
