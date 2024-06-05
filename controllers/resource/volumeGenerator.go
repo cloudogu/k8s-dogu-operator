@@ -132,7 +132,6 @@ func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]c
 
 	// only create max one pvcVolume and one emptyDirVolume
 	pvcVolumeCreated := false
-	emptyDirVolumeCreated := false
 
 	for _, doguVolume := range doguVolumes {
 		// to mount e.g. config maps
@@ -157,18 +156,16 @@ func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]c
 			}
 			volumes = append(volumes, dataVolume)
 			pvcVolumeCreated = true
-		} else if !doguVolume.NeedsBackup && !emptyDirVolumeCreated {
-			// add EmptyDir-VolumeSource for volumes without backup
-			dataVolume := corev1.Volume{
-				Name: doguResource.GetEphemeralDataVolumeName(),
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			}
-			volumes = append(volumes, dataVolume)
-			emptyDirVolumeCreated = true
 		}
 	}
+	// add EmptyDir-VolumeSource for all dogus to at least give them the ability to write state
+	dataVolume := corev1.Volume{
+		Name: doguResource.GetEphemeralDataVolumeName(),
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+	volumes = append(volumes, dataVolume)
 
 	return volumes, multiError
 }
