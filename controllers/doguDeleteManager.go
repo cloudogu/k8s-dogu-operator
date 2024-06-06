@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -30,7 +30,6 @@ type doguDeleteManager struct {
 	serviceAccountRemover cloudogu.ServiceAccountRemover
 	exposedPortRemover    cloudogu.ExposePortRemover
 	eventRecorder         record.EventRecorder
-	k8sClientSet          thirdParty.ClientSet
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
@@ -40,7 +39,6 @@ func NewDoguDeleteManager(
 	cesRegistry cesregistry.Registry,
 	mgrSet *util.ManagerSet,
 	recorder record.EventRecorder,
-	k8sClientSet thirdParty.ClientSet,
 ) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
@@ -49,7 +47,6 @@ func NewDoguDeleteManager(
 		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.LocalDoguRegistry, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
 		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
 		eventRecorder:         recorder,
-		k8sClientSet:          k8sClientSet,
 	}
 }
 
@@ -106,11 +103,9 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 
 func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *k8sv1.Dogu) error {
 	namespace := dogu.Namespace
-	//TODO: besser als das hier?
-	stateConfigMap, err := m.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, "k8s-dogu-operator-dogu-health", metav1api.GetOptions{})
-	//stateConfigMap := &corev1.ConfigMap{}
-	//cmKey := types.NamespacedName{Namespace: namespace, Name: "k8s-dogu-operator-dogu-health"}
-	//err := m.client.Get(ctx, cmKey, stateConfigMap, &client.GetOptions{})
+	stateConfigMap := &corev1.ConfigMap{}
+	cmKey := types.NamespacedName{Namespace: namespace, Name: "k8s-dogu-operator-dogu-health"}
+	err := m.client.Get(ctx, cmKey, stateConfigMap, &client.GetOptions{})
 
 	newData := stateConfigMap.Data
 	if err != nil || newData == nil {

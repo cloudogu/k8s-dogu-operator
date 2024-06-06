@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -43,11 +42,10 @@ type DoguManager struct {
 	supportManager            cloudogu.SupportManager
 	startStopManager          cloudogu.DoguStartStopManager
 	recorder                  record.EventRecorder
-	k8sClientSet              thirdParty.ClientSet
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder, k8sClientSet thirdParty.ClientSet) (*DoguManager, error) {
+func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	err := validateKeyProvider(cesRegistry.GlobalConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate key provider: %w", err)
@@ -101,7 +99,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, err
 	}
 
-	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder, k8sClientSet)
+	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
 	if err != nil {
 		return nil, err
 	}

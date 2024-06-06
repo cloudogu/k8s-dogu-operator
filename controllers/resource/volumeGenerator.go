@@ -119,10 +119,19 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		},
 	}
 
+	// add EmptyDir-VolumeSource for all dogus to at least give them the ability to write state
+	ephemeralVolume := corev1.Volume{
+		Name: doguResource.GetEphemeralDataVolumeName(),
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+
 	return []corev1.Volume{
 		nodeMasterVolume,
 		privateVolume,
 		doguHealthVolume,
+		ephemeralVolume,
 	}
 }
 
@@ -158,14 +167,6 @@ func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]c
 			pvcVolumeCreated = true
 		}
 	}
-	// add EmptyDir-VolumeSource for all dogus to at least give them the ability to write state
-	dataVolume := corev1.Volume{
-		Name: doguResource.GetEphemeralDataVolumeName(),
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
-	volumes = append(volumes, dataVolume)
 
 	return volumes, multiError
 }

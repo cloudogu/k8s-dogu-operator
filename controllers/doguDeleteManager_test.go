@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	fake2 "k8s.io/client-go/kubernetes/fake"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,10 +66,9 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		operatorConfig.Namespace = "test"
 		cesRegistry := cesmocks.NewRegistry(t)
 		mgrSet := &util.ManagerSet{}
-		clientset := fake2.NewSimpleClientset()
 
 		// when
-		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil, clientset)
+		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil)
 
 		// then
 		require.NotNil(t, doguManager)

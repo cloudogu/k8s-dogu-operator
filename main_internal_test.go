@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"os"
 	"testing"
 
@@ -118,7 +117,7 @@ func Test_startDoguOperator(t *testing.T) {
 
 	oldDoguManager := controllers.NewManager
 	defer func() { controllers.NewManager = oldDoguManager }()
-	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder, k8sClientSet thirdParty.ClientSet) (*controllers.DoguManager, error) {
+	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, recorder record.EventRecorder) (*controllers.DoguManager, error) {
 		return &controllers.DoguManager{}, nil
 	}
 
