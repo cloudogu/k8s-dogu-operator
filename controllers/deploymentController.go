@@ -87,10 +87,13 @@ func hasDoguLabel(deployment client.Object) bool {
 
 func (dr *DeploymentReconciler) updateDoguHealth(ctx context.Context, doguDeployment *appsv1.Deployment) error {
 	doguAvailable := dr.availabilityChecker.IsAvailable(doguDeployment)
-	doguJson, _ := dr.localDoguRegistry.GetCurrent(ctx, doguDeployment.Name)
-	err := dr.doguHealthStatusUpdater.UpdateHealthConfigMap(ctx, doguDeployment, doguJson)
+	doguJson, err := dr.localDoguRegistry.GetCurrent(ctx, doguDeployment.Name)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current dogu json to update health state configMap: %w", err)
+	}
+	err = dr.doguHealthStatusUpdater.UpdateHealthConfigMap(ctx, doguDeployment, doguJson)
+	if err != nil {
+		return fmt.Errorf("failed to update health state configMap: %w", err)
 	}
 
 	log.FromContext(ctx).Info(fmt.Sprintf("dogu deployment %q is %s", doguDeployment.Name, (map[bool]string{true: "available", false: "unavailable"})[doguAvailable]))
