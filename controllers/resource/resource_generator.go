@@ -237,9 +237,13 @@ func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
 
 	for _, healthCheck := range dogu.HealthChecks {
 		if healthCheck.Type == "state" {
+			state := "ready"
+			if healthCheck.State != "" {
+				state = healthCheck.State
+			}
 			return &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					Exec: &corev1.ExecAction{Command: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
+					Exec: &corev1.ExecAction{Command: []string{"bash", "-c", fmt.Sprintf("[[ $(doguctl state) == \"%s\" ]]", state)}},
 				},
 				TimeoutSeconds:   timeoutSeconds,
 				PeriodSeconds:    10,

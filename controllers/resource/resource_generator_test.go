@@ -421,3 +421,25 @@ func Test_getStartupProbeTimeout(t *testing.T) {
 		})
 	}
 }
+
+func Test_CreateStartupProbe(t *testing.T) {
+	tests := []struct {
+		name  string
+		state string
+		want  []string
+	}{
+		{name: "should be ready if not set", state: "", want: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
+		{name: "should be custom if custom", state: "custom", want: []string{"bash", "-c", "[[ $(doguctl state) == \"custom\" ]]"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dogu := &core.Dogu{HealthChecks: []core.HealthCheck{{
+				Type:  "state",
+				State: tt.state,
+			}},
+			}
+			probe := CreateStartupProbe(dogu)
+			assert.Equalf(t, tt.want, probe.ProbeHandler.Exec.Command, "CreateStartupProbe()")
+		})
+	}
+}
