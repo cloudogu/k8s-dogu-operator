@@ -6,9 +6,6 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	appsv1 "k8s.io/api/apps/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
-
 	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,6 +16,7 @@ import (
 )
 
 const statusUpdateEventReason = "HealthStatusUpdate"
+const healthConfigMapName = "k8s-dogu-operator-dogu-health"
 
 type DoguStatusUpdater struct {
 	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
@@ -66,16 +64,48 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.N
 func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDeployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error {
 	namespace := doguDeployment.Namespace
 
-	// Read out ConfigMap
-	stateConfigMap, err := dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, "k8s-dogu-operator-dogu-health", metav1api.GetOptions{})
-	//TODO error handling
+	stateConfigMap, err := dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, healthConfigMapName, metav1api.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get health state configMap: %w", err)
+	}
+	initHealthConfigMap(stateConfigMap, doguDeployment)
 
 	// Get all pods to deployment
 	pods, err := dsw.k8sClientSet.CoreV1().Pods(namespace).List(ctx, metav1api.ListOptions{
 		LabelSelector: metav1api.FormatLabelSelector(doguDeployment.Spec.Selector),
 	})
-	//TODO error handling
+	if err != nil {
+		return fmt.Errorf("failed to get all pods for the deployment %v: %w", doguDeployment, err)
+	}
 
+	isState, state := hasHealthCheckofTypeState(doguJson)
+
+	for _, pod := range pods.Items {
+		if isState {
+			setHealthConfigMapStateWhenStarted(stateConfigMap, pod, doguDeployment, state)
+		}
+
+		_, err = dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to update health state in health configMap: %w", err)
+		}
+
+		if stateConfigMap.Data[doguDeployment.Name] != "" {
+			break
+		}
+	}
+
+	return nil
+}
+
+func initHealthConfigMap(stateConfigMap *v1.ConfigMap, doguDeployment *appsv1.Deployment) {
+	if stateConfigMap.Data == nil {
+		stateConfigMap.Data = make(map[string]string)
+	}
+	stateConfigMap.Data[doguDeployment.Name] = ""
+}
+
+func hasHealthCheckofTypeState(doguJson *cesappcore.Dogu) (bool, string) {
 	isState := false
 	state := "ready"
 	for _, healthCheck := range doguJson.HealthChecks {
@@ -87,30 +117,14 @@ func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDep
 			break
 		}
 	}
+	return isState, state
+}
 
-	for _, pod := range pods.Items {
-		if strings.Contains(pod.Name, doguDeployment.Name) && isState {
-			newData := stateConfigMap.Data
-			if err != nil || newData == nil {
-				newData = make(map[string]string)
-			}
-			for _, status := range pod.Status.ContainerStatuses {
-				newData[doguDeployment.Name] = ""
-				if *status.Started {
-					newData[doguDeployment.Name] = state
-					break
-				}
-			}
-			stateConfigMap.Data = newData
-
-			// Update the ConfigMap
-			_, err = dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
-			if err != nil {
-				log.FromContext(ctx).Error(err, "failed to remove health state out of configMap")
-			}
+func setHealthConfigMapStateWhenStarted(stateConfigMap *v1.ConfigMap, pod v1.Pod, doguDeployment *appsv1.Deployment, state string) {
+	for _, status := range pod.Status.ContainerStatuses {
+		if *status.Started {
+			stateConfigMap.Data[doguDeployment.Name] = state
 			break
 		}
 	}
-
-	return nil
 }
