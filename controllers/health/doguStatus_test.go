@@ -131,46 +131,49 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 }
 
 func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1api.ObjectMeta{
+			Name:      "ldap",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1api.LabelSelector{
+				MatchLabels: map[string]string{"test": "halloWelt"},
+			},
+		},
+	}
+	testCM := &corev1.ConfigMap{}
+	started := true
+	podList := &corev1.PodList{
+		Items: []corev1.Pod{
+			{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Started: &started,
+					}},
+				},
+			},
+		},
+	}
+
 	t.Run("should succeed to update health config map", func(t *testing.T) {
 		// given
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1api.ObjectMeta{
-				Name:      "ldap",
-				Namespace: testNamespace,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Selector: &metav1api.LabelSelector{
-					MatchLabels: map[string]string{"test": "halloWelt"},
-				},
-			},
-		}
-
-		testCM := &corev1.ConfigMap{}
-		started := true
-		podlist := &corev1.PodList{
-			Items: []corev1.Pod{
-				{
-					Status: corev1.PodStatus{
-						ContainerStatuses: []corev1.ContainerStatus{{
-							Started: &started,
-						}},
-					},
-				},
-			},
-		}
-
-		cmClientMock := extMocks.NewConfigMapInterface(t)
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
-		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
-		podClientMock := extMocks.NewPodInterface(t)
-		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
-			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
-		}).Return(podlist, nil)
+		clientSetMock := extMocks.NewClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
+		podClientMock := extMocks.NewPodInterface(t)
+		cmClientMock := extMocks.NewConfigMapInterface(t)
+
+		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
 		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
 		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
-		clientSetMock := extMocks.NewClientSet(t)
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
+		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
+		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
+
+		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
+			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
+		}).Return(podList, nil)
 
 		doguJson := &core.Dogu{
 			HealthChecks: []core.HealthCheck{{
@@ -188,46 +191,25 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should succeed to update health config map with custom state", func(t *testing.T) {
 		// given
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1api.ObjectMeta{
-				Name:      "ldap",
-				Namespace: testNamespace,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Selector: &metav1api.LabelSelector{
-					MatchLabels: map[string]string{"test": "halloWelt"},
-				},
-			},
-		}
-
-		testCM := &corev1.ConfigMap{}
 		testCM.Data = make(map[string]string)
 		testCM.Data["ldap"] = "ready"
-		started := true
-		podlist := &corev1.PodList{
-			Items: []corev1.Pod{
-				{
-					Status: corev1.PodStatus{
-						ContainerStatuses: []corev1.ContainerStatus{{
-							Started: &started,
-						}},
-					},
-				},
-			},
-		}
 
-		cmClientMock := extMocks.NewConfigMapInterface(t)
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
-		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
-		podClientMock := extMocks.NewPodInterface(t)
-		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
-			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
-		}).Return(podlist, nil)
+		clientSetMock := extMocks.NewClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
+		podClientMock := extMocks.NewPodInterface(t)
+		cmClientMock := extMocks.NewConfigMapInterface(t)
+
+		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
 		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
 		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
-		clientSetMock := extMocks.NewClientSet(t)
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
+		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
+		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
+
+		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
+			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
+		}).Return(podList, nil)
 
 		doguJson := &core.Dogu{
 			HealthChecks: []core.HealthCheck{{
@@ -246,46 +228,27 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should remove health state from config map if not started", func(t *testing.T) {
 		// given
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1api.ObjectMeta{
-				Name:      "ldap",
-				Namespace: testNamespace,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Selector: &metav1api.LabelSelector{
-					MatchLabels: map[string]string{"test": "halloWelt"},
-				},
-			},
-		}
-
-		testCM := &corev1.ConfigMap{}
 		testCM.Data = make(map[string]string)
 		testCM.Data["ldap"] = "ready"
-		started := false
-		podlist := &corev1.PodList{
-			Items: []corev1.Pod{
-				{
-					Status: corev1.PodStatus{
-						ContainerStatuses: []corev1.ContainerStatus{{
-							Started: &started,
-						}},
-					},
-				},
-			},
-		}
+		started = false
+		podList.Items[0].Status.ContainerStatuses[0].Started = &started
 
-		cmClientMock := extMocks.NewConfigMapInterface(t)
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
-		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
-		podClientMock := extMocks.NewPodInterface(t)
-		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
-			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
-		}).Return(podlist, nil)
+		clientSetMock := extMocks.NewClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
+		podClientMock := extMocks.NewPodInterface(t)
+		cmClientMock := extMocks.NewConfigMapInterface(t)
+
+		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
 		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
 		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
-		clientSetMock := extMocks.NewClientSet(t)
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
+		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
+		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
+
+		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
+			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
+		}).Return(podList, nil)
 
 		doguJson := &core.Dogu{
 			HealthChecks: []core.HealthCheck{{
@@ -303,46 +266,25 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should do remove existing state if no healthcheck of type state", func(t *testing.T) {
 		// given
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1api.ObjectMeta{
-				Name:      "ldap",
-				Namespace: testNamespace,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Selector: &metav1api.LabelSelector{
-					MatchLabels: map[string]string{"test": "halloWelt"},
-				},
-			},
-		}
-
-		testCM := &corev1.ConfigMap{}
 		testCM.Data = make(map[string]string)
 		testCM.Data["ldap"] = "ready"
-		started := true
-		podlist := &corev1.PodList{
-			Items: []corev1.Pod{
-				{
-					Status: corev1.PodStatus{
-						ContainerStatuses: []corev1.ContainerStatus{{
-							Started: &started,
-						}},
-					},
-				},
-			},
-		}
 
-		cmClientMock := extMocks.NewConfigMapInterface(t)
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
-		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
-		podClientMock := extMocks.NewPodInterface(t)
-		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
-			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
-		}).Return(podlist, nil)
+		clientSetMock := extMocks.NewClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
+		podClientMock := extMocks.NewPodInterface(t)
+		cmClientMock := extMocks.NewConfigMapInterface(t)
+
+		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
 		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
 		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
-		clientSetMock := extMocks.NewClientSet(t)
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
+		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
+		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
+
+		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
+			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
+		}).Return(podList, nil)
 
 		doguJson := &core.Dogu{
 			HealthChecks: []core.HealthCheck{{
@@ -360,24 +302,13 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to get configmap", func(t *testing.T) {
 		// given
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1api.ObjectMeta{
-				Name:      "ldap",
-				Namespace: testNamespace,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Selector: &metav1api.LabelSelector{
-					MatchLabels: map[string]string{"test": "halloWelt"},
-				},
-			},
-		}
-
-		cmClientMock := extMocks.NewConfigMapInterface(t)
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(nil, assert.AnError)
-		coreV1Client := extMocks.NewCoreV1Interface(t)
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
 		clientSetMock := extMocks.NewClientSet(t)
+		coreV1Client := extMocks.NewCoreV1Interface(t)
+		cmClientMock := extMocks.NewConfigMapInterface(t)
+
 		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
+		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(nil, assert.AnError)
 
 		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
 
@@ -391,29 +322,21 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to get pod list of deployment", func(t *testing.T) {
 		// given
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1api.ObjectMeta{
-				Name:      "ldap",
-				Namespace: testNamespace,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Selector: &metav1api.LabelSelector{
-					MatchLabels: map[string]string{"test": "halloWelt"},
-				},
-			},
-		}
-
-		cmClientMock := extMocks.NewConfigMapInterface(t)
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(&corev1.ConfigMap{}, nil)
+		clientSetMock := extMocks.NewClientSet(t)
+		coreV1Client := extMocks.NewCoreV1Interface(t)
 		podClientMock := extMocks.NewPodInterface(t)
+		cmClientMock := extMocks.NewConfigMapInterface(t)
+
+		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
+		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
+		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
+
+		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(&corev1.ConfigMap{}, nil)
+
 		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
 			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
 		}).Return(nil, assert.AnError)
-		coreV1Client := extMocks.NewCoreV1Interface(t)
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
-		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
-		clientSetMock := extMocks.NewClientSet(t)
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
 
 		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
 
@@ -427,35 +350,22 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to update configmap", func(t *testing.T) {
 		// given
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1api.ObjectMeta{
-				Name:      "ldap",
-				Namespace: testNamespace,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Selector: &metav1api.LabelSelector{
-					MatchLabels: map[string]string{"test": "halloWelt"},
-				},
-			},
-		}
-
-		testCM := &corev1.ConfigMap{}
-		podlist := &corev1.PodList{
-			Items: []corev1.Pod{{}},
-		}
-
-		cmClientMock := extMocks.NewConfigMapInterface(t)
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
-		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(nil, assert.AnError)
-		podClientMock := extMocks.NewPodInterface(t)
-		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
-			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
-		}).Return(podlist, nil)
+		clientSetMock := extMocks.NewClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
+		podClientMock := extMocks.NewPodInterface(t)
+		cmClientMock := extMocks.NewConfigMapInterface(t)
+
+		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
 		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
 		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
-		clientSetMock := extMocks.NewClientSet(t)
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
+
+		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
+		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(nil, assert.AnError)
+
+		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
+			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
+		}).Return(podList, nil)
 
 		doguJson := &core.Dogu{
 			HealthChecks: []core.HealthCheck{{
