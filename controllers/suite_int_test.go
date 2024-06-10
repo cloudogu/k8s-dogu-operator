@@ -175,7 +175,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(k8sClient, localDoguRegistry, CesRegistryMock, resourceGenerator)
 
-	yamlResult := make(map[string]string, 0)
+	yamlResult := make(map[string]string)
 	fileExtract := &mocks.FileExtractor{}
 	fileExtract.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
 	applyClient := &mocks.Applier{}
@@ -278,7 +278,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	err = doguReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	updater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder, nil)
+	updater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder, k8sClientSet)
 	deploymentReconciler := NewDeploymentReconciler(k8sClientSet, &health.AvailabilityChecker{}, updater, localDoguRegistry)
 
 	err = deploymentReconciler.SetupWithManager(k8sManager)
