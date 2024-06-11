@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	regLibRegistry "github.com/cloudogu/k8s-registry-lib/registry"
 
 	"github.com/google/uuid"
 
@@ -211,6 +213,37 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 		return fmt.Errorf("failed to create CES registry: %w", err)
 	}
 	localDoguRegistry := local.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), cesReg)
+
+	globalConfigRegistry := regLibRegistry.NewGlobalConfigRegistry(cesReg, k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
+
+	ctx := context.TODO()
+
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
+
+	exists, err := globalConfigRegistry.Exists(ctx, "fqdn")
+	if err != nil {
+		fmt.Printf("error exists fqdn: %v \n", err)
+	}
+	fmt.Printf("FQDN exists: %v \n", exists)
+
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
+
+	fqdn, err := globalConfigRegistry.Get(ctx, "fqdn")
+	if err != nil {
+		fmt.Printf("error get fqdn: %v \n", err)
+	}
+	fmt.Printf("FQDN: %v \n", fqdn)
+
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
+
+	fqdn = "192.168.56.11"
+	err = globalConfigRegistry.Set(ctx, "fqdn", fqdn)
+	if err != nil {
+		fmt.Printf("error set fqdn: %v \n", err)
+	}
+	fmt.Printf("set FQDN: %v \n", fqdn)
+
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
 
 	doguManager, err := controllers.NewManager(
 		k8sManager.GetClient(),
