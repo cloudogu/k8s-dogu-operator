@@ -24,7 +24,7 @@ type DeploymentReconciler struct {
 	k8sClientSet            thirdParty.ClientSet
 	availabilityChecker     cloudogu.DeploymentAvailabilityChecker
 	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater
-	localDoguRegistry       *local.CombinedLocalDoguRegistry
+	localDoguRegistry       local.LocalDoguRegistry
 }
 
 func NewDeploymentReconciler(k8sClientSet thirdParty.ClientSet, availabilityChecker *health.AvailabilityChecker,
