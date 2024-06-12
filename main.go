@@ -130,7 +130,7 @@ func configureManager(k8sManager manager.Manager, operatorConfig *config.Operato
 
 	availabilityChecker := &health.AvailabilityChecker{}
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
-	healthStatusUpdater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder)
+	healthStatusUpdater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder, k8sClientSet)
 
 	if err = resourceRequirementsUpdater(k8sManager, operatorConfig.Namespace, k8sClientSet); err != nil {
 		return fmt.Errorf("failed to create resource requirements updater: %w", err)
@@ -203,20 +203,20 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
 	ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client, healthStatusUpdater cloudogu.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
-	cesReg, err := reg.New(core.Registry{
+	etcdReg, err := reg.New(core.Registry{
 		Type:      "etcd",
 		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", operatorConfig.Namespace)},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create CES registry: %w", err)
 	}
-	localDoguRegistry := local.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), cesReg)
+	localDoguRegistry := local.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), etcdReg)
 
 	doguManager, err := controllers.NewManager(
 		k8sManager.GetClient(),
 		ecosystemClientSet,
 		operatorConfig,
-		cesReg,
+		etcdReg,
 		eventRecorder,
 	)
 	if err != nil {
@@ -244,6 +244,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 		k8sClientSet,
 		availabilityChecker,
 		healthStatusUpdater,
+		localDoguRegistry,
 	)
 	err = deploymentReconciler.SetupWithManager(k8sManager)
 	if err != nil {

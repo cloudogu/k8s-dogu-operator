@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.2.0] - 2024-06-12
+### Added
+- [#181] Handle dogu health states with a config map and provide dogus the volume mounts
+
+### Changed
+- [#182] Update dogu upgrade docs not to use doguctl state for handling upgrades
+
 ## [v1.1.0] - 2024-05-29
 ### Fixed
 - [#171] Fix unnecessary creation of dogu PVCs.

@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -22,12 +24,20 @@ import (
 func TestNewDeploymentReconciler(t *testing.T) {
 	t.Run("should not be empty", func(t *testing.T) {
 		// given
+		cmClientMock := extMocks.NewConfigMapInterface(t)
+		coreV1Client := extMocks.NewCoreV1Interface(t)
+		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
 		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
 		availabilityCheckerMock := &health.AvailabilityChecker{}
 		healthStatusUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
 
+		CesRegistryMock := &cesmocks.Registry{}
+		CesRegistryMock.On("DoguRegistry").Return(extMocks.NewDoguRegistry(t))
+		localDoguRegistry := local.NewCombinedLocalDoguRegistry(clientSetMock.CoreV1().ConfigMaps(testNamespace), CesRegistryMock)
+
 		// when
-		actual := NewDeploymentReconciler(clientSetMock, availabilityCheckerMock, healthStatusUpdaterMock)
+		actual := NewDeploymentReconciler(clientSetMock, availabilityCheckerMock, healthStatusUpdaterMock, localDoguRegistry)
 
 		// then
 		assert.NotEmpty(t, actual)
@@ -158,7 +168,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, ctrl.Result{}, actual)
 	})
-	t.Run("should fail to update dogu health", func(t *testing.T) {
+	t.Run("should throw error if fails to get current dogu json", func(t *testing.T) {
 		// given
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Name: "my-dogu", Namespace: testNamespace}}
 
@@ -179,13 +189,101 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
 
+		localDoguRegistry := extMocks.NewLocalDoguRegistry(t)
+		localDoguRegistry.EXPECT().GetCurrent(testCtx, "my-dogu").Return(nil, assert.AnError)
+
+		sut := &DeploymentReconciler{
+			k8sClientSet:        clientSetMock,
+			availabilityChecker: deployAvailCheckMock,
+			localDoguRegistry:   localDoguRegistry,
+		}
+
+		// when
+		actual, err := sut.Reconcile(testCtx, request)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to get current dogu json to update health state configMap")
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should fail to update dogu health configmap", func(t *testing.T) {
+		// given
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Name: "my-dogu", Namespace: testNamespace}}
+
+		deployment := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "my-dogu",
+				Labels: map[string]string{"dogu.name": "my-dogu", "dogu.version": "1.2.3"},
+			},
+		}
+
+		deployClientMock := extMocks.NewDeploymentInterface(t)
+		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
+		appsV1Client := extMocks.NewAppsV1Interface(t)
+		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
+		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
+
+		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)
+		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
+
+		localDoguRegistry := extMocks.NewLocalDoguRegistry(t)
+		localDoguRegistry.EXPECT().GetCurrent(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
+
 		doguHealthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
+		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(assert.AnError)
+
+		sut := &DeploymentReconciler{
+			k8sClientSet:            clientSetMock,
+			availabilityChecker:     deployAvailCheckMock,
+			doguHealthStatusUpdater: doguHealthUpdaterMock,
+			localDoguRegistry:       localDoguRegistry,
+		}
+
+		// when
+		actual, err := sut.Reconcile(testCtx, request)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to update health state configMap")
+		assert.ErrorContains(t, err, "failed to update dogu health for deployment \"test-namespace/my-dogu\"")
+		assert.Equal(t, ctrl.Result{}, actual)
+	})
+	t.Run("should fail to update dogu health status", func(t *testing.T) {
+		// given
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Name: "my-dogu", Namespace: testNamespace}}
+
+		deployment := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "my-dogu",
+				Labels: map[string]string{"dogu.name": "my-dogu", "dogu.version": "1.2.3"},
+			},
+		}
+
+		deployClientMock := extMocks.NewDeploymentInterface(t)
+		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
+		appsV1Client := extMocks.NewAppsV1Interface(t)
+		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
+		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
+
+		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)
+		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
+
+		localDoguRegistry := extMocks.NewLocalDoguRegistry(t)
+		localDoguRegistry.EXPECT().GetCurrent(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
+
+		doguHealthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
+		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(nil)
 		doguHealthUpdaterMock.EXPECT().UpdateStatus(testCtx, types.NamespacedName{Namespace: "", Name: "my-dogu"}, true).Return(assert.AnError)
 
 		sut := &DeploymentReconciler{
 			k8sClientSet:            clientSetMock,
 			availabilityChecker:     deployAvailCheckMock,
 			doguHealthStatusUpdater: doguHealthUpdaterMock,
+			localDoguRegistry:       localDoguRegistry,
 		}
 
 		// when
@@ -218,13 +316,18 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(false)
 
+		localDoguRegistry := extMocks.NewLocalDoguRegistry(t)
+		localDoguRegistry.EXPECT().GetCurrent(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
+
 		doguHealthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
+		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(nil)
 		doguHealthUpdaterMock.EXPECT().UpdateStatus(testCtx, types.NamespacedName{Namespace: "", Name: "my-dogu"}, false).Return(nil)
 
 		sut := &DeploymentReconciler{
 			k8sClientSet:            clientSetMock,
 			availabilityChecker:     deployAvailCheckMock,
 			doguHealthStatusUpdater: doguHealthUpdaterMock,
+			localDoguRegistry:       localDoguRegistry,
 		}
 
 		// when

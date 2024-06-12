@@ -102,18 +102,18 @@ Die Größe des Pre-Upgrade-Skriptes ist lediglich durch den Arbeitsspeicher lim
 Im Gegensatz zum Pre-Upgrade-Skript unterliegt das Post-Upgrade-Skript nur geringen Einschränkungen, da sich das Skript in der Regel bereits an seinem Ausführungsort befindet.
 Das Post-Upgrade-Skript wird am Ende des Upgrade-Prozesses im neuen Dogu ausgeführt.
 Das Dogu ist dafür verantwortlich, auf die Beendigung des Post-Upgrade-Skripts zu warten.
-Hier hat sich die Verwendung des Dogu-State als hilfreich erwiesen:
+Hier hat sich die Verwendung der lokalen Dogu-Config als hilfreich erwiesen:
 
 ```bash
 # post-upgrade.sh
-doguctl state "upgrading
+doguctl config "local_state" "upgrading"
 # upgrade routines go here...
-doguctl state "starting
+doguctl state "local_state" "starting"
 ```
 
 ```bash
 # startup.sh
-while [[ "$(doguctl state)" == "upgrading" ]]; do
+while [[ "$(doguctl config "local_state" -d "empty")" == "upgrading" ]]; do
   echo "Upgrade script is running. Waiting..."
   sleep 3
 done
