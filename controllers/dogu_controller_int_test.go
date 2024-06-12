@@ -102,6 +102,18 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			err := k8sClient.Create(ctx, namespace)
 			Expect(err).NotTo(HaveOccurred())
 
+			By("Create dogu health state config map")
+			healthCM := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "k8s-dogu-operator-dogu-health",
+					Namespace: testNamespace,
+				},
+			}
+			_, err = k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(ctx, healthCM, metav1.CreateOptions{})
+			if err != nil {
+				panic(err)
+			}
+
 			By("Creating dogu resource")
 			installDoguCr(ctx, ldapCr)
 

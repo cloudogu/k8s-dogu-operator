@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -31,7 +33,13 @@ type doguDeleteManager struct {
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
-func NewDoguDeleteManager(client client.Client, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, recorder record.EventRecorder) *doguDeleteManager {
+func NewDoguDeleteManager(
+	client client.Client,
+	operatorConfig *config.OperatorConfig,
+	cesRegistry cesregistry.Registry,
+	mgrSet *util.ManagerSet,
+	recorder record.EventRecorder,
+) *doguDeleteManager {
 	return &doguDeleteManager{
 		client:                client,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,
@@ -74,6 +82,12 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		if err != nil {
 			logger.Error(err, "failed to remove exposed ports")
 		}
+
+		logger.Info("Remove health state out of ConfigMap")
+		err := m.DeleteDoguOutOfHealthConfigMap(ctx, doguResource)
+		if err != nil {
+			logger.Error(err, "failed to remove health state out of configMap")
+		}
 	}
 
 	logger.Info("Remove finalizer...")
@@ -85,4 +99,24 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 	logger.Info(fmt.Sprintf("Dogu %s/%s has been : %s", doguResource.Namespace, doguResource.Name, controllerutil.OperationResultUpdated))
 
 	return nil
+}
+
+func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *k8sv1.Dogu) error {
+	namespace := dogu.Namespace
+	stateConfigMap := &corev1.ConfigMap{}
+	cmKey := types.NamespacedName{Namespace: namespace, Name: "k8s-dogu-operator-dogu-health"}
+	err := m.client.Get(ctx, cmKey, stateConfigMap, &client.GetOptions{})
+
+	newData := stateConfigMap.Data
+	if err != nil || newData == nil {
+		newData = make(map[string]string)
+	}
+	delete(newData, dogu.Name)
+
+	stateConfigMap.Data = newData
+
+	// Update the ConfigMap
+	//_, err = m.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+	err = m.client.Update(ctx, stateConfigMap, &client.UpdateOptions{})
+	return err
 }

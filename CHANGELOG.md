@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#181] Handle dogu health states with a config map and provide dogus the volume mounts
+
+### Changed
+- [#182] Update dogu upgrade docs not to use doguctl state for handling upgrades
 
 ## [v1.1.0] - 2024-05-29
 ### Fixed

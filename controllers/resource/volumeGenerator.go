@@ -110,9 +110,28 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		},
 	}
 
+	doguHealthVolume := corev1.Volume{
+		Name: doguHealth,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: doguHealthConfigMap},
+			},
+		},
+	}
+
+	// add EmptyDir-VolumeSource for all dogus to at least give them the ability to write state
+	ephemeralVolume := corev1.Volume{
+		Name: doguResource.GetEphemeralDataVolumeName(),
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+
 	return []corev1.Volume{
 		nodeMasterVolume,
 		privateVolume,
+		doguHealthVolume,
+		ephemeralVolume,
 	}
 }
 
@@ -122,7 +141,6 @@ func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]c
 
 	// only create max one pvcVolume and one emptyDirVolume
 	pvcVolumeCreated := false
-	emptyDirVolumeCreated := false
 
 	for _, doguVolume := range doguVolumes {
 		// to mount e.g. config maps
@@ -147,16 +165,6 @@ func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]c
 			}
 			volumes = append(volumes, dataVolume)
 			pvcVolumeCreated = true
-		} else if !doguVolume.NeedsBackup && !emptyDirVolumeCreated {
-			// add EmptyDir-VolumeSource for volumes without backup
-			dataVolume := corev1.Volume{
-				Name: doguResource.GetEphemeralDataVolumeName(),
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			}
-			volumes = append(volumes, dataVolume)
-			emptyDirVolumeCreated = true
 		}
 	}
 
@@ -210,11 +218,40 @@ func convertGenericJsonObject(genericObject interface{}, targetObject interface{
 
 func createVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	volumeMounts := createStaticVolumeMounts(doguResource)
+
 	// mount dogu jsons from dependency dogus so that a dogu can query attributes from other dogus.
 	volumeMounts = append(volumeMounts, createDoguJsonVolumeMountsFromDependencies(dogu)...)
 	volumeMounts = append(volumeMounts, getDoguJsonVolumeMountForDogu(dogu.GetSimpleName()))
 
 	return append(volumeMounts, createDoguVolumeMounts(doguResource, dogu)...)
+}
+
+func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
+	doguVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      nodeMasterFile,
+			ReadOnly:  true,
+			MountPath: "/etc/ces/node_master",
+			SubPath:   "node_master",
+		},
+		{
+			Name:      doguResource.GetPrivateKeySecretName(),
+			ReadOnly:  true,
+			MountPath: "/private",
+		},
+		{
+			Name:      doguHealth,
+			ReadOnly:  true,
+			MountPath: "/etc/ces/health",
+		},
+		{
+			Name:      doguResource.GetEphemeralDataVolumeName(),
+			ReadOnly:  false,
+			MountPath: "/var/ces/state",
+			SubPath:   "state",
+		},
+	}
+	return doguVolumeMounts
 }
 
 func createDoguJsonVolumeMountsFromDependencies(dogu *core.Dogu) []corev1.VolumeMount {
@@ -239,23 +276,6 @@ func getDoguJsonVolumeMountForDogu(simpleDoguName string) corev1.VolumeMount {
 		ReadOnly:  true,
 		MountPath: fmt.Sprintf("/etc/ces/dogu_json/%s", simpleDoguName),
 	}
-}
-
-func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
-	doguVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      nodeMasterFile,
-			ReadOnly:  true,
-			MountPath: "/etc/ces/node_master",
-			SubPath:   "node_master",
-		},
-		{
-			Name:      doguResource.GetPrivateKeySecretName(),
-			ReadOnly:  true,
-			MountPath: "/private",
-		},
-	}
-	return doguVolumeMounts
 }
 
 func createDoguVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {

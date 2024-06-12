@@ -3,7 +3,11 @@ package controllers
 import (
 	"context"
 	"fmt"
+	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,10 +15,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 const legacyDoguLabel = "dogu"
@@ -24,14 +24,16 @@ type DeploymentReconciler struct {
 	k8sClientSet            thirdParty.ClientSet
 	availabilityChecker     cloudogu.DeploymentAvailabilityChecker
 	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater
+	localDoguRegistry       local.LocalDoguRegistry
 }
 
 func NewDeploymentReconciler(k8sClientSet thirdParty.ClientSet, availabilityChecker *health.AvailabilityChecker,
-	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater) *DeploymentReconciler {
+	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater, localDoguRegistry *local.CombinedLocalDoguRegistry) *DeploymentReconciler {
 	return &DeploymentReconciler{
 		k8sClientSet:            k8sClientSet,
 		availabilityChecker:     availabilityChecker,
 		doguHealthStatusUpdater: doguHealthStatusUpdater,
+		localDoguRegistry:       localDoguRegistry,
 	}
 }
 
@@ -85,6 +87,15 @@ func hasDoguLabel(deployment client.Object) bool {
 
 func (dr *DeploymentReconciler) updateDoguHealth(ctx context.Context, doguDeployment *appsv1.Deployment) error {
 	doguAvailable := dr.availabilityChecker.IsAvailable(doguDeployment)
+	doguJson, err := dr.localDoguRegistry.GetCurrent(ctx, doguDeployment.Name)
+	if err != nil {
+		return fmt.Errorf("failed to get current dogu json to update health state configMap: %w", err)
+	}
+	err = dr.doguHealthStatusUpdater.UpdateHealthConfigMap(ctx, doguDeployment, doguJson)
+	if err != nil {
+		return fmt.Errorf("failed to update health state configMap: %w", err)
+	}
+
 	log.FromContext(ctx).Info(fmt.Sprintf("dogu deployment %q is %s", doguDeployment.Name, (map[bool]string{true: "available", false: "unavailable"})[doguAvailable]))
 	return dr.doguHealthStatusUpdater.UpdateStatus(ctx,
 		types.NamespacedName{Name: doguDeployment.Name, Namespace: doguDeployment.Namespace},
