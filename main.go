@@ -202,6 +202,143 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 	return nil
 }
 
+func testExists(key string, expected string, expectExist bool, reader regLibRegistry.ConfigurationReader) error {
+	exists, err := reader.Exists(context.Background(), key)
+	if err != nil {
+		return fmt.Errorf("failed to check if exists: %w", err)
+	}
+
+	if exists != expectExist {
+		return fmt.Errorf("exists expected %v but got %v", expectExist, exists)
+	}
+
+	if expectExist {
+		value, err := reader.Get(context.Background(), key)
+		if err != nil {
+			return fmt.Errorf("failed to get key: %w", err)
+		}
+
+		if value != expected {
+			return fmt.Errorf("value did not equal")
+		}
+	}
+
+	return nil
+}
+
+func testKey(keyname string, writer regLibRegistry.ConfigurationRegistry, reader regLibRegistry.ConfigurationReader) error {
+	key := fmt.Sprintf("%s/a", keyname)
+	err := writer.Set(context.Background(), key, "value")
+	if err != nil {
+		return fmt.Errorf("failed to set key: %w", err)
+	}
+
+	err = testExists(key, "value", true, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	err = writer.Delete(context.Background(), key)
+	if err != nil {
+		return fmt.Errorf("failed to delete recursive %s: %w", key, err)
+	}
+
+	err = testExists(key, "", false, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	key = fmt.Sprintf("%s/b/c", keyname)
+	err = writer.Set(context.Background(), key, "value")
+	if err != nil {
+		return fmt.Errorf("failed to set key: %w", err)
+	}
+
+	err = testExists(key, "value", true, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	err = writer.DeleteRecursive(context.Background(), keyname)
+	if err != nil {
+		return fmt.Errorf("failed to delete recursive %s: %w", key, err)
+	}
+
+	err = testExists(fmt.Sprintf("%s/a", keyname), "", false, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	err = testExists(fmt.Sprintf("%s/b", keyname), "", false, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	err = testExists(keyname, "", false, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	key = fmt.Sprintf("%s/b/c", keyname)
+	err = writer.Set(context.Background(), key, "value")
+	if err != nil {
+		return fmt.Errorf("failed to set key: %w", err)
+	}
+
+	err = testExists(key, "value", true, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	err = writer.DeleteAll(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to delete recursive %s: %w", key, err)
+	}
+
+	err = testExists(fmt.Sprintf("%s", keyname), "", false, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	return nil
+}
+
+func testAllFunctions(writer regLibRegistry.ConfigurationRegistry, reader regLibRegistry.ConfigurationReader, keyname string) error {
+	_ = writer.Set(context.Background(), "a", "")
+	_ = writer.Delete(context.Background(), "a")
+
+	err := writer.DeleteAll(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to delete all: %w", err)
+	}
+
+	exists, err := reader.Exists(context.Background(), keyname)
+	if err != nil {
+		return fmt.Errorf("failed to check if exists: %w", err)
+	}
+
+	if exists {
+		return fmt.Errorf("non existing key did exist")
+	}
+
+	err = testKey(fmt.Sprintf("%s-a", keyname), writer, reader)
+	if err != nil {
+		return fmt.Errorf("fail on a: %w", err)
+	}
+
+	err = testKey(fmt.Sprintf("%s-b", keyname), writer, reader)
+	if err != nil {
+		return fmt.Errorf("fail on b: %w", err)
+	}
+
+	err = testKey(fmt.Sprintf("%s-c", keyname), writer, reader)
+	if err != nil {
+		return fmt.Errorf("fail on c: %w", err)
+	}
+
+	return nil
+}
+
 func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
 	ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client, healthStatusUpdater cloudogu.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
@@ -215,6 +352,31 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 	localDoguRegistry := dogu.NewLocalRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
 
 	globalConfigRegistry := regLibRegistry.NewGlobalConfigRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
+	doguConfigRegistry := regLibRegistry.NewDoguConfigRegistry("registrator", k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
+	doguSecretRegistry := regLibRegistry.NewSensitiveDoguRegistry("registrator", k8sClientSet.CoreV1().Secrets(operatorConfig.Namespace))
+
+	fmt.Printf("=============================================================================")
+	fmt.Printf("!============================================================================")
+	fmt.Printf("=============================================================================")
+
+	err = testAllFunctions(globalConfigRegistry, globalConfigRegistry, "key1")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	err = testAllFunctions(doguConfigRegistry, doguConfigRegistry, "key1")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	err = testAllFunctions(doguSecretRegistry, doguSecretRegistry, "key1")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	fmt.Printf("=============================================================================")
+	fmt.Printf("!============================================================================")
+	fmt.Printf("=============================================================================")
 
 	ctx := context.TODO()
 
@@ -222,7 +384,19 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 
 	exists, err := globalConfigRegistry.Exists(ctx, "fqdn")
 	if err != nil {
-		fmt.Printf("error exists fqdn: %v \n", err)
+		fmt.Printf("global: error exists fqdn: %v \n", err)
+	}
+	fmt.Printf("FQDN exists: %v \n", exists)
+
+	exists, err = doguConfigRegistry.Exists(ctx, "fqdn")
+	if err != nil {
+		fmt.Printf("dogu: error exists fqdn: %v \n", err)
+	}
+	fmt.Printf("FQDN exists: %v \n", exists)
+
+	exists, err = doguSecretRegistry.Exists(ctx, "fqdn")
+	if err != nil {
+		fmt.Printf("secret: error exists fqdn: %v \n", err)
 	}
 	fmt.Printf("FQDN exists: %v \n", exists)
 
@@ -230,17 +404,41 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 
 	fqdn, err := globalConfigRegistry.Get(ctx, "fqdn")
 	if err != nil {
-		fmt.Printf("error get fqdn: %v \n", err)
+		fmt.Printf("global: error get fqdn: %v \n", err)
+	}
+	fmt.Printf("FQDN: %v \n", fqdn)
+
+	fqdn, err = doguConfigRegistry.Get(ctx, "fqdn")
+	if err != nil {
+		fmt.Printf("dogu: error get fqdn: %v \n", err)
+	}
+	fmt.Printf("FQDN: %v \n", fqdn)
+
+	fqdn, err = doguSecretRegistry.Get(ctx, "fqdn")
+	if err != nil {
+		fmt.Printf("secret: error get fqdn: %v \n", err)
 	}
 	fmt.Printf("FQDN: %v \n", fqdn)
 
 	fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
 
 	fqdn = "192.168.56.11"
+
 	err = globalConfigRegistry.Set(ctx, "fqdn", fqdn)
 	if err != nil {
-		fmt.Printf("error set fqdn: %v \n", err)
+		fmt.Printf("global: error set fqdn: %v \n", err)
 	}
+
+	err = doguConfigRegistry.Set(ctx, "fqdn", fqdn)
+	if err != nil {
+		fmt.Printf("dogu: error set fqdn: %v \n", err)
+	}
+
+	err = doguSecretRegistry.Set(ctx, "fqdn", fqdn)
+	if err != nil {
+		fmt.Printf("secret: error set fqdn: %v \n", err)
+	}
+
 	fmt.Printf("set FQDN: %v \n", fqdn)
 
 	fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
