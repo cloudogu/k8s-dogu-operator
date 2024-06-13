@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 

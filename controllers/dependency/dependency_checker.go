@@ -3,6 +3,7 @@ package dependency
 import (
 	"context"
 	"errors"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
 )

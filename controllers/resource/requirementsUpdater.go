@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,9 +49,8 @@ func NewRequirementsUpdater(client client.Client, namespace string, clientSet ku
 		client:    client,
 		namespace: namespace,
 		registry:  reg,
-		localDoguRegistry: local.NewCombinedLocalDoguRegistry(
+		localDoguRegistry: dogu.NewLocalRegistry(
 			clientSet.CoreV1().ConfigMaps(namespace),
-			reg,
 		),
 		requirementsGen: requirementsGen,
 	}, nil

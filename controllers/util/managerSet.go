@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -46,7 +47,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	localDoguRegistry := local.NewCombinedLocalDoguRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace), cesreg)
+	localDoguRegistry := dogu.NewLocalRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace))
 	serviceAccountCreator := serviceaccount.NewCreator(cesreg, localDoguRegistry, commandExecutor, client, clientSet, config.Namespace)
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguRegistry)

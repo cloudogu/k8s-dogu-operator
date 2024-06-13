@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
