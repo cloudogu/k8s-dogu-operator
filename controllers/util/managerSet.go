@@ -9,9 +9,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
-
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -22,6 +19,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	"github.com/cloudogu/k8s-host-change/pkg/alias"
 )
 
 // ManagerSet contains functors that are repeatedly used by different dogu operator managers.

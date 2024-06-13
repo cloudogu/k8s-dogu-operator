@@ -39,7 +39,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 	// +kubebuilder:scaffold:imports
 )
 

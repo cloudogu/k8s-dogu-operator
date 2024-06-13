@@ -18,7 +18,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	regLibRegistry "github.com/cloudogu/k8s-registry-lib/registry"
 
 	"github.com/google/uuid"
@@ -212,9 +212,9 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 	if err != nil {
 		return fmt.Errorf("failed to create CES registry: %w", err)
 	}
-	localDoguRegistry := local.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), cesReg)
+	localDoguRegistry := dogu.NewLocalRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
 
-	globalConfigRegistry := regLibRegistry.NewGlobalConfigRegistry(cesReg, k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
+	globalConfigRegistry := regLibRegistry.NewGlobalConfigRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
 
 	ctx := context.TODO()
 

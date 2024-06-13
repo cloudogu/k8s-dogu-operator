@@ -13,7 +13,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 	coreosclient "go.etcd.io/etcd/client/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,7 +27,7 @@ type requirementsUpdater struct {
 	client            client.Client
 	namespace         string
 	registry          registry.Registry
-	localDoguRegistry local.LocalDoguRegistry
+	localDoguRegistry dogu.LocalRegistry
 	requirementsGen   cloudogu.ResourceRequirementsGenerator
 }
 

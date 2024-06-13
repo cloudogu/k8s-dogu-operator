@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"io"
 	"strings"
 
@@ -15,8 +16,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/keys"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
-
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
@@ -40,7 +39,7 @@ type creator struct {
 	client            client.Client
 	registry          registry.Registry
 	doguFetcher       cloudogu.LocalDoguFetcher
-	localDoguRegistry local.LocalDoguRegistry
+	localDoguRegistry dogu.LocalRegistry
 	executor          cloudogu.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
@@ -48,7 +47,7 @@ type creator struct {
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(registry registry.Registry, localDoguRegistry local.LocalDoguRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
+func NewCreator(registry registry.Registry, localDoguRegistry dogu.LocalRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	return &creator{
 		client:            client,

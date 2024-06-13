@@ -12,8 +12,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
-
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
@@ -23,7 +21,7 @@ type remover struct {
 	client            client.Client
 	registry          registry.Registry
 	doguFetcher       cloudogu.LocalDoguFetcher
-	localDoguRegistry local.LocalDoguRegistry
+	localDoguRegistry dogu.LocalRegistry
 	executor          cloudogu.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
@@ -31,7 +29,7 @@ type remover struct {
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetcher, localDoguRegistry local.LocalDoguRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
+func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetcher, localDoguRegistry dogu.LocalRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
 	return &remover{
 		client:            client,
 		registry:          registry,
