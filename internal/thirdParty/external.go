@@ -3,6 +3,7 @@
 package thirdParty
 
 import (
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/go-logr/logr"
 
 	corev1 "k8s.io/api/core/v1"
