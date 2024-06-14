@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	reg "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
@@ -20,6 +18,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	regLibRegistry "github.com/cloudogu/k8s-registry-lib/registry"
+	"os"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -355,28 +355,55 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 	doguConfigRegistry := regLibRegistry.NewDoguConfigRegistry("registrator", k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
 	doguSecretRegistry := regLibRegistry.NewSensitiveDoguRegistry("registrator", k8sClientSet.CoreV1().Secrets(operatorConfig.Namespace))
 
-	fmt.Printf("=============================================================================")
-	fmt.Printf("!============================================================================")
-	fmt.Printf("=============================================================================")
+	fmt.Printf("S=============================================================================\n")
+	fmt.Printf("S=============================================================================\n")
+	fmt.Printf("S=============================================================================\n")
+	var wg sync.WaitGroup
+	outputChannel := make(chan string)
 
-	err = testAllFunctions(globalConfigRegistry, globalConfigRegistry, "key1")
-	if err != nil {
-		panic(err.Error())
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			key := fmt.Sprintf("key%v", i)
+			err = testAllFunctions(globalConfigRegistry, globalConfigRegistry, key)
+			if err != nil {
+				outputChannel <- err.Error()
+				//panic(err.Error())
+			}
+			outputChannel <- fmt.Sprintf("key %v A ok\n", i)
+			fmt.Printf("key %v A ok\n", i)
+
+			err = testAllFunctions(doguConfigRegistry, doguConfigRegistry, key)
+			if err != nil {
+				outputChannel <- err.Error()
+				//panic(err.Error())
+			}
+			outputChannel <- fmt.Sprintf("key %v B ok\n", i)
+			fmt.Printf("key %v B ok\n", i)
+
+			err = testAllFunctions(doguSecretRegistry, doguSecretRegistry, key)
+			if err != nil {
+				outputChannel <- err.Error()
+				//panic(err.Error())
+			}
+			outputChannel <- fmt.Sprintf("key %v C ok\n", i)
+			fmt.Printf("key %v C ok\n", i)
+		}()
 	}
 
-	err = testAllFunctions(doguConfigRegistry, doguConfigRegistry, "key1")
-	if err != nil {
-		panic(err.Error())
+	go func() {
+		wg.Wait()
+		close(outputChannel)
+	}()
+
+	for message := range outputChannel {
+		fmt.Println(message)
 	}
 
-	err = testAllFunctions(doguSecretRegistry, doguSecretRegistry, "key1")
-	if err != nil {
-		panic(err.Error())
-	}
-
-	fmt.Printf("=============================================================================")
-	fmt.Printf("!============================================================================")
-	fmt.Printf("=============================================================================")
+	fmt.Printf("E=============================================================================\n")
+	fmt.Printf("E=============================================================================\n")
+	fmt.Printf("E=============================================================================\n")
 
 	ctx := context.TODO()
 
