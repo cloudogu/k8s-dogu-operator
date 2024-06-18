@@ -18,19 +18,17 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	regLibRegistry "github.com/cloudogu/k8s-registry-lib/registry"
-	"os"
-	"sync"
-
 	"github.com/google/uuid"
-
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sync"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -303,6 +301,48 @@ func testKey(keyname string, writer regLibRegistry.ConfigurationRegistry, reader
 	return nil
 }
 
+func testWatch(keyname string, writer regLibRegistry.ConfigurationRegistry, reader regLibRegistry.ConfigurationReader, watcher *regLibRegistry.DoguWatcher) error {
+	key := fmt.Sprintf("%s/a", keyname)
+	err := writer.Set(context.Background(), key, "value")
+	if err != nil {
+		return fmt.Errorf("failed to set key: %w", err)
+	}
+
+	err = testExists(key, "value", true, reader)
+	if err != nil {
+		return fmt.Errorf("failed to check key %s: %w", key, err)
+	}
+
+	watch, err := watcher.Watch(context.TODO(), key, false)
+	if err != nil {
+		return fmt.Errorf("failed to watch key %s: %w", key, err)
+	}
+
+	go func() {
+		for result := range watch.ResultChan {
+			if result.Err != nil {
+				fmt.Errorf("error in watch: %v", result.Err)
+				continue
+			}
+
+			fmt.Print("\n\n\n\n")
+			for modKey, mod := range result.ModifiedKeys {
+				fmt.Printf("modefied '%s': old->'%s' new->'%s'\n", modKey, mod.OldValue, mod.NewValue)
+				if mod.NewValue == "stop" {
+					fmt.Printf(" stopping...\n")
+					watch.Stop()
+				}
+			}
+			fmt.Print("\n\n\n\n")
+		}
+
+		fmt.Println("finished watch++++++++")
+	}()
+	fmt.Println("Started watch")
+
+	return nil
+}
+
 func testAllFunctions(writer regLibRegistry.ConfigurationRegistry, reader regLibRegistry.ConfigurationReader, keyname string) error {
 	_ = writer.Set(context.Background(), "a", "")
 	_ = writer.Delete(context.Background(), "a")
@@ -353,14 +393,20 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 
 	globalConfigRegistry := regLibRegistry.NewGlobalConfigRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
 	doguConfigRegistry := regLibRegistry.NewDoguConfigRegistry("registrator", k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
+	doguConfigWatcher := regLibRegistry.NewDoguConfigWatcher("registrator", k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
 	doguSecretRegistry := regLibRegistry.NewSensitiveDoguRegistry("registrator", k8sClientSet.CoreV1().Secrets(operatorConfig.Namespace))
 
 	fmt.Printf("S=============================================================================\n")
 	fmt.Printf("S=============================================================================\n")
 	fmt.Printf("S=============================================================================\n")
+
+	err = testWatch("myKey", doguConfigRegistry, doguConfigRegistry, doguConfigWatcher)
+	if err != nil {
+		fmt.Printf("error in watch: %v\n", err)
+	}
+
 	var wg sync.WaitGroup
 	outputChannel := make(chan string)
-
 	for i := 0; i < 3; i++ {
 		wg.Add(1)
 		go func() {
