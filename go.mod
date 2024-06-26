@@ -9,7 +9,7 @@ require (
 	github.com/cloudogu/cesapp-lib v0.12.2
 	github.com/cloudogu/k8s-apply-lib v0.4.2
 	github.com/cloudogu/k8s-host-change v0.3.2
-	github.com/cloudogu/k8s-registry-lib v0.1.0
+	github.com/cloudogu/k8s-registry-lib v0.2.0
 	github.com/dlclark/regexp2 v1.11.0
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
@@ -97,3 +97,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
+
+replace github.com/cloudogu/k8s-registry-lib v0.2.0 => github.com/cloudogu/k8s-registry-lib v0.0.0-20240621115501-ef9dfeea39cf
