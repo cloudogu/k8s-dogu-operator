@@ -11,8 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
@@ -20,27 +19,27 @@ import (
 
 // Remover removes a dogu's service account.
 type remover struct {
-	client            client.Client
-	registry          registry.Registry
-	doguFetcher       cloudogu.LocalDoguFetcher
-	localDoguRegistry local.LocalDoguRegistry
-	executor          cloudogu.CommandExecutor
-	clientSet         kubernetes.Interface
-	apiClient         serviceAccountApiClient
-	namespace         string
+	client                   client.Client
+	sensitiveDoguCfgProvider SensitiveDoguConfigProvider
+	doguFetcher              cloudogu.LocalDoguFetcher
+	localDoguRegistry        dogu.LocalRegistry
+	executor                 cloudogu.CommandExecutor
+	clientSet                kubernetes.Interface
+	apiClient                serviceAccountApiClient
+	namespace                string
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetcher, localDoguRegistry local.LocalDoguRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
+func NewRemover(provider SensitiveDoguConfigProvider, localFetcher cloudogu.LocalDoguFetcher, localDoguRegistry dogu.LocalRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
 	return &remover{
-		client:            client,
-		registry:          registry,
-		doguFetcher:       localFetcher,
-		localDoguRegistry: localDoguRegistry,
-		executor:          commandExecutor,
-		clientSet:         clientSet,
-		apiClient:         &apiClient{},
-		namespace:         namespace,
+		client:                   client,
+		sensitiveDoguCfgProvider: provider,
+		doguFetcher:              localFetcher,
+		localDoguRegistry:        localDoguRegistry,
+		executor:                 commandExecutor,
+		clientSet:                clientSet,
+		apiClient:                &apiClient{},
+		namespace:                namespace,
 	}
 }
 
@@ -48,29 +47,26 @@ func NewRemover(registry registry.Registry, localFetcher cloudogu.LocalDoguFetch
 func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
+	senDoguCfg, err := r.sensitiveDoguCfgProvider.GetSensitiveDoguConfig(ctx, dogu.GetSimpleName())
+	if err != nil {
+		return fmt.Errorf("unable to get sensitive dogu config for dogu %s: %w", dogu.GetSimpleName(), err)
+	}
+
 	var allProblems error
 	for _, serviceAccount := range dogu.ServiceAccounts {
 		switch serviceAccount.Kind {
 		case "":
 			fallthrough
 		case doguKind:
-			err := r.removeDoguServiceAccount(ctx, dogu, serviceAccount)
-			if err != nil {
-				allProblems = errors.Join(allProblems, err)
+			lErr := r.removeDoguServiceAccount(ctx, dogu, serviceAccount, senDoguCfg)
+			if lErr != nil {
+				allProblems = errors.Join(allProblems, fmt.Errorf("unable to remove service account for dogu %s: %w", serviceAccount.Type, lErr))
 			}
 		case componentKind:
-			err := r.removeComponentServiceAccount(ctx, dogu, serviceAccount)
-			if err != nil {
-				allProblems = errors.Join(allProblems, err)
+			lErr := r.removeComponentServiceAccount(ctx, dogu, serviceAccount, senDoguCfg)
+			if lErr != nil {
+				allProblems = errors.Join(allProblems, fmt.Errorf("unable to remove service account for component %s: %w", serviceAccount.Type, lErr))
 			}
-		case cesKind:
-			if serviceAccount.Type == "cesappd" {
-				err := r.removeCesControlServiceAccount(dogu)
-				if err != nil {
-					allProblems = errors.Join(allProblems, err)
-				}
-			}
-			continue
 		default:
 			logger.Error(fmt.Errorf("unknown service account kind: %s", serviceAccount.Kind), "skipping service account deletion")
 			continue
@@ -80,12 +76,11 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	return allProblems
 }
 
-func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount) error {
+func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg SensitiveDoguConfig) error {
 	logger := log.FromContext(ctx)
 	registryCredentialPath := "sa-" + serviceAccount.Type
-	doguConfig := r.registry.DoguConfig(dogu.GetSimpleName())
 
-	exists, err := serviceAccountExists(registryCredentialPath, doguConfig)
+	exists, err := serviceAccountExists(ctx, registryCredentialPath, senDoguCfg)
 	if err != nil {
 		return err
 	}
@@ -104,7 +99,7 @@ func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 		return nil
 	}
 
-	err = r.delete(ctx, serviceAccount, dogu, doguConfig, registryCredentialPath)
+	err = r.delete(ctx, serviceAccount, dogu, senDoguCfg, registryCredentialPath)
 	if err != nil {
 		return err
 	}
@@ -116,7 +111,7 @@ func (r *remover) delete(
 	ctx context.Context,
 	serviceAccount core.ServiceAccount,
 	dogu *core.Dogu,
-	doguConfig registry.ConfigurationContext,
+	deleter SensitiveDoguConfigDeleter,
 	registryCredentialPath string,
 ) error {
 	saDogu, err := r.doguFetcher.FetchInstalled(ctx, serviceAccount.Type)
@@ -134,9 +129,9 @@ func (r *remover) delete(
 		return fmt.Errorf("failed to execute service account remove command: %w", err)
 	}
 
-	err = doguConfig.DeleteRecursive(registryCredentialPath)
+	err = deleter.DeleteRecursive(ctx, registryCredentialPath)
 	if err != nil {
-		return fmt.Errorf("failed to remove service account from config: %w", err)
+		return fmt.Errorf("failed to remove service account from sensitive config: %w", err)
 	}
 
 	return nil
@@ -156,23 +151,6 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	_, err = r.executor.ExecCommandForPod(ctx, saPod, command, cloudogu.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
-	}
-
-	return nil
-}
-
-func (r *remover) removeCesControlServiceAccount(dogu *core.Dogu) error {
-	hostConfig := r.registry.HostConfig(k8sCesControl)
-	exists, err := hostConfig.Exists(dogu.GetSimpleName())
-	if err != nil {
-		return fmt.Errorf("failed to read host config for dogu %s", dogu.GetSimpleName())
-	}
-
-	if exists {
-		err = hostConfig.DeleteRecursive(dogu.GetSimpleName())
-		if err != nil {
-			return fmt.Errorf("failed to delete host config for dogu %s", dogu.GetSimpleName())
-		}
 	}
 
 	return nil

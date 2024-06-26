@@ -13,12 +13,12 @@ type mockServiceAccountApiClient struct {
 	mock.Mock
 }
 
-type serviceAccountApiClient_Expecter struct {
+type mockServiceAccountApiClient_Expecter struct {
 	mock *mock.Mock
 }
 
-func (_m *mockServiceAccountApiClient) EXPECT() *serviceAccountApiClient_Expecter {
-	return &serviceAccountApiClient_Expecter{mock: &_m.Mock}
+func (_m *mockServiceAccountApiClient) EXPECT() *mockServiceAccountApiClient_Expecter {
+	return &mockServiceAccountApiClient_Expecter{mock: &_m.Mock}
 }
 
 // createServiceAccount provides a mock function with given fields: ctx, baseUrl, apiKey, consumer, params
@@ -51,8 +51,8 @@ func (_m *mockServiceAccountApiClient) createServiceAccount(ctx context.Context,
 	return r0, r1
 }
 
-// serviceAccountApiClient_createServiceAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'createServiceAccount'
-type serviceAccountApiClient_createServiceAccount_Call struct {
+// mockServiceAccountApiClient_createServiceAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'createServiceAccount'
+type mockServiceAccountApiClient_createServiceAccount_Call struct {
 	*mock.Call
 }
 
@@ -62,23 +62,23 @@ type serviceAccountApiClient_createServiceAccount_Call struct {
 //   - apiKey string
 //   - consumer string
 //   - params []string
-func (_e *serviceAccountApiClient_Expecter) createServiceAccount(ctx interface{}, baseUrl interface{}, apiKey interface{}, consumer interface{}, params interface{}) *serviceAccountApiClient_createServiceAccount_Call {
-	return &serviceAccountApiClient_createServiceAccount_Call{Call: _e.mock.On("createServiceAccount", ctx, baseUrl, apiKey, consumer, params)}
+func (_e *mockServiceAccountApiClient_Expecter) createServiceAccount(ctx interface{}, baseUrl interface{}, apiKey interface{}, consumer interface{}, params interface{}) *mockServiceAccountApiClient_createServiceAccount_Call {
+	return &mockServiceAccountApiClient_createServiceAccount_Call{Call: _e.mock.On("createServiceAccount", ctx, baseUrl, apiKey, consumer, params)}
 }
 
-func (_c *serviceAccountApiClient_createServiceAccount_Call) Run(run func(ctx context.Context, baseUrl string, apiKey string, consumer string, params []string)) *serviceAccountApiClient_createServiceAccount_Call {
+func (_c *mockServiceAccountApiClient_createServiceAccount_Call) Run(run func(ctx context.Context, baseUrl string, apiKey string, consumer string, params []string)) *mockServiceAccountApiClient_createServiceAccount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].([]string))
 	})
 	return _c
 }
 
-func (_c *serviceAccountApiClient_createServiceAccount_Call) Return(_a0 Credentials, _a1 error) *serviceAccountApiClient_createServiceAccount_Call {
+func (_c *mockServiceAccountApiClient_createServiceAccount_Call) Return(_a0 Credentials, _a1 error) *mockServiceAccountApiClient_createServiceAccount_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *serviceAccountApiClient_createServiceAccount_Call) RunAndReturn(run func(context.Context, string, string, string, []string) (Credentials, error)) *serviceAccountApiClient_createServiceAccount_Call {
+func (_c *mockServiceAccountApiClient_createServiceAccount_Call) RunAndReturn(run func(context.Context, string, string, string, []string) (Credentials, error)) *mockServiceAccountApiClient_createServiceAccount_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -101,8 +101,8 @@ func (_m *mockServiceAccountApiClient) deleteServiceAccount(ctx context.Context,
 	return r0
 }
 
-// serviceAccountApiClient_deleteServiceAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'deleteServiceAccount'
-type serviceAccountApiClient_deleteServiceAccount_Call struct {
+// mockServiceAccountApiClient_deleteServiceAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'deleteServiceAccount'
+type mockServiceAccountApiClient_deleteServiceAccount_Call struct {
 	*mock.Call
 }
 
@@ -111,28 +111,28 @@ type serviceAccountApiClient_deleteServiceAccount_Call struct {
 //   - baseUrl string
 //   - apiKey string
 //   - consumer string
-func (_e *serviceAccountApiClient_Expecter) deleteServiceAccount(ctx interface{}, baseUrl interface{}, apiKey interface{}, consumer interface{}) *serviceAccountApiClient_deleteServiceAccount_Call {
-	return &serviceAccountApiClient_deleteServiceAccount_Call{Call: _e.mock.On("deleteServiceAccount", ctx, baseUrl, apiKey, consumer)}
+func (_e *mockServiceAccountApiClient_Expecter) deleteServiceAccount(ctx interface{}, baseUrl interface{}, apiKey interface{}, consumer interface{}) *mockServiceAccountApiClient_deleteServiceAccount_Call {
+	return &mockServiceAccountApiClient_deleteServiceAccount_Call{Call: _e.mock.On("deleteServiceAccount", ctx, baseUrl, apiKey, consumer)}
 }
 
-func (_c *serviceAccountApiClient_deleteServiceAccount_Call) Run(run func(ctx context.Context, baseUrl string, apiKey string, consumer string)) *serviceAccountApiClient_deleteServiceAccount_Call {
+func (_c *mockServiceAccountApiClient_deleteServiceAccount_Call) Run(run func(ctx context.Context, baseUrl string, apiKey string, consumer string)) *mockServiceAccountApiClient_deleteServiceAccount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
 	})
 	return _c
 }
 
-func (_c *serviceAccountApiClient_deleteServiceAccount_Call) Return(_a0 error) *serviceAccountApiClient_deleteServiceAccount_Call {
+func (_c *mockServiceAccountApiClient_deleteServiceAccount_Call) Return(_a0 error) *mockServiceAccountApiClient_deleteServiceAccount_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *serviceAccountApiClient_deleteServiceAccount_Call) RunAndReturn(run func(context.Context, string, string, string) error) *serviceAccountApiClient_deleteServiceAccount_Call {
+func (_c *mockServiceAccountApiClient_deleteServiceAccount_Call) RunAndReturn(run func(context.Context, string, string, string) error) *mockServiceAccountApiClient_deleteServiceAccount_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// newMockServiceAccountApiClient creates a new instance of serviceAccountApiClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// newMockServiceAccountApiClient creates a new instance of mockServiceAccountApiClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockServiceAccountApiClient(t interface {
 	mock.TestingT
