@@ -1,9 +1,10 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -105,11 +106,12 @@ func Test_appendRequirementsForResourceType(t *testing.T) {
 			Limits:   corev1.ResourceList{},
 			Requests: corev1.ResourceList{},
 		}
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_limit", memoryType)).Return("", assert.AnError)
-		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_request", memoryType)).Return("200m", nil)
 
-		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{Name: "official/ldap"})
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, fmt.Sprintf("container_config/%s_limit", memoryType)).Return("", assert.AnError)
+		doguConfig.EXPECT().Get(mock.Anything, fmt.Sprintf("container_config/%s_request", memoryType)).Return("200m", nil)
+
+		err := appendRequirementsForResourceType(context.TODO(), memoryType, requirements, doguConfig, &core.Dogu{Name: "official/ldap"})
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'memory'")
 		assert.ErrorContains(t, err, "failed to read value of key 'container_config/memory_limit' from registry config of dogu 'official/ldap'")
@@ -122,11 +124,12 @@ func Test_appendRequirementsForResourceType(t *testing.T) {
 			Limits:   corev1.ResourceList{},
 			Requests: corev1.ResourceList{},
 		}
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_limit", memoryType)).Return("200m", nil)
-		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_request", memoryType)).Return("", assert.AnError)
 
-		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{Name: "official/ldap"})
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, fmt.Sprintf("container_config/%s_limit", memoryType)).Return("200m", nil)
+		doguConfig.EXPECT().Get(mock.Anything, fmt.Sprintf("container_config/%s_request", memoryType)).Return("", assert.AnError)
+
+		err := appendRequirementsForResourceType(context.TODO(), memoryType, requirements, doguConfig, &core.Dogu{Name: "official/ldap"})
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'memory'")
 		assert.ErrorContains(t, err, "failed to read value of key 'container_config/memory_request' from registry config of dogu 'official/ldap'")
@@ -139,11 +142,12 @@ func Test_appendRequirementsForResourceType(t *testing.T) {
 			Limits:   corev1.ResourceList{},
 			Requests: corev1.ResourceList{},
 		}
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_limit", memoryType)).Return("", fmt.Errorf("test error limit memory"))
-		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_request", memoryType)).Return("", fmt.Errorf("test error request memory"))
 
-		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{Name: "official/ldap"})
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, fmt.Sprintf("container_config/%s_limit", memoryType)).Return("", fmt.Errorf("test error limit memory"))
+		doguConfig.EXPECT().Get(mock.Anything, fmt.Sprintf("container_config/%s_request", memoryType)).Return("", fmt.Errorf("test error request memory"))
+
+		err := appendRequirementsForResourceType(context.TODO(), memoryType, requirements, doguConfig, &core.Dogu{Name: "official/ldap"})
 		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'memory'")
 		assert.ErrorContains(t, err, "failed to read value of key 'container_config/memory_limit' from registry config of dogu 'official/ldap'")
 		assert.ErrorContains(t, err, "test error limit memory")
@@ -157,11 +161,12 @@ func Test_appendRequirementsForResourceType(t *testing.T) {
 			Limits:   corev1.ResourceList{},
 			Requests: corev1.ResourceList{},
 		}
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_limit", memoryType)).Return("", nil)
-		configurationContext.EXPECT().Get(fmt.Sprintf("container_config/%s_request", memoryType)).Return("", nil)
 
-		err := appendRequirementsForResourceType(memoryType, requirements, configurationContext, &core.Dogu{})
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, fmt.Sprintf("container_config/%s_limit", memoryType)).Return("", nil)
+		doguConfig.EXPECT().Get(mock.Anything, fmt.Sprintf("container_config/%s_request", memoryType)).Return("", nil)
+
+		err := appendRequirementsForResourceType(context.TODO(), memoryType, requirements, doguConfig, &core.Dogu{})
 		assert.NoError(t, err)
 		assert.Empty(t, requirements.Limits)
 		assert.Empty(t, requirements.Requests)
@@ -172,10 +177,10 @@ func Test_readFromConfigOrDefault(t *testing.T) {
 	t.Run("should fail to read config", func(t *testing.T) {
 		key := "container_config/memory_limit"
 
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get(key).Return("", assert.AnError)
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, key).Return("", assert.AnError)
 
-		val, err := readFromConfigOrDefault(key, configurationContext, &core.Dogu{Name: "official/ldap"})
+		val, err := readFromConfigOrDefault(context.TODO(), key, doguConfig, &core.Dogu{Name: "official/ldap"})
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to read value of key 'container_config/memory_limit' from registry config of dogu 'official/ldap'")
 		assert.Empty(t, val)
@@ -184,10 +189,10 @@ func Test_readFromConfigOrDefault(t *testing.T) {
 	t.Run("should return default-config from dogu when not configured ", func(t *testing.T) {
 		key := "container_config/memory_limit"
 
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get(key).Return("", client.Error{Code: client.ErrorCodeKeyNotFound})
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, key).Return("", client.Error{Code: client.ErrorCodeKeyNotFound})
 
-		val, err := readFromConfigOrDefault(key, configurationContext, &core.Dogu{
+		val, err := readFromConfigOrDefault(context.TODO(), key, doguConfig, &core.Dogu{
 			Configuration: []core.ConfigurationField{
 				{
 					Name:    key,
@@ -202,10 +207,10 @@ func Test_readFromConfigOrDefault(t *testing.T) {
 	t.Run("should return empty-string when not configured and no default-value is present", func(t *testing.T) {
 		key := "container_config/memory_limit"
 
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get(key).Return("", client.Error{Code: client.ErrorCodeKeyNotFound})
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, key).Return("", client.Error{Code: client.ErrorCodeKeyNotFound})
 
-		val, err := readFromConfigOrDefault(key, configurationContext, &core.Dogu{
+		val, err := readFromConfigOrDefault(context.TODO(), key, doguConfig, &core.Dogu{
 			Configuration: []core.ConfigurationField{
 				{
 					Name:    "something/other",
@@ -220,10 +225,10 @@ func Test_readFromConfigOrDefault(t *testing.T) {
 	t.Run("should return configured-value when present", func(t *testing.T) {
 		key := "container_config/memory_limit"
 
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get(key).Return("20g", nil)
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, key).Return("20g", nil)
 
-		val, err := readFromConfigOrDefault(key, configurationContext, &core.Dogu{})
+		val, err := readFromConfigOrDefault(context.TODO(), key, doguConfig, &core.Dogu{})
 		require.NoError(t, err)
 		assert.Equal(t, "20g", val)
 	})
@@ -235,17 +240,17 @@ func Test_requirementsGenerator_Generate(t *testing.T) {
 			Name: "official/ldap",
 		}
 
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get("container_config/memory_limit").Return("", fmt.Errorf("error memory limit"))
-		configurationContext.EXPECT().Get("container_config/cpu_core_limit").Return("", fmt.Errorf("error cpu_core limit"))
-		configurationContext.EXPECT().Get(mock.Anything).Return("200m", nil)
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, "container_config/memory_limit").Return("", fmt.Errorf("error memory limit"))
+		doguConfig.EXPECT().Get(mock.Anything, "container_config/cpu_core_limit").Return("", fmt.Errorf("error cpu_core limit"))
+		doguConfig.EXPECT().Get(mock.Anything, mock.Anything).Return("200m", nil)
 
-		registry := mocks.NewConfigurationRegistry(t)
-		registry.EXPECT().DoguConfig(dogu.GetSimpleName()).Return(configurationContext)
+		registry := NewMockDoguConfigProvider(t)
+		registry.EXPECT().GetDoguConfig(context.TODO(), dogu.GetSimpleName()).Return(doguConfig, nil)
 
 		generator := NewRequirementsGenerator(registry)
 
-		requirements, err := generator.Generate(dogu)
+		requirements, err := generator.Generate(context.TODO(), dogu)
 		assert.ErrorContains(t, err, "errors occured during requirements generation")
 		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'memory'")
 		assert.ErrorContains(t, err, "errors occured while appending requirements for resource type 'cpu_core'")
@@ -259,20 +264,20 @@ func Test_requirementsGenerator_Generate(t *testing.T) {
 			Name: "official/ldap",
 		}
 
-		configurationContext := mocks.NewConfigurationContext(t)
-		configurationContext.EXPECT().Get("container_config/memory_limit").Return("500m", nil)
-		configurationContext.EXPECT().Get("container_config/memory_request").Return("200m", nil)
-		configurationContext.EXPECT().Get("container_config/cpu_core_request").Return("0.5", nil)
-		configurationContext.EXPECT().Get("container_config/cpu_core_limit").Return("2", nil)
-		configurationContext.EXPECT().Get("container_config/storage_limit").Return("20g", nil)
-		configurationContext.EXPECT().Get("container_config/storage_request").Return("1g", nil)
+		doguConfig := NewMockDoguConfigValueGetter(t)
+		doguConfig.EXPECT().Get(mock.Anything, "container_config/memory_limit").Return("500m", nil)
+		doguConfig.EXPECT().Get(mock.Anything, "container_config/memory_request").Return("200m", nil)
+		doguConfig.EXPECT().Get(mock.Anything, "container_config/cpu_core_request").Return("0.5", nil)
+		doguConfig.EXPECT().Get(mock.Anything, "container_config/cpu_core_limit").Return("2", nil)
+		doguConfig.EXPECT().Get(mock.Anything, "container_config/storage_limit").Return("20g", nil)
+		doguConfig.EXPECT().Get(mock.Anything, "container_config/storage_request").Return("1g", nil)
 
-		registry := mocks.NewConfigurationRegistry(t)
-		registry.EXPECT().DoguConfig(dogu.GetSimpleName()).Return(configurationContext)
+		registry := NewMockDoguConfigProvider(t)
+		registry.EXPECT().GetDoguConfig(context.TODO(), dogu.GetSimpleName()).Return(doguConfig, nil)
 
 		generator := NewRequirementsGenerator(registry)
 
-		requirements, err := generator.Generate(dogu)
+		requirements, err := generator.Generate(context.TODO(), dogu)
 		require.NoError(t, err)
 		assert.Equal(t, corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{

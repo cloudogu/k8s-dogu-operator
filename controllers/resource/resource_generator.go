@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,8 +20,6 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
 
 const (
@@ -56,13 +55,13 @@ const (
 // as controller
 type resourceGenerator struct {
 	scheme                *runtime.Scheme
-	requirementsGenerator cloudogu.ResourceRequirementsGenerator
-	hostAliasGenerator    thirdParty.HostAliasGenerator
+	requirementsGenerator RequirementsGenerator
+	hostAliasGenerator    HostAliasGenerator
 	additionalImages      map[string]string
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator RequirementsGenerator, hostAliasGenerator HostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
 	return &resourceGenerator{
 		scheme:                scheme,
 		requirementsGenerator: requirementsGenerator,
@@ -140,7 +139,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		return nil, err
 	}
 
-	resourceRequirements, err := r.requirementsGenerator.Generate(dogu)
+	resourceRequirements, err := r.requirementsGenerator.Generate(context.Background(), dogu)
 	if err != nil {
 		return nil, err
 	}

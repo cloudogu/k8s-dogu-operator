@@ -1,14 +1,15 @@
 package resource
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	cesappReg "github.com/cloudogu/cesapp-lib/registry"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
 )
 
 type resourceType string
@@ -26,15 +27,18 @@ var resourceTypeMapping = map[resourceType]corev1.ResourceName{
 }
 
 type requirementsGenerator struct {
-	configRegistry registry.Registry
+	doguConfigProvider DoguConfigProvider
 }
 
-func NewRequirementsGenerator(configRegistry registry.Registry) *requirementsGenerator {
-	return &requirementsGenerator{configRegistry: configRegistry}
+func NewRequirementsGenerator(doguConfigProvider DoguConfigProvider) *requirementsGenerator {
+	return &requirementsGenerator{doguConfigProvider: doguConfigProvider}
 }
 
-func (r requirementsGenerator) Generate(dogu *core.Dogu) (corev1.ResourceRequirements, error) {
-	doguConfig := r.configRegistry.DoguConfig(dogu.GetSimpleName())
+func (r requirementsGenerator) Generate(ctx context.Context, dogu *core.Dogu) (corev1.ResourceRequirements, error) {
+	doguConfig, err := r.doguConfigProvider.GetDoguConfig(ctx, dogu.GetSimpleName())
+	if err != nil {
+		return corev1.ResourceRequirements{}, fmt.Errorf("unable to get dogu config registry: %w", err)
+	}
 
 	requirements := corev1.ResourceRequirements{
 		Limits:   corev1.ResourceList{},
@@ -43,7 +47,7 @@ func (r requirementsGenerator) Generate(dogu *core.Dogu) (corev1.ResourceRequire
 
 	var errList []error
 	for resourceType := range resourceTypeMapping {
-		err := appendRequirementsForResourceType(resourceType, requirements, doguConfig, dogu)
+		err := appendRequirementsForResourceType(ctx, resourceType, requirements, doguConfig, dogu)
 		if err != nil {
 			errList = append(errList, err)
 		}
@@ -56,11 +60,11 @@ func (r requirementsGenerator) Generate(dogu *core.Dogu) (corev1.ResourceRequire
 	return requirements, nil
 }
 
-func readFromConfigOrDefault(key string, doguConfig registry.ConfigurationContext, dogu *core.Dogu) (string, error) {
-	configValue, err := doguConfig.Get(key)
+func readFromConfigOrDefault(ctx context.Context, key string, doguConfig DoguConfigValueGetter, dogu *core.Dogu) (string, error) {
+	configValue, err := doguConfig.Get(ctx, key)
 
 	if err != nil {
-		if registry.IsKeyNotFoundError(err) {
+		if cesappReg.IsKeyNotFoundError(err) {
 			for _, field := range dogu.Configuration {
 				if field.Name == key {
 					return field.Default, nil
@@ -76,18 +80,18 @@ func readFromConfigOrDefault(key string, doguConfig registry.ConfigurationContex
 	return configValue, nil
 }
 
-func appendRequirementsForResourceType(resourceType resourceType, requirements corev1.ResourceRequirements, doguConfig registry.ConfigurationContext, dogu *core.Dogu) error {
+func appendRequirementsForResourceType(ctx context.Context, resourceType resourceType, requirements corev1.ResourceRequirements, doguConfig DoguConfigValueGetter, dogu *core.Dogu) error {
 	resourceName := resourceTypeMapping[resourceType]
 
 	limitKey := fmt.Sprintf("container_config/%s_limit", resourceType)
-	limit, limitErr := readFromConfigOrDefault(limitKey, doguConfig, dogu)
+	limit, limitErr := readFromConfigOrDefault(ctx, limitKey, doguConfig, dogu)
 	var limitConversionErr error
 	if limit != "" {
 		requirements.Limits[resourceName], limitConversionErr = convertCesUnitToQuantity(limit, resourceType)
 	}
 
 	requestKey := fmt.Sprintf("container_config/%s_request", resourceType)
-	request, requestErr := readFromConfigOrDefault(requestKey, doguConfig, dogu)
+	request, requestErr := readFromConfigOrDefault(ctx, requestKey, doguConfig, dogu)
 	var requestConversionErr error
 	if request != "" {
 		requirements.Requests[resourceName], requestConversionErr = convertCesUnitToQuantity(request, resourceType)

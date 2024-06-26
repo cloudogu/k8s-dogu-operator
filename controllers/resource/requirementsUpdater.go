@@ -4,80 +4,65 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
-	coreosclient "go.etcd.io/etcd/client/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	triggerSyncEtcdKeyFullPath = "/config/_global/sync_resource_requirements"
+	triggerSyncKey = "sync_resource_requirements"
 )
 
 // requirementsUpdater is responsible to update all resource requirements for dogu deployments when a certain trigger is called.
 type requirementsUpdater struct {
-	client            client.Client
-	namespace         string
-	registry          registry.Registry
-	localDoguRegistry local.LocalDoguRegistry
-	requirementsGen   cloudogu.ResourceRequirementsGenerator
+	client              client.Client
+	namespace           string
+	globalConfigWatcher GlobalConfigurationWatcher
+	localDoguRegistry   DoguGetter
+	requirementsGen     RequirementsGenerator
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(client client.Client, namespace string, clientSet kubernetes.Interface) (*requirementsUpdater, error) {
-	endpoint := fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", namespace)
-	reg, err := registry.New(core.Registry{
-		Type:      "etcd",
-		Endpoints: []string{endpoint},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	requirementsGen := NewRequirementsGenerator(reg)
+func NewRequirementsUpdater(client client.Client, namespace string, provider DoguConfigProvider, doguReg DoguGetter, globalWatcher GlobalConfigurationWatcher) (*requirementsUpdater, error) {
+	requirementsGen := NewRequirementsGenerator(provider)
 
 	return &requirementsUpdater{
-		client:    client,
-		namespace: namespace,
-		registry:  reg,
-		localDoguRegistry: local.NewCombinedLocalDoguRegistry(
-			clientSet.CoreV1().ConfigMaps(namespace),
-			reg,
-		),
-		requirementsGen: requirementsGen,
+		client:              client,
+		namespace:           namespace,
+		globalConfigWatcher: globalWatcher,
+		localDoguRegistry:   doguReg,
+		requirementsGen:     requirementsGen,
 	}, nil
 }
 
 // Start is the entry point for the updater.
 func (hlu *requirementsUpdater) Start(ctx context.Context) error {
-	return hlu.startEtcdWatch(ctx)
+	return hlu.startWatch(ctx)
 }
 
-func (hlu *requirementsUpdater) startEtcdWatch(ctx context.Context) error {
-	ctrl.LoggerFrom(ctx).Info(fmt.Sprintf("Start etcd watcher on certificate key [%s]", triggerSyncEtcdKeyFullPath))
+func (hlu *requirementsUpdater) startWatch(ctx context.Context) error {
+	ctrl.LoggerFrom(ctx).Info(fmt.Sprintf("Start watching on global config for certificate key [%s]", triggerSyncKey))
 
-	triggerChannel := make(chan *coreosclient.Response)
-	go func() {
-		hlu.registry.RootConfig().Watch(ctx, triggerSyncEtcdKeyFullPath, false, triggerChannel)
-	}()
+	watch, err := hlu.globalConfigWatcher.Watch(ctx, triggerSyncKey, false)
+	if err != nil {
+		return fmt.Errorf("could not start watch for key [%s]", triggerSyncKey)
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-triggerChannel:
-			err := hlu.triggerSync(ctx)
-			if err != nil {
-				return err
+		case _, open := <-watch.ResultChan:
+			if !open {
+				ctrl.LoggerFrom(ctx).Info(fmt.Sprintf("Stopped watching on global config for certificate key [%s] because channel is closed", triggerSyncKey))
+				return nil
+			}
+
+			lErr := hlu.triggerSync(ctx)
+			if lErr != nil {
+				return lErr
 			}
 		}
 	}
@@ -107,7 +92,7 @@ func (hlu *requirementsUpdater) triggerSync(ctx context.Context) error {
 			continue
 		}
 
-		requirements, err := hlu.requirementsGen.Generate(doguJson)
+		requirements, err := hlu.requirementsGen.Generate(ctx, doguJson)
 		if err != nil {
 			result = errors.Join(result, fmt.Errorf("failed to generate resource requirements of dogu [%s/%s] in cluster: %w", dogu.Namespace, dogu.Name, err))
 			continue
