@@ -5,7 +5,8 @@ import (
 	"errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-registry-lib/registry"
+	"github.com/cloudogu/k8s-registry-lib/config"
+	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -28,12 +29,12 @@ func TestNewRequirementsUpdater(t *testing.T) {
 	t.Run("create with success", func(t *testing.T) {
 		// given
 		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
-		providerMock := NewMockDoguConfigProvider(t)
-		doguRegMock := NewMockDoguGetter(t)
-		watcherMock := NewMockGlobalConfigurationWatcher(t)
+		doguRepoMock := newMockDoguConfigGetter(t)
+		doguRegMock := newMockDoguGetter(t)
+		watcherMock := newMockGlobalConfigurationWatcher(t)
 
 		// when
-		updater, err := NewRequirementsUpdater(clientMock, "myNamespace", providerMock, doguRegMock, watcherMock)
+		updater, err := NewRequirementsUpdater(clientMock, "myNamespace", doguRepoMock, doguRegMock, watcherMock)
 
 		// then
 		require.NoError(t, err)
@@ -116,10 +117,12 @@ func getTestDeployments() (*appsv1.Deployment, *appsv1.Deployment, *appsv1.Deplo
 
 func Test_requirementsUpdater_Start(t *testing.T) {
 	t.Run("run start and send done to context", func(t *testing.T) { // given
-		globalConfigWatcherMock := NewMockGlobalConfigurationWatcher(t)
-		globalConfigWatcherMock.EXPECT().Watch(mock.Anything, triggerSyncKey, false).Return(registry.ConfigWatch{}, nil)
+		resultChan := make(chan repository.GlobalConfigWatchResult)
 
-		sut := &requirementsUpdater{
+		globalConfigWatcherMock := newMockGlobalConfigurationWatcher(t)
+		globalConfigWatcherMock.EXPECT().Watch(mock.Anything, mock.Anything).Return(resultChan, nil)
+
+		sut := &RequirementsUpdater{
 			globalConfigWatcher: globalConfigWatcherMock,
 		}
 
@@ -135,6 +138,15 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			err := sut.Start(ctx)
 			assert.NoError(t, err)
 		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			<-ctx.Done()
+			close(resultChan)
+		}()
+
 		cancelFunc()
 
 		wg.Wait()
@@ -143,18 +155,15 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 	t.Run("run start and send change event", func(t *testing.T) {
 		// given
 		dj1, dj2, dj3 := getTestDoguJsons()
-		localDoguRegMock := NewMockDoguGetter(t)
+		localDoguRegMock := newMockDoguGetter(t)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu1").Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu2").Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu3").Return(dj3, nil)
 
-		resultChan := make(chan registry.WatchResult)
-		defer close(resultChan)
+		resultChan := make(chan repository.GlobalConfigWatchResult)
 
-		watcher := registry.ConfigWatch{ResultChan: resultChan}
-
-		globalConfigWatcher := NewMockGlobalConfigurationWatcher(t)
-		globalConfigWatcher.EXPECT().Watch(mock.Anything, triggerSyncKey, false).Return(watcher, nil)
+		globalConfigWatcher := newMockGlobalConfigurationWatcher(t)
+		globalConfigWatcher.EXPECT().Watch(mock.Anything, mock.Anything).Return(resultChan, nil)
 
 		d1, d2, d3 := getTestDogus()
 		dd1, dd2, dd3 := getTestDeployments()
@@ -164,12 +173,12 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		generator := NewMockRequirementsGenerator(t)
+		generator := newMockRequirementsGenerator(t)
 		generator.EXPECT().Generate(mock.Anything, dj1).Return(v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceMemory: resource.MustParse("500Mi")}}, nil)
 		generator.EXPECT().Generate(mock.Anything, dj2).Return(v1.ResourceRequirements{Requests: v1.ResourceList{v1.ResourceEphemeralStorage: resource.MustParse("2Gi")}}, nil)
 		generator.EXPECT().Generate(mock.Anything, dj3).Return(v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceCPU: resource.MustParse("500m")}}, nil)
 
-		sut := &requirementsUpdater{
+		sut := &RequirementsUpdater{
 			client:              clientMock,
 			requirementsGen:     generator,
 			localDoguRegistry:   localDoguRegMock,
@@ -186,14 +195,18 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			assert.NoError(t, lErr)
 		}()
 
-		resultChan <- registry.WatchResult{
-			ModifiedKeys: map[string]registry.ConfigModification{
-				triggerSyncKey: {
-					OldValue: "",
-					NewValue: "",
-				},
-			},
-			Err: nil,
+		wg.Add(1)
+		go func() {
+			defer close(resultChan)
+			defer wg.Done()
+
+			<-ctx.Done()
+		}()
+
+		resultChan <- repository.GlobalConfigWatchResult{
+			PrevState: config.GlobalConfig{},
+			NewState:  config.GlobalConfig{},
+			Err:       nil,
 		}
 
 		// when
@@ -218,13 +231,10 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 
 	t.Run("run start and get error on change method", func(t *testing.T) {
 		// given
-		resultChan := make(chan registry.WatchResult)
-		defer close(resultChan)
+		resultChan := make(chan repository.GlobalConfigWatchResult)
 
-		watcher := registry.ConfigWatch{ResultChan: resultChan}
-
-		globalConfigWatcher := NewMockGlobalConfigurationWatcher(t)
-		globalConfigWatcher.EXPECT().Watch(mock.Anything, triggerSyncKey, false).Return(watcher, nil)
+		globalConfigWatcher := newMockGlobalConfigurationWatcher(t)
+		globalConfigWatcher.EXPECT().Watch(mock.Anything, mock.Anything).Return(resultChan, nil)
 
 		clientMock := testclient.NewClientBuilder().
 			WithScheme(getScheme()).
@@ -232,7 +242,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 				return assert.AnError
 			}}).
 			Build()
-		sut := &requirementsUpdater{
+		sut := &RequirementsUpdater{
 			client:              clientMock,
 			globalConfigWatcher: globalConfigWatcher,
 		}
@@ -250,14 +260,18 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			assert.ErrorIs(t, err, assert.AnError)
 		}()
 
-		resultChan <- registry.WatchResult{
-			ModifiedKeys: map[string]registry.ConfigModification{
-				triggerSyncKey: {
-					OldValue: "",
-					NewValue: "",
-				},
-			},
-			Err: nil,
+		wg.Add(1)
+		go func() {
+			defer close(resultChan)
+			defer wg.Done()
+
+			<-ctx.Done()
+		}()
+
+		resultChan <- repository.GlobalConfigWatchResult{
+			PrevState: config.GlobalConfig{},
+			NewState:  config.GlobalConfig{},
+			Err:       nil,
 		}
 
 		// when
@@ -273,7 +287,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		clientMock := testclient.NewClientBuilder().
 			Build()
 
-		sut := &requirementsUpdater{
+		sut := &RequirementsUpdater{
 			client: clientMock,
 		}
 
@@ -293,13 +307,13 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			WithObjects(d1, d2, d3).
 			Build()
 
-		generator := NewMockRequirementsGenerator(t)
-		localDoguRegMock := NewMockDoguGetter(t)
+		generator := newMockRequirementsGenerator(t)
+		localDoguRegMock := newMockDoguGetter(t)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d1.Name).Return(nil, assert.AnError)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d2.Name).Return(nil, assert.AnError)
 		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d3.Name).Return(nil, assert.AnError)
 
-		sut := &requirementsUpdater{
+		sut := &RequirementsUpdater{
 			client:            clientMock,
 			requirementsGen:   generator,
 			localDoguRegistry: localDoguRegMock,
@@ -322,14 +336,14 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			WithObjects(d1, d2, d3).
 			Build()
 
-		generator := NewMockRequirementsGenerator(t)
+		generator := newMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
-		localDoguRegMock := NewMockDoguGetter(t)
+		localDoguRegMock := newMockDoguGetter(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
 
-		sut := &requirementsUpdater{
+		sut := &RequirementsUpdater{
 			client:            clientMock,
 			requirementsGen:   generator,
 			localDoguRegistry: localDoguRegMock,
@@ -354,7 +368,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		generator := NewMockRequirementsGenerator(t)
+		generator := newMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
 		testErr1 := errors.New("error1 occurred: wrong bitsize")
 		testErr2 := errors.New("error2 occurred: out of entropy")
@@ -363,12 +377,12 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(testCtx, dj2).Return(v1.ResourceRequirements{}, testErr2)
 		generator.EXPECT().Generate(testCtx, dj3).Return(v1.ResourceRequirements{}, testErr3)
 
-		localDoguRegMock := NewMockDoguGetter(t)
+		localDoguRegMock := newMockDoguGetter(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
 
-		sut := &requirementsUpdater{
+		sut := &RequirementsUpdater{
 			client:            clientMock,
 			requirementsGen:   generator,
 			localDoguRegistry: localDoguRegMock,
@@ -401,18 +415,18 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			}}).
 			Build()
 
-		generator := NewMockRequirementsGenerator(t)
+		generator := newMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
 		generator.EXPECT().Generate(testCtx, dj1).Return(v1.ResourceRequirements{}, nil)
 		generator.EXPECT().Generate(testCtx, dj2).Return(v1.ResourceRequirements{}, nil)
 		generator.EXPECT().Generate(testCtx, dj3).Return(v1.ResourceRequirements{}, nil)
 
-		localDoguRegMock := NewMockDoguGetter(t)
+		localDoguRegMock := newMockDoguGetter(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
 
-		sut := &requirementsUpdater{
+		sut := &RequirementsUpdater{
 			client:            clientMock,
 			requirementsGen:   generator,
 			localDoguRegistry: localDoguRegMock,
@@ -439,18 +453,18 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		generator := NewMockRequirementsGenerator(t)
+		generator := newMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
 		generator.EXPECT().Generate(testCtx, dj1).Return(v1.ResourceRequirements{}, nil)
 		generator.EXPECT().Generate(testCtx, dj2).Return(v1.ResourceRequirements{}, nil)
 		generator.EXPECT().Generate(testCtx, dj3).Return(v1.ResourceRequirements{}, nil)
 
-		localDoguRegMock := NewMockDoguGetter(t)
+		localDoguRegMock := newMockDoguGetter(t)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
 		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
 
-		sut := &requirementsUpdater{
+		sut := &RequirementsUpdater{
 			client:            clientMock,
 			requirementsGen:   generator,
 			localDoguRegistry: localDoguRegMock,

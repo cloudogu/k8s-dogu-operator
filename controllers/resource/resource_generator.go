@@ -55,13 +55,13 @@ const (
 // as controller
 type resourceGenerator struct {
 	scheme                *runtime.Scheme
-	requirementsGenerator RequirementsGenerator
-	hostAliasGenerator    HostAliasGenerator
+	requirementsGenerator requirementsGenerator
+	hostAliasGenerator    hostAliasGenerator
 	additionalImages      map[string]string
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator RequirementsGenerator, hostAliasGenerator HostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator requirementsGenerator, hostAliasGenerator hostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
 	return &resourceGenerator{
 		scheme:                scheme,
 		requirementsGenerator: requirementsGenerator,
