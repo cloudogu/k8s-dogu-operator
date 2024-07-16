@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -57,9 +58,13 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			EXPECT().createServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana", []string{"param1", "42"}).
 			Return(map[string]string{"username": "adminUser", "password": "password123"}, nil)
 
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
+
 		serviceAccountCreator := creator{
-			clientSet: fakeClient,
-			apiClient: mockApiClient,
+			clientSet:         fakeClient,
+			apiClient:         mockApiClient,
+			sensitiveDoguRepo: sensitiveConfigRepoMock,
 		}
 
 		dogu := &core.Dogu{
@@ -68,48 +73,17 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			OptionalDependencies: []core.Dependency{},
 		}
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(false, nil)
-		sensitiveConfig.EXPECT().Set(mock.Anything, "/sa-k8s-prometheus/username", mock.Anything).Return(nil)
-		sensitiveConfig.EXPECT().Set(mock.Anything, "/sa-k8s-prometheus/password", mock.Anything).Return(nil)
-
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
 			Kind:   "component",
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
+		doguCfg := config.CreateDoguConfig("test", make(config.Entries))
+
+		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, &doguCfg, serviceAccount, "sa-k8s-prometheus")
 
 		require.NoError(t, err)
-	})
-
-	t.Run("fail on error checking service account exists", func(t *testing.T) {
-		fakeClient := fake.NewSimpleClientset(svc, apiKeySecret)
-
-		serviceAccountCreator := creator{
-			clientSet: fakeClient,
-		}
-
-		dogu := &core.Dogu{
-			Name:                 "official/grafana",
-			Dependencies:         []core.Dependency{},
-			OptionalDependencies: []core.Dependency{},
-		}
-
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(false, assert.AnError)
-
-		serviceAccount := core.ServiceAccount{
-			Type:   "k8s-prometheus",
-			Kind:   "component",
-			Params: []string{"param1", "42"},
-		}
-
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
 	})
 
 	t.Run("success when service account exists", func(t *testing.T) {
@@ -125,8 +99,12 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			OptionalDependencies: []core.Dependency{},
 		}
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(true, nil)
+		entries := config.Entries{
+			"sa-k8s-prometheus/username": "testUser",
+			"sa-k8s-prometheus/password": "testPassword",
+		}
+
+		doguCfg := config.CreateDoguConfig("test", entries)
 
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
@@ -134,7 +112,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
+		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, &doguCfg, serviceAccount, "sa-k8s-prometheus")
 
 		require.NoError(t, err)
 	})
@@ -154,8 +132,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			},
 		}
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(false, nil)
+		doguCfg := config.CreateDoguConfig("test", make(config.Entries))
 
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
@@ -163,7 +140,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
+		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, &doguCfg, serviceAccount, "sa-k8s-prometheus")
 
 		require.NoError(t, err)
 	})
@@ -181,8 +158,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			OptionalDependencies: []core.Dependency{},
 		}
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(false, nil)
+		doguCfg := config.CreateDoguConfig("test", make(config.Entries))
 
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
@@ -190,7 +166,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
+		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, &doguCfg, serviceAccount, "sa-k8s-prometheus")
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get service: found no services for labelSelector ces.cloudogu.com/serviceaccount-provider=k8s-prometheus")
@@ -231,9 +207,13 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			EXPECT().createServiceAccount(ctx, "http://1.2.3.4:8080/serviceaccounts", "defaultApiKeySecret", "grafana", []string{"param1", "42"}).
 			Return(map[string]string{"username": "adminUser", "password": "password123"}, nil)
 
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
+
 		serviceAccountCreator := creator{
-			clientSet: fakeClient,
-			apiClient: mockApiClient,
+			clientSet:         fakeClient,
+			apiClient:         mockApiClient,
+			sensitiveDoguRepo: sensitiveConfigRepoMock,
 		}
 
 		dogu := &core.Dogu{
@@ -242,18 +222,15 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			OptionalDependencies: []core.Dependency{},
 		}
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(false, nil)
-		sensitiveConfig.EXPECT().Set(mock.Anything, "/sa-k8s-prometheus/username", mock.Anything).Return(nil)
-		sensitiveConfig.EXPECT().Set(mock.Anything, "/sa-k8s-prometheus/password", mock.Anything).Return(nil)
-
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
 			Kind:   "component",
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
+		doguCfg := config.CreateDoguConfig("test", make(config.Entries))
+
+		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, &doguCfg, serviceAccount, "sa-k8s-prometheus")
 
 		require.NoError(t, err)
 	})
@@ -271,16 +248,15 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			OptionalDependencies: []core.Dependency{},
 		}
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(false, nil)
-
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
 			Kind:   "component",
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
+		doguCfg := config.CreateDoguConfig("test", make(config.Entries))
+
+		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, &doguCfg, serviceAccount, "sa-k8s-prometheus")
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get apiKey-secret: error reading apiKeySecret k8s-prometheus-api-key: secrets \"k8s-prometheus-api-key\" not found")
@@ -305,16 +281,15 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			OptionalDependencies: []core.Dependency{},
 		}
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(false, nil)
-
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
 			Kind:   "component",
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
+		doguCfg := config.CreateDoguConfig("test", make(config.Entries))
+
+		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, &doguCfg, serviceAccount, "sa-k8s-prometheus")
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
@@ -329,9 +304,13 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			EXPECT().createServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana", []string{"param1", "42"}).
 			Return(map[string]string{"username": "adminUser", "password": "password123"}, nil)
 
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, assert.AnError).Once()
+
 		serviceAccountCreator := creator{
-			clientSet: fakeClient,
-			apiClient: mockApiClient,
+			clientSet:         fakeClient,
+			apiClient:         mockApiClient,
+			sensitiveDoguRepo: sensitiveConfigRepoMock,
 		}
 
 		dogu := &core.Dogu{
@@ -340,19 +319,15 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			OptionalDependencies: []core.Dependency{},
 		}
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "/sa/k8s-prometheus").Return(false, nil)
-		// The credentials are saved in a map, and thus we cannot know if the username or password is saved first
-		sensitiveConfig.EXPECT().Set(mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil).Once()
-		sensitiveConfig.EXPECT().Set(mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(assert.AnError).Once()
-
 		serviceAccount := core.ServiceAccount{
 			Type:   "k8s-prometheus",
 			Kind:   "component",
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, sensitiveConfig, serviceAccount, "/sa/k8s-prometheus")
+		doguCfg := config.CreateDoguConfig("test", make(config.Entries))
+
+		err := serviceAccountCreator.createComponentServiceAccount(ctx, dogu, &doguCfg, serviceAccount, "sa-k8s-prometheus")
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
@@ -513,13 +488,13 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			EXPECT().deleteServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana").
 			Return(nil)
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "sa-k8s-prometheus").Return(true, nil)
-		sensitiveConfig.EXPECT().DeleteRecursive(mock.Anything, "sa-k8s-prometheus").Return(nil)
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
 
 		serviceAccountRemover := remover{
-			clientSet: fakeClient,
-			apiClient: mockApiClient,
+			clientSet:         fakeClient,
+			apiClient:         mockApiClient,
+			sensitiveDoguRepo: sensitiveConfigRepoMock,
 		}
 
 		dogu := &core.Dogu{
@@ -534,41 +509,14 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, sensitiveConfig)
+		doguCfg := config.CreateDoguConfig("test", config.Entries{
+			"sa-k8s-prometheus/username": "testUser",
+			"sa-k8s-prometheus/password": "testPassword",
+		})
+
+		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, &doguCfg)
 
 		require.NoError(t, err)
-	})
-
-	t.Run("fail on error service account exists", func(t *testing.T) {
-		fakeClient := fake.NewSimpleClientset(svc, apiKeySecret)
-
-		mockApiClient := newMockServiceAccountApiClient(t)
-
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "sa-k8s-prometheus").Return(false, assert.AnError)
-
-		serviceAccountRemover := remover{
-			clientSet: fakeClient,
-			apiClient: mockApiClient,
-		}
-
-		dogu := &core.Dogu{
-			Name:                 "official/grafana",
-			Dependencies:         []core.Dependency{},
-			OptionalDependencies: []core.Dependency{},
-		}
-
-		serviceAccount := core.ServiceAccount{
-			Type:   "k8s-prometheus",
-			Kind:   "component",
-			Params: []string{"param1", "42"},
-		}
-
-		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, sensitiveConfig)
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to check if service account already exists:")
 	})
 
 	t.Run("success remove component service account that does not exists", func(t *testing.T) {
@@ -576,9 +524,6 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 
 		mockApiClient := newMockServiceAccountApiClient(t)
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "sa-k8s-prometheus").Return(false, nil)
-
 		serviceAccountRemover := remover{
 			clientSet: fakeClient,
 			apiClient: mockApiClient,
@@ -596,7 +541,9 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, sensitiveConfig)
+		doguCfg := config.CreateDoguConfig("test", config.Entries{})
+
+		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, &doguCfg)
 
 		require.NoError(t, err)
 	})
@@ -606,9 +553,6 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 
 		mockApiClient := newMockServiceAccountApiClient(t)
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "sa-k8s-prometheus").Return(true, nil)
-
 		serviceAccountRemover := remover{
 			clientSet: fakeClient,
 			apiClient: mockApiClient,
@@ -626,7 +570,12 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, sensitiveConfig)
+		doguCfg := config.CreateDoguConfig("test", config.Entries{
+			"sa-k8s-prometheus/username": "testUser",
+			"sa-k8s-prometheus/password": "testPassword",
+		})
+
+		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, &doguCfg)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get service: found no services for labelSelector ces.cloudogu.com/serviceaccount-provider=k8s-prometheus")
@@ -637,9 +586,6 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 
 		mockApiClient := newMockServiceAccountApiClient(t)
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "sa-k8s-prometheus").Return(true, nil)
-
 		serviceAccountRemover := remover{
 			clientSet: fakeClient,
 			apiClient: mockApiClient,
@@ -657,7 +603,12 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, sensitiveConfig)
+		doguCfg := config.CreateDoguConfig("test", config.Entries{
+			"sa-k8s-prometheus/username": "testUser",
+			"sa-k8s-prometheus/password": "testPassword",
+		})
+
+		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, &doguCfg)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "error getting apiKey: failed to get apiKey-secret: error reading apiKeySecret k8s-prometheus-api-key: secrets \"k8s-prometheus-api-key\" not found")
@@ -671,9 +622,6 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			EXPECT().deleteServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana").
 			Return(assert.AnError)
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "sa-k8s-prometheus").Return(true, nil)
-
 		serviceAccountRemover := remover{
 			clientSet: fakeClient,
 			apiClient: mockApiClient,
@@ -691,7 +639,12 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, sensitiveConfig)
+		doguCfg := config.CreateDoguConfig("test", config.Entries{
+			"sa-k8s-prometheus/username": "testUser",
+			"sa-k8s-prometheus/password": "testPassword",
+		})
+
+		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, &doguCfg)
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
@@ -706,13 +659,13 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			EXPECT().deleteServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana").
 			Return(nil)
 
-		sensitiveConfig := NewMockSensitiveDoguConfig(t)
-		sensitiveConfig.EXPECT().Exists(mock.Anything, "sa-k8s-prometheus").Return(true, nil)
-		sensitiveConfig.EXPECT().DeleteRecursive(mock.Anything, "sa-k8s-prometheus").Return(assert.AnError)
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, assert.AnError)
 
 		serviceAccountRemover := remover{
-			clientSet: fakeClient,
-			apiClient: mockApiClient,
+			clientSet:         fakeClient,
+			apiClient:         mockApiClient,
+			sensitiveDoguRepo: sensitiveConfigRepoMock,
 		}
 
 		dogu := &core.Dogu{
@@ -727,11 +680,16 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			Params: []string{"param1", "42"},
 		}
 
-		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, sensitiveConfig)
+		doguCfg := config.CreateDoguConfig("test", config.Entries{
+			"sa-k8s-prometheus/username": "testUser",
+			"sa-k8s-prometheus/password": "testPassword",
+		})
+
+		err := serviceAccountRemover.removeComponentServiceAccount(ctx, dogu, serviceAccount, &doguCfg)
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to remove service account from config")
+		assert.ErrorContains(t, err, "failed write config for dogu test after updating")
 	})
 
 }

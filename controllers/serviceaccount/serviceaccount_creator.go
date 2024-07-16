@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-registry-lib/config"
 	"io"
 	"strings"
 
@@ -24,38 +25,33 @@ import (
 // doguKind describes a service account on a dogu.
 const (
 	doguKind      = "dogu"
-	cesKind       = "ces"
 	componentKind = "component"
-)
-
-const (
-	k8sCesControl = "k8s-ces-control"
 )
 
 // creator is the unit to handle the creation of service accounts
 type creator struct {
-	client                   client.Client
-	sensitiveDoguCfgProvider SensitiveDoguConfigProvider
-	doguFetcher              cloudogu.LocalDoguFetcher
-	localDoguRegistry        dogu.LocalRegistry
-	executor                 cloudogu.CommandExecutor
-	clientSet                kubernetes.Interface
-	apiClient                serviceAccountApiClient
-	namespace                string
+	client            client.Client
+	sensitiveDoguRepo SensitiveDoguConfigRepository
+	doguFetcher       cloudogu.LocalDoguFetcher
+	localDoguRegistry dogu.LocalRegistry
+	executor          cloudogu.CommandExecutor
+	clientSet         kubernetes.Interface
+	apiClient         serviceAccountApiClient
+	namespace         string
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(provider SensitiveDoguConfigProvider, localDoguRegistry dogu.LocalRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
+func NewCreator(repo SensitiveDoguConfigRepository, localDoguRegistry dogu.LocalRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	localFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	return &creator{
-		client:                   client,
-		sensitiveDoguCfgProvider: provider,
-		doguFetcher:              localFetcher,
-		executor:                 commandExecutor,
-		clientSet:                clientSet,
-		apiClient:                &apiClient{},
-		namespace:                namespace,
-		localDoguRegistry:        localDoguRegistry,
+		client:            client,
+		sensitiveDoguRepo: repo,
+		doguFetcher:       localFetcher,
+		executor:          commandExecutor,
+		clientSet:         clientSet,
+		apiClient:         &apiClient{},
+		namespace:         namespace,
+		localDoguRegistry: localDoguRegistry,
 	}
 }
 
@@ -63,24 +59,24 @@ func NewCreator(provider SensitiveDoguConfigProvider, localDoguRegistry dogu.Loc
 func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
+	sensitiveConfig, err := c.sensitiveDoguRepo.Get(ctx, config.SimpleDoguName(dogu.GetSimpleName()))
+	if err != nil {
+		return fmt.Errorf("unbale to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
+	}
+
 	for _, serviceAccount := range dogu.ServiceAccounts {
 		registryCredentialPath := "sa-" + serviceAccount.Type
-
-		senDoguCfg, err := c.sensitiveDoguCfgProvider.GetSensitiveDoguConfig(ctx, dogu.GetSimpleName())
-		if err != nil {
-			return fmt.Errorf("unable to get sensitive dogu config for dogu %s: %w", dogu.GetSimpleName(), err)
-		}
 
 		switch serviceAccount.Kind {
 		case "":
 			fallthrough
 		case doguKind:
-			lErr := c.createDoguServiceAccount(ctx, dogu, senDoguCfg, serviceAccount, registryCredentialPath)
+			lErr := c.createDoguServiceAccount(ctx, dogu, &sensitiveConfig, serviceAccount, registryCredentialPath)
 			if lErr != nil {
 				return fmt.Errorf("unable to create service account for dogu %s: %w", serviceAccount.Type, lErr)
 			}
 		case componentKind:
-			lErr := c.createComponentServiceAccount(ctx, dogu, senDoguCfg, serviceAccount, registryCredentialPath)
+			lErr := c.createComponentServiceAccount(ctx, dogu, &sensitiveConfig, serviceAccount, registryCredentialPath)
 			if lErr != nil {
 				return fmt.Errorf("unable to create service account for component %s: %w", serviceAccount.Type, lErr)
 			}
@@ -93,14 +89,11 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 	return nil
 }
 
-func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu, senDoguCfg SensitiveDoguConfig,
+func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu, senDoguCfg *config.DoguConfig,
 	serviceAccount core.ServiceAccount, registryCredentialPath string) error {
 	logger := log.FromContext(ctx)
-	skip, err := serviceAccountExists(ctx, registryCredentialPath, senDoguCfg)
-	if err != nil {
-		return err
-	}
-	if skip {
+
+	if skip := serviceAccountExists(registryCredentialPath, *senDoguCfg); skip {
 		return nil
 	}
 
@@ -126,7 +119,7 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 	return nil
 }
 
-func (c *creator) create(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg SensitiveDoguConfigSetter) error {
+func (c *creator) create(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
 	saDogu, err := c.doguFetcher.FetchInstalled(ctx, serviceAccount.Type)
 	if err != nil {
 		return fmt.Errorf("failed to get service account dogu.json: %w", err)
@@ -149,16 +142,16 @@ func (c *creator) create(ctx context.Context, dogu *core.Dogu, serviceAccount co
 	return nil
 }
 
-func serviceAccountExists(ctx context.Context, registryCredentialPath string, senDoguCfg SensitiveDoguConfigGetter) (bool, error) {
-	exists, err := senDoguCfg.Exists(ctx, registryCredentialPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to check if service account already exists: %w", err)
-	}
-	if exists {
-		return true, nil
+func serviceAccountExists(registryCredentialPath string, senDoguCfg config.DoguConfig) bool {
+	entries := senDoguCfg.GetAll()
+
+	for key := range entries {
+		if strings.HasPrefix(key.String(), registryCredentialPath+"/") {
+			return true
+		}
 	}
 
-	return false, nil
+	return false
 }
 
 func getPodForServiceAccountDogu(ctx context.Context, client client.Client, saDogu *core.Dogu) (*corev1.Pod, error) {
@@ -190,14 +183,43 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	return saCreds, nil
 }
 
-func (c *creator) writeServiceAccounts(ctx context.Context, senDoguCfg SensitiveDoguConfigSetter, serviceAccount core.ServiceAccount, saCreds map[string]string) error {
+func (c *creator) writeServiceAccounts(ctx context.Context, senDoguCfg *config.DoguConfig, serviceAccount core.ServiceAccount, saCreds map[string]string) error {
 	for key, value := range saCreds {
 		path := "/sa-" + serviceAccount.Type + "/" + key
 
-		if err := senDoguCfg.Set(ctx, path, value); err != nil {
+		updatedCfg, err := senDoguCfg.Set(config.Key(path), config.Value(value))
+		if err != nil {
 			return fmt.Errorf("failed to set sa value of key %s to sensisitive dogu config: %w", key, err)
 		}
+
+		senDoguCfg.Config = updatedCfg
 	}
+
+	if err := writeConfig(ctx, senDoguCfg, c.sensitiveDoguRepo); err != nil {
+		return fmt.Errorf("failed write config for dogu %s after updating: %w", senDoguCfg.DoguName, err)
+	}
+
+	return nil
+}
+
+func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo SensitiveDoguConfigRepository) error {
+	update, err := cfgRepo.Update(ctx, *senDoguCfg)
+	if err != nil {
+		if config.IsConflictError(err) {
+			mergedCfg, lErr := cfgRepo.SaveOrMerge(ctx, *senDoguCfg)
+			if lErr != nil {
+				return fmt.Errorf("unable to save and merge sensitive config for dogu %s after conflict error: %w", senDoguCfg.DoguName, lErr)
+			}
+
+			senDoguCfg = &mergedCfg
+
+			return nil
+		}
+
+		return fmt.Errorf("unable to update sensitive config for dogu %s: %w", senDoguCfg.DoguName, err)
+	}
+
+	senDoguCfg = &update
 
 	return nil
 }
