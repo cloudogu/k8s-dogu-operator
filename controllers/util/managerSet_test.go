@@ -1,6 +1,7 @@
 package util
 
 import (
+	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -22,17 +23,19 @@ func TestNewManagerSet(t *testing.T) {
 		opConfig := &config.OperatorConfig{
 			Namespace: "myNamespace",
 		}
-		doguReg := regMock.NewDoguRegistry(t)
-		globalReg := regMock.NewConfigurationContext(t)
 		reg := regMock.NewRegistry(t)
-		reg.On("DoguRegistry").Return(doguReg, nil)
-		reg.On("GlobalConfig").Return(globalReg, nil)
 		ecosystemMock := mocks.NewEcosystemInterface(t)
 		applier := mocks.NewApplier(t)
 		var addImages map[string]string
 
+		configRepos := ConfigRepositories{
+			GlobalConfigRepository:  repository.GlobalConfigRepository{},
+			DoguConfigRepository:    repository.DoguConfigRepository{},
+			SensitiveDoguRepository: repository.DoguConfigRepository{},
+		}
+
 		// when
-		actual, err := NewManagerSet(restConfig, client, clientSet, ecosystemMock, opConfig, reg, applier, addImages)
+		actual, err := NewManagerSet(restConfig, client, clientSet, ecosystemMock, opConfig, reg, configRepos, applier, addImages)
 
 		// then
 		require.NoError(t, err)

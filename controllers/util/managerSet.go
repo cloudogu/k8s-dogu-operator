@@ -10,7 +10,8 @@ import (
 	"github.com/cloudogu/cesapp-lib/registry"
 	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-host-change/pkg/alias"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
+	"github.com/cloudogu/k8s-registry-lib/repository"
 
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -23,6 +24,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
+
+type ConfigRepositories struct {
+	GlobalConfigRepository  repository.GlobalConfigRepository
+	DoguConfigRepository    repository.DoguConfigRepository
+	SensitiveDoguRepository repository.DoguConfigRepository
+}
 
 // ManagerSet contains functors that are repeatedly used by different dogu operator managers.
 type ManagerSet struct {
@@ -40,16 +47,16 @@ type ManagerSet struct {
 	EcosystemClient       cloudogu.EcosystemInterface
 	ClientSet             thirdParty.ClientSet
 	DependencyValidator   cloudogu.DependencyValidator
-	LocalDoguRegistry     thirdParty.LocalDoguRegistry
+	LocalDoguRegistry     dogu.LocalRegistry
 }
 
 // NewManagerSet creates a new ManagerSet.
-func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, config *config.OperatorConfig, cesreg registry.Registry, applier cloudogu.Applier, additionalImages map[string]string) (*ManagerSet, error) {
+func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, config *config.OperatorConfig, cesreg registry.Registry, configRepos ConfigRepositories, applier cloudogu.Applier, additionalImages map[string]string) (*ManagerSet, error) {
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	localDoguRegistry := local.NewCombinedLocalDoguRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace), cesreg)
-	serviceAccountCreator := serviceaccount.NewCreator(cesreg, localDoguRegistry, commandExecutor, client, clientSet, config.Namespace)
+	localDoguRegistry := dogu.NewLocalRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace))
+	serviceAccountCreator := serviceaccount.NewCreator(configRepos.SensitiveDoguRepository, localDoguRegistry, commandExecutor, client, clientSet, config.Namespace)
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguRegistry)
 
@@ -60,8 +67,8 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 
 	resourceDoguFetcher := cesregistry.NewResourceDoguFetcher(client, doguRemoteRegistry)
 
-	requirementsGenerator := resource.NewRequirementsGenerator(cesreg)
-	hostAliasGenerator := alias.NewHostAliasGenerator(cesreg.GlobalConfig())
+	requirementsGenerator := resource.NewRequirementsGenerator(configRepos.DoguConfigRepository)
+	hostAliasGenerator := alias.NewHostAliasGenerator(configRepos.GlobalConfigRepository)
 	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImages)
 
 	upserter := resource.NewUpserter(client, doguResourceGenerator)
