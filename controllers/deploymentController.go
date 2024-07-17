@@ -7,7 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,11 +24,11 @@ type DeploymentReconciler struct {
 	k8sClientSet            thirdParty.ClientSet
 	availabilityChecker     cloudogu.DeploymentAvailabilityChecker
 	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater
-	localDoguRegistry       local.LocalDoguRegistry
+	localDoguRegistry       dogu.LocalRegistry
 }
 
 func NewDeploymentReconciler(k8sClientSet thirdParty.ClientSet, availabilityChecker *health.AvailabilityChecker,
-	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater, localDoguRegistry *local.CombinedLocalDoguRegistry) *DeploymentReconciler {
+	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater, localDoguRegistry dogu.LocalRegistry) *DeploymentReconciler {
 	return &DeploymentReconciler{
 		k8sClientSet:            k8sClientSet,
 		availabilityChecker:     availabilityChecker,
