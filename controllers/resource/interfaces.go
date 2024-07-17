@@ -20,7 +20,7 @@ type requirementsGenerator interface {
 
 // hostAliasGenerator creates host aliases from fqdn, internal ip and additional host configuration.
 type hostAliasGenerator interface {
-	Generate() (hostAliases []v1.HostAlias, err error)
+	Generate(context.Context) (hostAliases []v1.HostAlias, err error)
 }
 
 type doguConfigGetter interface {

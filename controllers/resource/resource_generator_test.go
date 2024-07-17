@@ -68,7 +68,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGen := newMockRequirementsGenerator(t)
 		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
-		hostAliasGeneratorMock.EXPECT().Generate().Return(nil, nil)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
@@ -96,7 +96,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGen := newMockRequirementsGenerator(t)
 		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
-		hostAliasGeneratorMock.EXPECT().Generate().Return(nil, nil)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
@@ -134,7 +134,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGen := newMockRequirementsGenerator(t)
 		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(requirements, nil)
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
-		hostAliasGeneratorMock.EXPECT().Generate().Return(nil, nil)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
@@ -160,7 +160,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGen := newMockRequirementsGenerator(t)
 		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
-		hostAliasGeneratorMock.EXPECT().Generate().Return(nil, nil)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
@@ -191,7 +191,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGen := newMockRequirementsGenerator(t)
 		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, nil)
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
-		hostAliasGeneratorMock.EXPECT().Generate().Return(nil, nil)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
@@ -223,7 +223,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		requirementsGen := newMockRequirementsGenerator(t)
 		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, assert.AnError)
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
-		hostAliasGeneratorMock.EXPECT().Generate().Return(nil, nil)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generatorFail := resourceGenerator{
 			scheme:                getTestScheme(),

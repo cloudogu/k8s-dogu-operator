@@ -134,7 +134,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		return nil, err
 	}
 
-	hostAliases, err := r.hostAliasGenerator.Generate()
+	hostAliases, err := r.hostAliasGenerator.Generate(context.Background())
 	if err != nil {
 		return nil, err
 	}

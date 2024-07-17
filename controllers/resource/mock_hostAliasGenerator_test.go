@@ -3,6 +3,8 @@
 package resource
 
 import (
+	context "context"
+
 	mock "github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
 )
@@ -20,9 +22,9 @@ func (_m *mockHostAliasGenerator) EXPECT() *mockHostAliasGenerator_Expecter {
 	return &mockHostAliasGenerator_Expecter{mock: &_m.Mock}
 }
 
-// Generate provides a mock function with given fields:
-func (_m *mockHostAliasGenerator) Generate() ([]v1.HostAlias, error) {
-	ret := _m.Called()
+// Generate provides a mock function with given fields: _a0
+func (_m *mockHostAliasGenerator) Generate(_a0 context.Context) ([]v1.HostAlias, error) {
+	ret := _m.Called(_a0)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Generate")
@@ -30,19 +32,19 @@ func (_m *mockHostAliasGenerator) Generate() ([]v1.HostAlias, error) {
 
 	var r0 []v1.HostAlias
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]v1.HostAlias, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(context.Context) ([]v1.HostAlias, error)); ok {
+		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func() []v1.HostAlias); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) []v1.HostAlias); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]v1.HostAlias)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,13 +58,14 @@ type mockHostAliasGenerator_Generate_Call struct {
 }
 
 // Generate is a helper method to define mock.On call
-func (_e *mockHostAliasGenerator_Expecter) Generate() *mockHostAliasGenerator_Generate_Call {
-	return &mockHostAliasGenerator_Generate_Call{Call: _e.mock.On("Generate")}
+//   - _a0 context.Context
+func (_e *mockHostAliasGenerator_Expecter) Generate(_a0 interface{}) *mockHostAliasGenerator_Generate_Call {
+	return &mockHostAliasGenerator_Generate_Call{Call: _e.mock.On("Generate", _a0)}
 }
 
-func (_c *mockHostAliasGenerator_Generate_Call) Run(run func()) *mockHostAliasGenerator_Generate_Call {
+func (_c *mockHostAliasGenerator_Generate_Call) Run(run func(_a0 context.Context)) *mockHostAliasGenerator_Generate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -72,7 +75,7 @@ func (_c *mockHostAliasGenerator_Generate_Call) Return(hostAliases []v1.HostAlia
 	return _c
 }
 
-func (_c *mockHostAliasGenerator_Generate_Call) RunAndReturn(run func() ([]v1.HostAlias, error)) *mockHostAliasGenerator_Generate_Call {
+func (_c *mockHostAliasGenerator_Generate_Call) RunAndReturn(run func(context.Context) ([]v1.HostAlias, error)) *mockHostAliasGenerator_Generate_Call {
 	_c.Call.Return(run)
 	return _c
 }
