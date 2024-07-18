@@ -29,9 +29,9 @@ func TestNewManagerSet(t *testing.T) {
 		var addImages map[string]string
 
 		configRepos := ConfigRepositories{
-			GlobalConfigRepository:  repository.GlobalConfigRepository{},
-			DoguConfigRepository:    repository.DoguConfigRepository{},
-			SensitiveDoguRepository: repository.DoguConfigRepository{},
+			GlobalConfigRepository:  &repository.GlobalConfigRepository{},
+			DoguConfigRepository:    &repository.DoguConfigRepository{},
+			SensitiveDoguRepository: &repository.DoguConfigRepository{},
 		}
 
 		// when

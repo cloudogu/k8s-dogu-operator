@@ -26,9 +26,9 @@ import (
 )
 
 type ConfigRepositories struct {
-	GlobalConfigRepository  repository.GlobalConfigRepository
-	DoguConfigRepository    repository.DoguConfigRepository
-	SensitiveDoguRepository repository.DoguConfigRepository
+	GlobalConfigRepository  *repository.GlobalConfigRepository
+	DoguConfigRepository    *repository.DoguConfigRepository
+	SensitiveDoguRepository *repository.DoguConfigRepository
 }
 
 // ManagerSet contains functors that are repeatedly used by different dogu operator managers.
@@ -73,7 +73,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 
 	upserter := resource.NewUpserter(client, doguResourceGenerator)
 
-	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, localDoguRegistry, cesreg, doguResourceGenerator)
+	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, localDoguRegistry, cesreg)
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry(config.DockerRegistry.Username, config.DockerRegistry.Password)
 
 	return &ManagerSet{
