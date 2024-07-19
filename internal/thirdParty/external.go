@@ -3,9 +3,12 @@
 package thirdParty
 
 import (
+	"context"
+	"github.com/cloudogu/k8s-registry-lib/config"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
+	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/go-logr/logr"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -14,9 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/cesapp-lib/remote"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
 )
 
 type K8sClient interface {
@@ -48,26 +49,9 @@ type RemoteRegistry interface {
 	remote.Registry
 }
 
-type DoguRegistry interface {
-	registry.DoguRegistry
-}
-
-// HostAliasGenerator creates host aliases from fqdn, internal ip and additional host configuration.
-type HostAliasGenerator interface {
-	Generate() (hostAliases []corev1.HostAlias, err error)
-}
-
-type ConfigurationContext interface {
-	registry.ConfigurationContext
-}
-
-type ConfigurationRegistry interface {
-	registry.Registry
-}
-
 // LocalDoguRegistry abstracts accessing various backends for reading and writing dogu specs (dogu.json).
 type LocalDoguRegistry interface {
-	local.LocalDoguRegistry
+	dogu.LocalRegistry
 }
 
 type DeploymentInterface interface {
@@ -92,4 +76,26 @@ type CoreV1Interface interface {
 
 type ClientSet interface {
 	kubernetes.Interface
+}
+
+type ConfigMapClient interface {
+	repository.ConfigMapClient
+}
+
+type GlobalConfigRepository interface {
+	Get(ctx context.Context) (config.GlobalConfig, error)
+	Create(ctx context.Context, globalConfig config.GlobalConfig) (config.GlobalConfig, error)
+	Update(ctx context.Context, globalConfig config.GlobalConfig) (config.GlobalConfig, error)
+	SaveOrMerge(ctx context.Context, globalConfig config.GlobalConfig) (config.GlobalConfig, error)
+	Delete(ctx context.Context) error
+	Watch(ctx context.Context, filters ...config.WatchFilter) (<-chan repository.GlobalConfigWatchResult, error)
+}
+
+type DoguConfigRepository interface {
+	Get(ctx context.Context, name config.SimpleDoguName) (config.DoguConfig, error)
+	Create(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	Update(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	SaveOrMerge(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	Delete(ctx context.Context, name config.SimpleDoguName) error
+	Watch(ctx context.Context, dName config.SimpleDoguName, filters ...config.WatchFilter) (<-chan repository.DoguConfigWatchResult, error)
 }
