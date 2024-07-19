@@ -71,6 +71,15 @@ spec:
               name: ldap-ephemeral
               readOnly: false
               subPath: state
+            - mountPath: /etc/ces/config/global
+              name: global-config
+              readOnly: true
+            - mountPath: /etc/ces/config/normal
+              name: normal-config
+              readOnly: true
+            - mountPath: /etc/ces/config/sensitive
+              name: sensitive-config
+              readOnly: true
             - mountPath: /etc/ces/dogu_json/ldap
               name: ldap-dogu-json
               readOnly: true
@@ -119,6 +128,15 @@ spec:
             name: k8s-dogu-operator-dogu-health
         - name: ldap-ephemeral
           emptyDir: {}
+        - name: global-config
+          configMap:
+            name: global-config
+        - name: normal-config
+          configMap:
+            name: ldap-config
+        - name: sensitive-config
+          secret:
+            secretName: ldap-config
         - name: ldap-dogu-json
           configMap:
             name: dogu-spec-ldap

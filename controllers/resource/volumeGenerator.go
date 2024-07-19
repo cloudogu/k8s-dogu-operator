@@ -23,6 +23,13 @@ const (
 	doguDependencyType    = "dogu"
 )
 
+// const names for configs to be mounted
+const (
+	globalConfig    = "global-config"
+	normalConfig    = "normal-config"
+	sensitiveConfig = "sensitive-config"
+)
+
 // volumeParamsType describes the kind of volume the k8s-dogu-operator should create.
 type volumeParamsType string
 
@@ -127,11 +134,45 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		},
 	}
 
+	globalConfigVolume := corev1.Volume{
+		Name: globalConfig,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: globalConfig},
+			},
+		},
+	}
+
+	doguConfigName := func(doguName string) string {
+		return fmt.Sprintf("%s-config", doguName)
+	}
+
+	normalConfigVolume := corev1.Volume{
+		Name: normalConfig,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: doguConfigName(doguResource.Name)},
+			},
+		},
+	}
+
+	sensitiveConfigVolume := corev1.Volume{
+		Name: sensitiveConfig,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: doguConfigName(doguResource.Name),
+			},
+		},
+	}
+
 	return []corev1.Volume{
 		nodeMasterVolume,
 		privateVolume,
 		doguHealthVolume,
 		ephemeralVolume,
+		globalConfigVolume,
+		normalConfigVolume,
+		sensitiveConfigVolume,
 	}
 }
 
@@ -249,6 +290,21 @@ func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
 			ReadOnly:  false,
 			MountPath: "/var/ces/state",
 			SubPath:   "state",
+		},
+		{
+			Name:      globalConfig,
+			ReadOnly:  true,
+			MountPath: "/etc/ces/config/global",
+		},
+		{
+			Name:      normalConfig,
+			ReadOnly:  true,
+			MountPath: "/etc/ces/config/normal",
+		},
+		{
+			Name:      sensitiveConfig,
+			ReadOnly:  true,
+			MountPath: "/etc/ces/config/sensitive",
 		},
 	}
 	return doguVolumeMounts
