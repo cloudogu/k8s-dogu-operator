@@ -10,8 +10,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	regMock "github.com/cloudogu/cesapp-lib/registry/mocks"
-	config "github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
@@ -23,7 +22,6 @@ func TestNewManagerSet(t *testing.T) {
 		opConfig := &config.OperatorConfig{
 			Namespace: "myNamespace",
 		}
-		reg := regMock.NewRegistry(t)
 		ecosystemMock := mocks.NewEcosystemInterface(t)
 		applier := mocks.NewApplier(t)
 		var addImages map[string]string
@@ -35,7 +33,7 @@ func TestNewManagerSet(t *testing.T) {
 		}
 
 		// when
-		actual, err := NewManagerSet(restConfig, client, clientSet, ecosystemMock, opConfig, reg, configRepos, applier, addImages)
+		actual, err := NewManagerSet(restConfig, client, clientSet, ecosystemMock, opConfig, configRepos, applier, addImages)
 
 		// then
 		require.NoError(t, err)

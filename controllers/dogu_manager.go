@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
@@ -44,7 +43,7 @@ type DoguManager struct {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*DoguManager, error) {
+func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
@@ -80,7 +79,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 
 	configRepos := createConfigRepositories(clientSet, operatorConfig.Namespace)
 
-	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, ecosystemClient, operatorConfig, cesRegistry, configRepos, applier, additionalImages)
+	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos, applier, additionalImages)
 	if err != nil {
 		return nil, fmt.Errorf("could not create manager set: %w", err)
 	}
@@ -95,7 +94,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, err
 	}
 
-	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder, configRepos)
+	deleteManager := NewDoguDeleteManager(client, operatorConfig, mgrSet, eventRecorder, configRepos)
 	if err != nil {
 		return nil, err
 	}

@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
+	"github.com/cloudogu/k8s-registry-lib/repository"
 	"os"
 
-	"github.com/cloudogu/cesapp-lib/core"
-	reg "github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers"
@@ -17,8 +17,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
-
 	"github.com/google/uuid"
 
 	v1 "k8s.io/api/core/v1"
@@ -188,7 +186,8 @@ func startK8sManager(k8sManager manager.Manager) error {
 }
 
 func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, clientSet kubernetes.Interface) error {
-	requirementsUpdater, err := resource.NewRequirementsUpdater(k8sManager.GetClient(), namespace, clientSet)
+	configMapClient := clientSet.CoreV1().ConfigMaps(namespace)
+	requirementsUpdater, err := resource.NewRequirementsUpdater(k8sManager.GetClient(), namespace, repository.NewDoguConfigRepository(configMapClient), dogu.NewLocalRegistry(configMapClient), repository.NewGlobalConfigRepository(configMapClient))
 	if err != nil {
 		return err
 	}
@@ -203,20 +202,12 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
 	ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client, healthStatusUpdater cloudogu.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
-	etcdReg, err := reg.New(core.Registry{
-		Type:      "etcd",
-		Endpoints: []string{fmt.Sprintf("http://etcd.%s.svc.cluster.local:4001", operatorConfig.Namespace)},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create CES registry: %w", err)
-	}
-	localDoguRegistry := local.NewCombinedLocalDoguRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace), etcdReg)
+	localDoguRegistry := dogu.NewLocalRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
 
 	doguManager, err := controllers.NewManager(
 		k8sManager.GetClient(),
 		ecosystemClientSet,
 		operatorConfig,
-		etcdReg,
 		eventRecorder,
 	)
 	if err != nil {

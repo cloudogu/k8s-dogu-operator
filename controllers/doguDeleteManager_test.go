@@ -15,7 +15,6 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
@@ -75,7 +74,6 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
-		cesRegistry := cesmocks.NewRegistry(t)
 		mgrSet := &util.ManagerSet{}
 
 		configRepos := util.ConfigRepositories{
@@ -85,7 +83,7 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		}
 
 		// when
-		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil, configRepos)
+		doguManager := NewDoguDeleteManager(client, operatorConfig, mgrSet, nil, configRepos)
 
 		// then
 		require.NotNil(t, doguManager)

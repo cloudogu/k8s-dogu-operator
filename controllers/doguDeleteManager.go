@@ -14,8 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
@@ -41,7 +39,6 @@ type doguDeleteManager struct {
 func NewDoguDeleteManager(
 	client client.Client,
 	operatorConfig *config.OperatorConfig,
-	cesRegistry cesregistry.Registry,
 	mgrSet *util.ManagerSet,
 	recorder record.EventRecorder,
 	configRepos util.ConfigRepositories,
