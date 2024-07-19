@@ -2,8 +2,11 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	registryConfig "github.com/cloudogu/k8s-registry-lib/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -24,12 +27,14 @@ const finalizerName = "dogu-finalizer"
 
 // doguDeleteManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguDeleteManager struct {
-	client                client.Client
-	localDoguFetcher      cloudogu.LocalDoguFetcher
-	doguRegistrator       cloudogu.DoguRegistrator
-	serviceAccountRemover cloudogu.ServiceAccountRemover
-	exposedPortRemover    cloudogu.ExposePortRemover
-	eventRecorder         record.EventRecorder
+	client                  client.Client
+	localDoguFetcher        cloudogu.LocalDoguFetcher
+	doguRegistrator         cloudogu.DoguRegistrator
+	serviceAccountRemover   cloudogu.ServiceAccountRemover
+	exposedPortRemover      cloudogu.ExposePortRemover
+	eventRecorder           record.EventRecorder
+	doguConfigRepository    thirdParty.DoguConfigRepository
+	sensitiveDoguRepository thirdParty.DoguConfigRepository
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.
@@ -39,14 +44,17 @@ func NewDoguDeleteManager(
 	cesRegistry cesregistry.Registry,
 	mgrSet *util.ManagerSet,
 	recorder record.EventRecorder,
+	configRepos util.ConfigRepositories,
 ) *doguDeleteManager {
 	return &doguDeleteManager{
-		client:                client,
-		localDoguFetcher:      mgrSet.LocalDoguFetcher,
-		doguRegistrator:       mgrSet.DoguRegistrator,
-		serviceAccountRemover: serviceaccount.NewRemover(cesRegistry, mgrSet.LocalDoguFetcher, mgrSet.LocalDoguRegistry, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
-		exposedPortRemover:    resource.NewDoguExposedPortHandler(client),
-		eventRecorder:         recorder,
+		client:                  client,
+		localDoguFetcher:        mgrSet.LocalDoguFetcher,
+		doguRegistrator:         mgrSet.DoguRegistrator,
+		serviceAccountRemover:   serviceaccount.NewRemover(configRepos.SensitiveDoguRepository, mgrSet.LocalDoguFetcher, mgrSet.LocalDoguRegistry, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
+		exposedPortRemover:      resource.NewDoguExposedPortHandler(client),
+		eventRecorder:           recorder,
+		doguConfigRepository:    configRepos.DoguConfigRepository,
+		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
 	}
 }
 
@@ -84,9 +92,15 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu
 		}
 
 		logger.Info("Remove health state out of ConfigMap")
-		err := m.DeleteDoguOutOfHealthConfigMap(ctx, doguResource)
+		err = m.DeleteDoguOutOfHealthConfigMap(ctx, doguResource)
 		if err != nil {
 			logger.Error(err, "failed to remove health state out of configMap")
+		}
+
+		logger.Info("Remove dogu config and sensitive dogu config...")
+		err = m.removeConfigs(ctx, doguResource.Name)
+		if err != nil {
+			logger.Error(err, "failed to remove configs for dogu", "dogu", doguResource.Name)
 		}
 	}
 
@@ -118,5 +132,21 @@ func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, 
 	// Update the ConfigMap
 	//_, err = m.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
 	err = m.client.Update(ctx, stateConfigMap, &client.UpdateOptions{})
+	return err
+}
+
+func (m *doguDeleteManager) removeConfigs(ctx context.Context, doguName string) error {
+	simpleDoguName := registryConfig.SimpleDoguName(doguName)
+
+	var err error
+
+	if lErr := m.doguConfigRepository.Delete(ctx, simpleDoguName); lErr != nil && !registryConfig.IsNotFoundError(lErr) {
+		err = errors.Join(err, fmt.Errorf("could not delete dogu config: %w", lErr))
+	}
+
+	if lErr := m.sensitiveDoguRepository.Delete(ctx, simpleDoguName); lErr != nil && !registryConfig.IsNotFoundError(lErr) {
+		err = errors.Join(err, fmt.Errorf("could not delete sensitive dogu config: %w", lErr))
+	}
+
 	return err
 }

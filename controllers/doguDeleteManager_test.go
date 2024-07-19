@@ -2,6 +2,9 @@ package controllers
 
 import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/cloudogu/k8s-registry-lib/repository"
+	"github.com/stretchr/testify/mock"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,6 +28,8 @@ type doguDeleteManagerWithMocks struct {
 	localDoguFetcherMock      *mocks.LocalDoguFetcher
 	serviceAccountRemoverMock *mocks.ServiceAccountRemover
 	exposedPortRemover        *mocks.ExposePortRemover
+	doguConfigRepo            *extMocks.DoguConfigRepository
+	sensitiveConfigRepo       *extMocks.DoguConfigRepository
 }
 
 func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
@@ -34,13 +39,17 @@ func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 	serviceAccountRemover := mocks.NewServiceAccountRemover(t)
 	doguFetcher := mocks.NewLocalDoguFetcher(t)
 	exposedPortRemover := mocks.NewExposePortRemover(t)
+	doguConfigRepo := extMocks.NewDoguConfigRepository(t)
+	sensitiveConfigRepo := extMocks.NewDoguConfigRepository(t)
 
 	doguDeleteManager := &doguDeleteManager{
-		client:                k8sClient,
-		localDoguFetcher:      doguFetcher,
-		doguRegistrator:       doguRegistrator,
-		serviceAccountRemover: serviceAccountRemover,
-		exposedPortRemover:    exposedPortRemover,
+		client:                  k8sClient,
+		localDoguFetcher:        doguFetcher,
+		doguRegistrator:         doguRegistrator,
+		serviceAccountRemover:   serviceAccountRemover,
+		exposedPortRemover:      exposedPortRemover,
+		doguConfigRepository:    doguConfigRepo,
+		sensitiveDoguRepository: sensitiveConfigRepo,
 	}
 
 	return doguDeleteManagerWithMocks{
@@ -50,6 +59,8 @@ func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 		doguRegistratorMock:       doguRegistrator,
 		serviceAccountRemoverMock: serviceAccountRemover,
 		exposedPortRemover:        exposedPortRemover,
+		doguConfigRepo:            doguConfigRepo,
+		sensitiveConfigRepo:       sensitiveConfigRepo,
 	}
 }
 
@@ -67,8 +78,14 @@ func TestNewDoguDeleteManager(t *testing.T) {
 		cesRegistry := cesmocks.NewRegistry(t)
 		mgrSet := &util.ManagerSet{}
 
+		configRepos := util.ConfigRepositories{
+			GlobalConfigRepository:  &repository.GlobalConfigRepository{},
+			DoguConfigRepository:    &repository.DoguConfigRepository{},
+			SensitiveDoguRepository: &repository.DoguConfigRepository{},
+		}
+
 		// when
-		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil)
+		doguManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, nil, configRepos)
 
 		// then
 		require.NotNil(t, doguManager)
@@ -88,6 +105,8 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
 		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(nil)
+		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
@@ -138,6 +157,8 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(assert.AnError)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
 		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(nil)
+		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
@@ -158,6 +179,8 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(assert.AnError)
 		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(nil)
+		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
@@ -178,6 +201,30 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
 		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(assert.AnError)
+		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.deleteManager.client = fakeClient
+
+		// when
+		err := managerWithMocks.deleteManager.Delete(testCtx, ldapCr)
+
+		// then
+		require.NoError(t, err)
+		deletedDogu := k8sv1.Dogu{}
+		err = fakeClient.Get(testCtx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
+		require.NoError(t, err)
+		assert.Empty(t, deletedDogu.Finalizers)
+	})
+
+	t.Run("failure during config removal should not interrupt the delete routine", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguDeleteManagerWithMocks(t)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
+		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
+		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
+		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(nil)
+		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(assert.AnError)
+		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
