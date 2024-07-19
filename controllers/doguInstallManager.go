@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	"github.com/cloudogu/k8s-registry-lib/config"
+	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -15,10 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	cesregistry "github.com/cloudogu/cesapp-lib/registry"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
@@ -28,48 +28,50 @@ const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
-	client                thirdParty.K8sClient
-	ecosystemClient       ecoSystem.EcoSystemV1Alpha1Interface
-	recorder              record.EventRecorder
-	localDoguFetcher      cloudogu.LocalDoguFetcher
-	resourceDoguFetcher   cloudogu.ResourceDoguFetcher
-	imageRegistry         cloudogu.ImageRegistry
-	doguRegistrator       cloudogu.DoguRegistrator
-	dependencyValidator   cloudogu.DependencyValidator
-	serviceAccountCreator cloudogu.ServiceAccountCreator
-	doguSecretHandler     cloudogu.DoguSecretHandler
-	fileExtractor         cloudogu.FileExtractor
-	collectApplier        cloudogu.CollectApplier
-	resourceUpserter      cloudogu.ResourceUpserter
-	execPodFactory        cloudogu.ExecPodFactory
+	client                  thirdParty.K8sClient
+	ecosystemClient         ecoSystem.EcoSystemV1Alpha1Interface
+	recorder                record.EventRecorder
+	localDoguFetcher        cloudogu.LocalDoguFetcher
+	resourceDoguFetcher     cloudogu.ResourceDoguFetcher
+	imageRegistry           cloudogu.ImageRegistry
+	doguRegistrator         cloudogu.DoguRegistrator
+	dependencyValidator     cloudogu.DependencyValidator
+	serviceAccountCreator   cloudogu.ServiceAccountCreator
+	fileExtractor           cloudogu.FileExtractor
+	collectApplier          cloudogu.CollectApplier
+	resourceUpserter        cloudogu.ResourceUpserter
+	execPodFactory          cloudogu.ExecPodFactory
+	doguConfigRepository    thirdParty.DoguConfigRepository
+	sensitiveDoguRepository thirdParty.DoguConfigRepository
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
-func NewDoguInstallManager(client client.Client, cesRegistry cesregistry.Registry, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguInstallManager {
+func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, configRepos util.ConfigRepositories) *doguInstallManager {
 	return &doguInstallManager{
-		client:                client,
-		ecosystemClient:       mgrSet.EcosystemClient,
-		recorder:              eventRecorder,
-		localDoguFetcher:      mgrSet.LocalDoguFetcher,
-		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
-		imageRegistry:         mgrSet.ImageRegistry,
-		doguRegistrator:       mgrSet.DoguRegistrator,
-		dependencyValidator:   mgrSet.DependencyValidator,
-		serviceAccountCreator: mgrSet.ServiceAccountCreator,
-		doguSecretHandler:     resource.NewDoguSecretsWriter(client, cesRegistry),
-		fileExtractor:         mgrSet.FileExtractor,
-		collectApplier:        mgrSet.CollectApplier,
-		resourceUpserter:      mgrSet.ResourceUpserter,
-		execPodFactory:        exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
+		client:                  client,
+		ecosystemClient:         mgrSet.EcosystemClient,
+		recorder:                eventRecorder,
+		localDoguFetcher:        mgrSet.LocalDoguFetcher,
+		resourceDoguFetcher:     mgrSet.ResourceDoguFetcher,
+		imageRegistry:           mgrSet.ImageRegistry,
+		doguRegistrator:         mgrSet.DoguRegistrator,
+		dependencyValidator:     mgrSet.DependencyValidator,
+		serviceAccountCreator:   mgrSet.ServiceAccountCreator,
+		fileExtractor:           mgrSet.FileExtractor,
+		collectApplier:          mgrSet.CollectApplier,
+		resourceUpserter:        mgrSet.ResourceUpserter,
+		execPodFactory:          exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
+		doguConfigRepository:    configRepos.DoguConfigRepository,
+		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
 	}
 }
 
 // Install installs a given Dogu Resource. This includes fetching the dogu.json and the container image. With the
 // information Install creates a Deployment and a Service
-func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) (err error) {
 	logger := log.FromContext(ctx)
 
-	err := doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusInstalling)
+	err = doguResource.ChangeStateWithRetry(ctx, m.client, k8sv1.DoguStatusInstalling)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
@@ -98,17 +100,19 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 		return err
 	}
 
+	logger.Info("Create dogu config and sensitive dogu config...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
+	cleanUp, err := m.createConfigs(ctx, doguResource.Name, logger)
+	defer cleanUp(err)
+	if err != nil {
+		return fmt.Errorf("failed to create configs for dogu: %w", err)
+	}
+
 	logger.Info("Register dogu...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 	err = m.doguRegistrator.RegisterNewDogu(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu: %w", err)
-	}
-
-	logger.Info("Write dogu secrets from setup...")
-	err = m.doguSecretHandler.WriteDoguSecretsToRegistry(ctx, doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to write dogu secrets from setup: %w", err)
 	}
 
 	logger.Info("Create service accounts...")
@@ -207,6 +211,48 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	return nil
+}
+
+func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string, logger logr.Logger) (func(error), error) {
+	cleanUp := func(err error) {
+		if err == nil {
+			return
+		}
+
+		lCtx := context.Background()
+
+		lErr := m.doguConfigRepository.Delete(lCtx, config.SimpleDoguName(doguName))
+		if err != nil && !config.IsNotFoundError(err) {
+			logger.Error(lErr, "could not delete dogu config during cleanUp", "dogu", doguName)
+		} else {
+			logger.Info("deleted dogu config during cleanUp", "dogu", doguName)
+		}
+
+		lErr = m.sensitiveDoguRepository.Delete(lCtx, config.SimpleDoguName(doguName))
+		if err != nil && !config.IsNotFoundError(err) {
+			logger.Error(lErr, "could not delete sensitive dogu config during cleanUp", "dogu", doguName)
+		} else {
+			logger.Info("deleted sensitive dogu config during cleanUp", "dogu", doguName)
+		}
+	}
+
+	emptyCfg := config.CreateDoguConfig(config.SimpleDoguName(doguName), make(config.Entries))
+
+	_, err := m.doguConfigRepository.Create(ctx, emptyCfg)
+	if err != nil {
+		if !config.IsAlreadyExistsError(err) {
+			return cleanUp, fmt.Errorf("could not create dogu config for dogu %s: %w", doguName, err)
+		}
+	}
+
+	_, err = m.sensitiveDoguRepository.Create(ctx, emptyCfg)
+	if err != nil {
+		if !config.IsAlreadyExistsError(err) {
+			return cleanUp, fmt.Errorf("could not create sensitive dogu config for dogu %s: %w", doguName, err)
+		}
+	}
+
+	return cleanUp, nil
 }
 
 func deleteExecPod(ctx context.Context, execPod cloudogu.ExecPod, recorder record.EventRecorder, doguResource *k8sv1.Dogu) {
