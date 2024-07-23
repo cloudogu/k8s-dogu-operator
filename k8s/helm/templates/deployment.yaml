@@ -116,7 +116,7 @@ spec:
           subPath: docker-registry-cert.pem
       securityContext:
         runAsNonRoot: true
-      serviceAccountName: {{ include "k8s-dogu-operator.name" . }}-controller-manager
+      serviceAccountName: {{ include "k8s-dogu-operator.name" . }}-sa
       terminationGracePeriodSeconds: 10
       volumes:
       - name: docker-registry-cert

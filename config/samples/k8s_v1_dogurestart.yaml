@@ -5,4 +5,4 @@ metadata:
   # Use `kubectl create` instead.
   generateName: cas-restart-
 spec:
- doguName: cas
+ doguName: confluence

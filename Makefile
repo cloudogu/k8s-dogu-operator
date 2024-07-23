@@ -1,6 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=1.2.0
+VERSION=1.2.0-test
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG=1.22
@@ -100,3 +100,11 @@ mocks: ${MOCKERY_BIN} ## Generate all mocks for the dogu operator.
 	@${MOCKERY_BIN} --output internal/cloudogu/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/internal/cloudogu --all
 	@${MOCKERY_BIN} --output internal/thirdParty/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/internal/thirdParty --all
 	@echo "Mocks successfully created."
+
+.PHONY: upload-to-k8s-testing
+upload-to-k8s-testing: helm-package compile
+	gcloud auth configure-docker europe-west3-docker.pkg.dev -q
+	helm push target/k8s/helm/$(ARTIFACT_ID)-$(VERSION).tgz oci://europe-west3-docker.pkg.dev/ces-coder-workspaces/ces-test-docker-helm-repo/charts
+	helm push target/k8s/helm/$(ARTIFACT_ID)-$(VERSION).tgz oci://registry.cloudogu.com/k8s-testing
+	docker build . -t europe-west3-docker.pkg.dev/ces-coder-workspaces/ces-test-docker-helm-repo/images/$(ARTIFACT_ID):$(VERSION)
+	docker push europe-west3-docker.pkg.dev/ces-coder-workspaces/ces-test-docker-helm-repo/images/$(ARTIFACT_ID):$(VERSION)

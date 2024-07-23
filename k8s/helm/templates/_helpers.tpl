@@ -4,7 +4,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Kubernetes 1.4+.
 */}}
 {{- define "k8s-dogu-operator.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{ .Release.Namespace}}-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 
