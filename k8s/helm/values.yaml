@@ -3,9 +3,9 @@ additionalImages:
   chownInitImage: busybox:1.36
 controllerManager:
   image:
-    repository: cloudogu/k8s-dogu-operator
+    repository: europe-west3-docker.pkg.dev/ces-coder-workspaces/ces-test-docker-helm-repo/images/k8s-dogu-operator
     tag: 1.2.0-test
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always
   env:
     logLevel: debug
     stage: development
