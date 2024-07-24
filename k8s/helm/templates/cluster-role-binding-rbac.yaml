@@ -10,5 +10,5 @@ roleRef:
   name: '{{ include "k8s-dogu-operator.name" . }}-cluster-role'
 subjects:
 - kind: ServiceAccount
-  name: '{{ include "k8s-dogu-operator.name" . }}-sa
+  name: '{{ include "k8s-dogu-operator.name" . }}-sa'
   namespace: '{{ .Release.Namespace }}'
