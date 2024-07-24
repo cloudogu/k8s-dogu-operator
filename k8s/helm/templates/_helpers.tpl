@@ -19,6 +19,6 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 
 {{/* Selector labels */}}
 {{- define "k8s-dogu-operator.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "k8s-dogu-operator.name" . }}
+app.kubernetes.io/name: "k8s-dogu-operator"
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
