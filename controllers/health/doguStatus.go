@@ -16,6 +16,8 @@ import (
 )
 
 const statusUpdateEventReason = "HealthStatusUpdate"
+
+// FIXME: do not hardcode resource names
 const healthConfigMapName = "k8s-dogu-operator-dogu-health"
 
 type DoguStatusUpdater struct {
