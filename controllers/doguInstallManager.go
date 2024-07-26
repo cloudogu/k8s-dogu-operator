@@ -103,7 +103,9 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv1.Do
 	logger.Info("Create dogu config and sensitive dogu config...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 	cleanUp, err := m.createConfigs(ctx, doguResource.Name, logger)
-	defer cleanUp(err)
+	defer func() {
+		cleanUp(err)
+	}()
 	if err != nil {
 		return fmt.Errorf("failed to create configs for dogu: %w", err)
 	}
@@ -222,14 +224,14 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 		lCtx := context.Background()
 
 		lErr := m.doguConfigRepository.Delete(lCtx, config.SimpleDoguName(doguName))
-		if err != nil && !config.IsNotFoundError(err) {
+		if lErr != nil && !config.IsNotFoundError(lErr) {
 			logger.Error(lErr, "could not delete dogu config during cleanUp", "dogu", doguName)
 		} else {
 			logger.Info("deleted dogu config during cleanUp", "dogu", doguName)
 		}
 
 		lErr = m.sensitiveDoguRepository.Delete(lCtx, config.SimpleDoguName(doguName))
-		if err != nil && !config.IsNotFoundError(err) {
+		if lErr != nil && !config.IsNotFoundError(lErr) {
 			logger.Error(lErr, "could not delete sensitive dogu config during cleanUp", "dogu", doguName)
 		} else {
 			logger.Info("deleted sensitive dogu config during cleanUp", "dogu", doguName)

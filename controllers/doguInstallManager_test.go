@@ -387,6 +387,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 
+		managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+
 		// when
 		err := managerWithMocks.installManager.Install(testCtx, ldapCr)
 
@@ -433,6 +436,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		execPod.EXPECT().Delete(testCtx).Return(nil)
 		managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
 
+		managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+
 		// when
 		err := managerWithMocks.installManager.Install(testCtx, ldapCr)
 
@@ -460,6 +466,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
+
+		managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 
 		// when
 		err := managerWithMocks.installManager.Install(testCtx, ldapCr)
@@ -518,6 +527,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
+
+		managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+		managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 
 		// when
 		err := managerWithMocks.installManager.Install(testCtx, ldapCr)
@@ -607,6 +619,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, assert.AnError)
 
+			managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+			managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+
 			// when
 			err := managerWithMocks.installManager.Install(testCtx, ldapCr)
 
@@ -637,6 +652,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 			managerWithMocks.resourceUpserter.EXPECT().UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, assert.AnError)
+
+			managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+			managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 
 			// when
 			err := managerWithMocks.installManager.Install(testCtx, ldapCr)
@@ -669,6 +687,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 			managerWithMocks.resourceUpserter.EXPECT().UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
 			managerWithMocks.resourceUpserter.EXPECT().UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, assert.AnError)
+
+			managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+			managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 
 			// when
 			err := managerWithMocks.installManager.Install(testCtx, ldapCr)
@@ -711,6 +732,9 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, assert.AnError)
+
+			managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+			managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 
 			// when
 			err := managerWithMocks.installManager.Install(testCtx, ldapCr)
