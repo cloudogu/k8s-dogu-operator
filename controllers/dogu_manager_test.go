@@ -16,8 +16,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
@@ -159,7 +157,6 @@ func TestNewDoguManager(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = testNamespace
-		cesRegistry := cesmocks.NewRegistry(t)
 
 		eventRecorder := extMocks.NewEventRecorder(t)
 
@@ -167,7 +164,7 @@ func TestNewDoguManager(t *testing.T) {
 		ecosystemClientSetMock.EXPECT().Dogus(testNamespace).Return(nil)
 
 		// when
-		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, eventRecorder)
 
 		// then
 		require.NoError(t, err)
