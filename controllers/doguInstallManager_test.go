@@ -371,6 +371,30 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		assert.ErrorIs(t, err, assert.AnError)
 	})
 
+	t.Run("dont delete configs when they have already existed", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
+		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resConfig.NewAlreadyExistsError(assert.AnError))
+		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resConfig.NewAlreadyExistsError(assert.AnError))
+		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
+		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
+
+		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
+		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
+
+		// when
+		err := managerWithMocks.installManager.Install(testCtx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
 	t.Run("failed to register dogu", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())

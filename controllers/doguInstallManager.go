@@ -216,6 +216,8 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 }
 
 func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string, logger logr.Logger) (func(error), error) {
+	var doguCfgAlreadyExists, sensitiveCfgAlreadyExists bool
+
 	cleanUp := func(err error) {
 		if err == nil {
 			return
@@ -223,18 +225,22 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 
 		lCtx := context.Background()
 
-		lErr := m.doguConfigRepository.Delete(lCtx, config.SimpleDoguName(doguName))
-		if lErr != nil && !config.IsNotFoundError(lErr) {
-			logger.Error(lErr, "could not delete dogu config during cleanUp", "dogu", doguName)
-		} else {
-			logger.Info("deleted dogu config during cleanUp", "dogu", doguName)
+		if !doguCfgAlreadyExists {
+			lErr := m.doguConfigRepository.Delete(lCtx, config.SimpleDoguName(doguName))
+			if lErr != nil && !config.IsNotFoundError(lErr) {
+				logger.Error(lErr, "could not delete dogu config during cleanUp", "dogu", doguName)
+			} else {
+				logger.Info("deleted dogu config during cleanUp", "dogu", doguName)
+			}
 		}
 
-		lErr = m.sensitiveDoguRepository.Delete(lCtx, config.SimpleDoguName(doguName))
-		if lErr != nil && !config.IsNotFoundError(lErr) {
-			logger.Error(lErr, "could not delete sensitive dogu config during cleanUp", "dogu", doguName)
-		} else {
-			logger.Info("deleted sensitive dogu config during cleanUp", "dogu", doguName)
+		if !sensitiveCfgAlreadyExists {
+			lErr := m.sensitiveDoguRepository.Delete(lCtx, config.SimpleDoguName(doguName))
+			if lErr != nil && !config.IsNotFoundError(lErr) {
+				logger.Error(lErr, "could not delete sensitive dogu config during cleanUp", "dogu", doguName)
+			} else {
+				logger.Info("deleted sensitive dogu config during cleanUp", "dogu", doguName)
+			}
 		}
 	}
 
@@ -245,6 +251,8 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 		if !config.IsAlreadyExistsError(err) {
 			return cleanUp, fmt.Errorf("could not create dogu config for dogu %s: %w", doguName, err)
 		}
+
+		doguCfgAlreadyExists = true
 	}
 
 	_, err = m.sensitiveDoguRepository.Create(ctx, emptyCfg)
@@ -252,6 +260,8 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 		if !config.IsAlreadyExistsError(err) {
 			return cleanUp, fmt.Errorf("could not create sensitive dogu config for dogu %s: %w", doguName, err)
 		}
+
+		sensitiveCfgAlreadyExists = true
 	}
 
 	return cleanUp, nil
