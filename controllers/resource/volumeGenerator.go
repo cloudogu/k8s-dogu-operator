@@ -105,18 +105,6 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		},
 	}
 
-	mode := int32(0744)
-
-	privateVolume := corev1.Volume{
-		Name: doguResource.GetPrivateKeySecretName(),
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  doguResource.GetPrivateKeySecretName(),
-				DefaultMode: &mode,
-			},
-		},
-	}
-
 	doguHealthVolume := corev1.Volume{
 		Name: doguHealth,
 		VolumeSource: corev1.VolumeSource{
@@ -167,7 +155,6 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 
 	return []corev1.Volume{
 		nodeMasterVolume,
-		privateVolume,
 		doguHealthVolume,
 		ephemeralVolume,
 		globalConfigVolume,
@@ -274,11 +261,6 @@ func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
 			ReadOnly:  true,
 			MountPath: "/etc/ces/node_master",
 			SubPath:   "node_master",
-		},
-		{
-			Name:      doguResource.GetPrivateKeySecretName(),
-			ReadOnly:  true,
-			MountPath: "/private",
 		},
 		{
 			Name:      doguHealth,

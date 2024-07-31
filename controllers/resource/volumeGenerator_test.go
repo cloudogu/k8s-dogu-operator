@@ -260,37 +260,33 @@ func Test_createVolumeMounts(t *testing.T) {
 		volumeMounts := createVolumeMounts(ldapDoguResource, &core.Dogu{})
 
 		// then
-		assert.Len(t, volumeMounts, 8)
+		assert.Len(t, volumeMounts, 7)
 
 		assert.Equal(t, nodeMasterFile, volumeMounts[0].Name)
 		assert.True(t, volumeMounts[0].ReadOnly)
 		assert.Equal(t, "/etc/ces/node_master", volumeMounts[0].MountPath)
 		assert.Equal(t, "node_master", volumeMounts[0].SubPath)
 
-		assert.Equal(t, ldapDoguResource.GetPrivateKeySecretName(), volumeMounts[1].Name)
+		assert.Equal(t, doguHealth, volumeMounts[1].Name)
 		assert.True(t, volumeMounts[1].ReadOnly)
-		assert.Equal(t, "/private", volumeMounts[1].MountPath)
+		assert.Equal(t, "/etc/ces/health", volumeMounts[1].MountPath)
 
-		assert.Equal(t, doguHealth, volumeMounts[2].Name)
-		assert.True(t, volumeMounts[2].ReadOnly)
-		assert.Equal(t, "/etc/ces/health", volumeMounts[2].MountPath)
+		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumeMounts[2].Name)
+		assert.False(t, volumeMounts[2].ReadOnly)
+		assert.Equal(t, "/var/ces/state", volumeMounts[2].MountPath)
+		assert.Equal(t, "state", volumeMounts[2].SubPath)
 
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumeMounts[3].Name)
-		assert.False(t, volumeMounts[3].ReadOnly)
-		assert.Equal(t, "/var/ces/state", volumeMounts[3].MountPath)
-		assert.Equal(t, "state", volumeMounts[3].SubPath)
+		assert.Equal(t, globalConfig, volumeMounts[3].Name)
+		assert.True(t, volumeMounts[3].ReadOnly)
+		assert.Equal(t, "/etc/ces/config/global", volumeMounts[3].MountPath)
 
-		assert.Equal(t, globalConfig, volumeMounts[4].Name)
+		assert.Equal(t, normalConfig, volumeMounts[4].Name)
 		assert.True(t, volumeMounts[4].ReadOnly)
-		assert.Equal(t, "/etc/ces/config/global", volumeMounts[4].MountPath)
+		assert.Equal(t, "/etc/ces/config/normal", volumeMounts[4].MountPath)
 
-		assert.Equal(t, normalConfig, volumeMounts[5].Name)
+		assert.Equal(t, sensitiveConfig, volumeMounts[5].Name)
 		assert.True(t, volumeMounts[5].ReadOnly)
-		assert.Equal(t, "/etc/ces/config/normal", volumeMounts[5].MountPath)
-
-		assert.Equal(t, sensitiveConfig, volumeMounts[6].Name)
-		assert.True(t, volumeMounts[6].ReadOnly)
-		assert.Equal(t, "/etc/ces/config/sensitive", volumeMounts[6].MountPath)
+		assert.Equal(t, "/etc/ces/config/sensitive", volumeMounts[5].MountPath)
 	})
 
 	t.Run("should create own dogu.json volume mount", func(t *testing.T) {
@@ -301,11 +297,11 @@ func Test_createVolumeMounts(t *testing.T) {
 		volumeMounts := createVolumeMounts(ldapDoguResource, &core.Dogu{Name: "official/ldap"})
 
 		// then
-		assert.Len(t, volumeMounts, 8)
+		assert.Len(t, volumeMounts, 7)
 
-		assert.Equal(t, "ldap-dogu-json", volumeMounts[7].Name)
-		assert.True(t, volumeMounts[7].ReadOnly)
-		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[7].MountPath)
+		assert.Equal(t, "ldap-dogu-json", volumeMounts[6].Name)
+		assert.True(t, volumeMounts[6].ReadOnly)
+		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[6].MountPath)
 	})
 
 	t.Run("should create dogu volumeMounts", func(t *testing.T) {
@@ -340,32 +336,31 @@ func Test_createVolumeMounts(t *testing.T) {
 		})
 
 		// then
-		assert.Len(t, volumeMounts, 11)
+		assert.Len(t, volumeMounts, 10)
 
-		assert.Equal(t, "ldap-dogu-json", volumeMounts[7].Name)
-		assert.True(t, volumeMounts[7].ReadOnly)
-		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[7].MountPath)
+		assert.Equal(t, "ldap-dogu-json", volumeMounts[6].Name)
+		assert.True(t, volumeMounts[6].ReadOnly)
+		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[6].MountPath)
 
-		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumeMounts[8].Name)
+		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumeMounts[7].Name)
+		assert.False(t, volumeMounts[7].ReadOnly)
+		assert.Equal(t, volumes[0].Path, volumeMounts[7].MountPath)
+		assert.Equal(t, volumes[0].Name, volumeMounts[7].SubPath)
+
+		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumeMounts[8].Name)
 		assert.False(t, volumeMounts[8].ReadOnly)
-		assert.Equal(t, volumes[0].Path, volumeMounts[8].MountPath)
-		assert.Equal(t, volumes[0].Name, volumeMounts[8].SubPath)
+		assert.Equal(t, volumes[1].Path, volumeMounts[8].MountPath)
+		assert.Equal(t, volumes[1].Name, volumeMounts[8].SubPath)
 
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumeMounts[9].Name)
+		assert.Equal(t, volumes[2].Name, volumeMounts[9].Name)
 		assert.False(t, volumeMounts[9].ReadOnly)
-		assert.Equal(t, volumes[1].Path, volumeMounts[9].MountPath)
-		assert.Equal(t, volumes[1].Name, volumeMounts[9].SubPath)
-
-		assert.Equal(t, volumes[2].Name, volumeMounts[10].Name)
-		assert.False(t, volumeMounts[10].ReadOnly)
-		assert.Equal(t, volumes[2].Path, volumeMounts[10].MountPath)
+		assert.Equal(t, volumes[2].Path, volumeMounts[9].MountPath)
 	})
 }
 
 func Test_createVolumes(t *testing.T) {
 	t.Run("should create static volumes", func(t *testing.T) {
 		// given
-		mode := int32(0744)
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
@@ -373,15 +368,12 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, 8)
+		assert.Len(t, volumes, 7)
 
 		assert.Equal(t, nodeMasterFile, volumes[0].Name)
 		assert.Equal(t, nodeMasterFile, volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name)
 
-		assert.Equal(t, ldapDoguResource.GetPrivateKeySecretName(), volumes[1].Name)
-		assert.Equal(t, ldapDoguResource.GetPrivateKeySecretName(), volumes[1].VolumeSource.Secret.SecretName)
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[3].Name)
-		assert.Equal(t, &mode, volumes[1].VolumeSource.Secret.DefaultMode)
+		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[2].Name)
 	})
 
 	t.Run("should create own dogu.json volume", func(t *testing.T) {
@@ -393,11 +385,11 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, 8)
+		assert.Len(t, volumes, 7)
 
-		assert.Equal(t, "ldap-dogu-json", volumes[7].Name)
-		assert.Equal(t, "dogu-spec-ldap", volumes[7].VolumeSource.ConfigMap.LocalObjectReference.Name)
-		assert.True(t, *volumes[7].VolumeSource.ConfigMap.Optional)
+		assert.Equal(t, "ldap-dogu-json", volumes[6].Name)
+		assert.Equal(t, "dogu-spec-ldap", volumes[6].VolumeSource.ConfigMap.LocalObjectReference.Name)
+		assert.True(t, *volumes[6].VolumeSource.ConfigMap.Optional)
 	})
 
 	t.Run("should create dogu volumes", func(t *testing.T) {
@@ -423,17 +415,16 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, 9)
+		assert.Len(t, volumes, 8)
 
 		assert.Equal(t, nodeMasterFile, volumes[0].Name)
-		assert.Equal(t, ldapDoguResource.GetPrivateKeySecretName(), volumes[1].Name)
-		assert.Equal(t, "dogu-health", volumes[2].Name)
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[3].Name)
-		assert.Equal(t, globalConfig, volumes[4].Name)
-		assert.Equal(t, normalConfig, volumes[5].Name)
-		assert.Equal(t, sensitiveConfig, volumes[6].Name)
-		assert.Equal(t, "ldap-dogu-json", volumes[7].Name)
-		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumes[8].Name)
+		assert.Equal(t, "dogu-health", volumes[1].Name)
+		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[2].Name)
+		assert.Equal(t, globalConfig, volumes[3].Name)
+		assert.Equal(t, normalConfig, volumes[4].Name)
+		assert.Equal(t, sensitiveConfig, volumes[5].Name)
+		assert.Equal(t, "ldap-dogu-json", volumes[6].Name)
+		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumes[7].Name)
 	})
 
 	t.Run("should fail create dogu volumes with invalid client-params", func(t *testing.T) {

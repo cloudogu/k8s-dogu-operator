@@ -61,9 +61,6 @@ spec:
               name: node-master-file
               readOnly: true
               subPath: node_master
-            - mountPath: /private
-              name: ldap-private
-              readOnly: true
             - mountPath: /etc/ces/health
               name: dogu-health
               readOnly: true
@@ -119,10 +116,6 @@ spec:
         - configMap:
             name: node-master-file
           name: node-master-file
-        - name: ldap-private
-          secret:
-            defaultMode: 484
-            secretName: ldap-private
         - name: dogu-health
           configMap:
             name: k8s-dogu-operator-dogu-health
