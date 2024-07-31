@@ -282,47 +282,6 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 	})
 }
 
-func TestResourceGenerator_GetDoguSecret(t *testing.T) {
-
-	t.Run("Return secret", func(t *testing.T) {
-		// given
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		ldapDoguResource := readLdapDoguResource(t)
-
-		// when
-		actualSecret, err := generator.CreateDoguSecret(ldapDoguResource, map[string]string{"key": "value"})
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, readLdapDoguExpectedSecret(t), actualSecret)
-	})
-
-	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
-		// given
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		ldapDoguResource := readLdapDoguResource(t)
-		oldMethod := ctrl.SetControllerReference
-		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return assert.AnError
-		}
-		defer func() { ctrl.SetControllerReference = oldMethod }()
-
-		// when
-		_, err := generator.CreateDoguSecret(ldapDoguResource, map[string]string{"key": "value"})
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to set controller reference:")
-	})
-}
-
 func Test_getChownInitContainer(t *testing.T) {
 	t.Run("success with whitespace in volume path", func(t *testing.T) {
 		// given
