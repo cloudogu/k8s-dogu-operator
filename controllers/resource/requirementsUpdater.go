@@ -48,7 +48,7 @@ func (hlu *RequirementsUpdater) startWatch(ctx context.Context) error {
 
 	watchResChan, err := hlu.globalConfigWatcher.Watch(ctx, config.KeyFilter(triggerSyncKey))
 	if err != nil {
-		return fmt.Errorf("could not start watch for key [%s]", triggerSyncKey)
+		return fmt.Errorf("could not start watch for key [%s]: %w", triggerSyncKey, err)
 	}
 
 	for range watchResChan {
