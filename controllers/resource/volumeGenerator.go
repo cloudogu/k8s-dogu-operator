@@ -131,15 +131,13 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		},
 	}
 
-	doguConfigName := func(doguName string) string {
-		return fmt.Sprintf("%s-config", doguName)
-	}
+	doguConfigName := fmt.Sprintf("%s-config", doguResource.Name)
 
 	normalConfigVolume := corev1.Volume{
 		Name: normalConfig,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: doguConfigName(doguResource.Name)},
+				LocalObjectReference: corev1.LocalObjectReference{Name: doguConfigName},
 			},
 		},
 	}
@@ -148,7 +146,7 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		Name: sensitiveConfig,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: doguConfigName(doguResource.Name),
+				SecretName: doguConfigName,
 			},
 		},
 	}
