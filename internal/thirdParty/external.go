@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/go-logr/logr"
 
+	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -76,6 +77,11 @@ type CoreV1Interface interface {
 
 type ClientSet interface {
 	kubernetes.Interface
+}
+
+// HostAliasGenerator creates host aliases from fqdn, internal ip and additional host configuration.
+type HostAliasGenerator interface {
+	Generate(context.Context) (hostAliases []coreV1.HostAlias, err error)
 }
 
 type ConfigMapClient interface {
