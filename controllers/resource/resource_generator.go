@@ -328,25 +328,6 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageCon
 	return service, nil
 }
 
-// CreateDoguSecret generates a secret with a given data map for the dogu
-func (r *resourceGenerator) CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
-	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguResource.GetPrivateKeySecretName(),
-			Namespace: doguResource.Namespace,
-			Labels:    appDoguLabels,
-		},
-		StringData: stringData}
-
-	err := ctrl.SetControllerReference(doguResource, secret, r.scheme)
-	if err != nil {
-		return nil, wrapControllerReferenceError(err)
-	}
-
-	return secret, nil
-}
-
 func wrapControllerReferenceError(err error) error {
 	return fmt.Errorf("failed to set controller reference: %w", err)
 }
