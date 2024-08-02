@@ -211,7 +211,7 @@ func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo Sen
 				return fmt.Errorf("unable to save and merge sensitive config for dogu %s after conflict error: %w", senDoguCfg.DoguName, lErr)
 			}
 
-			senDoguCfg = &mergedCfg
+			*senDoguCfg = mergedCfg
 
 			return nil
 		}
@@ -219,7 +219,7 @@ func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo Sen
 		return fmt.Errorf("unable to update sensitive config for dogu %s: %w", senDoguCfg.DoguName, err)
 	}
 
-	senDoguCfg = &update
+	*senDoguCfg = update
 
 	return nil
 }
