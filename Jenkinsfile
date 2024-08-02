@@ -99,6 +99,10 @@ node('docker') {
                 imageName = k3d.buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion)
             }
 
+            stage('Create initial global config map') {
+                k3d.kubectl("--namespace default create configmap global-config --from-literal=config.yaml={}")
+            }
+
             stage('Update development resources') {
                 def repository = imageName.substring(0, imageName.lastIndexOf(":"))
                 docker.image("golang:${goVersion}")
