@@ -108,18 +108,6 @@ node('docker') {
                         }
             }
 
-            stage('Deploy etcd') {
-                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harborhelmchartpush', usernameVariable: 'HARBOR_USERNAME', passwordVariable: 'HARBOR_PASSWORD']]) {
-                    k3d.helm("registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'")
-                    k3d.helm("install k8s-etcd oci://${registry}/${registry_namespace}/k8s-etcd --version 3.5.9-1")
-                }
-            }
-
-            stage('Wait for etcd to be ready') {
-                sleep(time: 5, unit: "SECONDS")
-                k3d.kubectl("wait --for=condition=ready pod -l statefulset.kubernetes.io/pod-name=etcd-0 --timeout=300s")
-            }
-
             stage('Deploy Manager') {
                 k3d.helm("install ${repositoryName}-crd ${helmCRDChartDir}")
                 k3d.helm("install ${repositoryName} ${helmChartDir}")
