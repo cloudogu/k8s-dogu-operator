@@ -223,7 +223,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 			return
 		}
 
-		lCtx := context.Background()
+		lCtx := context.WithoutCancel(ctx)
 
 		if !doguCfgAlreadyExists {
 			lErr := m.doguConfigRepository.Delete(lCtx, config.SimpleDoguName(doguName))
