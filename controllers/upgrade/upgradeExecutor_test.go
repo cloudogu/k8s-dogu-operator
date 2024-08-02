@@ -1160,7 +1160,7 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 		localDoguRegMock.EXPECT().Register(testCtx, toDogu).Return(nil)
 		localDoguRegMock.EXPECT().Enable(testCtx, toDogu).Return(nil)
 
-		cesreg := cesregistry.NewCESDoguRegistrator(nil, localDoguRegMock, registryMock, nil)
+		cesreg := cesregistry.NewCESDoguRegistrator(nil, localDoguRegMock)
 
 		// when
 		err := registerUpgradedDoguVersion(testCtx, cesreg, toDogu)
@@ -1180,7 +1180,7 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, toDogu.GetSimpleName()).Return(false, nil)
 
-		cesreg := cesregistry.NewCESDoguRegistrator(nil, localDoguRegMock, registryMock, nil)
+		cesreg := cesregistry.NewCESDoguRegistrator(nil, localDoguRegMock)
 
 		// when
 		err := registerUpgradedDoguVersion(testCtx, cesreg, toDogu)
