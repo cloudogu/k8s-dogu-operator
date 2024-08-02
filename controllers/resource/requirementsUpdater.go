@@ -44,7 +44,7 @@ func (hlu *RequirementsUpdater) Start(ctx context.Context) error {
 }
 
 func (hlu *RequirementsUpdater) startWatch(ctx context.Context) error {
-	ctrl.LoggerFrom(ctx).Info(fmt.Sprintf("Start watching on global config for certificate key [%s]", triggerSyncKey))
+	ctrl.LoggerFrom(ctx).Info(fmt.Sprintf("Start watching on the trigger for synchronization [%s] in global config", triggerSyncKey))
 
 	watchResChan, err := hlu.globalConfigWatcher.Watch(ctx, config.KeyFilter(triggerSyncKey))
 	if err != nil {
