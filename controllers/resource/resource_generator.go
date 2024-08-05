@@ -28,7 +28,6 @@ const (
 )
 
 const (
-	nodeMasterFile      = "node-master-file"
 	doguHealthConfigMap = "k8s-dogu-operator-dogu-health"
 	doguHealth          = "dogu-health"
 )

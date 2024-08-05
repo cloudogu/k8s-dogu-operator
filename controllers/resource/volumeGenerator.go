@@ -96,15 +96,6 @@ func getDoguJsonVolumeForDogu(simpleDoguName string) corev1.Volume {
 }
 
 func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
-	nodeMasterVolume := corev1.Volume{
-		Name: nodeMasterFile,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: nodeMasterFile},
-			},
-		},
-	}
-
 	doguHealthVolume := corev1.Volume{
 		Name: doguHealth,
 		VolumeSource: corev1.VolumeSource{
@@ -152,7 +143,6 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 	}
 
 	return []corev1.Volume{
-		nodeMasterVolume,
 		doguHealthVolume,
 		ephemeralVolume,
 		globalConfigVolume,
@@ -254,12 +244,6 @@ func createVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volu
 
 func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
 	doguVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      nodeMasterFile,
-			ReadOnly:  true,
-			MountPath: "/etc/ces/node_master",
-			SubPath:   "node_master",
-		},
 		{
 			Name:      doguHealth,
 			ReadOnly:  true,
