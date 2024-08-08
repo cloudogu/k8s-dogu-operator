@@ -27,7 +27,3 @@ annotations:
   # Dependency for the Dogu-CRD.
   # Allow all versions up to next major version to avoid breaking changes
   "k8s.cloudogu.com/ces-dependency/k8s-dogu-operator-crd": "1.x.x-0"
-
-  # For k8s-etcd it is important to include "prerelease"-versions like "3.5.7-4", so there must be a "-0" after the patch-version.
-  # see https://helm.sh/docs/chart_best_practices/dependencies/#prerelease-versions for more information
-  "k8s.cloudogu.com/ces-dependency/k8s-etcd": "^3.5.x-0"

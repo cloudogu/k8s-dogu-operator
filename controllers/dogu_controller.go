@@ -16,7 +16,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
@@ -99,7 +99,7 @@ type doguReconciler struct {
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localDoguRegistry local.LocalDoguRegistry) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localDoguRegistry dogu.LocalRegistry) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(doguInterface, eventRecorder, namespace)
 	if err != nil {
 		return nil, err

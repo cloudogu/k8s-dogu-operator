@@ -107,10 +107,6 @@
       "Type": "k8s-dogu-operator",
       "Kind": "k8s",
       "AccountName": "myTestAccount"
-    },
-    {
-      "Kind": "ces",
-      "Type": "cesappd"
     }
   ],
   "HealthChecks": [

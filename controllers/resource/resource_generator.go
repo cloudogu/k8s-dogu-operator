@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,8 +20,6 @@ import (
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 )
 
 const (
@@ -29,7 +28,6 @@ const (
 )
 
 const (
-	nodeMasterFile      = "node-master-file"
 	doguHealthConfigMap = "k8s-dogu-operator-dogu-health"
 	doguHealth          = "dogu-health"
 )
@@ -56,13 +54,13 @@ const (
 // as controller
 type resourceGenerator struct {
 	scheme                *runtime.Scheme
-	requirementsGenerator cloudogu.ResourceRequirementsGenerator
-	hostAliasGenerator    thirdParty.HostAliasGenerator
+	requirementsGenerator requirementsGenerator
+	hostAliasGenerator    hostAliasGenerator
 	additionalImages      map[string]string
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator cloudogu.ResourceRequirementsGenerator, hostAliasGenerator thirdParty.HostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
+func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator requirementsGenerator, hostAliasGenerator hostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
 	return &resourceGenerator{
 		scheme:                scheme,
 		requirementsGenerator: requirementsGenerator,
@@ -135,12 +133,12 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 		return nil, err
 	}
 
-	hostAliases, err := r.hostAliasGenerator.Generate()
+	hostAliases, err := r.hostAliasGenerator.Generate(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	resourceRequirements, err := r.requirementsGenerator.Generate(dogu)
+	resourceRequirements, err := r.requirementsGenerator.Generate(context.Background(), dogu)
 	if err != nil {
 		return nil, err
 	}
@@ -327,25 +325,6 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageCon
 	}
 
 	return service, nil
-}
-
-// CreateDoguSecret generates a secret with a given data map for the dogu
-func (r *resourceGenerator) CreateDoguSecret(doguResource *k8sv1.Dogu, stringData map[string]string) (*corev1.Secret, error) {
-	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguResource.GetPrivateKeySecretName(),
-			Namespace: doguResource.Namespace,
-			Labels:    appDoguLabels,
-		},
-		StringData: stringData}
-
-	err := ctrl.SetControllerReference(doguResource, secret, r.scheme)
-	if err != nil {
-		return nil, wrapControllerReferenceError(err)
-	}
-
-	return secret, nil
 }
 
 func wrapControllerReferenceError(err error) error {

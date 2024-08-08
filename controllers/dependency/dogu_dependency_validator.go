@@ -9,7 +9,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
@@ -37,7 +37,7 @@ type doguDependencyValidator struct {
 }
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker
-func NewDoguDependencyValidator(localDoguRegistry local.LocalDoguRegistry) *doguDependencyValidator {
+func NewDoguDependencyValidator(localDoguRegistry dogu.LocalRegistry) *doguDependencyValidator {
 	doguDependencyChecker := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 
 	return &doguDependencyValidator{

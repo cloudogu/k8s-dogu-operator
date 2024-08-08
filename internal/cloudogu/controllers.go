@@ -2,9 +2,10 @@ package cloudogu
 
 import (
 	"context"
-	ctrl "sigs.k8s.io/controller-runtime"
-
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/api/v1"
+	coreV1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // InstallManager includes functionality to install dogus in the cluster.
@@ -81,4 +82,9 @@ type DoguManager interface {
 type RequeueHandler interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
 	Handle(ctx context.Context, contextMessage string, doguResource *v1.Dogu, err error, onRequeue func(dogu *v1.Dogu) error) (result ctrl.Result, requeueErr error)
+}
+
+// RequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
+type RequirementsGenerator interface {
+	Generate(ctx context.Context, dogu *cesappcore.Dogu) (coreV1.ResourceRequirements, error)
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 )
 
 const SupportModeEnvVar = "SUPPORT_MODE"
@@ -27,7 +27,7 @@ type podTemplateResourceGenerator interface {
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
 	client                       client.Client
-	localDoguRegistry            local.LocalDoguRegistry
+	localDoguRegistry            dogu.LocalRegistry
 	podTemplateResourceGenerator podTemplateResourceGenerator
 	eventRecorder                record.EventRecorder
 }

@@ -16,8 +16,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
@@ -159,93 +157,18 @@ func TestNewDoguManager(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = testNamespace
-		cesRegistry := cesmocks.NewRegistry(t)
-		globalConfig := cesmocks.NewConfigurationContext(t)
-		doguRegistry := cesmocks.NewDoguRegistry(t)
+
 		eventRecorder := extMocks.NewEventRecorder(t)
-		globalConfig.On("Exists", "key_provider").Return(true, nil)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
 
 		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
 		ecosystemClientSetMock.EXPECT().Dogus(testNamespace).Return(nil)
 
 		// when
-		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder)
+		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, eventRecorder)
 
 		// then
 		require.NoError(t, err)
 		require.NotNil(t, doguManager)
-	})
-
-	t.Run("successfully set default key provider", func(t *testing.T) {
-		// given
-		additionalImages := createConfigMap(
-			config.OperatorAdditionalImagesConfigmapName,
-			map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"})
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(additionalImages).Build()
-		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = testNamespace
-		cesRegistry := cesmocks.NewRegistry(t)
-		globalConfig := cesmocks.NewConfigurationContext(t)
-		doguRegistry := cesmocks.NewDoguRegistry(t)
-		eventRecorder := extMocks.NewEventRecorder(t)
-		globalConfig.On("Exists", "key_provider").Return(false, nil)
-		globalConfig.On("Set", "key_provider", "pkcs1v15").Return(nil)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
-		cesRegistry.On("DoguRegistry").Return(doguRegistry)
-
-		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
-		ecosystemClientSetMock.EXPECT().Dogus(testNamespace).Return(nil)
-
-		// when
-		doguManager, err := NewDoguManager(client, ecosystemClientSetMock, operatorConfig, cesRegistry, eventRecorder)
-
-		// then
-		require.NoError(t, err)
-		require.NotNil(t, doguManager)
-	})
-
-	t.Run("failed to query existing key provider", func(t *testing.T) {
-		// given
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
-		operatorConfig := &config.OperatorConfig{}
-		eventRecorder := extMocks.NewEventRecorder(t)
-		operatorConfig.Namespace = testNamespace
-		cesRegistry := cesmocks.NewRegistry(t)
-		globalConfig := cesmocks.NewConfigurationContext(t)
-		globalConfig.On("Exists", "key_provider").Return(true, assert.AnError)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
-
-		// when
-		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
-
-		// then
-		require.Error(t, err)
-		require.Nil(t, doguManager)
-		assert.ErrorIs(t, err, assert.AnError)
-	})
-
-	t.Run("failed to set default key provider", func(t *testing.T) {
-		// given
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
-		operatorConfig := &config.OperatorConfig{}
-		operatorConfig.Namespace = testNamespace
-		cesRegistry := cesmocks.NewRegistry(t)
-		globalConfig := cesmocks.NewConfigurationContext(t)
-		globalConfig.On("Exists", "key_provider").Return(false, nil)
-		globalConfig.On("Set", "key_provider", "pkcs1v15").Return(assert.AnError)
-		cesRegistry.On("GlobalConfig").Return(globalConfig)
-		eventRecorder := extMocks.NewEventRecorder(t)
-
-		// when
-		doguManager, err := NewDoguManager(client, nil, operatorConfig, cesRegistry, eventRecorder)
-
-		// then
-		require.Error(t, err)
-		require.Nil(t, doguManager)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to set default key provider")
 	})
 }
 

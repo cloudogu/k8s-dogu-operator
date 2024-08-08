@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
+	"github.com/cloudogu/k8s-registry-lib/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -18,13 +18,10 @@ const saAnnotationPath = "ces.cloudogu.com/serviceaccount-path"
 const saAnnotationSecretName = "ces.cloudogu.com/serviceaccount-secret-name"
 const saAnnotationSecretKey = "ces.cloudogu.com/serviceaccount-secret-key"
 
-func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.Dogu, doguConfig registry.ConfigurationContext, serviceAccount core.ServiceAccount, registryCredentialPath string) error {
+func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.Dogu, senDoguCfg *config.DoguConfig, serviceAccount core.ServiceAccount, registryCredentialPath string) error {
 	logger := log.FromContext(ctx)
-	exists, err := serviceAccountExists(registryCredentialPath, doguConfig)
-	if err != nil {
-		return err
-	}
-	if exists {
+
+	if skip := serviceAccountExists(registryCredentialPath, *senDoguCfg); skip {
 		return nil
 	}
 
@@ -54,7 +51,7 @@ func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.
 		return fmt.Errorf("failed to get credetials for service account: %w", err)
 	}
 
-	err = c.saveServiceAccount(serviceAccount, doguConfig, saCredentials)
+	err = c.writeServiceAccounts(ctx, senDoguCfg, serviceAccount, saCredentials)
 	if err != nil {
 		return fmt.Errorf("failed to save the service account credentials: %w", err)
 	}
@@ -122,18 +119,13 @@ func getAnnotationOrDefault(pod *corev1.Service, name string, defaultValue strin
 	return value
 }
 
-func (r *remover) removeComponentServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount) error {
+func (r *remover) removeComponentServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
 	logger := log.FromContext(ctx)
 	registryCredentialPath := "sa-" + serviceAccount.Type
-	doguConfig := r.registry.DoguConfig(dogu.GetSimpleName())
 
-	exists, err := serviceAccountExists(registryCredentialPath, doguConfig)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
+	if exists := serviceAccountExists(registryCredentialPath, *senDoguCfg); !exists {
 		logger.Info("skipping removal of service account because it does not exists")
+
 		return nil
 	}
 
@@ -152,13 +144,15 @@ func (r *remover) removeComponentServiceAccount(ctx context.Context, dogu *core.
 		return fmt.Errorf("error getting apiKey: %w", err)
 	}
 
-	if err := r.apiClient.deleteServiceAccount(ctx, saApiURL, apiKey, dogu.GetSimpleName()); err != nil {
-		return fmt.Errorf("failed to remove service account: %w", err)
+	if lErr := r.apiClient.deleteServiceAccount(ctx, saApiURL, apiKey, dogu.GetSimpleName()); lErr != nil {
+		return fmt.Errorf("failed to remove service account: %w", lErr)
 	}
 
-	err = doguConfig.DeleteRecursive(registryCredentialPath)
-	if err != nil {
-		return fmt.Errorf("failed to remove service account from config: %w", err)
+	updatedCfg := senDoguCfg.DeleteRecursive(config.Key(registryCredentialPath))
+	senDoguCfg.Config = updatedCfg
+
+	if lErr := writeConfig(ctx, senDoguCfg, r.sensitiveDoguRepo); lErr != nil {
+		return fmt.Errorf("failed write config for dogu %s after updating: %w", senDoguCfg.DoguName, lErr)
 	}
 
 	return nil
