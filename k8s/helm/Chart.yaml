@@ -26,4 +26,4 @@ appVersion: "0.0.0-replaceme"
 annotations:
   # Dependency for the Dogu-CRD.
   # Allow all versions up to next major version to avoid breaking changes
-  "k8s.cloudogu.com/ces-dependency/k8s-dogu-operator-crd": "1.x.x-0"
+  "k8s.cloudogu.com/ces-dependency/k8s-dogu-operator-crd": "2.x.x-0"
