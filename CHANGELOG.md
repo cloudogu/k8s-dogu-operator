@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v2.0.1] - 2024-08-08
 ### Fixed
 - [#187] Fix dependency for k8s-dogu-operator-crd in helm-chart
   - Now depends on `k8s-dogu-operator-crd:2.x.x-0` 
