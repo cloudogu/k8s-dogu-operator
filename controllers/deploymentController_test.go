@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
-	"github.com/cloudogu/k8s-registry-lib/dogu/local"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,9 +31,7 @@ func TestNewDeploymentReconciler(t *testing.T) {
 		availabilityCheckerMock := &health.AvailabilityChecker{}
 		healthStatusUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
 
-		CesRegistryMock := &cesmocks.Registry{}
-		CesRegistryMock.On("DoguRegistry").Return(extMocks.NewDoguRegistry(t))
-		localDoguRegistry := local.NewCombinedLocalDoguRegistry(clientSetMock.CoreV1().ConfigMaps(testNamespace), CesRegistryMock)
+		localDoguRegistry := dogu.NewLocalRegistry(clientSetMock.CoreV1().ConfigMaps(testNamespace))
 
 		// when
 		actual := NewDeploymentReconciler(clientSetMock, availabilityCheckerMock, healthStatusUpdaterMock, localDoguRegistry)

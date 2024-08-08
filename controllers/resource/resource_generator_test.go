@@ -2,24 +2,18 @@ package resource
 
 import (
 	_ "embed"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
-	"github.com/cloudogu/k8s-host-change/pkg/alias"
+	"github.com/cloudogu/cesapp-lib/core"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"testing"
-
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-
-	"github.com/cloudogu/cesapp-lib/core"
-	cesmocks "github.com/cloudogu/cesapp-lib/registry/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	"testing"
 )
 
 var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36"}
@@ -28,12 +22,11 @@ const testChownInitContainerImage = "busybox:1.36"
 
 func TestNewResourceGenerator(t *testing.T) {
 	// given
-	registry := cesmocks.NewRegistry(t)
-	globalConfig := cesmocks.NewConfigurationContext(t)
-	registry.On("GlobalConfig").Return(globalConfig)
+	doguRepoMock := newMockDoguConfigGetter(t)
+	hostAliasGenMock := newMockHostAliasGenerator(t)
 
 	// when
-	generator := NewResourceGenerator(getTestScheme(), NewRequirementsGenerator(registry), alias.NewHostAliasGenerator(registry.GlobalConfig()), testAdditionalImages)
+	generator := NewResourceGenerator(getTestScheme(), NewRequirementsGenerator(doguRepoMock), hostAliasGenMock, testAdditionalImages)
 
 	// then
 	require.NotNil(t, generator)
@@ -72,15 +65,15 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 
-		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
-		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
-		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
-			requirementsGenerator: requirementsGenerator,
-			hostAliasGenerator:    hostAliasGenerator,
+			requirementsGenerator: requirementsGen,
+			hostAliasGenerator:    hostAliasGeneratorMock,
 			additionalImages:      testAdditionalImages,
 		}
 
@@ -100,15 +93,15 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 			{Type: "k8s-dogu-operator", Kind: "k8s"},
 		}
 
-		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
-		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
-		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
-			requirementsGenerator: requirementsGenerator,
-			hostAliasGenerator:    hostAliasGenerator,
+			requirementsGenerator: requirementsGen,
+			hostAliasGenerator:    hostAliasGeneratorMock,
 			additionalImages:      testAdditionalImages,
 		}
 
@@ -138,15 +131,15 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 			},
 		}
 
-		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
-		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(requirements, nil)
-		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(requirements, nil)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
-			requirementsGenerator: requirementsGenerator,
-			hostAliasGenerator:    hostAliasGenerator,
+			requirementsGenerator: requirementsGen,
+			hostAliasGenerator:    hostAliasGeneratorMock,
 			additionalImages:      testAdditionalImages,
 		}
 
@@ -164,15 +157,15 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 
-		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
-		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
-		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
-			requirementsGenerator: requirementsGenerator,
-			hostAliasGenerator:    hostAliasGenerator,
+			requirementsGenerator: requirementsGen,
+			hostAliasGenerator:    hostAliasGeneratorMock,
 			additionalImages:      testAdditionalImages,
 		}
 
@@ -195,15 +188,15 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
 
-		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
-		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, nil)
-		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                getTestScheme(),
-			requirementsGenerator: requirementsGenerator,
-			hostAliasGenerator:    hostAliasGenerator,
+			requirementsGenerator: requirementsGen,
+			hostAliasGenerator:    hostAliasGeneratorMock,
 			additionalImages:      testAdditionalImages,
 		}
 
@@ -226,15 +219,16 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
-		requirementsGenerator := mocks.NewResourceRequirementsGenerator(t)
-		requirementsGenerator.EXPECT().Generate(ldapDogu).Return(v1.ResourceRequirements{}, assert.AnError)
-		hostAliasGenerator := extMocks.NewHostAliasGenerator(t)
-		hostAliasGenerator.EXPECT().Generate().Return(nil, nil)
+
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(mock.Anything, ldapDogu).Return(v1.ResourceRequirements{}, assert.AnError)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(mock.Anything).Return(nil, nil)
 
 		generatorFail := resourceGenerator{
 			scheme:                getTestScheme(),
-			requirementsGenerator: requirementsGenerator,
-			hostAliasGenerator:    hostAliasGenerator,
+			requirementsGenerator: requirementsGen,
+			hostAliasGenerator:    hostAliasGeneratorMock,
 			additionalImages:      testAdditionalImages,
 		}
 
@@ -280,47 +274,6 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 
 		// when
 		_, err := generator.CreateDoguService(ldapDoguResource, imageConf)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to set controller reference:")
-	})
-}
-
-func TestResourceGenerator_GetDoguSecret(t *testing.T) {
-
-	t.Run("Return secret", func(t *testing.T) {
-		// given
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		ldapDoguResource := readLdapDoguResource(t)
-
-		// when
-		actualSecret, err := generator.CreateDoguSecret(ldapDoguResource, map[string]string{"key": "value"})
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, readLdapDoguExpectedSecret(t), actualSecret)
-	})
-
-	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
-		// given
-		generator := resourceGenerator{
-			scheme: getTestScheme(),
-		}
-
-		ldapDoguResource := readLdapDoguResource(t)
-		oldMethod := ctrl.SetControllerReference
-		ctrl.SetControllerReference = func(owner, controlled metav1.Object, scheme *runtime.Scheme) error {
-			return assert.AnError
-		}
-		defer func() { ctrl.SetControllerReference = oldMethod }()
-
-		// when
-		_, err := generator.CreateDoguSecret(ldapDoguResource, map[string]string{"key": "value"})
 
 		// then
 		require.Error(t, err)

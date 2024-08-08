@@ -57,13 +57,6 @@ spec:
               value: true
           resources: { }
           volumeMounts:
-            - mountPath: /etc/ces/node_master
-              name: node-master-file
-              readOnly: true
-              subPath: node_master
-            - mountPath: /private
-              name: ldap-private
-              readOnly: true
             - mountPath: /etc/ces/health
               name: dogu-health
               readOnly: true
@@ -71,6 +64,15 @@ spec:
               name: ldap-ephemeral
               readOnly: false
               subPath: state
+            - mountPath: /etc/ces/config/global
+              name: global-config
+              readOnly: true
+            - mountPath: /etc/ces/config/normal
+              name: normal-config
+              readOnly: true
+            - mountPath: /etc/ces/config/sensitive
+              name: sensitive-config
+              readOnly: true
             - mountPath: /etc/ces/dogu_json/ldap
               name: ldap-dogu-json
               readOnly: true
@@ -107,18 +109,20 @@ spec:
         fsGroup: 101
         fsGroupChangePolicy: OnRootMismatch
       volumes:
-        - configMap:
-            name: node-master-file
-          name: node-master-file
-        - name: ldap-private
-          secret:
-            defaultMode: 484
-            secretName: ldap-private
         - name: dogu-health
           configMap:
             name: k8s-dogu-operator-dogu-health
         - name: ldap-ephemeral
           emptyDir: {}
+        - name: global-config
+          configMap:
+            name: global-config
+        - name: normal-config
+          configMap:
+            name: ldap-config
+        - name: sensitive-config
+          secret:
+            secretName: ldap-config
         - name: ldap-dogu-json
           configMap:
             name: dogu-spec-ldap

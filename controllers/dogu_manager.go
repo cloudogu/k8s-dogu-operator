@@ -3,8 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-apply-lib/apply"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-registry-lib/repository"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -12,10 +14,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	cesregistry "github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-apply-lib/apply"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
@@ -45,12 +43,7 @@ type DoguManager struct {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, cesRegistry cesregistry.Registry, eventRecorder record.EventRecorder) (*DoguManager, error) {
-	err := validateKeyProvider(cesRegistry.GlobalConfig())
-	if err != nil {
-		return nil, fmt.Errorf("failed to validate key provider: %w", err)
-	}
-
+func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
@@ -84,12 +77,14 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
 	}
 
-	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, ecosystemClient, operatorConfig, cesRegistry, applier, additionalImages)
+	configRepos := createConfigRepositories(clientSet, operatorConfig.Namespace)
+
+	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos, applier, additionalImages)
 	if err != nil {
 		return nil, fmt.Errorf("could not create manager set: %w", err)
 	}
 
-	installManager := NewDoguInstallManager(client, cesRegistry, mgrSet, eventRecorder)
+	installManager := NewDoguInstallManager(client, mgrSet, eventRecorder, configRepos)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +94,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, err
 	}
 
-	deleteManager := NewDoguDeleteManager(client, operatorConfig, cesRegistry, mgrSet, eventRecorder)
+	deleteManager := NewDoguDeleteManager(client, operatorConfig, mgrSet, eventRecorder, configRepos)
 	if err != nil {
 		return nil, err
 	}
@@ -123,23 +118,6 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		startStopManager:          startStopManager,
 		recorder:                  eventRecorder,
 	}, nil
-}
-
-func validateKeyProvider(globalConfig cesregistry.ConfigurationContext) error {
-	exists, err := globalConfig.Exists("key_provider")
-	if err != nil {
-		return fmt.Errorf("failed to query key provider: %w", err)
-	}
-
-	if !exists {
-		err = globalConfig.Set("key_provider", "pkcs1v15")
-		if err != nil {
-			return fmt.Errorf("failed to set default key provider: %w", err)
-		}
-		log.Log.Info("No key provider found. Use default pkcs1v15.")
-	}
-
-	return nil
 }
 
 // Install installs a dogu resource.
@@ -205,4 +183,17 @@ func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv1.Dogu
 // HandleSupportMode handles the support flag in the dogu spec.
 func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
 	return m.supportManager.HandleSupportMode(ctx, doguResource)
+}
+
+// createConfigRepositories creates the repositories for global, dogu and sensitive dogu configs that are based on
+// k8s resources (configmaps / secrets)
+func createConfigRepositories(clientSet kubernetes.Interface, namespace string) util.ConfigRepositories {
+	configMapClient := clientSet.CoreV1().ConfigMaps(namespace)
+	secretsClient := clientSet.CoreV1().Secrets(namespace)
+
+	return util.ConfigRepositories{
+		GlobalConfigRepository:  repository.NewGlobalConfigRepository(configMapClient),
+		DoguConfigRepository:    repository.NewDoguConfigRepository(configMapClient),
+		SensitiveDoguRepository: repository.NewSensitiveDoguConfigRepository(secretsClient),
+	}
 }

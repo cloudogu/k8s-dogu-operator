@@ -23,6 +23,13 @@ const (
 	doguDependencyType    = "dogu"
 )
 
+// const names for configs to be mounted
+const (
+	globalConfig    = "global-config"
+	normalConfig    = "normal-config"
+	sensitiveConfig = "sensitive-config"
+)
+
 // volumeParamsType describes the kind of volume the k8s-dogu-operator should create.
 type volumeParamsType string
 
@@ -89,27 +96,6 @@ func getDoguJsonVolumeForDogu(simpleDoguName string) corev1.Volume {
 }
 
 func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
-	nodeMasterVolume := corev1.Volume{
-		Name: nodeMasterFile,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: nodeMasterFile},
-			},
-		},
-	}
-
-	mode := int32(0744)
-
-	privateVolume := corev1.Volume{
-		Name: doguResource.GetPrivateKeySecretName(),
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  doguResource.GetPrivateKeySecretName(),
-				DefaultMode: &mode,
-			},
-		},
-	}
-
 	doguHealthVolume := corev1.Volume{
 		Name: doguHealth,
 		VolumeSource: corev1.VolumeSource{
@@ -127,11 +113,41 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 		},
 	}
 
+	globalConfigVolume := corev1.Volume{
+		Name: globalConfig,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: globalConfig},
+			},
+		},
+	}
+
+	doguConfigName := fmt.Sprintf("%s-config", doguResource.Name)
+
+	normalConfigVolume := corev1.Volume{
+		Name: normalConfig,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: doguConfigName},
+			},
+		},
+	}
+
+	sensitiveConfigVolume := corev1.Volume{
+		Name: sensitiveConfig,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: doguConfigName,
+			},
+		},
+	}
+
 	return []corev1.Volume{
-		nodeMasterVolume,
-		privateVolume,
 		doguHealthVolume,
 		ephemeralVolume,
+		globalConfigVolume,
+		normalConfigVolume,
+		sensitiveConfigVolume,
 	}
 }
 
@@ -229,17 +245,6 @@ func createVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volu
 func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
 	doguVolumeMounts := []corev1.VolumeMount{
 		{
-			Name:      nodeMasterFile,
-			ReadOnly:  true,
-			MountPath: "/etc/ces/node_master",
-			SubPath:   "node_master",
-		},
-		{
-			Name:      doguResource.GetPrivateKeySecretName(),
-			ReadOnly:  true,
-			MountPath: "/private",
-		},
-		{
 			Name:      doguHealth,
 			ReadOnly:  true,
 			MountPath: "/etc/ces/health",
@@ -249,6 +254,21 @@ func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
 			ReadOnly:  false,
 			MountPath: "/var/ces/state",
 			SubPath:   "state",
+		},
+		{
+			Name:      globalConfig,
+			ReadOnly:  true,
+			MountPath: "/etc/ces/config/global",
+		},
+		{
+			Name:      normalConfig,
+			ReadOnly:  true,
+			MountPath: "/etc/ces/config/normal",
+		},
+		{
+			Name:      sensitiveConfig,
+			ReadOnly:  true,
+			MountPath: "/etc/ces/config/sensitive",
 		},
 	}
 	return doguVolumeMounts

@@ -81,19 +81,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil).Once()
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil).Once()
-
-			*EtcdDoguRegistry = extMocks.DoguRegistry{}
-			EtcdDoguRegistry.Mock.On("Get", "postgresql").Return(nil, fmt.Errorf("not installed")).Once()
-			EtcdDoguRegistry.Mock.On("Get", "cas").Return(nil, fmt.Errorf("not installed")).Once()
-			EtcdDoguRegistry.Mock.On("Get", "postfix").Return(nil, fmt.Errorf("not installed")).Once()
-			EtcdDoguRegistry.Mock.On("Get", "nginx-ingress").Return(nil, fmt.Errorf("not installed")).Once()
-			EtcdDoguRegistry.Mock.On("Get", "nginx-static").Return(nil, fmt.Errorf("not installed")).Once()
-			EtcdDoguRegistry.Mock.On("Get", "ldap").Return(ldapDogu, nil).Once()
-			EtcdDoguRegistry.Mock.On("Get", "redmine").Return(redmineDogu, nil).Once()
-			EtcdDoguRegistry.Mock.On("Register", mock.Anything).Return(nil).Once()
-			EtcdDoguRegistry.Mock.On("Unregister", mock.Anything).Return(nil).Once()
-			EtcdDoguRegistry.Mock.On("Enable", mock.Anything).Return(nil).Once()
-			EtcdDoguRegistry.Mock.On("IsEnabled", mock.Anything).Return(false, nil).Once()
 		})
 
 		It("Should install dogu in cluster", func() {
@@ -201,20 +188,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 				return true
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-
-			By("Expect created secret")
-			secret := &corev1.Secret{}
-			secretLookupKey := types.NamespacedName{Name: ldapCr.Name + "-private", Namespace: ldapCr.Namespace}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, secretLookupKey, secret)
-				if err != nil {
-					return false
-				}
-				return verifyOwner(createdDogu.Name, secret.ObjectMeta)
-			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-			Expect(ldapCr.Name + "-private").To(Equal(secret.Name))
-			Expect(ldapCr.Namespace).To(Equal(secret.Namespace))
 
 			By("Expect created dogu pvc")
 			doguPvc := &corev1.PersistentVolumeClaim{}
@@ -372,10 +345,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 			*ImageRegistryMock = mocks.ImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil).Once()
-
-			*EtcdDoguRegistry = extMocks.DoguRegistry{}
-			EtcdDoguRegistry.Mock.On("Register", upgradeLdapToDoguDescriptor).Once().Return(nil)
-			EtcdDoguRegistry.Mock.On("Enable", upgradeLdapToDoguDescriptor).Once().Return(nil)
 		})
 
 		It("Should upgrade dogu in cluster", func() {
@@ -408,17 +377,12 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
-			Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
 		})
 
 		It("Setup mocks and test data for delete", func() {
 			// create mocks
 			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
-
 			*ImageRegistryMock = mocks.ImageRegistry{}
-
-			*EtcdDoguRegistry = extMocks.DoguRegistry{}
-			EtcdDoguRegistry.EXPECT().Unregister("ldap").Return(nil).Once()
 		})
 
 		It("Should delete dogu", func() {
@@ -444,7 +408,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
-			Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
 		})
 	})
 
@@ -624,7 +587,6 @@ func deleteDoguCr(ctx context.Context, doguCr *k8sv1.Dogu, deleteAdditional bool
 	// We will keep it here anyway, for when we migrate these tests to a real cluster.
 	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &appsv1.Deployment{})
 	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &corev1.Service{})
-	deleteObjectFromCluster(ctx, types.NamespacedName{Name: doguCr.GetPrivateKeySecretName(), Namespace: doguCr.Namespace}, &corev1.Secret{})
 	deleteObjectFromCluster(ctx, doguCr.GetObjectKey(), &corev1.PersistentVolumeClaim{})
 }
 
