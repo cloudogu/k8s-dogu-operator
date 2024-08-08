@@ -82,7 +82,7 @@ func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 	registryCredentialPath := "sa-" + serviceAccount.Type
 
 	if exists := serviceAccountExists(registryCredentialPath, *senDoguCfg); !exists {
-		logger.Info("skipping removal of service account because it does not exists")
+		logger.Info(fmt.Sprintf("skipping removal of service account '%s' because it does not exist", registryCredentialPath))
 
 		return nil
 	}
