@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.0.1] - 2024-08-08
+### Fixed
+- [#187] Fix dependency for k8s-dogu-operator-crd in helm-chart
+  - Now depends on `k8s-dogu-operator-crd:2.x.x-0` 
+
 ## [v2.0.0] - 2024-08-08
 **Breaking Change ahead**
 ### Removed
