@@ -32,21 +32,22 @@ type ConfigRepositories struct {
 
 // ManagerSet contains functors that are repeatedly used by different dogu operator managers.
 type ManagerSet struct {
-	RestConfig            *rest.Config
-	CollectApplier        cloudogu.CollectApplier
-	FileExtractor         cloudogu.FileExtractor
-	CommandExecutor       cloudogu.CommandExecutor
-	ServiceAccountCreator cloudogu.ServiceAccountCreator
-	LocalDoguFetcher      cloudogu.LocalDoguFetcher
-	ResourceDoguFetcher   cloudogu.ResourceDoguFetcher
-	DoguResourceGenerator cloudogu.DoguResourceGenerator
-	ResourceUpserter      cloudogu.ResourceUpserter
-	DoguRegistrator       cloudogu.DoguRegistrator
-	ImageRegistry         cloudogu.ImageRegistry
-	EcosystemClient       cloudogu.EcosystemInterface
-	ClientSet             thirdParty.ClientSet
-	DependencyValidator   cloudogu.DependencyValidator
-	LocalDoguRegistry     dogu.LocalRegistry
+	RestConfig               *rest.Config
+	CollectApplier           cloudogu.CollectApplier
+	FileExtractor            cloudogu.FileExtractor
+	CommandExecutor          cloudogu.CommandExecutor
+	ServiceAccountCreator    cloudogu.ServiceAccountCreator
+	LocalDoguFetcher         cloudogu.LocalDoguFetcher
+	ResourceDoguFetcher      cloudogu.ResourceDoguFetcher
+	DoguResourceGenerator    cloudogu.DoguResourceGenerator
+	ResourceUpserter         cloudogu.ResourceUpserter
+	DoguRegistrator          cloudogu.DoguRegistrator
+	ImageRegistry            cloudogu.ImageRegistry
+	EcosystemClient          cloudogu.EcosystemInterface
+	ClientSet                thirdParty.ClientSet
+	DependencyValidator      cloudogu.DependencyValidator
+	LocalDoguDescriptorRepo  doguDescriptorRepo
+	LocalDoguVersionRegistry dogu.DoguVersionRegistry
 }
 
 // NewManagerSet creates a new ManagerSet.
@@ -54,10 +55,11 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
-	localDoguRegistry := dogu.NewLocalRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace))
-	serviceAccountCreator := serviceaccount.NewCreator(configRepos.SensitiveDoguRepository, localDoguRegistry, commandExecutor, client, clientSet, config.Namespace)
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
-	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguRegistry)
+	localDoguDescriptors := dogu.NewLocalDoguDescriptorRepository(clientSet.CoreV1().ConfigMaps(config.Namespace))
+	doguVersionRegistry := dogu.NewDoguVersionRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace))
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguDescriptors, doguVersionRegistry)
+	serviceAccountCreator := serviceaccount.NewCreator(configRepos.SensitiveDoguRepository, doguVersionRegistry, localDoguFetcher, commandExecutor, client, clientSet, config.Namespace)
+	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguFetcher)
 
 	doguRemoteRegistry, err := cesremote.New(config.GetRemoteConfiguration(), config.GetRemoteCredentials())
 	if err != nil {
@@ -72,23 +74,24 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 
 	upserter := resource.NewUpserter(client, doguResourceGenerator)
 
-	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, localDoguRegistry)
+	doguRegistrator := cesregistry.NewCESDoguRegistrator(client, localDoguDescriptors, doguVersionRegistry)
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry(config.DockerRegistry.Username, config.DockerRegistry.Password)
 
 	return &ManagerSet{
-		RestConfig:            restConfig,
-		CollectApplier:        collectApplier,
-		FileExtractor:         fileExtractor,
-		CommandExecutor:       commandExecutor,
-		ServiceAccountCreator: serviceAccountCreator,
-		LocalDoguRegistry:     localDoguRegistry,
-		LocalDoguFetcher:      localDoguFetcher,
-		ResourceDoguFetcher:   resourceDoguFetcher,
-		DoguResourceGenerator: doguResourceGenerator,
-		ResourceUpserter:      upserter,
-		DoguRegistrator:       doguRegistrator,
-		ImageRegistry:         imageRegistry,
-		EcosystemClient:       ecosystemClient,
-		DependencyValidator:   dependencyValidator,
+		RestConfig:               restConfig,
+		CollectApplier:           collectApplier,
+		FileExtractor:            fileExtractor,
+		CommandExecutor:          commandExecutor,
+		ServiceAccountCreator:    serviceAccountCreator,
+		LocalDoguDescriptorRepo:  localDoguDescriptors,
+		LocalDoguVersionRegistry: doguVersionRegistry,
+		LocalDoguFetcher:         localDoguFetcher,
+		ResourceDoguFetcher:      resourceDoguFetcher,
+		DoguResourceGenerator:    doguResourceGenerator,
+		ResourceUpserter:         upserter,
+		DoguRegistrator:          doguRegistrator,
+		ImageRegistry:            imageRegistry,
+		EcosystemClient:          ecosystemClient,
+		DependencyValidator:      dependencyValidator,
 	}, nil
 }

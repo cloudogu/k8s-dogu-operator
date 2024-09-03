@@ -4,6 +4,8 @@ package thirdParty
 
 import (
 	"context"
+
+	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
@@ -50,9 +52,16 @@ type RemoteRegistry interface {
 	remote.Registry
 }
 
-// LocalDoguRegistry abstracts accessing various backends for reading and writing dogu specs (dogu.json).
-type LocalDoguRegistry interface {
-	dogu.LocalRegistry
+// LocalDoguDescriptorRepository abstracts accessing various backends for reading and writing dogu specs (dogu.json).
+type LocalDoguDescriptorRepository interface {
+	Get(context.Context, dogu.DoguVersion) (*core.Dogu, error)
+	GetAll(context.Context, []dogu.DoguVersion) (map[dogu.DoguVersion]*core.Dogu, error)
+	Add(context.Context, dogu.SimpleDoguName, *core.Dogu) error
+	DeleteAll(context.Context, dogu.SimpleDoguName) error
+}
+
+type LocalDoguVersionRegistry interface {
+	dogu.DoguVersionRegistry
 }
 
 type DeploymentInterface interface {

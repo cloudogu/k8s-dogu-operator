@@ -36,7 +36,7 @@ type doguSupportManager struct {
 func NewDoguSupportManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguSupportManager {
 	return &doguSupportManager{
 		client:                       client,
-		localDoguRegistry:            mgrSet.LocalDoguRegistry,
+		localDoguRegistry:            mgrSet.LocalDoguDescriptorRepo,
 		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
 		eventRecorder:                eventRecorder,
 	}

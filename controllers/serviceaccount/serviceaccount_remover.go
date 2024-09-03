@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/cloudogu/k8s-registry-lib/config"
+	regErrs "github.com/cloudogu/k8s-registry-lib/errors"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -12,10 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
-
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	doguDescriptors "github.com/cloudogu/k8s-registry-lib/dogu"
 )
 
 // Remover removes a dogu's service account.
@@ -23,7 +24,7 @@ type remover struct {
 	client            client.Client
 	sensitiveDoguRepo SensitiveDoguConfigRepository
 	doguFetcher       cloudogu.LocalDoguFetcher
-	localDoguRegistry dogu.LocalRegistry
+	versionGetter     doguVersionGetter
 	executor          cloudogu.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
@@ -31,12 +32,12 @@ type remover struct {
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(repo SensitiveDoguConfigRepository, localFetcher cloudogu.LocalDoguFetcher, localDoguRegistry dogu.LocalRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
+func NewRemover(repo SensitiveDoguConfigRepository, localFetcher cloudogu.LocalDoguFetcher, versionGetter doguVersionGetter, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
 	return &remover{
 		client:            client,
 		sensitiveDoguRepo: repo,
 		doguFetcher:       localFetcher,
-		localDoguRegistry: localDoguRegistry,
+		versionGetter:     versionGetter,
 		executor:          commandExecutor,
 		clientSet:         clientSet,
 		apiClient:         &apiClient{},
@@ -87,8 +88,9 @@ func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 		return nil
 	}
 
-	enabled, err := r.localDoguRegistry.IsEnabled(ctx, serviceAccount.Type)
-	if err != nil {
+	_, err := r.versionGetter.GetCurrent(ctx, doguDescriptors.SimpleDoguName(serviceAccount.Type))
+	enabled := !regErrs.IsNotFoundError(err)
+	if err != nil && enabled {
 		return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 	}
 	if !enabled {
@@ -111,7 +113,7 @@ func (r *remover) delete(
 	senDoguCfg *config.DoguConfig,
 	registryCredentialPath string,
 ) error {
-	saDogu, err := r.doguFetcher.FetchInstalled(ctx, serviceAccount.Type)
+	saDogu, err := r.doguFetcher.FetchInstalled(ctx, doguDescriptors.SimpleDoguName(serviceAccount.Type))
 	if err != nil {
 		return fmt.Errorf("failed to get service account dogu.json: %w", err)
 	}

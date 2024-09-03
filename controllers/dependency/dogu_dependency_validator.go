@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/cesapp-lib/registry"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
-
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
@@ -37,11 +35,9 @@ type doguDependencyValidator struct {
 }
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker
-func NewDoguDependencyValidator(localDoguRegistry dogu.LocalRegistry) *doguDependencyValidator {
-	doguDependencyChecker := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
-
+func NewDoguDependencyValidator(fetcher cloudogu.LocalDoguFetcher) *doguDependencyValidator {
 	return &doguDependencyValidator{
-		fetcher: doguDependencyChecker,
+		fetcher: fetcher,
 	}
 }
 
@@ -83,7 +79,7 @@ func (dc *doguDependencyValidator) validateDoguDependencies(ctx context.Context,
 func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, doguDependency core.Dependency, optional bool) error {
 	log.FromContext(ctx).Info(fmt.Sprintf("checking dogu dependency %s:%s", doguDependency.Name, doguDependency.Version))
 
-	localDependency, err := dc.fetcher.FetchInstalled(ctx, doguDependency.Name)
+	localDependency, err := dc.fetcher.FetchInstalled(ctx, dogu.SimpleDoguName(doguDependency.Name))
 	if err != nil {
 		if optional && registry.IsKeyNotFoundError(err) {
 			return nil // not installed => no error as this is ok for optional dependencies

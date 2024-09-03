@@ -209,18 +209,18 @@ var _ = ginkgo.BeforeSuite(func() {
 	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
 
 	mgrSet := &util.ManagerSet{
-		RestConfig:            ctrl.GetConfigOrDie(),
-		ImageRegistry:         ImageRegistryMock,
-		ServiceAccountCreator: serviceAccountCreator,
-		FileExtractor:         fileExtract,
-		CollectApplier:        collectApplier,
-		CommandExecutor:       CommandExecutor,
-		ResourceUpserter:      upserter,
-		DoguRegistrator:       doguRegistrator,
-		LocalDoguFetcher:      localDoguFetcher,
-		DoguResourceGenerator: resourceGenerator,
-		ResourceDoguFetcher:   remoteDoguFetcher,
-		LocalDoguRegistry:     localDoguRegistry,
+		RestConfig:              ctrl.GetConfigOrDie(),
+		ImageRegistry:           ImageRegistryMock,
+		ServiceAccountCreator:   serviceAccountCreator,
+		FileExtractor:           fileExtract,
+		CollectApplier:          collectApplier,
+		CommandExecutor:         CommandExecutor,
+		ResourceUpserter:        upserter,
+		DoguRegistrator:         doguRegistrator,
+		LocalDoguFetcher:        localDoguFetcher,
+		DoguResourceGenerator:   resourceGenerator,
+		ResourceDoguFetcher:     remoteDoguFetcher,
+		LocalDoguDescriptorRepo: localDoguRegistry,
 	}
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder, ecosystemClientSet)

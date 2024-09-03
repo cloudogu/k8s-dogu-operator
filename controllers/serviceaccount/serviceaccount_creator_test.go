@@ -184,7 +184,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 			client:            cli,
 			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
 			doguFetcher:       localFetcher,
-			localDoguRegistry: localDoguRegMock,
+			localDoguVersions: localDoguRegMock,
 			executor:          commandExecutorMock,
 		}
 
@@ -221,7 +221,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
-		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, localDoguRegistry: localDoguRegMock}
+		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, localDoguVersions: localDoguRegMock}
 
 		// when
 		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
@@ -240,7 +240,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
-		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, localDoguRegistry: localDoguRegMock}
+		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, localDoguVersions: localDoguRegMock}
 
 		// when
 		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptorOptional)
@@ -257,7 +257,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
-		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, localDoguRegistry: localDoguRegMock}
+		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, localDoguVersions: localDoguRegMock}
 
 		// when
 		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptor)
@@ -280,7 +280,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		serviceAccountCreator := creator{
 			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
 			doguFetcher:       localFetcher,
-			localDoguRegistry: localDoguRegMock,
+			localDoguVersions: localDoguRegMock,
 		}
 
 		// when
@@ -310,7 +310,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 			client:            cliWithoutReadyPod,
 			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
 			doguFetcher:       localFetcher,
-			localDoguRegistry: localDoguRegMock,
+			localDoguVersions: localDoguRegMock,
 		}
 
 		// when
@@ -335,7 +335,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 			client:            cli,
 			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
 			doguFetcher:       localFetcher,
-			localDoguRegistry: localDoguRegMock,
+			localDoguVersions: localDoguRegMock,
 		}
 
 		// when
@@ -366,7 +366,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
 			doguFetcher:       localFetcher,
 			executor:          commandExecutorMock,
-			localDoguRegistry: localDoguRegMock,
+			localDoguVersions: localDoguRegMock,
 		}
 
 		// when
@@ -399,7 +399,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
 			doguFetcher:       localFetcher,
 			executor:          commandExecutorMock,
-			localDoguRegistry: localDoguRegMock,
+			localDoguVersions: localDoguRegMock,
 		}
 
 		// when
@@ -431,7 +431,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
 			doguFetcher:       localFetcher,
 			executor:          commandExecutorMock,
-			localDoguRegistry: localDoguRegMock,
+			localDoguVersions: localDoguRegMock,
 		}
 
 		// when

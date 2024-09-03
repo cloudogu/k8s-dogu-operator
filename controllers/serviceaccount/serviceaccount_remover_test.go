@@ -84,7 +84,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			sensitiveDoguRepo: sensitiveConfigRepoMock,
 			doguFetcher:       localFetcher,
 			executor:          commandExecutorMock,
-			localDoguRegistry: localDoguRegMock,
+			versionGetter:     localDoguRegMock,
 		}
 
 		// when
@@ -136,7 +136,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			client:            cli,
 			sensitiveDoguRepo: sensitiveConfigRepoMock,
 			doguFetcher:       localFetcher,
-			localDoguRegistry: localDoguRegMock,
+			versionGetter:     localDoguRegMock,
 			executor:          commandExecutorMock,
 		}
 
@@ -180,7 +180,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, assert.AnError)
 
-		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, localDoguRegistry: localDoguRegMock}
+		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, versionGetter: localDoguRegMock}
 
 		// when
 		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
@@ -203,7 +203,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, "postgresql").Return(false, nil)
 
-		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, localDoguRegistry: localDoguRegMock}
+		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, versionGetter: localDoguRegMock}
 
 		// when
 		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
@@ -227,7 +227,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, assert.AnError)
-		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, localDoguRegistry: localDoguRegMock}
+		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, versionGetter: localDoguRegMock}
 
 		// when
 		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
@@ -255,7 +255,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		cliWithoutReadyPod := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			Build()
-		serviceAccountCreator := remover{client: cliWithoutReadyPod, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, localDoguRegistry: localDoguRegMock}
+		serviceAccountCreator := remover{client: cliWithoutReadyPod, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, versionGetter: localDoguRegMock}
 
 		// when
 		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
@@ -289,7 +289,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(invalidPostgresqlDescriptor, nil)
-		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, localDoguRegistry: localDoguRegMock}
+		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, versionGetter: localDoguRegMock}
 
 		// when
 		err := serviceAccountRemover.RemoveAll(testCtx, redmineDescriptor)
@@ -329,7 +329,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		localFetcher := mocks.NewLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
-		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, executor: commandExecutorMock, localDoguRegistry: localDoguRegMock}
+		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, executor: commandExecutorMock, versionGetter: localDoguRegMock}
 
 		// when
 		err := serviceAccountRemover.RemoveAll(testCtx, redmineDescriptor)
@@ -375,7 +375,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			sensitiveDoguRepo: sensitiveConfigRepoMock,
 			doguFetcher:       localFetcher,
 			executor:          commandExecutorMock,
-			localDoguRegistry: localDoguRegMock,
+			versionGetter:     localDoguRegMock,
 		}
 
 		// when

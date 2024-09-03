@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-registry-lib/config"
 	"io"
 	"strings"
 
@@ -14,10 +13,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
+	"github.com/cloudogu/k8s-registry-lib/config"
+	doguDescriptors "github.com/cloudogu/k8s-registry-lib/dogu"
+	"github.com/cloudogu/k8s-registry-lib/errors"
 
 	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
@@ -33,7 +33,7 @@ type creator struct {
 	client            client.Client
 	sensitiveDoguRepo SensitiveDoguConfigRepository
 	doguFetcher       cloudogu.LocalDoguFetcher
-	localDoguRegistry dogu.LocalRegistry
+	localDoguVersions doguDescriptors.DoguVersionRegistry
 	executor          cloudogu.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
@@ -41,8 +41,7 @@ type creator struct {
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(repo SensitiveDoguConfigRepository, localDoguRegistry dogu.LocalRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
-	localFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
+func NewCreator(repo SensitiveDoguConfigRepository, localVersions doguDescriptors.DoguVersionRegistry, localFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	return &creator{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -51,7 +50,7 @@ func NewCreator(repo SensitiveDoguConfigRepository, localDoguRegistry dogu.Local
 		clientSet:         clientSet,
 		apiClient:         &apiClient{},
 		namespace:         namespace,
-		localDoguRegistry: localDoguRegistry,
+		localDoguVersions: localVersions,
 	}
 }
 
@@ -97,17 +96,18 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 		return nil
 	}
 
-	enabled, err := c.localDoguRegistry.IsEnabled(ctx, serviceAccount.Type)
-	if err != nil {
+	_, err := c.localDoguVersions.GetCurrent(ctx, doguDescriptors.SimpleDoguName(serviceAccount.Type))
+	doguNotFound := errors.IsNotFoundError(err)
+	if err != nil && !doguNotFound {
 		return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 	}
 
-	if !enabled && c.isOptionalServiceAccount(dogu, serviceAccount.Type) {
+	if doguNotFound && c.isOptionalServiceAccount(dogu, serviceAccount.Type) {
 		logger.Info(fmt.Sprintf("skipping optional service account creation for %s, because the dogu is not installed", serviceAccount.Type))
 		return nil
 	}
 
-	if !enabled && c.containsDependency(dogu.Dependencies, serviceAccount.Type) {
+	if doguNotFound && c.containsDependency(dogu.Dependencies, serviceAccount.Type) {
 		return fmt.Errorf("service account dogu is not enabled and not optional")
 	}
 
@@ -120,7 +120,7 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 }
 
 func (c *creator) create(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
-	saDogu, err := c.doguFetcher.FetchInstalled(ctx, serviceAccount.Type)
+	saDogu, err := c.doguFetcher.FetchInstalled(ctx, doguDescriptors.SimpleDoguName(serviceAccount.Type))
 	if err != nil {
 		return fmt.Errorf("failed to get service account dogu.json: %w", err)
 	}
@@ -205,7 +205,7 @@ func (c *creator) writeServiceAccounts(ctx context.Context, senDoguCfg *config.D
 func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo SensitiveDoguConfigRepository) error {
 	update, err := cfgRepo.Update(ctx, *senDoguCfg)
 	if err != nil {
-		if config.IsConflictError(err) {
+		if errors.IsConflictError(err) {
 			mergedCfg, lErr := cfgRepo.SaveOrMerge(ctx, *senDoguCfg)
 			if lErr != nil {
 				return fmt.Errorf("unable to save and merge sensitive config for dogu %s after conflict error: %w", senDoguCfg.DoguName, lErr)

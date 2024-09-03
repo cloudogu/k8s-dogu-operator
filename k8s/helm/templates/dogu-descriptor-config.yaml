@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-dogu-descriptor-config
+  labels:
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+data:
+  # the number of old dogu descriptors to keep for a single dogu
+  garbageCollectionRetention: {{ .Values.doguDescriptors.garbageCollectionRetention }}

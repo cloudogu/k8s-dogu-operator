@@ -3,7 +3,12 @@ package serviceaccount
 import (
 	"context"
 	"github.com/cloudogu/k8s-registry-lib/config"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 )
+
+type doguVersionGetter interface {
+	GetCurrent(context.Context, dogu.SimpleDoguName) (dogu.DoguVersion, error)
+}
 
 type SensitiveDoguConfigProvider interface {
 	GetSensitiveDoguConfig(ctx context.Context, doguName string) (SensitiveDoguConfig, error)

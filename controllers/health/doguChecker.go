@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -92,7 +93,7 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 	for _, dependency := range localDogu.GetDependenciesOfType(core.DependencyTypeDogu) {
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
-		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, localDependencyDoguName.Name)
+		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, dogu.SimpleDoguName(localDependencyDoguName.Name))
 		if err != nil {
 			err2 := fmt.Errorf("error getting registry key for %q: %w", localDependencyDoguName, err)
 			result = errors.Join(result, err2)
@@ -121,7 +122,7 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 	for _, dependency := range localDogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu) {
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
-		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, localDependencyDoguName.Name)
+		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, dogu.SimpleDoguName(localDependencyDoguName.Name))
 		if err != nil {
 			if optional && registry.IsKeyNotFoundError(err) {
 				// optional dogus may not be installed, so continue and do nothing

@@ -47,7 +47,7 @@ func NewDoguDeleteManager(
 		client:                  client,
 		localDoguFetcher:        mgrSet.LocalDoguFetcher,
 		doguRegistrator:         mgrSet.DoguRegistrator,
-		serviceAccountRemover:   serviceaccount.NewRemover(configRepos.SensitiveDoguRepository, mgrSet.LocalDoguFetcher, mgrSet.LocalDoguRegistry, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
+		serviceAccountRemover:   serviceaccount.NewRemover(configRepos.SensitiveDoguRepository, mgrSet.LocalDoguFetcher, mgrSet.LocalDoguDescriptorRepo, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
 		exposedPortRemover:      resource.NewDoguExposedPortHandler(client),
 		eventRecorder:           recorder,
 		doguConfigRepository:    configRepos.DoguConfigRepository,
