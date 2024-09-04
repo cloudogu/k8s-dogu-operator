@@ -2,7 +2,9 @@ COMPONENT_DEV_VERSION?=${VERSION}-dev
 
 include ${BUILD_DIR}/make/k8s.mk
 
-BINARY_HELM_ADDITIONAL_PUSH_ARGS?=--plain-http
+ifeq (${RUNTIME_ENV}, local)
+	BINARY_HELM_ADDITIONAL_PUSH_ARGS?=--plain-http
+endif
 BINARY_HELM_ADDITIONAL_PACK_ARGS?=
 BINARY_HELM_ADDITIONAL_UNINST_ARGS?=
 BINARY_HELM_ADDITIONAL_UPGR_ARGS?=
@@ -12,6 +14,9 @@ HELM_SOURCE_DIR ?= k8s/helm
 HELM_RELEASE_TGZ=${HELM_TARGET_DIR}/${ARTIFACT_ID}-${VERSION}.tgz
 HELM_DEV_RELEASE_TGZ=${HELM_TARGET_DIR}/${ARTIFACT_ID}-${COMPONENT_DEV_VERSION}.tgz
 HELM_ARTIFACT_NAMESPACE?=k8s
+ifeq (${RUNTIME_ENV}, remote)
+	HELM_ARTIFACT_NAMESPACE?=testing/k8s
+endif
 
 K8S_RESOURCE_COMPONENT ?= "${K8S_RESOURCE_TEMP_FOLDER}/component-${ARTIFACT_ID}-${VERSION}.yaml"
 K8S_RESOURCE_COMPONENT_CR_TEMPLATE_YAML ?= $(BUILD_DIR)/make/k8s-component.tpl
@@ -75,12 +80,12 @@ helm-update-dependencies: ${BINARY_HELM} ## Update Helm chart dependencies
 .PHONY: helm-apply
 helm-apply: ${BINARY_HELM} check-k8s-namespace-env-var ${IMAGE_IMPORT_TARGET} helm-generate ${HELM_PRE_APPLY_TARGETS} ## Generates and installs the Helm chart.
 	@echo "Apply generated helm chart"
-	@${BINARY_HELM} upgrade -i ${ARTIFACT_ID} ${HELM_TARGET_DIR} ${BINARY_HELM_ADDITIONAL_UPGR_ARGS} --namespace ${NAMESPACE}
+	@${BINARY_HELM} --kube-context="${KUBE_CONTEXT_NAME}" upgrade -i ${ARTIFACT_ID} ${HELM_TARGET_DIR} ${BINARY_HELM_ADDITIONAL_UPGR_ARGS} --namespace ${NAMESPACE}
 
 .PHONY: helm-delete
 helm-delete: ${BINARY_HELM} check-k8s-namespace-env-var ## Uninstalls the current Helm chart.
 	@echo "Uninstall helm chart"
-	@${BINARY_HELM} uninstall ${ARTIFACT_ID} --namespace=${NAMESPACE} ${BINARY_HELM_ADDITIONAL_UNINST_ARGS} || true
+	@${BINARY_HELM} --kube-context="${KUBE_CONTEXT_NAME}" uninstall ${ARTIFACT_ID} --namespace=${NAMESPACE} ${BINARY_HELM_ADDITIONAL_UNINST_ARGS} || true
 
 .PHONY: helm-reinstall
 helm-reinstall: helm-delete helm-apply ## Uninstalls the current helm chart and reinstalls it.
@@ -88,11 +93,11 @@ helm-reinstall: helm-delete helm-apply ## Uninstalls the current helm chart and 
 .PHONY: helm-chart-import
 helm-chart-import: ${CHECK_VAR_TARGETS} helm-generate helm-package ${IMAGE_IMPORT_TARGET} ## Imports the currently available chart into the cluster-local registry.
 	@if [[ ${STAGE} == "development" ]]; then \
-		echo "Import ${HELM_DEV_RELEASE_TGZ} into K8s cluster ${K3CES_REGISTRY_URL_PREFIX}..."; \
-		${BINARY_HELM} push ${HELM_DEV_RELEASE_TGZ} oci://${K3CES_REGISTRY_URL_PREFIX}/${HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
+		echo "Import ${HELM_DEV_RELEASE_TGZ} into K8s cluster ${CES_REGISTRY_HOST}..."; \
+		${BINARY_HELM} push ${HELM_DEV_RELEASE_TGZ} oci://${CES_REGISTRY_HOST}/${HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
 	else \
-	  	echo "Import ${HELM_RELEASE_TGZ} into K8s cluster ${K3CES_REGISTRY_URL_PREFIX}..."; \
-        ${BINARY_HELM} push ${HELM_RELEASE_TGZ} oci://${K3CES_REGISTRY_URL_PREFIX}/${HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
+	  	echo "Import ${HELM_RELEASE_TGZ} into K8s cluster ${CES_REGISTRY_HOST}..."; \
+        ${BINARY_HELM} push ${HELM_RELEASE_TGZ} oci://${CES_REGISTRY_HOST}/${HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
     fi
 	@echo "Done."
 
@@ -138,12 +143,12 @@ ${K8S_RESOURCE_COMPONENT_CR_TEMPLATE_YAML}: ${K8S_RESOURCE_TEMP_FOLDER}
 
 .PHONY: component-apply
 component-apply: check-k8s-namespace-env-var ${COMPONENT_PRE_APPLY_TARGETS} ${IMAGE_IMPORT_TARGET} helm-generate helm-chart-import component-generate ## Applies the component yaml resource to the actual defined context.
-	@kubectl apply -f "${K8S_RESOURCE_COMPONENT}" --namespace="${NAMESPACE}"
+	@kubectl apply -f "${K8S_RESOURCE_COMPONENT}" --namespace="${NAMESPACE}" --context="${KUBE_CONTEXT_NAME}"
 	@echo "Done."
 
 .PHONY: component-delete
 component-delete: check-k8s-namespace-env-var component-generate $(K8S_POST_GENERATE_TARGETS) ## Deletes the component yaml resource from the actual defined context.
-	@kubectl delete -f "${K8S_RESOURCE_COMPONENT}" --namespace="${NAMESPACE}" || true
+	@kubectl delete -f "${K8S_RESOURCE_COMPONENT}" --namespace="${NAMESPACE}" --context="${KUBE_CONTEXT_NAME}" || true
 	@echo "Done."
 
 .PHONY: component-reinstall
