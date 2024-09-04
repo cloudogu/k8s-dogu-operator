@@ -1,0 +1,9 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: bluespice-opensearch
+  labels:
+    app: ces
+spec:
+  name: hallowelt/bluespice-opensearch
+  version: 2.11.1-1

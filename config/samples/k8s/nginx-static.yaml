@@ -6,4 +6,4 @@ metadata:
     app: ces
 spec:
   name: k8s/nginx-static
-  version: 1.23.1-5
+  version: 1.26.1-1
