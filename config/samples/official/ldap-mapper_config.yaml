@@ -1,0 +1,4 @@
+backend:
+  type: "embedded"
+  host: "ldap"
+  port: "389"

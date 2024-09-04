@@ -2,17 +2,7 @@
 
 ## Local development
 
-1. Follow the deployment instructions of k8s-ecosystem
-2. Edit your `/etc/hosts` and add a mapping from localhost to etcd
-    - `127.0.0.1       localhost etcd etcd.ecosystem.svc.cluster.local`
-3. Open the file `.env.template` and follow the instructions to create an env file with your personal data
-4. Make an etcd port forward
-   - `kubectl -n=ecosystem port-forward etcd-0 4001:2379`
-5. Delete the existing dogu operator from the cluster to avoid concurrency issues
-   - `kubectl delete component k8s-dogu-operator`
-6. Create necessary debug resources:
-   - `kubectl apply -f config/debug`
-7. Run `make run` to run the dogu operator locally
+1. Run `make run` to run the dogu operator locally
 
 ### Debugging with IntelliJ
 

@@ -7,7 +7,6 @@ GOTAG=1.22.5
 MAKEFILES_VERSION=9.2.0
 LINT_VERSION=v1.57.2
 
-K8S_RUN_PRE_TARGETS = setup-etcd-port-forward
 PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
 K8S_COMPONENT_TARGET_VALUES = ${HELM_TARGET_DIR}/values.yaml
@@ -51,10 +50,6 @@ helm-values-replace-image-repo: $(BINARY_YQ)
     	fi
 
 ##@ Deployment
-
-.PHONY: setup-etcd-port-forward
-setup-etcd-port-forward:
-	kubectl -n ${NAMESPACE} port-forward etcd-0 4001:2379 &
 
 .PHONY: template-stage
 template-stage: $(BINARY_YQ)

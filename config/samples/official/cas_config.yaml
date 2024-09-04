@@ -1,0 +1,12 @@
+ldap:
+  ds_type: "embedded"
+  attribute_id: "uid"
+  attribute_group: "memberof"
+  attribute_mail: "mail"
+  search_filter: "(objectClass=person)"
+  attribute_fullname: "cn"
+  encryption: "none"
+  host: "ldap"
+  port: "389"
+logging:
+  root: "DEBUG"
