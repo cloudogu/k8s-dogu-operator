@@ -38,5 +38,19 @@ func TestNewManagerSet(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.NotNil(t, actual)
+
+		assert.Equal(t, restConfig, actual.RestConfig)
+		assert.NotNil(t, actual.CollectApplier)
+		assert.NotNil(t, actual.FileExtractor)
+		assert.NotNil(t, actual.CommandExecutor)
+		assert.NotNil(t, actual.ServiceAccountCreator)
+		assert.NotNil(t, actual.LocalDoguFetcher)
+		assert.NotNil(t, actual.ResourceDoguFetcher)
+		assert.NotNil(t, actual.ResourceUpserter)
+		assert.NotNil(t, actual.DoguRegistrator)
+		assert.NotNil(t, actual.ImageRegistry)
+		assert.Equal(t, ecosystemMock, actual.EcosystemClient)
+		assert.Equal(t, clientSet, actual.ClientSet)
+		assert.NotNil(t, actual.DependencyValidator)
 	})
 }

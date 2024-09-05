@@ -89,6 +89,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 		DoguRegistrator:       doguRegistrator,
 		ImageRegistry:         imageRegistry,
 		EcosystemClient:       ecosystemClient,
+		ClientSet:             clientSet,
 		DependencyValidator:   dependencyValidator,
 	}, nil
 }
