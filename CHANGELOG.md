@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.1.0] - 2024-09-18
+### Changed
+- Relicense to AGPL-3.0-only
+
 ## [v2.0.1] - 2024-08-08
 ### Fixed
 - [#187] Fix dependency for k8s-dogu-operator-crd in helm-chart
