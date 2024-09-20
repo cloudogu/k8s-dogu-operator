@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"github.com/cloudogu/k8s-registry-lib/config"
+	"github.com/cloudogu/k8s-registry-lib/errors"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -227,7 +228,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 
 		if !doguCfgAlreadyExists {
 			lErr := m.doguConfigRepository.Delete(lCtx, config.SimpleDoguName(doguName))
-			if lErr != nil && !config.IsNotFoundError(lErr) {
+			if lErr != nil && !errors.IsNotFoundError(lErr) {
 				logger.Error(lErr, "could not delete dogu config during cleanUp", "dogu", doguName)
 			} else {
 				logger.Info("deleted dogu config during cleanUp", "dogu", doguName)
@@ -236,7 +237,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 
 		if !sensitiveCfgAlreadyExists {
 			lErr := m.sensitiveDoguRepository.Delete(lCtx, config.SimpleDoguName(doguName))
-			if lErr != nil && !config.IsNotFoundError(lErr) {
+			if lErr != nil && !errors.IsNotFoundError(lErr) {
 				logger.Error(lErr, "could not delete sensitive dogu config during cleanUp", "dogu", doguName)
 			} else {
 				logger.Info("deleted sensitive dogu config during cleanUp", "dogu", doguName)
@@ -248,7 +249,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 
 	_, err := m.doguConfigRepository.Create(ctx, emptyCfg)
 	if err != nil {
-		if !config.IsAlreadyExistsError(err) {
+		if !errors.IsAlreadyExistsError(err) {
 			return cleanUp, fmt.Errorf("could not create dogu config for dogu %s: %w", doguName, err)
 		}
 
@@ -257,7 +258,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 
 	_, err = m.sensitiveDoguRepository.Create(ctx, emptyCfg)
 	if err != nil {
-		if !config.IsAlreadyExistsError(err) {
+		if !errors.IsAlreadyExistsError(err) {
 			return cleanUp, fmt.Errorf("could not create sensitive dogu config for dogu %s: %w", doguName, err)
 		}
 

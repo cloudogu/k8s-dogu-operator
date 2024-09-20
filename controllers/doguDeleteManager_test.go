@@ -23,7 +23,7 @@ type doguDeleteManagerWithMocks struct {
 	deleteManager             *doguDeleteManager
 	imageRegistryMock         *mocks.ImageRegistry
 	doguRegistratorMock       *mocks.DoguRegistrator
-	localDoguFetcherMock      *mocks.LocalDoguFetcher
+	localDoguFetcherMock      *mocks.MockLocalDoguFetcher
 	serviceAccountRemoverMock *mocks.ServiceAccountRemover
 	exposedPortRemover        *mocks.ExposePortRemover
 	doguConfigRepo            *extMocks.DoguConfigRepository
@@ -35,7 +35,7 @@ func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 	imageRegistry := mocks.NewImageRegistry(t)
 	doguRegistrator := mocks.NewDoguRegistrator(t)
 	serviceAccountRemover := mocks.NewServiceAccountRemover(t)
-	doguFetcher := mocks.NewLocalDoguFetcher(t)
+	doguFetcher := mocks.NewMockLocalDoguFetcher(t)
 	exposedPortRemover := mocks.NewExposePortRemover(t)
 	doguConfigRepo := extMocks.NewDoguConfigRepository(t)
 	sensitiveConfigRepo := extMocks.NewDoguConfigRepository(t)

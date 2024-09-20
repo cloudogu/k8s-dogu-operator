@@ -12,12 +12,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 
@@ -99,19 +96,18 @@ type doguReconciler struct {
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, localDoguRegistry dogu.LocalRegistry) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, doguFetcher cloudogu.LocalDoguFetcher) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(doguInterface, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	return &doguReconciler{
 		client:             client,
 		doguManager:        doguManager,
 		doguRequeueHandler: doguRequeueHandler,
 		recorder:           eventRecorder,
-		fetcher:            localDoguFetcher,
+		fetcher:            doguFetcher,
 		doguInterface:      doguInterface,
 	}, nil
 }

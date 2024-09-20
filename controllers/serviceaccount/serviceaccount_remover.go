@@ -12,8 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
-
 	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
@@ -23,7 +21,6 @@ type remover struct {
 	client            client.Client
 	sensitiveDoguRepo SensitiveDoguConfigRepository
 	doguFetcher       cloudogu.LocalDoguFetcher
-	localDoguRegistry dogu.LocalRegistry
 	executor          cloudogu.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
@@ -31,12 +28,11 @@ type remover struct {
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(repo SensitiveDoguConfigRepository, localFetcher cloudogu.LocalDoguFetcher, localDoguRegistry dogu.LocalRegistry, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
+func NewRemover(repo SensitiveDoguConfigRepository, localFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
 	return &remover{
 		client:            client,
 		sensitiveDoguRepo: repo,
 		doguFetcher:       localFetcher,
-		localDoguRegistry: localDoguRegistry,
 		executor:          commandExecutor,
 		clientSet:         clientSet,
 		apiClient:         &apiClient{},
@@ -87,7 +83,7 @@ func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 		return nil
 	}
 
-	enabled, err := r.localDoguRegistry.IsEnabled(ctx, serviceAccount.Type)
+	enabled, err := r.doguFetcher.Enabled(ctx, serviceAccount.Type)
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	registryConfig "github.com/cloudogu/k8s-registry-lib/config"
+	registryErrors "github.com/cloudogu/k8s-registry-lib/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -47,7 +48,7 @@ func NewDoguDeleteManager(
 		client:                  client,
 		localDoguFetcher:        mgrSet.LocalDoguFetcher,
 		doguRegistrator:         mgrSet.DoguRegistrator,
-		serviceAccountRemover:   serviceaccount.NewRemover(configRepos.SensitiveDoguRepository, mgrSet.LocalDoguFetcher, mgrSet.LocalDoguRegistry, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
+		serviceAccountRemover:   serviceaccount.NewRemover(configRepos.SensitiveDoguRepository, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
 		exposedPortRemover:      resource.NewDoguExposedPortHandler(client),
 		eventRecorder:           recorder,
 		doguConfigRepository:    configRepos.DoguConfigRepository,
@@ -137,11 +138,11 @@ func (m *doguDeleteManager) removeConfigs(ctx context.Context, doguName string) 
 
 	var err error
 
-	if lErr := m.doguConfigRepository.Delete(ctx, simpleDoguName); lErr != nil && !registryConfig.IsNotFoundError(lErr) {
+	if lErr := m.doguConfigRepository.Delete(ctx, simpleDoguName); lErr != nil && !registryErrors.IsNotFoundError(lErr) {
 		err = errors.Join(err, fmt.Errorf("could not delete dogu config: %w", lErr))
 	}
 
-	if lErr := m.sensitiveDoguRepository.Delete(ctx, simpleDoguName); lErr != nil && !registryConfig.IsNotFoundError(lErr) {
+	if lErr := m.sensitiveDoguRepository.Delete(ctx, simpleDoguName); lErr != nil && !registryErrors.IsNotFoundError(lErr) {
 		err = errors.Join(err, fmt.Errorf("could not delete sensitive dogu config: %w", lErr))
 	}
 

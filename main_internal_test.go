@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -85,72 +86,14 @@ func Test_noAggregationKey(t *testing.T) {
 }
 
 func Test_startDoguOperator(t *testing.T) {
-	// override default controller method to create a new manager
-	oldNewManagerDelegate := ctrl.NewManager
-	defer func() { ctrl.NewManager = oldNewManagerDelegate }()
-
-	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	defer func() { ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate }()
-	ctrl.GetConfigOrDie = func() *rest.Config {
-		return &rest.Config{}
-	}
-
-	// override default controller method to retrieve a kube config
-	oldGetConfigDelegate := ctrl.GetConfig
-	defer func() { ctrl.GetConfig = oldGetConfigDelegate }()
-	ctrl.GetConfig = func() (*rest.Config, error) {
-		return &rest.Config{}, nil
-	}
-
-	// override default controller method to signal the setup handler
-	oldHandler := ctrl.SetupSignalHandler
-	defer func() { ctrl.SetupSignalHandler = oldHandler }()
-	ctrl.SetupSignalHandler = func() context.Context {
-		return context.TODO()
-	}
-
-	// override default controller method to retrieve a kube config
-	oldSetLoggerDelegate := ctrl.SetLogger
-	defer func() { ctrl.SetLogger = oldSetLoggerDelegate }()
-
-	oldDoguManager := controllers.NewManager
-	defer func() { controllers.NewManager = oldDoguManager }()
-	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
-		return &controllers.DoguManager{}, nil
-	}
-
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cloudogu.com",
-		Version: "v1",
-		Kind:    "dogu",
-	}, &v1.Dogu{})
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cloudogu.com",
-		Version: "v1",
-		Kind:    "dogurestart",
-	}, &v1.DoguRestart{})
-	myClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-
-	defaultMockDefinitions := map[string]mockDefinition{
-		"GetScheme":            {ReturnValue: scheme},
-		"GetClient":            {ReturnValue: myClient},
-		"GetCache":             {ReturnValue: nil},
-		"GetConfig":            {ReturnValue: &rest.Config{}},
-		"Add":                  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
-		"AddHealthzCheck":      {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
-		"AddReadyzCheck":       {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
-		"Start":                {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
-		"GetControllerOptions": {ReturnValue: runtimeconf.Controller{}},
-		"GetEventRecorderFor":  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
-	}
 
 	t.Run("Error on missing namespace environment variable", func(t *testing.T) {
 		// given
+		resetFunc := setupOverrides()
+		defer resetFunc()
+
 		_ = os.Unsetenv("NAMESPACE")
-		getNewMockManager(nil, defaultMockDefinitions)
+		getNewMockManager(nil, createMockDefinitions())
 
 		// when
 		err := startDoguOperator()
@@ -160,26 +103,14 @@ func Test_startDoguOperator(t *testing.T) {
 		require.Contains(t, err.Error(), "failed to read namespace: failed to get env var [NAMESPACE]")
 	})
 
-	dockerRegistry := config.DockerRegistrySecretData{
-		Auths: map[string]config.DockerRegistryData{
-			"my.registry": {
-				Username: "myusername",
-				Password: "mypassword",
-				Email:    "myemail",
-				Auth:     "myauth",
-			},
-		},
-	}
-	dockerRegistryString, err := json.Marshal(dockerRegistry)
-	require.NoError(t, err)
-	t.Setenv("NAMESPACE", "mynamespace")
-	t.Setenv("DOGU_REGISTRY_ENDPOINT", "mynamespace")
-	t.Setenv("DOGU_REGISTRY_USERNAME", "mynamespace")
-	t.Setenv("DOGU_REGISTRY_PASSWORD", "mynamespace")
-	t.Setenv("DOCKER_REGISTRY", string(dockerRegistryString))
 	t.Run("Test without logger environment variables", func(t *testing.T) {
 		// given
-		k8sManager := getNewMockManager(nil, defaultMockDefinitions)
+		resetFunc := setupOverrides()
+		defer resetFunc()
+
+		setupEnvironment(t)
+
+		k8sManager := getNewMockManager(nil, createMockDefinitions())
 
 		// when
 		err := startDoguOperator()
@@ -193,7 +124,12 @@ func Test_startDoguOperator(t *testing.T) {
 
 	t.Run("Test with error on manager creation", func(t *testing.T) {
 		// given
-		getNewMockManager(expectedError, defaultMockDefinitions)
+		resetFunc := setupOverrides()
+		defer resetFunc()
+
+		setupEnvironment(t)
+
+		getNewMockManager(expectedError, createMockDefinitions())
 
 		// when
 		err := startDoguOperator()
@@ -212,7 +148,12 @@ func Test_startDoguOperator(t *testing.T) {
 	for _, mockDefinitionName := range mockDefinitionsThatCanFail {
 		t.Run(fmt.Sprintf("fail setup when error on %s", mockDefinitionName), func(t *testing.T) {
 			// given
-			adaptedMockDefinitions := getCopyMap(defaultMockDefinitions)
+			resetFunc := setupOverrides()
+			t.Cleanup(resetFunc)
+
+			setupEnvironment(t)
+
+			adaptedMockDefinitions := getCopyMap(createMockDefinitions())
 			adaptedMockDefinitions[mockDefinitionName] = mockDefinition{
 				Arguments:   adaptedMockDefinitions[mockDefinitionName].Arguments,
 				ReturnValue: expectedError,
@@ -220,10 +161,110 @@ func Test_startDoguOperator(t *testing.T) {
 			getNewMockManager(nil, adaptedMockDefinitions)
 
 			// when
-			err := startDoguOperator()
+			startErr := startDoguOperator()
 
 			// then
-			require.ErrorIs(t, err, expectedError)
+			require.ErrorIs(t, startErr, expectedError)
 		})
+	}
+}
+
+func setupEnvironment(t *testing.T) {
+	dockerRegistry := config.DockerRegistrySecretData{
+		Auths: map[string]config.DockerRegistryData{
+			"my.registry": {
+				Username: "myusername",
+				Password: "mypassword",
+				Email:    "myemail",
+				Auth:     "myauth",
+			},
+		},
+	}
+	dockerRegistryString, err := json.Marshal(dockerRegistry)
+	require.NoError(t, err)
+	t.Setenv("NAMESPACE", "mynamespace")
+	t.Setenv("DOGU_REGISTRY_ENDPOINT", "mynamespace")
+	t.Setenv("DOGU_REGISTRY_USERNAME", "mynamespace")
+	t.Setenv("DOGU_REGISTRY_PASSWORD", "mynamespace")
+	t.Setenv("DOCKER_REGISTRY", string(dockerRegistryString))
+}
+
+func setupOverrides() func() {
+	// override default controller method to create a new manager
+	oldNewManagerDelegate := ctrl.NewManager
+
+	// override default controller method to retrieve a kube config
+	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
+	ctrl.GetConfigOrDie = func() *rest.Config {
+		return &rest.Config{}
+	}
+
+	// override default controller method to retrieve a kube config
+	oldGetConfigDelegate := ctrl.GetConfig
+	ctrl.GetConfig = func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	}
+
+	// override default controller method to signal the setup handler
+	oldHandler := ctrl.SetupSignalHandler
+	ctrl.SetupSignalHandler = func() context.Context {
+		return context.TODO()
+	}
+
+	// override default controller-builder and add skipNameValidation for tests
+	oldCtrlBuilder := ctrl.NewControllerManagedBy
+	ctrl.NewControllerManagedBy = func(m manager.Manager) *ctrl.Builder {
+		builder := oldCtrlBuilder(m)
+		skipNameValidation := true
+		builder.WithOptions(controller.Options{SkipNameValidation: &skipNameValidation})
+
+		return builder
+	}
+
+	// override default controller method to retrieve a kube config
+	oldSetLoggerDelegate := ctrl.SetLogger
+
+	oldDoguManager := controllers.NewManager
+	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
+		return &controllers.DoguManager{}, nil
+	}
+
+	return func() {
+		ctrl.NewManager = oldNewManagerDelegate
+		ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate
+		ctrl.GetConfig = oldGetConfigDelegate
+		ctrl.SetupSignalHandler = oldHandler
+		ctrl.SetLogger = oldSetLoggerDelegate
+		ctrl.NewControllerManagedBy = oldCtrlBuilder
+		controllers.NewManager = oldDoguManager
+	}
+}
+
+func createMockDefinitions() map[string]mockDefinition {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogu",
+	}, &v1.Dogu{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v1",
+		Kind:    "dogurestart",
+	}, &v1.DoguRestart{})
+	myClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+
+	return map[string]mockDefinition{
+		"GetScheme":            {ReturnValue: scheme},
+		"GetClient":            {ReturnValue: myClient},
+		"GetCache":             {ReturnValue: nil},
+		"GetConfig":            {ReturnValue: &rest.Config{}},
+		"Add":                  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
+		"AddHealthzCheck":      {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
+		"AddReadyzCheck":       {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
+		"Start":                {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
+		"GetControllerOptions": {ReturnValue: runtimeconf.Controller{}},
+		"GetEventRecorderFor":  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
 	}
 }

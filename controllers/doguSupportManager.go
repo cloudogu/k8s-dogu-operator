@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
 )
 
 const SupportModeEnvVar = "SUPPORT_MODE"
@@ -27,7 +27,7 @@ type podTemplateResourceGenerator interface {
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
 	client                       client.Client
-	localDoguRegistry            dogu.LocalRegistry
+	doguFetcher                  cloudogu.LocalDoguFetcher
 	podTemplateResourceGenerator podTemplateResourceGenerator
 	eventRecorder                record.EventRecorder
 }
@@ -36,7 +36,7 @@ type doguSupportManager struct {
 func NewDoguSupportManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguSupportManager {
 	return &doguSupportManager{
 		client:                       client,
-		localDoguRegistry:            mgrSet.LocalDoguRegistry,
+		doguFetcher:                  mgrSet.LocalDoguFetcher,
 		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
 		eventRecorder:                eventRecorder,
 	}
@@ -74,7 +74,8 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 
 func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *k8sv1.Dogu, deployment *appsv1.Deployment) error {
 	logger := log.FromContext(ctx)
-	dogu, err := dsm.localDoguRegistry.GetCurrent(ctx, doguResource.Name)
+
+	dogu, err := dsm.doguFetcher.FetchInstalled(ctx, doguResource.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
 	}
