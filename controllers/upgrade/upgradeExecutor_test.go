@@ -1097,7 +1097,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 		assert.ErrorIs(t, err, assert.AnError)
 		// mocks will be asserted during t.CleanUp
 	})
-	t.Run("should fail for etcd error", func(t *testing.T) {
+	t.Run("should fail on error register dogu", func(t *testing.T) {
 		// given
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)

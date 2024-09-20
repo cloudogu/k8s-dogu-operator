@@ -15,7 +15,7 @@ import (
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
-func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
+func TestCesDoguRegistrator_RegisterNewDogu(t *testing.T) {
 	scheme := getTestScheme()
 
 	ldapCr := &corev1.Dogu{
@@ -112,7 +112,7 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 	})
 }
 
-func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
+func TestCesDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 	ldapDogu := &core.Dogu{
 		Name:    "official/ldap",
 		Version: "1.0.0",

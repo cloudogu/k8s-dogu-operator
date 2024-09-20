@@ -2,6 +2,8 @@ package dependency_test
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -151,5 +153,25 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+	})
+}
+
+func Test_doguDependencyValidator_checkDoguDependency(t *testing.T) {
+	t.Run("should return nil if optional and a k8s not found error", func(t *testing.T) {
+		// given
+		redmineDogu := &core.Dogu{
+			Name:                 "redmine",
+			Version:              "1.1.0",
+			OptionalDependencies: []core.Dependency{{Type: "dogu", Name: "test"}},
+		}
+		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
+		localDoguRegMock.EXPECT().GetCurrent(testCtx, "test").Return(nil, errors.NewNotFound(schema.GroupResource{}, ""))
+		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
+
+		// when
+		err := validator.ValidateAllDependencies(testCtx, redmineDogu)
+
+		// then
+		require.Nil(t, err)
 	})
 }
