@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	regmock "github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
@@ -1154,7 +1153,6 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
-		registryMock := new(regmock.Registry)
 		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, toDogu.GetSimpleName()).Return(true, nil)
 		localDoguRegMock.EXPECT().Register(testCtx, toDogu).Return(nil)
@@ -1167,7 +1165,6 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		registryMock.AssertExpectations(t)
 	})
 	t.Run("should fail", func(t *testing.T) {
 		toDoguCr := readTestDataRedmineCr(t)
@@ -1175,8 +1172,6 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
 
-		doguRegistryMock := new(regmock.DoguRegistry)
-		registryMock := new(regmock.Registry)
 		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
 		localDoguRegMock.EXPECT().IsEnabled(testCtx, toDogu.GetSimpleName()).Return(false, nil)
 
@@ -1188,8 +1183,6 @@ func Test_registerUpgradedDoguVersion(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to register upgrade: could not register dogu version: previous version not found")
-		registryMock.AssertExpectations(t)
-		doguRegistryMock.AssertExpectations(t)
 	})
 }
 
