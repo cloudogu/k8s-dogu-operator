@@ -8,6 +8,8 @@ import (
 	registryRepo "github.com/cloudogu/k8s-registry-lib/repository"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"testing"
 	"time"
 
@@ -64,6 +66,7 @@ const PollingInterval = time.Second * 1
 
 var oldGetConfig func() (*rest.Config, error)
 var oldGetConfigOrDie func() *rest.Config
+var oldCtrlBuilder func(m manager.Manager) *ctrl.Builder
 
 func TestAPIs(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
@@ -106,6 +109,16 @@ var _ = ginkgo.BeforeSuite(func() {
 		return cfg
 	}
 
+	// override default controller-builder and add skipNameValidation for tests
+	oldCtrlBuilder = ctrl.NewControllerManagedBy
+	ctrl.NewControllerManagedBy = func(m manager.Manager) *ctrl.Builder {
+		builder := oldCtrlBuilder(m)
+		skipNameValidation := true
+		builder.WithOptions(controller.Options{SkipNameValidation: &skipNameValidation})
+
+		return builder
+	}
+
 	err = k8sv1.AddToScheme(scheme.Scheme)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -139,15 +152,17 @@ var _ = ginkgo.BeforeSuite(func() {
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	localDoguRegistry := dogu.NewLocalRegistry(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
+	doguVersionRegistry := dogu.NewDoguVersionRegistry(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
+	localDoguDescriptorRepository := dogu.NewLocalDoguDescriptorRepository(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(doguVersionRegistry, localDoguDescriptorRepository)
 
-	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, localDoguRegistry)
+	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, localDoguFetcher)
 	serviceAccountCreator := &mocks.ServiceAccountCreator{}
 	serviceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	serviceAccountRemover := &mocks.ServiceAccountRemover{}
 	serviceAccountRemover.On("RemoveAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	doguRegistrator := cesregistry.NewCESDoguRegistrator(k8sClient, localDoguRegistry)
+	doguRegistrator := cesregistry.NewCESDoguRegistrator(doguVersionRegistry, localDoguDescriptorRepository)
 
 	yamlResult := make(map[string]string)
 	fileExtract := &mocks.FileExtractor{}
@@ -159,7 +174,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	upserter := resource.NewUpserter(k8sClient, resourceGenerator)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(localDoguRegistry)
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
 	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutor)
 	exposedPortRemover := resource.NewDoguExposedPortHandler(k8sClient)
@@ -220,7 +234,6 @@ var _ = ginkgo.BeforeSuite(func() {
 		LocalDoguFetcher:      localDoguFetcher,
 		DoguResourceGenerator: resourceGenerator,
 		ResourceDoguFetcher:   remoteDoguFetcher,
-		LocalDoguRegistry:     localDoguRegistry,
 	}
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder, ecosystemClientSet)
@@ -237,7 +250,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	supportManager := &doguSupportManager{
 		client:                       k8sManager.GetClient(),
-		localDoguRegistry:            localDoguRegistry,
+		doguFetcher:                  localDoguFetcher,
 		podTemplateResourceGenerator: resourceGenerator,
 		eventRecorder:                eventRecorder,
 	}
@@ -253,14 +266,14 @@ var _ = ginkgo.BeforeSuite(func() {
 		ingressAnnotationsManager: ingressAnnotationManager,
 	}
 
-	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, localDoguRegistry)
+	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, localDoguFetcher)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = doguReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	updater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder, k8sClientSet)
-	deploymentReconciler := NewDeploymentReconciler(k8sClientSet, &health.AvailabilityChecker{}, updater, localDoguRegistry)
+	deploymentReconciler := NewDeploymentReconciler(k8sClientSet, &health.AvailabilityChecker{}, updater, localDoguFetcher)
 
 	err = deploymentReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -279,4 +292,5 @@ var _ = ginkgo.AfterSuite(func() {
 
 	ctrl.GetConfig = oldGetConfig
 	ctrl.GetConfigOrDie = oldGetConfigOrDie
+	ctrl.NewControllerManagedBy = oldCtrlBuilder
 })
