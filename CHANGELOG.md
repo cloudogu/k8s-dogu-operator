@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- [#192] Add missing clientSet-dependency to ManagerSet
+    - This fixes a bug when removing component service-accounts
 - [#190] Fix a bug where the dogu operator could not install dogus with optional dependencies because the old etcd not found error was used in dependency validation instead of the k8s not found error.
 
 ## [v2.1.0] - 2024-09-18
