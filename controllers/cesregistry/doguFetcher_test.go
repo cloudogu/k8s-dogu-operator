@@ -11,8 +11,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	regLibDogu "github.com/cloudogu/k8s-registry-lib/dogu"
+
 	"github.com/cloudogu/cesapp-lib/core"
-	mocks2 "github.com/cloudogu/cesapp-lib/registry/mocks"
 	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
@@ -20,15 +21,25 @@ import (
 var testCtx = context.Background()
 
 func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
+
 	t.Run("should succeed and return installed dogu", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
 		dogu := readTestDataDogu(t, redmineBytes)
+		coreDoguVersion, lerr := dogu.GetVersion()
+		require.NoError(t, lerr)
+		simpleDoguName := regLibDogu.SimpleDoguName(dogu.GetSimpleName())
+		doguVersion := regLibDogu.DoguVersion{
+			Name:    simpleDoguName,
+			Version: coreDoguVersion,
+		}
 
-		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
-		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, nil)
 
-		sut := NewLocalDoguFetcher(localRegDoguContextMock)
+		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
@@ -36,16 +47,25 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, dogu, installedDogu)
-		mock.AssertExpectationsForObjects(t, localRegDoguContextMock)
 	})
 	t.Run("should fail to get dogu from local registry", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
+		dogu := readTestDataDogu(t, redmineBytes)
+		coreDoguVersion, lerr := dogu.GetVersion()
+		require.NoError(t, lerr)
+		simpleDoguName := regLibDogu.SimpleDoguName(dogu.GetSimpleName())
+		doguVersion := regLibDogu.DoguVersion{
+			Name:    simpleDoguName,
+			Version: coreDoguVersion,
+		}
 
-		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
-		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(nil, assert.AnError)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, assert.AnError)
 
-		sut := NewLocalDoguFetcher(localRegDoguContextMock)
+		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		_, err := sut.FetchInstalled(testCtx, doguCr.Name)
@@ -53,7 +73,6 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to get local dogu descriptor for redmine")
-		mock.AssertExpectationsForObjects(t, localRegDoguContextMock)
 	})
 	t.Run("should return a dogu with K8s-CES compatible substitutes for an nginx dependency", func(t *testing.T) {
 		// given
@@ -65,11 +84,20 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 			Type:    core.DependencyTypeDogu,
 		}
 		require.Contains(t, dogu.Dependencies, expectedIncompatibleDepNginx)
+		coreDoguVersion, lerr := dogu.GetVersion()
+		require.NoError(t, lerr)
+		simpleDoguName := regLibDogu.SimpleDoguName(dogu.GetSimpleName())
+		doguVersion := regLibDogu.DoguVersion{
+			Name:    simpleDoguName,
+			Version: coreDoguVersion,
+		}
 
-		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
-		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, nil)
 
-		sut := NewLocalDoguFetcher(localRegDoguContextMock)
+		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
@@ -91,7 +119,6 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		assert.Contains(t, installedDogu.Dependencies, expectedNginxPatch1)
 		assert.Contains(t, installedDogu.Dependencies, expectedNginxPatch2)
 		assert.NotContains(t, installedDogu.Dependencies, unexpectedAfterPatch)
-		mock.AssertExpectationsForObjects(t, localRegDoguContextMock)
 	})
 	t.Run("should return a dogu that misses a no-substitute dependency", func(t *testing.T) {
 		// given
@@ -104,10 +131,20 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		}
 		dogu.Dependencies = append(dogu.Dependencies, registratorDep)
 		require.Contains(t, dogu.Dependencies, registratorDep)
+		coreDoguVersion, lerr := dogu.GetVersion()
+		require.NoError(t, lerr)
+		simpleDoguName := regLibDogu.SimpleDoguName(dogu.GetSimpleName())
+		doguVersion := regLibDogu.DoguVersion{
+			Name:    simpleDoguName,
+			Version: coreDoguVersion,
+		}
 
-		localRegDoguContextMock := extMocks.NewLocalDoguRegistry(t)
-		localRegDoguContextMock.EXPECT().GetCurrent(testCtx, "redmine").Return(dogu, nil)
-		sut := NewLocalDoguFetcher(localRegDoguContextMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, nil)
+
+		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
@@ -115,7 +152,6 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.NotContains(t, installedDogu.Dependencies, core.Dependency{Name: "registrator", Type: core.DependencyTypeDogu})
-		mock.AssertExpectationsForObjects(t, localRegDoguContextMock)
 	})
 }
 
@@ -236,8 +272,6 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		}
 		require.Contains(t, dogu.Dependencies, expectedIncompatibleDepNginx)
 
-		localRegDoguContextMock := new(mocks2.DoguRegistry)
-
 		redmineDevelopmentDoguMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(redmineDevelopmentDoguMap.ToConfigMap()).Build()
 		sut := NewResourceDoguFetcher(client, nil)
@@ -262,8 +296,6 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		assert.Contains(t, fetchedDogu.Dependencies, expectedNginxPatch1)
 		assert.Contains(t, fetchedDogu.Dependencies, expectedNginxPatch2)
 		assert.NotContains(t, fetchedDogu.Dependencies, unexpectedAfterPatch)
-
-		mock.AssertExpectationsForObjects(t, localRegDoguContextMock)
 	})
 	t.Run("should return a dogu that misses a no-substitute dependency", func(t *testing.T) {
 		// given

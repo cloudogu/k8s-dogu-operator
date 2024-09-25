@@ -1,0 +1,9 @@
+apiVersion: k8s.cloudogu.com/v1
+kind: Dogu
+metadata:
+  name: bluespice-mathoid
+  labels:
+    app: ces
+spec:
+  name: hallowelt/bluespice-mathoid
+  version: 4.4-2

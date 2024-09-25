@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	regclient "go.etcd.io/etcd/client/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -24,7 +23,7 @@ type doguDeleteManagerWithMocks struct {
 	deleteManager             *doguDeleteManager
 	imageRegistryMock         *mocks.ImageRegistry
 	doguRegistratorMock       *mocks.DoguRegistrator
-	localDoguFetcherMock      *mocks.LocalDoguFetcher
+	localDoguFetcherMock      *mocks.MockLocalDoguFetcher
 	serviceAccountRemoverMock *mocks.ServiceAccountRemover
 	exposedPortRemover        *mocks.ExposePortRemover
 	doguConfigRepo            *extMocks.DoguConfigRepository
@@ -36,7 +35,7 @@ func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 	imageRegistry := mocks.NewImageRegistry(t)
 	doguRegistrator := mocks.NewDoguRegistrator(t)
 	serviceAccountRemover := mocks.NewServiceAccountRemover(t)
-	doguFetcher := mocks.NewLocalDoguFetcher(t)
+	doguFetcher := mocks.NewMockLocalDoguFetcher(t)
 	exposedPortRemover := mocks.NewExposePortRemover(t)
 	doguConfigRepo := extMocks.NewDoguConfigRepository(t)
 	sensitiveConfigRepo := extMocks.NewDoguConfigRepository(t)
@@ -133,8 +132,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 
-		keyNotFoundErr := regclient.Error{Code: regclient.ErrorCodeKeyNotFound}
-		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, keyNotFoundErr)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, assert.AnError)
 		managerWithMocks.deleteManager.client = fakeClient
 
 		// when

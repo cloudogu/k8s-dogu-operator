@@ -26,7 +26,3 @@ type hostAliasGenerator interface {
 type doguConfigGetter interface {
 	Get(ctx context.Context, name config.SimpleDoguName) (config.DoguConfig, error)
 }
-
-type doguGetter interface {
-	GetCurrent(ctx context.Context, simpleDoguName string) (*cesappcore.Dogu, error)
-}

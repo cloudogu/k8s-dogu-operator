@@ -6,7 +6,7 @@ metadata:
     app: ces
 spec:
   name: official/jenkins
-  version: 2.401.3-1
+  version: 2.426.3-1
   additionalIngressAnnotations:
     # set a proxy-body-size value of "0" to enable requests of any size
     nginx.ingress.kubernetes.io/proxy-body-size: "1024m"

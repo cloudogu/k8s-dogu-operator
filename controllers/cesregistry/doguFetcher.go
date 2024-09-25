@@ -4,21 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
+	cesremote "github.com/cloudogu/cesapp-lib/remote"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
 )
 
 // localDoguFetcher abstracts the access to dogu structs from the local dogu registry.
 type localDoguFetcher struct {
-	doguLocalRegistry dogu.LocalRegistry
+	doguVersionRegistry doguVersionRegistry
+	doguRepository      localDoguDescriptorRepository
 }
 
 // localDoguFetcher abstracts the access to dogu structs from either the remote dogu registry or from a local DevelopmentDoguMap.
@@ -28,8 +28,8 @@ type resourceDoguFetcher struct {
 }
 
 // NewLocalDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
-func NewLocalDoguFetcher(doguLocalRegistry dogu.LocalRegistry) *localDoguFetcher {
-	return &localDoguFetcher{doguLocalRegistry: doguLocalRegistry}
+func NewLocalDoguFetcher(doguVersionRegistry dogu.DoguVersionRegistry, doguDescriptorRepo dogu.LocalDoguDescriptorRepository) *localDoguFetcher {
+	return &localDoguFetcher{doguVersionRegistry: doguVersionRegistry, doguRepository: doguDescriptorRepo}
 }
 
 // NewResourceDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
@@ -48,8 +48,23 @@ func (df *localDoguFetcher) FetchInstalled(ctx context.Context, doguName string)
 	return replaceK8sIncompatibleDoguDependencies(installedDogu), nil
 }
 
+func (df *localDoguFetcher) Enabled(ctx context.Context, doguName string) (bool, error) {
+	enabled, _, err := checkDoguVersionEnabled(ctx, df.doguVersionRegistry, doguName)
+	return enabled, err
+}
+
 func (df *localDoguFetcher) getLocalDogu(ctx context.Context, fromDoguName string) (*core.Dogu, error) {
-	return df.doguLocalRegistry.GetCurrent(ctx, fromDoguName)
+	current, err := df.doguVersionRegistry.GetCurrent(ctx, dogu.SimpleDoguName(fromDoguName))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current version for dogu %s: %w", fromDoguName, err)
+	}
+
+	get, err := df.doguRepository.Get(ctx, current)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current dogu %s: %w", fromDoguName, err)
+	}
+
+	return get, nil
 }
 
 // FetchWithResource fetches the dogu either from the remote dogu registry or from a local development dogu map and

@@ -2,12 +2,12 @@ package health
 
 import (
 	"context"
+	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.etcd.io/etcd/client/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,7 +22,7 @@ import (
 
 const testNamespace = "test-namespace"
 
-var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
+var registryKeyNotFoundTestErr = regLibErr.NewNotFoundError(assert.AnError)
 var testCtx = context.Background()
 
 func Test_doguChecker_checkDoguHealth(t *testing.T) {
@@ -35,7 +35,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 	operatorConfig.Namespace = testNamespace
 
 	t.Run("should succeed", func(t *testing.T) {
-		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
@@ -56,7 +56,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		localFetcher.AssertExpectations(t)
 	})
 	t.Run("should fail to get dogu cr", func(t *testing.T) {
-		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
@@ -78,7 +78,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		localFetcher.AssertExpectations(t)
 	})
 	t.Run("should fail because of unready replicas", func(t *testing.T) {
-		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
@@ -120,7 +120,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						+-m-> ☑️mandatory2
 		*/
 
-		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 		mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -190,7 +190,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		}
 		testDogu3 := &core.Dogu{Name: "testDogu3"}
 
-		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu2").Once().Return(testDogu2, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu3").Once().Return(testDogu3, nil)
@@ -224,7 +224,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						+-m-> ❌️mandatory2
 		*/
 
-		localFetcher := mocks.NewLocalDoguFetcher(t)
+		localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 		mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 		optional1Dogu := readTestDataDogu(t, optional1Bytes)
@@ -281,7 +281,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ☑️mandatory2
 				*/
 
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
@@ -329,7 +329,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -382,7 +382,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -434,7 +434,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -487,7 +487,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ~mandatory2~
 				*/
 
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -524,7 +524,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -581,7 +581,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
@@ -629,7 +629,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -683,7 +683,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -735,7 +735,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ❌️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -785,7 +785,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ❌️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -838,7 +838,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ~mandatory2~
 				*/
 
-				localFetcher := mocks.NewLocalDoguFetcher(t)
+				localFetcher := mocks.NewMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)

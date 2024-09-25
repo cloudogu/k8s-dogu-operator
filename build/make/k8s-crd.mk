@@ -62,12 +62,12 @@ validate-crd-chart:
 .PHONY: crd-helm-apply
 crd-helm-apply: ${BINARY_HELM} check-k8s-namespace-env-var crd-helm-generate ## Generates and installs the Helm CRD chart.
 	@echo "Apply generated Helm CRD chart"
-	@${BINARY_HELM} upgrade -i ${ARTIFACT_CRD_ID} ${HELM_CRD_TARGET_DIR} ${BINARY_HELM_ADDITIONAL_UPGR_ARGS} --namespace ${NAMESPACE}
+	@${BINARY_HELM} --kube-context="${KUBE_CONTEXT_NAME}" upgrade -i ${ARTIFACT_CRD_ID} ${HELM_CRD_TARGET_DIR} ${BINARY_HELM_ADDITIONAL_UPGR_ARGS} --namespace ${NAMESPACE}
 
 .PHONY: crd-helm-delete
 crd-helm-delete: ${BINARY_HELM} check-k8s-namespace-env-var ## Uninstalls the current Helm CRD chart.
 	@echo "Uninstall Helm CRD chart"
-	@${BINARY_HELM} uninstall ${ARTIFACT_CRD_ID} --namespace=${NAMESPACE} ${BINARY_HELM_ADDITIONAL_UNINST_ARGS} || true
+	@${BINARY_HELM} --kube-context="${KUBE_CONTEXT_NAME}" uninstall ${ARTIFACT_CRD_ID} --namespace=${NAMESPACE} ${BINARY_HELM_ADDITIONAL_UNINST_ARGS} || true
 
 .PHONY: crd-helm-package
 crd-helm-package: crd-helm-delete-existing-tgz ${HELM_CRD_RELEASE_TGZ} ## Generates and packages the Helm CRD chart.
@@ -83,11 +83,11 @@ ${HELM_CRD_RELEASE_TGZ}: ${BINARY_HELM} crd-helm-generate ## Generates and packa
 .PHONY: crd-helm-chart-import
 crd-helm-chart-import: ${CHECK_VAR_TARGETS} check-k8s-artifact-id crd-helm-generate crd-helm-package ## Imports the currently available Helm CRD chart into the cluster-local registry.
 	@if [[ ${STAGE} == "development" ]]; then \
-		echo "Import ${HELM_CRD_DEV_RELEASE_TGZ} into K8s cluster ${K3CES_REGISTRY_URL_PREFIX}..."; \
-		${BINARY_HELM} push ${HELM_CRD_DEV_RELEASE_TGZ} oci://${K3CES_REGISTRY_URL_PREFIX}/${HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
+		echo "Import ${HELM_CRD_DEV_RELEASE_TGZ} into K8s cluster ${CES_REGISTRY_HOST}..."; \
+		${BINARY_HELM} push ${HELM_CRD_DEV_RELEASE_TGZ} oci://${CES_REGISTRY_HOST}/${HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
 	else \
-	  	echo "Import ${HELM_CRD_RELEASE_TGZ} into K8s cluster ${K3CES_REGISTRY_URL_PREFIX}..."; \
-        ${BINARY_HELM} push ${HELM_CRD_RELEASE_TGZ} oci://${K3CES_REGISTRY_URL_PREFIX}/${HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
+	  	echo "Import ${HELM_CRD_RELEASE_TGZ} into K8s cluster ${CES_REGISTRY_HOST}..."; \
+        ${BINARY_HELM} push ${HELM_CRD_RELEASE_TGZ} oci://${CES_REGISTRY_HOST}/${HELM_ARTIFACT_NAMESPACE} ${BINARY_HELM_ADDITIONAL_PUSH_ARGS}; \
     fi
 	@echo "Done."
 
@@ -106,10 +106,10 @@ crd-component-generate: ${K8S_RESOURCE_TEMP_FOLDER} ## Generate the CRD componen
 
 .PHONY: crd-component-apply
 crd-component-apply: check-k8s-namespace-env-var crd-helm-chart-import crd-component-generate ## Applies the CRD component YAML resource to the actual defined context.
-	@kubectl apply -f "${K8S_RESOURCE_CRD_COMPONENT}" --namespace="${NAMESPACE}"
+	@kubectl apply -f "${K8S_RESOURCE_CRD_COMPONENT}" --namespace="${NAMESPACE}" --context="${KUBE_CONTEXT_NAME}"
 	@echo "Done."
 
 .PHONY: crd-component-delete
 crd-component-delete: check-k8s-namespace-env-var crd-component-generate ## Deletes the CRD component YAML resource from the actual defined context.
-	@kubectl delete -f "${K8S_RESOURCE_CRD_COMPONENT}" --namespace="${NAMESPACE}" || true
+	@kubectl delete -f "${K8S_RESOURCE_CRD_COMPONENT}" --namespace="${NAMESPACE}" --context="${KUBE_CONTEXT_NAME}" || true
 	@echo "Done."

@@ -7,7 +7,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,16 +23,16 @@ type DeploymentReconciler struct {
 	k8sClientSet            thirdParty.ClientSet
 	availabilityChecker     cloudogu.DeploymentAvailabilityChecker
 	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater
-	localDoguRegistry       dogu.LocalRegistry
+	doguFetcher             cloudogu.LocalDoguFetcher
 }
 
 func NewDeploymentReconciler(k8sClientSet thirdParty.ClientSet, availabilityChecker *health.AvailabilityChecker,
-	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater, localDoguRegistry dogu.LocalRegistry) *DeploymentReconciler {
+	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater, doguFetcher cloudogu.LocalDoguFetcher) *DeploymentReconciler {
 	return &DeploymentReconciler{
 		k8sClientSet:            k8sClientSet,
 		availabilityChecker:     availabilityChecker,
 		doguHealthStatusUpdater: doguHealthStatusUpdater,
-		localDoguRegistry:       localDoguRegistry,
+		doguFetcher:             doguFetcher,
 	}
 }
 
@@ -87,7 +86,7 @@ func hasDoguLabel(deployment client.Object) bool {
 
 func (dr *DeploymentReconciler) updateDoguHealth(ctx context.Context, doguDeployment *appsv1.Deployment) error {
 	doguAvailable := dr.availabilityChecker.IsAvailable(doguDeployment)
-	doguJson, err := dr.localDoguRegistry.GetCurrent(ctx, doguDeployment.Name)
+	doguJson, err := dr.doguFetcher.FetchInstalled(ctx, doguDeployment.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get current dogu json to update health state configMap: %w", err)
 	}

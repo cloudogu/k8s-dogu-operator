@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/stretchr/testify/assert"
@@ -30,11 +31,11 @@ func TestNewRequirementsUpdater(t *testing.T) {
 		// given
 		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
 		doguRepoMock := newMockDoguConfigGetter(t)
-		doguRegMock := newMockDoguGetter(t)
+		mockFetcher := mocks.NewMockLocalDoguFetcher(t)
 		watcherMock := newMockGlobalConfigurationWatcher(t)
 
 		// when
-		updater, err := NewRequirementsUpdater(clientMock, "myNamespace", doguRepoMock, doguRegMock, watcherMock)
+		updater, err := NewRequirementsUpdater(clientMock, "myNamespace", doguRepoMock, mockFetcher, watcherMock)
 
 		// then
 		require.NoError(t, err)
@@ -155,10 +156,10 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 	t.Run("run start and send change event", func(t *testing.T) {
 		// given
 		dj1, dj2, dj3 := getTestDoguJsons()
-		localDoguRegMock := newMockDoguGetter(t)
-		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu1").Return(dj1, nil)
-		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu2").Return(dj2, nil)
-		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, "dogu3").Return(dj3, nil)
+		mockFetcher := mocks.NewMockLocalDoguFetcher(t)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, "dogu1").Return(dj1, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, "dogu2").Return(dj2, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, "dogu3").Return(dj3, nil)
 
 		resultChan := make(chan repository.GlobalConfigWatchResult)
 
@@ -181,7 +182,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 		sut := &RequirementsUpdater{
 			client:              clientMock,
 			requirementsGen:     generator,
-			localDoguRegistry:   localDoguRegMock,
+			doguFetcher:         mockFetcher,
 			globalConfigWatcher: globalConfigWatcher,
 		}
 
@@ -308,15 +309,15 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			Build()
 
 		generator := newMockRequirementsGenerator(t)
-		localDoguRegMock := newMockDoguGetter(t)
-		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d1.Name).Return(nil, assert.AnError)
-		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d2.Name).Return(nil, assert.AnError)
-		localDoguRegMock.EXPECT().GetCurrent(mock.Anything, d3.Name).Return(nil, assert.AnError)
+		mockFetcher := mocks.NewMockLocalDoguFetcher(t)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d1.Name).Return(nil, assert.AnError)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d2.Name).Return(nil, assert.AnError)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d3.Name).Return(nil, assert.AnError)
 
 		sut := &RequirementsUpdater{
-			client:            clientMock,
-			requirementsGen:   generator,
-			localDoguRegistry: localDoguRegMock,
+			client:          clientMock,
+			requirementsGen: generator,
+			doguFetcher:     mockFetcher,
 		}
 
 		// when
@@ -338,15 +339,15 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 
 		generator := newMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
-		localDoguRegMock := newMockDoguGetter(t)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
+		mockFetcher := mocks.NewMockLocalDoguFetcher(t)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d1.Name).Return(dj1, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d2.Name).Return(dj2, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d3.Name).Return(dj3, nil)
 
 		sut := &RequirementsUpdater{
-			client:            clientMock,
-			requirementsGen:   generator,
-			localDoguRegistry: localDoguRegMock,
+			client:          clientMock,
+			requirementsGen: generator,
+			doguFetcher:     mockFetcher,
 		}
 
 		// when
@@ -377,15 +378,14 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(testCtx, dj2).Return(v1.ResourceRequirements{}, testErr2)
 		generator.EXPECT().Generate(testCtx, dj3).Return(v1.ResourceRequirements{}, testErr3)
 
-		localDoguRegMock := newMockDoguGetter(t)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
-
+		mockFetcher := mocks.NewMockLocalDoguFetcher(t)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d1.Name).Return(dj1, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d2.Name).Return(dj2, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d3.Name).Return(dj3, nil)
 		sut := &RequirementsUpdater{
-			client:            clientMock,
-			requirementsGen:   generator,
-			localDoguRegistry: localDoguRegMock,
+			client:          clientMock,
+			requirementsGen: generator,
+			doguFetcher:     mockFetcher,
 		}
 
 		// when
@@ -421,15 +421,14 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(testCtx, dj2).Return(v1.ResourceRequirements{}, nil)
 		generator.EXPECT().Generate(testCtx, dj3).Return(v1.ResourceRequirements{}, nil)
 
-		localDoguRegMock := newMockDoguGetter(t)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
-
+		mockFetcher := mocks.NewMockLocalDoguFetcher(t)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d1.Name).Return(dj1, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d2.Name).Return(dj2, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d3.Name).Return(dj3, nil)
 		sut := &RequirementsUpdater{
-			client:            clientMock,
-			requirementsGen:   generator,
-			localDoguRegistry: localDoguRegMock,
+			client:          clientMock,
+			requirementsGen: generator,
+			doguFetcher:     mockFetcher,
 		}
 
 		// when
@@ -459,15 +458,14 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 		generator.EXPECT().Generate(testCtx, dj2).Return(v1.ResourceRequirements{}, nil)
 		generator.EXPECT().Generate(testCtx, dj3).Return(v1.ResourceRequirements{}, nil)
 
-		localDoguRegMock := newMockDoguGetter(t)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d1.Name).Return(dj1, nil)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d2.Name).Return(dj2, nil)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, d3.Name).Return(dj3, nil)
-
+		mockFetcher := mocks.NewMockLocalDoguFetcher(t)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d1.Name).Return(dj1, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d2.Name).Return(dj2, nil)
+		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d3.Name).Return(dj3, nil)
 		sut := &RequirementsUpdater{
-			client:            clientMock,
-			requirementsGen:   generator,
-			localDoguRegistry: localDoguRegMock,
+			client:          clientMock,
+			requirementsGen: generator,
+			doguFetcher:     mockFetcher,
 		}
 
 		// when

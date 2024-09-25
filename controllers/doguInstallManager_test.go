@@ -27,11 +27,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	resConfig "github.com/cloudogu/k8s-registry-lib/config"
+	resErrors "github.com/cloudogu/k8s-registry-lib/errors"
 )
 
 type doguInstallManagerWithMocks struct {
 	installManager            *doguInstallManager
-	localDoguFetcher          *mocks.LocalDoguFetcher
+	localDoguFetcher          *mocks.MockLocalDoguFetcher
 	resourceDoguFetcher       *mocks.ResourceDoguFetcher
 	imageRegistryMock         *mocks.ImageRegistry
 	doguRegistratorMock       *mocks.DoguRegistrator
@@ -61,7 +62,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 	mockedApplier := mocks.NewApplier(t)
 	fileExtract := mocks.NewFileExtractor(t)
 	eventRecorderMock := extMocks.NewEventRecorder(t)
-	localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+	localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 	resourceDoguFetcher := mocks.NewResourceDoguFetcher(t)
 	collectApplier := resource.NewCollectApplier(mockedApplier)
 	podFactory := mocks.NewExecPodFactory(t)
@@ -256,8 +257,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		assert.Empty(t, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
-		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resConfig.NewAlreadyExistsError(assert.AnError))
-		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resConfig.NewAlreadyExistsError(assert.AnError))
+		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resErrors.NewAlreadyExistsError(assert.AnError))
+		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resErrors.NewAlreadyExistsError(assert.AnError))
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
@@ -377,8 +378,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
 		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
-		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resConfig.NewAlreadyExistsError(assert.AnError))
-		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resConfig.NewAlreadyExistsError(assert.AnError))
+		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resErrors.NewAlreadyExistsError(assert.AnError))
+		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resErrors.NewAlreadyExistsError(assert.AnError))
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
 		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)

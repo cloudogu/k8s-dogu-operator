@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,19 +22,19 @@ type RequirementsUpdater struct {
 	client              client.Client
 	namespace           string
 	globalConfigWatcher globalConfigurationWatcher
-	localDoguRegistry   doguGetter
+	doguFetcher         cloudogu.LocalDoguFetcher
 	requirementsGen     requirementsGenerator
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguReg doguGetter, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
+func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguFetcher cloudogu.LocalDoguFetcher, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
 	requirementsGen := NewRequirementsGenerator(doguConfigGetter)
 
 	return &RequirementsUpdater{
 		client:              client,
 		namespace:           namespace,
 		globalConfigWatcher: globalWatcher,
-		localDoguRegistry:   doguReg,
+		doguFetcher:         doguFetcher,
 		requirementsGen:     requirementsGen,
 	}, nil
 }
@@ -73,7 +74,7 @@ func (hlu *RequirementsUpdater) triggerSync(ctx context.Context) error {
 
 	var result error
 	for _, dogu := range installedDogus.Items {
-		doguJson, lErr := hlu.localDoguRegistry.GetCurrent(ctx, dogu.GetName())
+		doguJson, lErr := hlu.doguFetcher.FetchInstalled(ctx, dogu.GetName())
 		if lErr != nil {
 			result = errors.Join(result, fmt.Errorf("failed to get dogu.json of dogu [%s] from registry: %w", dogu.Name, lErr))
 			continue

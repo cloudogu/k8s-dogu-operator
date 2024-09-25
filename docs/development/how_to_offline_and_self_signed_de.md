@@ -54,8 +54,6 @@ k8s:
       - "0.5.0"
     k8s/k8s-longhorn:
       - "1.5.1-3"
-    k8s/k8s-etcd:
-      - "3.5.9-2"
     k8s/k8s-service-discovery:
       - "0.15.0"
   source:
@@ -172,9 +170,6 @@ components:
     version: latest
     helmRepositoryNamespace: k8s
     deployNamespace: longhorn-system
-  k8s-etcd:
-    version: latest
-    helmRepositoryNamespace: k8s
   k8s-dogu-operator:
     version: latest
     helmRepositoryNamespace: k8s

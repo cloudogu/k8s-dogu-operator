@@ -2,22 +2,17 @@ package cesregistry
 
 import (
 	_ "embed"
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
-	scheme := getTestScheme()
-
+func TestCesDoguRegistrator_RegisterNewDogu(t *testing.T) {
 	ldapCr := &corev1.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: "clusterns"},
 		Spec: corev1.DoguSpec{
@@ -29,15 +24,24 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		Name:    "official/ldap",
 		Version: "1.0.0",
 	}
+	coreLdapDoguVersion, lerr := ldapDogu.GetVersion()
+	require.NoError(t, lerr)
+	simpleLdapDoguName := dogu.SimpleDoguName("ldap")
+	ldapDoguVersion := dogu.DoguVersion{
+		Name:    simpleLdapDoguName,
+		Version: coreLdapDoguVersion,
+	}
 
 	t.Run("successfully register a dogu", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().Register(testCtx, ldapDogu).Return(nil)
-		localDoguRegMock.EXPECT().Enable(testCtx, ldapDogu).Return(nil)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, nil)
-		registrator := NewCESDoguRegistrator(client, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(false, nil)
+		mockDoguVersionRegistry.EXPECT().Enable(testCtx, ldapDoguVersion).Return(nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Add(testCtx, simpleLdapDoguName, ldapDogu).Return(nil)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterNewDogu(testCtx, ldapCr, ldapDogu)
@@ -48,10 +52,12 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 	t.Run("fail to check if dogu is already registered", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, assert.AnError)
-		registrator := NewCESDoguRegistrator(client, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(false, assert.AnError)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterNewDogu(testCtx, ldapCr, ldapDogu)
@@ -59,15 +65,17 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to check if dogu is already installed and enabled")
+		assert.ErrorContains(t, err, "failed to check if dogu ldap is enabled")
 	})
 
 	t.Run("skip registration because dogu is already registered", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(true, nil)
-		registrator := NewCESDoguRegistrator(client, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(true, nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterNewDogu(testCtx, ldapCr, ldapDogu)
@@ -78,11 +86,13 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 	t.Run("fail to register dogu", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().Register(testCtx, ldapDogu).Return(assert.AnError)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, nil)
-		registrator := NewCESDoguRegistrator(client, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(false, nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Add(testCtx, simpleLdapDoguName, ldapDogu).Return(assert.AnError)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterNewDogu(testCtx, ldapCr, ldapDogu)
@@ -95,12 +105,14 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 
 	t.Run("fail to enable dogu", func(t *testing.T) {
 		// given
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().Register(testCtx, ldapDogu).Return(nil)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, nil)
-		localDoguRegMock.EXPECT().Enable(testCtx, ldapDogu).Return(assert.AnError)
-		registrator := NewCESDoguRegistrator(client, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(false, nil)
+		mockDoguVersionRegistry.EXPECT().Enable(testCtx, ldapDoguVersion).Return(assert.AnError)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Add(testCtx, simpleLdapDoguName, ldapDogu).Return(nil)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterNewDogu(testCtx, ldapCr, ldapDogu)
@@ -112,19 +124,29 @@ func TestEtcdDoguRegistrator_RegisterNewDogu(t *testing.T) {
 	})
 }
 
-func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
+func TestCesDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 	ldapDogu := &core.Dogu{
 		Name:    "official/ldap",
 		Version: "1.0.0",
 	}
+	coreLdapDoguVersion, lerr := ldapDogu.GetVersion()
+	require.NoError(t, lerr)
+	simpleLdapDoguName := dogu.SimpleDoguName("ldap")
+	ldapDoguVersion := dogu.DoguVersion{
+		Name:    simpleLdapDoguName,
+		Version: coreLdapDoguVersion,
+	}
 
 	t.Run("successfully register a new dogu version", func(t *testing.T) {
 		// given
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(true, nil)
-		localDoguRegMock.EXPECT().Register(testCtx, ldapDogu).Return(nil)
-		localDoguRegMock.EXPECT().Enable(testCtx, ldapDogu).Return(nil)
-		registrator := NewCESDoguRegistrator(nil, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(true, nil)
+		mockDoguVersionRegistry.EXPECT().Enable(testCtx, ldapDoguVersion).Return(nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Add(testCtx, simpleLdapDoguName, ldapDogu).Return(nil)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterDoguVersion(testCtx, ldapDogu)
@@ -135,9 +157,12 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 
 	t.Run("fail to check if dogu is already registered", func(t *testing.T) {
 		// given
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, assert.AnError)
-		registrator := NewCESDoguRegistrator(nil, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(true, assert.AnError)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterDoguVersion(testCtx, ldapDogu)
@@ -145,14 +170,17 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to check if dogu is already installed and enabled")
+		assert.ErrorContains(t, err, "failed to check if dogu ldap is enabled")
 	})
 
 	t.Run("fail because the dogu is not enabled an no current key exists in upgrade process", func(t *testing.T) {
 		// given
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(false, nil)
-		registrator := NewCESDoguRegistrator(nil, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(false, nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterDoguVersion(testCtx, ldapDogu)
@@ -164,10 +192,13 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 
 	t.Run("fail because the dogu cant be registered", func(t *testing.T) {
 		// given
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().IsEnabled(testCtx, "ldap").Return(true, nil)
-		localDoguRegMock.EXPECT().Register(testCtx, ldapDogu).Return(assert.AnError)
-		registrator := NewCESDoguRegistrator(nil, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
+		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(true, nil)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().Add(testCtx, simpleLdapDoguName, ldapDogu).Return(assert.AnError)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.RegisterDoguVersion(testCtx, ldapDogu)
@@ -179,13 +210,14 @@ func TestEtcdDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 }
 
 func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
+	simpleLdapDoguName := dogu.SimpleDoguName("ldap")
 	t.Run("successfully unregister a dogu", func(t *testing.T) {
 		// given
-		scheme := runtime.NewScheme()
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().UnregisterAllVersions(testCtx, "ldap").Return(nil)
-		registrator := NewCESDoguRegistrator(client, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().DeleteAll(testCtx, simpleLdapDoguName).Return(nil)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.UnregisterDogu(testCtx, "ldap")
@@ -196,11 +228,11 @@ func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
 
 	t.Run("failed to unregister dogu", func(t *testing.T) {
 		// given
-		scheme := runtime.NewScheme()
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().UnregisterAllVersions(testCtx, "ldap").Return(assert.AnError)
-		registrator := NewCESDoguRegistrator(client, localDoguRegMock)
+		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository.EXPECT().DeleteAll(testCtx, simpleLdapDoguName).Return(assert.AnError)
+
+		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
 		err := registrator.UnregisterDogu(testCtx, "ldap")

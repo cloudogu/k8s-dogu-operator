@@ -24,7 +24,7 @@ const namespace = "test"
 
 type doguSupportManagerWithMocks struct {
 	supportManager       *doguSupportManager
-	localDoguRegMock     *extMocks.LocalDoguRegistry
+	localDoguFetcherMock *mocks.MockLocalDoguFetcher
 	k8sClient            client.WithWatch
 	recorderMock         *extMocks.EventRecorder
 	podTemplateGenerator *mocks.PodTemplateResourceGenerator
@@ -35,20 +35,20 @@ func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSu
 
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	podTemplateGenerator := mocks.NewPodTemplateResourceGenerator(t)
-	localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
+	localDoguFetcherMock := mocks.NewMockLocalDoguFetcher(t)
 	eventRecorder := extMocks.NewEventRecorder(t)
 
 	doguSupportManager := &doguSupportManager{
 		client:                       k8sClient,
 		podTemplateResourceGenerator: podTemplateGenerator,
 		eventRecorder:                eventRecorder,
-		localDoguRegistry:            localDoguRegMock,
+		doguFetcher:                  localDoguFetcherMock,
 	}
 
 	return doguSupportManagerWithMocks{
 		supportManager:       doguSupportManager,
 		k8sClient:            k8sClient,
-		localDoguRegMock:     localDoguRegMock,
+		localDoguFetcherMock: localDoguFetcherMock,
 		recorderMock:         eventRecorder,
 		podTemplateGenerator: podTemplateGenerator,
 	}
@@ -132,7 +132,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = namespace
 		ldapCr.Spec.SupportMode = true
-		sut.localDoguRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(ldap, nil)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldap, nil)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace}}
 		err := sut.supportManager.client.Create(testCtx, deployment)
@@ -185,7 +185,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(t, getTestScheme())
 		ldapCr := readDoguCr(t, ldapCrBytes)
-		sut.localDoguRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, assert.AnError)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, assert.AnError)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace}}
 		err := sut.supportManager.client.Create(testCtx, deployment)
@@ -204,7 +204,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		sut := getDoguSupportManagerWithMocks(t, getTestScheme())
 		ldap := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 		ldapCr := readDoguCr(t, ldapCrBytes)
-		sut.localDoguRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(ldap, nil)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldap, nil)
 		podSpec := corev1.PodTemplateSpec{Spec: corev1.PodSpec{}}
 		sut.podTemplateGenerator.EXPECT().GetPodTemplate(ldapCr, ldap).Return(&podSpec, nil)
 
@@ -225,7 +225,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = namespace
 		ldapCr.Spec.SupportMode = true
-		sut.localDoguRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(ldap, nil)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldap, nil)
 		sut.recorderMock.On("Eventf", ldapCr, "Normal", "Support", "Support flag changed to %t. Deployment updated.", true)
 
 		podTemplateSpec := corev1.PodTemplateSpec{
@@ -304,7 +304,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = namespace
 		ldapCr.Spec.SupportMode = true
-		sut.localDoguRegMock.EXPECT().GetCurrent(testCtx, "ldap").Return(nil, assert.AnError)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, assert.AnError)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace},
 			Spec: appsv1.DeploymentSpec{

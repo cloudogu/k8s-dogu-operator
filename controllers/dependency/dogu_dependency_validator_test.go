@@ -2,6 +2,7 @@ package dependency_test
 
 import (
 	"context"
+	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,17 +10,17 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	cloudoguMocks "github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
 var testCtx = context.Background()
 
 func TestNewDoguDependencyValidator(t *testing.T) {
 	// given
-	localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
+	localDoguFetcherMock := cloudoguMocks.NewMockLocalDoguFetcher(t)
 
 	// when
-	validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
+	validator := dependency.NewDoguDependencyValidator(localDoguFetcherMock)
 
 	// then
 	assert.NotNil(t, validator)
@@ -32,9 +33,9 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "1.0.0",
 		}
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
-		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
+		localDoguFetcherMock := cloudoguMocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDogu, nil)
+		validator := dependency.NewDoguDependencyValidator(localDoguFetcherMock)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -64,9 +65,9 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "1.0.0",
 		}
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
-		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
+		localDoguFetcherMock := cloudoguMocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDogu, nil)
+		validator := dependency.NewDoguDependencyValidator(localDoguFetcherMock)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -96,9 +97,9 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "0.9.0",
 		}
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
-		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
+		localDoguFetcherMock := cloudoguMocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDogu, nil)
+		validator := dependency.NewDoguDependencyValidator(localDoguFetcherMock)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -128,9 +129,9 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 			Name:    "redmine",
 			Version: "1.1.0",
 		}
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
-		localDoguRegMock.EXPECT().GetCurrent(testCtx, "redmine").Return(redmineDogu, nil)
-		validator := dependency.NewDoguDependencyValidator(localDoguRegMock)
+		localDoguFetcherMock := cloudoguMocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDogu, nil)
+		validator := dependency.NewDoguDependencyValidator(localDoguFetcherMock)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -151,5 +152,25 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+	})
+}
+
+func Test_doguDependencyValidator_checkDoguDependency(t *testing.T) {
+	t.Run("should return nil if optional and a k8s not found error", func(t *testing.T) {
+		// given
+		redmineDogu := &core.Dogu{
+			Name:                 "redmine",
+			Version:              "1.1.0",
+			OptionalDependencies: []core.Dependency{{Type: "dogu", Name: "test"}},
+		}
+		localDoguFetcherMock := cloudoguMocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "test").Return(redmineDogu, regLibErr.NewNotFoundError(assert.AnError))
+		validator := dependency.NewDoguDependencyValidator(localDoguFetcherMock)
+
+		// when
+		err := validator.ValidateAllDependencies(testCtx, redmineDogu)
+
+		// then
+		require.Nil(t, err)
 	})
 }
