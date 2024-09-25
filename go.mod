@@ -7,7 +7,7 @@ require (
 	github.com/cloudogu/cesapp-lib v0.12.2
 	github.com/cloudogu/k8s-apply-lib v0.4.2
 	github.com/cloudogu/k8s-host-change v0.4.0
-	github.com/cloudogu/k8s-registry-lib v0.2.2-0.20240923123618-4e4f2f978d66
+	github.com/cloudogu/k8s-registry-lib v0.4.1
 	github.com/dlclark/regexp2 v1.11.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
