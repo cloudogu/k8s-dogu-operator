@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -123,7 +123,7 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 
 		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, localDependencyDoguName.Name)
 		if err != nil {
-			if optional && apierrors.IsNotFound(err) {
+			if optional && regLibErr.IsNotFoundError(err) {
 				// optional dogus may not be installed, so continue and do nothing
 			} else {
 				// with no dogu information at hand we have no data on dependencies and must continue with the next dogu

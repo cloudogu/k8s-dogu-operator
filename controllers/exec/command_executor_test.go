@@ -3,11 +3,11 @@ package exec
 import (
 	"bytes"
 	"context"
+	"github.com/stretchr/testify/mock"
 	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/cloudogu/cesapp-lib/registry/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 
@@ -254,7 +254,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 
 		sut.commandExecutorCreator = func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 			mockExecutor := extMocks.NewRemoteExecutor(t)
-			mockExecutor.EXPECT().StreamWithContext(mocks.Anything, remotecommand.StreamOptions{
+			mockExecutor.EXPECT().StreamWithContext(mock.Anything, remotecommand.StreamOptions{
 				// expects the reader as stream option in the mocked call to verify the stdin command
 				Stdin:  reader,
 				Stdout: buffer,
@@ -398,7 +398,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		mockExecutor := extMocks.NewRemoteExecutor(t)
-		mockExecutor.EXPECT().StreamWithContext(mocks.Anything, mocks.Anything).RunAndReturn(streamWithContextRun())
+		mockExecutor.EXPECT().StreamWithContext(mock.Anything, mock.Anything).RunAndReturn(streamWithContextRun())
 		return mockExecutor, nil
 	}
 
@@ -408,7 +408,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 
 	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 		mockExecutor := extMocks.NewRemoteExecutor(t)
-		mockExecutor.EXPECT().StreamWithContext(mocks.Anything, mocks.Anything).Return(assert.AnError)
+		mockExecutor.EXPECT().StreamWithContext(mock.Anything, mock.Anything).Return(assert.AnError)
 		return mockExecutor, nil
 	}
 

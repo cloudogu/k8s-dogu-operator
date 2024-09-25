@@ -10,7 +10,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	cloudoguMocks "github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
 type validatorCheckerSuccess struct {
@@ -78,10 +78,10 @@ func TestNewCompositeDependencyValidator(t *testing.T) {
 		version, err := core.ParseVersion("0.0.0")
 		require.NoError(t, err)
 
-		localDoguRegMock := extMocks.NewLocalDoguRegistry(t)
+		localDoguFetcherMock := cloudoguMocks.NewMockLocalDoguFetcher(t)
 
 		// when
-		compositeValidator := dependency.NewCompositeDependencyValidator(&version, localDoguRegMock)
+		compositeValidator := dependency.NewCompositeDependencyValidator(&version, localDoguFetcherMock)
 
 		// then
 		assert.NotNil(t, compositeValidator)

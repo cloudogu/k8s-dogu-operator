@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"os"
@@ -187,7 +188,9 @@ func startK8sManager(k8sManager manager.Manager) error {
 
 func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, clientSet kubernetes.Interface) error {
 	configMapClient := clientSet.CoreV1().ConfigMaps(namespace)
-	requirementsUpdater, err := resource.NewRequirementsUpdater(k8sManager.GetClient(), namespace, repository.NewDoguConfigRepository(configMapClient), dogu.NewLocalRegistry(configMapClient), repository.NewGlobalConfigRepository(configMapClient))
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(dogu.NewDoguVersionRegistry(configMapClient), dogu.NewLocalDoguDescriptorRepository(configMapClient))
+
+	requirementsUpdater, err := resource.NewRequirementsUpdater(k8sManager.GetClient(), namespace, repository.NewDoguConfigRepository(configMapClient), localDoguFetcher, repository.NewGlobalConfigRepository(configMapClient))
 	if err != nil {
 		return err
 	}
@@ -202,7 +205,11 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
 	ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client, healthStatusUpdater cloudogu.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
-	localDoguRegistry := dogu.NewLocalRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace))
+
+	localDoguFetcher := cesregistry.NewLocalDoguFetcher(
+		dogu.NewDoguVersionRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
+		dogu.NewLocalDoguDescriptorRepository(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
+	)
 
 	doguManager, err := controllers.NewManager(
 		k8sManager.GetClient(),
@@ -220,7 +227,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 		doguManager,
 		eventRecorder,
 		operatorConfig.Namespace,
-		localDoguRegistry,
+		localDoguFetcher,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
@@ -235,7 +242,7 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.Cli
 		k8sClientSet,
 		availabilityChecker,
 		healthStatusUpdater,
-		localDoguRegistry,
+		localDoguFetcher,
 	)
 	err = deploymentReconciler.SetupWithManager(k8sManager)
 	if err != nil {

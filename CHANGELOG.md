@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#196] Update k8s-registry-lib to v0.4.1
+
 ### Fixed
 - [#192] Add missing clientSet-dependency to ManagerSet
     - This fixes a bug when removing component service-accounts

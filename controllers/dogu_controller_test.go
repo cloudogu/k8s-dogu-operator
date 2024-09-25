@@ -42,7 +42,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		recorder := extMocks.NewEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -73,7 +73,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		recorder := extMocks.NewEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := new(mocks.LocalDoguFetcher)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -105,7 +105,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := extMocks.NewEventRecorder(t)
 		recorder.On("Eventf", testDoguCr, v1.EventTypeWarning, operatorEventReason, mock.Anything, mock.Anything)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -165,7 +165,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := extMocks.NewEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -200,7 +200,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := extMocks.NewEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -239,7 +239,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := extMocks.NewEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -315,7 +315,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := extMocks.NewEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -354,7 +354,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := extMocks.NewEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -431,7 +431,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := extMocks.NewEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewLocalDoguFetcher(t)
+		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}

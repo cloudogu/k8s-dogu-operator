@@ -158,7 +158,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 
 	t.Run("should succeed to update health config map", func(t *testing.T) {
 		// given
-		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock := extMocks.NewMockClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
 		podClientMock := extMocks.NewPodInterface(t)
 		cmClientMock := extMocks.NewConfigMapInterface(t)
@@ -194,7 +194,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 		testCM.Data = make(map[string]string)
 		testCM.Data["ldap"] = "ready"
 
-		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock := extMocks.NewMockClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
 		podClientMock := extMocks.NewPodInterface(t)
 		cmClientMock := extMocks.NewConfigMapInterface(t)
@@ -233,7 +233,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 		started = false
 		podList.Items[0].Status.ContainerStatuses[0].Started = &started
 
-		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock := extMocks.NewMockClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
 		podClientMock := extMocks.NewPodInterface(t)
 		cmClientMock := extMocks.NewConfigMapInterface(t)
@@ -269,7 +269,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 		testCM.Data = make(map[string]string)
 		testCM.Data["ldap"] = "ready"
 
-		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock := extMocks.NewMockClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
 		podClientMock := extMocks.NewPodInterface(t)
 		cmClientMock := extMocks.NewConfigMapInterface(t)
@@ -302,7 +302,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to get configmap", func(t *testing.T) {
 		// given
-		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock := extMocks.NewMockClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
 		cmClientMock := extMocks.NewConfigMapInterface(t)
 
@@ -322,7 +322,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to get pod list of deployment", func(t *testing.T) {
 		// given
-		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock := extMocks.NewMockClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
 		podClientMock := extMocks.NewPodInterface(t)
 		cmClientMock := extMocks.NewConfigMapInterface(t)
@@ -350,7 +350,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to update configmap", func(t *testing.T) {
 		// given
-		clientSetMock := extMocks.NewClientSet(t)
+		clientSetMock := extMocks.NewMockClientSet(t)
 		coreV1Client := extMocks.NewCoreV1Interface(t)
 		podClientMock := extMocks.NewPodInterface(t)
 		cmClientMock := extMocks.NewConfigMapInterface(t)
