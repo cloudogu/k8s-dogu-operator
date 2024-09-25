@@ -9,7 +9,7 @@ update_versions_modify_files() {
   valuesYAML=k8s/helm/values.yaml
   componentPatchTplYAML=k8s/helm/component-patch-tpl.yaml
 
-  ./bin/yq -i ".controllerManager.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
+  $PWD/bin/yq -i ".controllerManager.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
   ./bin/yq -i ".values.images.doguOperator |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
 
   local chownInitImage
