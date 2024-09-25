@@ -1,9 +1,9 @@
 apiVersion: k8s.cloudogu.com/v1
 kind: Dogu
 metadata:
-  name: drawio
+  name: grafana
   labels:
     app: ces
 spec:
-  name: hallowelt/drawio
-  version: 20.3.7-4
+  name: premium/grafana
+  version: 10.3.3-2

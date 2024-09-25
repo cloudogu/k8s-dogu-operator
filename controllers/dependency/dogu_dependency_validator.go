@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/registry"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
@@ -85,7 +85,7 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 
 	localDependency, err := dc.fetcher.FetchInstalled(ctx, doguDependency.Name)
 	if err != nil {
-		if optional && registry.IsKeyNotFoundError(err) {
+		if optional && apierrors.IsNotFound(err) {
 			return nil // not installed => no error as this is ok for optional dependencies
 		}
 		return fmt.Errorf("failed to resolve dependencies %s: %w", doguDependency.Name, err)

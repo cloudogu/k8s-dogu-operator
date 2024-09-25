@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	regclient "go.etcd.io/etcd/client/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -133,8 +132,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 
-		keyNotFoundErr := regclient.Error{Code: regclient.ErrorCodeKeyNotFound}
-		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, keyNotFoundErr)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, assert.AnError)
 		managerWithMocks.deleteManager.client = fakeClient
 
 		// when

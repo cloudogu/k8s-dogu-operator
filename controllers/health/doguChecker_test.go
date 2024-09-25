@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.etcd.io/etcd/client/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,7 +21,7 @@ import (
 
 const testNamespace = "test-namespace"
 
-var registryKeyNotFoundTestErr = client.Error{Code: client.ErrorCodeKeyNotFound, Message: "Key not found"}
+var registryKeyNotFoundTestErr = errors.NewNotFound(schema.GroupResource{}, "not found")
 var testCtx = context.Background()
 
 func Test_doguChecker_checkDoguHealth(t *testing.T) {
