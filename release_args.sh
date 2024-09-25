@@ -9,12 +9,12 @@ update_versions_modify_files() {
   valuesYAML=k8s/helm/values.yaml
   componentPatchTplYAML=k8s/helm/component-patch-tpl.yaml
 
-  $PWD/bin/yq -i ".controllerManager.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
-  ./bin/yq -i ".values.images.doguOperator |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
+  ./.bin/yq -i ".controllerManager.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
+  ./.bin/yq -i ".values.images.doguOperator |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
 
   local chownInitImage
-  chownInitImage=$(./bin/yq ".additionalImages.chownInitImage" "${valuesYAML}")
-  ./bin/yq -i ".values.images.chownInitImage = \"${chownInitImage}\"" "${componentPatchTplYAML}"
+  chownInitImage=$(./.bin/yq ".additionalImages.chownInitImage" "${valuesYAML}")
+  ./.bin/yq -i ".values.images.chownInitImage = \"${chownInitImage}\"" "${componentPatchTplYAML}"
 }
 
 update_versions_stage_modified_files() {
