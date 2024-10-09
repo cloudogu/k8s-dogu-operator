@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

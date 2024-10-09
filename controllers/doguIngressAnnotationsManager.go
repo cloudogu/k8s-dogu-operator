@@ -8,8 +8,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/annotation"
 )
 
 const (

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/async"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/async"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 
 	"time"
 

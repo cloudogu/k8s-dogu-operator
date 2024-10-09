@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/errors"
 	"github.com/go-logr/logr"
@@ -18,11 +18,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 )
 
 const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"

@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -14,9 +14,9 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 )
 
 type doguDeleteManagerWithMocks struct {

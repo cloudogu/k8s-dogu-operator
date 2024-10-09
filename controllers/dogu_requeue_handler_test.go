@@ -3,8 +3,8 @@ package controllers
 import (
 	"context"
 	"errors"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	"testing"
 	"time"
 
@@ -17,8 +17,8 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
 
 type myRequeueableError struct{}

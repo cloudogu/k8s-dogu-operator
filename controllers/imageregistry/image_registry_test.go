@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/imageregistry"
 )
 
 func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {

@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	ecoSystem "github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	ecoSystem "github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
 	mock "github.com/stretchr/testify/mock"
 )
 

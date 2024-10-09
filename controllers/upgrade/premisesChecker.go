@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 )
 
 type requeueablePremisesError struct {

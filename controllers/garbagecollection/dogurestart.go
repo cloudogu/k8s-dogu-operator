@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"os"
 	"sort"
 	"strconv"
 
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

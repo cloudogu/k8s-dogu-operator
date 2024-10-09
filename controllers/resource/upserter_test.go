@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
@@ -16,8 +16,8 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
 
 func TestNewUpserter(t *testing.T) {

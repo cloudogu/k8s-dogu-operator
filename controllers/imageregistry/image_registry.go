@@ -3,7 +3,7 @@ package imageregistry
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
+	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"

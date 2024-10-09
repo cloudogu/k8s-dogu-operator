@@ -10,7 +10,7 @@ import (
 
 	types "k8s.io/apimachinery/pkg/types"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 
 	watch "k8s.io/apimachinery/pkg/watch"
 )

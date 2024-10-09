@@ -16,9 +16,9 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
 // doguKind describes a service account on a dogu.

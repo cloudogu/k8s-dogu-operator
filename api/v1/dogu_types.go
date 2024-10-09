@@ -4,7 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
+	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"time"

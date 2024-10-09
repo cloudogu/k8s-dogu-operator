@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	cloudogu "github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	cloudogu "github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 
 	mock "github.com/stretchr/testify/mock"
 )

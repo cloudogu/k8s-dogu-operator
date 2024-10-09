@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 )
 
 // CesDoguRegistrator is responsible for register dogus in the cluster

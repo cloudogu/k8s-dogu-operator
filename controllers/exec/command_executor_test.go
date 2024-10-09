@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 

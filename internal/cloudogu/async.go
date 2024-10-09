@@ -3,7 +3,7 @@ package cloudogu
 import (
 	"context"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 )
 
 // AsyncStep capsules an action with a starting and end condition

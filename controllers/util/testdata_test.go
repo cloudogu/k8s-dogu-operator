@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
 
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 )
 
 //go:embed testdata/ldap-dogu.json

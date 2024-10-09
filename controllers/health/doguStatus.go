@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	doguv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 )
 
 const statusUpdateEventReason = "HealthStatusUpdate"

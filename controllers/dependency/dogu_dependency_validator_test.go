@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	cloudoguMocks "github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/dependency"
+	cloudoguMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 )
 
 var testCtx = context.Background()

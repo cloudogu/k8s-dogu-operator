@@ -1,4 +1,4 @@
-module github.com/cloudogu/k8s-dogu-operator
+module github.com/cloudogu/k8s-dogu-operator/v2
 
 go 1.22.5
 

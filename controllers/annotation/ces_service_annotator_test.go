@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/annotation"
 )
 
 func getTestFileMap(t *testing.T) map[string]string {

@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"context"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
-	thirdpartymocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
+	thirdpartymocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

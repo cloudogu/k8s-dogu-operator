@@ -15,7 +15,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
 
 var testCtx = context.Background()

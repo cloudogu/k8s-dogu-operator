@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 )
 
 //go:embed testdata/redmine-cr.yaml

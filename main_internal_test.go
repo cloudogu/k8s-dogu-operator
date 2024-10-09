@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/mock"

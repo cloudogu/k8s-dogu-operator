@@ -14,7 +14,7 @@ Die Installation von GitHub erfordert die Installations-YAML, die alle benötigt
 
 ```
 GITHUB_VERSION=0.0.6
-kubectl apply -f https://github.com/cloudogu/k8s-dogu-operator/releases/download/v${GITHUB_VERSION}/k8s-dogu-operator_${GITHUB_VERSION}.yaml
+kubectl apply -f https://github.com/cloudogu/k8s-dogu-operator/v2/releases/download/v${GITHUB_VERSION}/k8s-dogu-operator_${GITHUB_VERSION}.yaml
 ```
 
 Der Operator sollte nun erfolgreich im Cluster gestartet sein.

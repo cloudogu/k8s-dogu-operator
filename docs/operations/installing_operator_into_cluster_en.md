@@ -13,7 +13,7 @@ The installation from GitHub requires the installation YAML which contains all r
 
 ```
 GITHUB_VERSION=0.0.6
-kubectl apply -f https://github.com/cloudogu/k8s-dogu-operator/releases/download/v${GITHUB_VERSION}/k8s-dogu-operator_${GITHUB_VERSION}.yaml
+kubectl apply -f https://github.com/cloudogu/k8s-dogu-operator/v2/releases/download/v${GITHUB_VERSION}/k8s-dogu-operator_${GITHUB_VERSION}.yaml
 ```
 
 The operator should now be successfully started in the cluster.

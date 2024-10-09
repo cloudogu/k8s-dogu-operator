@@ -3,8 +3,8 @@ package health
 import (
 	"context"
 	"github.com/cloudogu/cesapp-lib/core"
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/mock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,7 +16,7 @@ import (
 
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 )
 
 func TestNewDoguStatusUpdater(t *testing.T) {

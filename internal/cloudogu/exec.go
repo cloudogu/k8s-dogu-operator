@@ -11,7 +11,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 )
 
 // ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.

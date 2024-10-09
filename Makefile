@@ -92,6 +92,6 @@ ${MOCKERY_BIN}: ${UTILITY_BIN_PATH}
 
 mocks: ${MOCKERY_BIN} ## Generate all mocks for the dogu operator.
 # Mockery respects .mockery.yaml in the project root
-	@${MOCKERY_BIN} --output internal/cloudogu/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/internal/cloudogu --all
-	@${MOCKERY_BIN} --output internal/thirdParty/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/internal/thirdParty --all
+	@${MOCKERY_BIN} --output internal/cloudogu/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu --all
+	@${MOCKERY_BIN} --output internal/thirdParty/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty --all
 	@echo "Mocks successfully created."
