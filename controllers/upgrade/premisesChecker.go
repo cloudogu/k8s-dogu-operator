@@ -7,7 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 type requeueablePremisesError struct {
@@ -54,7 +54,7 @@ func NewPremisesChecker(
 // early.
 func (pc *premisesChecker) Check(
 	ctx context.Context,
-	doguResource *k8sv1.Dogu,
+	doguResource *k8sv2.Dogu,
 	localDogu *core.Dogu,
 	remoteDogu *core.Dogu,
 ) error {

@@ -12,7 +12,7 @@ Ein solches Upgrade lässt sich leicht erzeugen.
 Ein Dogu wurde bereits in einer älteren Version mit dieser Dogu-Resource mittels `kubectl apply` installiert:
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: my-dogu
@@ -28,7 +28,7 @@ Ein Upgrade des Dogus auf Version `1.2.3-5` ist denkbar einfach. Eine vergleichb
 herstellen und wieder mit `kubectl apply ...` auf den Cluster anwenden:
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: my-dogu
@@ -138,7 +138,7 @@ sich durch den Schalter `spec.upgradeConfig.forceUpgrade` mit einem Wert von Tru
 Sie sollten vorher klären, dass das Dogu keinen Schaden durch das Downgrade nimmt.
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: cas
@@ -162,7 +162,7 @@ Dieses Verhalten lässt sich durch den Schalter `spec.upgradeConfig.allowNamespa
 ausschalten.
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: cas

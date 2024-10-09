@@ -34,8 +34,8 @@ build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version 
 
 .PHONY: crd-copy-for-go-embedding
 crd-copy-for-go-embedding:
-	@echo "Copy CRD to api/v1/"
-	@cp ${CRD_DOGU_SOURCE} api/v1/
+	@echo "Copy CRD to api/v2/"
+	@cp ${CRD_DOGU_SOURCE} api/v2/
 
 .PHONY: helm-values-update-image-version
 helm-values-update-image-version: $(BINARY_YQ)
@@ -85,11 +85,12 @@ print-debug-info: ## Generates info and the list of environment variables requir
 ##@ Mockery
 
 MOCKERY_BIN=${UTILITY_BIN_PATH}/mockery
-MOCKERY_VERSION=v2.20.0
+MOCKERY_INSTALL_VERSION=v2.46.2
 
 ${MOCKERY_BIN}: ${UTILITY_BIN_PATH}
-	$(call go-get-tool,$(MOCKERY_BIN),github.com/vektra/mockery/v2@$(MOCKERY_VERSION))
+	$(call go-get-tool,$(MOCKERY_BIN),github.com/vektra/mockery/v2@$(MOCKERY_INSTALL_VERSION))
 
+.PHONY: mocks
 mocks: ${MOCKERY_BIN} ## Generate all mocks for the dogu operator.
 # Mockery respects .mockery.yaml in the project root
 	@${MOCKERY_BIN} --output internal/cloudogu/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu --all

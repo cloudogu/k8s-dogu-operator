@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +49,7 @@ type volumeConfigMapContent struct {
 	Name string
 }
 
-func createVolumes(doguResource *k8sv1.Dogu, dogu *core.Dogu) ([]corev1.Volume, error) {
+func createVolumes(doguResource *k8sv2.Dogu, dogu *core.Dogu) ([]corev1.Volume, error) {
 	volumes := createStaticVolumes(doguResource)
 	volumes = append(volumes, createDoguJsonVolumesFromDependencies(dogu)...)
 	volumes = append(volumes, getDoguJsonVolumeForDogu(dogu.GetSimpleName()))
@@ -95,7 +95,7 @@ func getDoguJsonVolumeForDogu(simpleDoguName string) corev1.Volume {
 	}
 }
 
-func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
+func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 	doguHealthVolume := corev1.Volume{
 		Name: doguHealth,
 		VolumeSource: corev1.VolumeSource{
@@ -151,7 +151,7 @@ func createStaticVolumes(doguResource *k8sv1.Dogu) []corev1.Volume {
 	}
 }
 
-func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv1.Dogu) ([]corev1.Volume, error) {
+func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
 	var multiError error
 	var volumes []corev1.Volume
 
@@ -232,7 +232,7 @@ func convertGenericJsonObject(genericObject interface{}, targetObject interface{
 	return nil
 }
 
-func createVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+func createVolumeMounts(doguResource *k8sv2.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	volumeMounts := createStaticVolumeMounts(doguResource)
 
 	// mount dogu jsons from dependency dogus so that a dogu can query attributes from other dogus.
@@ -242,7 +242,7 @@ func createVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.Volu
 	return append(volumeMounts, createDoguVolumeMounts(doguResource, dogu)...)
 }
 
-func createStaticVolumeMounts(doguResource *k8sv1.Dogu) []corev1.VolumeMount {
+func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 	doguVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      doguHealth,
@@ -298,7 +298,7 @@ func getDoguJsonVolumeMountForDogu(simpleDoguName string) corev1.VolumeMount {
 	}
 }
 
-func createDoguVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+func createDoguVolumeMounts(doguResource *k8sv2.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
 	var volumeMounts []corev1.VolumeMount
 	for _, doguVolume := range dogu.Volumes {
 		newVolume := createDoguVolumeMount(doguVolume, doguResource)
@@ -308,7 +308,7 @@ func createDoguVolumeMounts(doguResource *k8sv1.Dogu, dogu *core.Dogu) []corev1.
 	return volumeMounts
 }
 
-func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv1.Dogu) corev1.VolumeMount {
+func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu) corev1.VolumeMount {
 	_, clientExists := doguVolume.GetClient(doguOperatorClient)
 	if clientExists {
 		return corev1.VolumeMount{
@@ -336,11 +336,11 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv1.Dogu) cor
 }
 
 // CreateDoguPVC creates a persistent volume claim for the given dogu.
-func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv1.Dogu) (*corev1.PersistentVolumeClaim, error) {
+func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv2.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	return r.createPVC(doguResource.Name, doguResource, doguResource.GetDataVolumeSize())
 }
 
-func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv1.Dogu, size resource.Quantity) (*corev1.PersistentVolumeClaim, error) {
+func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv2.Dogu, size resource.Quantity) (*corev1.PersistentVolumeClaim, error) {
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,

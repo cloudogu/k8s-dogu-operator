@@ -19,7 +19,7 @@ import (
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
@@ -32,7 +32,7 @@ var testCtx = context.TODO()
 
 //go:embed testdata/redmine-cr.yaml
 var redmineBytes []byte
-var redmineCr = &k8sv1.Dogu{}
+var redmineCr = &k8sv2.Dogu{}
 
 //go:embed testdata/redmine-dogu.json
 var redmineDescriptorBytes []byte
@@ -56,11 +56,11 @@ var postgresqlDescriptor = &core.Dogu{}
 
 //go:embed testdata/postgresql-cr.yaml
 var postgresqlCrBytes []byte
-var postgresqlCr = &k8sv1.Dogu{}
+var postgresqlCr = &k8sv2.Dogu{}
 
 //go:embed testdata/cas-cr.yaml
 var casCrBytes []byte
-var casCr = &k8sv1.Dogu{}
+var casCr = &k8sv2.Dogu{}
 
 //go:embed testdata/invalid-sa-dogu.json
 var invalidPostgresqlDescriptorBytes []byte
@@ -451,9 +451,9 @@ func getTestScheme() *runtime.Scheme {
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogu",
-	}, &k8sv1.Dogu{})
+	}, &k8sv2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

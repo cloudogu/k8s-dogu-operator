@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"context"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	thirdpartymocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
@@ -67,7 +67,7 @@ func Test_restartInstruction_execute(t *testing.T) {
 
 	t.Run("should requeue if not already stopped", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{Status: k8sv1.DoguStatus{Stopped: false}}
+		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: false}}
 		sut := restartInstruction{op: checkStopped, dogu: dogu}
 
 		// when
@@ -80,14 +80,14 @@ func Test_restartInstruction_execute(t *testing.T) {
 
 	t.Run("should set restart to stopped if stopped and immediately retry", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{Status: k8sv1.DoguStatus{Stopped: true}}
-		doguRestart := &k8sv1.DoguRestart{Status: k8sv1.DoguRestartStatus{}}
+		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: true}}
+		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
 		doguRestartInterface := mocks.NewDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, doguRestart *k8sv1.DoguRestart, modifyStatusFn func(k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
-				assert.Equal(t, k8sv1.RestartStatusPhaseStopped, status.Phase)
+				assert.Equal(t, k8sv2.RestartStatusPhaseStopped, status.Phase)
 			})
 
 		eventRecorderMock := thirdpartymocks.NewEventRecorder(t)
@@ -105,7 +105,7 @@ func Test_restartInstruction_execute(t *testing.T) {
 
 	t.Run("should requeue if stopped", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{Status: k8sv1.DoguStatus{Stopped: true}}
+		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: true}}
 		sut := restartInstruction{op: checkStarted, dogu: dogu}
 
 		// when
@@ -118,14 +118,14 @@ func Test_restartInstruction_execute(t *testing.T) {
 
 	t.Run("should set restart to stopped if stopped and immediately retry", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{Status: k8sv1.DoguStatus{Stopped: false}}
-		doguRestart := &k8sv1.DoguRestart{Status: k8sv1.DoguRestartStatus{}}
+		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: false}}
+		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
 		doguRestartInterface := mocks.NewDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, doguRestart *k8sv1.DoguRestart, modifyStatusFn func(k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
-				assert.Equal(t, k8sv1.RestartStatusPhaseCompleted, status.Phase)
+				assert.Equal(t, k8sv2.RestartStatusPhaseCompleted, status.Phase)
 			})
 
 		eventRecorderMock := thirdpartymocks.NewEventRecorder(t)
@@ -143,19 +143,19 @@ func Test_restartInstruction_execute(t *testing.T) {
 
 	t.Run("should stop on stop operation", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{Status: k8sv1.DoguStatus{Stopped: false}}
-		doguRestart := &k8sv1.DoguRestart{Status: k8sv1.DoguRestartStatus{}}
+		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: false}}
+		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
 		doguRestartInterface := mocks.NewDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, doguRestart *k8sv1.DoguRestart, modifyStatusFn func(k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
-				assert.Equal(t, k8sv1.RestartStatusPhaseStopping, status.Phase)
+				assert.Equal(t, k8sv2.RestartStatusPhaseStopping, status.Phase)
 			})
 
 		doguInterface := mocks.NewDoguInterface(t)
 		doguInterface.EXPECT().UpdateSpecWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *k8sv1.Dogu, modifySpecFn func(k8sv1.DoguSpec) k8sv1.DoguSpec, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifySpecFn func(k8sv2.DoguSpec) k8sv2.DoguSpec, opts metav1.UpdateOptions) {
 				spec := modifySpecFn(dogu.Spec)
 				assert.Equal(t, true, spec.Stopped)
 			})
@@ -175,19 +175,19 @@ func Test_restartInstruction_execute(t *testing.T) {
 
 	t.Run("should set failed status on update stopped spec", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{Status: k8sv1.DoguStatus{Stopped: false}}
-		doguRestart := &k8sv1.DoguRestart{Status: k8sv1.DoguRestartStatus{}}
+		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: false}}
+		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
 		doguRestartInterface := mocks.NewDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, doguRestart *k8sv1.DoguRestart, modifyStatusFn func(k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
-				assert.Equal(t, k8sv1.RestartStatusPhaseFailedStop, status.Phase)
+				assert.Equal(t, k8sv2.RestartStatusPhaseFailedStop, status.Phase)
 			})
 
 		doguInterface := mocks.NewDoguInterface(t)
 		doguInterface.EXPECT().UpdateSpecWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError).
-			Run(func(ctx context.Context, dogu *k8sv1.Dogu, modifySpecFn func(k8sv1.DoguSpec) k8sv1.DoguSpec, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifySpecFn func(k8sv2.DoguSpec) k8sv2.DoguSpec, opts metav1.UpdateOptions) {
 				spec := modifySpecFn(dogu.Spec)
 				assert.Equal(t, true, spec.Stopped)
 			})
@@ -207,19 +207,19 @@ func Test_restartInstruction_execute(t *testing.T) {
 
 	t.Run("should start on start operation", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{Status: k8sv1.DoguStatus{Stopped: true}}
-		doguRestart := &k8sv1.DoguRestart{Status: k8sv1.DoguRestartStatus{}}
+		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: true}}
+		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
 		doguRestartInterface := mocks.NewDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, doguRestart *k8sv1.DoguRestart, modifyStatusFn func(k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
-				assert.Equal(t, k8sv1.RestartStatusPhaseStarting, status.Phase)
+				assert.Equal(t, k8sv2.RestartStatusPhaseStarting, status.Phase)
 			})
 
 		doguInterface := mocks.NewDoguInterface(t)
 		doguInterface.EXPECT().UpdateSpecWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *k8sv1.Dogu, modifySpecFn func(k8sv1.DoguSpec) k8sv1.DoguSpec, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifySpecFn func(k8sv2.DoguSpec) k8sv2.DoguSpec, opts metav1.UpdateOptions) {
 				spec := modifySpecFn(dogu.Spec)
 				assert.Equal(t, false, spec.Stopped)
 			})
@@ -239,19 +239,19 @@ func Test_restartInstruction_execute(t *testing.T) {
 
 	t.Run("should set failed status on update started spec", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{Status: k8sv1.DoguStatus{Stopped: true}}
-		doguRestart := &k8sv1.DoguRestart{Status: k8sv1.DoguRestartStatus{}}
+		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: true}}
+		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
 		doguRestartInterface := mocks.NewDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, doguRestart *k8sv1.DoguRestart, modifyStatusFn func(k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
-				assert.Equal(t, k8sv1.RestartStatusPhaseFailedStart, status.Phase)
+				assert.Equal(t, k8sv2.RestartStatusPhaseFailedStart, status.Phase)
 			})
 
 		doguInterface := mocks.NewDoguInterface(t)
 		doguInterface.EXPECT().UpdateSpecWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError).
-			Run(func(ctx context.Context, dogu *k8sv1.Dogu, modifySpecFn func(k8sv1.DoguSpec) k8sv1.DoguSpec, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifySpecFn func(k8sv2.DoguSpec) k8sv2.DoguSpec, opts metav1.UpdateOptions) {
 				spec := modifySpecFn(dogu.Spec)
 				assert.Equal(t, false, spec.Stopped)
 			})
@@ -273,13 +273,13 @@ func Test_restartInstruction_execute(t *testing.T) {
 func Test_restartInstruction_handleGetDoguFailed(t *testing.T) {
 	t.Run("should update status to failed get dogu", func(t *testing.T) {
 		// given
-		doguRestart := &k8sv1.DoguRestart{}
+		doguRestart := &k8sv2.DoguRestart{}
 
 		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
 		doguRestartInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, doguRestart *k8sv1.DoguRestart, modifyStatusFn func(k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
-				assert.Equal(t, k8sv1.RestartStatusPhaseFailedGetDogu, status.Phase)
+				assert.Equal(t, k8sv2.RestartStatusPhaseFailedGetDogu, status.Phase)
 			})
 
 		eventRecorderMock := thirdpartymocks.NewEventRecorder(t)
@@ -299,13 +299,13 @@ func Test_restartInstruction_handleGetDoguFailed(t *testing.T) {
 func Test_restartInstruction_handleDoguNotFound(t *testing.T) {
 	t.Run("should update status to dogu not found", func(t *testing.T) {
 		// given
-		doguRestart := &k8sv1.DoguRestart{}
+		doguRestart := &k8sv2.DoguRestart{}
 
 		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
 		doguRestartInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, doguRestart *k8sv1.DoguRestart, modifyStatusFn func(k8sv1.DoguRestartStatus) k8sv1.DoguRestartStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
-				assert.Equal(t, k8sv1.RestartStatusPhaseDoguNotFound, status.Phase)
+				assert.Equal(t, k8sv2.RestartStatusPhaseDoguNotFound, status.Phase)
 			})
 
 		eventRecorderMock := thirdpartymocks.NewEventRecorder(t)

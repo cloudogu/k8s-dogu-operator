@@ -15,7 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
@@ -72,7 +72,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
 	}
 	// we need this as we add dogu resource owner-references to every custom object.
-	err = k8sv1.AddToScheme(scheme)
+	err = k8sv2.AddToScheme(scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
 	}
@@ -121,48 +121,48 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1A
 }
 
 // Install installs a dogu resource.
-func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) Install(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
 	return m.installManager.Install(ctx, doguResource)
 }
 
 // Upgrade upgrades a dogu resource.
-func (m *DoguManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) Upgrade(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, upgrade.EventReason, "Starting upgrade...")
 	return m.upgradeManager.Upgrade(ctx, doguResource)
 }
 
 // Delete deletes a dogu resource.
-func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) Delete(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, DeinstallEventReason, "Starting deinstallation...")
 	return m.deleteManager.Delete(ctx, doguResource)
 }
 
 // SetDoguDataVolumeSize sets the dataVolumeSize from the dogu resource to the data PVC from the dogu.
-func (m *DoguManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Start volume expansion...")
 	return m.volumeManager.SetDoguDataVolumeSize(ctx, doguResource)
 }
 
 // SetDoguAdditionalIngressAnnotations edits the additional ingress annotations in the given dogu's service.
-func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, AdditionalIngressAnnotationsChangeEventReason, "Start additional ingress annotations change...")
 	return m.ingressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
 }
 
 // StartDogu scales a stopped dogu to 1.
-func (m *DoguManager) StartDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) StartDogu(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Starting dogu...")
 	return m.startStopManager.StartDogu(ctx, doguResource)
 }
 
 // StopDogu scales a running dogu to 0.
-func (m *DoguManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) StopDogu(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Stopping dogu...")
 	return m.startStopManager.StopDogu(ctx, doguResource)
 }
 
-func (m *DoguManager) CheckStarted(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) CheckStarted(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	err := m.startStopManager.CheckStarted(ctx, doguResource)
 	if err == nil {
 		m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Dogu started.")
@@ -171,7 +171,7 @@ func (m *DoguManager) CheckStarted(ctx context.Context, doguResource *k8sv1.Dogu
 	return err
 }
 
-func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	err := m.startStopManager.CheckStopped(ctx, doguResource)
 	if err == nil {
 		m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Dogu stopped.")
@@ -181,7 +181,7 @@ func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv1.Dogu
 }
 
 // HandleSupportMode handles the support flag in the dogu spec.
-func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv1.Dogu) (bool, error) {
+func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
 	return m.supportManager.HandleSupportMode(ctx, doguResource)
 }
 

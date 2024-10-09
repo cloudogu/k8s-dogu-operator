@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
@@ -46,7 +46,7 @@ func TestNewRequirementsUpdater(t *testing.T) {
 func getScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(k8sv1.AddToScheme(scheme))
+	utilruntime.Must(k8sv2.AddToScheme(scheme))
 	return scheme
 }
 
@@ -57,20 +57,20 @@ func getTestDoguJsons() (*core.Dogu, *core.Dogu, *core.Dogu) {
 	return dogu1, dogu2, dogu3
 }
 
-func getTestDogus() (*k8sv1.Dogu, *k8sv1.Dogu, *k8sv1.Dogu) {
-	dogu1 := &k8sv1.Dogu{
+func getTestDogus() (*k8sv2.Dogu, *k8sv2.Dogu, *k8sv2.Dogu) {
+	dogu1 := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dogu1",
 			Namespace: "test",
 		},
 	}
-	dogu2 := &k8sv1.Dogu{
+	dogu2 := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dogu2",
 			Namespace: "test",
 		},
 	}
-	dogu3 := &k8sv1.Dogu{
+	dogu3 := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dogu3",
 			Namespace: "test",

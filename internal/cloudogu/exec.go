@@ -11,7 +11,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 // ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
@@ -31,13 +31,13 @@ type ExecPod interface {
 // ExecPodFactory provides functionality to create ExecPods.
 type ExecPodFactory interface {
 	// NewExecPod creates a new ExecPod.
-	NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (ExecPod, error)
+	NewExecPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (ExecPod, error)
 }
 
 // CommandExecutor is used to execute commands in pods and dogus
 type CommandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, resource *k8sv1.Dogu, command ShellCommand, expected PodStatusForExec) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, resource *k8sv2.Dogu, command ShellCommand, expected PodStatusForExec) (*bytes.Buffer, error)
 	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
 	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand, expected PodStatusForExec) (*bytes.Buffer, error)
 }

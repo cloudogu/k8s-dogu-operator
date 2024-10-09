@@ -1,7 +1,7 @@
 package health
 
 import (
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	thirdPartyMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
@@ -39,16 +39,16 @@ func TestStartupHandler_Start(t *testing.T) {
 		availabilityCheckerMock := mocks.NewDeploymentAvailabilityChecker(t)
 		healthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
 
-		casDogu := &v1.Dogu{
+		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
-		ldapDogu := &v1.Dogu{
+		ldapDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
 
-		doguList := &v1.DoguList{Items: []v1.Dogu{*casDogu, *ldapDogu}}
+		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
 		doguInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(doguList, nil)
 
 		casDeploy := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "cas"}}
@@ -97,16 +97,16 @@ func TestStartupHandler_Start(t *testing.T) {
 		availabilityCheckerMock := mocks.NewDeploymentAvailabilityChecker(t)
 		healthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
 
-		casDogu := &v1.Dogu{
+		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
-		ldapDogu := &v1.Dogu{
+		ldapDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
 
-		doguList := &v1.DoguList{Items: []v1.Dogu{*casDogu, *ldapDogu}}
+		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
 		doguInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(doguList, nil)
 
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, assert.AnError)
@@ -132,16 +132,16 @@ func TestStartupHandler_Start(t *testing.T) {
 		availabilityCheckerMock := mocks.NewDeploymentAvailabilityChecker(t)
 		healthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
 
-		casDogu := &v1.Dogu{
+		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
-		ldapDogu := &v1.Dogu{
+		ldapDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
 
-		doguList := &v1.DoguList{Items: []v1.Dogu{*casDogu, *ldapDogu}}
+		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
 		doguInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(doguList, nil)
 
 		casDeploy := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "cas"}}

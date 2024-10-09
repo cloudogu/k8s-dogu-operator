@@ -1,5 +1,5 @@
 ---
-apiVersion: apiextensions.k8s.io/v1
+apiVersion: apiextensions.k8s.io/v2
 kind: CustomResourceDefinition
 metadata:
   annotations:
@@ -17,7 +17,7 @@ spec:
     singular: dogu
   scope: Namespaced
   versions:
-    - name: v1
+    - name: v2
       schema:
         openAPIV3Schema:
           description: Dogu is the Schema for the dogus API

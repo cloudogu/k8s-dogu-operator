@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	corev1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 //go:embed testdata/redmine-dogu.json
@@ -65,7 +65,7 @@ func getTestScheme() *runtime.Scheme {
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogu",
 	}, &corev1.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{

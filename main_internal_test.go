@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
@@ -245,14 +245,14 @@ func createMockDefinitions() map[string]mockDefinition {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogu",
-	}, &v1.Dogu{})
+	}, &v2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogurestart",
-	}, &v1.DoguRestart{})
+	}, &v2.DoguRestart{})
 	myClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	return map[string]mockDefinition{

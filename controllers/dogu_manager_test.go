@@ -16,7 +16,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
@@ -25,7 +25,7 @@ import (
 
 func TestDoguManager_SetDoguAdditionalIngressAnnotations(t *testing.T) {
 	// given
-	dogu := &k8sv1.Dogu{}
+	dogu := &k8sv2.Dogu{}
 	recorder := extMocks.NewEventRecorder(t)
 	recorder.EXPECT().Event(dogu, "Normal", "AdditionalIngressAnnotationsChange", "Start additional ingress annotations change...")
 	annotationsManager := mocks.NewAdditionalIngressAnnotationsManager(t)
@@ -41,7 +41,7 @@ func TestDoguManager_SetDoguAdditionalIngressAnnotations(t *testing.T) {
 
 func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 	// given
-	dogu := &k8sv1.Dogu{}
+	dogu := &k8sv2.Dogu{}
 	volumeManagerMock := mocks.NewVolumeManager(t)
 	eventRecorderMock := extMocks.NewEventRecorder(t)
 	manager := DoguManager{volumeManager: volumeManagerMock, recorder: eventRecorderMock}
@@ -58,7 +58,7 @@ func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 
 func TestDoguManager_HandleSupportMode(t *testing.T) {
 	// given
-	dogu := &k8sv1.Dogu{}
+	dogu := &k8sv2.Dogu{}
 	supportManagerMock := mocks.NewSupportManager(t)
 	eventRecorderMock := extMocks.NewEventRecorder(t)
 	manager := DoguManager{supportManager: supportManagerMock, recorder: eventRecorderMock}
@@ -75,7 +75,7 @@ func TestDoguManager_HandleSupportMode(t *testing.T) {
 
 func TestDoguManager_Delete(t *testing.T) {
 	// given
-	inputDogu := &k8sv1.Dogu{}
+	inputDogu := &k8sv2.Dogu{}
 	inputContext := context.Background()
 	deleteManager := mocks.NewDeleteManager(t)
 	deleteManager.EXPECT().Delete(inputContext, inputDogu).Return(nil)
@@ -93,7 +93,7 @@ func TestDoguManager_Delete(t *testing.T) {
 
 func TestDoguManager_Install(t *testing.T) {
 	// given
-	inputDogu := &k8sv1.Dogu{}
+	inputDogu := &k8sv2.Dogu{}
 	inputContext := context.Background()
 	installManager := mocks.NewInstallManager(t)
 	installManager.EXPECT().Install(inputContext, inputDogu).Return(nil)
@@ -111,7 +111,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 func TestDoguManager_Upgrade(t *testing.T) {
 	// given
-	inputDogu := &k8sv1.Dogu{}
+	inputDogu := &k8sv2.Dogu{}
 	inputContext := context.Background()
 	upgradeManager := mocks.NewUpgradeManager(t)
 	upgradeManager.EXPECT().Upgrade(inputContext, inputDogu).Return(nil)

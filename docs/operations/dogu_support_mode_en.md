@@ -12,7 +12,7 @@ To put a Dogu in support mode, this must be set to `true` by updating the Dogu r
 Example:
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: postfix
@@ -47,7 +47,7 @@ To restore a dogu to its initial state, the dogu resource has to be updated with
 Example:
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: postfix

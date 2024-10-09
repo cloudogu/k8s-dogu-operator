@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
@@ -108,7 +108,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 	}
 }
 
-func getDoguInstallManagerTestData(t *testing.T) (*k8sv1.Dogu, *core.Dogu, *corev1.ConfigMap, *imagev1.ConfigFile) {
+func getDoguInstallManagerTestData(t *testing.T) (*k8sv2.Dogu, *core.Dogu, *corev1.ConfigMap, *imagev1.ConfigFile) {
 	ldapCr := readDoguCr(t, ldapCrBytes)
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 	ldapDoguDescriptor := readDoguDevelopmentMap(t, ldapDoguDevelopmentMapBytes)
@@ -128,7 +128,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		mgrSet := &util.ManagerSet{}
-		eventRecorder := extMocks.NewEventRecorder(t)
+		eventRecorder := extMocks.NewMockEventRecorder(t)
 
 		configRepos := util.ConfigRepositories{
 			GlobalConfigRepository:  &repository.GlobalConfigRepository{},
@@ -160,7 +160,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).
-			RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			RunAndReturn(func(ctx context.Context, dogu *k8sv2.Dogu, f func(k8sv2.DoguStatus) k8sv2.DoguStatus, options metav1.UpdateOptions) (*k8sv2.Dogu, error) {
 				dogu.Status = f(dogu.Status)
 				return dogu, nil
 			})
@@ -202,7 +202,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
 		ldapCr, ldapDogu, ldapDevelopmentDoguMap, imageConfig := getDoguInstallManagerTestData(t)
-		developmentDoguMap := k8sv1.DevelopmentDoguMap(*ldapDevelopmentDoguMap)
+		developmentDoguMap := k8sv2.DevelopmentDoguMap(*ldapDevelopmentDoguMap)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, &developmentDoguMap, nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -265,7 +265,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).
-			RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			RunAndReturn(func(ctx context.Context, dogu *k8sv2.Dogu, f func(k8sv2.DoguStatus) k8sv2.DoguStatus, options metav1.UpdateOptions) (*k8sv2.Dogu, error) {
 				dogu.Status = f(dogu.Status)
 				return dogu, nil
 			})

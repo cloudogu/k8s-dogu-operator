@@ -22,7 +22,7 @@ import (
 func TestNewDeploymentReconciler(t *testing.T) {
 	t.Run("should not be empty", func(t *testing.T) {
 		// given
-		clientSetMock := extMocks.NewMockClientSet(t)
+		clientSetMock := extMocks.NewClientSet(t)
 		availabilityCheckerMock := &health.AvailabilityChecker{}
 		healthStatusUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
 
@@ -72,7 +72,7 @@ func createScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 
 	scheme := runtime.NewScheme()
-	gv, err := schema.ParseGroupVersion("apps/v1")
+	gv, err := schema.ParseGroupVersion("apps/v2")
 	assert.NoError(t, err)
 
 	scheme.AddKnownTypes(gv, &appsv1.Deployment{})
@@ -109,7 +109,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Name: "my-dogu", Namespace: testNamespace}}
 
 		notFoundErr := errors.NewNotFound(schema.GroupResource{
-			Group:    "apps/v1",
+			Group:    "apps/v2",
 			Resource: "Deployment",
 		}, "my-dogu")
 
@@ -146,7 +146,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployClientMock.EXPECT().Get(testCtx, "not-a-dogu", metav1.GetOptions{}).Return(deployment, nil)
 		appsV1Client := extMocks.NewAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
-		clientSetMock := extMocks.NewMockClientSet(t)
+		clientSetMock := extMocks.NewClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		sut := &DeploymentReconciler{
@@ -214,7 +214,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
 		appsV1Client := extMocks.NewAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
-		clientSetMock := extMocks.NewMockClientSet(t)
+		clientSetMock := extMocks.NewClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)
@@ -258,7 +258,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
 		appsV1Client := extMocks.NewAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
-		clientSetMock := extMocks.NewMockClientSet(t)
+		clientSetMock := extMocks.NewClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)
@@ -302,7 +302,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
 		appsV1Client := extMocks.NewAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
-		clientSetMock := extMocks.NewMockClientSet(t)
+		clientSetMock := extMocks.NewClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
 		deployAvailCheckMock := mocks.NewDeploymentAvailabilityChecker(t)

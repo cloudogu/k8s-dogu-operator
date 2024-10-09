@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 )
@@ -56,7 +56,7 @@ func (n deploymentNotYetScaledError) GetRequeueTime() time.Duration {
 	return requeueWaitTimeout
 }
 
-func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	rolledOut, err := m.checkForDeploymentRollout(ctx, doguResource.GetObjectKey())
 	if err != nil {
 		return fmt.Errorf("failed to start dogu %q: %w", doguResource.GetObjectKey(), err)
@@ -66,7 +66,7 @@ func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k
 		return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 	}
 
-	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, false)
+	err = m.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusInstalled, false)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k
 	return nil
 }
 
-func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	rolledOut, err := m.checkForDeploymentRollout(ctx, doguResource.GetObjectKey())
 	if err != nil {
 		return fmt.Errorf("failed to stop dogu %q: %w", doguResource.GetObjectKey(), err)
@@ -84,7 +84,7 @@ func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k
 		return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 	}
 
-	err = m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusInstalled, true)
+	err = m.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusInstalled, true)
 	if err != nil {
 		return err
 	}
@@ -97,8 +97,8 @@ func newDoguStartStopManager(doguInterface cloudogu.DoguInterface, deploymentInt
 }
 
 // StartDogu scales a stopped dogu to 1.
-func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	err := m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusStarting, doguResource.Status.Stopped)
+func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	err := m.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusStarting, doguResource.Status.Stopped)
 	if err != nil {
 		return err
 	}
@@ -112,8 +112,8 @@ func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv
 }
 
 // StopDogu scales a running dogu to 0.
-func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	err := m.updateStatusWithRetry(ctx, doguResource, k8sv1.DoguStatusStopping, doguResource.Status.Stopped)
+func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	err := m.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusStopping, doguResource.Status.Stopped)
 	if err != nil {
 		return err
 	}
@@ -126,8 +126,8 @@ func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv1
 	return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 }
 
-func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv1.Dogu, phase string, stopped bool) error {
-	_, err := m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv2.Dogu, phase string, stopped bool) error {
+	_, err := m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
 		status.Status = phase
 		status.Stopped = stopped
 		return status

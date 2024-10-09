@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	doguv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
@@ -76,7 +76,7 @@ func finishOrRequeue(logger logr.Logger, err error) (ctrl.Result, error) {
 
 func hasDoguLabel(deployment client.Object) bool {
 	for label := range deployment.GetLabels() {
-		if label == legacyDoguLabel || label == doguv1.DoguLabelName {
+		if label == legacyDoguLabel || label == doguv2.DoguLabelName {
 			return true
 		}
 	}

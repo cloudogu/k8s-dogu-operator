@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,11 +45,11 @@ func (r *DoguRestartGarbageCollector) DoGarbageCollection(ctx context.Context, d
 		return err
 	}
 
-	successfulRestarts := filterDoguRestarts(restarts, func(phase k8sv1.RestartStatusPhase) bool {
-		return phase == k8sv1.RestartStatusPhaseCompleted
+	successfulRestarts := filterDoguRestarts(restarts, func(phase k8sv2.RestartStatusPhase) bool {
+		return phase == k8sv2.RestartStatusPhaseCompleted
 	})
 
-	failedRestarts := filterDoguRestarts(restarts, func(phase k8sv1.RestartStatusPhase) bool {
+	failedRestarts := filterDoguRestarts(restarts, func(phase k8sv2.RestartStatusPhase) bool {
 		return phase.IsFailed()
 	})
 
@@ -60,8 +60,8 @@ func (r *DoguRestartGarbageCollector) DoGarbageCollection(ctx context.Context, d
 	return errors.Join(errs...)
 }
 
-func filterDoguRestarts(items []k8sv1.DoguRestart, fn func(phase k8sv1.RestartStatusPhase) bool) []k8sv1.DoguRestart {
-	var result []k8sv1.DoguRestart
+func filterDoguRestarts(items []k8sv2.DoguRestart, fn func(phase k8sv2.RestartStatusPhase) bool) []k8sv2.DoguRestart {
+	var result []k8sv2.DoguRestart
 	for _, item := range items {
 		if fn(item.Status.Phase) {
 			result = append(result, item)
@@ -71,7 +71,7 @@ func filterDoguRestarts(items []k8sv1.DoguRestart, fn func(phase k8sv1.RestartSt
 	return result
 }
 
-func (r *DoguRestartGarbageCollector) truncateDoguRestartHistory(ctx context.Context, items []k8sv1.DoguRestart, limitEnv string, fallbackHistoryLimit int) error {
+func (r *DoguRestartGarbageCollector) truncateDoguRestartHistory(ctx context.Context, items []k8sv2.DoguRestart, limitEnv string, fallbackHistoryLimit int) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -108,13 +108,13 @@ func (r *DoguRestartGarbageCollector) truncateDoguRestartHistory(ctx context.Con
 	return errors.Join(errs...)
 }
 
-func (r *DoguRestartGarbageCollector) getDoguRestartsForDogu(ctx context.Context, doguName string) ([]k8sv1.DoguRestart, error) {
+func (r *DoguRestartGarbageCollector) getDoguRestartsForDogu(ctx context.Context, doguName string) ([]k8sv2.DoguRestart, error) {
 	list, err := r.doguRestartInterface.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list dogu restarts for dogu %q: %w", doguName, err)
 	}
 
-	var restartsForDogu []k8sv1.DoguRestart
+	var restartsForDogu []k8sv2.DoguRestart
 	for _, item := range list.Items {
 		if item.Spec.DoguName == doguName {
 			restartsForDogu = append(restartsForDogu, item)

@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
@@ -269,7 +269,7 @@ func Test_upserter_UpsertDoguPVCs(t *testing.T) {
 		doguPvc = readLdapDoguExpectedDoguPVC(t)
 		doguPvc.DeletionTimestamp = &now
 		doguPvc.Finalizers = []string{"myFinalizer"}
-		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource, doguPvc).WithStatusSubresource(&k8sv1.Dogu{}).Build()
+		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource, doguPvc).WithStatusSubresource(&k8sv2.Dogu{}).Build()
 		timer := time.NewTimer(time.Second * 5)
 		go func() {
 			<-timer.C

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -22,7 +22,7 @@ func NewCollectApplier(applier cloudogu.Applier) *collectApplier {
 }
 
 // CollectApply applies the given resource.
-func (ca *collectApplier) CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv1.Dogu) error {
+func (ca *collectApplier) CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv2.Dogu) error {
 	logger := log.FromContext(ctx)
 	if len(customK8sResources) == 0 {
 		logger.Info("No custom K8s resources found")

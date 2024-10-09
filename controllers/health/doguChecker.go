@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
@@ -60,7 +60,7 @@ func (dc *doguChecker) CheckByName(ctx context.Context, doguName types.Namespace
 		return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
 	}
 
-	if doguResource.Status.Health != k8sv1.AvailableHealthStatus {
+	if doguResource.Status.Health != k8sv2.AvailableHealthStatus {
 		return NewDoguHealthError(fmt.Errorf("dogu %q appears unhealthy",
 			doguResource.Name))
 	}

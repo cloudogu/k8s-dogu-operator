@@ -3,7 +3,7 @@ package garbagecollection
 import (
 	"context"
 	"fmt"
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,7 +65,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		}()
 
 		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
-		list := &v1.DoguRestartList{Items: []v1.DoguRestart{}}
+		list := &v2.DoguRestartList{Items: []v2.DoguRestart{}}
 		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(list, nil)
 
 		doguName := "ldap"
@@ -91,7 +91,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		doguName := "ldap"
 		now := metav1.Now()
 		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
-		list := &v1.DoguRestartList{Items: []v1.DoguRestart{getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second))}}
+		list := &v2.DoguRestartList{Items: []v2.DoguRestart{getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseCompleted, now.Add(time.Second))}}
 		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(list, nil)
 
 		sut := DoguRestartGarbageCollector{doguRestartInterface: doguRestartInterfaceMock}
@@ -112,14 +112,14 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 		now := metav1.Now()
 
-		restartList := &v1.DoguRestartList{
-			Items: []v1.DoguRestart{
-				getDoguRestartWithCreationTimestamp(doguName, "3", v1.RestartStatusPhaseCompleted, now.Add(time.Second*3)),
-				getDoguRestartWithCreationTimestamp(doguName, "2", v1.RestartStatusPhaseCompleted, now.Add(time.Second*2)),
-				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
-				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseCompleted, now.Add(time.Second*5)),
-				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseCompleted, now.Add(time.Second*4)),
-				getDoguRestartWithCreationTimestamp(otherDoguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
+		restartList := &v2.DoguRestartList{
+			Items: []v2.DoguRestart{
+				getDoguRestartWithCreationTimestamp(doguName, "3", v2.RestartStatusPhaseCompleted, now.Add(time.Second*3)),
+				getDoguRestartWithCreationTimestamp(doguName, "2", v2.RestartStatusPhaseCompleted, now.Add(time.Second*2)),
+				getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseCompleted, now.Add(time.Second)),
+				getDoguRestartWithCreationTimestamp(doguName, "5", v2.RestartStatusPhaseCompleted, now.Add(time.Second*5)),
+				getDoguRestartWithCreationTimestamp(doguName, "4", v2.RestartStatusPhaseCompleted, now.Add(time.Second*4)),
+				getDoguRestartWithCreationTimestamp(otherDoguName, "1", v2.RestartStatusPhaseCompleted, now.Add(time.Second)),
 			},
 		}
 
@@ -159,14 +159,14 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 		now := metav1.Now()
 
-		restartList := &v1.DoguRestartList{
-			Items: []v1.DoguRestart{
-				getDoguRestartWithCreationTimestamp(doguName, "3", v1.RestartStatusPhaseCompleted, now.Add(time.Second*3)),
-				getDoguRestartWithCreationTimestamp(doguName, "2", v1.RestartStatusPhaseCompleted, now.Add(time.Second*2)),
-				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
-				getDoguRestartWithCreationTimestamp(doguName, "6", v1.RestartStatusPhaseFailedGetDogu, now.Add(time.Second*3)),
-				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseFailedStart, now.Add(time.Second*2)),
-				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseFailedStop, now.Add(time.Second)),
+		restartList := &v2.DoguRestartList{
+			Items: []v2.DoguRestart{
+				getDoguRestartWithCreationTimestamp(doguName, "3", v2.RestartStatusPhaseCompleted, now.Add(time.Second*3)),
+				getDoguRestartWithCreationTimestamp(doguName, "2", v2.RestartStatusPhaseCompleted, now.Add(time.Second*2)),
+				getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseCompleted, now.Add(time.Second)),
+				getDoguRestartWithCreationTimestamp(doguName, "6", v2.RestartStatusPhaseFailedGetDogu, now.Add(time.Second*3)),
+				getDoguRestartWithCreationTimestamp(doguName, "5", v2.RestartStatusPhaseFailedStart, now.Add(time.Second*2)),
+				getDoguRestartWithCreationTimestamp(doguName, "4", v2.RestartStatusPhaseFailedStop, now.Add(time.Second)),
 			},
 		}
 
@@ -193,14 +193,14 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 		now := metav1.Now()
 
-		restartList := &v1.DoguRestartList{
-			Items: []v1.DoguRestart{
-				getDoguRestartWithCreationTimestamp(doguName, "3", v1.RestartStatusPhaseDoguNotFound, now.Add(time.Second*3)),
-				getDoguRestartWithCreationTimestamp(doguName, "2", v1.RestartStatusPhaseFailedGetDogu, now.Add(time.Second*2)),
-				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseFailedStart, now.Add(time.Second)),
-				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseFailedStop, now.Add(time.Second*5)),
-				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseFailedStop, now.Add(time.Second*4)),
-				getDoguRestartWithCreationTimestamp(otherDoguName, "1", v1.RestartStatusPhaseFailedStop, now.Add(time.Second)),
+		restartList := &v2.DoguRestartList{
+			Items: []v2.DoguRestart{
+				getDoguRestartWithCreationTimestamp(doguName, "3", v2.RestartStatusPhaseDoguNotFound, now.Add(time.Second*3)),
+				getDoguRestartWithCreationTimestamp(doguName, "2", v2.RestartStatusPhaseFailedGetDogu, now.Add(time.Second*2)),
+				getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseFailedStart, now.Add(time.Second)),
+				getDoguRestartWithCreationTimestamp(doguName, "5", v2.RestartStatusPhaseFailedStop, now.Add(time.Second*5)),
+				getDoguRestartWithCreationTimestamp(doguName, "4", v2.RestartStatusPhaseFailedStop, now.Add(time.Second*4)),
+				getDoguRestartWithCreationTimestamp(otherDoguName, "1", v2.RestartStatusPhaseFailedStop, now.Add(time.Second)),
 			},
 		}
 
@@ -232,13 +232,13 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 		now := metav1.Now()
 
-		restartList := &v1.DoguRestartList{
-			Items: []v1.DoguRestart{
-				getDoguRestartWithCreationTimestamp(doguName, "3", v1.RestartStatusPhaseCompleted, now.Add(time.Second*3)),
-				getDoguRestartWithCreationTimestamp(doguName, "2", v1.RestartStatusPhaseCompleted, now.Add(time.Second*2)),
-				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseCompleted, now.Add(time.Second)),
-				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseCompleted, now.Add(time.Second*5)),
-				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseCompleted, now.Add(time.Second*4)),
+		restartList := &v2.DoguRestartList{
+			Items: []v2.DoguRestart{
+				getDoguRestartWithCreationTimestamp(doguName, "3", v2.RestartStatusPhaseCompleted, now.Add(time.Second*3)),
+				getDoguRestartWithCreationTimestamp(doguName, "2", v2.RestartStatusPhaseCompleted, now.Add(time.Second*2)),
+				getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseCompleted, now.Add(time.Second)),
+				getDoguRestartWithCreationTimestamp(doguName, "5", v2.RestartStatusPhaseCompleted, now.Add(time.Second*5)),
+				getDoguRestartWithCreationTimestamp(doguName, "4", v2.RestartStatusPhaseCompleted, now.Add(time.Second*4)),
 			},
 		}
 
@@ -271,13 +271,13 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 		now := metav1.Now()
 
-		restartList := &v1.DoguRestartList{
-			Items: []v1.DoguRestart{
-				getDoguRestartWithCreationTimestamp(doguName, "3", v1.RestartStatusPhaseDoguNotFound, now.Add(time.Second*3)),
-				getDoguRestartWithCreationTimestamp(doguName, "2", v1.RestartStatusPhaseFailedGetDogu, now.Add(time.Second*2)),
-				getDoguRestartWithCreationTimestamp(doguName, "1", v1.RestartStatusPhaseFailedStart, now.Add(time.Second)),
-				getDoguRestartWithCreationTimestamp(doguName, "5", v1.RestartStatusPhaseFailedStop, now.Add(time.Second*5)),
-				getDoguRestartWithCreationTimestamp(doguName, "4", v1.RestartStatusPhaseFailedStop, now.Add(time.Second*4)),
+		restartList := &v2.DoguRestartList{
+			Items: []v2.DoguRestart{
+				getDoguRestartWithCreationTimestamp(doguName, "3", v2.RestartStatusPhaseDoguNotFound, now.Add(time.Second*3)),
+				getDoguRestartWithCreationTimestamp(doguName, "2", v2.RestartStatusPhaseFailedGetDogu, now.Add(time.Second*2)),
+				getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseFailedStart, now.Add(time.Second)),
+				getDoguRestartWithCreationTimestamp(doguName, "5", v2.RestartStatusPhaseFailedStop, now.Add(time.Second*5)),
+				getDoguRestartWithCreationTimestamp(doguName, "4", v2.RestartStatusPhaseFailedStop, now.Add(time.Second*4)),
 			},
 		}
 
@@ -296,16 +296,16 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 	})
 }
 
-func getDoguRestartWithCreationTimestamp(doguName string, resourceSuffix string, phase v1.RestartStatusPhase, time time.Time) v1.DoguRestart {
-	return v1.DoguRestart{
+func getDoguRestartWithCreationTimestamp(doguName string, resourceSuffix string, phase v2.RestartStatusPhase, time time.Time) v2.DoguRestart {
+	return v2.DoguRestart{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              fmt.Sprintf("%s-%s", doguName, resourceSuffix),
 			CreationTimestamp: metav1.NewTime(time),
 		},
-		Spec: v1.DoguRestartSpec{
+		Spec: v2.DoguRestartSpec{
 			DoguName: doguName,
 		},
-		Status: v1.DoguRestartStatus{
+		Status: v2.DoguRestartStatus{
 			Phase: phase,
 		},
 	}

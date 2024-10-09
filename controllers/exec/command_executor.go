@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"io"
 	"k8s.io/client-go/kubernetes/scheme"
 	"net/url"
 	"strings"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
 
@@ -96,7 +96,7 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
-func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v1.Dogu, command cloudogu.ShellCommand, expectedStatus cloudogu.PodStatusForExec) (*bytes.Buffer, error) {
+func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command cloudogu.ShellCommand, expectedStatus cloudogu.PodStatusForExec) (*bytes.Buffer, error) {
 	logger := log.FromContext(ctx)
 	pod := &corev1.Pod{}
 	err := retry.OnError(maxTries, retry.AlwaysRetryFunc, func() error {

@@ -1,4 +1,4 @@
-package v1
+package v2
 
 import (
 	"context"
@@ -85,7 +85,7 @@ func getTestScheme() *runtime.Scheme {
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogu",
 	}, &Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{

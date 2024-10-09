@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
@@ -75,7 +75,7 @@ func TestNewDoguSupportManager(t *testing.T) {
 func Test_doguSupportManager_supportModeChanged(t *testing.T) {
 	// given
 	type args struct {
-		doguResource *k8sv1.Dogu
+		doguResource *k8sv2.Dogu
 		active       bool
 	}
 	tests := []struct {
@@ -83,10 +83,10 @@ func Test_doguSupportManager_supportModeChanged(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"return false for already set true flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: true}}, true}, false},
-		{"return true for flag being unset", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: true}}, false}, true},
-		{"return false for already set false flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: false}}, false}, false},
-		{"return true for newly set false flag", args{&k8sv1.Dogu{Spec: k8sv1.DoguSpec{SupportMode: false}}, true}, true},
+		{"return false for already set true flag", args{&k8sv2.Dogu{Spec: k8sv2.DoguSpec{SupportMode: true}}, true}, false},
+		{"return true for flag being unset", args{&k8sv2.Dogu{Spec: k8sv2.DoguSpec{SupportMode: true}}, false}, true},
+		{"return false for already set false flag", args{&k8sv2.Dogu{Spec: k8sv2.DoguSpec{SupportMode: false}}, false}, false},
+		{"return true for newly set false flag", args{&k8sv2.Dogu{Spec: k8sv2.DoguSpec{SupportMode: false}}, true}, true},
 	}
 	// when then
 	for _, tt := range tests {

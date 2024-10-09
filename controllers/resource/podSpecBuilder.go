@@ -2,7 +2,7 @@ package resource
 
 import (
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,9 +10,9 @@ import (
 )
 
 type podSpecBuilder struct {
-	theDoguResource              *k8sv1.Dogu
+	theDoguResource              *k8sv2.Dogu
 	theDogu                      *core.Dogu
-	metaAllLabels                k8sv1.CesMatchingLabels
+	metaAllLabels                k8sv2.CesMatchingLabels
 	specHostAliases              []corev1.HostAlias
 	specVolumes                  []corev1.Volume
 	specEnableServiceLinks       bool
@@ -28,14 +28,14 @@ type podSpecBuilder struct {
 	specContainerResourcesReq    corev1.ResourceRequirements
 }
 
-func newPodSpecBuilder(doguResource *k8sv1.Dogu, dogu *core.Dogu) *podSpecBuilder {
+func newPodSpecBuilder(doguResource *k8sv2.Dogu, dogu *core.Dogu) *podSpecBuilder {
 	p := &podSpecBuilder{}
 	p.theDoguResource = doguResource
 	p.theDogu = dogu
 	return p
 }
 
-func (p *podSpecBuilder) labels(labels k8sv1.CesMatchingLabels) *podSpecBuilder {
+func (p *podSpecBuilder) labels(labels k8sv2.CesMatchingLabels) *podSpecBuilder {
 	p.metaAllLabels = labels
 	return p
 }

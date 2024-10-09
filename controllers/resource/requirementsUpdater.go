@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	v1 "k8s.io/api/apps/v1"
@@ -106,8 +106,8 @@ func (hlu *RequirementsUpdater) triggerSync(ctx context.Context) error {
 	return result
 }
 
-func (hlu *RequirementsUpdater) getInstalledDogus(ctx context.Context) (*k8sv1.DoguList, error) {
-	doguList := &k8sv1.DoguList{}
+func (hlu *RequirementsUpdater) getInstalledDogus(ctx context.Context) (*k8sv2.DoguList, error) {
+	doguList := &k8sv2.DoguList{}
 
 	err := hlu.client.List(ctx, doguList, client.InNamespace(hlu.namespace))
 	if err != nil {

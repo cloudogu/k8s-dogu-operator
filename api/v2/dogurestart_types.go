@@ -2,7 +2,7 @@
 This file was generated with "make generate-deepcopy".
 */
 
-package v1
+package v2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

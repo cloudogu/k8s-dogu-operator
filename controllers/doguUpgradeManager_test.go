@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
@@ -32,7 +32,7 @@ import (
 const defaultNamespace = ""
 
 var deploymentTypeMeta = metav1.TypeMeta{
-	APIVersion: "apps/v1",
+	APIVersion: "apps/v2",
 	Kind:       "Deployment",
 }
 
@@ -147,14 +147,14 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithStatusSubresource(&v1.Dogu{}).
+			WithStatusSubresource(&v2.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
 		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		doguClientMock := mocks.NewDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
-		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v1.Dogu, f func(v1.DoguStatus) v1.DoguStatus, options metav1.UpdateOptions) (*v1.Dogu, error) {
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v2.Dogu, f func(v2.DoguStatus) v2.DoguStatus, options metav1.UpdateOptions) (*v2.Dogu, error) {
 			redmineCr.Status = f(redmineCr.Status)
 			return redmineCr, nil
 		})
@@ -187,7 +187,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		localFetcher := mocks.NewMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
 
-		devDoguMap := &v1.DevelopmentDoguMap{
+		devDoguMap := &v2.DevelopmentDoguMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      redmineCr.GetObjectKey().Name,
 				Namespace: redmineCr.GetObjectKey().Namespace,
@@ -211,7 +211,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithStatusSubresource(&v1.Dogu{}).
+			WithStatusSubresource(&v2.Dogu{}).
 			WithObjects(devDoguMap.ToConfigMap(), redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 		preErr := clientMock.Get(testCtx, redmineCr.GetObjectKey(), devDoguMap.ToConfigMap())
@@ -220,7 +220,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		ecosystemClientMock := mocks.NewEcosystemInterface(t)
 		doguClientMock := mocks.NewDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
-		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v1.Dogu, f func(v1.DoguStatus) v1.DoguStatus, options metav1.UpdateOptions) (*v1.Dogu, error) {
+		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v2.Dogu, f func(v2.DoguStatus) v2.DoguStatus, options metav1.UpdateOptions) (*v2.Dogu, error) {
 			redmineCr.Status = f(redmineCr.Status)
 			return redmineCr, nil
 		})
@@ -274,7 +274,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithStatusSubresource(&v1.Dogu{}).
+			WithStatusSubresource(&v2.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
@@ -323,7 +323,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithStatusSubresource(&v1.Dogu{}).
+			WithStatusSubresource(&v2.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
@@ -369,7 +369,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithStatusSubresource(&v1.Dogu{}).
+			WithStatusSubresource(&v2.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
@@ -410,7 +410,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 
 		clientMock := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithStatusSubresource(&v1.Dogu{}).
+			WithStatusSubresource(&v2.Dogu{}).
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 

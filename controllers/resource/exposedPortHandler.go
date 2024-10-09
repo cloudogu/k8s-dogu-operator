@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/loadbalancer/nginx"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +38,7 @@ func NewDoguExposedPortHandler(client client.Client) *doguExposedPortHandler {
 // CreateOrUpdateCesLoadbalancerService updates the loadbalancer service "ces-loadbalancer" with the dogu exposed ports.
 // If the service is not existent in cluster, it will be created.
 // If the dogu has no exposed ports, this method returns an empty service object and nil.
-func (deph *doguExposedPortHandler) CreateOrUpdateCesLoadbalancerService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
+func (deph *doguExposedPortHandler) CreateOrUpdateCesLoadbalancerService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
 	logger := log.FromContext(ctx)
 	if len(dogu.ExposedPorts) == 0 {
 		logger.Info("Skipping loadbalancer creation because the dogu has no exposed ports...")
@@ -74,14 +74,14 @@ func (deph *doguExposedPortHandler) CreateOrUpdateCesLoadbalancerService(ctx con
 	return exposedService, deph.updateService(ctx, exposedService)
 }
 
-func (deph *doguExposedPortHandler) getCesLoadBalancerService(ctx context.Context, doguResource *k8sv1.Dogu) (*corev1.Service, error) {
+func (deph *doguExposedPortHandler) getCesLoadBalancerService(ctx context.Context, doguResource *k8sv2.Dogu) (*corev1.Service, error) {
 	exposedService := &corev1.Service{}
 	cesLoadBalancerService := types.NamespacedName{Name: cesLoadbalancerName, Namespace: doguResource.Namespace}
 
 	return exposedService, deph.client.Get(ctx, cesLoadBalancerService, exposedService)
 }
 
-func (deph *doguExposedPortHandler) createCesLoadbalancerService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
+func (deph *doguExposedPortHandler) createCesLoadbalancerService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.Service, error) {
 	ipSingleStackPolicy := corev1.IPFamilyPolicySingleStack
 	exposedService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -94,7 +94,7 @@ func (deph *doguExposedPortHandler) createCesLoadbalancerService(ctx context.Con
 			IPFamilyPolicy: &ipSingleStackPolicy,
 			IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol},
 			Selector: map[string]string{
-				k8sv1.DoguLabelName: cesIngressController,
+				k8sv2.DoguLabelName: cesIngressController,
 			},
 		},
 	}
@@ -163,7 +163,7 @@ func (deph *doguExposedPortHandler) updateService(ctx context.Context, exposedSe
 // RemoveExposedPorts removes given dogu exposed ports from the loadbalancer service.
 // If these ports are the only ones, the service will be deleted.
 // If the dogu has no exposed ports, the method returns nil.
-func (deph *doguExposedPortHandler) RemoveExposedPorts(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) error {
+func (deph *doguExposedPortHandler) RemoveExposedPorts(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 	if len(dogu.ExposedPorts) == 0 {
 		logger.Info("Skipping deletion from loadbalancer service because the dogu has no exposed ports...")

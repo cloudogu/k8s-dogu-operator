@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +37,7 @@ func Test_doguExposedPortHandler_CreateOrUpdateCesLoadbalancerService(t *testing
 		sut := &doguExposedPortHandler{}
 
 		// when
-		service, err := sut.CreateOrUpdateCesLoadbalancerService(context.TODO(), &k8sv1.Dogu{}, &core.Dogu{})
+		service, err := sut.CreateOrUpdateCesLoadbalancerService(context.TODO(), &k8sv2.Dogu{}, &core.Dogu{})
 
 		// then
 		require.Nil(t, err)
@@ -248,7 +248,7 @@ func Test_doguExposedPortHandler_RemoveExposedPorts(t *testing.T) {
 		sut := &doguExposedPortHandler{}
 
 		// when
-		err := sut.RemoveExposedPorts(context.TODO(), &k8sv1.Dogu{}, &core.Dogu{})
+		err := sut.RemoveExposedPorts(context.TODO(), &k8sv2.Dogu{}, &core.Dogu{})
 
 		// then
 		require.Nil(t, err)

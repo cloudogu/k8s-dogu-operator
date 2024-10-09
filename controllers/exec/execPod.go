@@ -10,7 +10,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
@@ -32,7 +32,7 @@ type execPod struct {
 	client   client.Client
 	executor cloudogu.CommandExecutor
 
-	doguResource *k8sv1.Dogu
+	doguResource *k8sv2.Dogu
 	dogu         *core.Dogu
 	podName      string
 	deleteSpec   *corev1.Pod
@@ -42,7 +42,7 @@ type execPod struct {
 func NewExecPod(
 	client client.Client,
 	executor cloudogu.CommandExecutor,
-	doguResource *k8sv1.Dogu,
+	doguResource *k8sv2.Dogu,
 	dogu *core.Dogu,
 	podName string,
 ) (*execPod, error) {
@@ -225,7 +225,7 @@ func NewExecPodFactory(client client.Client, config *rest.Config, executor cloud
 }
 
 // NewExecPod creates a new ExecPod during the operation run-time.
-func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (cloudogu.ExecPod, error) {
+func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (cloudogu.ExecPod, error) {
 	podName := generatePodName(dogu, epf.suffixGen)
 	return NewExecPod(epf.client, epf.commandExecutor, doguResource, dogu, podName)
 }

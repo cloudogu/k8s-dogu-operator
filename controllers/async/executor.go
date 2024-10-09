@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
@@ -26,7 +26,7 @@ func (s *doguExecutionController) AddStep(step cloudogu.AsyncStep) {
 }
 
 // Execute executes all steps.
-func (s *doguExecutionController) Execute(ctx context.Context, dogu *k8sv1.Dogu, currentState string) error {
+func (s *doguExecutionController) Execute(ctx context.Context, dogu *k8sv2.Dogu, currentState string) error {
 	if currentState == FinishedState {
 		return nil
 	}

@@ -16,7 +16,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
@@ -151,8 +151,8 @@ func serviceAccountExists(registryCredentialPath string, senDoguCfg config.DoguC
 }
 
 func getPodForServiceAccountDogu(ctx context.Context, client client.Client, saDogu *core.Dogu) (*corev1.Pod, error) {
-	versionlessDoguLabel := map[string]string{v1.DoguLabelName: saDogu.GetSimpleName()}
-	return v1.GetPodForLabels(ctx, client, versionlessDoguLabel)
+	versionlessDoguLabel := map[string]string{v2.DoguLabelName: saDogu.GetSimpleName()}
+	return v2.GetPodForLabels(ctx, client, versionlessDoguLabel)
 }
 
 func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saPod *corev1.Pod, serviceAccount core.ServiceAccount) (map[string]string, error) {

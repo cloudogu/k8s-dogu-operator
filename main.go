@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/garbagecollection"
@@ -58,7 +58,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(k8sv1.AddToScheme(scheme))
+	utilruntime.Must(k8sv2.AddToScheme(scheme))
 
 	// +kubebuilder:scaffold:scheme
 }

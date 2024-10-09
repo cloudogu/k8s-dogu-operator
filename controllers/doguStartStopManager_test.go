@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	mocks2 "github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
@@ -36,12 +36,12 @@ func Test_doguStartStopManager_CheckStarted(t *testing.T) {
 		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
-		dogu := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 		doguInterfaceMock := mocks2.NewDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *k8sv1.Dogu, modifyStatusFn func(k8sv1.DoguStatus) k8sv1.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, k8sv1.DoguStatusInstalled, status.Status)
+				assert.Equal(t, k8sv2.DoguStatusInstalled, status.Status)
 				assert.Equal(t, false, status.Stopped)
 			})
 
@@ -63,7 +63,7 @@ func Test_doguStartStopManager_CheckStarted(t *testing.T) {
 		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, assert.AnError)
 
-		dogu := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 		doguInterfaceMock := mocks2.NewDoguInterface(t)
 		podInterfaceMock := mocks.NewPodInterface(t)
 
@@ -94,7 +94,7 @@ func Test_doguStartStopManager_CheckStarted(t *testing.T) {
 		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
-		dogu := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 		doguInterfaceMock := mocks2.NewDoguInterface(t)
 
 		podInterfaceMock := mocks.NewPodInterface(t)
@@ -132,12 +132,12 @@ func Test_doguStartStopManager_CheckStopped(t *testing.T) {
 		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(scaledDownDeployment, nil)
 
-		dogu := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 		doguInterfaceMock := mocks2.NewDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *k8sv1.Dogu, modifyStatusFn func(k8sv1.DoguStatus) k8sv1.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, k8sv1.DoguStatusInstalled, status.Status)
+				assert.Equal(t, k8sv2.DoguStatusInstalled, status.Status)
 				assert.Equal(t, true, status.Stopped)
 			})
 
@@ -159,7 +159,7 @@ func Test_doguStartStopManager_CheckStopped(t *testing.T) {
 		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, assert.AnError)
 
-		dogu := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 		doguInterfaceMock := mocks2.NewDoguInterface(t)
 		podInterfaceMock := mocks.NewPodInterface(t)
 
@@ -190,7 +190,7 @@ func Test_doguStartStopManager_CheckStopped(t *testing.T) {
 		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
-		dogu := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 		doguInterfaceMock := mocks2.NewDoguInterface(t)
 
 		podInterfaceMock := mocks.NewPodInterface(t)
@@ -223,14 +223,14 @@ func Test_deploymentNotYetScaledError(t *testing.T) {
 func Test_doguStartStopManager_StartDogu(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 
 		doguInterfaceMock := mocks2.NewDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *k8sv1.Dogu, modifyStatusFn func(k8sv1.DoguStatus) k8sv1.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				oldStopped := dogu.Status.Stopped
 				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, k8sv1.DoguStatusStarting, status.Status)
+				assert.Equal(t, k8sv2.DoguStatusStarting, status.Status)
 				assert.Equal(t, oldStopped, status.Stopped)
 			})
 
@@ -254,14 +254,14 @@ func Test_doguStartStopManager_StartDogu(t *testing.T) {
 func Test_doguStartStopManager_StopDogu(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 
 		doguInterfaceMock := mocks2.NewDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *k8sv1.Dogu, modifyStatusFn func(k8sv1.DoguStatus) k8sv1.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				oldStopped := dogu.Status.Stopped
 				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, k8sv1.DoguStatusStopping, status.Status)
+				assert.Equal(t, k8sv2.DoguStatusStopping, status.Status)
 				assert.Equal(t, oldStopped, status.Stopped)
 			})
 

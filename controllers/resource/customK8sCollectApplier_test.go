@@ -27,11 +27,11 @@ func TestNewCollectApplier(t *testing.T) {
 func Test_collectApplier_CollectApply(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		inputResource := make(map[string]string, 0)
-		const yamlDeployment = `apiVersion: apps/v1
+		const yamlDeployment = `apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test`
-		const yamlOther = `apiVersion: apps/v1
+		const yamlOther = `apiVersion: apps/v2
 kind: DeploymentStrategy
 metadata:
   name: something-else`
@@ -52,7 +52,7 @@ metadata:
 	})
 	t.Run("should fail", func(t *testing.T) {
 		inputResource := make(map[string]string, 0)
-		const yamlFile = `apiVersion: apps/v1
+		const yamlFile = `apiVersion: apps/v2
 kind: DeploymentStrategy`
 		inputResource["aResourceYamlFile"] = yamlFile
 		doguResource := readLdapDoguResource(t)
@@ -71,22 +71,22 @@ kind: DeploymentStrategy`
 	})
 	t.Run("should succeed with more than 1 deployments", func(t *testing.T) {
 		inputResource := make(map[string]string, 0)
-		const yamlFile = `apiVersion: apps/v1
+		const yamlFile = `apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test
 ---
-apiVersion: apps/v1
+apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test2
 `
-		const yamlFile1 = `apiVersion: apps/v1
+		const yamlFile1 = `apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test
 `
-		const yamlFile2 = `apiVersion: apps/v1
+		const yamlFile2 = `apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test2

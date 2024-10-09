@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
@@ -36,7 +36,7 @@ type errAsyncExecutor struct{}
 
 func (e *errAsyncExecutor) AddStep(cloudogu.AsyncStep) {}
 
-func (e *errAsyncExecutor) Execute(context.Context, *k8sv1.Dogu, string) error {
+func (e *errAsyncExecutor) Execute(context.Context, *k8sv2.Dogu, string) error {
 	return assert.AnError
 }
 
@@ -44,7 +44,7 @@ type asyncExecutor struct{}
 
 func (e *asyncExecutor) AddStep(cloudogu.AsyncStep) {}
 
-func (e *asyncExecutor) Execute(context.Context, *k8sv1.Dogu, string) error {
+func (e *asyncExecutor) Execute(context.Context, *k8sv2.Dogu, string) error {
 	return nil
 }
 
@@ -65,7 +65,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		executor := &errAsyncExecutor{}
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(dogu).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv2.Dogu{}).WithObjects(dogu).Build()
 		manager := &doguVolumeManager{client: client, asyncExecutor: executor}
 
 		// when
@@ -75,7 +75,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, assert.AnError, err)
 
-		errDogu := &k8sv1.Dogu{}
+		errDogu := &k8sv2.Dogu{}
 		err = client.Get(context.TODO(), dogu.GetObjectKey(), errDogu)
 		require.NoError(t, err)
 		assert.Equal(t, "resizing PVC", errDogu.Status.Status)
@@ -85,7 +85,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		executor := &asyncExecutor{}
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(dogu).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv2.Dogu{}).WithObjects(dogu).Build()
 		manager := &doguVolumeManager{client: client, asyncExecutor: executor}
 
 		// when
@@ -93,7 +93,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		errDogu := &k8sv1.Dogu{}
+		errDogu := &k8sv2.Dogu{}
 		err = client.Get(context.TODO(), dogu.GetObjectKey(), errDogu)
 		require.NoError(t, err)
 		assert.Equal(t, "installed", errDogu.Status.Status)
@@ -108,7 +108,7 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		replicas := int32(0)
 		deploy := &appsv1.Deployment{ObjectMeta: *dogu.GetObjectMeta(), Spec: appsv1.DeploymentSpec{Replicas: &replicas}}
 
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(deploy, dogu).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv2.Dogu{}).WithObjects(deploy, dogu).Build()
 		recorder := extMocks.NewEventRecorder(t)
 		recorder.On("Eventf", dogu, "Normal", "VolumeExpansion", "Scale deployment to %d replicas...", int32(1))
 		sut := &scaleUpStep{client: client, eventRecorder: recorder, replicas: 1}
@@ -121,7 +121,7 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		deploy, err = dogu.GetDeployment(context.TODO(), client)
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), *deploy.Spec.Replicas)
-		resultDogu := &k8sv1.Dogu{}
+		resultDogu := &k8sv2.Dogu{}
 		err = client.Get(context.TODO(), dogu.GetObjectKey(), resultDogu)
 		require.NoError(t, err)
 		assert.Equal(t, "", resultDogu.Status.RequeuePhase)

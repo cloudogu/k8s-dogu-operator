@@ -11,7 +11,7 @@ Such an upgrade can be easily created.
 A dogu has already been installed in an older version with this dogu resource using `kubectl apply`:
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: my-dogu
@@ -27,7 +27,7 @@ Upgrading the Dogus to version `1.2.3-5` is very simple. Create a comparable res
 to the cluster again with `kubectl apply ...`:
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: my-dogu
@@ -136,7 +136,7 @@ This behavior can be disabled by using the `spec.upgradeConfig.forceUpgrade` swi
 You should clarify beforehand that the dogu will not be damaged by the downgrade.
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: cas
@@ -158,7 +158,7 @@ A dogu namespace change is made possible by changing the dogu resource. This may
 This behavior can be disabled by using the switch `spec.upgradeConfig.allowNamespaceSwitch` with a value of `true`.
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: cas

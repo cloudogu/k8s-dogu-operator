@@ -2,7 +2,7 @@ package health
 
 import (
 	"context"
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,27 +19,27 @@ func TestShutdownHandler_Start(t *testing.T) {
 		expectedContext := context.WithoutCancel(doneCtx)
 		doguInterfaceMock := mocks.NewDoguInterface(t)
 
-		casDogu := &v1.Dogu{
+		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
-		ldapDogu := &v1.Dogu{
+		ldapDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
-		doguList := &v1.DoguList{Items: []v1.Dogu{*casDogu, *ldapDogu}}
+		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
 		doguInterfaceMock.EXPECT().List(expectedContext, metav1.ListOptions{}).Return(doguList, nil)
 
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(expectedContext, casDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(casDogu.Status)
-				assert.Equal(t, v1.UnknownHealthStatus, status.Health)
+				assert.Equal(t, v2.UnknownHealthStatus, status.Health)
 			})
 
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(expectedContext, ldapDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(ldapDogu.Status)
-				assert.Equal(t, v1.UnknownHealthStatus, status.Health)
+				assert.Equal(t, v2.UnknownHealthStatus, status.Health)
 			})
 
 		sut := ShutdownHandler{doguInterface: doguInterfaceMock}
@@ -79,27 +79,27 @@ func TestShutdownHandler_Start(t *testing.T) {
 		expectedContext := context.WithoutCancel(doneCtx)
 		doguInterfaceMock := mocks.NewDoguInterface(t)
 
-		casDogu := &v1.Dogu{
+		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
-		ldapDogu := &v1.Dogu{
+		ldapDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
-			Status:     v1.DoguStatus{},
+			Status:     v2.DoguStatus{},
 		}
-		doguList := &v1.DoguList{Items: []v1.Dogu{*casDogu, *ldapDogu}}
+		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
 		doguInterfaceMock.EXPECT().List(expectedContext, metav1.ListOptions{}).Return(doguList, nil)
 
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(expectedContext, casDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError).
-			Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(casDogu.Status)
-				assert.Equal(t, v1.UnknownHealthStatus, status.Health)
+				assert.Equal(t, v2.UnknownHealthStatus, status.Health)
 			})
 
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(expectedContext, ldapDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError).
-			Run(func(ctx context.Context, dogu *v1.Dogu, modifyStatusFn func(v1.DoguStatus) v1.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(ldapDogu.Status)
-				assert.Equal(t, v1.UnknownHealthStatus, status.Health)
+				assert.Equal(t, v2.UnknownHealthStatus, status.Health)
 			})
 
 		sut := ShutdownHandler{doguInterface: doguInterfaceMock}

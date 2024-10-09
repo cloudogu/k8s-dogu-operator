@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -36,12 +36,12 @@ func (s *ShutdownHandler) handle(ctx context.Context) error {
 
 	var errs []error
 	for _, dogu := range dogus.Items {
-		_, updateErr := s.doguInterface.UpdateStatusWithRetry(ctx, &dogu, func(status v1.DoguStatus) v1.DoguStatus {
-			status.Health = v1.UnknownHealthStatus
+		_, updateErr := s.doguInterface.UpdateStatusWithRetry(ctx, &dogu, func(status v2.DoguStatus) v2.DoguStatus {
+			status.Health = v2.UnknownHealthStatus
 			return status
 		}, metav1.UpdateOptions{})
 		if updateErr != nil {
-			errs = append(errs, fmt.Errorf("failed to set health status of %q to %q: %w", dogu.Name, v1.UnknownHealthStatus, updateErr))
+			errs = append(errs, fmt.Errorf("failed to set health status of %q to %q: %w", dogu.Name, v2.UnknownHealthStatus, updateErr))
 		}
 	}
 	return errors.Join(errs...)

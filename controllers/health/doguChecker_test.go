@@ -15,7 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	doguv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 )
@@ -137,11 +137,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
 
-		dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-		dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-		dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
-		dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-		dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+		dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+		dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "available"}}
+		dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+		dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 		doguClientMock := mocks.NewDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -195,8 +195,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu2").Once().Return(testDogu2, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu3").Once().Return(testDogu3, nil)
 
-		dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu2"}, Status: doguv1.DoguStatus{Health: "available"}}
-		dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu3"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu2"}, Status: doguv2.DoguStatus{Health: "available"}}
+		dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu3"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 		doguClientMock := mocks.NewDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "testDogu2", metav1.GetOptions{}).Return(dependencyResource2, nil)
@@ -241,11 +241,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		redmineDogu := readTestDataDogu(t, redmineBytes)
 
 		// dependencyResource1 postgresql was not even asked because of missing registry config
-		dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
 		// dependencyResource3 mandatory2 is missing
 		notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "mandatory2")
-		dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "unavailable"}}
-		dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+		dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "unavailable"}}
+		dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 		doguClientMock := mocks.NewDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
@@ -296,10 +296,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
 				// dependencyResource1 is not even existing
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
@@ -347,10 +347,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// dependencyResource1 does not exist
 				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "postgresql")
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(nil, notFoundError)
@@ -397,11 +397,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "unavailable"}} // boom
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "unavailable"}} // boom
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -451,11 +451,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "unavailable"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "unavailable"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -497,8 +497,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -542,10 +542,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				// dependencyResource1 does not exist
 				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "postgresql")
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(nil, notFoundError)
@@ -596,10 +596,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -646,12 +646,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				// dependencyResource3 does not exists
 				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "mandatory2")
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -698,11 +698,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "unavailable"}} // boom
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "unavailable"}} // boom
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -750,11 +750,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "unavailable"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "unavailable"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -800,12 +800,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource3 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory2"}, Status: doguv2.DoguStatus{Health: "available"}}
 				// dependencyResource4 is missing
 				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "optional1")
-				dependencyResource5 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
@@ -850,9 +850,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
-				dependencyResource1 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource2 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv1.DoguStatus{Health: "available"}}
-				dependencyResource4 := &doguv1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv1.DoguStatus{Health: "available"}}
+				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
+				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 
 				doguClientMock := mocks.NewDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)

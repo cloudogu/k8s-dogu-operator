@@ -1,4 +1,4 @@
-package v1_test
+package v2_test
 
 import (
 	"context"
@@ -17,25 +17,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
 
-var testDogu = &v1.Dogu{
+var testDogu = &v2.Dogu{
 	TypeMeta: metav1.TypeMeta{
-		APIVersion: "k8s.cloudogu.com/v1",
+		APIVersion: "k8s.cloudogu.com/v2",
 		Kind:       "Dogu",
 	},
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "dogu",
 		Namespace: "ecosystem",
 	},
-	Spec: v1.DoguSpec{
+	Spec: v2.DoguSpec{
 		Name:          "namespace/dogu",
 		Version:       "1.2.3-4",
-		UpgradeConfig: v1.UpgradeConfig{},
+		UpgradeConfig: v2.UpgradeConfig{},
 	},
-	Status: v1.DoguStatus{Status: ""},
+	Status: v2.DoguStatus{Status: ""},
 }
 var testCtx = context.Background()
 
@@ -58,7 +58,7 @@ func TestDoguStatus_GetRequeueTime(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("calculate next requeue time for current time %s", tt.requeueCount), func(t *testing.T) {
 			// given
-			ds := &v1.DoguStatus{
+			ds := &v2.DoguStatus{
 				RequeueTime: tt.requeueCount,
 			}
 
@@ -74,7 +74,7 @@ func TestDoguStatus_GetRequeueTime(t *testing.T) {
 func TestDoguStatus_ResetRequeueTime(t *testing.T) {
 	t.Run("reset requeue time", func(t *testing.T) {
 		// given
-		ds := &v1.DoguStatus{
+		ds := &v2.DoguStatus{
 			RequeueTime: time.Hour * 3,
 		}
 
@@ -82,13 +82,13 @@ func TestDoguStatus_ResetRequeueTime(t *testing.T) {
 		ds.ResetRequeueTime()
 
 		// then
-		assert.Equal(t, v1.RequeueTimeInitialRequeueTime, ds.RequeueTime)
+		assert.Equal(t, v2.RequeueTimeInitialRequeueTime, ds.RequeueTime)
 	})
 }
 
 func TestDogu_GetSecretObjectKey(t *testing.T) {
 	// given
-	ds := &v1.Dogu{
+	ds := &v2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myspecialdogu",
 			Namespace: "testnamespace",
@@ -157,31 +157,31 @@ func TestDogu_GetPrivateKeyObjectKey(t *testing.T) {
 
 func TestCesMatchingLabels_Add(t *testing.T) {
 	t.Run("should add to empty object", func(t *testing.T) {
-		input := v1.CesMatchingLabels{"key": "value"}
+		input := v2.CesMatchingLabels{"key": "value"}
 		// when
-		actual := v1.CesMatchingLabels{}.Add(input)
+		actual := v2.CesMatchingLabels{}.Add(input)
 
 		// then
 		require.NotEmpty(t, actual)
-		expected := v1.CesMatchingLabels{"key": "value"}
+		expected := v2.CesMatchingLabels{"key": "value"}
 		assert.Equal(t, expected, actual)
 	})
 	t.Run("should add to filed object", func(t *testing.T) {
-		input := v1.CesMatchingLabels{"key2": "value2"}
+		input := v2.CesMatchingLabels{"key2": "value2"}
 		// when
-		actual := v1.CesMatchingLabels{"key": "value"}.Add(input)
+		actual := v2.CesMatchingLabels{"key": "value"}.Add(input)
 
 		// then
 		require.NotEmpty(t, actual)
-		expected := v1.CesMatchingLabels{"key": "value", "key2": "value2"}
+		expected := v2.CesMatchingLabels{"key": "value", "key2": "value2"}
 		assert.Equal(t, expected, actual)
 	})
 }
 
 func TestDogu_Labels(t *testing.T) {
-	sut := v1.Dogu{
+	sut := v2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "ldap"},
-		Spec: v1.DoguSpec{
+		Spec: v2.DoguSpec{
 			Name:    "official/ldap",
 			Version: "1.2.3-4",
 		},
@@ -190,7 +190,7 @@ func TestDogu_Labels(t *testing.T) {
 	t.Run("should return pod labels", func(t *testing.T) {
 		actual := sut.GetPodLabels()
 
-		expected := v1.CesMatchingLabels{"dogu.name": "ldap", "dogu.version": "1.2.3-4"}
+		expected := v2.CesMatchingLabels{"dogu.name": "ldap", "dogu.version": "1.2.3-4"}
 		assert.Equal(t, expected, actual)
 	})
 
@@ -199,7 +199,7 @@ func TestDogu_Labels(t *testing.T) {
 		actual := sut.GetDoguNameLabel()
 
 		// then
-		expected := v1.CesMatchingLabels{"dogu.name": "ldap"}
+		expected := v2.CesMatchingLabels{"dogu.name": "ldap"}
 		assert.Equal(t, expected, actual)
 	})
 }
@@ -233,7 +233,7 @@ func TestDevelopmentDoguMap_DeleteFromCluster(t *testing.T) {
 		}
 		mockClient := extMocks.NewK8sClient(t)
 		mockClient.EXPECT().Delete(testCtx, inputCm).Return(nil)
-		sut := &v1.DevelopmentDoguMap{
+		sut := &v2.DevelopmentDoguMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
 			Data:       map[string]string{"key": "le data"},
 		}
@@ -251,7 +251,7 @@ func TestDevelopmentDoguMap_DeleteFromCluster(t *testing.T) {
 		}
 		mockClient := extMocks.NewK8sClient(t)
 		mockClient.EXPECT().Delete(testCtx, inputCm).Return(assert.AnError)
-		sut := &v1.DevelopmentDoguMap{
+		sut := &v2.DevelopmentDoguMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
 			Data:       map[string]string{"key": "le data"},
 		}
@@ -270,9 +270,9 @@ func getTestScheme() *runtime.Scheme {
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogu",
-	}, &v1.Dogu{})
+	}, &v2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -351,7 +351,7 @@ func TestDogu_ChangeRequeuePhaseWithRetry(t *testing.T) {
 	t.Run("success on conflict", func(t *testing.T) {
 		// given
 		resourceVersion := "1"
-		sut := &v1.Dogu{
+		sut := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "postgresql",
 				Namespace:       "ecosystem",
@@ -359,19 +359,19 @@ func TestDogu_ChangeRequeuePhaseWithRetry(t *testing.T) {
 			},
 		}
 
-		newDogu := &v1.Dogu{
+		newDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "postgresql",
 				Namespace:       "ecosystem",
 				ResourceVersion: "2",
 			},
-			Status: v1.DoguStatus{
+			Status: v2.DoguStatus{
 				RequeuePhase: "old",
 			},
 		}
 
 		requeuePhase := "phase"
-		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&v1.Dogu{}).WithObjects(newDogu).Build()
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&v2.Dogu{}).WithObjects(newDogu).Build()
 
 		// when
 		err := sut.ChangeRequeuePhaseWithRetry(testCtx, fakeClient, requeuePhase)
@@ -385,7 +385,7 @@ func TestDogu_ChangeRequeuePhaseWithRetry(t *testing.T) {
 	t.Run("should return error on get error", func(t *testing.T) {
 		// given
 		resourceVersion := "1"
-		sut := &v1.Dogu{
+		sut := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "postgresql",
 				Namespace:       "ecosystem",
@@ -409,7 +409,7 @@ func TestDogu_ChangeStateWithRetry(t *testing.T) {
 	t.Run("success on conflict", func(t *testing.T) {
 		// given
 		resourceVersion := "1"
-		sut := &v1.Dogu{
+		sut := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "postgresql",
 				Namespace:       "ecosystem",
@@ -417,19 +417,19 @@ func TestDogu_ChangeStateWithRetry(t *testing.T) {
 			},
 		}
 
-		newDogu := &v1.Dogu{
+		newDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "postgresql",
 				Namespace:       "ecosystem",
 				ResourceVersion: "2",
 			},
-			Status: v1.DoguStatus{
+			Status: v2.DoguStatus{
 				Status: "old",
 			},
 		}
 
 		status := "status"
-		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&v1.Dogu{}).WithObjects(newDogu).Build()
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&v2.Dogu{}).WithObjects(newDogu).Build()
 
 		// when
 		err := sut.ChangeStateWithRetry(testCtx, fakeClient, status)
@@ -443,7 +443,7 @@ func TestDogu_ChangeStateWithRetry(t *testing.T) {
 	t.Run("should return error on get error", func(t *testing.T) {
 		// given
 		resourceVersion := "1"
-		sut := &v1.Dogu{
+		sut := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "postgresql",
 				Namespace:       "ecosystem",
@@ -466,28 +466,28 @@ func TestDogu_ChangeStateWithRetry(t *testing.T) {
 func TestDogu_NextRequeueWithRetry(t *testing.T) {
 	t.Run("success on conflict; requeue time was reset", func(t *testing.T) {
 		// given
-		sut := v1.Dogu{
+		sut := v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "postgresql",
 				Namespace:       "ecosystem",
 				ResourceVersion: "1",
 			},
-			Status: v1.DoguStatus{
+			Status: v2.DoguStatus{
 				RequeueTime: time.Second * 40,
 			},
 		}
 
-		newDogu := &v1.Dogu{
+		newDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "postgresql",
 				Namespace:       "ecosystem",
 				ResourceVersion: "2",
 			},
-			Status: v1.DoguStatus{
+			Status: v2.DoguStatus{
 				RequeueTime: 0,
 			},
 		}
-		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(newDogu).WithStatusSubresource(&v1.Dogu{}).Build()
+		fakeClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(newDogu).WithStatusSubresource(&v2.Dogu{}).Build()
 
 		// when
 		retry, err := sut.NextRequeueWithRetry(testCtx, fakeClient)
@@ -499,7 +499,7 @@ func TestDogu_NextRequeueWithRetry(t *testing.T) {
 
 	t.Run("should return error on get error", func(t *testing.T) {
 		// given
-		sut := &v1.Dogu{
+		sut := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "postgresql",
 				Namespace: "ecosystem",

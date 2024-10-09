@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
@@ -40,7 +40,7 @@ func Test_defaultSufficeGenerator_String(t *testing.T) {
 
 func TestExecPod_ObjectKey(t *testing.T) {
 	// given
-	inputResource := &k8sv1.Dogu{
+	inputResource := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Name: "le-dogu", Namespace: testNamespace},
 	}
 	sut := &execPod{podName: podName, doguResource: inputResource}
@@ -285,7 +285,7 @@ func Test_execPod_Exec(t *testing.T) {
 			WithObjects(runningExecPod).
 			Build()
 		cmd := &shellCommand{command: "/bin/ls", args: []string{"-lahF"}}
-		mockExec := mocks.NewCommandExecutor(t)
+		mockExec := mocks.NewMockCommandExecutor(t)
 		outBuf := bytes.NewBufferString("")
 		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, cloudogu.ContainersStarted).Return(outBuf, assert.AnError)
 		sut := &execPod{

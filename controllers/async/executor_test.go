@@ -2,7 +2,7 @@ package async
 
 import (
 	"context"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -14,7 +14,7 @@ func (ts *testStep) GetStartCondition() string {
 	return "start"
 }
 
-func (ts *testStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, error) {
+func (ts *testStep) Execute(ctx context.Context, dogu *k8sv2.Dogu) (string, error) {
 	return "finished", nil
 }
 
@@ -24,7 +24,7 @@ func (es *errorStep) GetStartCondition() string {
 	return "errorStart"
 }
 
-func (es *errorStep) Execute(ctx context.Context, dogu *k8sv1.Dogu) (string, error) {
+func (es *errorStep) Execute(ctx context.Context, dogu *k8sv2.Dogu) (string, error) {
 	return "end", assert.AnError
 }
 

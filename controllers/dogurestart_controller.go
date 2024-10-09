@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 // DoguRestartReconciler reconciles a DoguRestart object
@@ -104,6 +104,6 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 // SetupWithManager sets up the controller with the Manager.
 func (r *DoguRestartReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&k8sv1.DoguRestart{}).
+		For(&k8sv2.DoguRestart{}).
 		Complete(r)
 }
