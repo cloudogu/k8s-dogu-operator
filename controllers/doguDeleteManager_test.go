@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -16,29 +15,28 @@ import (
 
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 )
 
 type doguDeleteManagerWithMocks struct {
 	deleteManager             *doguDeleteManager
-	imageRegistryMock         *mocks.ImageRegistry
-	doguRegistratorMock       *mocks.DoguRegistrator
-	localDoguFetcherMock      *mocks.MockLocalDoguFetcher
-	serviceAccountRemoverMock *mocks.ServiceAccountRemover
-	exposedPortRemover        *mocks.ExposePortRemover
-	doguConfigRepo            *extMocks.DoguConfigRepository
-	sensitiveConfigRepo       *extMocks.DoguConfigRepository
+	imageRegistryMock         *MockImageRegistry
+	doguRegistratorMock       *MockDoguRegistrator
+	localDoguFetcherMock      *MockLocalDoguFetcher
+	serviceAccountRemoverMock *MockServiceAccountRemover
+	exposedPortRemover        *MockExposePortRemover
+	doguConfigRepo            *MockDoguConfigRepository
+	sensitiveConfigRepo       *MockDoguConfigRepository
 }
 
 func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 	k8sClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
-	imageRegistry := mocks.NewImageRegistry(t)
-	doguRegistrator := mocks.NewDoguRegistrator(t)
-	serviceAccountRemover := mocks.NewServiceAccountRemover(t)
-	doguFetcher := mocks.NewMockLocalDoguFetcher(t)
-	exposedPortRemover := mocks.NewExposePortRemover(t)
-	doguConfigRepo := extMocks.NewDoguConfigRepository(t)
-	sensitiveConfigRepo := extMocks.NewDoguConfigRepository(t)
+	imageRegistry := NewMockImageRegistry(t)
+	doguRegistrator := NewMockDoguRegistrator(t)
+	serviceAccountRemover := NewMockServiceAccountRemover(t)
+	doguFetcher := NewMockLocalDoguFetcher(t)
+	exposedPortRemover := NewMockExposePortRemover(t)
+	doguConfigRepo := NewMockDoguConfigRepository(t)
+	sensitiveConfigRepo := NewMockDoguConfigRepository(t)
 
 	doguDeleteManager := &doguDeleteManager{
 		client:                  k8sClient,

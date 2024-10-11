@@ -9,9 +9,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -40,9 +37,9 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -71,9 +68,9 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -102,10 +99,10 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 		recorder.On("Eventf", testDoguCr, v1.EventTypeWarning, operatorEventReason, mock.Anything, mock.Anything)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -162,10 +159,10 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -197,10 +194,10 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -236,10 +233,10 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -274,7 +271,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{
 			Name:        "ledogu",
@@ -312,10 +309,10 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -351,10 +348,10 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -428,10 +425,10 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 			},
 		}
 
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
-		localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcher := NewMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
@@ -482,7 +479,7 @@ func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
 		Spec:       k8sv2.DoguSpec{Name: "ns/dogu", Version: "1.2.3-5"}}
 
 	t.Run("should should return false for dogu installation", func(t *testing.T) {
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 		recorder.On("Event", newDoguResource, "Normal", "Debug", mock.Anything)
 		sut := doguResourceChangeDebugPredicate{recorder: recorder}
 
@@ -496,7 +493,7 @@ func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
 		require.False(t, actual)
 	})
 	t.Run("should should return false for dogu deletion", func(t *testing.T) {
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 		recorder.On("Event", oldDoguResource, "Normal", "Debug", mock.Anything)
 		sut := doguResourceChangeDebugPredicate{recorder: recorder}
 
@@ -510,7 +507,7 @@ func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
 		require.False(t, actual)
 	})
 	t.Run("should should return true for dogu upgrade", func(t *testing.T) {
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 		recorder.On("Event", newDoguResource, "Normal", "Debug", mock.Anything)
 		sut := doguResourceChangeDebugPredicate{recorder: recorder}
 
@@ -524,7 +521,7 @@ func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
 		require.True(t, actual)
 	})
 	t.Run("should should return false for no dogu change", func(t *testing.T) {
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := NewMockEventRecorder(t)
 		recorder.On("Event", oldDoguResource, "Normal", "Debug", mock.Anything)
 		sut := doguResourceChangeDebugPredicate{recorder: recorder}
 
@@ -795,7 +792,7 @@ func Test_doguReconciler_validateSpecName(t *testing.T) {
 		{
 			name: "should fail validation",
 			recorderFunc: func(t *testing.T) record.EventRecorder {
-				recorder := extMocks.NewEventRecorder(t)
+				recorder := NewMockEventRecorder(t)
 				recorder.EXPECT().Eventf(mock.Anything, "Warning", "FailedNameValidation", "Dogu resource does not follow naming rules: The dogu's simple name '%s' must be the same as the resource name '%s'.", "invalid-example", "example")
 				return recorder
 			},
@@ -804,7 +801,7 @@ func Test_doguReconciler_validateSpecName(t *testing.T) {
 		},
 		{
 			name:         "should succeed validation",
-			recorderFunc: func(t *testing.T) record.EventRecorder { return extMocks.NewEventRecorder(t) },
+			recorderFunc: func(t *testing.T) record.EventRecorder { return NewMockEventRecorder(t) },
 			doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "example"}, Spec: k8sv2.DoguSpec{Name: "testing/example"}},
 			wantSuccess:  true,
 		},
@@ -874,11 +871,11 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(nil)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Installation", "%s successful.", "Installation").Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to install dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -901,11 +898,11 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(assert.AnError)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Warning", "ErrInstallation", "%s failed. Reason: %s.", "Installation", assert.AnError.Error()).Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to install dogu ldap", doguResource, assert.AnError, mock.Anything).Return(ctrl.Result{Requeue: true, RequeueAfter: 1 * time.Minute}, nil)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -928,12 +925,12 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(assert.AnError)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Warning", "ErrInstallation", "%s failed. Reason: %s.", "Installation", assert.AnError.Error()).Return()
 		mockRecorder.EXPECT().Eventf(doguResource, "Warning", "ErrRequeue", "Failed to requeue the %s.", "installation").Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to install dogu ldap", doguResource, assert.AnError, mock.Anything).Return(ctrl.Result{}, assert.AnError)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -957,11 +954,11 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(nil)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Installation", "%s successful.", "Installation").Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to install dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -984,11 +981,11 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().Upgrade(testCtx, doguResource).Return(nil)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Upgrading", "%s successful.", "Upgrade").Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to upgrade dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -1011,11 +1008,11 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().Delete(testCtx, doguResource).Return(nil)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Deinstallation", "%s successful.", "Deinstallation").Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to delete dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -1038,11 +1035,11 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().SetDoguDataVolumeSize(testCtx, doguResource).Return(nil)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "VolumeExpansion", "%s successful.", "VolumeExpansion").Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to expand volume dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -1065,11 +1062,11 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().SetDoguAdditionalIngressAnnotations(testCtx, doguResource).Return(nil)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "AdditionalIngressAnnotationsChange", "%s successful.", "AdditionalIngressAnnotationsChange").Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to change additional ingress annotations dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -1109,11 +1106,11 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := mocks.NewDoguManager(t)
+		mockDoguManager := NewMockDoguManager(t)
 		mockDoguManager.EXPECT().SetDoguDataVolumeSize(testCtx, doguResource).Return(nil)
-		mockRecorder := extMocks.NewEventRecorder(t)
+		mockRecorder := NewMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "VolumeExpansion", "%s successful.", "VolumeExpansion").Return()
-		mockRequeueHandler := mocks.NewRequeueHandler(t)
+		mockRequeueHandler := NewMockRequeueHandler(t)
 		mockRequeueHandler.EXPECT().Handle(testCtx, "failed to expand volume dogu ldap", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
 		sut := &doguReconciler{
 			doguManager:        mockDoguManager,
@@ -1143,14 +1140,14 @@ func Test_doguReconciler_validateVolumeSize(t *testing.T) {
 		{
 			name:         "success with Binary-SI",
 			args:         args{doguResource: &k8sv2.Dogu{Spec: k8sv2.DoguSpec{Resources: k8sv2.DoguResources{DataVolumeSize: "2Gi"}}}},
-			recorderFunc: func(t *testing.T) record.EventRecorder { return extMocks.NewEventRecorder(t) },
+			recorderFunc: func(t *testing.T) record.EventRecorder { return NewMockEventRecorder(t) },
 			wantSuccess:  true,
 		},
 		{
 			name: "should fail on invalid size",
 			args: args{doguResource: &k8sv2.Dogu{Spec: k8sv2.DoguSpec{Resources: k8sv2.DoguResources{DataVolumeSize: "2invalidGi"}}}},
 			recorderFunc: func(t *testing.T) record.EventRecorder {
-				recorder := extMocks.NewEventRecorder(t)
+				recorder := NewMockEventRecorder(t)
 				recorder.EXPECT().Eventf(mock.Anything, "Warning", "FailedVolumeSizeParsingValidation", "Dogu resource volume size parsing error: %s", "2invalidGi")
 				return recorder
 			},
@@ -1160,7 +1157,7 @@ func Test_doguReconciler_validateVolumeSize(t *testing.T) {
 			name: "should fail on non Binary-SI",
 			args: args{doguResource: &k8sv2.Dogu{Spec: k8sv2.DoguSpec{Resources: k8sv2.DoguResources{DataVolumeSize: "2G"}}}},
 			recorderFunc: func(t *testing.T) record.EventRecorder {
-				recorder := extMocks.NewEventRecorder(t)
+				recorder := NewMockEventRecorder(t)
 				recorder.EXPECT().Eventf(mock.Anything, "Warning", "FailedVolumeSizeSIValidation", "Dogu resource volume size format is not Binary-SI (\"Mi\" or \"Gi\"): %s", resource.MustParse("2G"))
 				return recorder
 			},

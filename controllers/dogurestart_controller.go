@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,8 +16,8 @@ import (
 
 // DoguRestartReconciler reconciles a DoguRestart object
 type DoguRestartReconciler struct {
-	doguInterface        cloudogu.DoguInterface
-	doguRestartInterface cloudogu.DoguRestartInterface
+	doguInterface        ecoSystem.DoguInterface
+	doguRestartInterface ecoSystem.DoguRestartInterface
 	garbageCollector     DoguRestartGarbageCollector
 	recorder             record.EventRecorder
 }

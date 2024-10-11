@@ -6,7 +6,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/loadbalancer/nginx"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +23,7 @@ const (
 
 type doguExposedPortHandler struct {
 	client         client.Client
-	serviceExposer cloudogu.TcpUpdServiceExposer
+	serviceExposer TcpUpdServiceExposer
 }
 
 // NewDoguExposedPortHandler creates a new instance of doguExposedPortHandler.

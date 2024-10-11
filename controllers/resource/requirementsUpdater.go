@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,12 +21,12 @@ type RequirementsUpdater struct {
 	client              client.Client
 	namespace           string
 	globalConfigWatcher globalConfigurationWatcher
-	doguFetcher         cloudogu.LocalDoguFetcher
+	doguFetcher         LocalDoguFetcher
 	requirementsGen     requirementsGenerator
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguFetcher cloudogu.LocalDoguFetcher, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
+func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguFetcher LocalDoguFetcher, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
 	requirementsGen := NewRequirementsGenerator(doguConfigGetter)
 
 	return &RequirementsUpdater{

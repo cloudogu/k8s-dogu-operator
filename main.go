@@ -16,8 +16,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 	"github.com/google/uuid"
 
 	v1 "k8s.io/api/core/v1"
@@ -202,8 +200,8 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 	return nil
 }
 
-func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
-	ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client, healthStatusUpdater cloudogu.DoguHealthStatusUpdater,
+func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
+	ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client, healthStatusUpdater health.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(
@@ -274,8 +272,8 @@ func addChecks(mgr manager.Manager) error {
 	return nil
 }
 
-func addRunners(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
-	ecosystemClientSet ecoSystem.EcoSystemV1Alpha1Interface, updater cloudogu.DoguHealthStatusUpdater,
+func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
+	ecosystemClientSet ecoSystem.EcoSystemV1Alpha1Interface, updater health.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, namespace string) error {
 	doguInterface := ecosystemClientSet.Dogus(namespace)
 	deploymentInterface := k8sClientSet.AppsV1().Deployments(namespace)
@@ -303,7 +301,7 @@ func getEcoSystemClientSet(config *rest.Config) (*ecoSystem.EcoSystemV1Alpha1Cli
 	return ecosystemClientSet, nil
 }
 
-func getK8sClientSet(config *rest.Config) (thirdParty.ClientSet, error) {
+func getK8sClientSet(config *rest.Config) (controllers.ClientSet, error) {
 	k8sClientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create k8s client set: %w", err)

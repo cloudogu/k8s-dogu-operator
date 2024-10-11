@@ -1,6 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=2.2.0
+VERSION=2.2.1
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG=1.22.5
@@ -18,6 +18,8 @@ HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo template-stage templ
 IMAGE_IMPORT_TARGET=image-import
 CHECK_VAR_TARGETS=check-all-vars
 
+MOCKERY_VERSION=v2.46.2
+
 include build/make/variables.mk
 include build/make/self-update.mk
 include build/make/dependencies-gomod.mk
@@ -28,6 +30,7 @@ include build/make/static-analysis.mk
 include build/make/clean.mk
 include build/make/digital-signature.mk
 include build/make/k8s-controller.mk
+include build/make/mocks.mk
 
 .PHONY: build-boot
 build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
@@ -81,18 +84,3 @@ kill-operator-pod:
 print-debug-info: ## Generates info and the list of environment variables required to start the operator in debug mode.
 	@echo "The target generates a list of env variables required to start the operator in debug mode. These can be pasted directly into the 'go build' run configuration in IntelliJ to run and debug the operator on-demand."
 	@echo "STAGE=$(STAGE);LOG_LEVEL=$(LOG_LEVEL);KUBECONFIG=$(KUBECONFIG);NAMESPACE=$(NAMESPACE);DOGU_REGISTRY_ENDPOINT=$(DOGU_REGISTRY_ENDPOINT);DOGU_REGISTRY_USERNAME=$(DOGU_REGISTRY_USERNAME);DOGU_REGISTRY_PASSWORD=$(DOGU_REGISTRY_PASSWORD);DOCKER_REGISTRY={\"auths\":{\"$(docker_registry_server)\":{\"username\":\"$(docker_registry_username)\",\"password\":\"$(docker_registry_password)\",\"email\":\"ignore@me.com\",\"auth\":\"ignoreMe\"}}}"
-
-##@ Mockery
-
-MOCKERY_BIN=${UTILITY_BIN_PATH}/mockery
-MOCKERY_INSTALL_VERSION=v2.46.2
-
-${MOCKERY_BIN}: ${UTILITY_BIN_PATH}
-	$(call go-get-tool,$(MOCKERY_BIN),github.com/vektra/mockery/v2@$(MOCKERY_INSTALL_VERSION))
-
-.PHONY: mocks
-mocks: ${MOCKERY_BIN} ## Generate all mocks for the dogu operator.
-# Mockery respects .mockery.yaml in the project root
-	@${MOCKERY_BIN} --output internal/cloudogu/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu --all
-	@${MOCKERY_BIN} --output internal/thirdParty/mocks --srcpkg github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty --all
-	@echo "Mocks successfully created."

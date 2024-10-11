@@ -11,7 +11,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
 // NewDoguHealthError creates a new dogu health error.
@@ -35,7 +34,7 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, localFetcher cloudogu.LocalDoguFetcher) *doguChecker {
+func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, localFetcher LocalDoguFetcher) *doguChecker {
 	return &doguChecker{
 		ecosystemClient:   ecosystemClient,
 		doguLocalRegistry: localFetcher,
@@ -44,7 +43,7 @@ func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, localF
 
 type doguChecker struct {
 	ecosystemClient   ecoSystem.EcoSystemV1Alpha1Interface
-	doguLocalRegistry cloudogu.LocalDoguFetcher
+	doguLocalRegistry LocalDoguFetcher
 }
 
 // CheckByName returns nil if the dogu resource's health status says it's available.

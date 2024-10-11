@@ -4,8 +4,6 @@ import (
 	"context"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -48,7 +46,7 @@ func Test_doguExposedPortHandler_CreateOrUpdateCesLoadbalancerService(t *testing
 		// given
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
-		mockClient := extMocks.NewK8sClient(t)
+		mockClient := NewMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), types.NamespacedName{Name: "ces-loadbalancer", Namespace: "ecosystem"}, &v1.Service{}).Return(assert.AnError)
 		sut := &doguExposedPortHandler{client: mockClient}
 
@@ -65,7 +63,7 @@ func Test_doguExposedPortHandler_CreateOrUpdateCesLoadbalancerService(t *testing
 		// given
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().ExposeOrUpdateDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(assert.AnError)
 		mockClient := fake.NewClientBuilder().Build()
 		sut := &doguExposedPortHandler{client: mockClient, serviceExposer: serviceExposer}
@@ -84,7 +82,7 @@ func Test_doguExposedPortHandler_CreateOrUpdateCesLoadbalancerService(t *testing
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
 		expectedLoadBalancer := readNginxIngressOnlyExpectedLoadBalancer(t)
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().ExposeOrUpdateDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(nil)
 		mockClient := fake.NewClientBuilder().Build()
 		sut := &doguExposedPortHandler{client: mockClient, serviceExposer: serviceExposer}
@@ -108,7 +106,7 @@ func Test_doguExposedPortHandler_CreateOrUpdateCesLoadbalancerService(t *testing
 		// given
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
-		mockClient := extMocks.NewK8sClient(t)
+		mockClient := NewMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), types.NamespacedName{Name: "ces-loadbalancer", Namespace: "ecosystem"},
 			&v1.Service{}).Return(apierrors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, "ces-loadbalancer"))
 		sut := &doguExposedPortHandler{client: mockClient}
@@ -136,7 +134,7 @@ func Test_doguExposedPortHandler_CreateOrUpdateCesLoadbalancerService(t *testing
 			},
 		}
 
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().ExposeOrUpdateDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(assert.AnError)
 
 		mockClient := fake.NewClientBuilder().WithObjects(existingLB).Build()
@@ -165,7 +163,7 @@ func Test_doguExposedPortHandler_CreateOrUpdateCesLoadbalancerService(t *testing
 			},
 		}
 
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().ExposeOrUpdateDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(nil)
 
 		mockClient := fake.NewClientBuilder().WithObjects(existingLB).Build()
@@ -199,10 +197,10 @@ func Test_doguExposedPortHandler_CreateOrUpdateCesLoadbalancerService(t *testing
 			},
 		}
 
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().ExposeOrUpdateDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(nil)
 
-		mockClient := extMocks.NewK8sClient(t)
+		mockClient := NewMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), types.NamespacedName{Name: "ces-loadbalancer", Namespace: "ecosystem"},
 			&v1.Service{}).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
 			object = existingLB
@@ -258,7 +256,7 @@ func Test_doguExposedPortHandler_RemoveExposedPorts(t *testing.T) {
 		// given
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().DeleteDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(assert.AnError)
 		sut := &doguExposedPortHandler{serviceExposer: serviceExposer}
 
@@ -276,7 +274,7 @@ func Test_doguExposedPortHandler_RemoveExposedPorts(t *testing.T) {
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
 		mockClient := fake.NewClientBuilder().Build()
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().DeleteDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(nil)
 		sut := &doguExposedPortHandler{client: mockClient, serviceExposer: serviceExposer}
 
@@ -289,11 +287,11 @@ func Test_doguExposedPortHandler_RemoveExposedPorts(t *testing.T) {
 
 	t.Run("should return an error on service get error", func(t *testing.T) {
 		// given
-		mockClient := extMocks.NewK8sClient(t)
+		mockClient := NewMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), types.NamespacedName{Name: "ces-loadbalancer", Namespace: "ecosystem"}, &v1.Service{}).Return(assert.AnError)
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().DeleteDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(nil)
 		sut := &doguExposedPortHandler{client: mockClient, serviceExposer: serviceExposer}
 
@@ -327,7 +325,7 @@ func Test_doguExposedPortHandler_RemoveExposedPorts(t *testing.T) {
 		mockClient := fake.NewClientBuilder().WithObjects(existingLB).Build()
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().DeleteDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(nil)
 		sut := &doguExposedPortHandler{client: mockClient, serviceExposer: serviceExposer}
 
@@ -359,7 +357,7 @@ func Test_doguExposedPortHandler_RemoveExposedPorts(t *testing.T) {
 		mockClient := fake.NewClientBuilder().WithObjects(existingLB).Build()
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().DeleteDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(nil)
 		sut := &doguExposedPortHandler{client: mockClient, serviceExposer: serviceExposer}
 
@@ -386,7 +384,7 @@ func Test_doguExposedPortHandler_RemoveExposedPorts(t *testing.T) {
 					{Name: "nginx-ingress-443", Port: 443, TargetPort: intstr.IntOrString{IntVal: 443}, Protocol: v1.ProtocolTCP}},
 			},
 		}
-		mockClient := extMocks.NewK8sClient(t)
+		mockClient := NewMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), types.NamespacedName{Name: "ces-loadbalancer", Namespace: "ecosystem"},
 			&v1.Service{}).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
 			object = existingLB
@@ -395,7 +393,7 @@ func Test_doguExposedPortHandler_RemoveExposedPorts(t *testing.T) {
 		mockClient.EXPECT().Delete(context.TODO(), mock.IsType(&v1.Service{})).Return(assert.AnError)
 		nginxIngressCR := readNginxIngressDoguResource(t)
 		nginxIngressDogu := readNginxIngressDogu(t)
-		serviceExposer := mocks.NewTcpUpdServiceExposer(t)
+		serviceExposer := NewMockTcpUpdServiceExposer(t)
 		serviceExposer.EXPECT().DeleteDoguServices(context.TODO(), nginxIngressCR.Namespace, nginxIngressDogu).Return(nil)
 		sut := &doguExposedPortHandler{client: mockClient, serviceExposer: serviceExposer}
 

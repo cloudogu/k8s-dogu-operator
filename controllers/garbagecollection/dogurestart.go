@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"os"
 	"sort"
 	"strconv"
@@ -15,7 +14,7 @@ import (
 )
 
 type DoguRestartGarbageCollector struct {
-	doguRestartInterface cloudogu.DoguRestartInterface
+	doguRestartInterface DoguRestartInterface
 }
 
 func NewDoguRestartGarbageCollector(doguRestartInterface ecoSystem.DoguRestartInterface) *DoguRestartGarbageCollector {

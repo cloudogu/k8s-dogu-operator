@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	mocks2 "github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -33,11 +31,11 @@ func Test_doguStartStopManager_CheckStarted(t *testing.T) {
 				AvailableReplicas: 1,
 			},
 		}
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
 		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := mocks2.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(dogu.Status)
@@ -45,7 +43,7 @@ func Test_doguStartStopManager_CheckStarted(t *testing.T) {
 				assert.Equal(t, false, status.Stopped)
 			})
 
-		podInterfaceMock := mocks.NewPodInterface(t)
+		podInterfaceMock := NewMockPodInterface(t)
 		podList := &v1.PodList{Items: []v1.Pod{{Status: v1.PodStatus{ContainerStatuses: []v1.ContainerStatus{{Name: "cas"}}}}}}
 		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
 
@@ -60,12 +58,12 @@ func Test_doguStartStopManager_CheckStarted(t *testing.T) {
 
 	t.Run("should return error on deployment get error", func(t *testing.T) {
 		// given
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, assert.AnError)
 
 		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := mocks2.NewDoguInterface(t)
-		podInterfaceMock := mocks.NewPodInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
+		podInterfaceMock := NewMockPodInterface(t)
 
 		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
 
@@ -91,13 +89,13 @@ func Test_doguStartStopManager_CheckStarted(t *testing.T) {
 				AvailableReplicas: 0,
 			},
 		}
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
 		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := mocks2.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 
-		podInterfaceMock := mocks.NewPodInterface(t)
+		podInterfaceMock := NewMockPodInterface(t)
 		podList := &v1.PodList{Items: []v1.Pod{{Status: v1.PodStatus{ContainerStatuses: []v1.ContainerStatus{{Name: "cas"}}}}}}
 		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
 
@@ -129,11 +127,11 @@ func Test_doguStartStopManager_CheckStopped(t *testing.T) {
 				AvailableReplicas: 0,
 			},
 		}
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(scaledDownDeployment, nil)
 
 		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := mocks2.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(dogu.Status)
@@ -141,7 +139,7 @@ func Test_doguStartStopManager_CheckStopped(t *testing.T) {
 				assert.Equal(t, true, status.Stopped)
 			})
 
-		podInterfaceMock := mocks.NewPodInterface(t)
+		podInterfaceMock := NewMockPodInterface(t)
 		podList := &v1.PodList{Items: []v1.Pod{{Status: v1.PodStatus{ContainerStatuses: []v1.ContainerStatus{{Name: "cas"}}}}}}
 		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
 
@@ -156,12 +154,12 @@ func Test_doguStartStopManager_CheckStopped(t *testing.T) {
 
 	t.Run("should return error on deployment get error", func(t *testing.T) {
 		// given
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, assert.AnError)
 
 		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := mocks2.NewDoguInterface(t)
-		podInterfaceMock := mocks.NewPodInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
+		podInterfaceMock := NewMockPodInterface(t)
 
 		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
 
@@ -187,13 +185,13 @@ func Test_doguStartStopManager_CheckStopped(t *testing.T) {
 				AvailableReplicas: 0,
 			},
 		}
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
 		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := mocks2.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 
-		podInterfaceMock := mocks.NewPodInterface(t)
+		podInterfaceMock := NewMockPodInterface(t)
 		podList := &v1.PodList{Items: []v1.Pod{{Status: v1.PodStatus{ContainerStatuses: []v1.ContainerStatus{{Name: "cas"}}}}}}
 		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
 
@@ -225,7 +223,7 @@ func Test_doguStartStopManager_StartDogu(t *testing.T) {
 		// given
 		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 
-		doguInterfaceMock := mocks2.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				oldStopped := dogu.Status.Stopped
@@ -234,7 +232,7 @@ func Test_doguStartStopManager_StartDogu(t *testing.T) {
 				assert.Equal(t, oldStopped, status.Stopped)
 			})
 
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		scale := &scalingv1.Scale{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}, Spec: scalingv1.ScaleSpec{Replicas: 1}}
 		deploymentInterfaceMock.EXPECT().UpdateScale(testCtx, "cas", scale, metav1.UpdateOptions{}).Return(nil, nil)
 
@@ -256,7 +254,7 @@ func Test_doguStartStopManager_StopDogu(t *testing.T) {
 		// given
 		dogu := &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
 
-		doguInterfaceMock := mocks2.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				oldStopped := dogu.Status.Stopped
@@ -265,7 +263,7 @@ func Test_doguStartStopManager_StopDogu(t *testing.T) {
 				assert.Equal(t, oldStopped, status.Stopped)
 			})
 
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		scale := &scalingv1.Scale{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}, Spec: scalingv1.ScaleSpec{Replicas: 0}}
 		deploymentInterfaceMock.EXPECT().UpdateScale(testCtx, "cas", scale, metav1.UpdateOptions{}).Return(nil, nil)
 
@@ -308,10 +306,10 @@ func Test_doguStartStopManager_checkForDeploymentRollout(t *testing.T) {
 		}
 		podList := &v1.PodList{Items: []v1.Pod{crashPod}}
 
-		podInterfaceMock := mocks.NewPodInterface(t)
+		podInterfaceMock := NewMockPodInterface(t)
 		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
 
-		deploymentInterfaceMock := mocks.NewDeploymentInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
 		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, nil)
 
 		sut := doguStartStopManager{deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}

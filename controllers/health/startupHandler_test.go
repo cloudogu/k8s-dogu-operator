@@ -2,8 +2,6 @@ package health
 
 import (
 	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
-	thirdPartyMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -15,10 +13,10 @@ import (
 func TestNewStartupHandler(t *testing.T) {
 	t.Run("should set properties", func(t *testing.T) {
 		// given
-		doguInterfaceMock := mocks.NewDoguInterface(t)
-		deploymentInterfaceMock := thirdPartyMocks.NewDeploymentInterface(t)
-		availabilityCheckerMock := mocks.NewDeploymentAvailabilityChecker(t)
-		healthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
+		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
 		// when
 		handler := NewStartupHandler(doguInterfaceMock, deploymentInterfaceMock, availabilityCheckerMock, healthUpdaterMock)
@@ -34,10 +32,10 @@ func TestNewStartupHandler(t *testing.T) {
 func TestStartupHandler_Start(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		doguInterfaceMock := mocks.NewDoguInterface(t)
-		deploymentInterfaceMock := thirdPartyMocks.NewDeploymentInterface(t)
-		availabilityCheckerMock := mocks.NewDeploymentAvailabilityChecker(t)
-		healthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
+		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
 		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
@@ -73,10 +71,10 @@ func TestStartupHandler_Start(t *testing.T) {
 
 	t.Run("should return error on dogu list error", func(t *testing.T) {
 		// given
-		doguInterfaceMock := mocks.NewDoguInterface(t)
-		deploymentInterfaceMock := thirdPartyMocks.NewDeploymentInterface(t)
-		availabilityCheckerMock := mocks.NewDeploymentAvailabilityChecker(t)
-		healthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
+		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
 		doguInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(nil, assert.AnError)
 
@@ -92,10 +90,10 @@ func TestStartupHandler_Start(t *testing.T) {
 
 	t.Run("should return error on deployment get error", func(t *testing.T) {
 		// given
-		doguInterfaceMock := mocks.NewDoguInterface(t)
-		deploymentInterfaceMock := thirdPartyMocks.NewDeploymentInterface(t)
-		availabilityCheckerMock := mocks.NewDeploymentAvailabilityChecker(t)
-		healthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
+		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
 		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
@@ -127,10 +125,10 @@ func TestStartupHandler_Start(t *testing.T) {
 
 	t.Run("should return error on status update error", func(t *testing.T) {
 		// given
-		doguInterfaceMock := mocks.NewDoguInterface(t)
-		deploymentInterfaceMock := thirdPartyMocks.NewDeploymentInterface(t)
-		availabilityCheckerMock := mocks.NewDeploymentAvailabilityChecker(t)
-		healthUpdaterMock := mocks.NewDoguHealthStatusUpdater(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
+		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
+		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
 		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},

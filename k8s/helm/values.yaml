@@ -4,7 +4,7 @@ additionalImages:
 controllerManager:
   image:
     repository: cloudogu/k8s-dogu-operator
-    tag: 2.2.0
+    tag: 2.2.1
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug

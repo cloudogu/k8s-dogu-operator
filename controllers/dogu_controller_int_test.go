@@ -22,8 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
 
 type mockeryGinkgoLogger struct {
@@ -71,14 +69,14 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	Context("Handle dogu resource", func() {
 		It("Setup mocks and test data", func() {
-			*DoguInterfaceMock = mocks.DoguInterface{}
+			*DoguInterfaceMock = MockDoguInterface{}
 			DoguInterfaceMock.EXPECT().UpdateStatusWithRetry(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(
 				func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 					modifyStatusFn(dogu.Status)
 				}).Once()
-			*ImageRegistryMock = mocks.ImageRegistry{}
+			*ImageRegistryMock = MockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil).Once()
-			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
+			*DoguRemoteRegistryMock = MockRemoteRegistry{}
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil).Once()
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil).Once()
 		})
@@ -340,10 +338,10 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Setup mocks and test data for upgrade", func() {
 			// create mocks
-			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
+			*DoguRemoteRegistryMock = MockRemoteRegistry{}
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(upgradeLdapToDoguDescriptor, nil)
 
-			*ImageRegistryMock = mocks.ImageRegistry{}
+			*ImageRegistryMock = MockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil).Once()
 		})
 
@@ -374,15 +372,15 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 			assertRessourceStatus(ldapDoguLookupKey, "installed")
 
-			Expect(CommandExecutor.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(CommandExecutorMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		})
 
 		It("Setup mocks and test data for delete", func() {
 			// create mocks
-			*DoguRemoteRegistryMock = extMocks.RemoteRegistry{}
-			*ImageRegistryMock = mocks.ImageRegistry{}
+			*DoguRemoteRegistryMock = MockRemoteRegistry{}
+			*ImageRegistryMock = MockImageRegistry{}
 		})
 
 		It("Should delete dogu", func() {

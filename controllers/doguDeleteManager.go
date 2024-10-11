@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 	registryConfig "github.com/cloudogu/k8s-registry-lib/config"
 	registryErrors "github.com/cloudogu/k8s-registry-lib/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -19,7 +18,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/serviceaccount"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
 const finalizerName = "dogu-finalizer"
@@ -27,13 +25,13 @@ const finalizerName = "dogu-finalizer"
 // doguDeleteManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguDeleteManager struct {
 	client                  client.Client
-	localDoguFetcher        cloudogu.LocalDoguFetcher
-	doguRegistrator         cloudogu.DoguRegistrator
-	serviceAccountRemover   cloudogu.ServiceAccountRemover
-	exposedPortRemover      cloudogu.ExposePortRemover
+	localDoguFetcher        LocalDoguFetcher
+	doguRegistrator         DoguRegistrator
+	serviceAccountRemover   serviceaccount.ServiceAccountRemover
+	exposedPortRemover      resource.ExposePortRemover
 	eventRecorder           record.EventRecorder
-	doguConfigRepository    thirdParty.DoguConfigRepository
-	sensitiveDoguRepository thirdParty.DoguConfigRepository
+	doguConfigRepository    DoguConfigRepository
+	sensitiveDoguRepository DoguConfigRepository
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.

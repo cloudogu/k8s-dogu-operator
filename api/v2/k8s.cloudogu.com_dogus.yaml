@@ -1,9 +1,9 @@
 ---
-apiVersion: apiextensions.k8s.io/v2
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: dogus.k8s.cloudogu.com
   labels:
     app: ces
@@ -23,19 +23,10 @@ spec:
           description: Dogu is the Schema for the dogus API
           properties:
             apiVersion:
-              description: |-
-                APIVersion defines the versioned schema of this representation of an object.
-                Servers should convert recognized schemas to the latest internal value, and
-                may reject unrecognized values.
-                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
               type: string
             kind:
-              description: |-
-                Kind is a string value representing the REST resource this object represents.
-                Servers may infer this from the endpoint the client submits requests to.
-                Cannot be updated.
-                In CamelCase.
-                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
               type: string
             metadata:
               type: object
@@ -54,34 +45,23 @@ spec:
                   description: Resources of the dogu (e.g. dataVolumeSize)
                   properties:
                     dataVolumeSize:
-                      description: |-
-                        dataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
-                        expansion. This includes a downtime for the respective dogu. The default size for volumes is "2Gi".
-                        It is not possible to lower the volume size after an expansion. This will introduce an inconsistent state for the
-                        dogu.
+                      description: dataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume expansion. This includes a downtime for the respective dogu. The default size for volumes is "2Gi". It is not possible to lower the volume size after an expansion. This will introduce an inconsistent state for the dogu.
                       type: string
                   type: object
                 stopped:
                   description: Stopped indicates whether the dogu should be running (stopped=false) or not (stopped=true).
                   type: boolean
                 supportMode:
-                  description: |-
-                    SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
-                    a crash loop).
+                  description: SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from a crash loop).
                   type: boolean
                 upgradeConfig:
                   description: UpgradeConfig contains options to manipulate the upgrade process.
                   properties:
                     allowNamespaceSwitch:
-                      description: |-
-                        AllowNamespaceSwitch lets a dogu switch its dogu namespace during an upgrade. The dogu must be technically the
-                        same dogu which did reside in a different namespace. The remote dogu's version must be equal to or greater than
-                        the version of the local dogu.
+                      description: AllowNamespaceSwitch lets a dogu switch its dogu namespace during an upgrade. The dogu must be technically the same dogu which did reside in a different namespace. The remote dogu's version must be equal to or greater than the version of the local dogu.
                       type: boolean
                     forceUpgrade:
-                      description: |-
-                        ForceUpgrade allows to install the same or even lower dogu version than already is installed. Please note, that
-                        possible data loss may occur by inappropriate dogu downgrading.
+                      description: ForceUpgrade allows to install the same or even lower dogu version than already is installed. Please note, that possible data loss may occur by inappropriate dogu downgrading.
                       type: boolean
                   type: object
                 version:

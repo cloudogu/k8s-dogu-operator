@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +38,7 @@ metadata:
 		inputResource["myOtherResource"] = yamlOther
 		doguResource := readLdapDoguResource(t)
 
-		applier := mocks.NewApplier(t)
+		applier := NewMockApplier(t)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlOther), doguResource.Namespace, doguResource).Once().Return(nil)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlDeployment), doguResource.Namespace, doguResource).Once().Return(nil)
 		sut := NewCollectApplier(applier)
@@ -57,7 +56,7 @@ kind: DeploymentStrategy`
 		inputResource["aResourceYamlFile"] = yamlFile
 		doguResource := readLdapDoguResource(t)
 
-		applier := mocks.NewApplier(t)
+		applier := NewMockApplier(t)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlFile), doguResource.Namespace, doguResource).Return(assert.AnError)
 		sut := NewCollectApplier(applier)
 
@@ -95,7 +94,7 @@ metadata:
 		inputResource["aResourceYamlFile"] = yamlFile
 		doguResource := readLdapDoguResource(t)
 
-		applier := mocks.NewApplier(t)
+		applier := NewMockApplier(t)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlFile1), doguResource.Namespace, doguResource).Once().Return(nil)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlFile2), doguResource.Namespace, doguResource).Once().Return(nil)
 		sut := NewCollectApplier(applier)
@@ -110,7 +109,7 @@ metadata:
 		inputResource := make(map[string]string, 0)
 		doguResource := readLdapDoguResource(t)
 
-		applier := mocks.NewApplier(t)
+		applier := NewMockApplier(t)
 		sut := NewCollectApplier(applier)
 
 		// when

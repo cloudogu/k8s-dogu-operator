@@ -18,8 +18,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
 )
 
@@ -32,13 +30,13 @@ var (
 )
 
 type upserter struct {
-	client           thirdParty.K8sClient
-	generator        cloudogu.DoguResourceGenerator
-	exposedPortAdder cloudogu.ExposePortAdder
+	client           K8sClient
+	generator        DoguResourceGenerator
+	exposedPortAdder ExposePortAdder
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, generator cloudogu.DoguResourceGenerator) *upserter {
+func NewUpserter(client client.Client, generator DoguResourceGenerator) *upserter {
 	exposedPortAdder := NewDoguExposedPortHandler(client)
 	return &upserter{client: client, generator: generator, exposedPortAdder: exposedPortAdder}
 }

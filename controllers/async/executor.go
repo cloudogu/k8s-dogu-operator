@@ -5,14 +5,13 @@ import (
 	"fmt"
 
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
 // FinishedState is the state where the executor will finish his execution.
 const FinishedState = "finished"
 
 type doguExecutionController struct {
-	steps []cloudogu.AsyncStep
+	steps []AsyncStep
 }
 
 // NewDoguExecutionController creates a new instance of doguExecutionController.
@@ -21,7 +20,7 @@ func NewDoguExecutionController() *doguExecutionController {
 }
 
 // AddStep adds a step.
-func (s *doguExecutionController) AddStep(step cloudogu.AsyncStep) {
+func (s *doguExecutionController) AddStep(step AsyncStep) {
 	s.steps = append(s.steps, step)
 }
 

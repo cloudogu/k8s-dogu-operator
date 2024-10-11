@@ -3,8 +3,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	"testing"
 	"time"
 
@@ -18,7 +16,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
 
 type myRequeueableError struct{}
@@ -41,8 +38,8 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 			Status:     k8sv2.DoguStatus{},
 		}
 		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventRecorder := &extMocks.EventRecorder{}
-		doguInterfaceMock := mocks.NewDoguInterface(t)
+		eventRecorder := &MockEventRecorder{}
+		doguInterfaceMock := NewMockDoguInterface(t)
 
 		handler := doguRequeueHandler{
 			doguInterface:  doguInterfaceMock,
@@ -72,8 +69,8 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 			Status:     k8sv2.DoguStatus{},
 		}
 		fakeNonCacheClient := fake2.NewSimpleClientset()
-		eventRecorder := &extMocks.EventRecorder{}
-		doguInterfaceMock := mocks.NewDoguInterface(t)
+		eventRecorder := &MockEventRecorder{}
+		doguInterfaceMock := NewMockDoguInterface(t)
 
 		handler := doguRequeueHandler{
 			doguInterface:  doguInterfaceMock,
@@ -112,10 +109,10 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 
 		fakeNonCacheClient := fake2.NewSimpleClientset(event)
-		eventRecorder := &extMocks.EventRecorder{}
+		eventRecorder := &MockEventRecorder{}
 		eventRecorder.On("Eventf", mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
-		doguInterfaceMock := mocks.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(context.Background(), doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguResource.Status)
@@ -169,10 +166,10 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		}
 
 		fakeNonCacheClient := fake2.NewSimpleClientset(event)
-		eventRecorder := extMocks.NewEventRecorder(t)
+		eventRecorder := NewMockEventRecorder(t)
 		eventRecorder.EXPECT().Eventf(mock.Anything, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", "10s")
 
-		doguInterfaceMock := mocks.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(context.Background(), doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguResource.Status)
@@ -220,8 +217,8 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 		return &rest.Config{}, nil
 	}
 
-	eventRecorder := &extMocks.EventRecorder{}
-	doguInterfaceMock := mocks.NewDoguInterface(t)
+	eventRecorder := &MockEventRecorder{}
+	doguInterfaceMock := NewMockDoguInterface(t)
 
 	// when
 	handler, err := NewDoguRequeueHandler(doguInterfaceMock, eventRecorder, "mynamespace")
@@ -229,5 +226,5 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	assert.NotNil(t, handler)
-	assert.Implements(t, (*cloudogu.RequeueHandler)(nil), handler)
+	assert.Implements(t, (*RequeueHandler)(nil), handler)
 }

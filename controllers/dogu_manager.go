@@ -18,7 +18,6 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
 // NewManager is an alias mainly used for testing the main package
@@ -32,13 +31,13 @@ var clientSetGetter = func(c *rest.Config) (kubernetes.Interface, error) {
 // The DoguManager creates, updates and deletes dogus
 type DoguManager struct {
 	scheme                    *runtime.Scheme
-	installManager            cloudogu.InstallManager
-	upgradeManager            cloudogu.UpgradeManager
-	deleteManager             cloudogu.DeleteManager
-	volumeManager             cloudogu.VolumeManager
-	ingressAnnotationsManager cloudogu.AdditionalIngressAnnotationsManager
-	supportManager            cloudogu.SupportManager
-	startStopManager          cloudogu.DoguStartStopManager
+	installManager            InstallManager
+	upgradeManager            UpgradeManager
+	deleteManager             DeleteManager
+	volumeManager             VolumeManager
+	ingressAnnotationsManager AdditionalIngressAnnotationsManager
+	supportManager            SupportManager
+	startStopManager          DoguStartStopManager
 	recorder                  record.EventRecorder
 }
 

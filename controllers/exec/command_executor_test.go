@@ -8,9 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
-
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/stretchr/testify/assert"
@@ -73,7 +70,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString(commandOutput)
 
 		// when
-		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, cloudogu.ContainersStarted)
+		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, ContainersStarted)
 
 		// then
 		require.NoError(t, err)
@@ -93,7 +90,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, cloudogu.PodReady)
+		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.NoError(t, err)
@@ -127,7 +124,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, cloudogu.PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -147,7 +144,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, cloudogu.ContainersStarted)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, ContainersStarted)
 
 		// then
 		require.Error(t, err)
@@ -167,7 +164,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, cloudogu.PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -185,7 +182,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, cloudogu.PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -233,7 +230,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := sut.ExecCommandForPod(ctx, readyPod, command, cloudogu.PodReady)
+		buffer, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
 
 		// then
 		require.NoError(t, err)
@@ -253,7 +250,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		bufferErr := bytes.NewBuffer([]byte{})
 
 		sut.commandExecutorCreator = func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-			mockExecutor := extMocks.NewRemoteExecutor(t)
+			mockExecutor := NewMockRemoteExecutor(t)
 			mockExecutor.EXPECT().StreamWithContext(mock.Anything, remotecommand.StreamOptions{
 				// expects the reader as stream option in the mocked call to verify the stdin command
 				Stdin:  reader,
@@ -268,7 +265,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		stdinCmd := NewShellCommandWithStdin(reader, "base64")
 
 		// when
-		buffer, err := sut.ExecCommandForPod(ctx, readyPod, stdinCmd, cloudogu.PodReady)
+		buffer, err := sut.ExecCommandForPod(ctx, readyPod, stdinCmd, PodReady)
 
 		// then
 		require.NoError(t, err)
@@ -283,7 +280,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, &shellCommand{}, cloudogu.PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, &shellCommand{}, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -300,7 +297,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, unreadyPod, nil, cloudogu.PodReady)
+		_, err := sut.ExecCommandForPod(ctx, unreadyPod, nil, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -314,7 +311,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, command, cloudogu.PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -329,7 +326,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, command, cloudogu.PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
 
 		// then
 		require.Error(t, err)
@@ -397,7 +394,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 	t.Helper()
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		mockExecutor := extMocks.NewRemoteExecutor(t)
+		mockExecutor := NewMockRemoteExecutor(t)
 		mockExecutor.EXPECT().StreamWithContext(mock.Anything, mock.Anything).RunAndReturn(streamWithContextRun())
 		return mockExecutor, nil
 	}
@@ -407,7 +404,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 	}
 
 	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		mockExecutor := extMocks.NewRemoteExecutor(t)
+		mockExecutor := NewMockRemoteExecutor(t)
 		mockExecutor.EXPECT().StreamWithContext(mock.Anything, mock.Anything).Return(assert.AnError)
 		return mockExecutor, nil
 	}

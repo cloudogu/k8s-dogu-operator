@@ -6,4 +6,4 @@ metadata:
     app: ces
 spec:
   name: k8s/nginx-ingress
-  version: 1.6.4-3
+  version: 1.6.4-4

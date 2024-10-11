@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +63,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 			require.NoError(t, unsetErr)
 		}()
 
-		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
 		list := &v2.DoguRestartList{Items: []v2.DoguRestart{}}
 		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(list, nil)
 
@@ -90,7 +89,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 		doguName := "ldap"
 		now := metav1.Now()
-		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
 		list := &v2.DoguRestartList{Items: []v2.DoguRestart{getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseCompleted, now.Add(time.Second))}}
 		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(list, nil)
 
@@ -108,7 +107,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		// given
 		doguName := "ldap"
 		otherDoguName := "cas"
-		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 
@@ -155,7 +154,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		}()
 
 		doguName := "ldap"
-		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 
@@ -189,7 +188,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		// given
 		doguName := "ldap"
 		otherDoguName := "cas"
-		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 
@@ -228,7 +227,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		}()
 
 		doguName := "ldap"
-		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 
@@ -267,7 +266,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		}()
 
 		doguName := "ldap"
-		doguRestartInterfaceMock := mocks.NewDoguRestartInterface(t)
+		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 

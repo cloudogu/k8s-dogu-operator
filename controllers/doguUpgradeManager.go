@@ -15,7 +15,6 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
@@ -42,10 +41,10 @@ type doguUpgradeManager struct {
 	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
 	eventRecorder   record.EventRecorder
 	// upgrade business
-	premisesChecker     cloudogu.PremisesChecker
-	localDoguFetcher    cloudogu.LocalDoguFetcher
-	resourceDoguFetcher cloudogu.ResourceDoguFetcher
-	upgradeExecutor     cloudogu.UpgradeExecutor
+	premisesChecker     upgrade.PremisesChecker
+	localDoguFetcher    LocalDoguFetcher
+	resourceDoguFetcher ResourceDoguFetcher
+	upgradeExecutor     upgrade.UpgradeExecutor
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv2.Dogu) error {

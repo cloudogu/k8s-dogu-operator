@@ -3,7 +3,6 @@ package health
 import (
 	"context"
 	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,7 +16,7 @@ func TestShutdownHandler_Start(t *testing.T) {
 		doneCtx, cancelFunc := context.WithCancel(testCtx)
 		cancelFunc()
 		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := mocks.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 
 		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
@@ -57,7 +56,7 @@ func TestShutdownHandler_Start(t *testing.T) {
 		cancelFunc()
 
 		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := mocks.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 
 		doguInterfaceMock.EXPECT().List(expectedContext, metav1.ListOptions{}).Return(nil, assert.AnError)
 
@@ -77,7 +76,7 @@ func TestShutdownHandler_Start(t *testing.T) {
 		cancelFunc()
 
 		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := mocks.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 
 		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
@@ -116,7 +115,7 @@ func TestShutdownHandler_Start(t *testing.T) {
 func TestNewShutdownHandler(t *testing.T) {
 	t.Run("should set properties", func(t *testing.T) {
 		// given
-		doguInterfaceMock := mocks.NewDoguInterface(t)
+		doguInterfaceMock := NewMockDoguInterface(t)
 
 		// when
 		handler := NewShutdownHandler(doguInterfaceMock)

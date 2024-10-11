@@ -15,8 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
 
 func TestGetPodForLabels(t *testing.T) {
@@ -29,7 +27,7 @@ func TestGetPodForLabels(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-x2y3z45", Labels: labels},
 			Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
 		}
-		cli := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(pod).Build()
+		cli := fake.NewClientBuilder().WithScheme(getPodFinderTestScheme()).WithObjects(pod).Build()
 
 		// when
 		actual, err := GetPodForLabels(testCtx, cli, labels)
@@ -48,7 +46,7 @@ func TestGetPodForLabels(t *testing.T) {
 	t.Run("should return an when no pod was found", func(t *testing.T) {
 		// given
 		labels := CesMatchingLabels{DoguLabelName: "ldap", DoguLabelVersion: "1.2.3-4"}
-		cli := extMocks.NewK8sClient(t)
+		cli := NewMockK8sClient(t)
 		cli.On("List", testCtx, mock.Anything, client.MatchingLabels(labels)).Return(assert.AnError)
 
 		// when
@@ -69,7 +67,7 @@ func TestGetPodForLabels(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-2", Labels: labels},
 			Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
 		}
-		cli := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(pod1, pod2).Build()
+		cli := fake.NewClientBuilder().WithScheme(getPodFinderTestScheme()).WithObjects(pod1, pod2).Build()
 
 		// when
 		_, err := GetPodForLabels(testCtx, cli, labels)
@@ -80,7 +78,7 @@ func TestGetPodForLabels(t *testing.T) {
 	})
 }
 
-func getTestScheme() *runtime.Scheme {
+func getPodFinderTestScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{

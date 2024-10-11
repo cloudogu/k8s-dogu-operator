@@ -16,27 +16,25 @@ import (
 
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty/mocks"
 )
 
 const namespace = "test"
 
 type doguSupportManagerWithMocks struct {
 	supportManager       *doguSupportManager
-	localDoguFetcherMock *mocks.MockLocalDoguFetcher
+	localDoguFetcherMock *MockLocalDoguFetcher
 	k8sClient            client.WithWatch
-	recorderMock         *extMocks.EventRecorder
-	podTemplateGenerator *mocks.PodTemplateResourceGenerator
+	recorderMock         *MockEventRecorder
+	podTemplateGenerator *mockPodTemplateResourceGenerator
 }
 
 func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSupportManagerWithMocks {
 	t.Helper()
 
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-	podTemplateGenerator := mocks.NewPodTemplateResourceGenerator(t)
-	localDoguFetcherMock := mocks.NewMockLocalDoguFetcher(t)
-	eventRecorder := extMocks.NewEventRecorder(t)
+	podTemplateGenerator := newMockPodTemplateResourceGenerator(t)
+	localDoguFetcherMock := NewMockLocalDoguFetcher(t)
+	eventRecorder := NewMockEventRecorder(t)
 
 	doguSupportManager := &doguSupportManager{
 		client:                       k8sClient,
@@ -62,7 +60,7 @@ func TestNewDoguSupportManager(t *testing.T) {
 	ctrl.GetConfig = createTestRestConfig
 
 	k8sClient := fake.NewClientBuilder().Build()
-	recorder := extMocks.NewEventRecorder(t)
+	recorder := NewMockEventRecorder(t)
 	mgrSet := &util.ManagerSet{}
 
 	// when

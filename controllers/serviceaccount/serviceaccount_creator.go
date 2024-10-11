@@ -18,7 +18,6 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
 // doguKind describes a service account on a dogu.
@@ -31,15 +30,15 @@ const (
 type creator struct {
 	client            client.Client
 	sensitiveDoguRepo SensitiveDoguConfigRepository
-	doguFetcher       cloudogu.LocalDoguFetcher
-	executor          cloudogu.CommandExecutor
+	doguFetcher       LocalDoguFetcher
+	executor          exec.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
 	namespace         string
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(repo SensitiveDoguConfigRepository, localDoguFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
+func NewCreator(repo SensitiveDoguConfigRepository, localDoguFetcher LocalDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	return &creator{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -166,7 +165,7 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, consumerDogu.GetSimpleName())
 
 	command := exec.NewShellCommand(createCommand.Command, args...)
-	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, cloudogu.PodReady)
+	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}

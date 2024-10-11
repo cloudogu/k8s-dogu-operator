@@ -14,7 +14,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 
@@ -88,15 +87,15 @@ const requeueWaitTimeout = 5 * time.Second
 // doguReconciler reconciles a Dogu object
 type doguReconciler struct {
 	client             client.Client
-	doguManager        cloudogu.DoguManager
-	doguRequeueHandler cloudogu.RequeueHandler
+	doguManager        CombinedDoguManager
+	doguRequeueHandler RequeueHandler
 	recorder           record.EventRecorder
-	fetcher            cloudogu.LocalDoguFetcher
+	fetcher            LocalDoguFetcher
 	doguInterface      ecoSystem.DoguInterface
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager cloudogu.DoguManager, eventRecorder record.EventRecorder, namespace string, doguFetcher cloudogu.LocalDoguFetcher) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager CombinedDoguManager, eventRecorder record.EventRecorder, namespace string, doguFetcher LocalDoguFetcher) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(doguInterface, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
@@ -582,7 +581,7 @@ func (r *doguReconciler) validateVolumeSize(doguResource *k8sv2.Dogu) (success b
 	return true
 }
 
-func checkUpgradeability(ctx context.Context, doguResource *k8sv2.Dogu, fetcher cloudogu.LocalDoguFetcher) (bool, error) {
+func checkUpgradeability(ctx context.Context, doguResource *k8sv2.Dogu, fetcher LocalDoguFetcher) (bool, error) {
 	// only upgrade if the dogu is running
 	if doguResource.Status.Stopped {
 		return false, nil

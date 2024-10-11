@@ -3,8 +3,6 @@ package dependency
 import (
 	"context"
 	"errors"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
-
 	"github.com/cloudogu/cesapp-lib/core"
 )
 
@@ -19,7 +17,7 @@ type CompositeDependencyValidator struct {
 }
 
 // NewCompositeDependencyValidator create a new composite validator checking the dogu and client dependencies
-func NewCompositeDependencyValidator(version *core.Version, doguFetcher cloudogu.LocalDoguFetcher) *CompositeDependencyValidator {
+func NewCompositeDependencyValidator(version *core.Version, doguFetcher LocalDoguFetcher) *CompositeDependencyValidator {
 	validators := []DependencyValidator{}
 
 	operatorDependencyValidator := NewOperatorDependencyValidator(version)

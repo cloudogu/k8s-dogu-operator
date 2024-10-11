@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +26,7 @@ type podTemplateResourceGenerator interface {
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
 	client                       client.Client
-	doguFetcher                  cloudogu.LocalDoguFetcher
+	doguFetcher                  LocalDoguFetcher
 	podTemplateResourceGenerator podTemplateResourceGenerator
 	eventRecorder                record.EventRecorder
 }

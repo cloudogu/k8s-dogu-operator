@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,8 +19,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/serviceaccount"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 )
 
 type ConfigRepositories struct {
@@ -33,23 +30,23 @@ type ConfigRepositories struct {
 // ManagerSet contains functors that are repeatedly used by different dogu operator managers.
 type ManagerSet struct {
 	RestConfig            *rest.Config
-	CollectApplier        cloudogu.CollectApplier
-	FileExtractor         cloudogu.FileExtractor
-	CommandExecutor       cloudogu.CommandExecutor
-	ServiceAccountCreator cloudogu.ServiceAccountCreator
-	LocalDoguFetcher      cloudogu.LocalDoguFetcher
-	ResourceDoguFetcher   cloudogu.ResourceDoguFetcher
-	DoguResourceGenerator cloudogu.DoguResourceGenerator
-	ResourceUpserter      cloudogu.ResourceUpserter
-	DoguRegistrator       cloudogu.DoguRegistrator
-	ImageRegistry         cloudogu.ImageRegistry
-	EcosystemClient       cloudogu.EcosystemInterface
-	ClientSet             thirdParty.ClientSet
-	DependencyValidator   cloudogu.DependencyValidator
+	CollectApplier        resource.CollectApplier
+	FileExtractor         exec.FileExtractor
+	CommandExecutor       exec.CommandExecutor
+	ServiceAccountCreator serviceaccount.ServiceAccountCreator
+	LocalDoguFetcher      cesregistry.LocalDoguFetcher
+	ResourceDoguFetcher   cesregistry.ResourceDoguFetcher
+	DoguResourceGenerator resource.DoguResourceGenerator
+	ResourceUpserter      resource.ResourceUpserter
+	DoguRegistrator       cesregistry.DoguRegistrator
+	ImageRegistry         imageregistry.ImageRegistry
+	EcosystemClient       ecoSystem.EcoSystemV1Alpha1Interface
+	ClientSet             ClientSet
+	DependencyValidator   DependencyValidator
 }
 
 // NewManagerSet creates a new ManagerSet.
-func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, config *config.OperatorConfig, configRepos ConfigRepositories, applier cloudogu.Applier, additionalImages map[string]string) (*ManagerSet, error) {
+func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, config *config.OperatorConfig, configRepos ConfigRepositories, applier resource.Applier, additionalImages map[string]string) (*ManagerSet, error) {
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())

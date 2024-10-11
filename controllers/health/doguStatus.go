@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,10 +20,10 @@ const healthConfigMapName = "k8s-dogu-operator-dogu-health"
 type DoguStatusUpdater struct {
 	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
 	recorder        record.EventRecorder
-	k8sClientSet    thirdParty.ClientSet
+	k8sClientSet    ClientSet
 }
 
-func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder, k8sClientSet thirdParty.ClientSet) *DoguStatusUpdater {
+func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder, k8sClientSet ClientSet) *DoguStatusUpdater {
 	return &DoguStatusUpdater{
 		ecosystemClient: ecosystemClient,
 		recorder:        recorder,

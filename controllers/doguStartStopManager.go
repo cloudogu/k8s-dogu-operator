@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,8 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 )
 
 const (
@@ -35,9 +34,9 @@ const containerStateCrashLoop = "CrashLoopBackOff"
 
 // doguStartStopManager includes functionality to start and stop dogus.
 type doguStartStopManager struct {
-	doguInterface       cloudogu.DoguInterface
-	deploymentInterface thirdParty.DeploymentInterface
-	podInterface        thirdParty.PodInterface
+	doguInterface       ecoSystem.DoguInterface
+	deploymentInterface DeploymentInterface
+	podInterface        PodInterface
 }
 
 type deploymentNotYetScaledError struct {
@@ -92,7 +91,7 @@ func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k
 	return nil
 }
 
-func newDoguStartStopManager(doguInterface cloudogu.DoguInterface, deploymentInterface thirdParty.DeploymentInterface, podInterface thirdParty.PodInterface) *doguStartStopManager {
+func newDoguStartStopManager(doguInterface ecoSystem.DoguInterface, deploymentInterface DeploymentInterface, podInterface PodInterface) *doguStartStopManager {
 	return &doguStartStopManager{doguInterface: doguInterface, deploymentInterface: deploymentInterface, podInterface: podInterface}
 }
 

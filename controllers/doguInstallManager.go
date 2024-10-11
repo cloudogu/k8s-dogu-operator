@@ -20,30 +20,30 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/thirdParty"
 )
 
 const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
-	client                  thirdParty.K8sClient
+	client                  K8sClient
 	ecosystemClient         ecoSystem.EcoSystemV1Alpha1Interface
 	recorder                record.EventRecorder
-	localDoguFetcher        cloudogu.LocalDoguFetcher
-	resourceDoguFetcher     cloudogu.ResourceDoguFetcher
-	imageRegistry           cloudogu.ImageRegistry
-	doguRegistrator         cloudogu.DoguRegistrator
-	dependencyValidator     cloudogu.DependencyValidator
-	serviceAccountCreator   cloudogu.ServiceAccountCreator
-	fileExtractor           cloudogu.FileExtractor
-	collectApplier          cloudogu.CollectApplier
-	resourceUpserter        cloudogu.ResourceUpserter
-	execPodFactory          cloudogu.ExecPodFactory
-	doguConfigRepository    thirdParty.DoguConfigRepository
-	sensitiveDoguRepository thirdParty.DoguConfigRepository
+	localDoguFetcher        LocalDoguFetcher
+	resourceDoguFetcher     ResourceDoguFetcher
+	imageRegistry           ImageRegistry
+	doguRegistrator         DoguRegistrator
+	dependencyValidator     upgrade.DependencyValidator
+	serviceAccountCreator   ServiceAccountCreator
+	fileExtractor           exec.FileExtractor
+	collectApplier          resource.CollectApplier
+	resourceUpserter        resource.ResourceUpserter
+	execPodFactory          exec.ExecPodFactory
+	doguConfigRepository    DoguConfigRepository
+	sensitiveDoguRepository DoguConfigRepository
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
@@ -268,7 +268,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 	return cleanUp, nil
 }
 
-func deleteExecPod(ctx context.Context, execPod cloudogu.ExecPod, recorder record.EventRecorder, doguResource *k8sv2.Dogu) {
+func deleteExecPod(ctx context.Context, execPod exec.ExecPod, recorder record.EventRecorder, doguResource *k8sv2.Dogu) {
 	err := execPod.Delete(ctx)
 	if err != nil {
 		recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)

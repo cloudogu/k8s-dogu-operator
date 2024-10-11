@@ -1,4 +1,4 @@
-package dependency_test
+package dependency
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/dependency"
 )
 
 func TestNewOperatorDependencyValidator(t *testing.T) {
@@ -17,7 +16,7 @@ func TestNewOperatorDependencyValidator(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	validator := dependency.NewOperatorDependencyValidator(&version)
+	validator := NewOperatorDependencyValidator(&version)
 
 	// then
 	assert.NotNil(t, validator)
@@ -30,7 +29,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("0.0.1")
 		require.NoError(t, err)
-		validator := dependency.NewOperatorDependencyValidator(&version)
+		validator := NewOperatorDependencyValidator(&version)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -58,7 +57,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("0.0.1")
 		require.NoError(t, err)
-		validator := dependency.NewOperatorDependencyValidator(&version)
+		validator := NewOperatorDependencyValidator(&version)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -82,7 +81,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("0.0.1")
 		require.NoError(t, err)
-		validator := dependency.NewOperatorDependencyValidator(&version)
+		validator := NewOperatorDependencyValidator(&version)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -106,7 +105,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("1.5.0")
 		require.NoError(t, err)
-		validator := dependency.NewOperatorDependencyValidator(&version)
+		validator := NewOperatorDependencyValidator(&version)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",

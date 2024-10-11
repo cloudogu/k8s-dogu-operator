@@ -6,18 +6,17 @@ import (
 
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type collectApplier struct {
-	applier cloudogu.Applier
+	applier Applier
 }
 
 // NewCollectApplier creates a K8s resource applier that filters and collects deployment resources for a later,
 // customized application.
-func NewCollectApplier(applier cloudogu.Applier) *collectApplier {
+func NewCollectApplier(applier Applier) *collectApplier {
 	return &collectApplier{applier: applier}
 }
 

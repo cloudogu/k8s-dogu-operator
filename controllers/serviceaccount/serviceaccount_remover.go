@@ -13,22 +13,21 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/v2/internal/cloudogu"
 )
 
 // Remover removes a dogu's service account.
 type remover struct {
 	client            client.Client
 	sensitiveDoguRepo SensitiveDoguConfigRepository
-	doguFetcher       cloudogu.LocalDoguFetcher
-	executor          cloudogu.CommandExecutor
+	doguFetcher       LocalDoguFetcher
+	executor          exec.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
 	namespace         string
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(repo SensitiveDoguConfigRepository, localFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
+func NewRemover(repo SensitiveDoguConfigRepository, localFetcher LocalDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
 	return &remover{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -143,7 +142,7 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, consumerDogu.GetSimpleName())
 
 	command := exec.NewShellCommand(removeCommand.Command, args...)
-	_, err = r.executor.ExecCommandForPod(ctx, saPod, command, cloudogu.PodReady)
+	_, err = r.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
