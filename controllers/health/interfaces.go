@@ -23,57 +23,79 @@ type DoguHealthStatusUpdater interface {
 	UpdateHealthConfigMap(ctx context.Context, deployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error
 }
 
-// DoguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
-type DoguHealthChecker interface {
+// doguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguHealthChecker interface {
 	// CheckByName returns nil if the dogu described by the resource is up and running.
 	CheckByName(ctx context.Context, doguName types.NamespacedName) error
 }
 
-// DoguRecursiveHealthChecker includes functionality to check if a dogus dependencies are up and running.
-type DoguRecursiveHealthChecker interface {
+// doguRecursiveHealthChecker includes functionality to check if a dogus dependencies are up and running.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguRecursiveHealthChecker interface {
 	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
 	CheckDependenciesRecursive(ctx context.Context, fromDogu *cesappcore.Dogu, namespace string) error
 }
 
-// LocalDoguFetcher includes functionality to search the local dogu registry for a dogu.
-type LocalDoguFetcher interface {
+// localDoguFetcher includes functionality to search the local dogu registry for a dogu.
+type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
 	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
 }
 
-type EcosystemInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ecosystemInterface interface {
 	ecoSystem.EcoSystemV2Interface
 }
 
-type DoguInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguInterface interface {
 	ecoSystem.DoguInterface
 }
 
-type DoguRestartInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguRestartInterface interface {
 	ecoSystem.DoguRestartInterface
 }
 
-type EventRecorder interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type eventRecorder interface {
 	record.EventRecorder
 }
 
-type ClientSet interface {
+type clientSet interface {
 	kubernetes.Interface
 }
 
-type ConfigMapInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type configMapInterface interface {
 	v1.ConfigMapInterface
 }
 
-type PodInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type podInterface interface {
 	v1.PodInterface
 }
 
-type CoreV1Interface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type coreV1Interface interface {
 	v1.CoreV1Interface
 }
 
-type DeploymentInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type deploymentInterface interface {
 	appsv1client.DeploymentInterface
 }

@@ -18,8 +18,8 @@ import (
 // Remover removes a dogu's service account.
 type remover struct {
 	client            client.Client
-	sensitiveDoguRepo SensitiveDoguConfigRepository
-	doguFetcher       LocalDoguFetcher
+	sensitiveDoguRepo sensitiveDoguConfigRepository
+	doguFetcher       localDoguFetcher
 	executor          exec.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
@@ -27,7 +27,7 @@ type remover struct {
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(repo SensitiveDoguConfigRepository, localFetcher LocalDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
+func NewRemover(repo sensitiveDoguConfigRepository, localFetcher localDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
 	return &remover{
 		client:            client,
 		sensitiveDoguRepo: repo,

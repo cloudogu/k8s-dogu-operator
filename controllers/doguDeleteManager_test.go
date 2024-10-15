@@ -19,24 +19,24 @@ import (
 
 type doguDeleteManagerWithMocks struct {
 	deleteManager             *doguDeleteManager
-	imageRegistryMock         *MockImageRegistry
-	doguRegistratorMock       *MockDoguRegistrator
-	localDoguFetcherMock      *MockLocalDoguFetcher
-	serviceAccountRemoverMock *MockServiceAccountRemover
-	exposedPortRemover        *MockExposePortRemover
-	doguConfigRepo            *MockDoguConfigRepository
-	sensitiveConfigRepo       *MockDoguConfigRepository
+	imageRegistryMock         *mockImageRegistry
+	doguRegistratorMock       *mockDoguRegistrator
+	localDoguFetcherMock      *mockLocalDoguFetcher
+	serviceAccountRemoverMock *mockServiceAccountRemover
+	exposedPortRemover        *mockExposePortRemover
+	doguConfigRepo            *mockDoguConfigRepository
+	sensitiveConfigRepo       *mockDoguConfigRepository
 }
 
 func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 	k8sClient := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
-	imageRegistry := NewMockImageRegistry(t)
-	doguRegistrator := NewMockDoguRegistrator(t)
-	serviceAccountRemover := NewMockServiceAccountRemover(t)
-	doguFetcher := NewMockLocalDoguFetcher(t)
-	exposedPortRemover := NewMockExposePortRemover(t)
-	doguConfigRepo := NewMockDoguConfigRepository(t)
-	sensitiveConfigRepo := NewMockDoguConfigRepository(t)
+	imageRegistry := newMockImageRegistry(t)
+	doguRegistrator := newMockDoguRegistrator(t)
+	serviceAccountRemover := newMockServiceAccountRemover(t)
+	doguFetcher := newMockLocalDoguFetcher(t)
+	exposedPortRemover := newMockExposePortRemover(t)
+	doguConfigRepo := newMockDoguConfigRepository(t)
+	sensitiveConfigRepo := newMockDoguConfigRepository(t)
 
 	doguDeleteManager := &doguDeleteManager{
 		client:                  k8sClient,

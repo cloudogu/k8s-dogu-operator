@@ -29,11 +29,11 @@ func (e *dependencyValidationError) Requeue() bool {
 
 // doguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type doguDependencyValidator struct {
-	fetcher LocalDoguFetcher
+	fetcher localDoguFetcher
 }
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker
-func NewDoguDependencyValidator(doguFetcher LocalDoguFetcher) *doguDependencyValidator {
+func NewDoguDependencyValidator(doguFetcher localDoguFetcher) *doguDependencyValidator {
 	return &doguDependencyValidator{
 		fetcher: doguFetcher,
 	}

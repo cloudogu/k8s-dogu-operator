@@ -81,14 +81,14 @@ func Test_restartInstruction_execute(t *testing.T) {
 		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: true}}
 		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
-		doguRestartInterface := NewMockDoguRestartInterface(t)
+		doguRestartInterface := newMockDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
 				assert.Equal(t, k8sv2.RestartStatusPhaseStopped, status.Phase)
 			})
 
-		eventRecorderMock := NewMockEventRecorder(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		eventRecorderMock.EXPECT().Event(doguRestart, v1.EventTypeNormal, "Stopped", "dogu stopped, restarting")
 
 		sut := restartInstruction{op: checkStopped, dogu: dogu, restart: doguRestart, doguRestartInterface: doguRestartInterface, recorder: eventRecorderMock}
@@ -119,14 +119,14 @@ func Test_restartInstruction_execute(t *testing.T) {
 		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: false}}
 		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
-		doguRestartInterface := NewMockDoguRestartInterface(t)
+		doguRestartInterface := newMockDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
 				assert.Equal(t, k8sv2.RestartStatusPhaseCompleted, status.Phase)
 			})
 
-		eventRecorderMock := NewMockEventRecorder(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		eventRecorderMock.EXPECT().Event(doguRestart, v1.EventTypeNormal, "Started", "dogu started, restart completed")
 
 		sut := restartInstruction{op: checkStarted, dogu: dogu, restart: doguRestart, doguRestartInterface: doguRestartInterface, recorder: eventRecorderMock}
@@ -144,21 +144,21 @@ func Test_restartInstruction_execute(t *testing.T) {
 		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: false}}
 		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
-		doguRestartInterface := NewMockDoguRestartInterface(t)
+		doguRestartInterface := newMockDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
 				assert.Equal(t, k8sv2.RestartStatusPhaseStopping, status.Phase)
 			})
 
-		doguInterface := NewMockDoguInterface(t)
+		doguInterface := newMockDoguInterface(t)
 		doguInterface.EXPECT().UpdateSpecWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifySpecFn func(k8sv2.DoguSpec) k8sv2.DoguSpec, opts metav1.UpdateOptions) {
 				spec := modifySpecFn(dogu.Spec)
 				assert.Equal(t, true, spec.Stopped)
 			})
 
-		eventRecorderMock := NewMockEventRecorder(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		eventRecorderMock.EXPECT().Event(doguRestart, v1.EventTypeNormal, "Stopping", "initiated stop of dogu")
 
 		sut := restartInstruction{op: stop, dogu: dogu, restart: doguRestart, doguRestartInterface: doguRestartInterface, recorder: eventRecorderMock, doguInterface: doguInterface}
@@ -176,21 +176,21 @@ func Test_restartInstruction_execute(t *testing.T) {
 		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: false}}
 		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
-		doguRestartInterface := NewMockDoguRestartInterface(t)
+		doguRestartInterface := newMockDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
 				assert.Equal(t, k8sv2.RestartStatusPhaseFailedStop, status.Phase)
 			})
 
-		doguInterface := NewMockDoguInterface(t)
+		doguInterface := newMockDoguInterface(t)
 		doguInterface.EXPECT().UpdateSpecWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifySpecFn func(k8sv2.DoguSpec) k8sv2.DoguSpec, opts metav1.UpdateOptions) {
 				spec := modifySpecFn(dogu.Spec)
 				assert.Equal(t, true, spec.Stopped)
 			})
 
-		eventRecorderMock := NewMockEventRecorder(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		eventRecorderMock.EXPECT().Event(doguRestart, v1.EventTypeWarning, "Stopping", "failed to stop dogu")
 
 		sut := restartInstruction{op: stop, dogu: dogu, restart: doguRestart, doguRestartInterface: doguRestartInterface, recorder: eventRecorderMock, doguInterface: doguInterface}
@@ -208,21 +208,21 @@ func Test_restartInstruction_execute(t *testing.T) {
 		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: true}}
 		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
-		doguRestartInterface := NewMockDoguRestartInterface(t)
+		doguRestartInterface := newMockDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
 				assert.Equal(t, k8sv2.RestartStatusPhaseStarting, status.Phase)
 			})
 
-		doguInterface := NewMockDoguInterface(t)
+		doguInterface := newMockDoguInterface(t)
 		doguInterface.EXPECT().UpdateSpecWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifySpecFn func(k8sv2.DoguSpec) k8sv2.DoguSpec, opts metav1.UpdateOptions) {
 				spec := modifySpecFn(dogu.Spec)
 				assert.Equal(t, false, spec.Stopped)
 			})
 
-		eventRecorderMock := NewMockEventRecorder(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		eventRecorderMock.EXPECT().Event(doguRestart, v1.EventTypeNormal, "Starting", "initiated start of dogu")
 
 		sut := restartInstruction{op: start, dogu: dogu, restart: doguRestart, doguRestartInterface: doguRestartInterface, recorder: eventRecorderMock, doguInterface: doguInterface}
@@ -240,21 +240,21 @@ func Test_restartInstruction_execute(t *testing.T) {
 		dogu := &k8sv2.Dogu{Status: k8sv2.DoguStatus{Stopped: true}}
 		doguRestart := &k8sv2.DoguRestart{Status: k8sv2.DoguRestartStatus{}}
 
-		doguRestartInterface := NewMockDoguRestartInterface(t)
+		doguRestartInterface := newMockDoguRestartInterface(t)
 		doguRestartInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
 				assert.Equal(t, k8sv2.RestartStatusPhaseFailedStart, status.Phase)
 			})
 
-		doguInterface := NewMockDoguInterface(t)
+		doguInterface := newMockDoguInterface(t)
 		doguInterface.EXPECT().UpdateSpecWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError).
 			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifySpecFn func(k8sv2.DoguSpec) k8sv2.DoguSpec, opts metav1.UpdateOptions) {
 				spec := modifySpecFn(dogu.Spec)
 				assert.Equal(t, false, spec.Stopped)
 			})
 
-		eventRecorderMock := NewMockEventRecorder(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		eventRecorderMock.EXPECT().Event(doguRestart, v1.EventTypeWarning, "Starting", "failed to start dogu")
 
 		sut := restartInstruction{op: start, dogu: dogu, restart: doguRestart, doguRestartInterface: doguRestartInterface, recorder: eventRecorderMock, doguInterface: doguInterface}
@@ -273,14 +273,14 @@ func Test_restartInstruction_handleGetDoguFailed(t *testing.T) {
 		// given
 		doguRestart := &k8sv2.DoguRestart{}
 
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		doguRestartInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
 				assert.Equal(t, k8sv2.RestartStatusPhaseFailedGetDogu, status.Phase)
 			})
 
-		eventRecorderMock := NewMockEventRecorder(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		eventRecorderMock.EXPECT().Event(doguRestart, v1.EventTypeWarning, "FailedGetDogu", "Could not get ressource of dogu to restart.")
 
 		sut := restartInstruction{op: handleGetDoguFailed, doguRestartInterface: doguRestartInterfaceMock, restart: doguRestart, recorder: eventRecorderMock}
@@ -299,14 +299,14 @@ func Test_restartInstruction_handleDoguNotFound(t *testing.T) {
 		// given
 		doguRestart := &k8sv2.DoguRestart{}
 
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		doguRestartInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, doguRestart, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
 			Run(func(ctx context.Context, doguRestart *k8sv2.DoguRestart, modifyStatusFn func(k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguRestart.Status)
 				assert.Equal(t, k8sv2.RestartStatusPhaseDoguNotFound, status.Phase)
 			})
 
-		eventRecorderMock := NewMockEventRecorder(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		eventRecorderMock.EXPECT().Event(doguRestart, v1.EventTypeWarning, "DoguNotFound", "Dogu to restart was not found.")
 
 		sut := restartInstruction{op: handleDoguNotFound, doguRestartInterface: doguRestartInterfaceMock, restart: doguRestart, recorder: eventRecorderMock}

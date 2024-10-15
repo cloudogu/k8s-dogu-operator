@@ -34,15 +34,15 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 	operatorConfig.Namespace = testNamespace
 
 	t.Run("should succeed", func(t *testing.T) {
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
 		ldapResource.Status.Health = "available"
 
-		doguClientMock := NewMockDoguInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
-		ecosystemClientMock := NewMockEcosystemInterface(t)
+		ecosystemClientMock := newMockEcosystemInterface(t)
 		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 		sut := NewDoguChecker(ecosystemClientMock, localFetcher)
@@ -55,14 +55,14 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		localFetcher.AssertExpectations(t)
 	})
 	t.Run("should fail to get dogu cr", func(t *testing.T) {
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
 
-		doguClientMock := NewMockDoguInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(nil, assert.AnError)
-		ecosystemClient := NewMockEcosystemInterface(t)
+		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 		sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -77,14 +77,14 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		localFetcher.AssertExpectations(t)
 	})
 	t.Run("should fail because of unready replicas", func(t *testing.T) {
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 
 		ldapResource := readTestDataLdapCr(t)
 		ldapResource.Namespace = testNamespace
 
-		doguClientMock := NewMockDoguInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
-		ecosystemClient := NewMockEcosystemInterface(t)
+		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 		sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -119,7 +119,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						+-m-> ☑️mandatory2
 		*/
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 
 		postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 		mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -142,13 +142,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 		dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-		doguClientMock := NewMockDoguInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 		doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 		doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-		ecosystemClient := NewMockEcosystemInterface(t)
+		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 		sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -189,7 +189,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		}
 		testDogu3 := &core.Dogu{Name: "testDogu3"}
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 
 		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu2").Once().Return(testDogu2, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu3").Once().Return(testDogu3, nil)
@@ -197,10 +197,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu2"}, Status: doguv2.DoguStatus{Health: "available"}}
 		dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu3"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-		doguClientMock := NewMockDoguInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "testDogu2", metav1.GetOptions{}).Return(dependencyResource2, nil)
 		doguClientMock.EXPECT().Get(testCtx, "testDogu3", metav1.GetOptions{}).Return(dependencyResource3, nil)
-		ecosystemClient := NewMockEcosystemInterface(t)
+		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 		sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -223,7 +223,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						+-m-> ❌️mandatory2
 		*/
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 
 		mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 		optional1Dogu := readTestDataDogu(t, optional1Bytes)
@@ -246,12 +246,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "unavailable"}}
 		dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-		doguClientMock := NewMockDoguInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 		doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(nil, notFoundError)
 		doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-		ecosystemClient := NewMockEcosystemInterface(t)
+		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 		sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -280,7 +280,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ☑️mandatory2
 				*/
 
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
@@ -300,12 +300,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -328,7 +328,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -351,13 +351,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(nil, notFoundError)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -381,7 +381,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -402,13 +402,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -433,7 +433,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -456,13 +456,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "unavailable"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -486,7 +486,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ~mandatory2~
 				*/
 
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -499,10 +499,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource1 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "postgresql"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -523,7 +523,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -546,13 +546,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(nil, notFoundError)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -580,7 +580,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
@@ -600,12 +600,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -628,7 +628,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -652,13 +652,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(nil, notFoundError)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -682,7 +682,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ☑️optional2
 								+-m-> ❌️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -703,13 +703,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -734,7 +734,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ❌️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -755,13 +755,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "unavailable"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -784,7 +784,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 						  +-o-> ❌️optional2
 								+-m-> ☑️mandatory2
 				*/
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -806,13 +806,13 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				notFoundError := errors.NewNotFound(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "Dogu"}, "optional1")
 				dependencyResource5 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional2"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(nil, notFoundError)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)
@@ -837,7 +837,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 								+-m-> ~mandatory2~
 				*/
 
-				localFetcher := NewMockLocalDoguFetcher(t)
+				localFetcher := newMockLocalDoguFetcher(t)
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
@@ -853,11 +853,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "mandatory1"}, Status: doguv2.DoguStatus{Health: "available"}}
 				dependencyResource4 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "optional1"}, Status: doguv2.DoguStatus{Health: "available"}}
 
-				doguClientMock := NewMockDoguInterface(t)
+				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
-				ecosystemClient := NewMockEcosystemInterface(t)
+				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 				sut := NewDoguChecker(ecosystemClient, localFetcher)

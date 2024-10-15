@@ -188,7 +188,7 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 	}
 }
 
-// Exec executes the given shellCommand and returns any output to stdOut and stdErr.
+// Exec executes the given ShellCommand and returns any output to stdOut and stdErr.
 func (ep *execPod) Exec(ctx context.Context, cmd ShellCommand) (*bytes.Buffer, error) {
 	pod, err := ep.getPod(ctx)
 	if err != nil {
@@ -209,7 +209,7 @@ type defaultExecPodFactory struct {
 	client          client.Client
 	config          *rest.Config
 	commandExecutor CommandExecutor
-	suffixGen       SuffixGenerator
+	suffixGen       suffixGenerator
 }
 
 // NewExecPodFactory creates a new ExecPodFactory.
@@ -228,6 +228,6 @@ func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv2.Dogu, dogu *cor
 	return NewExecPod(epf.client, epf.commandExecutor, doguResource, dogu, podName)
 }
 
-func generatePodName(dogu *core.Dogu, generator SuffixGenerator) string {
+func generatePodName(dogu *core.Dogu, generator suffixGenerator) string {
 	return fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", generator.String(6))
 }

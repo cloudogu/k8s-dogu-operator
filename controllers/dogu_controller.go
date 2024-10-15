@@ -88,14 +88,14 @@ const requeueWaitTimeout = 5 * time.Second
 type doguReconciler struct {
 	client             client.Client
 	doguManager        CombinedDoguManager
-	doguRequeueHandler RequeueHandler
+	doguRequeueHandler requeueHandler
 	recorder           record.EventRecorder
-	fetcher            LocalDoguFetcher
+	fetcher            localDoguFetcher
 	doguInterface      ecoSystem.DoguInterface
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager CombinedDoguManager, eventRecorder record.EventRecorder, namespace string, doguFetcher LocalDoguFetcher) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager CombinedDoguManager, eventRecorder record.EventRecorder, namespace string, doguFetcher localDoguFetcher) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(doguInterface, eventRecorder, namespace)
 	if err != nil {
 		return nil, err
@@ -581,7 +581,7 @@ func (r *doguReconciler) validateVolumeSize(doguResource *k8sv2.Dogu) (success b
 	return true
 }
 
-func checkUpgradeability(ctx context.Context, doguResource *k8sv2.Dogu, fetcher LocalDoguFetcher) (bool, error) {
+func checkUpgradeability(ctx context.Context, doguResource *k8sv2.Dogu, fetcher localDoguFetcher) (bool, error) {
 	// only upgrade if the dogu is running
 	if doguResource.Status.Stopped {
 		return false, nil

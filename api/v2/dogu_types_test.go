@@ -228,7 +228,7 @@ func TestDevelopmentDoguMap_DeleteFromCluster(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
 			Data:       map[string]string{"key": "le data"},
 		}
-		mockClient := NewMockK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		mockClient.EXPECT().Delete(testCtx, inputCm).Return(nil)
 		sut := &DevelopmentDoguMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
@@ -246,7 +246,7 @@ func TestDevelopmentDoguMap_DeleteFromCluster(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},
 			Data:       map[string]string{"key": "le data"},
 		}
-		mockClient := NewMockK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		mockClient.EXPECT().Delete(testCtx, inputCm).Return(assert.AnError)
 		sut := &DevelopmentDoguMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap-dev-dev-map"},

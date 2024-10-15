@@ -25,52 +25,52 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// InstallManager includes functionality to install dogus in the cluster.
-type InstallManager interface {
+// installManager includes functionality to install dogus in the cluster.
+type installManager interface {
 	// Install installs a dogu resource.
 	Install(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// UpgradeManager includes functionality to upgrade dogus in the cluster.
-type UpgradeManager interface {
+// upgradeManager includes functionality to upgrade dogus in the cluster.
+type upgradeManager interface {
 	// Upgrade upgrades a dogu resource.
 	Upgrade(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// DeleteManager includes functionality to delete dogus from the cluster.
-type DeleteManager interface {
+// deleteManager includes functionality to delete dogus from the cluster.
+type deleteManager interface {
 	// Delete deletes a dogu resource.
 	Delete(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// SupportManager includes functionality to handle the support flag for dogus in the cluster.
-type SupportManager interface {
+// supportManager includes functionality to handle the support flag for dogus in the cluster.
+type supportManager interface {
 	// HandleSupportMode handles the support flag in the dogu spec.
 	HandleSupportMode(ctx context.Context, doguResource *v2.Dogu) (bool, error)
 }
 
-// VolumeManager includes functionality to edit volumes for dogus in the cluster.
-type VolumeManager interface {
+// volumeManager includes functionality to edit volumes for dogus in the cluster.
+type volumeManager interface {
 	// SetDoguDataVolumeSize sets the volume size for the given dogu.
 	SetDoguDataVolumeSize(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// AdditionalIngressAnnotationsManager includes functionality to edit additional ingress annotations for dogus in the cluster.
-type AdditionalIngressAnnotationsManager interface {
+// additionalIngressAnnotationsManager includes functionality to edit additional ingress annotations for dogus in the cluster.
+type additionalIngressAnnotationsManager interface {
 	// SetDoguAdditionalIngressAnnotations edits the additional ingress annotations in the given dogu's service.
 	SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// StartDoguManager includes functionality to start (stopped) dogus.
-type StartDoguManager interface {
+// startDoguManager includes functionality to start (stopped) dogus.
+type startDoguManager interface {
 	// StartDogu scales up a dogu to 1.
 	StartDogu(ctx context.Context, doguResource *v2.Dogu) error
 	// CheckStarted checks if the dogu has been successfully scaled to 1.
 	CheckStarted(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// StopDoguManager includes functionality to stop running dogus.
-type StopDoguManager interface {
+// stopDoguManager includes functionality to stop running dogus.
+type stopDoguManager interface {
 	// StopDogu scales down a dogu to 0.
 	StopDogu(ctx context.Context, doguResource *v2.Dogu) error
 	// CheckStopped checks if the dogu has been successfully scaled to 0.
@@ -79,42 +79,45 @@ type StopDoguManager interface {
 
 // DoguStartStopManager includes functionality to start and stop dogus.
 type DoguStartStopManager interface {
-	StartDoguManager
-	StopDoguManager
+	startDoguManager
+	stopDoguManager
 }
 
 // CombinedDoguManager abstracts the simple dogu operations in a k8s CES.
 type CombinedDoguManager interface {
-	InstallManager
-	UpgradeManager
-	DeleteManager
-	VolumeManager
-	AdditionalIngressAnnotationsManager
-	SupportManager
-	StartDoguManager
-	StopDoguManager
+	installManager
+	upgradeManager
+	deleteManager
+	volumeManager
+	additionalIngressAnnotationsManager
+	supportManager
+	startDoguManager
+	stopDoguManager
 }
 
-// RequeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
-type RequeueHandler interface {
+// requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
+type requeueHandler interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
 	Handle(ctx context.Context, contextMessage string, doguResource *v2.Dogu, err error, onRequeue func(dogu *v2.Dogu) error) (result ctrl.Result, requeueErr error)
 }
 
-// RequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
-type RequirementsGenerator interface {
+// requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type requirementsGenerator interface {
 	Generate(ctx context.Context, dogu *cesappcore.Dogu) (coreV1.ResourceRequirements, error)
 }
 
-// LocalDoguFetcher includes functionality to search the local dogu registry for a dogu.
-type LocalDoguFetcher interface {
+// localDoguFetcher includes functionality to search the local dogu registry for a dogu.
+type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
 	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
 }
 
-// DoguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
-type DoguRegistrator interface {
+// doguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
+type doguRegistrator interface {
 	// RegisterNewDogu registers a new dogu in the local dogu registry.
 	RegisterNewDogu(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
 	// RegisterDoguVersion registers a new version for an existing dogu in the dogu registry.
@@ -123,36 +126,41 @@ type DoguRegistrator interface {
 	UnregisterDogu(ctx context.Context, dogu string) error
 }
 
-// ResourceDoguFetcher includes functionality to get a dogu either from the remote dogu registry or from a local development dogu map.
-type ResourceDoguFetcher interface {
+// resourceDoguFetcher includes functionality to get a dogu either from the remote dogu registry or from a local development dogu map.
+type resourceDoguFetcher interface {
 	// FetchWithResource fetches the dogu either from the remote dogu registry or from a local development dogu map and
 	// returns it with patched dogu dependencies (which otherwise might be incompatible with K8s CES).
 	FetchWithResource(ctx context.Context, doguResource *v2.Dogu) (*cesappcore.Dogu, *v2.DevelopmentDoguMap, error)
 }
 
-// ImageRegistry abstracts the use of a container registry and includes functionality to pull container images.
-type ImageRegistry interface {
+// imageRegistry abstracts the use of a container registry and includes functionality to pull container images.
+type imageRegistry interface {
 	// PullImageConfig is used to pull the given container image.
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
 }
 
-// ServiceAccountCreator includes functionality to create necessary service accounts for a dogu.
-type ServiceAccountCreator interface {
+// serviceAccountCreator includes functionality to create necessary service accounts for a dogu.
+type serviceAccountCreator interface {
 	// CreateAll is used to create all necessary service accounts for the given dogu.
 	CreateAll(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-// ServiceAccountRemover includes functionality to remove existing service accounts for a dogu.
-type ServiceAccountRemover interface {
+// serviceAccountRemover includes functionality to remove existing service accounts for a dogu.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type serviceAccountRemover interface {
 	// RemoveAll is used to remove all existing service accounts for the given dogu.
 	RemoveAll(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-type DeploymentInterface interface {
+type deploymentInterface interface {
 	appsv1client.DeploymentInterface
 }
 
-type AppsV1Interface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type appsV1Interface interface {
 	appsv1client.AppsV1Interface
 }
 
@@ -160,28 +168,40 @@ type ClientSet interface {
 	kubernetes.Interface
 }
 
-type DeploymentAvailabilityChecker interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type deploymentAvailabilityChecker interface {
 	// IsAvailable checks whether the deployment has reached its desired state and is available.
 	IsAvailable(deployment *appsv1.Deployment) bool
 }
 
-type DoguHealthStatusUpdater interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguHealthStatusUpdater interface {
 	// UpdateStatus sets the health status of the dogu according to whether if it's available or not.
 	UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error
 	UpdateHealthConfigMap(ctx context.Context, deployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error
 }
 
-type ControllerManager interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type controllerManager interface {
 	manager.Manager
 }
 
-// RemoteRegistry is able to manage the remote dogu registry.
-type RemoteRegistry interface {
+// remoteRegistry is able to manage the remote dogu registry.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type remoteRegistry interface {
 	remote.Registry
 }
 
-// CommandExecutor is used to execute commands in pods and dogus
-type CommandExecutor interface {
+// commandExecutor is used to execute commands in pods and dogus
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type commandExecutor interface {
 	exec.CommandExecutor
 }
 
@@ -189,34 +209,48 @@ type K8sClient interface {
 	client.Client
 }
 
-// HostAliasGenerator creates host aliases from fqdn, internal ip and additional host configuration.
-type HostAliasGenerator interface {
+// hostAliasGenerator creates host aliases from fqdn, internal ip and additional host configuration.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type hostAliasGenerator interface {
 	Generate(context.Context) (hostAliases []coreV1.HostAlias, err error)
 }
 
-// FileExtractor provides functionality to get the contents of files from a container.
-type FileExtractor interface {
+// fileExtractor provides functionality to get the contents of files from a container.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type fileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
 	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod exec.ExecPod) (map[string]string, error)
 }
 
-// Applier provides ways to apply unstructured Kubernetes resources against the API.
-type Applier interface {
+// applier provides ways to apply unstructured Kubernetes resources against the API.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type applier interface {
 	// ApplyWithOwner provides a testable method for applying generic, unstructured K8s resources to the API
 	ApplyWithOwner(doc apply.YamlDocument, namespace string, resource metav1.Object) error
 }
 
-type EventRecorder interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type eventRecorder interface {
 	record.EventRecorder
 }
 
-// ExposePortRemover is used to delete the exposure of the exposed services from the dogu.
-type ExposePortRemover interface {
+// exposePortRemover is used to delete the exposure of the exposed services from the dogu.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type exposePortRemover interface {
 	// RemoveExposedPorts deletes the exposure of the exposed services from the dogu.
 	RemoveExposedPorts(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
 }
 
-type DoguConfigRepository interface {
+type doguConfigRepository interface {
 	Get(ctx context.Context, name config.SimpleDoguName) (config.DoguConfig, error)
 	Create(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
 	Update(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
@@ -225,55 +259,75 @@ type DoguConfigRepository interface {
 	Watch(ctx context.Context, dName config.SimpleDoguName, filters ...config.WatchFilter) (<-chan repository.DoguConfigWatchResult, error)
 }
 
-// DependencyValidator checks if all necessary dependencies for an upgrade are installed.
-type DependencyValidator interface {
+// dependencyValidator checks if all necessary dependencies for an upgrade are installed.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type dependencyValidator interface {
 	// ValidateDependencies is used to check if dogu dependencies are installed.
 	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-// ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
-type ResourceUpserter interface {
+// resourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type resourceUpserter interface {
 	resource.ResourceUpserter
 }
 
-// ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
-type ExecPod interface {
+// execPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type execPod interface {
 	exec.ExecPod
 }
 
-// ExecPodFactory provides functionality to create ExecPods.
-type ExecPodFactory interface {
+// execPodFactory provides functionality to create ExecPods.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type execPodFactory interface {
 	exec.ExecPodFactory
 }
 
-type PodInterface interface {
+type podInterface interface {
 	v1.PodInterface
 }
 
-// PremisesChecker includes functionality to check if the premises for an upgrade are met.
-type PremisesChecker interface {
+// premisesChecker includes functionality to check if the premises for an upgrade are met.
+type premisesChecker interface {
 	// Check checks if dogu premises are met before a dogu upgrade.
 	Check(ctx context.Context, toDoguResource *v2.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
 }
 
-// UpgradeExecutor applies upgrades the upgrade from an earlier dogu version to a newer version.
-type UpgradeExecutor interface {
+// upgradeExecutor applies upgrades the upgrade from an earlier dogu version to a newer version.
+type upgradeExecutor interface {
 	// Upgrade executes the actual dogu upgrade.
 	Upgrade(ctx context.Context, toDoguResource *v2.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
 }
 
-type K8sSubResourceWriter interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type k8sSubResourceWriter interface {
 	client.SubResourceWriter
 }
 
-type EcosystemInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ecosystemInterface interface {
 	ecoSystem.EcoSystemV2Interface
 }
 
-type DoguInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguInterface interface {
 	ecoSystem.DoguInterface
 }
 
-type DoguRestartInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguRestartInterface interface {
 	ecoSystem.DoguRestartInterface
 }

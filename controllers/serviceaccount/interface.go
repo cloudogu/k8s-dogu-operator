@@ -10,30 +10,32 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type SensitiveDoguConfigProvider interface {
-	GetSensitiveDoguConfig(ctx context.Context, doguName string) (SensitiveDoguConfig, error)
+//nolint:unused
+//goland:noinspection GoUnusedType
+type sensitiveDoguConfigProvider interface {
+	GetSensitiveDoguConfig(ctx context.Context, doguName string) (sensitiveDoguConfig, error)
 }
 
-type SensitiveDoguConfigSetter interface {
+type sensitiveDoguConfigSetter interface {
 	Set(ctx context.Context, key, value string) error
 }
 
-type SensitiveDoguConfigGetter interface {
+type sensitiveDoguConfigGetter interface {
 	Exists(ctx context.Context, key string) (bool, error)
 	Get(ctx context.Context, key string) (string, error)
 }
 
-type SensitiveDoguConfigDeleter interface {
+type sensitiveDoguConfigDeleter interface {
 	DeleteRecursive(ctx context.Context, key string) error
 }
 
-type SensitiveDoguConfig interface {
-	SensitiveDoguConfigGetter
-	SensitiveDoguConfigSetter
-	SensitiveDoguConfigDeleter
+type sensitiveDoguConfig interface {
+	sensitiveDoguConfigGetter
+	sensitiveDoguConfigSetter
+	sensitiveDoguConfigDeleter
 }
 
-type SensitiveDoguConfigRepository interface {
+type sensitiveDoguConfigRepository interface {
 	Get(ctx context.Context, name config.SimpleDoguName) (config.DoguConfig, error)
 	Update(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
 	SaveOrMerge(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
@@ -51,8 +53,8 @@ type ServiceAccountRemover interface {
 	RemoveAll(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-// LocalDoguFetcher includes functionality to search the local dogu registry for a dogu.
-type LocalDoguFetcher interface {
+// localDoguFetcher includes functionality to search the local dogu registry for a dogu.
+type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
 	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
@@ -61,8 +63,11 @@ type LocalDoguFetcher interface {
 	Enabled(ctx context.Context, doguName string) (bool, error)
 }
 
-// CommandExecutor is used to execute commands in pods and dogus
-type CommandExecutor interface {
+// commandExecutor is used to execute commands in pods and dogus
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
 	ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command exec.ShellCommand, expected exec.PodStatusForExec) (*bytes.Buffer, error)
 	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.

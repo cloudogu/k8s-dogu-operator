@@ -22,9 +22,9 @@ const namespace = "test"
 
 type doguSupportManagerWithMocks struct {
 	supportManager       *doguSupportManager
-	localDoguFetcherMock *MockLocalDoguFetcher
+	localDoguFetcherMock *mockLocalDoguFetcher
 	k8sClient            client.WithWatch
-	recorderMock         *MockEventRecorder
+	recorderMock         *mockEventRecorder
 	podTemplateGenerator *mockPodTemplateResourceGenerator
 }
 
@@ -33,8 +33,8 @@ func getDoguSupportManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguSu
 
 	k8sClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	podTemplateGenerator := newMockPodTemplateResourceGenerator(t)
-	localDoguFetcherMock := NewMockLocalDoguFetcher(t)
-	eventRecorder := NewMockEventRecorder(t)
+	localDoguFetcherMock := newMockLocalDoguFetcher(t)
+	eventRecorder := newMockEventRecorder(t)
 
 	doguSupportManager := &doguSupportManager{
 		client:                       k8sClient,
@@ -60,7 +60,7 @@ func TestNewDoguSupportManager(t *testing.T) {
 	ctrl.GetConfig = createTestRestConfig
 
 	k8sClient := fake.NewClientBuilder().Build()
-	recorder := NewMockEventRecorder(t)
+	recorder := newMockEventRecorder(t)
 	mgrSet := &util.ManagerSet{}
 
 	// when

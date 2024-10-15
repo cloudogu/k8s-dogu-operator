@@ -22,9 +22,9 @@ func TestNewDeploymentReconciler(t *testing.T) {
 		// given
 		clientSetMock := NewMockClientSet(t)
 		availabilityCheckerMock := &health.AvailabilityChecker{}
-		healthStatusUpdaterMock := NewMockDoguHealthStatusUpdater(t)
+		healthStatusUpdaterMock := newMockDoguHealthStatusUpdater(t)
 
-		localDoguFetcher := NewMockLocalDoguFetcher(t)
+		localDoguFetcher := newMockLocalDoguFetcher(t)
 
 		// when
 		actual := NewDeploymentReconciler(clientSetMock, availabilityCheckerMock, healthStatusUpdaterMock, localDoguFetcher)
@@ -48,7 +48,7 @@ func Test_deploymentReconciler_SetupWithManager(t *testing.T) {
 	})
 	t.Run("should succeed", func(t *testing.T) {
 		// given
-		ctrlManMock := NewMockControllerManager(t)
+		ctrlManMock := newMockControllerManager(t)
 		ctrlManMock.EXPECT().GetControllerOptions().Return(config.Controller{})
 		ctrlManMock.EXPECT().GetScheme().Return(createScheme(t))
 		logger := log.FromContext(testCtx)
@@ -82,9 +82,9 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		// given
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Name: "my-dogu", Namespace: testNamespace}}
 
-		deployClientMock := NewMockDeploymentInterface(t)
+		deployClientMock := newMockDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(nil, assert.AnError)
-		appsV1Client := NewMockAppsV1Interface(t)
+		appsV1Client := newMockAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
 		clientSetMock := NewMockClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
@@ -111,9 +111,9 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 			Resource: "Deployment",
 		}, "my-dogu")
 
-		deployClientMock := NewMockDeploymentInterface(t)
+		deployClientMock := newMockDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(nil, notFoundErr)
-		appsV1Client := NewMockAppsV1Interface(t)
+		appsV1Client := newMockAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
 		clientSetMock := NewMockClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
@@ -140,9 +140,9 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 			},
 		}
 
-		deployClientMock := NewMockDeploymentInterface(t)
+		deployClientMock := newMockDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "not-a-dogu", metav1.GetOptions{}).Return(deployment, nil)
-		appsV1Client := NewMockAppsV1Interface(t)
+		appsV1Client := newMockAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
 		clientSetMock := NewMockClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
@@ -169,17 +169,17 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 			},
 		}
 
-		deployClientMock := NewMockDeploymentInterface(t)
+		deployClientMock := newMockDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
-		appsV1Client := NewMockAppsV1Interface(t)
+		appsV1Client := newMockAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
 		clientSetMock := NewMockClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
-		deployAvailCheckMock := NewMockDeploymentAvailabilityChecker(t)
+		deployAvailCheckMock := newMockDeploymentAvailabilityChecker(t)
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
 
-		localDoguFetcher := NewMockLocalDoguFetcher(t)
+		localDoguFetcher := newMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "my-dogu").Return(nil, assert.AnError)
 
 		sut := &DeploymentReconciler{
@@ -208,20 +208,20 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 			},
 		}
 
-		deployClientMock := NewMockDeploymentInterface(t)
+		deployClientMock := newMockDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
-		appsV1Client := NewMockAppsV1Interface(t)
+		appsV1Client := newMockAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
 		clientSetMock := NewMockClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
-		deployAvailCheckMock := NewMockDeploymentAvailabilityChecker(t)
+		deployAvailCheckMock := newMockDeploymentAvailabilityChecker(t)
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
 
-		localDoguFetcher := NewMockLocalDoguFetcher(t)
+		localDoguFetcher := newMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
 
-		doguHealthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
+		doguHealthUpdaterMock := newMockDoguHealthStatusUpdater(t)
 		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(assert.AnError)
 
 		sut := &DeploymentReconciler{
@@ -252,20 +252,20 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 			},
 		}
 
-		deployClientMock := NewMockDeploymentInterface(t)
+		deployClientMock := newMockDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
-		appsV1Client := NewMockAppsV1Interface(t)
+		appsV1Client := newMockAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
 		clientSetMock := NewMockClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
-		deployAvailCheckMock := NewMockDeploymentAvailabilityChecker(t)
+		deployAvailCheckMock := newMockDeploymentAvailabilityChecker(t)
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
 
-		localDoguFetcher := NewMockLocalDoguFetcher(t)
+		localDoguFetcher := newMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
 
-		doguHealthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
+		doguHealthUpdaterMock := newMockDoguHealthStatusUpdater(t)
 		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(nil)
 		doguHealthUpdaterMock.EXPECT().UpdateStatus(testCtx, types.NamespacedName{Namespace: "", Name: "my-dogu"}, true).Return(assert.AnError)
 
@@ -296,20 +296,20 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 			},
 		}
 
-		deployClientMock := NewMockDeploymentInterface(t)
+		deployClientMock := newMockDeploymentInterface(t)
 		deployClientMock.EXPECT().Get(testCtx, "my-dogu", metav1.GetOptions{}).Return(deployment, nil)
-		appsV1Client := NewMockAppsV1Interface(t)
+		appsV1Client := newMockAppsV1Interface(t)
 		appsV1Client.EXPECT().Deployments(testNamespace).Return(deployClientMock)
 		clientSetMock := NewMockClientSet(t)
 		clientSetMock.EXPECT().AppsV1().Return(appsV1Client)
 
-		deployAvailCheckMock := NewMockDeploymentAvailabilityChecker(t)
+		deployAvailCheckMock := newMockDeploymentAvailabilityChecker(t)
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(false)
 
-		localDoguFetcher := NewMockLocalDoguFetcher(t)
+		localDoguFetcher := newMockLocalDoguFetcher(t)
 		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
 
-		doguHealthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
+		doguHealthUpdaterMock := newMockDoguHealthStatusUpdater(t)
 		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(nil)
 		doguHealthUpdaterMock.EXPECT().UpdateStatus(testCtx, types.NamespacedName{Namespace: "", Name: "my-dogu"}, false).Return(nil)
 

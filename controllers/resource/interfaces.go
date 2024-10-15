@@ -47,8 +47,11 @@ type ResourceUpserter interface {
 	UpsertDoguExposedService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.Service, error)
 }
 
-// DoguSecretHandler includes functionality to associate secrets from setup with a dogu.
-type DoguSecretHandler interface {
+// doguSecretHandler includes functionality to associate secrets from setup with a dogu.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguSecretHandler interface {
 	// WriteDoguSecretsToRegistry is used to write potential secret from the setup.json registryConfigEncrypted to the
 	// respective dogu configurations.
 	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv2.Dogu) error
@@ -66,15 +69,15 @@ type CollectApplier interface {
 	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv2.Dogu) error
 }
 
-// PodTemplateResourceGenerator is used to generate pod templates.
-type PodTemplateResourceGenerator interface {
+// podTemplateResourceGenerator is used to generate pod templates.
+type podTemplateResourceGenerator interface {
 	// GetPodTemplate returns a pod template for the given dogu.
 	GetPodTemplate(doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PodTemplateSpec, error)
 }
 
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.
 type DoguResourceGenerator interface {
-	PodTemplateResourceGenerator
+	podTemplateResourceGenerator
 
 	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
 	CreateDoguDeployment(doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
@@ -87,8 +90,8 @@ type DoguResourceGenerator interface {
 	CreateDoguPVC(doguResource *k8sv2.Dogu) (*v1.PersistentVolumeClaim, error)
 }
 
-// ExposePortAdder is used to expose exposed services from the dogu.
-type ExposePortAdder interface {
+// exposePortAdder is used to expose exposed services from the dogu.
+type exposePortAdder interface {
 	// CreateOrUpdateCesLoadbalancerService deletes the exposure of the exposed services from the dogu.
 	CreateOrUpdateCesLoadbalancerService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.Service, error)
 }
@@ -99,8 +102,8 @@ type ExposePortRemover interface {
 	RemoveExposedPorts(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) error
 }
 
-// TcpUpdServiceExposer is used to expose non http services.
-type TcpUpdServiceExposer interface {
+// tcpUpdServiceExposer is used to expose non http services.
+type tcpUpdServiceExposer interface {
 	// ExposeOrUpdateDoguServices adds or updates the exposing of the exposed ports in the dogu from the cluster. These are typically
 	// entries in a configmap.
 	ExposeOrUpdateDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
@@ -109,21 +112,24 @@ type TcpUpdServiceExposer interface {
 	DeleteDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
 }
 
-// ResourceRequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
-type ResourceRequirementsGenerator interface {
+// resourceRequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type resourceRequirementsGenerator interface {
 	// Generate creates resource limits and requests for dogu deployments.
 	// It tries to retrieve them from the dogu config registry. If not set, defaults from the dogu.json are used.
 	// If there is no default, the requirement will be omitted.
 	Generate(dogu *cesappcore.Dogu) (v1.ResourceRequirements, error)
 }
 
-// LocalDoguFetcher includes functionality to search the local dogu registry for a dogu.
-type LocalDoguFetcher interface {
+// localDoguFetcher includes functionality to search the local dogu registry for a dogu.
+type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
 	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
 }
 
-type K8sClient interface {
+type k8sClient interface {
 	client.Client
 }

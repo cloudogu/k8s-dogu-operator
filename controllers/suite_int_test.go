@@ -51,11 +51,11 @@ var cancel context.CancelFunc
 
 // Used in other integration tests
 var (
-	ImageRegistryMock      *MockImageRegistry
-	CommandExecutorMock    *MockCommandExecutor
-	DoguRemoteRegistryMock *MockRemoteRegistry
+	ImageRegistryMock      *mockImageRegistry
+	CommandExecutorMock    *mockCommandExecutor
+	DoguRemoteRegistryMock *mockRemoteRegistry
 	k8sClient              K8sClient
-	DoguInterfaceMock      *MockDoguInterface
+	DoguInterfaceMock      *mockDoguInterface
 )
 
 const TimeoutInterval = time.Second * 10
@@ -80,7 +80,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	config.Stage = config.StageProduction
 
-	CommandExecutorMock = &MockCommandExecutor{}
+	CommandExecutorMock = &mockCommandExecutor{}
 	logf.SetLogger(logrusr.New(logrus.New()))
 
 	var ctx context.Context
@@ -134,13 +134,13 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClientSet, err = kubernetes.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	DoguRemoteRegistryMock = &MockRemoteRegistry{}
-	ImageRegistryMock = &MockImageRegistry{}
-	DoguInterfaceMock = &MockDoguInterface{}
+	DoguRemoteRegistryMock = &mockRemoteRegistry{}
+	ImageRegistryMock = &mockImageRegistry{}
+	DoguInterfaceMock = &mockDoguInterface{}
 
-	requirementsGen := &MockRequirementsGenerator{}
+	requirementsGen := &mockRequirementsGenerator{}
 	requirementsGen.EXPECT().Generate(mock.Anything, mock.Anything).Return(v1.ResourceRequirements{}, nil)
-	hostAliasGeneratorMock := &MockHostAliasGenerator{}
+	hostAliasGeneratorMock := &mockHostAliasGenerator{}
 	hostAliasGeneratorMock.On("Generate", mock.Anything).Return(nil, nil)
 
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"}
@@ -154,17 +154,17 @@ var _ = ginkgo.BeforeSuite(func() {
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(doguVersionRegistry, localDoguDescriptorRepository)
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, localDoguFetcher)
-	serviceAccountCreator := &MockServiceAccountCreator{}
+	serviceAccountCreator := &mockServiceAccountCreator{}
 	serviceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	serviceAccountRemover := &MockServiceAccountRemover{}
+	serviceAccountRemover := &mockServiceAccountRemover{}
 	serviceAccountRemover.On("RemoveAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(doguVersionRegistry, localDoguDescriptorRepository)
 
 	yamlResult := make(map[string]string)
-	fileExtract := &MockFileExtractor{}
+	fileExtract := &mockFileExtractor{}
 	fileExtract.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
-	applyClient := &MockApplier{}
+	applyClient := &mockApplier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")

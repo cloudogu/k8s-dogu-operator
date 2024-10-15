@@ -30,80 +30,106 @@ type DependencyValidator interface {
 	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-// DoguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
-type DoguHealthChecker interface {
+// doguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
+type doguHealthChecker interface {
 	// CheckByName returns nil if the dogu described by the resource is up and running.
 	CheckByName(ctx context.Context, doguName types.NamespacedName) error
 }
 
-// DoguRecursiveHealthChecker includes functionality to check if a dogus dependencies are up and running.
-type DoguRecursiveHealthChecker interface {
+// doguRecursiveHealthChecker includes functionality to check if a dogus dependencies are up and running.
+type doguRecursiveHealthChecker interface {
 	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
 	CheckDependenciesRecursive(ctx context.Context, fromDogu *cesappcore.Dogu, namespace string) error
 }
 
-// DoguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
-type DoguRegistrator interface {
+// doguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
+type doguRegistrator interface {
 	// RegisterDoguVersion registers a new version for an existing dogu in the dogu registry.
 	RegisterDoguVersion(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-// ImageRegistry abstracts the use of a container registry and includes functionality to pull container images.
-type ImageRegistry interface {
+// imageRegistry abstracts the use of a container registry and includes functionality to pull container images.
+type imageRegistry interface {
 	// PullImageConfig is used to pull the given container image.
 	PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error)
 }
 
-// ServiceAccountCreator includes functionality to create necessary service accounts for a dogu.
-type ServiceAccountCreator interface {
+// serviceAccountCreator includes functionality to create necessary service accounts for a dogu.
+type serviceAccountCreator interface {
 	// CreateAll is used to create all necessary service accounts for the given dogu.
 	CreateAll(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-type EcosystemInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ecosystemInterface interface {
 	ecoSystem.EcoSystemV2Interface
 }
 
-type DoguInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguInterface interface {
 	ecoSystem.DoguInterface
 }
 
-type DoguRestartInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguRestartInterface interface {
 	ecoSystem.DoguRestartInterface
 }
 
-// FileExtractor provides functionality to get the contents of files from a container.
-type FileExtractor interface {
+// fileExtractor provides functionality to get the contents of files from a container.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type fileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
 	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod exec.ExecPod) (map[string]string, error)
 }
 
-// CollectApplier provides ways to collectedly apply unstructured Kubernetes resources against the API.
-type CollectApplier interface {
+// collectApplier provides ways to collectedly apply unstructured Kubernetes resources against the API.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type collectApplier interface {
 	// CollectApply applies the given resources to the K8s cluster
 	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv2.Dogu) error
 }
 
-type EventRecorder interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type eventRecorder interface {
 	record.EventRecorder
 }
 
-// CommandExecutor is used to execute commands in pods and dogus
-type CommandExecutor interface {
+// commandExecutor is used to execute commands in pods and dogus
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type commandExecutor interface {
 	exec.CommandExecutor
 }
 
-// ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
-type ResourceUpserter interface {
+// resourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type resourceUpserter interface {
 	resource.ResourceUpserter
 }
 
-// ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
-type ExecPod interface {
+// execPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type execPod interface {
 	exec.ExecPod
 }
 
-// ExecPodFactory provides functionality to create ExecPods.
-type ExecPodFactory interface {
+// execPodFactory provides functionality to create ExecPods.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type execPodFactory interface {
 	exec.ExecPodFactory
 }

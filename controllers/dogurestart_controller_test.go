@@ -22,7 +22,7 @@ var testCasRestartRequest = reconcile.Request{NamespacedName: types.NamespacedNa
 func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 	t.Run("should return error on error getting restart resource", func(t *testing.T) {
 		// given
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(nil, assert.AnError)
 
 		sut := DoguRestartReconciler{doguRestartInterface: doguRestartInterfaceMock}
@@ -37,7 +37,7 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 
 	t.Run("should ignore if the dogu restart is not found", func(t *testing.T) {
 		// given
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		doguRestart := &v2.DoguRestart{Status: v2.DoguRestartStatus{Phase: v2.RestartStatusPhaseDoguNotFound}}
 		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
 
@@ -53,7 +53,7 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 
 	t.Run("should ignore if the dogu restart is completed", func(t *testing.T) {
 		// given
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		doguRestart := &v2.DoguRestart{Status: v2.DoguRestartStatus{Phase: v2.RestartStatusPhaseCompleted}}
 		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
 
@@ -69,7 +69,7 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 
 	t.Run("should ignore if the dogu restart has a unknown status phase", func(t *testing.T) {
 		// given
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		doguRestart := &v2.DoguRestart{Status: v2.DoguRestartStatus{Phase: "unknown"}}
 		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
 
@@ -85,11 +85,11 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 
 	t.Run("should return error on get dogu error", func(t *testing.T) {
 		// given
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		doguRestart := &v2.DoguRestart{Spec: v2.DoguRestartSpec{DoguName: testCasDoguName}, Status: v2.DoguRestartStatus{Phase: v2.RestartStatusPhaseStopping}}
 		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
 
-		doguInterfaceMock := NewMockDoguInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().Get(testCtx, testCasDoguName, metav1.GetOptions{}).Return(nil, assert.AnError)
 
 		sut := DoguRestartReconciler{doguRestartInterface: doguRestartInterfaceMock, doguInterface: doguInterfaceMock}
@@ -104,11 +104,11 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 
 	t.Run("should return error on dogu not found", func(t *testing.T) {
 		// given
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		doguRestart := &v2.DoguRestart{Spec: v2.DoguRestartSpec{DoguName: testCasDoguName}, Status: v2.DoguRestartStatus{Phase: v2.RestartStatusPhaseStopping}}
 		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
 
-		doguInterfaceMock := NewMockDoguInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().Get(testCtx, testCasDoguName, metav1.GetOptions{}).Return(nil, errors.NewNotFound(schema.GroupResource{}, testCasRestartName))
 
 		sut := DoguRestartReconciler{doguRestartInterface: doguRestartInterfaceMock, doguInterface: doguInterfaceMock}
@@ -148,11 +148,11 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 
 func testRestartPhaseMapping(t *testing.T, phase v2.RestartStatusPhase, expectedOperation RestartOperation) {
 	// given
-	doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+	doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 	doguRestart := &v2.DoguRestart{Spec: v2.DoguRestartSpec{DoguName: testCasDoguName}, Status: v2.DoguRestartStatus{Phase: phase}}
 	doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
 
-	doguInterfaceMock := NewMockDoguInterface(t)
+	doguInterfaceMock := newMockDoguInterface(t)
 	dogu := &v2.Dogu{}
 	doguInterfaceMock.EXPECT().Get(testCtx, testCasDoguName, metav1.GetOptions{}).Return(dogu, nil)
 

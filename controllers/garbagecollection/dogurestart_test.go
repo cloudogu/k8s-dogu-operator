@@ -63,7 +63,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 			require.NoError(t, unsetErr)
 		}()
 
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		list := &v2.DoguRestartList{Items: []v2.DoguRestart{}}
 		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(list, nil)
 
@@ -89,7 +89,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 
 		doguName := "ldap"
 		now := metav1.Now()
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 		list := &v2.DoguRestartList{Items: []v2.DoguRestart{getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseCompleted, now.Add(time.Second))}}
 		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(list, nil)
 
@@ -107,7 +107,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		// given
 		doguName := "ldap"
 		otherDoguName := "cas"
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 
@@ -154,7 +154,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		}()
 
 		doguName := "ldap"
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 
@@ -188,7 +188,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		// given
 		doguName := "ldap"
 		otherDoguName := "cas"
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 
@@ -227,7 +227,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		}()
 
 		doguName := "ldap"
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 
@@ -266,7 +266,7 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		}()
 
 		doguName := "ldap"
-		doguRestartInterfaceMock := NewMockDoguRestartInterface(t)
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
 
 		now := metav1.Now()
 

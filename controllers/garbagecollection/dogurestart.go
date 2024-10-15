@@ -14,7 +14,7 @@ import (
 )
 
 type DoguRestartGarbageCollector struct {
-	doguRestartInterface DoguRestartInterface
+	doguRestartInterface doguRestartInterface
 }
 
 func NewDoguRestartGarbageCollector(doguRestartInterface ecoSystem.DoguRestartInterface) *DoguRestartGarbageCollector {

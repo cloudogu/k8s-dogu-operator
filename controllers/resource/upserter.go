@@ -30,9 +30,9 @@ var (
 )
 
 type upserter struct {
-	client           K8sClient
+	client           k8sClient
 	generator        DoguResourceGenerator
-	exposedPortAdder ExposePortAdder
+	exposedPortAdder exposePortAdder
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.

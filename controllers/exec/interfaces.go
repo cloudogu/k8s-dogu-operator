@@ -15,6 +15,13 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
+const (
+	// ContainersStarted means that all containers of a pod were started.
+	ContainersStarted PodStatusForExec = "started"
+	// PodReady means that the readiness probe of the pod has succeeded.
+	PodReady PodStatusForExec = "ready"
+)
+
 // ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
 type ExecPod interface {
 	// Create adds a new exec pod to the cluster.
@@ -54,29 +61,26 @@ type ShellCommand interface {
 // PodStatusForExec describes a state in the lifecycle of a pod.
 type PodStatusForExec string
 
-const (
-	// ContainersStarted means that all containers of a pod were started.
-	ContainersStarted PodStatusForExec = "started"
-	// PodReady means that the readiness probe of the pod has succeeded.
-	PodReady PodStatusForExec = "ready"
-)
-
 // FileExtractor provides functionality to get the contents of files from a container.
 type FileExtractor interface {
 	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
 	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod ExecPod) (map[string]string, error)
 }
 
-// SuffixGenerator can generate random suffix strings, e.g. for ExecPods.
-type SuffixGenerator interface {
+// suffixGenerator can generate random suffix strings, e.g. for ExecPods.
+type suffixGenerator interface {
 	// String returns a random suffix string with the given length
 	String(length int) string
 }
 
-type RemoteExecutor interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type remoteExecutor interface {
 	remotecommand.Executor
 }
 
-type K8sClient interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type k8sClient interface {
 	client.Client
 }

@@ -34,7 +34,7 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV2Interface, localFetcher LocalDoguFetcher) *doguChecker {
+func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV2Interface, localFetcher localDoguFetcher) *doguChecker {
 	return &doguChecker{
 		ecosystemClient:   ecosystemClient,
 		doguLocalRegistry: localFetcher,
@@ -43,7 +43,7 @@ func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV2Interface, localFetcher
 
 type doguChecker struct {
 	ecosystemClient   ecoSystem.EcoSystemV2Interface
-	doguLocalRegistry LocalDoguFetcher
+	doguLocalRegistry localDoguFetcher
 }
 
 // CheckByName returns nil if the dogu resource's health status says it's available.

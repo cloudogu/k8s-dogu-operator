@@ -21,12 +21,12 @@ type RequirementsUpdater struct {
 	client              client.Client
 	namespace           string
 	globalConfigWatcher globalConfigurationWatcher
-	doguFetcher         LocalDoguFetcher
+	doguFetcher         localDoguFetcher
 	requirementsGen     requirementsGenerator
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguFetcher LocalDoguFetcher, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
+func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguFetcher localDoguFetcher, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
 	requirementsGen := NewRequirementsGenerator(doguConfigGetter)
 
 	return &RequirementsUpdater{

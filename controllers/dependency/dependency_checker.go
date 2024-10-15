@@ -17,7 +17,7 @@ type CompositeDependencyValidator struct {
 }
 
 // NewCompositeDependencyValidator create a new composite validator checking the dogu and client dependencies
-func NewCompositeDependencyValidator(version *core.Version, doguFetcher LocalDoguFetcher) *CompositeDependencyValidator {
+func NewCompositeDependencyValidator(version *core.Version, doguFetcher localDoguFetcher) *CompositeDependencyValidator {
 	validators := []DependencyValidator{}
 
 	operatorDependencyValidator := NewOperatorDependencyValidator(version)

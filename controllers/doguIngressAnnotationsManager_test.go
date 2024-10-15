@@ -16,7 +16,7 @@ import (
 
 func TestNewDoguAdditionalIngressAnnotationsManager(t *testing.T) {
 	// when
-	manager := NewDoguAdditionalIngressAnnotationsManager(fake.NewClientBuilder().Build(), NewMockEventRecorder(t))
+	manager := NewDoguAdditionalIngressAnnotationsManager(fake.NewClientBuilder().Build(), newMockEventRecorder(t))
 
 	// then
 	require.NotNil(t, manager)
@@ -28,7 +28,7 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 		dogu := readDoguCr(t, ldapCrBytes)
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: dogu.Name, Namespace: dogu.Namespace}}
 		client := fake.NewClientBuilder().WithObjects(doguService).Build()
-		sut := NewDoguAdditionalIngressAnnotationsManager(client, NewMockEventRecorder(t))
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, newMockEventRecorder(t))
 
 		// when
 		err := sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)
@@ -48,7 +48,7 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 		}
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: dogu.Name, Namespace: dogu.Namespace, Annotations: annotations}}
 		client := fake.NewClientBuilder().WithObjects(doguService).Build()
-		sut := NewDoguAdditionalIngressAnnotationsManager(client, NewMockEventRecorder(t))
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, newMockEventRecorder(t))
 
 		// when
 		err = sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)
@@ -61,7 +61,7 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		client := fake.NewClientBuilder().Build()
-		sut := NewDoguAdditionalIngressAnnotationsManager(client, NewMockEventRecorder(t))
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, newMockEventRecorder(t))
 
 		// when
 		err := sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)
@@ -88,7 +88,7 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 			return nil
 		})
 		client.EXPECT().Update(context.TODO(), mock.AnythingOfType("*v1.Service")).Return(assert.AnError)
-		sut := NewDoguAdditionalIngressAnnotationsManager(client, NewMockEventRecorder(t))
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, newMockEventRecorder(t))
 
 		// when
 		err = sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)

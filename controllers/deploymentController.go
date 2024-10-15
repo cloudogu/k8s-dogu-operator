@@ -21,11 +21,11 @@ type DeploymentReconciler struct {
 	k8sClientSet            ClientSet
 	availabilityChecker     health.DeploymentAvailabilityChecker
 	doguHealthStatusUpdater health.DoguHealthStatusUpdater
-	doguFetcher             LocalDoguFetcher
+	doguFetcher             localDoguFetcher
 }
 
 func NewDeploymentReconciler(k8sClientSet ClientSet, availabilityChecker *health.AvailabilityChecker,
-	doguHealthStatusUpdater health.DoguHealthStatusUpdater, doguFetcher LocalDoguFetcher) *DeploymentReconciler {
+	doguHealthStatusUpdater health.DoguHealthStatusUpdater, doguFetcher localDoguFetcher) *DeploymentReconciler {
 	return &DeploymentReconciler{
 		k8sClientSet:            k8sClientSet,
 		availabilityChecker:     availabilityChecker,

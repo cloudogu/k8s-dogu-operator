@@ -16,7 +16,7 @@ func TestShutdownHandler_Start(t *testing.T) {
 		doneCtx, cancelFunc := context.WithCancel(testCtx)
 		cancelFunc()
 		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := NewMockDoguInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
 
 		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
@@ -56,7 +56,7 @@ func TestShutdownHandler_Start(t *testing.T) {
 		cancelFunc()
 
 		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := NewMockDoguInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
 
 		doguInterfaceMock.EXPECT().List(expectedContext, metav1.ListOptions{}).Return(nil, assert.AnError)
 
@@ -76,7 +76,7 @@ func TestShutdownHandler_Start(t *testing.T) {
 		cancelFunc()
 
 		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := NewMockDoguInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
 
 		casDogu := &v2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
@@ -115,7 +115,7 @@ func TestShutdownHandler_Start(t *testing.T) {
 func TestNewShutdownHandler(t *testing.T) {
 	t.Run("should set properties", func(t *testing.T) {
 		// given
-		doguInterfaceMock := NewMockDoguInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
 
 		// when
 		handler := NewShutdownHandler(doguInterfaceMock)

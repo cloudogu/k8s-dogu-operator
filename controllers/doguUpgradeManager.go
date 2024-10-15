@@ -42,8 +42,8 @@ type doguUpgradeManager struct {
 	eventRecorder   record.EventRecorder
 	// upgrade business
 	premisesChecker     upgrade.PremisesChecker
-	localDoguFetcher    LocalDoguFetcher
-	resourceDoguFetcher ResourceDoguFetcher
+	localDoguFetcher    localDoguFetcher
+	resourceDoguFetcher resourceDoguFetcher
 	upgradeExecutor     upgrade.UpgradeExecutor
 }
 

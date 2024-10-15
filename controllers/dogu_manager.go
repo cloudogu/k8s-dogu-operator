@@ -31,12 +31,12 @@ var clientSetGetter = func(c *rest.Config) (kubernetes.Interface, error) {
 // The DoguManager creates, updates and deletes dogus
 type DoguManager struct {
 	scheme                    *runtime.Scheme
-	installManager            InstallManager
-	upgradeManager            UpgradeManager
-	deleteManager             DeleteManager
-	volumeManager             VolumeManager
-	ingressAnnotationsManager AdditionalIngressAnnotationsManager
-	supportManager            SupportManager
+	installManager            installManager
+	upgradeManager            upgradeManager
+	deleteManager             deleteManager
+	volumeManager             volumeManager
+	ingressAnnotationsManager additionalIngressAnnotationsManager
+	supportManager            supportManager
 	startStopManager          DoguStartStopManager
 	recorder                  record.EventRecorder
 }

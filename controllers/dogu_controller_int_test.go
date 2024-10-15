@@ -69,14 +69,14 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	Context("Handle dogu resource", func() {
 		It("Setup mocks and test data", func() {
-			*DoguInterfaceMock = MockDoguInterface{}
+			*DoguInterfaceMock = mockDoguInterface{}
 			DoguInterfaceMock.EXPECT().UpdateStatusWithRetry(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(
 				func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
 					modifyStatusFn(dogu.Status)
 				}).Once()
-			*ImageRegistryMock = MockImageRegistry{}
+			*ImageRegistryMock = mockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil).Once()
-			*DoguRemoteRegistryMock = MockRemoteRegistry{}
+			*DoguRemoteRegistryMock = mockRemoteRegistry{}
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil).Once()
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil).Once()
 		})
@@ -338,10 +338,10 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Setup mocks and test data for upgrade", func() {
 			// create mocks
-			*DoguRemoteRegistryMock = MockRemoteRegistry{}
+			*DoguRemoteRegistryMock = mockRemoteRegistry{}
 			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(upgradeLdapToDoguDescriptor, nil)
 
-			*ImageRegistryMock = MockImageRegistry{}
+			*ImageRegistryMock = mockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil).Once()
 		})
 
@@ -379,8 +379,8 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Setup mocks and test data for delete", func() {
 			// create mocks
-			*DoguRemoteRegistryMock = MockRemoteRegistry{}
-			*ImageRegistryMock = MockImageRegistry{}
+			*DoguRemoteRegistryMock = mockRemoteRegistry{}
+			*ImageRegistryMock = mockImageRegistry{}
 		})
 
 		It("Should delete dogu", func() {
@@ -483,7 +483,7 @@ func assertNewDeploymentVersionWithStartupProbe(doguLookupKey types.NamespacedNa
 // setExecPodRunning can be necessary because the environment has no controllers to really start the pods,
 // therefore the dogu controller waits until timeout.
 func setExecPodRunning(ctx context.Context, doguName string) {
-	By("Simulate ExecPod is running")
+	By("Simulate execPod is running")
 	podList := &corev1.PodList{}
 
 	Eventually(func() bool {

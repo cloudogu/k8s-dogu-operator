@@ -9,22 +9,27 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// DependencyValidator checks if all necessary dependencies for an upgrade are installed.
-type DependencyValidator interface {
+// dependencyValidator checks if all necessary dependencies for an upgrade are installed.
+type dependencyValidator interface {
 	// ValidateDependencies is used to check if dogu dependencies are installed.
 	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
-type EcosystemInterface interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ecosystemInterface interface {
 	ecoSystem.EcoSystemV2Interface
 }
 
-// Applier provides ways to apply unstructured Kubernetes resources against the API.
-type Applier interface {
+// applier provides ways to apply unstructured Kubernetes resources against the API.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type applier interface {
 	// ApplyWithOwner provides a testable method for applying generic, unstructured K8s resources to the API
 	ApplyWithOwner(doc apply.YamlDocument, namespace string, resource metav1.Object) error
 }
 
-type ClientSet interface {
+type clientSet interface {
 	kubernetes.Interface
 }

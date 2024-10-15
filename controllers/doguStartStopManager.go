@@ -35,8 +35,8 @@ const containerStateCrashLoop = "CrashLoopBackOff"
 // doguStartStopManager includes functionality to start and stop dogus.
 type doguStartStopManager struct {
 	doguInterface       ecoSystem.DoguInterface
-	deploymentInterface DeploymentInterface
-	podInterface        PodInterface
+	deploymentInterface deploymentInterface
+	podInterface        podInterface
 }
 
 type deploymentNotYetScaledError struct {
@@ -91,7 +91,7 @@ func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k
 	return nil
 }
 
-func newDoguStartStopManager(doguInterface ecoSystem.DoguInterface, deploymentInterface DeploymentInterface, podInterface PodInterface) *doguStartStopManager {
+func newDoguStartStopManager(doguInterface ecoSystem.DoguInterface, deploymentInterface deploymentInterface, podInterface podInterface) *doguStartStopManager {
 	return &doguStartStopManager{doguInterface: doguInterface, deploymentInterface: deploymentInterface, podInterface: podInterface}
 }
 

@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// shellCommand represents all necessary arguments to execute a command inside a container.
+// ShellCommand represents all necessary arguments to execute a command inside a container.
 type shellCommand struct {
 	// command states the actual executable that is supposed to be executed in the container.
 	command string
@@ -45,7 +45,7 @@ func (sc *shellCommand) String() string {
 	return strings.Join(append(result, sc.args...), " ")
 }
 
-// NewShellCommand creates a new shellCommand. While the command is mandatory, there can be zero to n command arguments.
+// NewShellCommand creates a new ShellCommand. While the command is mandatory, there can be zero to n command arguments.
 func NewShellCommand(command string, args ...string) *shellCommand {
 	return &shellCommand{command: command, args: args}
 }

@@ -29,8 +29,8 @@ const (
 // creator is the unit to handle the creation of service accounts
 type creator struct {
 	client            client.Client
-	sensitiveDoguRepo SensitiveDoguConfigRepository
-	doguFetcher       LocalDoguFetcher
+	sensitiveDoguRepo sensitiveDoguConfigRepository
+	doguFetcher       localDoguFetcher
 	executor          exec.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
@@ -38,7 +38,7 @@ type creator struct {
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(repo SensitiveDoguConfigRepository, localDoguFetcher LocalDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
+func NewCreator(repo sensitiveDoguConfigRepository, localDoguFetcher localDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	return &creator{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -197,7 +197,7 @@ func (c *creator) writeServiceAccounts(ctx context.Context, senDoguCfg *config.D
 	return nil
 }
 
-func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo SensitiveDoguConfigRepository) error {
+func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo sensitiveDoguConfigRepository) error {
 	update, err := cfgRepo.Update(ctx, *senDoguCfg)
 	if err != nil {
 		if regLibErr.IsConflictError(err) {

@@ -72,7 +72,7 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 
 		// then
 		require.NotNil(t, actual)
-		assert.Implements(t, (*UpgradeManager)(nil), actual)
+		assert.Implements(t, (*upgradeManager)(nil), actual)
 	})
 }
 
@@ -80,10 +80,10 @@ func newTestDoguUpgradeManager(
 	client client.Client,
 	ecosystemClient ecoSystem.EcoSystemV2Interface,
 	recorder record.EventRecorder,
-	ldf LocalDoguFetcher,
-	rdf ResourceDoguFetcher,
-	pc PremisesChecker,
-	ue UpgradeExecutor,
+	ldf localDoguFetcher,
+	rdf resourceDoguFetcher,
+	pc premisesChecker,
+	ue upgradeExecutor,
 ) *doguUpgradeManager {
 	return &doguUpgradeManager{
 		client:              client,
@@ -119,20 +119,20 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := NewMockEventRecorder(t)
+		recorderMock := newMockEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
 
-		resourceFetcher := NewMockResourceDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
 
-		premChecker := NewMockPremisesChecker(t)
+		premChecker := newMockPremisesChecker(t)
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
-		upgradeExec := NewMockUpgradeExecutor(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		deplRedmine := createReadyDeployment("redmine")
@@ -148,8 +148,8 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 			WithObjects(redmineCr, deplRedmine, deplPostgres, deplCas, deplNginx1, deplNginx2, deplPostfix).
 			Build()
 
-		ecosystemClientMock := NewMockEcosystemInterface(t)
-		doguClientMock := NewMockDoguInterface(t)
+		ecosystemClientMock := newMockEcosystemInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
 		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v2.Dogu, f func(v2.DoguStatus) v2.DoguStatus, options metav1.UpdateOptions) (*v2.Dogu, error) {
 			redmineCr.Status = f(redmineCr.Status)
@@ -177,11 +177,11 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := NewMockEventRecorder(t)
+		recorderMock := newMockEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
 
 		devDoguMap := &v2.DevelopmentDoguMap{
@@ -190,13 +190,13 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 				Namespace: redmineCr.GetObjectKey().Namespace,
 			},
 		}
-		resourceFetcher := NewMockResourceDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, devDoguMap, nil)
 
-		premChecker := NewMockPremisesChecker(t)
+		premChecker := newMockPremisesChecker(t)
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
-		upgradeExec := NewMockUpgradeExecutor(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		deplRedmine := createReadyDeployment("redmine")
@@ -214,8 +214,8 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		preErr := clientMock.Get(testCtx, redmineCr.GetObjectKey(), devDoguMap.ToConfigMap())
 		assert.False(t, errors.IsNotFound(preErr))
 
-		ecosystemClientMock := NewMockEcosystemInterface(t)
-		doguClientMock := NewMockDoguInterface(t)
+		ecosystemClientMock := newMockEcosystemInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
 		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, dogu *v2.Dogu, f func(v2.DoguStatus) v2.DoguStatus, options metav1.UpdateOptions) (*v2.Dogu, error) {
 			redmineCr.Status = f(redmineCr.Status)
@@ -246,20 +246,20 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := NewMockEventRecorder(t)
+		recorderMock := newMockEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", "4.2.3-11")
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
 
-		resourceFetcher := NewMockResourceDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
 
-		premChecker := NewMockPremisesChecker(t)
+		premChecker := newMockPremisesChecker(t)
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
-		upgradeExec := NewMockUpgradeExecutor(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(assert.AnError)
 
 		deplRedmine := createReadyDeployment("redmine")
@@ -297,19 +297,19 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := NewMockEventRecorder(t)
+		recorderMock := newMockEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
 
-		resourceFetcher := NewMockResourceDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
 
-		premChecker := NewMockPremisesChecker(t)
+		premChecker := newMockPremisesChecker(t)
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(assert.AnError)
 
-		upgradeExec := NewMockUpgradeExecutor(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 
 		deplRedmine := createReadyDeployment("redmine")
 		deplPostgres := createReadyDeployment("postgresql")
@@ -346,16 +346,16 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := NewMockEventRecorder(t)
+		recorderMock := newMockEventRecorder(t)
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
 
-		resourceFetcher := NewMockResourceDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(nil, nil, assert.AnError)
 
-		premChecker := NewMockPremisesChecker(t)
-		upgradeExec := NewMockUpgradeExecutor(t)
+		premChecker := newMockPremisesChecker(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 
 		deplRedmine := createReadyDeployment("redmine")
 		deplPostgres := createReadyDeployment("postgresql")
@@ -388,15 +388,15 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineCr.Spec.Version = upgradeVersion
 		redmineCr.Spec.UpgradeConfig.AllowNamespaceSwitch = true
 
-		recorderMock := NewMockEventRecorder(t)
+		recorderMock := newMockEventRecorder(t)
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(nil, assert.AnError)
 
-		resourceFetcher := NewMockResourceDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
 
-		premChecker := NewMockPremisesChecker(t)
-		upgradeExec := NewMockUpgradeExecutor(t)
+		premChecker := newMockPremisesChecker(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 
 		deplRedmine := createReadyDeployment("redmine")
 		deplPostgres := createReadyDeployment("postgresql")
@@ -425,11 +425,11 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 	t.Run("should fail on first change state error", func(t *testing.T) {
 		// given
 		redmineCr := readDoguCr(t, redmineCrBytes)
-		recorderMock := NewMockEventRecorder(t)
-		localFetcher := NewMockLocalDoguFetcher(t)
-		resourceFetcher := NewMockResourceDoguFetcher(t)
-		premChecker := NewMockPremisesChecker(t)
-		upgradeExec := NewMockUpgradeExecutor(t)
+		recorderMock := newMockEventRecorder(t)
+		localFetcher := newMockLocalDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
+		premChecker := newMockPremisesChecker(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 
 		clientMock := NewMockK8sClient(t)
 		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
@@ -453,24 +453,24 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := NewMockEventRecorder(t)
+		recorderMock := newMockEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "").Return(redmineDoguInstalled, nil)
 
-		resourceFetcher := NewMockResourceDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
 
-		premChecker := NewMockPremisesChecker(t)
+		premChecker := newMockPremisesChecker(t)
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
-		upgradeExec := NewMockUpgradeExecutor(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		clientMock := NewMockK8sClient(t)
-		statusMock := NewMockK8sSubResourceWriter(t)
+		statusMock := newMockK8sSubResourceWriter(t)
 		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil).Once()
 		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
 		clientMock.EXPECT().Status().Return(statusMock)
@@ -495,30 +495,30 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		redmineDoguUpgrade := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 		redmineDoguUpgrade.Version = upgradeVersion
 
-		recorderMock := NewMockEventRecorder(t)
+		recorderMock := newMockEventRecorder(t)
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
-		localFetcher := NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "").Return(redmineDoguInstalled, nil)
 
-		resourceFetcher := NewMockResourceDoguFetcher(t)
+		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
 
-		premChecker := NewMockPremisesChecker(t)
+		premChecker := newMockPremisesChecker(t)
 		premChecker.On("Check", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
-		upgradeExec := NewMockUpgradeExecutor(t)
+		upgradeExec := newMockUpgradeExecutor(t)
 		upgradeExec.On("Upgrade", testCtx, redmineCr, redmineDoguInstalled, redmineDoguUpgrade).Return(nil)
 
 		clientMock := NewMockK8sClient(t)
-		statusMock := NewMockK8sSubResourceWriter(t)
+		statusMock := newMockK8sSubResourceWriter(t)
 		clientMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil).Twice()
 		clientMock.EXPECT().Status().Return(statusMock).Twice()
 		statusMock.On("Update", testCtx, redmineCr).Return(nil).Twice()
 
-		ecosystemClientMock := NewMockEcosystemInterface(t)
-		doguClientMock := NewMockDoguInterface(t)
+		ecosystemClientMock := newMockEcosystemInterface(t)
+		doguClientMock := newMockDoguInterface(t)
 		ecosystemClientMock.EXPECT().Dogus("").Return(doguClientMock)
 		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, redmineCr, mock.Anything, mock.Anything).Return(redmineCr, assert.AnError)
 

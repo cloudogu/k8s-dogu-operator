@@ -66,9 +66,9 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		mockedDependencyValidator := NewMockDependencyValidator(t)
 		mockedDependencyValidator.On("ValidateDependencies", ctx, fromDogu).Return(nil)
-		mockedHealthChecker := NewMockDoguHealthChecker(t)
+		mockedHealthChecker := newMockDoguHealthChecker(t)
 		mockedHealthChecker.On("CheckByName", ctx, fromDoguResource.GetObjectKey()).Return(nil)
-		mockedRecursiveHealthChecker := NewMockDoguRecursiveHealthChecker(t)
+		mockedRecursiveHealthChecker := newMockDoguRecursiveHealthChecker(t)
 		mockedRecursiveHealthChecker.On("CheckDependenciesRecursive", ctx, fromDogu, "").Return(nil)
 
 		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker)
@@ -103,9 +103,9 @@ func Test_premisesChecker_Check(t *testing.T) {
 		toDogu := readTestDataDogu(t, redmineBytes)
 
 		mockedDependencyValidator := NewMockDependencyValidator(t)
-		mockedHealthChecker := NewMockDoguHealthChecker(t)
+		mockedHealthChecker := newMockDoguHealthChecker(t)
 		mockedHealthChecker.On("CheckByName", ctx, fromDoguResource.GetObjectKey()).Return(assert.AnError)
-		mockedRecursiveHealthChecker := NewMockDoguRecursiveHealthChecker(t)
+		mockedRecursiveHealthChecker := newMockDoguRecursiveHealthChecker(t)
 
 		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker)
 
@@ -126,9 +126,9 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		mockedDependencyValidator := NewMockDependencyValidator(t)
 		mockedDependencyValidator.On("ValidateDependencies", ctx, fromDogu).Return(assert.AnError)
-		mockedHealthChecker := NewMockDoguHealthChecker(t)
+		mockedHealthChecker := newMockDoguHealthChecker(t)
 		mockedHealthChecker.On("CheckByName", ctx, fromDoguResource.GetObjectKey()).Return(nil)
-		mockedRecursiveHealthChecker := NewMockDoguRecursiveHealthChecker(t)
+		mockedRecursiveHealthChecker := newMockDoguRecursiveHealthChecker(t)
 
 		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker)
 
@@ -146,9 +146,9 @@ func Test_premisesChecker_Check(t *testing.T) {
 
 		mockedDependencyValidator := NewMockDependencyValidator(t)
 		mockedDependencyValidator.On("ValidateDependencies", ctx, fromDogu).Return(nil)
-		mockedHealthChecker := NewMockDoguHealthChecker(t)
+		mockedHealthChecker := newMockDoguHealthChecker(t)
 		mockedHealthChecker.On("CheckByName", ctx, fromDoguResource.GetObjectKey()).Return(nil)
-		mockedRecursiveHealthChecker := NewMockDoguRecursiveHealthChecker(t)
+		mockedRecursiveHealthChecker := newMockDoguRecursiveHealthChecker(t)
 		mockedRecursiveHealthChecker.On("CheckDependenciesRecursive", ctx, fromDogu, "").Return(assert.AnError)
 
 		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker)

@@ -21,8 +21,8 @@ func TestNewManagerSet(t *testing.T) {
 		opConfig := &config.OperatorConfig{
 			Namespace: "myNamespace",
 		}
-		ecosystemMock := NewMockEcosystemInterface(t)
-		applier := NewMockApplier(t)
+		ecosystemMock := newMockEcosystemInterface(t)
+		applier := newMockApplier(t)
 		var addImages map[string]string
 
 		configRepos := ConfigRepositories{

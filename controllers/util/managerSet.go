@@ -41,8 +41,8 @@ type ManagerSet struct {
 	DoguRegistrator       cesregistry.DoguRegistrator
 	ImageRegistry         imageregistry.ImageRegistry
 	EcosystemClient       ecoSystem.EcoSystemV2Interface
-	ClientSet             ClientSet
-	DependencyValidator   DependencyValidator
+	ClientSet             clientSet
+	DependencyValidator   dependencyValidator
 }
 
 // NewManagerSet creates a new ManagerSet.

@@ -250,7 +250,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		bufferErr := bytes.NewBuffer([]byte{})
 
 		sut.commandExecutorCreator = func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-			mockExecutor := NewMockRemoteExecutor(t)
+			mockExecutor := newMockRemoteExecutor(t)
 			mockExecutor.EXPECT().StreamWithContext(mock.Anything, remotecommand.StreamOptions{
 				// expects the reader as stream option in the mocked call to verify the stdin command
 				Stdin:  reader,
@@ -394,7 +394,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 	t.Helper()
 
 	fakeNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		mockExecutor := NewMockRemoteExecutor(t)
+		mockExecutor := newMockRemoteExecutor(t)
 		mockExecutor.EXPECT().StreamWithContext(mock.Anything, mock.Anything).RunAndReturn(streamWithContextRun())
 		return mockExecutor, nil
 	}
@@ -404,7 +404,7 @@ func createFakeExecutors(t *testing.T) (a, b, c func(config *rest.Config, method
 	}
 
 	fakeErrorStreamNewSPDYExecutor := func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-		mockExecutor := NewMockRemoteExecutor(t)
+		mockExecutor := newMockRemoteExecutor(t)
 		mockExecutor.EXPECT().StreamWithContext(mock.Anything, mock.Anything).Return(assert.AnError)
 		return mockExecutor, nil
 	}

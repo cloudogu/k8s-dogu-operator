@@ -13,8 +13,8 @@ import (
 func TestNewStartupHandler(t *testing.T) {
 	t.Run("should set properties", func(t *testing.T) {
 		// given
-		doguInterfaceMock := NewMockDoguInterface(t)
-		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
+		deploymentInterfaceMock := newMockDeploymentInterface(t)
 		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
 		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
@@ -32,8 +32,8 @@ func TestNewStartupHandler(t *testing.T) {
 func TestStartupHandler_Start(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		doguInterfaceMock := NewMockDoguInterface(t)
-		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
+		deploymentInterfaceMock := newMockDeploymentInterface(t)
 		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
 		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
@@ -71,8 +71,8 @@ func TestStartupHandler_Start(t *testing.T) {
 
 	t.Run("should return error on dogu list error", func(t *testing.T) {
 		// given
-		doguInterfaceMock := NewMockDoguInterface(t)
-		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
+		deploymentInterfaceMock := newMockDeploymentInterface(t)
 		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
 		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
@@ -90,8 +90,8 @@ func TestStartupHandler_Start(t *testing.T) {
 
 	t.Run("should return error on deployment get error", func(t *testing.T) {
 		// given
-		doguInterfaceMock := NewMockDoguInterface(t)
-		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
+		deploymentInterfaceMock := newMockDeploymentInterface(t)
 		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
 		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 
@@ -125,8 +125,8 @@ func TestStartupHandler_Start(t *testing.T) {
 
 	t.Run("should return error on status update error", func(t *testing.T) {
 		// given
-		doguInterfaceMock := NewMockDoguInterface(t)
-		deploymentInterfaceMock := NewMockDeploymentInterface(t)
+		doguInterfaceMock := newMockDoguInterface(t)
+		deploymentInterfaceMock := newMockDeploymentInterface(t)
 		availabilityCheckerMock := NewMockDeploymentAvailabilityChecker(t)
 		healthUpdaterMock := NewMockDoguHealthStatusUpdater(t)
 

@@ -76,7 +76,7 @@ func TestNewCompositeDependencyValidator(t *testing.T) {
 		version, err := core.ParseVersion("0.0.0")
 		require.NoError(t, err)
 
-		localDoguFetcherMock := NewMockLocalDoguFetcher(t)
+		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 
 		// when
 		compositeValidator := NewCompositeDependencyValidator(&version, localDoguFetcherMock)

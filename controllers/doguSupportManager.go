@@ -26,7 +26,7 @@ type podTemplateResourceGenerator interface {
 // doguSupportManager is used to handle the support mode for dogus.
 type doguSupportManager struct {
 	client                       client.Client
-	doguFetcher                  LocalDoguFetcher
+	doguFetcher                  localDoguFetcher
 	podTemplateResourceGenerator podTemplateResourceGenerator
 	eventRecorder                record.EventRecorder
 }

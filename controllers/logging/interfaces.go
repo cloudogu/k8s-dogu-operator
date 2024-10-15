@@ -2,6 +2,8 @@ package logging
 
 import "github.com/go-logr/logr"
 
-type LogSink interface {
+//nolint:unused
+//goland:noinspection GoUnusedType
+type logSink interface {
 	logr.LogSink
 }

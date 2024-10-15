@@ -6,7 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type DoguRestartInterface interface {
+type doguRestartInterface interface {
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	List(ctx context.Context, opts metav1.ListOptions) (*v2.DoguRestartList, error)
 }

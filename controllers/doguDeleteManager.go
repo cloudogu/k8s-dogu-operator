@@ -25,13 +25,13 @@ const finalizerName = "dogu-finalizer"
 // doguDeleteManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguDeleteManager struct {
 	client                  client.Client
-	localDoguFetcher        LocalDoguFetcher
-	doguRegistrator         DoguRegistrator
+	localDoguFetcher        localDoguFetcher
+	doguRegistrator         doguRegistrator
 	serviceAccountRemover   serviceaccount.ServiceAccountRemover
 	exposedPortRemover      resource.ExposePortRemover
 	eventRecorder           record.EventRecorder
-	doguConfigRepository    DoguConfigRepository
-	sensitiveDoguRepository DoguConfigRepository
+	doguConfigRepository    doguConfigRepository
+	sensitiveDoguRepository doguConfigRepository
 }
 
 // NewDoguDeleteManager creates a new instance of doguDeleteManager.

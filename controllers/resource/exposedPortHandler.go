@@ -23,7 +23,7 @@ const (
 
 type doguExposedPortHandler struct {
 	client         client.Client
-	serviceExposer TcpUpdServiceExposer
+	serviceExposer tcpUpdServiceExposer
 }
 
 // NewDoguExposedPortHandler creates a new instance of doguExposedPortHandler.

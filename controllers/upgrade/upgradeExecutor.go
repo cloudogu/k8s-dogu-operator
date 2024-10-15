@@ -37,11 +37,11 @@ type upgradeExecutor struct {
 	client                client.Client
 	ecosystemClient       ecoSystem.EcoSystemV2Interface
 	eventRecorder         record.EventRecorder
-	imageRegistry         ImageRegistry
+	imageRegistry         imageRegistry
 	collectApplier        resource.CollectApplier
 	k8sFileExtractor      exec.FileExtractor
-	serviceAccountCreator ServiceAccountCreator
-	doguRegistrator       DoguRegistrator
+	serviceAccountCreator serviceAccountCreator
+	doguRegistrator       doguRegistrator
 	resourceUpserter      resource.ResourceUpserter
 	execPodFactory        exec.ExecPodFactory
 	doguCommandExecutor   exec.CommandExecutor
@@ -145,7 +145,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 	return nil
 }
 
-func registerUpgradedDoguVersion(ctx context.Context, cesreg DoguRegistrator, toDogu *core.Dogu) error {
+func registerUpgradedDoguVersion(ctx context.Context, cesreg doguRegistrator, toDogu *core.Dogu) error {
 	err := cesreg.RegisterDoguVersion(ctx, toDogu)
 	if err != nil {
 		return fmt.Errorf("failed to register upgrade: %w", err)
@@ -154,7 +154,7 @@ func registerUpgradedDoguVersion(ctx context.Context, cesreg DoguRegistrator, to
 	return nil
 }
 
-func registerNewServiceAccount(ctx context.Context, saCreator ServiceAccountCreator, toDogu *core.Dogu) error {
+func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCreator, toDogu *core.Dogu) error {
 	err := saCreator.CreateAll(ctx, toDogu)
 	if err != nil {
 		if err != nil {
@@ -164,7 +164,7 @@ func registerNewServiceAccount(ctx context.Context, saCreator ServiceAccountCrea
 	return nil
 }
 
-func pullUpgradeImage(ctx context.Context, imgRegistry ImageRegistry, toDogu *core.Dogu) (*imagev1.ConfigFile, error) {
+func pullUpgradeImage(ctx context.Context, imgRegistry imageRegistry, toDogu *core.Dogu) (*imagev1.ConfigFile, error) {
 	configFile, err := imgRegistry.PullImageConfig(ctx, toDogu.Image+":"+toDogu.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull upgrade image: %w", err)

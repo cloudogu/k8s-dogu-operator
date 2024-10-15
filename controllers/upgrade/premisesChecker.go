@@ -31,15 +31,15 @@ func (r *requeueablePremisesError) Requeue() bool {
 
 type premisesChecker struct {
 	dependencyValidator        DependencyValidator
-	doguHealthChecker          DoguHealthChecker
-	doguRecursiveHealthChecker DoguRecursiveHealthChecker
+	doguHealthChecker          doguHealthChecker
+	doguRecursiveHealthChecker doguRecursiveHealthChecker
 }
 
 // NewPremisesChecker creates a new upgrade premises checker.
 func NewPremisesChecker(
 	depValidator DependencyValidator,
-	healthChecker DoguHealthChecker,
-	recursiveHealthChecker DoguRecursiveHealthChecker,
+	healthChecker doguHealthChecker,
+	recursiveHealthChecker doguRecursiveHealthChecker,
 ) *premisesChecker {
 	return &premisesChecker{
 		dependencyValidator:        depValidator,

@@ -32,18 +32,18 @@ type doguInstallManager struct {
 	client                  K8sClient
 	ecosystemClient         ecoSystem.EcoSystemV2Interface
 	recorder                record.EventRecorder
-	localDoguFetcher        LocalDoguFetcher
-	resourceDoguFetcher     ResourceDoguFetcher
-	imageRegistry           ImageRegistry
-	doguRegistrator         DoguRegistrator
+	localDoguFetcher        localDoguFetcher
+	resourceDoguFetcher     resourceDoguFetcher
+	imageRegistry           imageRegistry
+	doguRegistrator         doguRegistrator
 	dependencyValidator     upgrade.DependencyValidator
-	serviceAccountCreator   ServiceAccountCreator
+	serviceAccountCreator   serviceAccountCreator
 	fileExtractor           exec.FileExtractor
 	collectApplier          resource.CollectApplier
 	resourceUpserter        resource.ResourceUpserter
 	execPodFactory          exec.ExecPodFactory
-	doguConfigRepository    DoguConfigRepository
-	sensitiveDoguRepository DoguConfigRepository
+	doguConfigRepository    doguConfigRepository
+	sensitiveDoguRepository doguConfigRepository
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
@@ -182,11 +182,11 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
 	anExecPod, err := m.execPodFactory.NewExecPod(doguResource, dogu)
 	if err != nil {
-		return fmt.Errorf("failed to create ExecPod resource %s: %w", anExecPod.ObjectKey().Name, err)
+		return fmt.Errorf("failed to create execPod resource %s: %w", anExecPod.ObjectKey().Name, err)
 	}
 	err = anExecPod.Create(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create ExecPod %s: %w", anExecPod.ObjectKey().Name, err)
+		return fmt.Errorf("failed to create execPod %s: %w", anExecPod.ObjectKey().Name, err)
 	}
 	defer deleteExecPod(ctx, anExecPod, m.recorder, doguResource)
 
