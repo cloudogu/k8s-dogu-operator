@@ -223,7 +223,7 @@ func setupOverrides() func() {
 	oldSetLoggerDelegate := ctrl.SetLogger
 
 	oldDoguManager := controllers.NewManager
-	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
+	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
 		return &controllers.DoguManager{}, nil
 	}
 

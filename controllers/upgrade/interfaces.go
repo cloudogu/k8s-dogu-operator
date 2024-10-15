@@ -61,7 +61,7 @@ type ServiceAccountCreator interface {
 }
 
 type EcosystemInterface interface {
-	ecoSystem.EcoSystemV1Alpha1Interface
+	ecoSystem.EcoSystemV2Interface
 }
 
 type DoguInterface interface {

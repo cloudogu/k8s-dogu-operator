@@ -30,7 +30,7 @@ const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
 	client                  K8sClient
-	ecosystemClient         ecoSystem.EcoSystemV1Alpha1Interface
+	ecosystemClient         ecoSystem.EcoSystemV2Interface
 	recorder                record.EventRecorder
 	localDoguFetcher        LocalDoguFetcher
 	resourceDoguFetcher     ResourceDoguFetcher

@@ -44,7 +44,7 @@ import (
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-var ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client
+var ecosystemClientSet *ecoSystem.EcoSystemV2Client
 var k8sClientSet ClientSet
 var testEnv *envtest.Environment
 var cancel context.CancelFunc

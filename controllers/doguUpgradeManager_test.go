@@ -78,7 +78,7 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 
 func newTestDoguUpgradeManager(
 	client client.Client,
-	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface,
+	ecosystemClient ecoSystem.EcoSystemV2Interface,
 	recorder record.EventRecorder,
 	ldf LocalDoguFetcher,
 	rdf ResourceDoguFetcher,

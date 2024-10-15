@@ -18,12 +18,12 @@ const statusUpdateEventReason = "HealthStatusUpdate"
 const healthConfigMapName = "k8s-dogu-operator-dogu-health"
 
 type DoguStatusUpdater struct {
-	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
+	ecosystemClient ecoSystem.EcoSystemV2Interface
 	recorder        record.EventRecorder
 	k8sClientSet    ClientSet
 }
 
-func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder, k8sClientSet ClientSet) *DoguStatusUpdater {
+func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV2Interface, recorder record.EventRecorder, k8sClientSet ClientSet) *DoguStatusUpdater {
 	return &DoguStatusUpdater{
 		ecosystemClient: ecosystemClient,
 		recorder:        recorder,

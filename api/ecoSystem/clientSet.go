@@ -8,16 +8,16 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type EcoSystemV1Alpha1Interface interface {
+type EcoSystemV2Interface interface {
 	Dogus(namespace string) DoguInterface
 	DoguRestarts(namespace string) DoguRestartInterface
 }
 
-type EcoSystemV1Alpha1Client struct {
+type EcoSystemV2Client struct {
 	restClient rest.Interface
 }
 
-func NewForConfig(c *rest.Config) (*EcoSystemV1Alpha1Client, error) {
+func NewForConfig(c *rest.Config) (*EcoSystemV2Client, error) {
 	config := *c
 	gv := schema.GroupVersion{Group: v2.GroupVersion.Group, Version: v2.GroupVersion.Version}
 	config.ContentConfig.GroupVersion = &gv
@@ -38,17 +38,17 @@ func NewForConfig(c *rest.Config) (*EcoSystemV1Alpha1Client, error) {
 		return nil, err
 	}
 
-	return &EcoSystemV1Alpha1Client{restClient: client}, nil
+	return &EcoSystemV2Client{restClient: client}, nil
 }
 
-func (c *EcoSystemV1Alpha1Client) Dogus(namespace string) DoguInterface {
+func (c *EcoSystemV2Client) Dogus(namespace string) DoguInterface {
 	return &doguClient{
 		client: c.restClient,
 		ns:     namespace,
 	}
 }
 
-func (c *EcoSystemV1Alpha1Client) DoguRestarts(namespace string) DoguRestartInterface {
+func (c *EcoSystemV2Client) DoguRestarts(namespace string) DoguRestartInterface {
 	return &doguRestartClient{
 		client: c.restClient,
 		ns:     namespace,

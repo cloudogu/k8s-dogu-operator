@@ -42,7 +42,7 @@ type DoguManager struct {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, error) {
+func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {

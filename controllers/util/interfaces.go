@@ -16,7 +16,7 @@ type DependencyValidator interface {
 }
 
 type EcosystemInterface interface {
-	ecoSystem.EcoSystemV1Alpha1Interface
+	ecoSystem.EcoSystemV2Interface
 }
 
 // Applier provides ways to apply unstructured Kubernetes resources against the API.

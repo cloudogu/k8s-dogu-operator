@@ -38,7 +38,7 @@ func NewDoguUpgradeManager(client client.Client, mgrSet *util.ManagerSet, eventR
 type doguUpgradeManager struct {
 	// general purpose
 	client          client.Client
-	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
+	ecosystemClient ecoSystem.EcoSystemV2Interface
 	eventRecorder   record.EventRecorder
 	// upgrade business
 	premisesChecker     upgrade.PremisesChecker

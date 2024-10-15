@@ -35,7 +35,7 @@ const preUpgradeScriptDir = "/tmp/pre-upgrade"
 
 type upgradeExecutor struct {
 	client                client.Client
-	ecosystemClient       ecoSystem.EcoSystemV1Alpha1Interface
+	ecosystemClient       ecoSystem.EcoSystemV2Interface
 	eventRecorder         record.EventRecorder
 	imageRegistry         ImageRegistry
 	collectApplier        resource.CollectApplier
@@ -52,7 +52,7 @@ func NewUpgradeExecutor(
 	client client.Client,
 	mgrSet *util.ManagerSet,
 	eventRecorder record.EventRecorder,
-	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface,
+	ecosystemClient ecoSystem.EcoSystemV2Interface,
 ) *upgradeExecutor {
 	return &upgradeExecutor{
 		client:                client,
