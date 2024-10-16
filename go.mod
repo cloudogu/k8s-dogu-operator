@@ -1,6 +1,6 @@
 module github.com/cloudogu/k8s-dogu-operator/v2
 
-go 1.22.5
+go 1.23.2
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
