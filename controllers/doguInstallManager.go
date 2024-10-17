@@ -106,18 +106,9 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv2.Do
 		return fmt.Errorf("failed to create service accounts: %w", err)
 	}
 
-	logger.Info("Pull image config...")
-	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", dogu.Image+":"+dogu.Version)
-	imageConfig, err := m.imageRegistry.PullImageConfig(ctx, dogu.Image+":"+dogu.Version)
+	err = m.handleDoguResources(ctx, doguResource, dogu)
 	if err != nil {
-		return fmt.Errorf("failed to pull image config: %w", err)
-	}
-
-	logger.Info("Create dogu resources...")
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
-	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig)
-	if err != nil {
-		return fmt.Errorf("failed to create dogu resources: %w", err)
+		return err
 	}
 
 	err = doguResource.ChangeStateWithRetry(ctx, m.client, k8sv2.DoguStatusInstalled)
@@ -142,6 +133,24 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv2.Do
 		}
 	}
 
+	return nil
+}
+
+func (m *doguInstallManager) handleDoguResources(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) error {
+	logger := log.FromContext(ctx)
+	logger.Info("Pull image config...")
+	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", dogu.Image+":"+dogu.Version)
+	imageConfig, err := m.imageRegistry.PullImageConfig(ctx, dogu.Image+":"+dogu.Version)
+	if err != nil {
+		return fmt.Errorf("failed to pull image config: %w", err)
+	}
+
+	logger.Info("Create dogu resources...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
+	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create dogu resources: %w", err)
+	}
 	return nil
 }
 
