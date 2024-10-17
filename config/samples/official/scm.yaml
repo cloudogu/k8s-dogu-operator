@@ -1,4 +1,4 @@
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: scm
@@ -6,7 +6,7 @@ metadata:
     app: ces
 spec:
   name: official/scm
-  version: 2.45.1-1
+  version: 3.4.1-3
   additionalIngressAnnotations:
     # set a proxy-body-size value of "0" to enable requests of any size
     nginx.ingress.kubernetes.io/proxy-body-size: "1024m"

@@ -17,10 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
 )
 
 const (
@@ -32,13 +30,13 @@ var (
 )
 
 type upserter struct {
-	client           thirdParty.K8sClient
-	generator        cloudogu.DoguResourceGenerator
-	exposedPortAdder cloudogu.ExposePortAdder
+	client           k8sClient
+	generator        DoguResourceGenerator
+	exposedPortAdder exposePortAdder
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, generator cloudogu.DoguResourceGenerator) *upserter {
+func NewUpserter(client client.Client, generator DoguResourceGenerator) *upserter {
 	exposedPortAdder := NewDoguExposedPortHandler(client)
 	return &upserter{client: client, generator: generator, exposedPortAdder: exposedPortAdder}
 }
@@ -46,7 +44,7 @@ func NewUpserter(client client.Client, generator cloudogu.DoguResourceGenerator)
 // UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
 // All parameters are mandatory except deploymentPatch which may be nil.
 // The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
-func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment)) (*appsv1.Deployment, error) {
+func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment)) (*appsv1.Deployment, error) {
 	newDeployment, err := u.generator.CreateDoguDeployment(doguResource, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate deployment: %w", err)
@@ -65,7 +63,7 @@ func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv1
 }
 
 // UpsertDoguService generates a service for a given dogu and applies it to the cluster.
-func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv1.Dogu, image *imagev1.ConfigFile) (*v1.Service, error) {
+func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv2.Dogu, image *imagev1.ConfigFile) (*v1.Service, error) {
 	newService, err := u.generator.CreateDoguService(doguResource, image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate service: %w", err)
@@ -79,12 +77,12 @@ func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv1.Do
 	return newService, nil
 }
 
-func (u *upserter) UpsertDoguExposedService(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*v1.Service, error) {
+func (u *upserter) UpsertDoguExposedService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*v1.Service, error) {
 	return u.exposedPortAdder.CreateOrUpdateCesLoadbalancerService(ctx, doguResource, dogu)
 }
 
 // UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
-func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv1.Dogu, dogu *core.Dogu) (*v1.PersistentVolumeClaim, error) {
+func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*v1.PersistentVolumeClaim, error) {
 	shouldCreatePVC := false
 	for _, volume := range dogu.Volumes {
 		if volume.NeedsBackup {

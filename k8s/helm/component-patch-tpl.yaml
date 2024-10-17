@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 values:
   images:
     doguOperator: cloudogu/k8s-dogu-operator:2.2.0

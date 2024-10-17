@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/async"
 	"testing"
 	"time"
 
@@ -13,16 +14,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 func TestNewDoguVolumeManager(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		recorder := extMocks.NewEventRecorder(t)
-		cli := extMocks.NewK8sClient(t)
+		recorder := newMockEventRecorder(t)
+		cli := NewMockK8sClient(t)
 
 		// when
 		result := NewDoguVolumeManager(cli, recorder)
@@ -34,17 +33,17 @@ func TestNewDoguVolumeManager(t *testing.T) {
 
 type errAsyncExecutor struct{}
 
-func (e *errAsyncExecutor) AddStep(cloudogu.AsyncStep) {}
+func (e *errAsyncExecutor) AddStep(async.AsyncStep) {}
 
-func (e *errAsyncExecutor) Execute(context.Context, *k8sv1.Dogu, string) error {
+func (e *errAsyncExecutor) Execute(context.Context, *k8sv2.Dogu, string) error {
 	return assert.AnError
 }
 
 type asyncExecutor struct{}
 
-func (e *asyncExecutor) AddStep(cloudogu.AsyncStep) {}
+func (e *asyncExecutor) AddStep(async.AsyncStep) {}
 
-func (e *asyncExecutor) Execute(context.Context, *k8sv1.Dogu, string) error {
+func (e *asyncExecutor) Execute(context.Context, *k8sv2.Dogu, string) error {
 	return nil
 }
 
@@ -65,7 +64,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		executor := &errAsyncExecutor{}
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(dogu).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv2.Dogu{}).WithObjects(dogu).Build()
 		manager := &doguVolumeManager{client: client, asyncExecutor: executor}
 
 		// when
@@ -75,7 +74,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, assert.AnError, err)
 
-		errDogu := &k8sv1.Dogu{}
+		errDogu := &k8sv2.Dogu{}
 		err = client.Get(context.TODO(), dogu.GetObjectKey(), errDogu)
 		require.NoError(t, err)
 		assert.Equal(t, "resizing PVC", errDogu.Status.Status)
@@ -85,7 +84,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		executor := &asyncExecutor{}
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(dogu).Build()
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv2.Dogu{}).WithObjects(dogu).Build()
 		manager := &doguVolumeManager{client: client, asyncExecutor: executor}
 
 		// when
@@ -93,7 +92,7 @@ func Test_doguVolumeManager_SetDoguDataVolumeSize(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		errDogu := &k8sv1.Dogu{}
+		errDogu := &k8sv2.Dogu{}
 		err = client.Get(context.TODO(), dogu.GetObjectKey(), errDogu)
 		require.NoError(t, err)
 		assert.Equal(t, "installed", errDogu.Status.Status)
@@ -108,8 +107,8 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		replicas := int32(0)
 		deploy := &appsv1.Deployment{ObjectMeta: *dogu.GetObjectMeta(), Spec: appsv1.DeploymentSpec{Replicas: &replicas}}
 
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv1.Dogu{}).WithObjects(deploy, dogu).Build()
-		recorder := extMocks.NewEventRecorder(t)
+		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithStatusSubresource(&k8sv2.Dogu{}).WithObjects(deploy, dogu).Build()
+		recorder := newMockEventRecorder(t)
 		recorder.On("Eventf", dogu, "Normal", "VolumeExpansion", "Scale deployment to %d replicas...", int32(1))
 		sut := &scaleUpStep{client: client, eventRecorder: recorder, replicas: 1}
 
@@ -121,7 +120,7 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		deploy, err = dogu.GetDeployment(context.TODO(), client)
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), *deploy.Spec.Replicas)
-		resultDogu := &k8sv1.Dogu{}
+		resultDogu := &k8sv2.Dogu{}
 		err = client.Get(context.TODO(), dogu.GetObjectKey(), resultDogu)
 		require.NoError(t, err)
 		assert.Equal(t, "", resultDogu.Status.RequeuePhase)
@@ -132,7 +131,7 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		client := fake.NewClientBuilder().Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Eventf", dogu, "Normal", "VolumeExpansion", "Scale deployment to %d replicas...", int32(0))
 		sut := &scaleUpStep{client: client, eventRecorder: recorder}
 
@@ -155,7 +154,7 @@ func Test_scaleDownStep_Execute(t *testing.T) {
 		deploy := &appsv1.Deployment{ObjectMeta: *dogu.GetObjectMeta(), Spec: appsv1.DeploymentSpec{Replicas: &replicas}}
 
 		client := fake.NewClientBuilder().WithObjects(deploy).Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Eventf", dogu, "Normal", "VolumeExpansion", "Scale deployment to %d replicas...", int32(0))
 		sus := &scaleUpStep{}
 		sut := &scaleDownStep{client: client, eventRecorder: recorder, scaleUpStep: sus}
@@ -175,7 +174,7 @@ func Test_scaleDownStep_Execute(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		client := fake.NewClientBuilder().Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Eventf", dogu, "Normal", "VolumeExpansion", "Scale deployment to %d replicas...", int32(0))
 		sus := &scaleUpStep{}
 		sut := &scaleDownStep{client: client, eventRecorder: recorder, scaleUpStep: sus}
@@ -203,7 +202,7 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		requests[corev1.ResourceStorage] = resource.MustParse("0.5Gi")
 		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: requests}}}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Update dogu data PVC request storage...")
 		sut := &editPVCStep{client: client, eventRecorder: recorder}
 		wantedCapacity := resource.MustParse("1Gi")
@@ -228,7 +227,7 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		}()
 		dogu.Spec.Resources.DataVolumeSize = "1Gi"
 		client := fake.NewClientBuilder().Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Update dogu data PVC request storage...")
 		sut := &editPVCStep{client: client, eventRecorder: recorder}
 
@@ -245,7 +244,7 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		client := fake.NewClientBuilder().Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		sut := &editPVCStep{client: client, eventRecorder: recorder}
 
 		// when
@@ -268,7 +267,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}, Spec: corev1.PersistentVolumeClaimSpec{
 			Resources: corev1.VolumeResourceRequirements{Requests: requests}}}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
 		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
 
@@ -298,7 +297,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 			},
 		}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
 		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
 
@@ -314,7 +313,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		client := fake.NewClientBuilder().Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
 		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
 		wantedCapacity := resource.MustParse("2Gi")
@@ -331,7 +330,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 		dogu := readDoguCr(t, ldapCrBytes)
 		dogu.Spec.Resources.DataVolumeSize = "1Gsdfsdfi"
 		client := fake.NewClientBuilder().Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
 
 		// when
@@ -361,7 +360,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 			},
 		}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
 		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
 
@@ -382,7 +381,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}, Spec: corev1.PersistentVolumeClaimSpec{
 			Resources: corev1.VolumeResourceRequirements{Requests: requests}}}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
 		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
 
@@ -412,7 +411,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 			},
 		}
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
-		recorder := extMocks.NewEventRecorder(t)
+		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Wait for pvc to be resized...")
 		sut := &checkIfPVCIsResizedStep{client: client, eventRecorder: recorder}
 

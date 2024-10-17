@@ -1,0 +1,8 @@
+apiVersion: k8s.cloudogu.com/v2
+kind: DoguRestart
+metadata:
+  # This does not work with `kubectl apply`.
+  # Use `kubectl create` instead.
+  generateName: cas-restart-
+spec:
+ doguName: cas

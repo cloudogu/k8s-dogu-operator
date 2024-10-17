@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -32,10 +32,10 @@ func readTestDataLdapDogu(t *testing.T) *cesappcore.Dogu {
 	return readTestDataDogu(t, ldapBytes)
 }
 
-func readTestDataRedmineCr(t *testing.T) *k8sv1.Dogu {
+func readTestDataRedmineCr(t *testing.T) *k8sv2.Dogu {
 	t.Helper()
 
-	redmineCr := &k8sv1.Dogu{}
+	redmineCr := &k8sv2.Dogu{}
 	err := yaml.Unmarshal(redmineCrBytes, redmineCr)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -61,9 +61,9 @@ func getTestScheme() *runtime.Scheme {
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogu",
-	}, &k8sv1.Dogu{})
+	}, &k8sv2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

@@ -6,8 +6,6 @@ import (
 	_ "embed"
 	"testing"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	fake2 "k8s.io/client-go/kubernetes/fake"
@@ -28,7 +26,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			Build()
 		clientset := fake2.NewSimpleClientset()
 
-		execPod := mocks.NewExecPod(t)
+		execPod := NewMockExecPod(t)
 		execPod.On("Exec", testCtx, testLsShellCommand).Return(bytes.NewBufferString("uh oh"), assert.AnError)
 
 		sut := &podFileExtractor{
@@ -48,7 +46,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			WithScheme(getTestScheme()).
 			Build()
 		clientset := fake2.NewSimpleClientset()
-		execPod := mocks.NewExecPod(t)
+		execPod := NewMockExecPod(t)
 		execPod.On("Exec", testCtx, testLsShellCommand).Once().Return(bytes.NewBufferString("test-k8s-resources.yaml"), nil)
 		expectedCatCommand := &shellCommand{command: "/bin/cat", args: []string{"/k8s/test-k8s-resources.yaml"}}
 		execPod.On("Exec", testCtx, expectedCatCommand).Once().Return(bytes.NewBufferString("resource { content : goes-here }"), nil)
@@ -72,7 +70,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 			WithScheme(getTestScheme()).
 			Build()
 		clientset := fake2.NewSimpleClientset()
-		execPod := mocks.NewExecPod(t)
+		execPod := NewMockExecPod(t)
 		execPod.On("Exec", testCtx, testLsShellCommand).Return(bytes.NewBufferString("No such file or directory"), nil)
 
 		sut := &podFileExtractor{

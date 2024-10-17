@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,11 +26,11 @@ func TestNewCollectApplier(t *testing.T) {
 func Test_collectApplier_CollectApply(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		inputResource := make(map[string]string, 0)
-		const yamlDeployment = `apiVersion: apps/v1
+		const yamlDeployment = `apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test`
-		const yamlOther = `apiVersion: apps/v1
+		const yamlOther = `apiVersion: apps/v2
 kind: DeploymentStrategy
 metadata:
   name: something-else`
@@ -39,7 +38,7 @@ metadata:
 		inputResource["myOtherResource"] = yamlOther
 		doguResource := readLdapDoguResource(t)
 
-		applier := mocks.NewApplier(t)
+		applier := NewMockApplier(t)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlOther), doguResource.Namespace, doguResource).Once().Return(nil)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlDeployment), doguResource.Namespace, doguResource).Once().Return(nil)
 		sut := NewCollectApplier(applier)
@@ -52,12 +51,12 @@ metadata:
 	})
 	t.Run("should fail", func(t *testing.T) {
 		inputResource := make(map[string]string, 0)
-		const yamlFile = `apiVersion: apps/v1
+		const yamlFile = `apiVersion: apps/v2
 kind: DeploymentStrategy`
 		inputResource["aResourceYamlFile"] = yamlFile
 		doguResource := readLdapDoguResource(t)
 
-		applier := mocks.NewApplier(t)
+		applier := NewMockApplier(t)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlFile), doguResource.Namespace, doguResource).Return(assert.AnError)
 		sut := NewCollectApplier(applier)
 
@@ -71,22 +70,22 @@ kind: DeploymentStrategy`
 	})
 	t.Run("should succeed with more than 1 deployments", func(t *testing.T) {
 		inputResource := make(map[string]string, 0)
-		const yamlFile = `apiVersion: apps/v1
+		const yamlFile = `apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test
 ---
-apiVersion: apps/v1
+apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test2
 `
-		const yamlFile1 = `apiVersion: apps/v1
+		const yamlFile1 = `apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test
 `
-		const yamlFile2 = `apiVersion: apps/v1
+		const yamlFile2 = `apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: test2
@@ -95,7 +94,7 @@ metadata:
 		inputResource["aResourceYamlFile"] = yamlFile
 		doguResource := readLdapDoguResource(t)
 
-		applier := mocks.NewApplier(t)
+		applier := NewMockApplier(t)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlFile1), doguResource.Namespace, doguResource).Once().Return(nil)
 		applier.On("ApplyWithOwner", apply.YamlDocument(yamlFile2), doguResource.Namespace, doguResource).Once().Return(nil)
 		sut := NewCollectApplier(applier)
@@ -110,7 +109,7 @@ metadata:
 		inputResource := make(map[string]string, 0)
 		doguResource := readLdapDoguResource(t)
 
-		applier := mocks.NewApplier(t)
+		applier := NewMockApplier(t)
 		sut := NewCollectApplier(applier)
 
 		// when

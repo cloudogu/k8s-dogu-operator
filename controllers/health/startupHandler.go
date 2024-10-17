@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -13,14 +13,14 @@ import (
 )
 
 type StartupHandler struct {
-	doguInterface           cloudogu.DoguInterface
+	doguInterface           ecoSystem.DoguInterface
 	deploymentInterface     v1.DeploymentInterface
-	availabilityChecker     cloudogu.DeploymentAvailabilityChecker
-	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater
+	availabilityChecker     DeploymentAvailabilityChecker
+	doguHealthStatusUpdater DoguHealthStatusUpdater
 }
 
-func NewStartupHandler(doguInterface cloudogu.DoguInterface, deploymentInterface v1.DeploymentInterface,
-	availabilityChecker cloudogu.DeploymentAvailabilityChecker, healthUpdater cloudogu.DoguHealthStatusUpdater) *StartupHandler {
+func NewStartupHandler(doguInterface ecoSystem.DoguInterface, deploymentInterface v1.DeploymentInterface,
+	availabilityChecker DeploymentAvailabilityChecker, healthUpdater DoguHealthStatusUpdater) *StartupHandler {
 	return &StartupHandler{
 		doguInterface:           doguInterface,
 		deploymentInterface:     deploymentInterface,

@@ -28,37 +28,34 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	// +kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-var ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client
-var k8sClientSet thirdParty.ClientSet
+var ecosystemClientSet *ecoSystem.EcoSystemV2Client
+var k8sClientSet ClientSet
 var testEnv *envtest.Environment
 var cancel context.CancelFunc
 
 // Used in other integration tests
 var (
-	ImageRegistryMock      *mocks.ImageRegistry
-	CommandExecutor        *mocks.CommandExecutor
-	DoguRemoteRegistryMock *extMocks.RemoteRegistry
-	k8sClient              thirdParty.K8sClient
-	DoguInterfaceMock      *mocks.DoguInterface
+	ImageRegistryMock      *mockImageRegistry
+	CommandExecutorMock    *mockCommandExecutor
+	DoguRemoteRegistryMock *mockRemoteRegistry
+	k8sClient              K8sClient
+	DoguInterfaceMock      *mockDoguInterface
 )
 
 const TimeoutInterval = time.Second * 10
@@ -83,7 +80,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	config.Stage = config.StageProduction
 
-	CommandExecutor = &mocks.CommandExecutor{}
+	CommandExecutorMock = &mockCommandExecutor{}
 	logf.SetLogger(logrusr.New(logrus.New()))
 
 	var ctx context.Context
@@ -119,7 +116,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		return builder
 	}
 
-	err = k8sv1.AddToScheme(scheme.Scheme)
+	err = k8sv2.AddToScheme(scheme.Scheme)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
@@ -137,13 +134,13 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClientSet, err = kubernetes.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	DoguRemoteRegistryMock = &extMocks.RemoteRegistry{}
-	ImageRegistryMock = &mocks.ImageRegistry{}
-	DoguInterfaceMock = &mocks.DoguInterface{}
+	DoguRemoteRegistryMock = &mockRemoteRegistry{}
+	ImageRegistryMock = &mockImageRegistry{}
+	DoguInterfaceMock = &mockDoguInterface{}
 
-	requirementsGen := &mocks.RequirementsGenerator{}
+	requirementsGen := &mockRequirementsGenerator{}
 	requirementsGen.EXPECT().Generate(mock.Anything, mock.Anything).Return(v1.ResourceRequirements{}, nil)
-	hostAliasGeneratorMock := &extMocks.HostAliasGenerator{}
+	hostAliasGeneratorMock := &mockHostAliasGenerator{}
 	hostAliasGeneratorMock.On("Generate", mock.Anything).Return(nil, nil)
 
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"}
@@ -157,17 +154,17 @@ var _ = ginkgo.BeforeSuite(func() {
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(doguVersionRegistry, localDoguDescriptorRepository)
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, localDoguFetcher)
-	serviceAccountCreator := &mocks.ServiceAccountCreator{}
+	serviceAccountCreator := &mockServiceAccountCreator{}
 	serviceAccountCreator.On("CreateAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	serviceAccountRemover := &mocks.ServiceAccountRemover{}
+	serviceAccountRemover := &mockServiceAccountRemover{}
 	serviceAccountRemover.On("RemoveAll", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(doguVersionRegistry, localDoguDescriptorRepository)
 
 	yamlResult := make(map[string]string)
-	fileExtract := &mocks.FileExtractor{}
+	fileExtract := &mockFileExtractor{}
 	fileExtract.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
-	applyClient := &mocks.Applier{}
+	applyClient := &mockApplier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
@@ -175,7 +172,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	collectApplier := resource.NewCollectApplier(applyClient)
 
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
-	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutor)
+	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutorMock)
 	exposedPortRemover := resource.NewDoguExposedPortHandler(k8sClient)
 
 	sensitiveConfigRepo := registryRepo.NewSensitiveDoguConfigRepository(k8sClientSet.CoreV1().Secrets(testNamespace))
@@ -228,7 +225,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		ServiceAccountCreator: serviceAccountCreator,
 		FileExtractor:         fileExtract,
 		CollectApplier:        collectApplier,
-		CommandExecutor:       CommandExecutor,
+		CommandExecutor:       CommandExecutorMock,
 		ResourceUpserter:      upserter,
 		DoguRegistrator:       doguRegistrator,
 		LocalDoguFetcher:      localDoguFetcher,

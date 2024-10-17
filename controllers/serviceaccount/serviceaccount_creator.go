@@ -16,9 +16,8 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
 )
 
 // doguKind describes a service account on a dogu.
@@ -30,16 +29,16 @@ const (
 // creator is the unit to handle the creation of service accounts
 type creator struct {
 	client            client.Client
-	sensitiveDoguRepo SensitiveDoguConfigRepository
-	doguFetcher       cloudogu.LocalDoguFetcher
-	executor          cloudogu.CommandExecutor
+	sensitiveDoguRepo sensitiveDoguConfigRepository
+	doguFetcher       localDoguFetcher
+	executor          exec.CommandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
 	namespace         string
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(repo SensitiveDoguConfigRepository, localDoguFetcher cloudogu.LocalDoguFetcher, commandExecutor cloudogu.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
+func NewCreator(repo sensitiveDoguConfigRepository, localDoguFetcher localDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	return &creator{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -151,8 +150,8 @@ func serviceAccountExists(registryCredentialPath string, senDoguCfg config.DoguC
 }
 
 func getPodForServiceAccountDogu(ctx context.Context, client client.Client, saDogu *core.Dogu) (*corev1.Pod, error) {
-	versionlessDoguLabel := map[string]string{v1.DoguLabelName: saDogu.GetSimpleName()}
-	return v1.GetPodForLabels(ctx, client, versionlessDoguLabel)
+	versionlessDoguLabel := map[string]string{v2.DoguLabelName: saDogu.GetSimpleName()}
+	return v2.GetPodForLabels(ctx, client, versionlessDoguLabel)
 }
 
 func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saPod *corev1.Pod, serviceAccount core.ServiceAccount) (map[string]string, error) {
@@ -166,7 +165,7 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, consumerDogu.GetSimpleName())
 
 	command := exec.NewShellCommand(createCommand.Command, args...)
-	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, cloudogu.PodReady)
+	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}
@@ -198,7 +197,7 @@ func (c *creator) writeServiceAccounts(ctx context.Context, senDoguCfg *config.D
 	return nil
 }
 
-func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo SensitiveDoguConfigRepository) error {
+func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo sensitiveDoguConfigRepository) error {
 	update, err := cfgRepo.Update(ctx, *senDoguCfg)
 	if err != nil {
 		if regLibErr.IsConflictError(err) {

@@ -3,7 +3,7 @@ package ecoSystem
 import (
 	"context"
 	"encoding/json"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -22,11 +22,11 @@ func Test_doguClient_Get(t *testing.T) {
 		// given
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, "GET", request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/testdogu", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/testdogu", request.URL.Path)
 			assert.Equal(t, http.NoBody, request.Body)
 
 			writer.Header().Add("content-type", "application/json")
-			dogu := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "testdogu", Namespace: "test"}}
+			dogu := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "testdogu", Namespace: "test"}}
 			doguBytes, err := json.Marshal(dogu)
 			require.NoError(t, err)
 			_, err = writer.Write(doguBytes)
@@ -54,12 +54,12 @@ func Test_doguClient_List(t *testing.T) {
 		// given
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, http.MethodGet, request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus", request.URL.Path)
 			assert.Equal(t, http.NoBody, request.Body)
 
 			writer.Header().Add("content-type", "application/json")
-			doguList := k8sv1.DoguList{}
-			dogu := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "testdogu", Namespace: "test"}}
+			doguList := k8sv2.DoguList{}
+			dogu := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "testdogu", Namespace: "test"}}
 			doguList.Items = append(doguList.Items, *dogu)
 			doguBytes, err := json.Marshal(doguList)
 			require.NoError(t, err)
@@ -86,16 +86,16 @@ func Test_doguClient_List(t *testing.T) {
 func Test_doguClient_Create(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "tocreate", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "tocreate", Namespace: "test"}}
 
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, http.MethodPost, request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus", request.URL.Path)
 
 			bytes, err := io.ReadAll(request.Body)
 			require.NoError(t, err)
 
-			createdDogu := &k8sv1.Dogu{}
+			createdDogu := &k8sv2.Dogu{}
 			require.NoError(t, json.Unmarshal(bytes, createdDogu))
 			assert.Equal(t, "tocreate", createdDogu.Name)
 
@@ -123,16 +123,16 @@ func Test_doguClient_Create(t *testing.T) {
 func Test_doguClient_Update(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "tocreate", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "tocreate", Namespace: "test"}}
 
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, http.MethodPut, request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/tocreate", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/tocreate", request.URL.Path)
 
 			bytes, err := io.ReadAll(request.Body)
 			require.NoError(t, err)
 
-			createdDogu := &k8sv1.Dogu{}
+			createdDogu := &k8sv2.Dogu{}
 			require.NoError(t, json.Unmarshal(bytes, createdDogu))
 			assert.Equal(t, "tocreate", createdDogu.Name)
 
@@ -160,16 +160,16 @@ func Test_doguClient_Update(t *testing.T) {
 func Test_doguClient_UpdateStatus(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "tocreate", Namespace: "test"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "tocreate", Namespace: "test"}}
 
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, http.MethodPut, request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/tocreate/status", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/tocreate/status", request.URL.Path)
 
 			bytes, err := io.ReadAll(request.Body)
 			require.NoError(t, err)
 
-			createdDogu := &k8sv1.Dogu{}
+			createdDogu := &k8sv2.Dogu{}
 			require.NoError(t, json.Unmarshal(bytes, createdDogu))
 			assert.Equal(t, "tocreate", createdDogu.Name)
 
@@ -199,7 +199,7 @@ func Test_doguClient_Delete(t *testing.T) {
 		// given
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, http.MethodDelete, request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/testdogu", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/testdogu", request.URL.Path)
 
 			writer.Header().Add("content-type", "application/json")
 			writer.WriteHeader(200)
@@ -225,7 +225,7 @@ func Test_doguClient_DeleteCollection(t *testing.T) {
 		// given
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, http.MethodDelete, request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus", request.URL.Path)
 			assert.Equal(t, "labelSelector=test", request.URL.RawQuery)
 			writer.Header().Add("content-type", "application/json")
 			writer.WriteHeader(200)
@@ -251,11 +251,11 @@ func Test_doguClient_Patch(t *testing.T) {
 		// given
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, http.MethodPatch, request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/testdogu", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/testdogu", request.URL.Path)
 			bytes, err := io.ReadAll(request.Body)
 			require.NoError(t, err)
 			assert.Equal(t, []byte("test"), bytes)
-			result, err := json.Marshal(k8sv1.Dogu{})
+			result, err := json.Marshal(k8sv2.Dogu{})
 			require.NoError(t, err)
 
 			writer.Header().Add("content-type", "application/json")
@@ -286,7 +286,7 @@ func Test_doguClient_Watch(t *testing.T) {
 		// given
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			assert.Equal(t, "GET", request.Method)
-			assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus", request.URL.Path)
+			assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus", request.URL.Path)
 			assert.Equal(t, http.NoBody, request.Body)
 			assert.Equal(t, "labelSelector=test&watch=true", request.URL.RawQuery)
 
@@ -314,7 +314,7 @@ func Test_doguClient_Watch(t *testing.T) {
 func Test_doguClient_UpdateSpecWithRetry(t *testing.T) {
 	t.Run("should retry on conflict error", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Spec: k8sv1.DoguSpec{Version: "1.0.0"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Spec: k8sv2.DoguSpec{Version: "1.0.0"}}
 
 		firstPut := true
 
@@ -322,12 +322,12 @@ func Test_doguClient_UpdateSpecWithRetry(t *testing.T) {
 			// First update return conflict error
 			if request.Method == http.MethodPut && firstPut {
 				firstPut = false
-				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/toUpdate", request.URL.Path)
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/toUpdate", request.URL.Path)
 
 				bytes, err := io.ReadAll(request.Body)
 				require.NoError(t, err)
 
-				updatedDogu := &k8sv1.Dogu{}
+				updatedDogu := &k8sv2.Dogu{}
 				require.NoError(t, json.Unmarshal(bytes, updatedDogu))
 				assert.Equal(t, "toUpdate", updatedDogu.Name)
 				assert.Equal(t, "1.0.2", updatedDogu.Spec.Version)
@@ -347,11 +347,11 @@ func Test_doguClient_UpdateSpecWithRetry(t *testing.T) {
 			// Get
 			if request.Method == http.MethodGet {
 				assert.Equal(t, "GET", request.Method)
-				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/toUpdate", request.URL.Path)
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/toUpdate", request.URL.Path)
 				assert.Equal(t, http.NoBody, request.Body)
 
 				writer.Header().Add("content-type", "application/json")
-				doguRestart := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Spec: k8sv1.DoguSpec{Version: "1.0.1"}}
+				doguRestart := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Spec: k8sv2.DoguSpec{Version: "1.0.1"}}
 				doguBytes, err := json.Marshal(doguRestart)
 				require.NoError(t, err)
 				writer.WriteHeader(200)
@@ -362,12 +362,12 @@ func Test_doguClient_UpdateSpecWithRetry(t *testing.T) {
 
 			// Retry
 			if request.Method == http.MethodPut && !firstPut {
-				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/toUpdate", request.URL.Path)
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/toUpdate", request.URL.Path)
 
 				bytes, err := io.ReadAll(request.Body)
 				require.NoError(t, err)
 
-				updatedDogu := &k8sv1.Dogu{}
+				updatedDogu := &k8sv2.Dogu{}
 				require.NoError(t, json.Unmarshal(bytes, updatedDogu))
 				assert.Equal(t, "toUpdate", updatedDogu.Name)
 				assert.Equal(t, "1.0.2", updatedDogu.Spec.Version)
@@ -388,7 +388,7 @@ func Test_doguClient_UpdateSpecWithRetry(t *testing.T) {
 		dClient := client.Dogus("test")
 
 		// when
-		_, err = dClient.UpdateSpecWithRetry(context.TODO(), dogu, func(spec k8sv1.DoguSpec) k8sv1.DoguSpec {
+		_, err = dClient.UpdateSpecWithRetry(context.TODO(), dogu, func(spec k8sv2.DoguSpec) k8sv2.DoguSpec {
 			spec.Version = "1.0.2"
 			return spec
 		}, v1.UpdateOptions{})
@@ -401,7 +401,7 @@ func Test_doguClient_UpdateSpecWithRetry(t *testing.T) {
 func Test_doguClient_UpdateStatusWithRetry(t *testing.T) {
 	t.Run("should retry on conflict error", func(t *testing.T) {
 		// given
-		dogu := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Spec: k8sv1.DoguSpec{Version: "1.0.0"}}
+		dogu := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Spec: k8sv2.DoguSpec{Version: "1.0.0"}}
 
 		firstPut := true
 
@@ -409,12 +409,12 @@ func Test_doguClient_UpdateStatusWithRetry(t *testing.T) {
 			// First update return conflict error
 			if request.Method == http.MethodPut && firstPut {
 				firstPut = false
-				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/toUpdate/status", request.URL.Path)
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/toUpdate/status", request.URL.Path)
 
 				bytes, err := io.ReadAll(request.Body)
 				require.NoError(t, err)
 
-				updatedDogu := &k8sv1.Dogu{}
+				updatedDogu := &k8sv2.Dogu{}
 				require.NoError(t, json.Unmarshal(bytes, updatedDogu))
 				assert.Equal(t, "toUpdate", updatedDogu.Name)
 				assert.Equal(t, true, updatedDogu.Status.Stopped)
@@ -434,11 +434,11 @@ func Test_doguClient_UpdateStatusWithRetry(t *testing.T) {
 			// Get
 			if request.Method == http.MethodGet {
 				assert.Equal(t, "GET", request.Method)
-				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/toUpdate", request.URL.Path)
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/toUpdate", request.URL.Path)
 				assert.Equal(t, http.NoBody, request.Body)
 
 				writer.Header().Add("content-type", "application/json")
-				doguRestart := &k8sv1.Dogu{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Status: k8sv1.DoguStatus{Stopped: false}}
+				doguRestart := &k8sv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "toUpdate", Namespace: "test"}, Status: k8sv2.DoguStatus{Stopped: false}}
 				doguBytes, err := json.Marshal(doguRestart)
 				require.NoError(t, err)
 				writer.WriteHeader(200)
@@ -449,12 +449,12 @@ func Test_doguClient_UpdateStatusWithRetry(t *testing.T) {
 
 			// Retry
 			if request.Method == http.MethodPut && !firstPut {
-				assert.Equal(t, "/apis/k8s.cloudogu.com/v1/namespaces/test/dogus/toUpdate/status", request.URL.Path)
+				assert.Equal(t, "/apis/k8s.cloudogu.com/v2/namespaces/test/dogus/toUpdate/status", request.URL.Path)
 
 				bytes, err := io.ReadAll(request.Body)
 				require.NoError(t, err)
 
-				updatedDogu := &k8sv1.Dogu{}
+				updatedDogu := &k8sv2.Dogu{}
 				require.NoError(t, json.Unmarshal(bytes, updatedDogu))
 				assert.Equal(t, "toUpdate", updatedDogu.Name)
 				assert.Equal(t, true, updatedDogu.Status.Stopped)
@@ -475,7 +475,7 @@ func Test_doguClient_UpdateStatusWithRetry(t *testing.T) {
 		dClient := client.Dogus("test")
 
 		// when
-		_, err = dClient.UpdateStatusWithRetry(context.TODO(), dogu, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+		_, err = dClient.UpdateStatusWithRetry(context.TODO(), dogu, func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
 			status.Stopped = true
 			return status
 		}, v1.UpdateOptions{})

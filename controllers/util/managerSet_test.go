@@ -10,8 +10,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 )
 
 func TestNewManagerSet(t *testing.T) {
@@ -22,8 +21,8 @@ func TestNewManagerSet(t *testing.T) {
 		opConfig := &config.OperatorConfig{
 			Namespace: "myNamespace",
 		}
-		ecosystemMock := mocks.NewEcosystemInterface(t)
-		applier := mocks.NewApplier(t)
+		ecosystemMock := newMockEcosystemInterface(t)
+		applier := newMockApplier(t)
 		var addImages map[string]string
 
 		configRepos := ConfigRepositories{

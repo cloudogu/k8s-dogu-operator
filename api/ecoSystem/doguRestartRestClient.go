@@ -10,22 +10,22 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 
-	"github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
 )
 
 type DoguRestartInterface interface {
-	Create(ctx context.Context, dogu *v1.DoguRestart, opts metav1.CreateOptions) (*v1.DoguRestart, error)
-	Update(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (*v1.DoguRestart, error)
-	UpdateSpecWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifySpecFn func(spec v1.DoguRestartSpec) v1.DoguRestartSpec, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error)
-	UpdateStatus(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (*v1.DoguRestart, error)
-	UpdateStatusWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifyStatusFn func(v1.DoguRestartStatus) v1.DoguRestartStatus, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error)
+	Create(ctx context.Context, dogu *v2.DoguRestart, opts metav1.CreateOptions) (*v2.DoguRestart, error)
+	Update(ctx context.Context, dogu *v2.DoguRestart, opts metav1.UpdateOptions) (*v2.DoguRestart, error)
+	UpdateSpecWithRetry(ctx context.Context, doguRestart *v2.DoguRestart, modifySpecFn func(spec v2.DoguRestartSpec) v2.DoguRestartSpec, opts metav1.UpdateOptions) (result *v2.DoguRestart, err error)
+	UpdateStatus(ctx context.Context, dogu *v2.DoguRestart, opts metav1.UpdateOptions) (*v2.DoguRestart, error)
+	UpdateStatusWithRetry(ctx context.Context, doguRestart *v2.DoguRestart, modifyStatusFn func(v2.DoguRestartStatus) v2.DoguRestartStatus, opts metav1.UpdateOptions) (result *v2.DoguRestart, err error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.DoguRestart, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.DoguRestartList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v2.DoguRestart, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v2.DoguRestartList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DoguRestart, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v2.DoguRestart, err error)
 }
 
 type doguRestartClient struct {
@@ -34,8 +34,8 @@ type doguRestartClient struct {
 }
 
 // Get takes name of the dogu restart, and returns the corresponding dogu restart object, and an error if there is any.
-func (d *doguRestartClient) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.DoguRestart, err error) {
-	result = &v1.DoguRestart{}
+func (d *doguRestartClient) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v2.DoguRestart, err error) {
+	result = &v2.DoguRestart{}
 	err = d.client.Get().
 		Namespace(d.ns).
 		Resource("dogurestarts").
@@ -47,12 +47,12 @@ func (d *doguRestartClient) Get(ctx context.Context, name string, options metav1
 }
 
 // List takes label and field selectors, and returns the list of dogu restarts that match those selectors.
-func (d *doguRestartClient) List(ctx context.Context, opts metav1.ListOptions) (result *v1.DoguRestartList, err error) {
+func (d *doguRestartClient) List(ctx context.Context, opts metav1.ListOptions) (result *v2.DoguRestartList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v1.DoguRestartList{}
+	result = &v2.DoguRestartList{}
 	err = d.client.Get().
 		Namespace(d.ns).
 		Resource("dogurestarts").
@@ -79,8 +79,8 @@ func (d *doguRestartClient) Watch(ctx context.Context, opts metav1.ListOptions) 
 }
 
 // Create takes the representation of a dogu restart and creates it.  Returns the server's representation of the dogu restart, and an error, if there is any.
-func (d *doguRestartClient) Create(ctx context.Context, dogu *v1.DoguRestart, opts metav1.CreateOptions) (result *v1.DoguRestart, err error) {
-	result = &v1.DoguRestart{}
+func (d *doguRestartClient) Create(ctx context.Context, dogu *v2.DoguRestart, opts metav1.CreateOptions) (result *v2.DoguRestart, err error) {
+	result = &v2.DoguRestart{}
 	err = d.client.Post().
 		Namespace(d.ns).
 		Resource("dogurestarts").
@@ -92,8 +92,8 @@ func (d *doguRestartClient) Create(ctx context.Context, dogu *v1.DoguRestart, op
 }
 
 // Update takes the representation of a dogu restart and updates it. Returns the server's representation of the dogu restart, and an error, if there is any.
-func (d *doguRestartClient) Update(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error) {
-	result = &v1.DoguRestart{}
+func (d *doguRestartClient) Update(ctx context.Context, dogu *v2.DoguRestart, opts metav1.UpdateOptions) (result *v2.DoguRestart, err error) {
+	result = &v2.DoguRestart{}
 	err = d.client.Put().
 		Namespace(d.ns).
 		Resource("dogurestarts").
@@ -106,10 +106,10 @@ func (d *doguRestartClient) Update(ctx context.Context, dogu *v1.DoguRestart, op
 }
 
 // UpdateSpecWithRetry updates the spec of the resource, retrying if a conflict error arises.
-func (d *doguRestartClient) UpdateSpecWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifySpecFn func(spec v1.DoguRestartSpec) v1.DoguRestartSpec, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error) {
+func (d *doguRestartClient) UpdateSpecWithRetry(ctx context.Context, doguRestart *v2.DoguRestart, modifySpecFn func(spec v2.DoguRestartSpec) v2.DoguRestartSpec, opts metav1.UpdateOptions) (result *v2.DoguRestart, err error) {
 	firstTry := true
 
-	var currentObj *v1.DoguRestart
+	var currentObj *v2.DoguRestart
 	err = retry.OnConflict(func() error {
 		if firstTry {
 			firstTry = false
@@ -133,8 +133,8 @@ func (d *doguRestartClient) UpdateSpecWithRetry(ctx context.Context, doguRestart
 }
 
 // UpdateStatus updates the status of the resource.
-func (d *doguRestartClient) UpdateStatus(ctx context.Context, dogu *v1.DoguRestart, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error) {
-	result = &v1.DoguRestart{}
+func (d *doguRestartClient) UpdateStatus(ctx context.Context, dogu *v2.DoguRestart, opts metav1.UpdateOptions) (result *v2.DoguRestart, err error) {
+	result = &v2.DoguRestart{}
 	err = d.client.Put().
 		Namespace(d.ns).
 		Resource("dogurestarts").
@@ -148,10 +148,10 @@ func (d *doguRestartClient) UpdateStatus(ctx context.Context, dogu *v1.DoguResta
 }
 
 // UpdateStatusWithRetry updates the status of the resource, retrying if a conflict error arises.
-func (d *doguRestartClient) UpdateStatusWithRetry(ctx context.Context, doguRestart *v1.DoguRestart, modifyStatusFn func(v1.DoguRestartStatus) v1.DoguRestartStatus, opts metav1.UpdateOptions) (result *v1.DoguRestart, err error) {
+func (d *doguRestartClient) UpdateStatusWithRetry(ctx context.Context, doguRestart *v2.DoguRestart, modifyStatusFn func(v2.DoguRestartStatus) v2.DoguRestartStatus, opts metav1.UpdateOptions) (result *v2.DoguRestart, err error) {
 	firstTry := true
 
-	var currentObj *v1.DoguRestart
+	var currentObj *v2.DoguRestart
 	err = retry.OnConflict(func() error {
 		if firstTry {
 			firstTry = false
@@ -202,8 +202,8 @@ func (d *doguRestartClient) DeleteCollection(ctx context.Context, opts metav1.De
 }
 
 // Patch applies the patch and returns the patched dogu restart.
-func (d *doguRestartClient) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DoguRestart, err error) {
-	result = &v1.DoguRestart{}
+func (d *doguRestartClient) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v2.DoguRestart, err error) {
+	result = &v2.DoguRestart{}
 	err = d.client.Patch(pt).
 		Namespace(d.ns).
 		Resource("dogurestarts").

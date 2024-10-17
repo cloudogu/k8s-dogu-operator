@@ -8,8 +8,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/annotation"
 )
 
 const (
@@ -31,7 +31,7 @@ type doguAdditionalIngressAnnotationsManager struct {
 
 // SetDoguAdditionalIngressAnnotations reads the additional ingress annotations from the dogu resource and appends them to the dogu service.
 // These annotations are then to be read by the service discovery and appended to the ingress object for the dogu.
-func (d *doguAdditionalIngressAnnotationsManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv1.Dogu) error {
+func (d *doguAdditionalIngressAnnotationsManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	doguService := &corev1.Service{}
 	err := d.client.Get(ctx, doguResource.GetObjectKey(), doguService)
 	if err != nil {

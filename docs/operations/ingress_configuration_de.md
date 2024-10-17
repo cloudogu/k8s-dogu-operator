@@ -9,7 +9,7 @@ Sie werden einfach in das Feld `additionalIngressAnnotations` im `spec`-Feld der
 
 Beispiel:
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: nexus

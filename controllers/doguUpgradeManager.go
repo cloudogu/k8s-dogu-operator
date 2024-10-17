@@ -3,8 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -12,10 +12,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
 )
 
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
@@ -39,17 +38,17 @@ func NewDoguUpgradeManager(client client.Client, mgrSet *util.ManagerSet, eventR
 type doguUpgradeManager struct {
 	// general purpose
 	client          client.Client
-	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
+	ecosystemClient ecoSystem.EcoSystemV2Interface
 	eventRecorder   record.EventRecorder
 	// upgrade business
-	premisesChecker     cloudogu.PremisesChecker
-	localDoguFetcher    cloudogu.LocalDoguFetcher
-	resourceDoguFetcher cloudogu.ResourceDoguFetcher
-	upgradeExecutor     cloudogu.UpgradeExecutor
+	premisesChecker     upgrade.PremisesChecker
+	localDoguFetcher    localDoguFetcher
+	resourceDoguFetcher resourceDoguFetcher
+	upgradeExecutor     upgrade.UpgradeExecutor
 }
 
-func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.Dogu) error {
-	err := doguResource.ChangeStateWithRetry(ctx, dum.client, k8sv1.DoguStatusUpgrading)
+func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	err := doguResource.ChangeStateWithRetry(ctx, dum.client, k8sv2.DoguStatusUpgrading)
 	if err != nil {
 		return err
 	}
@@ -75,12 +74,12 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	}
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
 
-	err = doguResource.ChangeStateWithRetry(ctx, dum.client, k8sv1.DoguStatusInstalled)
+	err = doguResource.ChangeStateWithRetry(ctx, dum.client, k8sv2.DoguStatusInstalled)
 	if err != nil {
 		return err
 	}
 
-	updateInstalledVersionFn := func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+	updateInstalledVersionFn := func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
 		status.InstalledVersion = doguResource.Spec.Version
 		return status
 	}
@@ -101,7 +100,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv1.
 	return nil
 }
 
-func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv1.Dogu) (*core.Dogu, *core.Dogu, *k8sv1.DevelopmentDoguMap, error) {
+func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv2.Dogu) (*core.Dogu, *core.Dogu, *k8sv2.DevelopmentDoguMap, error) {
 	fromDogu, err := dum.localDoguFetcher.FetchInstalled(ctx, doguResource.Name)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
@@ -115,10 +114,10 @@ func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResou
 	return fromDogu, toDogu, developmentDoguMap, nil
 }
 
-func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv1.Dogu, msg string) {
+func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv2.Dogu, msg string) {
 	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, upgrade.EventReason, msg)
 }
 
-func (dum *doguUpgradeManager) normalEventf(doguResource *k8sv1.Dogu, msg string, msgArg ...interface{}) {
+func (dum *doguUpgradeManager) normalEventf(doguResource *k8sv2.Dogu, msg string, msgArg ...interface{}) {
 	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, upgrade.EventReason, msg, msgArg...)
 }

@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 type requeueablePremisesError struct {
@@ -32,16 +30,16 @@ func (r *requeueablePremisesError) Requeue() bool {
 }
 
 type premisesChecker struct {
-	dependencyValidator        cloudogu.DependencyValidator
-	doguHealthChecker          cloudogu.DoguHealthChecker
-	doguRecursiveHealthChecker cloudogu.DoguRecursiveHealthChecker
+	dependencyValidator        DependencyValidator
+	doguHealthChecker          doguHealthChecker
+	doguRecursiveHealthChecker doguRecursiveHealthChecker
 }
 
 // NewPremisesChecker creates a new upgrade premises checker.
 func NewPremisesChecker(
-	depValidator cloudogu.DependencyValidator,
-	healthChecker cloudogu.DoguHealthChecker,
-	recursiveHealthChecker cloudogu.DoguRecursiveHealthChecker,
+	depValidator DependencyValidator,
+	healthChecker doguHealthChecker,
+	recursiveHealthChecker doguRecursiveHealthChecker,
 ) *premisesChecker {
 	return &premisesChecker{
 		dependencyValidator:        depValidator,
@@ -54,7 +52,7 @@ func NewPremisesChecker(
 // early.
 func (pc *premisesChecker) Check(
 	ctx context.Context,
-	doguResource *k8sv1.Dogu,
+	doguResource *k8sv2.Dogu,
 	localDogu *core.Dogu,
 	remoteDogu *core.Dogu,
 ) error {

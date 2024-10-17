@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
 	"time"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,7 +70,7 @@ func NewDoguRequeueHandler(doguInterface ecoSystem.DoguInterface, recorder recor
 }
 
 // Handle takes an error and handles the requeue process for the current dogu operation.
-func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv1.Dogu, originalErr error, onRequeue func(dogu *k8sv1.Dogu) error) (ctrl.Result, error) {
+func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *k8sv2.Dogu, originalErr error, onRequeue func(dogu *k8sv2.Dogu) error) (ctrl.Result, error) {
 	if !shouldRequeue(originalErr) {
 		return ctrl.Result{}, nil
 	}
@@ -86,7 +86,7 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 		}
 	}
 
-	_, updateError := d.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+	_, updateError := d.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
 		status.RequeuePhase = getRequeuePhase(originalErr)
 		return status
 	}, metav1.UpdateOptions{})
@@ -115,14 +115,14 @@ func getRequeuePhase(err error) string {
 	return ""
 }
 
-func getRequeueTime(ctx context.Context, dogu *k8sv1.Dogu, doguInterface ecoSystem.DoguInterface, err error) (time.Duration, error) {
+func getRequeueTime(ctx context.Context, dogu *k8sv2.Dogu, doguInterface ecoSystem.DoguInterface, err error) (time.Duration, error) {
 	var errorWithTime requeuableErrorWithTime
 	if errors.As(err, &errorWithTime) {
 		return errorWithTime.GetRequeueTime(), nil
 	}
 
 	var requeueTime time.Duration
-	_, timeErr := doguInterface.UpdateStatusWithRetry(ctx, dogu, func(status k8sv1.DoguStatus) k8sv1.DoguStatus {
+	_, timeErr := doguInterface.UpdateStatusWithRetry(ctx, dogu, func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
 		requeueTime = dogu.Status.NextRequeue()
 		status.RequeueTime = requeueTime
 		return status
@@ -150,7 +150,7 @@ func shouldRequeue(err error) bool {
 	return false
 }
 
-func (d *doguRequeueHandler) fireRequeueEvent(ctx context.Context, doguResource *k8sv1.Dogu, result ctrl.Result) error {
+func (d *doguRequeueHandler) fireRequeueEvent(ctx context.Context, doguResource *k8sv2.Dogu, result ctrl.Result) error {
 	doguEvents, err := d.nonCacheClient.CoreV1().Events(d.namespace).List(ctx, metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("reason=%s,involvedObject.name=%s", RequeueEventReason, doguResource.Name),
 	})

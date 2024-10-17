@@ -15,13 +15,11 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 )
 
 var testCtx = context.Background()
 
 func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
-
 	t.Run("should succeed and return installed dogu", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
@@ -34,9 +32,9 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 			Version: coreDoguVersion,
 		}
 
-		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry := newMockDoguVersionRegistry(t)
 		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
-		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository := newMockLocalDoguDescriptorRepository(t)
 		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, nil)
 
 		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
@@ -60,9 +58,9 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 			Version: coreDoguVersion,
 		}
 
-		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry := newMockDoguVersionRegistry(t)
 		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
-		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository := newMockLocalDoguDescriptorRepository(t)
 		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, assert.AnError)
 
 		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
@@ -92,9 +90,9 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 			Version: coreDoguVersion,
 		}
 
-		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry := newMockDoguVersionRegistry(t)
 		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
-		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository := newMockLocalDoguDescriptorRepository(t)
 		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, nil)
 
 		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
@@ -139,9 +137,9 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 			Version: coreDoguVersion,
 		}
 
-		mockDoguVersionRegistry := NewMockdoguVersionRegistry(t)
+		mockDoguVersionRegistry := newMockDoguVersionRegistry(t)
 		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
-		mockLocalDoguDescriptorRepository := NewMocklocalDoguDescriptorRepository(t)
+		mockLocalDoguDescriptorRepository := newMockLocalDoguDescriptorRepository(t)
 		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, nil)
 
 		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
@@ -161,7 +159,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 
 		remoteDoguRegistry := new(mocks3.Registry)
-		client := extMocks.NewK8sClient(t)
+		client := NewMockK8sClient(t)
 		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(assert.AnError)
 		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
 
@@ -178,7 +176,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 		resourceNotFoundErr := errors.NewNotFound(schema.GroupResource{Group: "", Resource: ""}, doguCr.GetDevelopmentDoguMapKey().Name)
 
-		client := extMocks.NewK8sClient(t)
+		client := NewMockK8sClient(t)
 		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
 
 		remoteDoguRegistry := new(mocks3.Registry)

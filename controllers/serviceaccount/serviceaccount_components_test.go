@@ -58,7 +58,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			EXPECT().createServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana", []string{"param1", "42"}).
 			Return(map[string]string{"username": "adminUser", "password": "password123"}, nil)
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
 
 		serviceAccountCreator := creator{
@@ -207,7 +207,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			EXPECT().createServiceAccount(ctx, "http://1.2.3.4:8080/serviceaccounts", "defaultApiKeySecret", "grafana", []string{"param1", "42"}).
 			Return(map[string]string{"username": "adminUser", "password": "password123"}, nil)
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
 
 		serviceAccountCreator := creator{
@@ -304,7 +304,7 @@ func Test_creator_createComponentServiceAccount(t *testing.T) {
 			EXPECT().createServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana", []string{"param1", "42"}).
 			Return(map[string]string{"username": "adminUser", "password": "password123"}, nil)
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, assert.AnError).Once()
 
 		serviceAccountCreator := creator{
@@ -488,7 +488,7 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			EXPECT().deleteServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana").
 			Return(nil)
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
 
 		serviceAccountRemover := remover{
@@ -659,7 +659,7 @@ func Test_remover_removeComponentServiceAccount(t *testing.T) {
 			EXPECT().deleteServiceAccount(ctx, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana").
 			Return(nil)
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, assert.AnError)
 
 		serviceAccountRemover := remover{

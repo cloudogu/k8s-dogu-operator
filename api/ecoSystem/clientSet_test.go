@@ -21,7 +21,7 @@ func TestNewForConfig(t *testing.T) {
 
 }
 
-func TestEcoSystemV1Alpha1Client_Dogus(t *testing.T) {
+func TestEcoSystemV2Client_Dogus(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		config := &rest.Config{}

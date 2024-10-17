@@ -16,19 +16,17 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
 )
 
 func TestDoguManager_SetDoguAdditionalIngressAnnotations(t *testing.T) {
 	// given
-	dogu := &k8sv1.Dogu{}
-	recorder := extMocks.NewEventRecorder(t)
+	dogu := &k8sv2.Dogu{}
+	recorder := newMockEventRecorder(t)
 	recorder.EXPECT().Event(dogu, "Normal", "AdditionalIngressAnnotationsChange", "Start additional ingress annotations change...")
-	annotationsManager := mocks.NewAdditionalIngressAnnotationsManager(t)
+	annotationsManager := newMockAdditionalIngressAnnotationsManager(t)
 	annotationsManager.EXPECT().SetDoguAdditionalIngressAnnotations(mock.Anything, dogu).Return(nil)
 	manager := DoguManager{ingressAnnotationsManager: annotationsManager, recorder: recorder}
 
@@ -41,9 +39,9 @@ func TestDoguManager_SetDoguAdditionalIngressAnnotations(t *testing.T) {
 
 func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 	// given
-	dogu := &k8sv1.Dogu{}
-	volumeManagerMock := mocks.NewVolumeManager(t)
-	eventRecorderMock := extMocks.NewEventRecorder(t)
+	dogu := &k8sv2.Dogu{}
+	volumeManagerMock := newMockVolumeManager(t)
+	eventRecorderMock := newMockEventRecorder(t)
 	manager := DoguManager{volumeManager: volumeManagerMock, recorder: eventRecorderMock}
 
 	eventRecorderMock.EXPECT().Event(dogu, "Normal", "VolumeExpansion", "Start volume expansion...")
@@ -58,9 +56,9 @@ func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 
 func TestDoguManager_HandleSupportMode(t *testing.T) {
 	// given
-	dogu := &k8sv1.Dogu{}
-	supportManagerMock := mocks.NewSupportManager(t)
-	eventRecorderMock := extMocks.NewEventRecorder(t)
+	dogu := &k8sv2.Dogu{}
+	supportManagerMock := newMockSupportManager(t)
+	eventRecorderMock := newMockEventRecorder(t)
 	manager := DoguManager{supportManager: supportManagerMock, recorder: eventRecorderMock}
 
 	supportManagerMock.EXPECT().HandleSupportMode(mock.Anything, mock.Anything).Return(true, nil)
@@ -75,11 +73,11 @@ func TestDoguManager_HandleSupportMode(t *testing.T) {
 
 func TestDoguManager_Delete(t *testing.T) {
 	// given
-	inputDogu := &k8sv1.Dogu{}
+	inputDogu := &k8sv2.Dogu{}
 	inputContext := context.Background()
-	deleteManager := mocks.NewDeleteManager(t)
+	deleteManager := newMockDeleteManager(t)
 	deleteManager.EXPECT().Delete(inputContext, inputDogu).Return(nil)
-	eventRecorder := extMocks.NewEventRecorder(t)
+	eventRecorder := newMockEventRecorder(t)
 	m := DoguManager{deleteManager: deleteManager, recorder: eventRecorder}
 
 	eventRecorder.EXPECT().Event(inputDogu, corev1.EventTypeNormal, "Deinstallation", "Starting deinstallation...")
@@ -93,11 +91,11 @@ func TestDoguManager_Delete(t *testing.T) {
 
 func TestDoguManager_Install(t *testing.T) {
 	// given
-	inputDogu := &k8sv1.Dogu{}
+	inputDogu := &k8sv2.Dogu{}
 	inputContext := context.Background()
-	installManager := mocks.NewInstallManager(t)
+	installManager := newMockInstallManager(t)
 	installManager.EXPECT().Install(inputContext, inputDogu).Return(nil)
-	eventRecorder := extMocks.NewEventRecorder(t)
+	eventRecorder := newMockEventRecorder(t)
 	m := DoguManager{installManager: installManager, recorder: eventRecorder}
 
 	eventRecorder.EXPECT().Event(inputDogu, corev1.EventTypeNormal, InstallEventReason, "Starting installation...")
@@ -111,11 +109,11 @@ func TestDoguManager_Install(t *testing.T) {
 
 func TestDoguManager_Upgrade(t *testing.T) {
 	// given
-	inputDogu := &k8sv1.Dogu{}
+	inputDogu := &k8sv2.Dogu{}
 	inputContext := context.Background()
-	upgradeManager := mocks.NewUpgradeManager(t)
+	upgradeManager := newMockUpgradeManager(t)
 	upgradeManager.EXPECT().Upgrade(inputContext, inputDogu).Return(nil)
-	eventRecorder := extMocks.NewEventRecorder(t)
+	eventRecorder := newMockEventRecorder(t)
 	m := DoguManager{upgradeManager: upgradeManager, recorder: eventRecorder}
 
 	eventRecorder.EXPECT().Event(inputDogu, corev1.EventTypeNormal, upgrade.EventReason, "Starting upgrade...")
@@ -158,9 +156,9 @@ func TestNewDoguManager(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = testNamespace
 
-		eventRecorder := extMocks.NewEventRecorder(t)
+		eventRecorder := newMockEventRecorder(t)
 
-		ecosystemClientSetMock := mocks.NewEcosystemInterface(t)
+		ecosystemClientSetMock := newMockEcosystemInterface(t)
 		ecosystemClientSetMock.EXPECT().Dogus(testNamespace).Return(nil)
 
 		// when

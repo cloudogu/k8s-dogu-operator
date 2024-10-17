@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
 	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 // NewDoguHealthError creates a new dogu health error.
@@ -35,7 +34,7 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, localFetcher cloudogu.LocalDoguFetcher) *doguChecker {
+func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV2Interface, localFetcher localDoguFetcher) *doguChecker {
 	return &doguChecker{
 		ecosystemClient:   ecosystemClient,
 		doguLocalRegistry: localFetcher,
@@ -43,8 +42,8 @@ func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, localF
 }
 
 type doguChecker struct {
-	ecosystemClient   ecoSystem.EcoSystemV1Alpha1Interface
-	doguLocalRegistry cloudogu.LocalDoguFetcher
+	ecosystemClient   ecoSystem.EcoSystemV2Interface
+	doguLocalRegistry localDoguFetcher
 }
 
 // CheckByName returns nil if the dogu resource's health status says it's available.
@@ -60,7 +59,7 @@ func (dc *doguChecker) CheckByName(ctx context.Context, doguName types.Namespace
 		return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
 	}
 
-	if doguResource.Status.Health != k8sv1.AvailableHealthStatus {
+	if doguResource.Status.Health != k8sv2.AvailableHealthStatus {
 		return NewDoguHealthError(fmt.Errorf("dogu %q appears unhealthy",
 			doguResource.Name))
 	}

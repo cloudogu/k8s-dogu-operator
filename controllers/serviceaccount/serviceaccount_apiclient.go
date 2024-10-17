@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const apiKeyHeader = "X-CES-SA-API-KEY"
@@ -48,12 +49,11 @@ func (ac *apiClient) createServiceAccount(ctx context.Context, baseUrl string, a
 	if err != nil {
 		return nil, fmt.Errorf("error while sending request: %w", err)
 	}
+	defer closeBody(ctx, resp.Body)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("request was not successful: %s", resp.Status)
 	}
-
-	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -86,10 +86,18 @@ func (ac *apiClient) deleteServiceAccount(ctx context.Context, baseUrl string, a
 	if err != nil {
 		return fmt.Errorf("error while sending request: %w", err)
 	}
+	defer closeBody(ctx, resp.Body)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("request was not successful: %s", resp.Status)
 	}
 
 	return nil
+}
+
+func closeBody(ctx context.Context, c io.Closer) {
+	logger := log.FromContext(ctx)
+	if err := c.Close(); err != nil {
+		logger.Error(err, "closed http body with error")
+	}
 }

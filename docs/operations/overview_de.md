@@ -111,7 +111,7 @@ Die CRD-Ausprägung (Custom Resource) für Dogus sieht ungefähr so aus:
 Beispiel: `ldap.yaml`
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: ldap

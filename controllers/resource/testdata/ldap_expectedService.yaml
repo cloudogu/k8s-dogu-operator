@@ -8,7 +8,7 @@ metadata:
   name: ldap
   namespace: ecosystem
   ownerReferences:
-    - apiVersion: k8s.cloudogu.com/v1
+    - apiVersion: k8s.cloudogu.com/v2
       blockOwnerDeletion: true
       controller: true
       kind: Dogu

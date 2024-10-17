@@ -3,10 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	doguv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/health"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,14 +18,14 @@ const legacyDoguLabel = "dogu"
 
 // DeploymentReconciler watches every Deployment object in the cluster and writes the state of dogus into their respective custom resources.
 type DeploymentReconciler struct {
-	k8sClientSet            thirdParty.ClientSet
-	availabilityChecker     cloudogu.DeploymentAvailabilityChecker
-	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater
-	doguFetcher             cloudogu.LocalDoguFetcher
+	k8sClientSet            ClientSet
+	availabilityChecker     health.DeploymentAvailabilityChecker
+	doguHealthStatusUpdater health.DoguHealthStatusUpdater
+	doguFetcher             localDoguFetcher
 }
 
-func NewDeploymentReconciler(k8sClientSet thirdParty.ClientSet, availabilityChecker *health.AvailabilityChecker,
-	doguHealthStatusUpdater cloudogu.DoguHealthStatusUpdater, doguFetcher cloudogu.LocalDoguFetcher) *DeploymentReconciler {
+func NewDeploymentReconciler(k8sClientSet ClientSet, availabilityChecker *health.AvailabilityChecker,
+	doguHealthStatusUpdater health.DoguHealthStatusUpdater, doguFetcher localDoguFetcher) *DeploymentReconciler {
 	return &DeploymentReconciler{
 		k8sClientSet:            k8sClientSet,
 		availabilityChecker:     availabilityChecker,
@@ -76,7 +74,7 @@ func finishOrRequeue(logger logr.Logger, err error) (ctrl.Result, error) {
 
 func hasDoguLabel(deployment client.Object) bool {
 	for label := range deployment.GetLabels() {
-		if label == legacyDoguLabel || label == doguv1.DoguLabelName {
+		if label == legacyDoguLabel || label == doguv2.DoguLabelName {
 			return true
 		}
 	}

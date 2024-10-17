@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	eventV1 "k8s.io/api/events/v1"
@@ -79,10 +79,10 @@ func readLdapDogu(t *testing.T) *core.Dogu {
 	return data
 }
 
-func readLdapDoguResource(t *testing.T) *k8sv1.Dogu {
+func readLdapDoguResource(t *testing.T) *k8sv2.Dogu {
 	t.Helper()
 
-	data := &k8sv1.Dogu{}
+	data := &k8sv2.Dogu{}
 	err := yaml.Unmarshal(ldapDoguResourceBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -175,10 +175,10 @@ func readNginxIngressDogu(t *testing.T) *core.Dogu {
 	return data
 }
 
-func readNginxIngressDoguResource(t *testing.T) *k8sv1.Dogu {
+func readNginxIngressDoguResource(t *testing.T) *k8sv2.Dogu {
 	t.Helper()
 
-	data := &k8sv1.Dogu{}
+	data := &k8sv2.Dogu{}
 	err := yaml.Unmarshal(nginxIngressDoguResourceBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -216,9 +216,9 @@ func getTestScheme() *runtime.Scheme {
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "Dogu",
-	}, &k8sv1.Dogu{})
+	}, &k8sv2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
