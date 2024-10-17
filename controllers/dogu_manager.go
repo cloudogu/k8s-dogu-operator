@@ -54,33 +54,12 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 		return nil, err
 	}
 
+	configRepos := createConfigRepositories(clientSet, operatorConfig.Namespace)
 	// At this point, the operator's client is only ready AFTER the operator's Start(...) was called.
 	// Instead we must use our own client to avoid an immediate cache error: "the cache is not started, can not read objects"
-	imageGetter := newAdditionalImageGetter(clientSet, operatorConfig.Namespace)
-	additionalImageChownInitContainer, err := imageGetter.imageForKey(ctx, config.ChownInitImageConfigmapNameKey)
+	mgrSet, err := createMgrSet(ctx, restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get additional images: %w", err)
-	}
-	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to find cluster config: %w", err)
-	}
-	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
-	}
-	// we need this as we add dogu resource owner-references to every custom object.
-	err = k8sv2.AddToScheme(scheme)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
-	}
-
-	configRepos := createConfigRepositories(clientSet, operatorConfig.Namespace)
-
-	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos, applier, additionalImages)
-	if err != nil {
-		return nil, fmt.Errorf("could not create manager set: %w", err)
+		return nil, err
 	}
 
 	installManager := NewDoguInstallManager(client, mgrSet, eventRecorder, configRepos)
@@ -117,6 +96,34 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 		startStopManager:          startStopManager,
 		recorder:                  eventRecorder,
 	}, nil
+}
+
+func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, configRepos util.ConfigRepositories) (*util.ManagerSet, error) {
+	imageGetter := newAdditionalImageGetter(clientSet, operatorConfig.Namespace)
+	additionalImageChownInitContainer, err := imageGetter.imageForKey(ctx, config.ChownInitImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	}
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to find cluster config: %w", err)
+	}
+	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
+	}
+	// we need this as we add dogu resource owner-references to every custom object.
+	err = k8sv2.AddToScheme(scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
+	}
+
+	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos, applier, additionalImages)
+	if err != nil {
+		return nil, fmt.Errorf("could not create manager set: %w", err)
+	}
+	return mgrSet, err
 }
 
 // Install installs a dogu resource.

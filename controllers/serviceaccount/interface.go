@@ -16,19 +16,27 @@ type sensitiveDoguConfigProvider interface {
 	GetSensitiveDoguConfig(ctx context.Context, doguName string) (sensitiveDoguConfig, error)
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
 type sensitiveDoguConfigSetter interface {
 	Set(ctx context.Context, key, value string) error
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
 type sensitiveDoguConfigGetter interface {
 	Exists(ctx context.Context, key string) (bool, error)
 	Get(ctx context.Context, key string) (string, error)
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
 type sensitiveDoguConfigDeleter interface {
 	DeleteRecursive(ctx context.Context, key string) error
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
 type sensitiveDoguConfig interface {
 	sensitiveDoguConfigGetter
 	sensitiveDoguConfigSetter

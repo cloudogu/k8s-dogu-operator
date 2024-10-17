@@ -297,12 +297,18 @@ type podInterface interface {
 }
 
 // premisesChecker includes functionality to check if the premises for an upgrade are met.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
 type premisesChecker interface {
 	// Check checks if dogu premises are met before a dogu upgrade.
 	Check(ctx context.Context, toDoguResource *v2.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
 }
 
 // upgradeExecutor applies upgrades the upgrade from an earlier dogu version to a newer version.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
 type upgradeExecutor interface {
 	// Upgrade executes the actual dogu upgrade.
 	Upgrade(ctx context.Context, toDoguResource *v2.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error

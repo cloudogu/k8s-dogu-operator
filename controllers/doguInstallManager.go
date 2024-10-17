@@ -77,26 +77,7 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv2.Do
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
 
-	// Set the finalizer at the beginning of the install procedure.
-	// This is required because an error during installation would leave a dogu resource with its
-	// k8s resources in the cluster. A delete would tidy up those resources but would not start the
-	// delete procedure from the controller.
-	logger.Info("Add dogu finalizer...")
-	controllerutil.AddFinalizer(doguResource, finalizerName)
-	err = m.client.Update(ctx, doguResource)
-	if err != nil {
-		return fmt.Errorf("failed to update dogu: %w", err)
-	}
-
-	logger.Info("Fetching dogu...")
-	dogu, developmentDoguMap, err := m.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
-	if err != nil {
-		return err
-	}
-
-	logger.Info("Check dogu dependencies...")
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
-	err = m.dependencyValidator.ValidateDependencies(ctx, dogu)
+	dogu, developmentDoguMap, err := m.getAndPrepareDogu(ctx, doguResource)
 	if err != nil {
 		return err
 	}
@@ -162,6 +143,34 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv2.Do
 	}
 
 	return nil
+}
+
+func (m *doguInstallManager) getAndPrepareDogu(ctx context.Context, doguResource *k8sv2.Dogu) (*cesappcore.Dogu, *k8sv2.DevelopmentDoguMap, error) {
+	logger := log.FromContext(ctx)
+	// Set the finalizer at the beginning of the install procedure.
+	// This is required because an error during installation would leave a dogu resource with its
+	// k8s resources in the cluster. A delete would tidy up those resources but would not start the
+	// delete procedure from the controller.
+	logger.Info("Add dogu finalizer...")
+	controllerutil.AddFinalizer(doguResource, finalizerName)
+	err := m.client.Update(ctx, doguResource)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to update dogu: %w", err)
+	}
+
+	logger.Info("Fetching dogu...")
+	dogu, developmentDoguMap, err := m.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	logger.Info("Check dogu dependencies...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+	err = m.dependencyValidator.ValidateDependencies(ctx, dogu)
+	if err != nil {
+		return nil, nil, err
+	}
+	return dogu, developmentDoguMap, nil
 }
 
 func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv2.Dogu) error {
