@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,7 +16,7 @@ import (
 
 func TestNewDoguAdditionalIngressAnnotationsManager(t *testing.T) {
 	// when
-	manager := NewDoguAdditionalIngressAnnotationsManager(fake.NewClientBuilder().Build(), mocks.NewEventRecorder(t))
+	manager := NewDoguAdditionalIngressAnnotationsManager(fake.NewClientBuilder().Build(), newMockEventRecorder(t))
 
 	// then
 	require.NotNil(t, manager)
@@ -29,7 +28,7 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 		dogu := readDoguCr(t, ldapCrBytes)
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: dogu.Name, Namespace: dogu.Namespace}}
 		client := fake.NewClientBuilder().WithObjects(doguService).Build()
-		sut := NewDoguAdditionalIngressAnnotationsManager(client, mocks.NewEventRecorder(t))
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, newMockEventRecorder(t))
 
 		// when
 		err := sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)
@@ -49,7 +48,7 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 		}
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: dogu.Name, Namespace: dogu.Namespace, Annotations: annotations}}
 		client := fake.NewClientBuilder().WithObjects(doguService).Build()
-		sut := NewDoguAdditionalIngressAnnotationsManager(client, mocks.NewEventRecorder(t))
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, newMockEventRecorder(t))
 
 		// when
 		err = sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)
@@ -62,7 +61,7 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
 		client := fake.NewClientBuilder().Build()
-		sut := NewDoguAdditionalIngressAnnotationsManager(client, mocks.NewEventRecorder(t))
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, newMockEventRecorder(t))
 
 		// when
 		err := sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)
@@ -82,14 +81,14 @@ func Test_doguAdditionalIngressAnnotationsManager_SetDoguAdditionalIngressAnnota
 			"k8s-dogu-operator.cloudogu.com/additional-ingress-annotations": string(marshal),
 		}
 		doguService := v1.Service{ObjectMeta: metav1.ObjectMeta{Name: dogu.Name, Namespace: dogu.Namespace, Annotations: annotations}}
-		client := mocks.NewK8sClient(t)
+		client := NewMockK8sClient(t)
 		client.EXPECT().Get(context.TODO(), dogu.GetObjectKey(), mock.AnythingOfType("*v1.Service")).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object k8s.Object, option ...k8s.GetOption) error {
 			servicePtr := object.(*v1.Service)
 			*servicePtr = doguService
 			return nil
 		})
 		client.EXPECT().Update(context.TODO(), mock.AnythingOfType("*v1.Service")).Return(assert.AnError)
-		sut := NewDoguAdditionalIngressAnnotationsManager(client, mocks.NewEventRecorder(t))
+		sut := NewDoguAdditionalIngressAnnotationsManager(client, newMockEventRecorder(t))
 
 		// when
 		err = sut.SetDoguAdditionalIngressAnnotations(context.TODO(), dogu)

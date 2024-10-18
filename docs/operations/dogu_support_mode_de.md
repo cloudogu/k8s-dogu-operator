@@ -13,7 +13,7 @@ Um eine Dogu in den Support-Modus zu versetzen, muss dieses durch ein Update der
 Beispiel:
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: postfix
@@ -51,7 +51,7 @@ Um ein Dogu wieder in den Ausgangszustand zu versetzen, muss die Dogu-Ressource 
 Beispiel:
 
 ```yaml
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: postfix

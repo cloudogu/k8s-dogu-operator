@@ -3,21 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/cesregistry"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"os"
 
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/garbagecollection"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/logging"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/garbagecollection"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/logging"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
 	"github.com/google/uuid"
 
 	v1 "k8s.io/api/core/v1"
@@ -58,7 +56,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(k8sv1.AddToScheme(scheme))
+	utilruntime.Must(k8sv2.AddToScheme(scheme))
 
 	// +kubebuilder:scaffold:scheme
 }
@@ -202,8 +200,8 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 	return nil
 }
 
-func configureReconciler(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
-	ecosystemClientSet *ecoSystem.EcoSystemV1Alpha1Client, healthStatusUpdater cloudogu.DoguHealthStatusUpdater,
+func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
+	ecosystemClientSet *ecoSystem.EcoSystemV2Client, healthStatusUpdater health.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(
@@ -274,8 +272,8 @@ func addChecks(mgr manager.Manager) error {
 	return nil
 }
 
-func addRunners(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
-	ecosystemClientSet ecoSystem.EcoSystemV1Alpha1Interface, updater cloudogu.DoguHealthStatusUpdater,
+func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
+	ecosystemClientSet ecoSystem.EcoSystemV2Interface, updater health.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, namespace string) error {
 	doguInterface := ecosystemClientSet.Dogus(namespace)
 	deploymentInterface := k8sClientSet.AppsV1().Deployments(namespace)
@@ -294,7 +292,7 @@ func addRunners(k8sManager manager.Manager, k8sClientSet thirdParty.ClientSet,
 	return nil
 }
 
-func getEcoSystemClientSet(config *rest.Config) (*ecoSystem.EcoSystemV1Alpha1Client, error) {
+func getEcoSystemClientSet(config *rest.Config) (*ecoSystem.EcoSystemV2Client, error) {
 	ecosystemClientSet, err := ecoSystem.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ecosystem client set: %w", err)
@@ -303,7 +301,7 @@ func getEcoSystemClientSet(config *rest.Config) (*ecoSystem.EcoSystemV1Alpha1Cli
 	return ecosystemClientSet, nil
 }
 
-func getK8sClientSet(config *rest.Config) (thirdParty.ClientSet, error) {
+func getK8sClientSet(config *rest.Config) (controllers.ClientSet, error) {
 	k8sClientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create k8s client set: %w", err)

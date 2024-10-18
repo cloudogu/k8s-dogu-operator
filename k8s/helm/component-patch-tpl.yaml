@@ -1,7 +1,7 @@
-apiVersion: v1
+apiVersion: v2
 values:
   images:
-    doguOperator: cloudogu/k8s-dogu-operator:2.2.0
+    doguOperator: cloudogu/k8s-dogu-operator:2.2.1
     kubeRbacProxy: gcr.io/kubebuilder/kube-rbac-proxy:v0.14.1
     chownInitImage: busybox:1.36
 patches:

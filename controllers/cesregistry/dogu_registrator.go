@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
@@ -28,7 +28,7 @@ func NewCESDoguRegistrator(doguVersionRegistry regLibDogu.DoguVersionRegistry, d
 
 // RegisterNewDogu registers a completely new dogu in a cluster. Use RegisterDoguVersion() for upgrades of an existing
 // dogu.
-func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, _ *k8sv1.Dogu, dogu *core.Dogu) error {
+func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, _ *k8sv2.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	enabled, _, err := checkDoguVersionEnabled(ctx, c.versionRegistry, dogu.GetSimpleName())

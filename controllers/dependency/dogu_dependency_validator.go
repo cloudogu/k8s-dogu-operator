@@ -9,7 +9,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
 )
 
 // dependencyValidationError is returned when a given dependency cloud not be validated.
@@ -30,11 +29,11 @@ func (e *dependencyValidationError) Requeue() bool {
 
 // doguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type doguDependencyValidator struct {
-	fetcher cloudogu.LocalDoguFetcher
+	fetcher localDoguFetcher
 }
 
 // NewDoguDependencyValidator creates a new dogu dependencies checker
-func NewDoguDependencyValidator(doguFetcher cloudogu.LocalDoguFetcher) *doguDependencyValidator {
+func NewDoguDependencyValidator(doguFetcher localDoguFetcher) *doguDependencyValidator {
 	return &doguDependencyValidator{
 		fetcher: doguFetcher,
 	}

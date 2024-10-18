@@ -17,9 +17,9 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/annotation"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 )
 
 const (
@@ -70,7 +70,7 @@ func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator requirem
 }
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
 	podTemplate, err := r.GetPodTemplate(doguResource, dogu)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv1.Dogu, dogu 
 }
 
 // GetPodTemplate returns a pod template for the given dogu.
-func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
+func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
 	volumes, err := createVolumes(doguResource, dogu)
 	if err != nil {
 		return nil, err
@@ -163,7 +163,7 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv1.Dogu, dogu *core.
 	return podTemplate, nil
 }
 
-func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv1.Dogu, chownInitImage string) (*corev1.Container, error) {
+func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitImage string) (*corev1.Container, error) {
 	noInitContainerNeeded := chownInitImage == ""
 	if noInitContainerNeeded {
 		return nil, nil
@@ -271,7 +271,7 @@ func getStartupProbeTimeout() int32 {
 }
 
 // GetAppLabel returns an app label which all CES resource may receive for general selection.
-func GetAppLabel() k8sv1.CesMatchingLabels {
+func GetAppLabel() k8sv2.CesMatchingLabels {
 	return map[string]string{appLabelKey: appLabelValueCes}
 }
 
@@ -279,7 +279,7 @@ func GetAppLabel() k8sv1.CesMatchingLabels {
 // The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 // apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
 // the service ports to the created service.
-func (r *resourceGenerator) CreateDoguService(doguResource *k8sv1.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
+func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
 	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
 
 	service := &corev1.Service{

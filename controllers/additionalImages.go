@@ -3,12 +3,11 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/dlclark/regexp2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/dlclark/regexp2"
-
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 )
 
 // imageTagValidator defines a regexp string that validates a container reference. These include:

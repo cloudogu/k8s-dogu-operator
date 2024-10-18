@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,12 +21,12 @@ type RequirementsUpdater struct {
 	client              client.Client
 	namespace           string
 	globalConfigWatcher globalConfigurationWatcher
-	doguFetcher         cloudogu.LocalDoguFetcher
+	doguFetcher         localDoguFetcher
 	requirementsGen     requirementsGenerator
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguFetcher cloudogu.LocalDoguFetcher, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
+func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguFetcher localDoguFetcher, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
 	requirementsGen := NewRequirementsGenerator(doguConfigGetter)
 
 	return &RequirementsUpdater{
@@ -106,8 +105,8 @@ func (hlu *RequirementsUpdater) triggerSync(ctx context.Context) error {
 	return result
 }
 
-func (hlu *RequirementsUpdater) getInstalledDogus(ctx context.Context) (*k8sv1.DoguList, error) {
-	doguList := &k8sv1.DoguList{}
+func (hlu *RequirementsUpdater) getInstalledDogus(ctx context.Context) (*k8sv2.DoguList, error) {
+	doguList := &k8sv2.DoguList{}
 
 	err := hlu.client.List(ctx, doguList, client.InNamespace(hlu.namespace))
 	if err != nil {

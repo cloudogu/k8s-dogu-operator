@@ -19,10 +19,8 @@ import (
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,7 +30,7 @@ var testCtx = context.TODO()
 
 //go:embed testdata/redmine-cr.yaml
 var redmineBytes []byte
-var redmineCr = &k8sv1.Dogu{}
+var redmineCr = &k8sv2.Dogu{}
 
 //go:embed testdata/redmine-dogu.json
 var redmineDescriptorBytes []byte
@@ -56,11 +54,11 @@ var postgresqlDescriptor = &core.Dogu{}
 
 //go:embed testdata/postgresql-cr.yaml
 var postgresqlCrBytes []byte
-var postgresqlCr = &k8sv1.Dogu{}
+var postgresqlCr = &k8sv2.Dogu{}
 
 //go:embed testdata/cas-cr.yaml
 var casCrBytes []byte
-var casCr = &k8sv1.Dogu{}
+var casCr = &k8sv2.Dogu{}
 
 //go:embed testdata/invalid-sa-dogu.json
 var invalidPostgresqlDescriptorBytes []byte
@@ -126,7 +124,7 @@ func init() {
 func TestNewCreator(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		repo := NewMockSensitiveDoguConfigRepository(t)
+		repo := newMockSensitiveDoguConfigRepository(t)
 
 		// when
 		result := NewCreator(repo, nil, nil, nil, nil, "")
@@ -165,15 +163,15 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("success with dogu account", func(t *testing.T) {
 		// given
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 		sensitiveDoguCfgRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
-		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock := newMockCommandExecutor(t)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		serviceAccountCreator := creator{
@@ -192,7 +190,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("service account already exists", func(t *testing.T) {
 		// given
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", config.Entries{
 			"sa-postgresql/username": "testUser",
 			"sa-postgresql/password": "testPassword",
@@ -210,10 +208,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("failed to check if service account dogu is enabled", func(t *testing.T) {
 		// given
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(false, assert.AnError)
 
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
 		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, doguFetcher: localFetcher}
@@ -229,10 +227,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("service account is optional", func(t *testing.T) {
 		// given
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(false, nil)
 
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
 		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, doguFetcher: localFetcher}
@@ -246,10 +244,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("service account is not optional and service account dogu is not enabled", func(t *testing.T) {
 		// given
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(false, nil)
 
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
 		serviceAccountCreator := creator{sensitiveDoguRepo: sensitiveDoguCfgRepoMock, doguFetcher: localFetcher}
@@ -264,11 +262,11 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("fail to get dogu.json from service account dogu", func(t *testing.T) {
 		// given
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, assert.AnError)
 
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
 		serviceAccountCreator := creator{
@@ -287,10 +285,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("fail to get service account producer pod", func(t *testing.T) {
 		// given
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		cliWithoutReadyPod := fake2.NewClientBuilder().
@@ -313,10 +311,10 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("service account dogu does not expose service-account-create command", func(t *testing.T) {
 		// given
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(invalidPostgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
@@ -335,15 +333,15 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("fail to exec command", func(t *testing.T) {
 		// given
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
-		commandExecutorMock := mocks.NewCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, assert.AnError)
+		commandExecutorMock := newMockCommandExecutor(t)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(nil, assert.AnError)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
@@ -364,16 +362,16 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("fail on invalid executor output", func(t *testing.T) {
 		// given
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
-		commandExecutorMock := mocks.NewCommandExecutor(t)
+		commandExecutorMock := newMockCommandExecutor(t)
 		invalidBuffer := bytes.NewBufferString("username:user:invalid\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(invalidBuffer, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(invalidBuffer, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
@@ -393,16 +391,16 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 	t.Run("fail to set service account value", func(t *testing.T) {
 		// given
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
-		commandExecutorMock := mocks.NewCommandExecutor(t)
+		commandExecutorMock := newMockCommandExecutor(t)
 		buf := bytes.NewBufferString("username/username:user\nusername:user\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(buf, nil)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := creator{
@@ -423,7 +421,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		// given
 		fakeClient := fake.NewSimpleClientset()
 
-		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 
 		serviceAccountCreator := creator{
@@ -451,9 +449,9 @@ func getTestScheme() *runtime.Scheme {
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogu",
-	}, &k8sv1.Dogu{})
+	}, &k8sv2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

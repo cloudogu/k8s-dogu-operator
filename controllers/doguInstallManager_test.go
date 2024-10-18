@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
@@ -21,53 +21,51 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
 	resConfig "github.com/cloudogu/k8s-registry-lib/config"
 	resErrors "github.com/cloudogu/k8s-registry-lib/errors"
 )
 
 type doguInstallManagerWithMocks struct {
 	installManager            *doguInstallManager
-	localDoguFetcher          *mocks.MockLocalDoguFetcher
-	resourceDoguFetcher       *mocks.ResourceDoguFetcher
-	imageRegistryMock         *mocks.ImageRegistry
-	doguRegistratorMock       *mocks.DoguRegistrator
-	dependencyValidatorMock   *mocks.DependencyValidator
-	serviceAccountCreatorMock *mocks.ServiceAccountCreator
-	applierMock               *mocks.Applier
-	fileExtractorMock         *mocks.FileExtractor
+	localDoguFetcher          *mockLocalDoguFetcher
+	resourceDoguFetcher       *mockResourceDoguFetcher
+	imageRegistryMock         *mockImageRegistry
+	doguRegistratorMock       *mockDoguRegistrator
+	dependencyValidatorMock   *mockDependencyValidator
+	serviceAccountCreatorMock *mockServiceAccountCreator
+	applierMock               *mockApplier
+	fileExtractorMock         *mockFileExtractor
 	client                    client.WithWatch
-	resourceUpserter          *mocks.ResourceUpserter
-	recorder                  *extMocks.EventRecorder
-	execPodFactory            *mocks.ExecPodFactory
-	ecosystemClient           *mocks.EcosystemInterface
-	doguInterface             *mocks.DoguInterface
-	doguConfigRepository      *extMocks.DoguConfigRepository
-	sensitiveDoguRepository   *extMocks.DoguConfigRepository
+	resourceUpserter          *mockResourceUpserter
+	recorder                  *mockEventRecorder
+	execPodFactory            *mockExecPodFactory
+	ecosystemClient           *mockEcosystemInterface
+	doguInterface             *mockDoguInterface
+	doguConfigRepository      *mockDoguConfigRepository
+	sensitiveDoguRepository   *mockDoguConfigRepository
 }
 
 func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguInstallManagerWithMocks {
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv1.Dogu{}).Build()
-	ecosystemClientMock := mocks.NewEcosystemInterface(t)
-	doguIntrefaceMock := mocks.NewDoguInterface(t)
-	upserter := mocks.NewResourceUpserter(t)
-	imageRegistry := mocks.NewImageRegistry(t)
-	doguRegistrator := mocks.NewDoguRegistrator(t)
-	dependencyValidator := mocks.NewDependencyValidator(t)
-	serviceAccountCreator := mocks.NewServiceAccountCreator(t)
-	mockedApplier := mocks.NewApplier(t)
-	fileExtract := mocks.NewFileExtractor(t)
-	eventRecorderMock := extMocks.NewEventRecorder(t)
-	localDoguFetcher := mocks.NewMockLocalDoguFetcher(t)
-	resourceDoguFetcher := mocks.NewResourceDoguFetcher(t)
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv2.Dogu{}).Build()
+	ecosystemClientMock := newMockEcosystemInterface(t)
+	doguIntrefaceMock := newMockDoguInterface(t)
+	upserter := newMockResourceUpserter(t)
+	imageRegistry := newMockImageRegistry(t)
+	doguRegistrator := newMockDoguRegistrator(t)
+	dependencyValidator := newMockDependencyValidator(t)
+	serviceAccountCreator := newMockServiceAccountCreator(t)
+	mockedApplier := newMockApplier(t)
+	fileExtract := newMockFileExtractor(t)
+	eventRecorderMock := newMockEventRecorder(t)
+	localDoguFetcher := newMockLocalDoguFetcher(t)
+	resourceDoguFetcher := newMockResourceDoguFetcher(t)
 	collectApplier := resource.NewCollectApplier(mockedApplier)
-	podFactory := mocks.NewExecPodFactory(t)
-	doguConfigRepoMock := extMocks.NewDoguConfigRepository(t)
-	sensitiveConfigRepoMock := extMocks.NewDoguConfigRepository(t)
+	podFactory := newMockExecPodFactory(t)
+	doguConfigRepoMock := newMockDoguConfigRepository(t)
+	sensitiveConfigRepoMock := newMockDoguConfigRepository(t)
 
 	doguInstallManager := &doguInstallManager{
 		client:                  k8sClient,
@@ -108,7 +106,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 	}
 }
 
-func getDoguInstallManagerTestData(t *testing.T) (*k8sv1.Dogu, *core.Dogu, *corev1.ConfigMap, *imagev1.ConfigFile) {
+func getDoguInstallManagerTestData(t *testing.T) (*k8sv2.Dogu, *core.Dogu, *corev1.ConfigMap, *imagev1.ConfigFile) {
 	ldapCr := readDoguCr(t, ldapCrBytes)
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 	ldapDoguDescriptor := readDoguDevelopmentMap(t, ldapDoguDevelopmentMapBytes)
@@ -128,7 +126,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 		operatorConfig.Namespace = "test"
 		mgrSet := &util.ManagerSet{}
-		eventRecorder := extMocks.NewEventRecorder(t)
+		eventRecorder := newMockEventRecorder(t)
 
 		configRepos := util.ConfigRepositories{
 			GlobalConfigRepository:  &repository.GlobalConfigRepository{},
@@ -160,7 +158,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).
-			RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			RunAndReturn(func(ctx context.Context, dogu *k8sv2.Dogu, f func(k8sv2.DoguStatus) k8sv2.DoguStatus, options metav1.UpdateOptions) (*k8sv2.Dogu, error) {
 				dogu.Status = f(dogu.Status)
 				return dogu, nil
 			})
@@ -185,7 +183,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
-		execPod := mocks.NewExecPod(t)
+		execPod := newMockExecPod(t)
 		execPod.EXPECT().Create(testCtx).Return(nil)
 		execPod.EXPECT().Delete(testCtx).Return(nil)
 		managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
@@ -202,7 +200,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
 		ldapCr, ldapDogu, ldapDevelopmentDoguMap, imageConfig := getDoguInstallManagerTestData(t)
-		developmentDoguMap := k8sv1.DevelopmentDoguMap(*ldapDevelopmentDoguMap)
+		developmentDoguMap := k8sv2.DevelopmentDoguMap(*ldapDevelopmentDoguMap)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, &developmentDoguMap, nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -233,7 +231,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpect.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpect.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
-		execPod := mocks.NewExecPod(t)
+		execPod := newMockExecPod(t)
 		execPod.EXPECT().Create(testCtx).Return(nil)
 		execPod.EXPECT().Delete(testCtx).Return(nil)
 		managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
@@ -265,7 +263,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).
-			RunAndReturn(func(ctx context.Context, dogu *k8sv1.Dogu, f func(k8sv1.DoguStatus) k8sv1.DoguStatus, options metav1.UpdateOptions) (*k8sv1.Dogu, error) {
+			RunAndReturn(func(ctx context.Context, dogu *k8sv2.Dogu, f func(k8sv2.DoguStatus) k8sv2.DoguStatus, options metav1.UpdateOptions) (*k8sv2.Dogu, error) {
 				dogu.Status = f(dogu.Status)
 				return dogu, nil
 			})
@@ -290,7 +288,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", "my-custom-resource.yml")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
-		execPod := mocks.NewExecPod(t)
+		execPod := newMockExecPod(t)
 		execPod.EXPECT().Create(testCtx).Return(nil)
 		execPod.EXPECT().Delete(testCtx).Return(nil)
 		managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
@@ -456,7 +454,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
-		execPod := mocks.NewExecPod(t)
+		execPod := newMockExecPod(t)
 		execPod.EXPECT().Create(testCtx).Return(nil)
 		execPod.EXPECT().Delete(testCtx).Return(nil)
 		managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
@@ -598,7 +596,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
-			execPod := mocks.NewExecPod(t)
+			execPod := newMockExecPod(t)
 			execPod.EXPECT().Create(testCtx).Return(nil)
 			execPod.EXPECT().Delete(testCtx).Return(nil)
 			managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
@@ -633,7 +631,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
-			execPod := mocks.NewExecPod(t)
+			execPod := newMockExecPod(t)
 			execPod.EXPECT().Create(testCtx).Return(nil)
 			execPod.EXPECT().Delete(testCtx).Return(nil)
 			managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
@@ -748,7 +746,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
-			execPod := mocks.NewExecPod(t)
+			execPod := newMockExecPod(t)
 			execPod.EXPECT().Create(testCtx).Return(nil)
 			execPod.EXPECT().Delete(testCtx).Return(nil)
 			managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)

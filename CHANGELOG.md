@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.2.1] - 2024-10-18
+### Changed
+- [#198] Change go module to v2
+- [#198] Change dogu api to v2
+- [#198] Change mocks to be inpackage and testonly
+- [#198] Change go version to 1.23.2
+- [#198] Change makefile version to 9.3.1
+
 ## [v2.2.0] - 2024-09-25
 ### Changed
 - [#196] Update k8s-registry-lib to v0.4.1

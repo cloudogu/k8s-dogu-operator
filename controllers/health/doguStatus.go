@@ -4,27 +4,26 @@ import (
 	"context"
 	"fmt"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	doguv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 const statusUpdateEventReason = "HealthStatusUpdate"
 const healthConfigMapName = "k8s-dogu-operator-dogu-health"
 
 type DoguStatusUpdater struct {
-	ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface
+	ecosystemClient ecoSystem.EcoSystemV2Interface
 	recorder        record.EventRecorder
-	k8sClientSet    thirdParty.ClientSet
+	k8sClientSet    clientSet
 }
 
-func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, recorder record.EventRecorder, k8sClientSet thirdParty.ClientSet) *DoguStatusUpdater {
+func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV2Interface, recorder record.EventRecorder, k8sClientSet clientSet) *DoguStatusUpdater {
 	return &DoguStatusUpdater{
 		ecosystemClient: ecosystemClient,
 		recorder:        recorder,

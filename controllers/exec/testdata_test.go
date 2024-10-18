@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/cloudogu/cesapp-lib/core"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	eventV1 "k8s.io/api/events/v1"
@@ -12,9 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
 
-	"github.com/cloudogu/cesapp-lib/core"
-
-	corev1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
+	corev1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 )
 
 //go:embed testdata/ldap-dogu.json
@@ -52,7 +51,7 @@ func getTestScheme() *runtime.Scheme {
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "Dogu",
 	}, &corev1.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{

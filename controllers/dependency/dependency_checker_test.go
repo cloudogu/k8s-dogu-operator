@@ -1,4 +1,4 @@
-package dependency_test
+package dependency
 
 import (
 	"context"
@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/dependency"
-	cloudoguMocks "github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
 )
 
 type validatorCheckerSuccess struct {
@@ -37,7 +35,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		checkerOne := &validatorCheckerSuccess{}
 		checkerTwo := &validatorCheckerSuccess{}
 		checkerThree := &validatorCheckerSuccess{}
-		compositeValidator := dependency.CompositeDependencyValidator{Validators: []dependency.DependencyValidator{
+		compositeValidator := CompositeDependencyValidator{Validators: []DependencyValidator{
 			checkerOne, checkerTwo, checkerThree,
 		}}
 
@@ -56,7 +54,7 @@ func TestDependencyChecker_ValidateDependencies(t *testing.T) {
 		checkerOne := &validatorCheckerSuccess{}
 		checkerTwo := &validatorCheckerError{}
 		checkerThree := &validatorCheckerSuccess{}
-		compositeValidator := dependency.CompositeDependencyValidator{Validators: []dependency.DependencyValidator{
+		compositeValidator := CompositeDependencyValidator{Validators: []DependencyValidator{
 			checkerOne, checkerTwo, checkerThree,
 		}}
 
@@ -78,10 +76,10 @@ func TestNewCompositeDependencyValidator(t *testing.T) {
 		version, err := core.ParseVersion("0.0.0")
 		require.NoError(t, err)
 
-		localDoguFetcherMock := cloudoguMocks.NewMockLocalDoguFetcher(t)
+		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 
 		// when
-		compositeValidator := dependency.NewCompositeDependencyValidator(&version, localDoguFetcherMock)
+		compositeValidator := NewCompositeDependencyValidator(&version, localDoguFetcherMock)
 
 		// then
 		assert.NotNil(t, compositeValidator)

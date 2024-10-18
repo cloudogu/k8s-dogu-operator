@@ -12,9 +12,7 @@ import (
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu/mocks"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,16 +61,16 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-postgresql/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
-		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, nil)
+		commandExecutorMock := &mockCommandExecutor{}
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := remover{
@@ -111,17 +109,17 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-cas/password":        "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
 
 		casRemoveSAShellCmd := exec.NewShellCommand(casRemoveCmd.Command, "redmine")
 
-		commandExecutorMock := &mocks.CommandExecutor{}
+		commandExecutorMock := &mockCommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", testCtx, readyCasPod, casRemoveSAShellCmd, cloudogu.PodReady).Return(nil, nil)
+			On("ExecCommandForPod", testCtx, readyCasPod, casRemoveSAShellCmd, exec.PodReady).Return(nil, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "cas").Return(true, nil)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(false, assert.AnError)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "cas").Return(casDescriptor, nil)
@@ -147,7 +145,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-cas/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 
 		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock}
@@ -166,10 +164,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-postgresql/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(false, assert.AnError)
 
 		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher}
@@ -189,10 +187,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-postgresql/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(false, nil)
 
 		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher}
@@ -211,10 +209,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-postgresql/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, assert.AnError)
 		serviceAccountCreator := remover{sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher}
@@ -234,10 +232,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-postgresql/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		cliWithoutReadyPod := fake2.NewClientBuilder().
@@ -269,10 +267,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-postgresql/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(invalidPostgresqlDescriptor, nil)
 		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher}
@@ -301,16 +299,16 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-postgresql/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 
 		postgresRemoveSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
-		commandExecutorMock := &mocks.CommandExecutor{}
+		commandExecutorMock := &mockCommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", testCtx, readyPostgresPod, postgresRemoveSAShellCmd, cloudogu.PodReady).Return(nil, assert.AnError)
+			On("ExecCommandForPod", testCtx, readyPostgresPod, postgresRemoveSAShellCmd, exec.PodReady).Return(nil, assert.AnError)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, executor: commandExecutorMock}
@@ -340,16 +338,16 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-postgresql/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, assert.AnError)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
-		commandExecutorMock := &mocks.CommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPostgresPod, postgresCreateSAShellCmd, cloudogu.PodReady).Return(nil, nil)
+		commandExecutorMock := &mockCommandExecutor{}
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPostgresPod, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
 
-		localFetcher := mocks.NewMockLocalDoguFetcher(t)
+		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
 		serviceAccountCreator := remover{
@@ -376,7 +374,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 			"sa-k8s-prometheus/password": "testPassword",
 		})
 
-		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
 
 		r := remover{clientSet: fakeClient, sensitiveDoguRepo: sensitiveConfigRepoMock}

@@ -5,18 +5,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	v1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	extMocks "github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
-
+	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -47,7 +45,7 @@ func getCopyMap(definitions map[string]mockDefinition) map[string]mockDefinition
 }
 
 func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) manager.Manager {
-	k8sManager := &extMocks.ControllerManager{}
+	k8sManager := &MockControllerManager{}
 	ctrl.NewManager = func(config *rest.Config, options manager.Options) (manager.Manager, error) {
 		for key, value := range definitions {
 			k8sManager.On(key, value.Arguments...).Return(value.ReturnValue)
@@ -225,7 +223,7 @@ func setupOverrides() func() {
 	oldSetLoggerDelegate := ctrl.SetLogger
 
 	oldDoguManager := controllers.NewManager
-	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV1Alpha1Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
+	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
 		return &controllers.DoguManager{}, nil
 	}
 
@@ -245,14 +243,14 @@ func createMockDefinitions() map[string]mockDefinition {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogu",
-	}, &v1.Dogu{})
+	}, &v2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
-		Version: "v1",
+		Version: "v2",
 		Kind:    "dogurestart",
-	}, &v1.DoguRestart{})
+	}, &v2.DoguRestart{})
 	myClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	return map[string]mockDefinition{

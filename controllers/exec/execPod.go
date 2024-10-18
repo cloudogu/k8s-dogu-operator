@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudogu/k8s-dogu-operator/internal/cloudogu"
-
 	"github.com/cloudogu/cesapp-lib/core"
 
-	k8sv1 "github.com/cloudogu/k8s-dogu-operator/api/v1"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/retry"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,9 +28,9 @@ var maxWaitDuration = time.Minute * 10
 // execPod provides features to handle files from a dogu image.
 type execPod struct {
 	client   client.Client
-	executor cloudogu.CommandExecutor
+	executor CommandExecutor
 
-	doguResource *k8sv1.Dogu
+	doguResource *k8sv2.Dogu
 	dogu         *core.Dogu
 	podName      string
 	deleteSpec   *corev1.Pod
@@ -41,8 +39,8 @@ type execPod struct {
 // NewExecPod creates a new ExecPod that enables command execution towards a pod.
 func NewExecPod(
 	client client.Client,
-	executor cloudogu.CommandExecutor,
-	doguResource *k8sv1.Dogu,
+	executor CommandExecutor,
+	doguResource *k8sv2.Dogu,
 	dogu *core.Dogu,
 	podName string,
 ) (*execPod, error) {
@@ -190,14 +188,14 @@ func (ep *execPod) ObjectKey() *client.ObjectKey {
 	}
 }
 
-// Exec executes the given shellCommand and returns any output to stdOut and stdErr.
-func (ep *execPod) Exec(ctx context.Context, cmd cloudogu.ShellCommand) (*bytes.Buffer, error) {
+// Exec executes the given ShellCommand and returns any output to stdOut and stdErr.
+func (ep *execPod) Exec(ctx context.Context, cmd ShellCommand) (*bytes.Buffer, error) {
 	pod, err := ep.getPod(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not get pod: %w", err)
 	}
 
-	return ep.executor.ExecCommandForPod(ctx, pod, cmd, cloudogu.ContainersStarted)
+	return ep.executor.ExecCommandForPod(ctx, pod, cmd, ContainersStarted)
 }
 
 type defaultSufficeGenerator struct{}
@@ -210,12 +208,12 @@ func (sg *defaultSufficeGenerator) String(suffixLength int) string {
 type defaultExecPodFactory struct {
 	client          client.Client
 	config          *rest.Config
-	commandExecutor cloudogu.CommandExecutor
-	suffixGen       cloudogu.SuffixGenerator
+	commandExecutor CommandExecutor
+	suffixGen       suffixGenerator
 }
 
 // NewExecPodFactory creates a new ExecPodFactory.
-func NewExecPodFactory(client client.Client, config *rest.Config, executor cloudogu.CommandExecutor) *defaultExecPodFactory {
+func NewExecPodFactory(client client.Client, config *rest.Config, executor CommandExecutor) *defaultExecPodFactory {
 	return &defaultExecPodFactory{
 		client:          client,
 		config:          config,
@@ -225,11 +223,11 @@ func NewExecPodFactory(client client.Client, config *rest.Config, executor cloud
 }
 
 // NewExecPod creates a new ExecPod during the operation run-time.
-func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv1.Dogu, dogu *core.Dogu) (cloudogu.ExecPod, error) {
+func (epf *defaultExecPodFactory) NewExecPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (ExecPod, error) {
 	podName := generatePodName(dogu, epf.suffixGen)
 	return NewExecPod(epf.client, epf.commandExecutor, doguResource, dogu, podName)
 }
 
-func generatePodName(dogu *core.Dogu, generator cloudogu.SuffixGenerator) string {
+func generatePodName(dogu *core.Dogu, generator suffixGenerator) string {
 	return fmt.Sprintf("%s-%s-%s", dogu.GetSimpleName(), "execpod", generator.String(6))
 }

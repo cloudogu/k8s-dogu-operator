@@ -3,7 +3,6 @@ package nginx
 import (
 	"context"
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/internal/thirdParty/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -195,7 +194,7 @@ func TestIngressNginxTcpUpdExposer_ExposeOrUpdateDoguServices(t *testing.T) {
 	t.Run("should throw an error getting tcp-configmap", func(t *testing.T) {
 		// given
 		ldap := readLdapDogu(t)
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), tcpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).Return(assert.AnError)
 		sut := ingressNginxTcpUpdExposer{client: mockClient}
 
@@ -211,7 +210,7 @@ func TestIngressNginxTcpUpdExposer_ExposeOrUpdateDoguServices(t *testing.T) {
 	t.Run("should throw an error getting udp-configmap", func(t *testing.T) {
 		// given
 		ldap := readLdapDogu(t)
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		expect := mockClient.EXPECT()
 		expect.Get(context.TODO(), udpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).Return(assert.AnError)
 		expect.Get(context.TODO(), tcpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).Return(nil)
@@ -233,7 +232,7 @@ func Test_ingressNginxTcpUpdExposer_exposeOrUpdatePortsForProtocol(t *testing.T)
 		// given
 		ldap := readLdapDoguOnlyUDP(t)
 		tcpCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "tcp-services", Namespace: namespace}, Data: map[string]string{"2222": "ecosystem/notldap:3333"}}
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		expect := mockClient.EXPECT()
 		expect.Get(context.TODO(), tcpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
 			object = tcpCm
@@ -252,7 +251,7 @@ func Test_ingressNginxTcpUpdExposer_exposeOrUpdatePortsForProtocol(t *testing.T)
 		// given
 		ldap := readLdapDoguOnlyUDP(t)
 		udpCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "udp-services", Namespace: namespace}, Data: map[string]string{"2222": "ecosystem/notldap:3333"}}
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		expect := mockClient.EXPECT()
 		expect.Get(context.TODO(), udpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
 			object = udpCm
@@ -272,7 +271,7 @@ func Test_ingressNginxTcpUpdExposer_exposeOrUpdatePortsForProtocol(t *testing.T)
 	t.Run("should return error on creation failure", func(t *testing.T) {
 		// given
 		ldap := readLdapDoguOnlyUDP(t)
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		expect := mockClient.EXPECT()
 		expect.Get(context.TODO(), udpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).Return(apierrors.NewNotFound(schema.GroupResource{Group: "v1", Resource: "Configmap"}, "udp-services"))
 		expect.Create(context.TODO(), mock.IsType(&corev1.ConfigMap{})).Return(assert.AnError)
@@ -315,7 +314,7 @@ func Test_ingressNginxTcpUpdExposer_DeleteDoguServices(t *testing.T) {
 
 	t.Run("should return error on getting tcp-services configmap failure", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), tcpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).Return(assert.AnError)
 		sut := &ingressNginxTcpUpdExposer{client: mockClient}
 
@@ -330,7 +329,7 @@ func Test_ingressNginxTcpUpdExposer_DeleteDoguServices(t *testing.T) {
 
 	t.Run("should return error on getting udp-services configmap failure", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), tcpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).Return(nil)
 		mockClient.EXPECT().Get(context.TODO(), udpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).Return(assert.AnError)
 		sut := &ingressNginxTcpUpdExposer{client: mockClient}
@@ -348,7 +347,7 @@ func Test_ingressNginxTcpUpdExposer_DeleteDoguServices(t *testing.T) {
 func Test_ingressNginxTcpUpdExposer_deletePortsForProtocol(t *testing.T) {
 	t.Run("return nil if configmap is not found", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		mockClient.EXPECT().Get(context.TODO(), tcpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).Return(apierrors.NewNotFound(schema.GroupResource{Group: "v1", Resource: "Configmap"}, "tcp-services"))
 		sut := &ingressNginxTcpUpdExposer{client: mockClient}
 
@@ -361,7 +360,7 @@ func Test_ingressNginxTcpUpdExposer_deletePortsForProtocol(t *testing.T) {
 
 	t.Run("return nil if configmap has nil data", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		emptyCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "tcp-services", Namespace: namespace}}
 
 		mockClient.EXPECT().Get(context.TODO(), tcpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).RunAndReturn(func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
@@ -379,7 +378,7 @@ func Test_ingressNginxTcpUpdExposer_deletePortsForProtocol(t *testing.T) {
 
 	t.Run("return nil if configmap has no data", func(t *testing.T) {
 		// given
-		mockClient := mocks.NewK8sClient(t)
+		mockClient := newMockK8sClient(t)
 		emptyCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "tcp-services", Namespace: namespace}, Data: map[string]string{}}
 
 		mockClient.EXPECT().Get(context.TODO(), tcpServicesLookupKey, mock.IsType(&corev1.ConfigMap{})).RunAndReturn(func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {

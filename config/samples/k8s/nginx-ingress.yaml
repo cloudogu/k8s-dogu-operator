@@ -1,4 +1,4 @@
-apiVersion: k8s.cloudogu.com/v1
+apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
   name: nginx-ingress
@@ -6,4 +6,4 @@ metadata:
     app: ces
 spec:
   name: k8s/nginx-ingress
-  version: 1.6.4-3
+  version: 1.6.4-4
