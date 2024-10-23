@@ -1,0 +1,108 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-manager-role
+  labels:
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - k8s.cloudogu.com
+  resources:
+  - dogu
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - k8s.cloudogu.com
+  resources:
+  - dogu/status
+  verbs:
+  - get
+  - update
+- apiGroups:
+  - k8s.cloudogu.com
+  resources:
+  - dogurestart
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - delete
+- apiGroups:
+  - k8s.cloudogu.com
+  resources:
+  - dogurestart/status
+  verbs:
+  - get
+  - update
+- apiGroups:
+    - ""
+  resources:
+    - configmap
+  verbs:
+    - get
+    - watch
+    - create
+    - update
+    - delete
+- apiGroups:
+    - ""
+  resources:
+    - secret
+  verbs:
+    - create
+    - get
+    - update
+    - delete
+- apiGroups:
+    - apps
+  resources:
+    - deployment
+  verbs:
+    - get
+    - create
+    - update
+    - delete
+- apiGroups:
+    - ""
+  resources:
+    - service
+  verbs:
+    - create
+    - get
+    - update
+    - delete
+- apiGroups:
+    - ""
+  resources:
+    - persistentvolumeclaim
+  verbs:
+    - create
+    - get
+    - update
+- apiGroups:
+    - ""
+  resources:
+    - pod
+  verbs:
+    - get
+    - list
+    - create
+    - delete
+- apiGroups:
+    - ""
+  resources:
+    - pod/exec
+  verbs:
+    - create
+- apiGroups:
+    - ""
+  resources: # necessary for installing nginx-ingress
+    - role
+    - rolebinding
+    - serviceaccount
+  verbs:
+    - patch
