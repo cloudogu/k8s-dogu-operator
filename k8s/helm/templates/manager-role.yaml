@@ -44,6 +44,7 @@ rules:
     - configmaps
   verbs:
     - get
+    - list
     - watch
     - create
     - update
@@ -63,6 +64,8 @@ rules:
     - deployments
   verbs:
     - get
+    - list
+    - watch
     - create
     - update
     - delete
