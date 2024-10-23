@@ -8,7 +8,7 @@ rules:
 - apiGroups:
   - k8s.cloudogu.com
   resources:
-  - dogu
+  - dogus
   verbs:
   - get
   - list
@@ -17,14 +17,14 @@ rules:
 - apiGroups:
   - k8s.cloudogu.com
   resources:
-  - dogu/status
+  - dogus/status
   verbs:
   - get
   - update
 - apiGroups:
   - k8s.cloudogu.com
   resources:
-  - dogurestart
+  - dogurestarts
   verbs:
   - get
   - list
@@ -34,14 +34,14 @@ rules:
 - apiGroups:
   - k8s.cloudogu.com
   resources:
-  - dogurestart/status
+  - dogurestarts/status
   verbs:
   - get
   - update
 - apiGroups:
     - ""
   resources:
-    - configmap
+    - configmaps
   verbs:
     - get
     - watch
@@ -51,7 +51,7 @@ rules:
 - apiGroups:
     - ""
   resources:
-    - secret
+    - secrets
   verbs:
     - create
     - get
@@ -60,7 +60,7 @@ rules:
 - apiGroups:
     - apps
   resources:
-    - deployment
+    - deployments
   verbs:
     - get
     - create
@@ -69,7 +69,7 @@ rules:
 - apiGroups:
     - ""
   resources:
-    - service
+    - services
   verbs:
     - create
     - get
@@ -78,7 +78,7 @@ rules:
 - apiGroups:
     - ""
   resources:
-    - persistentvolumeclaim
+    - persistentvolumeclaims
   verbs:
     - create
     - get
@@ -86,7 +86,7 @@ rules:
 - apiGroups:
     - ""
   resources:
-    - pod
+    - pods
   verbs:
     - get
     - list
@@ -95,14 +95,14 @@ rules:
 - apiGroups:
     - ""
   resources:
-    - pod/exec
+    - pods/exec
   verbs:
     - create
 - apiGroups:
     - ""
   resources: # necessary for installing nginx-ingress
-    - role
-    - rolebinding
-    - serviceaccount
+    - roles
+    - rolebindings
+    - serviceaccounts
   verbs:
     - patch
