@@ -19,7 +19,6 @@ rules:
   resources:
   - dogus/status
   verbs:
-  - get
   - update
 - apiGroups:
   - k8s.cloudogu.com
@@ -36,7 +35,6 @@ rules:
   resources:
   - dogurestarts/status
   verbs:
-  - get
   - update
 - apiGroups:
     - ""
@@ -70,6 +68,12 @@ rules:
     - create
     - update
     - delete
+- apiGroups:
+    - apps
+  resources:
+    - deployments/scale
+  verbs:
+    - update
 - apiGroups:
     - ""
   resources:
