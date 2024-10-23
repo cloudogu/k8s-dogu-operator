@@ -106,11 +106,3 @@ rules:
     - pods/exec
   verbs:
     - create
-- apiGroups:
-    - ""
-  resources: # necessary for installing nginx-ingress
-    - roles
-    - rolebindings
-    - serviceaccounts
-  verbs:
-    - patch

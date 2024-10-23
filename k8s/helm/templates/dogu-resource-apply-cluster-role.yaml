@@ -1,9 +1,10 @@
-# necessary for installing nginx-ingress
+# This cluster role contains privileges necessary for applying resources from the k8s-folder of a dogu.
+# Specifically, this is used to install resources necessary for nginx-ingress.
 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: '{{ include "k8s-dogu-operator.name" . }}-cluster-role'
+  name: '{{ include "k8s-dogu-operator.name" . }}-resource-apply-cluster-role'
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
