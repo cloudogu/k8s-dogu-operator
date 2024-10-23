@@ -74,8 +74,10 @@ rules:
   resources:
     - services
   verbs:
-    - create
     - get
+    - list
+    - watch
+    - create
     - update
     - delete
 - apiGroups:
