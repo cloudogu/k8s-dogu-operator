@@ -8,15 +8,11 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - configmaps
+  - configmaps/status
   verbs:
   - get
-  - list
-  - watch
-  - create
   - update
   - patch
-  - delete
 - apiGroups:
   - coordination.k8s.io
   resources:
