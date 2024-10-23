@@ -83,8 +83,10 @@ rules:
   resources:
     - persistentvolumeclaims
   verbs:
-    - create
     - get
+    - list
+    - watch
+    - create
     - update
 - apiGroups:
     - ""
