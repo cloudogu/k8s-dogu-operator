@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
+# for dogu reconciliation and updating with infos about the current state of processing the resource
 - apiGroups:
   - k8s.cloudogu.com
   resources:
@@ -20,6 +21,7 @@ rules:
   - dogus/status
   verbs:
   - update
+# for dogu restart reconciliation and updating with infos about the current state of processing the resource
 - apiGroups:
   - k8s.cloudogu.com
   resources:
@@ -36,6 +38,7 @@ rules:
   - dogurestarts/status
   verbs:
   - update
+# configuration of operator, local dogu registry, dogu + global config, health states
 - apiGroups:
     - ""
   resources:
@@ -47,6 +50,7 @@ rules:
     - create
     - update
     - delete
+# sensitive configuration of operator, dogu config
 - apiGroups:
     - ""
   resources:
@@ -57,6 +61,7 @@ rules:
     - create
     - update
     - delete
+# managing dogu deployments
 - apiGroups:
     - apps
   resources:
@@ -68,12 +73,14 @@ rules:
     - create
     - update
     - delete
+# starting + stopping of dogus
 - apiGroups:
     - apps
   resources:
     - deployments/scale
   verbs:
     - update
+# managing dogu services
 - apiGroups:
     - ""
   resources:
@@ -85,6 +92,7 @@ rules:
     - create
     - update
     - delete
+# managing dogu volumes
 - apiGroups:
     - ""
   resources:
@@ -96,6 +104,7 @@ rules:
     - create
     - update
     - delete
+# exec pods for extracting pre-upgrade scripts and additional k8s resources
 - apiGroups:
     - ""
   resources:
