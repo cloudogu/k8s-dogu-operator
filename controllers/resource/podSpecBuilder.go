@@ -149,7 +149,7 @@ func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 			Labels: p.metaAllLabels,
 		},
 		Spec: corev1.PodSpec{
-			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
+			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "ces-container-registries"}},
 			Hostname:           p.theDoguResource.Name,
 			HostAliases:        p.specHostAliases,
 			Volumes:            p.specVolumes,

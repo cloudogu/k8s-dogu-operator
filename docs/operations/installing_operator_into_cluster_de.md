@@ -5,7 +5,7 @@
 Vor der Installation des Operators müssen die Login-Daten für die Dogu- und Docker-Registry hinterlegt
 werden:
 
-1. [Docker-Registry](configuring_the_docker_registry_de.md)
+1. [Docker-Registry](configuring_the_container_registry_de.md)
 2. [Dogu-Registry](configuring_the_dogu_registry_de.md)
 
 ## Installation von GitHub

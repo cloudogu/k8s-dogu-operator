@@ -74,11 +74,8 @@ spec:
               key: urlschema
               name: k8s-dogu-operator-dogu-registry
               optional: true
-        - name: DOCKER_REGISTRY
-          valueFrom:
-            secretKeyRef:
-              key: .dockerconfigjson
-              name: k8s-dogu-operator-docker-registry
+        - name: DOCKER_CONFIG
+          value: "/tmp/.docker"
         - name: DOGU_STARTUP_PROBE_TIMEOUT
           value: {{ quote .Values.controllerManager.env.doguStartupProbeTimeout | default "1" }}
         - name: DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT
@@ -108,6 +105,10 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
+        - mountPath: /tmp/.docker/config.json
+          subPath: .dockerconfigjson
+          name: ces-container-registries
+          readOnly: true
         - mountPath: /etc/ssl/certs/dogu-registry-cert.pem
           name: dogu-registry-cert
           subPath: dogu-registry-cert.pem
@@ -119,6 +120,9 @@ spec:
       serviceAccountName: {{ include "k8s-dogu-operator.name" . }}-controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
+      - name: ces-container-registries
+        secret:
+          secretName: ces-container-registries
       - name: docker-registry-cert
         secret:
           optional: true

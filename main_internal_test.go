@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
@@ -168,23 +167,10 @@ func Test_startDoguOperator(t *testing.T) {
 }
 
 func setupEnvironment(t *testing.T) {
-	dockerRegistry := config.DockerRegistrySecretData{
-		Auths: map[string]config.DockerRegistryData{
-			"my.registry": {
-				Username: "myusername",
-				Password: "mypassword",
-				Email:    "myemail",
-				Auth:     "myauth",
-			},
-		},
-	}
-	dockerRegistryString, err := json.Marshal(dockerRegistry)
-	require.NoError(t, err)
 	t.Setenv("NAMESPACE", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_ENDPOINT", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_USERNAME", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_PASSWORD", "mynamespace")
-	t.Setenv("DOCKER_REGISTRY", string(dockerRegistryString))
 }
 
 func setupOverrides() func() {

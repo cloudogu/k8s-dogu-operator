@@ -4,7 +4,7 @@
 
 Before installing the operator, the login data for the Dogu and Docker registry must be stored be stored:
 
-1. [Docker registry](configuring_the_docker_registry_en.md)
+1. [Docker registry](configuring_the_container_registry_en.md)
 2. [Dogu registry](configuring_the_dogu_registry_en.md)
 
 ## Installation from GitHub

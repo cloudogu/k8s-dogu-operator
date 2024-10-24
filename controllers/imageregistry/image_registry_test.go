@@ -19,7 +19,7 @@ import (
 )
 
 func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
-	imageRegistry := imageregistry.NewCraneContainerImageRegistry("user", "password")
+	imageRegistry := imageregistry.NewCraneContainerImageRegistry()
 
 	t.Run("successfully pulling image", func(t *testing.T) {
 		server, src := setupCraneRegistry(t)

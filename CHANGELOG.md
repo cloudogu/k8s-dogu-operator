@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#201] **Breaking**: The name of secret containing the container registry configurations changed from `k8s-dogu-operator-docker-registry` to `ces-container-registries`.
+Use this secret and instead of mounting this as an environment variable the dogu-operator mount it as a file `/tmp/.docker/config.json`.
+Add the environment variable `DOCKER_CONFIG` so that crane can use the configuration as default.
 
 ## [v2.2.1] - 2024-10-18
 ### Changed
@@ -408,7 +412,7 @@ image at the `k8s` folder in the root path (`/k8s`):
   `dogu-registry-com` to `k8s-dogu-operator-dogu-registry` and `k8s-dogu-operator-docker-registry`.
   It also received the registry endpoint as an additional literal besides username and password. Existing user
   need to delete their old secret and create two new ones. The creation process is described 
-  [here](docs/operations/configuring_the_docker_registry_en.md) and
+  [here](docs/operations/configuring_the_container_registry_en.md) and
   [here](docs/operations/configuring_the_dogu_registry_en.md).
 - [#2] Update makefiles to version 5.0.0
 
