@@ -16,3 +16,12 @@ rules:
   verbs:
   - create
   - patch
+# the following permissions are necessary because kubernetes doesn't allow privilege escalation
+- apiGroups:
+    - networking.k8s.io
+  resources:
+    - ingressclasses
+  verbs:
+    - get
+    - list
+    - watch
