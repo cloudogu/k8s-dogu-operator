@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.3.0] - 2024-10-24
+### Changed
+- [#200] Restrict RBAC permissions as much as possible
+
 ## [v2.2.1] - 2024-10-18
 ### Changed
 - [#198] Change go module to v2
