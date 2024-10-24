@@ -1,13 +1,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
-  name: '{{ include "k8s-dogu-operator.name" . }}-cluster-role-binding'
+  name: {{ include "k8s-dogu-operator.name" . }}-resource-apply-rolebinding
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: '{{ include "k8s-dogu-operator.name" . }}-cluster-role'
+  kind: Role
+  name: '{{ include "k8s-dogu-operator.name" . }}-resource-apply-role'
 subjects:
 - kind: ServiceAccount
   name: '{{ include "k8s-dogu-operator.name" . }}-controller-manager'
