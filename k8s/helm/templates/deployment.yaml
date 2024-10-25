@@ -88,7 +88,7 @@ spec:
               value: {{ quote .Values.controllerManager.env.doguRestartFailedHistoryLimit | default "3" }}
             - name: DOGU_RESTART_GARBAGE_COLLECTION_DISABLED
               value: {{ quote .Values.controllerManager.env.doguRestartGarbageCollectionDisabled | default false }}
-          image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}
+          image: "{{ .Values.controllerManager.image.registry }}/{{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}"
           imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent"}}
           livenessProbe:
             httpGet:
