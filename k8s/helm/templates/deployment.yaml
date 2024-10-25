@@ -30,7 +30,7 @@ spec:
             - --secure-listen-address=0.0.0.0:8443
             - --upstream=http://127.0.0.1:8080/
             - --v=0
-          image: {{ .Values.kubeRbacProxy.image.repository }}:{{ .Values.kubeRbacProxy.image.tag }}
+          image: "{{ .Values.kubeRbacProxy.image.registry }}/{{ .Values.kubeRbacProxy.image.repository }}:{{ .Values.kubeRbacProxy.image.tag }}"
           name: kube-rbac-proxy
           ports:
             - containerPort: 8443

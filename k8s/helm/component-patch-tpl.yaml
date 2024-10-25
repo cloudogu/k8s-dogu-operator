@@ -10,9 +10,11 @@ patches:
       chownInitImage: "{{ .images.chownInitImage }}"
     kubeRbacProxy:
       image:
-        repository: "{{ registryFrom .images.kubeRbacProxy }}/{{ repositoryFrom .images.kubeRbacProxy }}"
+        registry: "{{ registryFrom .images.kubeRbacProxy }}"
+        repository: "{{ repositoryFrom .images.kubeRbacProxy }}"
         tag: "{{ tagFrom .images.kubeRbacProxy }}"
     controllerManager:
       image:
-        repository: "{{ registryFrom .images.doguOperator }}/{{ repositoryFrom .images.doguOperator }}"
+        registry: "{{ registryFrom .images.doguOperator }}"
+        repository: "{{ repositoryFrom .images.doguOperator }}"
         tag: "{{ tagFrom .images.doguOperator }}"
