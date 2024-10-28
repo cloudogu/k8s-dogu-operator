@@ -8,7 +8,7 @@ controllerManager:
   image:
     registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 2.2.1
+    tag: 2.3.0
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug

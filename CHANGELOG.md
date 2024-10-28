@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Use this secret and instead of mounting this as an environment variable the dogu-operator mount it as a file `/tmp/.docker/config.json`.
 Add the environment variable `DOCKER_CONFIG` so that crane can use the configuration as default.
 
+## [v2.3.0] - 2024-10-24
+### Changed
+- [#200] Restrict RBAC permissions as much as possible
+
 ## [v2.2.1] - 2024-10-18
 ### Changed
 - [#198] Change go module to v2
