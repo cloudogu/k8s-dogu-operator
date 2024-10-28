@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"io"
 	"k8s.io/client-go/kubernetes/scheme"
 	"net/url"
 	"strings"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

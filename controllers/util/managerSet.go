@@ -11,14 +11,14 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/dependency"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/imageregistry"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/serviceaccount"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 )
 
 type ConfigRepositories struct {

@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 )
 
 const (

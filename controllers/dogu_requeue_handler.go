@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	"time"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

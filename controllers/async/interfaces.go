@@ -3,7 +3,7 @@ package async
 import (
 	"context"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 )
 
 // AsyncStep capsules an action with a starting and end condition

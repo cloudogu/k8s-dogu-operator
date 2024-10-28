@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/async"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/async"
 	"testing"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 )
 
 func TestNewDoguVolumeManager(t *testing.T) {
