@@ -22,12 +22,12 @@ Dieses Geheimnis enthält die Anmeldeinformationen, die für den `k8s-dogu-opera
 
 ## Docker Registry Secret erstellen
 
-Das Geheimnis, das die Docker-Registry-Daten enthält, muss unter dem Namen "k8s-dogu-operator-docker-registry" erstellt werden. Die
+Das Geheimnis, das die Docker-Registry-Daten enthält, muss unter dem Namen "ces-container-registries" erstellt werden. Die
 Registry-Daten werden im Secret als Docker-JSON-config-Format verschlüsselt. Ein korrektes Geheimnis kann mit `kubectl` erstellt werden.
 wie folgt erstellt werden:
 
 ```bash
-kubectl --namespace <cesNamespace> create secret docker-registry k8s-dogu-operator-docker-registry \
+kubectl --namespace <cesNamespace> create secret docker-registry ces-container-registries \
 --docker-server="myregistry.mydomain.com" \
 --docker-benutzername="meinbenutzername" \
 --docker-email="myemail@test.com" \

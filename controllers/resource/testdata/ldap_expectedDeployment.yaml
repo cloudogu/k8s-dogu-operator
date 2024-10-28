@@ -104,7 +104,7 @@ spec:
       enableServiceLinks: false
       hostname: ldap
       imagePullSecrets:
-        - name: k8s-dogu-operator-docker-registry
+        - name: ces-container-registries
       securityContext:
         fsGroup: 101
         fsGroupChangePolicy: OnRootMismatch

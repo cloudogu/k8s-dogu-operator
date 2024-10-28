@@ -50,7 +50,7 @@ spec:
           subPath: config
   hostname: ldap
   imagePullSecrets:
-    - name: k8s-dogu-operator-docker-registry
+    - name: ces-container-registries
   volumes:
     - configMap:
         name: node-master-file

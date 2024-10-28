@@ -14,20 +14,12 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
 	_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
 	_ = os.Unsetenv("DOGU_REGISTRY_URLSCHEMA")
-	_ = os.Unsetenv("DOCKER_REGISTRY")
 
 	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
 		Endpoint: "myEndpoint",
 		Username: "myUsername",
 		Password: "myPassword",
-	}
-	inputDockerRegistrySecretData := `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`
-	expectedDockerRegistryData := DockerRegistryData{
-		Username: "myDockerUsername",
-		Password: "myDockerPassword",
-		Email:    "jdoe@example.com",
-		Auth:     "c3R...zE2",
 	}
 
 	t.Run("Error on missing namespace env var", func(t *testing.T) {
@@ -75,17 +67,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
 	t.Setenv("DOGU_REGISTRY_URLSCHEMA", "")
-	t.Run("Error on missing docker registry data var", func(t *testing.T) {
-		// when
-		operatorConfig, err := NewOperatorConfig("0.0.0")
 
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to get env var [DOCKER_REGISTRY]: environment variable DOCKER_REGISTRY must be set")
-		assert.Nil(t, operatorConfig)
-	})
-
-	t.Setenv("DOCKER_REGISTRY", inputDockerRegistrySecretData)
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
 		operatorConfig, err := NewOperatorConfig("0.1.0")
@@ -95,7 +77,6 @@ func TestNewOperatorConfig(t *testing.T) {
 		require.NotNil(t, operatorConfig)
 		assert.Equal(t, expectedNamespace, operatorConfig.Namespace)
 		assert.Equal(t, expectedDoguRegistryData, operatorConfig.DoguRegistry)
-		assert.Equal(t, expectedDockerRegistryData, operatorConfig.DockerRegistry)
 		assert.Equal(t, "0.1.0", operatorConfig.Version.Raw)
 	})
 }
@@ -121,14 +102,12 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarDoguRegistryEndpoint, "myEndpoint")
 	t.Setenv(envVarDoguRegistryUsername, "user")
 	t.Setenv(envVarDoguRegistryPassword, "password")
-	t.Setenv(envVarDockerRegistry, `{"auths":{"your.private.registry.example.com":{"username":"myDockerUsername","password":"myDockerPassword","email":"jdoe@example.com","auth":"c3R...zE2"}}}`)
 
 	defer func() {
 		_ = os.Unsetenv(envVarNamespace)
 		_ = os.Unsetenv(envVarDoguRegistryEndpoint)
 		_ = os.Unsetenv(envVarDoguRegistryUsername)
 		_ = os.Unsetenv(envVarDoguRegistryPassword)
-		_ = os.Unsetenv(envVarDockerRegistry)
 	}()
 
 	for _, tt := range tests {

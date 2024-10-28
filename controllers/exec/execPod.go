@@ -107,7 +107,7 @@ func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1
 				},
 			},
 			ImagePullSecrets: []corev1.LocalObjectReference{
-				{Name: "k8s-dogu-operator-docker-registry"},
+				{Name: "ces-container-registries"},
 			},
 		},
 	}

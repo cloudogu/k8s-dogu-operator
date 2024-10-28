@@ -70,7 +70,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	upserter := resource.NewUpserter(client, doguResourceGenerator)
 
 	doguRegistrator := cesregistry.NewCESDoguRegistrator(doguVersionReg, doguDescriptorRepo)
-	imageRegistry := imageregistry.NewCraneContainerImageRegistry(config.DockerRegistry.Username, config.DockerRegistry.Password)
+	imageRegistry := imageregistry.NewCraneContainerImageRegistry()
 
 	return &ManagerSet{
 		RestConfig:            restConfig,
