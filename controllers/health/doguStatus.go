@@ -10,8 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguv1 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 )
 
 const statusUpdateEventReason = "HealthStatusUpdate"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	registryConfig "github.com/cloudogu/k8s-registry-lib/config"
 	registryErrors "github.com/cloudogu/k8s-registry-lib/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -14,10 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/serviceaccount"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 )
 
 const finalizerName = "dogu-finalizer"

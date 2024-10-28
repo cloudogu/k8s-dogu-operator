@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 )
 
 func Test_additionalImageGetter_ImageForKey(t *testing.T) {

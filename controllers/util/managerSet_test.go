@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 )
 
 func TestNewManagerSet(t *testing.T) {

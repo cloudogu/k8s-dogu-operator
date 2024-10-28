@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
@@ -21,9 +21,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	resConfig "github.com/cloudogu/k8s-registry-lib/config"
 	resErrors "github.com/cloudogu/k8s-registry-lib/errors"
 )

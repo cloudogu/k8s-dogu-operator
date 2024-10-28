@@ -10,8 +10,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
 )
 
 type DoguInterface interface {

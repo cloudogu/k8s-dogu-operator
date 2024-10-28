@@ -19,8 +19,8 @@ import (
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

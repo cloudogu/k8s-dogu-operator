@@ -15,8 +15,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	doguv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	doguv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 )
 
 const testNamespace = "test-namespace"

@@ -3,7 +3,7 @@
 package upgrade
 
 import (
-	ecoSystem "github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	ecoSystem "github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	mock "github.com/stretchr/testify/mock"
 )
 
