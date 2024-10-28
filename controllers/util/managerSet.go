@@ -2,11 +2,11 @@ package util
 
 import (
 	"fmt"
+	remotedogudescriptor "github.com/cloudogu/remote-dogu-descriptor-lib/repository"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-host-change/pkg/alias"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
@@ -56,12 +56,12 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	serviceAccountCreator := serviceaccount.NewCreator(configRepos.SensitiveDoguRepository, localDoguFetcher, commandExecutor, client, clientSet, config.Namespace)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguFetcher)
 
-	doguRemoteRegistry, err := cesremote.New(config.GetRemoteConfiguration(), config.GetRemoteCredentials())
+	doguRemoteRepository, err := remotedogudescriptor.NewRemoteDoguDescriptorRepository(config.GetRemoteConfiguration(), config.GetRemoteCredentials())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new remote dogu registry: %w", err)
+		return nil, fmt.Errorf("failed to create new remote dogu repository: %w", err)
 	}
 
-	resourceDoguFetcher := cesregistry.NewResourceDoguFetcher(client, doguRemoteRegistry)
+	resourceDoguFetcher := cesregistry.NewResourceDoguFetcher(client, doguRemoteRepository)
 
 	requirementsGenerator := resource.NewRequirementsGenerator(configRepos.DoguConfigRepository)
 	hostAliasGenerator := alias.NewHostAliasGenerator(configRepos.GlobalConfigRepository)
