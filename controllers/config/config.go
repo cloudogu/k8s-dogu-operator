@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	"os"
@@ -32,7 +31,6 @@ var (
 	envVarDoguRegistryUsername  = "DOGU_REGISTRY_USERNAME"
 	envVarDoguRegistryPassword  = "DOGU_REGISTRY_PASSWORD"
 	envVarDoguRegistryURLSchema = "DOGU_REGISTRY_URLSCHEMA"
-	envVarDockerRegistry        = "DOCKER_REGISTRY"
 	log                         = ctrl.Log.WithName("config")
 )
 
@@ -44,27 +42,12 @@ type DoguRegistryData struct {
 	URLSchema string `json:"urlschema"`
 }
 
-// DockerRegistrySecretData contains all registry login information from a Docker-JSON-config file.
-type DockerRegistrySecretData struct {
-	Auths map[string]DockerRegistryData `json:"auths"`
-}
-
-// DockerRegistryData contains all necessary data for the Docker registry.
-type DockerRegistryData struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
-	Auth     string `json:"auth"`
-}
-
 // OperatorConfig contains all configurable values for the dogu operator.
 type OperatorConfig struct {
 	// Namespace specifies the namespace that the operator is deployed to.
 	Namespace string `json:"namespace"`
 	// DoguRegistry contains all necessary data for the dogu registry.
 	DoguRegistry DoguRegistryData `json:"dogu_registry"`
-	// DockerRegistry contains all necessary data for the Docker registry.
-	DockerRegistry DockerRegistryData `json:"docker_registry"`
 	// Version contains the current version of the operator
 	Version *core.Version `json:"version"`
 }
@@ -99,17 +82,10 @@ func NewOperatorConfig(version string) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored dogu registry data! Using dogu registry %s", doguRegistryData.Endpoint))
 
-	dockerRegistryData, err := readDockerRegistryData()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read dogu registry data: %w", err)
-	}
-	log.Info("Found stored docker registry data!")
-
 	return &OperatorConfig{
-		Namespace:      namespace,
-		DoguRegistry:   doguRegistryData,
-		DockerRegistry: dockerRegistryData,
-		Version:        &parsedVersion,
+		Namespace:    namespace,
+		DoguRegistry: doguRegistryData,
+		Version:      &parsedVersion,
 	}, nil
 }
 
@@ -152,24 +128,6 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 		Password:  password,
 		URLSchema: urlschema,
 	}, nil
-}
-
-func readDockerRegistryData() (DockerRegistryData, error) {
-	dockerRegistryData, err := getEnvVar(envVarDockerRegistry)
-	if err != nil {
-		return DockerRegistryData{}, newEnvVarError(envVarDockerRegistry, err)
-	}
-
-	var secretData DockerRegistrySecretData
-	err = json.Unmarshal([]byte(dockerRegistryData), &secretData)
-	if err != nil {
-		return DockerRegistryData{}, fmt.Errorf("failed to unmarshal docker secret data: %w", err)
-	}
-
-	for _, data := range secretData.Auths {
-		return data, nil
-	}
-	return DockerRegistryData{}, fmt.Errorf("no docker registry data provided")
 }
 
 func getEnvVar(name string) (string, error) {

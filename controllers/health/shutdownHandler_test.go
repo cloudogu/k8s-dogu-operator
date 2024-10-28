@@ -2,7 +2,7 @@ package health
 
 import (
 	"context"
-	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

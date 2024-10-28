@@ -188,19 +188,19 @@ components:
 #    version: latest
 #    helmRepositoryNamespace: k8s
 
-# Credentials for the docker registry used by the components.
-# It is mandatory to set username and password.
-docker_registry_secret:
-  url: 192.168.56.10
-  username: ces-admin
-  password: ces-admin
+# Credentials for the container registries used by the dogus and components.
+# It is mandatory to set at least one registry configuration.
+container_registry_secrets:
+  - url: 192.168.56.10
+    username: ces-admin
+    password: ces-admin # base64 encoded
 
 # Credentials for the dogu registry used by the components.
 # It is mandatory to set username and password.
 dogu_registry_secret:
   url: https://192.168.56.10/nexus/repository/mirror
   username: ces-admin
-  password: ces-admin
+  password: ces-admin # base64 encoded
   urlschema: index
 
 # Credentials for the helm registry used by the components.
@@ -211,7 +211,7 @@ helm_registry_secret:
   plainHttp: "false"
   insecureTls: "true"
   username: ces-admin
-  password: ces-admin
+  password: ces-admin # base64 encoded
 
 setup_json: |
   {

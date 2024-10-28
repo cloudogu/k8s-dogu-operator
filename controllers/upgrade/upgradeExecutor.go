@@ -3,7 +3,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -15,11 +15,11 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
 )
 
 const (

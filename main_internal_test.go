@@ -2,19 +2,18 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -168,23 +167,10 @@ func Test_startDoguOperator(t *testing.T) {
 }
 
 func setupEnvironment(t *testing.T) {
-	dockerRegistry := config.DockerRegistrySecretData{
-		Auths: map[string]config.DockerRegistryData{
-			"my.registry": {
-				Username: "myusername",
-				Password: "mypassword",
-				Email:    "myemail",
-				Auth:     "myauth",
-			},
-		},
-	}
-	dockerRegistryString, err := json.Marshal(dockerRegistry)
-	require.NoError(t, err)
 	t.Setenv("NAMESPACE", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_ENDPOINT", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_USERNAME", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_PASSWORD", "mynamespace")
-	t.Setenv("DOCKER_REGISTRY", string(dockerRegistryString))
 }
 
 func setupOverrides() func() {

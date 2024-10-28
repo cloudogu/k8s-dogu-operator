@@ -5,7 +5,7 @@ package upgrade
 import (
 	context "context"
 
-	exec "github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
+	exec "github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	mock "github.com/stretchr/testify/mock"
 )
 

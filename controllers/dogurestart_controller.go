@@ -10,8 +10,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 )
 
 // DoguRestartReconciler reconciles a DoguRestart object

@@ -2,8 +2,8 @@ package resource
 
 import (
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -149,7 +149,7 @@ func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 			Labels: p.metaAllLabels,
 		},
 		Spec: corev1.PodSpec{
-			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "k8s-dogu-operator-docker-registry"}},
+			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "ces-container-registries"}},
 			Hostname:           p.theDoguResource.Name,
 			HostAliases:        p.specHostAliases,
 			Volumes:            p.specVolumes,

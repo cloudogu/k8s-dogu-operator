@@ -3,7 +3,7 @@ package imageregistry
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -18,33 +18,23 @@ var (
 
 // craneContainerImageRegistry is a component to interact with a container registry.
 // It is able to pull the config of an image and uses the crane library
-type craneContainerImageRegistry struct {
-	dockerUsername string
-	dockerPassword string
-}
+type craneContainerImageRegistry struct{}
 
 // NewCraneContainerImageRegistry creates a new instance of craneContainerImageRegistry
-func NewCraneContainerImageRegistry(dockerUsername string, dockerPassword string) *craneContainerImageRegistry {
-	return &craneContainerImageRegistry{
-		dockerUsername: dockerUsername,
-		dockerPassword: dockerPassword,
-	}
+func NewCraneContainerImageRegistry() *craneContainerImageRegistry {
+	return &craneContainerImageRegistry{}
 }
 
 // PullImageConfig pulls an image with the crane library. It uses basic auth for the registry authentication.
 func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error) {
 	ctxOpt := crane.WithContext(ctx)
-	authOpts := crane.WithAuth(&authn.Basic{
-		Username: i.dockerUsername,
-		Password: i.dockerPassword,
-	})
 
 	logger := log.FromContext(ctx)
 	logger.Info(fmt.Sprintf("Try to pull image manifest from image: [%s]", image))
 
 	var img imagev1.Image
 	err := retry.OnErrorWithLimit(MaxWaitDuration, retry.AlwaysRetryFunc, func() (err error) {
-		img, err = ImagePull(image, authOpts, ctxOpt)
+		img, err = ImagePull(image, crane.WithAuthFromKeychain(authn.DefaultKeychain), ctxOpt)
 		if err != nil {
 			logger.Error(err, "error on image pull: retry")
 			return err

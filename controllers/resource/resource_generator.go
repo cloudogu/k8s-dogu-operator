@@ -17,9 +17,9 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 )
 
 const (
