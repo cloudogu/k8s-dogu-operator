@@ -81,8 +81,12 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 
 	if developmentDoguMap == nil {
 		log.FromContext(ctx).Info("Fetching dogu from remote dogu registry...")
+		version, err := core.ParseVersion(doguResource.Spec.Version)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse version: %w", err)
+		}
 		qualifiedDoguVersion := remotedogudescriptor.QualifiedDoguVersion{
-			Version: core.Version{Raw: doguResource.Spec.Version},
+			Version: version,
 			Name: remotedogudescriptor.QualifiedDoguName{
 				SimpleName: remotedogudescriptor.SimpleDoguName(doguResource.Name),
 				Namespace:  remotedogudescriptor.DoguNamespace(doguResource.Namespace),
