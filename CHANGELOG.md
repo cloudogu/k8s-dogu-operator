@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.0.1] - 2024-10-29
+### Fixed
+- [#205] Use correct apiVersion `v1` in component patch template.
+
 ## [v3.0.0] - 2024-10-28
 ### Changed
 - [#201] **Breaking**: The name of secret containing the container registry configurations changed from `k8s-dogu-operator-docker-registry` to `ces-container-registries`.
