@@ -2,6 +2,7 @@ package cesregistry
 
 import (
 	"context"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
@@ -14,6 +15,10 @@ type doguVersionRegistry interface {
 
 type localDoguDescriptorRepository interface {
 	dogu.LocalDoguDescriptorRepository
+}
+
+type remoteDoguDescriptorRepository interface {
+	cescommons.RemoteDoguDescriptorRepository
 }
 
 // LocalDoguFetcher includes functionality to search the local dogu registry for a dogu.

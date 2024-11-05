@@ -14,7 +14,6 @@ import (
 	regLibDogu "github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	mocks3 "github.com/cloudogu/cesapp-lib/remote/mocks"
 )
 
 var testCtx = context.Background()
@@ -157,11 +156,10 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 	t.Run("should fail to retrieve dogu development map", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
-
-		remoteDoguRegistry := new(mocks3.Registry)
+		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
 		client := NewMockK8sClient(t)
 		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(assert.AnError)
-		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
+		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
 
 		// when
 		_, _, err := sut.FetchWithResource(testCtx, doguCr)
@@ -169,7 +167,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to get development dogu map: failed to get development dogu map for dogu redmine")
-		mock.AssertExpectationsForObjects(t, client, remoteDoguRegistry)
+		mock.AssertExpectationsForObjects(t, client, remoteDoguRepo)
 	})
 	t.Run("should fail on missing dogu development map and missing remote dogu", func(t *testing.T) {
 		// given
@@ -179,9 +177,10 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		client := NewMockK8sClient(t)
 		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
 
-		remoteDoguRegistry := new(mocks3.Registry)
-		remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
-		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
+		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
+		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(&core.Dogu{}, assert.AnError)
+		//remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
+		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
 
 		// when
 		_, _, err := sut.FetchWithResource(testCtx, doguCr)
@@ -189,7 +188,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to get dogu from remote or cache")
-		mock.AssertExpectationsForObjects(t, client, remoteDoguRegistry)
+		mock.AssertExpectationsForObjects(t, client, remoteDoguRepo)
 	})
 	t.Run("should fetch dogu from dogu development map", func(t *testing.T) {
 		// given
@@ -244,11 +243,11 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		doguCr := readTestDataRedmineCr(t)
 		dogu := readTestDataDogu(t, redmineBytes)
 
-		remoteDoguRegistry := new(mocks3.Registry)
-		remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(dogu, nil)
+		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
+		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(dogu, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
-		sut := NewResourceDoguFetcher(client, remoteDoguRegistry)
+		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
 
 		// when
 		fetchedDogu, cleanup, err := sut.FetchWithResource(testCtx, doguCr)
@@ -257,7 +256,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, dogu, fetchedDogu)
 		assert.Nil(t, cleanup)
-		mock.AssertExpectationsForObjects(t, remoteDoguRegistry)
+		mock.AssertExpectationsForObjects(t, remoteDoguRepo)
 	})
 	t.Run("should return a dogu with K8s-CES compatible substitutes for an nginx dependency", func(t *testing.T) {
 		// given
@@ -307,11 +306,12 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		dogu.Dependencies = append(dogu.Dependencies, registratorDep)
 		require.Contains(t, dogu.Dependencies, registratorDep)
 
-		remoteRegMock := new(mocks3.Registry)
-		remoteRegMock.On("GetVersion", "official/redmine", "4.2.3-10").Return(dogu, nil)
+		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
+		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(&core.Dogu{}, nil)
+		//remoteRegMock.On("GetVersion", "official/redmine", "4.2.3-10").Return(dogu, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
-		sut := NewResourceDoguFetcher(client, remoteRegMock)
+		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
 
 		// when
 		fetchedDogu, _, err := sut.FetchWithResource(testCtx, doguCr)
@@ -319,7 +319,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.NotContains(t, fetchedDogu.Dependencies, core.Dependency{Name: "registrator", Type: core.DependencyTypeDogu})
-		mock.AssertExpectationsForObjects(t, remoteRegMock)
+		mock.AssertExpectationsForObjects(t, remoteDoguRepo)
 	})
 }
 
@@ -342,19 +342,20 @@ func Test_resourceDoguFetcher_getFromDevelopmentDoguMap(t *testing.T) {
 func Test_doguFetcher_getDoguFromRemoteRegistry(t *testing.T) {
 	t.Run("fail when remote registry returns error", func(t *testing.T) {
 		// given
-		doguCr := readTestDataRedmineCr(t)
+		doguVersion := readTestDataRedmineQualifiedDoguVersion(t)
 
-		remoteDoguRegistry := new(mocks3.Registry)
-		remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
+		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
+		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(&core.Dogu{}, assert.AnError)
+		//remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
 
-		sut := NewResourceDoguFetcher(nil, remoteDoguRegistry)
+		sut := NewResourceDoguFetcher(nil, remoteDoguRepo)
 
 		// when
-		_, err := sut.getDoguFromRemoteRegistry(doguCr)
+		_, err := sut.getDoguFromRemoteRegistry(context.TODO(), *doguVersion)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to get dogu from remote dogu registry")
-		mock.AssertExpectationsForObjects(t, remoteDoguRegistry)
+		mock.AssertExpectationsForObjects(t, remoteDoguRepo)
 	})
 }

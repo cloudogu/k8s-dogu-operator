@@ -9,7 +9,7 @@ require (
 	github.com/cloudogu/k8s-apply-lib v0.4.2
 	github.com/cloudogu/k8s-host-change v0.4.0
 	github.com/cloudogu/k8s-registry-lib v0.4.1
-	github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241025132346-14cd944b3b95
+	github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241029141608-9f338268fe6c
 	github.com/dlclark/regexp2 v1.11.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
