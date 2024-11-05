@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
