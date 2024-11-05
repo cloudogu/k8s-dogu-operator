@@ -15,11 +15,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 )
 
 func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
-	imageRegistry := imageregistry.NewCraneContainerImageRegistry("user", "password")
+	imageRegistry := imageregistry.NewCraneContainerImageRegistry()
 
 	t.Run("successfully pulling image", func(t *testing.T) {
 		server, src := setupCraneRegistry(t)

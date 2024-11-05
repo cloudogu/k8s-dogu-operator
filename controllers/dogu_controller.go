@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/logging"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 

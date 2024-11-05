@@ -12,7 +12,7 @@ import (
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/stretchr/testify/require"
 )
 

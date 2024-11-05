@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 )
 
 // FinishedState is the state where the executor will finish his execution.

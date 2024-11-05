@@ -8,10 +8,10 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v2/retry"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -107,7 +107,7 @@ func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1
 				},
 			},
 			ImagePullSecrets: []corev1.LocalObjectReference{
-				{Name: "k8s-dogu-operator-docker-registry"},
+				{Name: "ces-container-registries"},
 			},
 		},
 	}

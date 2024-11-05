@@ -1,10 +1,14 @@
+global:
+  imagePullSecrets:
+    - name: "ces-container-registries"
 additionalImages:
   # chownInitImage will be used to change file permissions on writeable dogu volumes
   chownInitImage: busybox:1.36
 controllerManager:
   image:
+    registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 2.3.0
+    tag: 3.0.1
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug
@@ -21,7 +25,8 @@ controllerManager:
     memory: 64Mi
 kubeRbacProxy:
   image:
-    repository: gcr.io/kubebuilder/kube-rbac-proxy
+    registry: gcr.io
+    repository: kubebuilder/kube-rbac-proxy
     tag: v0.14.1
   resourceLimits:
     cpu: 500m

@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

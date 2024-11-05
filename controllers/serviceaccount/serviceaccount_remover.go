@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 )
 
 // Remover removes a dogu's service account.

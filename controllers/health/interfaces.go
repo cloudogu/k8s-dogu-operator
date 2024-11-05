@@ -3,7 +3,7 @@ package health
 import (
 	"context"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"

@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"context"
-	"github.com/cloudogu/k8s-dogu-operator/v2/api/ecoSystem"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/util"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/mock"
 	"testing"
 
@@ -21,9 +21,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	v2 "github.com/cloudogu/k8s-dogu-operator/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v2/controllers/upgrade"
+	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 )
 
 const defaultNamespace = ""
