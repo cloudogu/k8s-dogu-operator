@@ -3,18 +3,17 @@ package cesregistry
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/cesapp-lib/core"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
-
-	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 )
 
 // localDoguFetcher abstracts the access to dogu structs from the local dogu registry.
@@ -93,19 +92,19 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 			},
 		}
 
-		dogu, err := rdf.getDoguFromRemoteRegistry(ctx, qualifiedDoguVersion)
+		remoteDogu, err := rdf.getDoguFromRemoteRegistry(ctx, qualifiedDoguVersion)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get dogu from remote or cache: %w", err)
 		}
 
-		patchedDogu := replaceK8sIncompatibleDoguDependencies(dogu)
+		patchedDogu := replaceK8sIncompatibleDoguDependencies(remoteDogu)
 		return patchedDogu, nil, err
 	}
 
 	log.FromContext(ctx).Info("Fetching dogu from development dogu map...")
-	dogu, err := rdf.getFromDevelopmentDoguMap(developmentDoguMap)
+	remoteDogu, err := rdf.getFromDevelopmentDoguMap(developmentDoguMap)
 
-	patchedDogu := replaceK8sIncompatibleDoguDependencies(dogu)
+	patchedDogu := replaceK8sIncompatibleDoguDependencies(remoteDogu)
 	return patchedDogu, developmentDoguMap, err
 }
 
@@ -126,13 +125,13 @@ func (rdf *resourceDoguFetcher) getDevelopmentDoguMap(ctx context.Context, doguR
 
 func (rdf *resourceDoguFetcher) getFromDevelopmentDoguMap(doguConfigMap *k8sv2.DevelopmentDoguMap) (*core.Dogu, error) {
 	jsonStr := doguConfigMap.Data["dogu.json"]
-	dogu := &core.Dogu{}
-	err := json.Unmarshal([]byte(jsonStr), dogu)
+	configMapDogu := &core.Dogu{}
+	err := json.Unmarshal([]byte(jsonStr), configMapDogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal custom dogu descriptor: %w", err)
 	}
 
-	return dogu, nil
+	return configMapDogu, nil
 }
 
 func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(context context.Context, version cescommons.QualifiedDoguVersion) (*core.Dogu, error) {
@@ -150,7 +149,7 @@ func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(context context.Contex
 }
 
 func isConnectionError(err error) bool {
-	return strings.Contains(err.Error(), cescommons.ConnectionError.Error())
+	return errors.Is(err, cescommons.ConnectionError)
 }
 
 func replaceK8sIncompatibleDoguDependencies(dogu *core.Dogu) *core.Dogu {
