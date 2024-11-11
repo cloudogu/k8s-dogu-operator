@@ -179,7 +179,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
 		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(&core.Dogu{}, assert.AnError)
-		//remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
+
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
 
 		// when
@@ -308,7 +308,6 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
 		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(&core.Dogu{}, nil)
-		//remoteRegMock.On("GetVersion", "official/redmine", "4.2.3-10").Return(dogu, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
@@ -345,8 +344,7 @@ func Test_doguFetcher_getDoguFromRemoteRegistry(t *testing.T) {
 		doguVersion := readTestDataRedmineQualifiedDoguVersion(t)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(&core.Dogu{}, assert.AnError)
-		//remoteDoguRegistry.On("GetVersion", doguCr.Spec.Name, doguCr.Spec.Version).Return(nil, assert.AnError)
+		remoteDoguRepo.EXPECT().Get(context.TODO(), *doguVersion).Return(&core.Dogu{}, assert.AnError)
 
 		sut := NewResourceDoguFetcher(nil, remoteDoguRepo)
 
