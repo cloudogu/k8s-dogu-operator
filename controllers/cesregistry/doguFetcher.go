@@ -3,9 +3,9 @@ package cesregistry
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
@@ -84,11 +84,11 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to parse version: %w", err)
 		}
-		qualifiedDoguVersion := cescommons.QualifiedDoguVersion{
+		qualifiedDoguVersion := cescommons.QualifiedVersion{
 			Version: version,
-			Name: cescommons.QualifiedDoguName{
-				SimpleName: cescommons.SimpleDoguName(doguResource.Name),
-				Namespace:  cescommons.DoguNamespace(doguResource.Namespace),
+			Name: cescommons.QualifiedName{
+				SimpleName: cescommons.SimpleName(doguResource.Name),
+				Namespace:  cescommons.Namespace(doguResource.Namespace),
 			},
 		}
 
@@ -134,9 +134,9 @@ func (rdf *resourceDoguFetcher) getFromDevelopmentDoguMap(doguConfigMap *k8sv2.D
 	return configMapDogu, nil
 }
 
-func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(context context.Context, version cescommons.QualifiedDoguVersion) (*core.Dogu, error) {
+func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(context context.Context, version cescommons.QualifiedVersion) (*core.Dogu, error) {
 	remoteDogu := &core.Dogu{}
-	err := retry.OnError(maxTries, isConnectionError, func() error {
+	err := retry.OnError(maxTries, cloudoguerrors.IsConnectionError, func() error {
 		var err error
 		remoteDogu, err = rdf.doguRemoteRepository.Get(context, version)
 		return err
@@ -146,10 +146,6 @@ func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(context context.Contex
 	}
 
 	return remoteDogu, nil
-}
-
-func isConnectionError(err error) bool {
-	return errors.Is(err, cescommons.ConnectionError)
 }
 
 func replaceK8sIncompatibleDoguDependencies(dogu *core.Dogu) *core.Dogu {

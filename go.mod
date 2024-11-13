@@ -4,12 +4,12 @@ go 1.23.2
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
-	github.com/cloudogu/ces-commons-lib v0.0.0-20241029140430-e2298b441772
+	github.com/cloudogu/ces-commons-lib v0.0.0-20241111150738-d173c9acc4ae
 	github.com/cloudogu/cesapp-lib v0.14.2
 	github.com/cloudogu/k8s-apply-lib v0.4.2
 	github.com/cloudogu/k8s-host-change v0.4.0
 	github.com/cloudogu/k8s-registry-lib v0.4.1
-	github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241029141608-9f338268fe6c
+	github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241113103735-6765685099f0
 	github.com/dlclark/regexp2 v1.11.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0

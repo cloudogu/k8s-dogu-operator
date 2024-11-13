@@ -38,12 +38,12 @@ func readTestDataRedmineCr(t *testing.T) *k8sv2.Dogu {
 	return redmineCr
 }
 
-func readTestDataRedmineQualifiedDoguVersion(t *testing.T) *cescommons.QualifiedDoguVersion {
+func readTestDataRedmineQualifiedDoguVersion(t *testing.T) *cescommons.QualifiedVersion {
 	t.Helper()
 
 	version, err := cesappcore.ParseVersion("1.0.0")
-	redmineQualifiedDoguVersion := &cescommons.QualifiedDoguVersion{
-		Name: cescommons.QualifiedDoguName{
+	redmineQualifiedDoguVersion := &cescommons.QualifiedVersion{
+		Name: cescommons.QualifiedName{
 			SimpleName: "redmine",
 			Namespace:  "official",
 		},

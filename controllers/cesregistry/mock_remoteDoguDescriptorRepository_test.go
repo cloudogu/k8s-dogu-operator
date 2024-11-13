@@ -25,7 +25,7 @@ func (_m *mockRemoteDoguDescriptorRepository) EXPECT() *mockRemoteDoguDescriptor
 }
 
 // Get provides a mock function with given fields: _a0, _a1
-func (_m *mockRemoteDoguDescriptorRepository) Get(_a0 context.Context, _a1 dogu.QualifiedDoguVersion) (*core.Dogu, error) {
+func (_m *mockRemoteDoguDescriptorRepository) Get(_a0 context.Context, _a1 dogu.QualifiedVersion) (*core.Dogu, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
@@ -34,10 +34,10 @@ func (_m *mockRemoteDoguDescriptorRepository) Get(_a0 context.Context, _a1 dogu.
 
 	var r0 *core.Dogu
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, dogu.QualifiedDoguVersion) (*core.Dogu, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, dogu.QualifiedVersion) (*core.Dogu, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, dogu.QualifiedDoguVersion) *core.Dogu); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, dogu.QualifiedVersion) *core.Dogu); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
@@ -45,7 +45,7 @@ func (_m *mockRemoteDoguDescriptorRepository) Get(_a0 context.Context, _a1 dogu.
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, dogu.QualifiedDoguVersion) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, dogu.QualifiedVersion) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -61,14 +61,14 @@ type mockRemoteDoguDescriptorRepository_Get_Call struct {
 
 // Get is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 dogu.QualifiedDoguVersion
+//   - _a1 dogu.QualifiedVersion
 func (_e *mockRemoteDoguDescriptorRepository_Expecter) Get(_a0 interface{}, _a1 interface{}) *mockRemoteDoguDescriptorRepository_Get_Call {
 	return &mockRemoteDoguDescriptorRepository_Get_Call{Call: _e.mock.On("Get", _a0, _a1)}
 }
 
-func (_c *mockRemoteDoguDescriptorRepository_Get_Call) Run(run func(_a0 context.Context, _a1 dogu.QualifiedDoguVersion)) *mockRemoteDoguDescriptorRepository_Get_Call {
+func (_c *mockRemoteDoguDescriptorRepository_Get_Call) Run(run func(_a0 context.Context, _a1 dogu.QualifiedVersion)) *mockRemoteDoguDescriptorRepository_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(dogu.QualifiedDoguVersion))
+		run(args[0].(context.Context), args[1].(dogu.QualifiedVersion))
 	})
 	return _c
 }
@@ -78,13 +78,13 @@ func (_c *mockRemoteDoguDescriptorRepository_Get_Call) Return(_a0 *core.Dogu, _a
 	return _c
 }
 
-func (_c *mockRemoteDoguDescriptorRepository_Get_Call) RunAndReturn(run func(context.Context, dogu.QualifiedDoguVersion) (*core.Dogu, error)) *mockRemoteDoguDescriptorRepository_Get_Call {
+func (_c *mockRemoteDoguDescriptorRepository_Get_Call) RunAndReturn(run func(context.Context, dogu.QualifiedVersion) (*core.Dogu, error)) *mockRemoteDoguDescriptorRepository_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetLatest provides a mock function with given fields: _a0, _a1
-func (_m *mockRemoteDoguDescriptorRepository) GetLatest(_a0 context.Context, _a1 dogu.QualifiedDoguName) (*core.Dogu, error) {
+func (_m *mockRemoteDoguDescriptorRepository) GetLatest(_a0 context.Context, _a1 dogu.QualifiedName) (*core.Dogu, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
@@ -93,10 +93,10 @@ func (_m *mockRemoteDoguDescriptorRepository) GetLatest(_a0 context.Context, _a1
 
 	var r0 *core.Dogu
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, dogu.QualifiedDoguName) (*core.Dogu, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, dogu.QualifiedName) (*core.Dogu, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, dogu.QualifiedDoguName) *core.Dogu); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, dogu.QualifiedName) *core.Dogu); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
@@ -104,7 +104,7 @@ func (_m *mockRemoteDoguDescriptorRepository) GetLatest(_a0 context.Context, _a1
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, dogu.QualifiedDoguName) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, dogu.QualifiedName) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -120,14 +120,14 @@ type mockRemoteDoguDescriptorRepository_GetLatest_Call struct {
 
 // GetLatest is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 dogu.QualifiedDoguName
+//   - _a1 dogu.QualifiedName
 func (_e *mockRemoteDoguDescriptorRepository_Expecter) GetLatest(_a0 interface{}, _a1 interface{}) *mockRemoteDoguDescriptorRepository_GetLatest_Call {
 	return &mockRemoteDoguDescriptorRepository_GetLatest_Call{Call: _e.mock.On("GetLatest", _a0, _a1)}
 }
 
-func (_c *mockRemoteDoguDescriptorRepository_GetLatest_Call) Run(run func(_a0 context.Context, _a1 dogu.QualifiedDoguName)) *mockRemoteDoguDescriptorRepository_GetLatest_Call {
+func (_c *mockRemoteDoguDescriptorRepository_GetLatest_Call) Run(run func(_a0 context.Context, _a1 dogu.QualifiedName)) *mockRemoteDoguDescriptorRepository_GetLatest_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(dogu.QualifiedDoguName))
+		run(args[0].(context.Context), args[1].(dogu.QualifiedName))
 	})
 	return _c
 }
@@ -137,7 +137,7 @@ func (_c *mockRemoteDoguDescriptorRepository_GetLatest_Call) Return(_a0 *core.Do
 	return _c
 }
 
-func (_c *mockRemoteDoguDescriptorRepository_GetLatest_Call) RunAndReturn(run func(context.Context, dogu.QualifiedDoguName) (*core.Dogu, error)) *mockRemoteDoguDescriptorRepository_GetLatest_Call {
+func (_c *mockRemoteDoguDescriptorRepository_GetLatest_Call) RunAndReturn(run func(context.Context, dogu.QualifiedName) (*core.Dogu, error)) *mockRemoteDoguDescriptorRepository_GetLatest_Call {
 	_c.Call.Return(run)
 	return _c
 }
