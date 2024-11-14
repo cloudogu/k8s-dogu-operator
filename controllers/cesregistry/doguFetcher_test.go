@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/cloudogu/ces-commons-lib/dogu"
 	regLibDogu "github.com/cloudogu/k8s-registry-lib/dogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -178,7 +179,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(&core.Dogu{}, assert.AnError)
+		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: ""}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, assert.AnError)
 
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
 
@@ -241,10 +242,10 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 	t.Run("should fetch dogu from remote registry", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
-		dogu := readTestDataDogu(t, redmineBytes)
+		testDogu := readTestDataDogu(t, redmineBytes)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(dogu, nil)
+		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: ""}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(testDogu, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
@@ -254,7 +255,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, dogu, fetchedDogu)
+		assert.Equal(t, testDogu, fetchedDogu)
 		assert.Nil(t, cleanup)
 		mock.AssertExpectationsForObjects(t, remoteDoguRepo)
 	})
@@ -297,17 +298,17 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 	t.Run("should return a dogu that misses a no-substitute dependency", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
-		dogu := readTestDataDogu(t, redmineBytes)
+		testDogu := readTestDataDogu(t, redmineBytes)
 		registratorDep := core.Dependency{
 			Name:    "registrator",
 			Version: "",
 			Type:    core.DependencyTypeDogu,
 		}
-		dogu.Dependencies = append(dogu.Dependencies, registratorDep)
-		require.Contains(t, dogu.Dependencies, registratorDep)
+		testDogu.Dependencies = append(testDogu.Dependencies, registratorDep)
+		require.Contains(t, testDogu.Dependencies, registratorDep)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(mock.Anything, mock.Anything).Return(&core.Dogu{}, nil)
+		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: ""}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
