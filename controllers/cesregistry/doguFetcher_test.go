@@ -179,7 +179,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: ""}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, assert.AnError)
+		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, assert.AnError)
 
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
 
@@ -245,7 +245,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		testDogu := readTestDataDogu(t, redmineBytes)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: ""}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(testDogu, nil)
+		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(testDogu, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
@@ -308,7 +308,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		require.Contains(t, testDogu.Dependencies, registratorDep)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: ""}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, nil)
+		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
