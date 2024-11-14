@@ -16,6 +16,8 @@ github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UF
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cloudogu/ces-commons-lib v0.0.0-20241111150738-d173c9acc4ae h1:h/6MJEgy+SkNs6m+vXXzCQBhsYK6QTQYRKYYLiMI6Pw=
 github.com/cloudogu/ces-commons-lib v0.0.0-20241111150738-d173c9acc4ae/go.mod h1:Ldi/dVhgrZfsPkB2zaXs8IoT7ExhWvS36vcwx1ems2I=
+github.com/cloudogu/ces-commons-lib v0.0.0-20241113093231-55d3fef793db h1:PSaAXKQYc1OufKznP3/Sm2UY5QylgNxura6kV6zKXwg=
+github.com/cloudogu/ces-commons-lib v0.0.0-20241113093231-55d3fef793db/go.mod h1:Ldi/dVhgrZfsPkB2zaXs8IoT7ExhWvS36vcwx1ems2I=
 github.com/cloudogu/cesapp-lib v0.14.2 h1:AtRsQbS31d71DY7DXUhzwO07ZFI0Gz2+IHOhyeJdBhc=
 github.com/cloudogu/cesapp-lib v0.14.2/go.mod h1:52PfkrFYg54FjF8Se8P9b1zOfAhmg3PBFKr7YfS+Q+8=
 github.com/cloudogu/k8s-apply-lib v0.4.2 h1:D5hTYvIZya+tAyGCUGaZ1T83otvpQwzrZXz5JPHQQ5M=
@@ -26,6 +28,10 @@ github.com/cloudogu/k8s-registry-lib v0.4.1 h1:V5fOMIYYH1XqwNQ0NjTWViD1G4R146KQV
 github.com/cloudogu/k8s-registry-lib v0.4.1/go.mod h1:OHIrWCAOcc4nlmBK8G+vdHHJ8vo5QQvKCKIGTiFwYBo=
 github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241113103735-6765685099f0 h1:vKFL0jmjQMo0ANUVsOUYo0ojb0+X0jYrNck+5D4NrH0=
 github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241113103735-6765685099f0/go.mod h1:kXHuvgV8bxzlZI6pwQCNIAPid5Cne7axpa8/tRfrYw4=
+github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241113151358-e8464649dcc7 h1:UfYv6JaUD8Zis3L6f1ANXXb5yokLACsFuDOnOUmKBfE=
+github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241113151358-e8464649dcc7/go.mod h1:ufhIwXRU9GR276V0fQZmSXPWhN5yWTZA43g8DZ/Ut9M=
+github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241114080558-b0ab14a345e7 h1:db30yLYndNYVC2nwB4oyPgz7ph5B/7KvoLWyHp32yFM=
+github.com/cloudogu/remote-dogu-descriptor-lib v0.0.0-20241114080558-b0ab14a345e7/go.mod h1:ufhIwXRU9GR276V0fQZmSXPWhN5yWTZA43g8DZ/Ut9M=
 github.com/cloudogu/retry-lib v0.0.0-20241113091527-18b2721c6832 h1:UM3ixTDFJ/CRYmXimSavn2J7CskpMuQoskJUtUp31bo=
 github.com/cloudogu/retry-lib v0.0.0-20241113091527-18b2721c6832/go.mod h1:iG9y6zx8oJZT5ULtl9koZkYJLRsqam/2mTU+rgjxQ0g=
 github.com/cloudogu/retry-lib v0.0.0-20241113131535-ecc1897c3880 h1:X/Ha/EqO7LtE8ketTyPQcSxFZPQ6/BVxADwKcDY0kpU=
