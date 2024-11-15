@@ -95,16 +95,13 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to parse version: %w", err)
 		}
-		namespace, name, err := getNamespaceAndNameOfDogu(doguResource)
+		qualifiedName, err := cescommons.QualifiedNameFromString(doguResource.Spec.Name)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to parse namespace and name: %w", err)
 		}
 		qualifiedDoguVersion := cescommons.QualifiedVersion{
 			Version: version,
-			Name: cescommons.QualifiedName{
-				SimpleName: cescommons.SimpleName(name),
-				Namespace:  cescommons.Namespace(namespace),
-			},
+			Name:    qualifiedName,
 		}
 
 		remoteDogu, err := rdf.getDoguFromRemoteRegistry(ctx, qualifiedDoguVersion)
@@ -197,12 +194,4 @@ func patchDependencies(deps []core.Dependency) []core.Dependency {
 		patchedDependencies = append(patchedDependencies, doguDep)
 	}
 	return patchedDependencies
-}
-
-func getNamespaceAndNameOfDogu(doguResource *k8sv2.Dogu) (string, string, error) {
-	splitName := strings.Split(doguResource.Spec.Name, "/")
-	if len(splitName) != 2 {
-		return "", "", fmt.Errorf("dogu name needs to be in the form 'namespace/dogu' but is '%s'", doguResource.Spec.Name)
-	}
-	return splitName[0], splitName[1], nil
 }
