@@ -17,6 +17,7 @@ controllerManager:
     doguRestartSuccessfulHistoryLimit: 3
     doguRestartFailedHistoryLimit: 3
     doguRestartGarbageCollectionDisabled: false
+    doguDescriptorMaxRetries: 20
   resourceLimits:
     cpu: 500m
     memory: 128Mi

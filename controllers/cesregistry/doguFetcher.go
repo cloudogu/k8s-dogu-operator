@@ -10,11 +10,13 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/retry-lib/retry"
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
+	"strconv"
 )
 
 // localDoguFetcher abstracts the access to dogu structs from the local dogu registry.
@@ -25,11 +27,12 @@ type localDoguFetcher struct {
 
 // localDoguFetcher abstracts the access to dogu structs from either the remote dogu registry or from a local DevelopmentDoguMap.
 type resourceDoguFetcher struct {
-	client               client.Client
-	doguRemoteRepository remoteDoguDescriptorRepository
+	client                   client.Client
+	doguRemoteRepository     remoteDoguDescriptorRepository
+	doguDescriptorMaxRetries int
 }
 
-var maxTries = 20
+var defaultMaxTries = 20
 
 // NewLocalDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
 func NewLocalDoguFetcher(doguVersionRegistry dogu.DoguVersionRegistry, doguDescriptorRepo dogu.LocalDoguDescriptorRepository) *localDoguFetcher {
@@ -38,7 +41,14 @@ func NewLocalDoguFetcher(doguVersionRegistry dogu.DoguVersionRegistry, doguDescr
 
 // NewResourceDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
 func NewResourceDoguFetcher(client client.Client, doguRemoteRepository remoteDoguDescriptorRepository) *resourceDoguFetcher {
-	return &resourceDoguFetcher{client: client, doguRemoteRepository: doguRemoteRepository}
+	const doguDescriptorMaxRetriesEnv = "DOGU_DESCRIPTOR_MAX_RETRIES"
+	maxRetriesString, found := os.LookupEnv(doguDescriptorMaxRetriesEnv)
+	maxRetries, err := strconv.Atoi(maxRetriesString)
+	if !found || err != nil {
+		logrus.Warningf("failed to read %s environment variable, using default value of %d", doguDescriptorMaxRetriesEnv, defaultMaxTries)
+		maxRetries = defaultMaxTries
+	}
+	return &resourceDoguFetcher{client: client, doguRemoteRepository: doguRemoteRepository, doguDescriptorMaxRetries: maxRetries}
 }
 
 // FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
@@ -141,7 +151,7 @@ func (rdf *resourceDoguFetcher) getFromDevelopmentDoguMap(doguConfigMap *k8sv2.D
 
 func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(context context.Context, version cescommons.QualifiedVersion) (*core.Dogu, error) {
 	remoteDogu := &core.Dogu{}
-	err := retry.OnError(maxTries, cloudoguerrors.IsConnectionError, func() error {
+	err := retry.OnError(rdf.doguDescriptorMaxRetries, cloudoguerrors.IsConnectionError, func() error {
 		var err error
 		remoteDogu, err = rdf.doguRemoteRepository.Get(context, version)
 		return err
