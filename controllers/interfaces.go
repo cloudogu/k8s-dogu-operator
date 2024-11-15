@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"context"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/cesapp-lib/remote"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
@@ -189,12 +189,10 @@ type controllerManager interface {
 	manager.Manager
 }
 
-// remoteRegistry is able to manage the remote dogu registry.
-//
 //nolint:unused
 //goland:noinspection GoUnusedType
-type remoteRegistry interface {
-	remote.Registry
+type remoteDoguDescriptorRepository interface {
+	cescommons.RemoteDoguDescriptorRepository
 }
 
 // commandExecutor is used to execute commands in pods and dogus
