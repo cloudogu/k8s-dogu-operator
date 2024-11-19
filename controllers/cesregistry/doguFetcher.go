@@ -34,6 +34,8 @@ type resourceDoguFetcher struct {
 
 var defaultMaxTries = 20
 
+const doguDescriptorMaxRetriesEnv = "DOGU_DESCRIPTOR_MAX_RETRIES"
+
 // NewLocalDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
 func NewLocalDoguFetcher(doguVersionRegistry dogu.DoguVersionRegistry, doguDescriptorRepo dogu.LocalDoguDescriptorRepository) *localDoguFetcher {
 	return &localDoguFetcher{doguVersionRegistry: doguVersionRegistry, doguRepository: doguDescriptorRepo}
@@ -41,7 +43,6 @@ func NewLocalDoguFetcher(doguVersionRegistry dogu.DoguVersionRegistry, doguDescr
 
 // NewResourceDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
 func NewResourceDoguFetcher(client client.Client, doguRemoteRepository remoteDoguDescriptorRepository) *resourceDoguFetcher {
-	const doguDescriptorMaxRetriesEnv = "DOGU_DESCRIPTOR_MAX_RETRIES"
 	maxRetriesString, found := os.LookupEnv(doguDescriptorMaxRetriesEnv)
 	maxRetries, err := strconv.Atoi(maxRetriesString)
 	if !found || err != nil {
