@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	registryErrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	registryConfig "github.com/cloudogu/k8s-registry-lib/config"
-	registryErrors "github.com/cloudogu/k8s-registry-lib/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -126,13 +126,13 @@ func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, 
 	stateConfigMap.Data = newData
 
 	// Update the ConfigMap
-	//_, err = m.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+	// _, err = m.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
 	err = m.client.Update(ctx, stateConfigMap, &client.UpdateOptions{})
 	return err
 }
 
 func (m *doguDeleteManager) removeConfigs(ctx context.Context, doguName string) error {
-	simpleDoguName := registryConfig.SimpleDoguName(doguName)
+	simpleDoguName := cescommons.SimpleName(doguName)
 
 	var err error
 

@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
+	"github.com/cloudogu/retry-lib/retry"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

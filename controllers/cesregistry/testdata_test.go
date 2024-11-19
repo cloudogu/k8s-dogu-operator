@@ -3,6 +3,7 @@ package cesregistry
 import (
 	_ "embed"
 	"encoding/json"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"testing"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
@@ -35,6 +36,24 @@ func readTestDataRedmineCr(t *testing.T) *k8sv2.Dogu {
 	}
 
 	return redmineCr
+}
+
+func readTestDataRedmineQualifiedDoguVersion(t *testing.T) *cescommons.QualifiedVersion {
+	t.Helper()
+
+	version, err := cesappcore.ParseVersion("1.0.0")
+	redmineQualifiedDoguVersion := &cescommons.QualifiedVersion{
+		Name: cescommons.QualifiedName{
+			SimpleName: "redmine",
+			Namespace:  "official",
+		},
+		Version: version,
+	}
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return redmineQualifiedDoguVersion
 }
 
 func readDoguDescriptorConfigMap(t *testing.T, descriptorBytes []byte) *k8sv2.DevelopmentDoguMap {

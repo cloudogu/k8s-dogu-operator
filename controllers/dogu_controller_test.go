@@ -871,7 +871,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(nil)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Installation", "%s successful.", "Installation").Return()
@@ -898,7 +898,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(assert.AnError)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Warning", "ErrInstallation", "%s failed. Reason: %s.", "Installation", assert.AnError.Error()).Return()
@@ -925,7 +925,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(assert.AnError)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Warning", "ErrInstallation", "%s failed. Reason: %s.", "Installation", assert.AnError.Error()).Return()
@@ -954,7 +954,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().Install(testCtx, doguResource).Return(nil)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Installation", "%s successful.", "Installation").Return()
@@ -981,7 +981,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().Upgrade(testCtx, doguResource).Return(nil)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Upgrading", "%s successful.", "Upgrade").Return()
@@ -1008,7 +1008,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().Delete(testCtx, doguResource).Return(nil)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "Deinstallation", "%s successful.", "Deinstallation").Return()
@@ -1035,7 +1035,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().SetDoguDataVolumeSize(testCtx, doguResource).Return(nil)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "VolumeExpansion", "%s successful.", "VolumeExpansion").Return()
@@ -1062,7 +1062,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().SetDoguAdditionalIngressAnnotations(testCtx, doguResource).Return(nil)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "AdditionalIngressAnnotationsChange", "%s successful.", "AdditionalIngressAnnotationsChange").Return()
@@ -1106,7 +1106,7 @@ func Test_doguReconciler_executeRequiredOperation(t *testing.T) {
 			Namespace: "ecosystem",
 		}, Status: k8sv2.DoguStatus{Status: k8sv2.DoguStatusNotInstalled}}
 
-		mockDoguManager := NewMockDoguManager(t)
+		mockDoguManager := NewMockCombinedDoguManager(t)
 		mockDoguManager.EXPECT().SetDoguDataVolumeSize(testCtx, doguResource).Return(nil)
 		mockRecorder := newMockEventRecorder(t)
 		mockRecorder.EXPECT().Eventf(doguResource, "Normal", "VolumeExpansion", "%s successful.", "VolumeExpansion").Return()

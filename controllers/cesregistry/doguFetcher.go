@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	cesremote "github.com/cloudogu/cesapp-lib/remote"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/retry-lib/retry"
+	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"os"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
 )
 
 // localDoguFetcher abstracts the access to dogu structs from the local dogu registry.
@@ -23,18 +26,29 @@ type localDoguFetcher struct {
 
 // localDoguFetcher abstracts the access to dogu structs from either the remote dogu registry or from a local DevelopmentDoguMap.
 type resourceDoguFetcher struct {
-	client             client.Client
-	doguRemoteRegistry cesremote.Registry
+	client                   client.Client
+	doguRemoteRepository     remoteDoguDescriptorRepository
+	doguDescriptorMaxRetries int
 }
 
+var defaultMaxTries = 20
+
+const doguDescriptorMaxRetriesEnv = "DOGU_DESCRIPTOR_MAX_RETRIES"
+
 // NewLocalDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
-func NewLocalDoguFetcher(doguVersionRegistry dogu.DoguVersionRegistry, doguDescriptorRepo dogu.LocalDoguDescriptorRepository) *localDoguFetcher {
+func NewLocalDoguFetcher(doguVersionRegistry doguVersionRegistry, doguDescriptorRepo localDoguDescriptorRepository) *localDoguFetcher {
 	return &localDoguFetcher{doguVersionRegistry: doguVersionRegistry, doguRepository: doguDescriptorRepo}
 }
 
 // NewResourceDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
-func NewResourceDoguFetcher(client client.Client, doguRemoteRegistry cesremote.Registry) *resourceDoguFetcher {
-	return &resourceDoguFetcher{client: client, doguRemoteRegistry: doguRemoteRegistry}
+func NewResourceDoguFetcher(client client.Client, doguRemoteRepository remoteDoguDescriptorRepository) *resourceDoguFetcher {
+	maxRetriesString, found := os.LookupEnv(doguDescriptorMaxRetriesEnv)
+	maxRetries, err := strconv.Atoi(maxRetriesString)
+	if !found || err != nil {
+		logrus.Warningf("failed to read %s environment variable, using default value of %d", doguDescriptorMaxRetriesEnv, defaultMaxTries)
+		maxRetries = defaultMaxTries
+	}
+	return &resourceDoguFetcher{client: client, doguRemoteRepository: doguRemoteRepository, doguDescriptorMaxRetries: maxRetries}
 }
 
 // FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
@@ -54,7 +68,7 @@ func (df *localDoguFetcher) Enabled(ctx context.Context, doguName string) (bool,
 }
 
 func (df *localDoguFetcher) getLocalDogu(ctx context.Context, fromDoguName string) (*core.Dogu, error) {
-	current, err := df.doguVersionRegistry.GetCurrent(ctx, dogu.SimpleDoguName(fromDoguName))
+	current, err := df.doguVersionRegistry.GetCurrent(ctx, cescommons.SimpleName(fromDoguName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current version for dogu %s: %w", fromDoguName, err)
 	}
@@ -77,19 +91,32 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 
 	if developmentDoguMap == nil {
 		log.FromContext(ctx).Info("Fetching dogu from remote dogu registry...")
-		dogu, err := rdf.getDoguFromRemoteRegistry(doguResource)
+		version, err := core.ParseVersion(doguResource.Spec.Version)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse version: %w", err)
+		}
+		qualifiedName, err := cescommons.QualifiedNameFromString(doguResource.Spec.Name)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse namespace and name: %w", err)
+		}
+		qualifiedDoguVersion := cescommons.QualifiedVersion{
+			Version: version,
+			Name:    qualifiedName,
+		}
+
+		remoteDogu, err := rdf.getDoguFromRemoteRegistry(ctx, qualifiedDoguVersion)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get dogu from remote or cache: %w", err)
 		}
 
-		patchedDogu := replaceK8sIncompatibleDoguDependencies(dogu)
+		patchedDogu := replaceK8sIncompatibleDoguDependencies(remoteDogu)
 		return patchedDogu, nil, err
 	}
 
 	log.FromContext(ctx).Info("Fetching dogu from development dogu map...")
-	dogu, err := rdf.getFromDevelopmentDoguMap(developmentDoguMap)
+	remoteDogu, err := rdf.getFromDevelopmentDoguMap(developmentDoguMap)
 
-	patchedDogu := replaceK8sIncompatibleDoguDependencies(dogu)
+	patchedDogu := replaceK8sIncompatibleDoguDependencies(remoteDogu)
 	return patchedDogu, developmentDoguMap, err
 }
 
@@ -110,22 +137,27 @@ func (rdf *resourceDoguFetcher) getDevelopmentDoguMap(ctx context.Context, doguR
 
 func (rdf *resourceDoguFetcher) getFromDevelopmentDoguMap(doguConfigMap *k8sv2.DevelopmentDoguMap) (*core.Dogu, error) {
 	jsonStr := doguConfigMap.Data["dogu.json"]
-	dogu := &core.Dogu{}
-	err := json.Unmarshal([]byte(jsonStr), dogu)
+	configMapDogu := &core.Dogu{}
+	err := json.Unmarshal([]byte(jsonStr), configMapDogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal custom dogu descriptor: %w", err)
 	}
 
-	return dogu, nil
+	return configMapDogu, nil
 }
 
-func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(doguResource *k8sv2.Dogu) (*core.Dogu, error) {
-	dogu, err := rdf.doguRemoteRegistry.GetVersion(doguResource.Spec.Name, doguResource.Spec.Version)
+func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(context context.Context, version cescommons.QualifiedVersion) (*core.Dogu, error) {
+	remoteDogu := &core.Dogu{}
+	err := retry.OnError(rdf.doguDescriptorMaxRetries, cloudoguerrors.IsConnectionError, func() error {
+		var err error
+		remoteDogu, err = rdf.doguRemoteRepository.Get(context, version)
+		return err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu from remote dogu registry: %w", err)
 	}
 
-	return dogu, nil
+	return remoteDogu, nil
 }
 
 func replaceK8sIncompatibleDoguDependencies(dogu *core.Dogu) *core.Dogu {

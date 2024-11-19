@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"io"
 	"strings"
 
@@ -12,9 +13,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-registry-lib/config"
-	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 
 	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
@@ -54,7 +55,7 @@ func NewCreator(repo sensitiveDoguConfigRepository, localDoguFetcher localDoguFe
 func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
-	sensitiveConfig, err := c.sensitiveDoguRepo.Get(ctx, config.SimpleDoguName(dogu.GetSimpleName()))
+	sensitiveConfig, err := c.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		return fmt.Errorf("unbale to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
 	}

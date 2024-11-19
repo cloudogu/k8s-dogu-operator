@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
+	"github.com/cloudogu/retry-lib/retry"
 )
 
 type DoguInterface interface {

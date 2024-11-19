@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
+	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 

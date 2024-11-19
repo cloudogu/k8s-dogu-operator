@@ -2,7 +2,7 @@ package cesregistry
 
 import (
 	_ "embed"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -26,8 +26,8 @@ func TestCesDoguRegistrator_RegisterNewDogu(t *testing.T) {
 	}
 	coreLdapDoguVersion, lerr := ldapDogu.GetVersion()
 	require.NoError(t, lerr)
-	simpleLdapDoguName := dogu.SimpleDoguName("ldap")
-	ldapDoguVersion := dogu.DoguVersion{
+	simpleLdapDoguName := cescommons.SimpleName("ldap")
+	ldapDoguVersion := cescommons.SimpleNameVersion{
 		Name:    simpleLdapDoguName,
 		Version: coreLdapDoguVersion,
 	}
@@ -131,8 +131,8 @@ func TestCesDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 	}
 	coreLdapDoguVersion, lerr := ldapDogu.GetVersion()
 	require.NoError(t, lerr)
-	simpleLdapDoguName := dogu.SimpleDoguName("ldap")
-	ldapDoguVersion := dogu.DoguVersion{
+	simpleLdapDoguName := cescommons.SimpleName("ldap")
+	ldapDoguVersion := cescommons.SimpleNameVersion{
 		Name:    simpleLdapDoguName,
 		Version: coreLdapDoguVersion,
 	}
@@ -210,7 +210,7 @@ func TestCesDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 }
 
 func TestCESDoguRegistrator_UnregisterDogu(t *testing.T) {
-	simpleLdapDoguName := dogu.SimpleDoguName("ldap")
+	simpleLdapDoguName := cescommons.SimpleName("ldap")
 	t.Run("successfully unregister a dogu", func(t *testing.T) {
 		// given
 		mockDoguVersionRegistry := newMockDoguVersionRegistry(t)
