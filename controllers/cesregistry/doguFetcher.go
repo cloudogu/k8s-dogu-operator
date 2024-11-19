@@ -8,7 +8,6 @@ import (
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/retry-lib/retry"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -37,7 +36,7 @@ var defaultMaxTries = 20
 const doguDescriptorMaxRetriesEnv = "DOGU_DESCRIPTOR_MAX_RETRIES"
 
 // NewLocalDoguFetcher creates a new dogu fetcher that provides descriptors for dogus.
-func NewLocalDoguFetcher(doguVersionRegistry dogu.DoguVersionRegistry, doguDescriptorRepo dogu.LocalDoguDescriptorRepository) *localDoguFetcher {
+func NewLocalDoguFetcher(doguVersionRegistry doguVersionRegistry, doguDescriptorRepo localDoguDescriptorRepository) *localDoguFetcher {
 	return &localDoguFetcher{doguVersionRegistry: doguVersionRegistry, doguRepository: doguDescriptorRepo}
 }
 
@@ -69,7 +68,7 @@ func (df *localDoguFetcher) Enabled(ctx context.Context, doguName string) (bool,
 }
 
 func (df *localDoguFetcher) getLocalDogu(ctx context.Context, fromDoguName string) (*core.Dogu, error) {
-	current, err := df.doguVersionRegistry.GetCurrent(ctx, dogu.SimpleDoguName(fromDoguName))
+	current, err := df.doguVersionRegistry.GetCurrent(ctx, cescommons.SimpleName(fromDoguName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current version for dogu %s: %w", fromDoguName, err)
 	}

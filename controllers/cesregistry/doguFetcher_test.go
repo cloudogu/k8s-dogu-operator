@@ -11,8 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/cloudogu/ces-commons-lib/dogu"
-	regLibDogu "github.com/cloudogu/k8s-registry-lib/dogu"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 
 	"github.com/cloudogu/cesapp-lib/core"
 )
@@ -26,8 +25,8 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		dogu := readTestDataDogu(t, redmineBytes)
 		coreDoguVersion, lerr := dogu.GetVersion()
 		require.NoError(t, lerr)
-		simpleDoguName := regLibDogu.SimpleDoguName(dogu.GetSimpleName())
-		doguVersion := regLibDogu.DoguVersion{
+		simpleDoguName := cescommons.SimpleName(dogu.GetSimpleName())
+		doguVersion := cescommons.SimpleNameVersion{
 			Name:    simpleDoguName,
 			Version: coreDoguVersion,
 		}
@@ -52,8 +51,8 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		dogu := readTestDataDogu(t, redmineBytes)
 		coreDoguVersion, lerr := dogu.GetVersion()
 		require.NoError(t, lerr)
-		simpleDoguName := regLibDogu.SimpleDoguName(dogu.GetSimpleName())
-		doguVersion := regLibDogu.DoguVersion{
+		simpleDoguName := cescommons.SimpleName(dogu.GetSimpleName())
+		doguVersion := cescommons.SimpleNameVersion{
 			Name:    simpleDoguName,
 			Version: coreDoguVersion,
 		}
@@ -84,8 +83,8 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		require.Contains(t, dogu.Dependencies, expectedIncompatibleDepNginx)
 		coreDoguVersion, lerr := dogu.GetVersion()
 		require.NoError(t, lerr)
-		simpleDoguName := regLibDogu.SimpleDoguName(dogu.GetSimpleName())
-		doguVersion := regLibDogu.DoguVersion{
+		simpleDoguName := cescommons.SimpleName(dogu.GetSimpleName())
+		doguVersion := cescommons.SimpleNameVersion{
 			Name:    simpleDoguName,
 			Version: coreDoguVersion,
 		}
@@ -131,8 +130,8 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		require.Contains(t, dogu.Dependencies, registratorDep)
 		coreDoguVersion, lerr := dogu.GetVersion()
 		require.NoError(t, lerr)
-		simpleDoguName := regLibDogu.SimpleDoguName(dogu.GetSimpleName())
-		doguVersion := regLibDogu.DoguVersion{
+		simpleDoguName := cescommons.SimpleName(dogu.GetSimpleName())
+		doguVersion := cescommons.SimpleNameVersion{
 			Name:    simpleDoguName,
 			Version: coreDoguVersion,
 		}
@@ -179,7 +178,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		client.EXPECT().Get(testCtx, doguCr.GetDevelopmentDoguMapKey(), mock.AnythingOfType("*v1.ConfigMap")).Return(resourceNotFoundErr)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, assert.AnError)
+		remoteDoguRepo.EXPECT().Get(testCtx, cescommons.QualifiedVersion{Name: cescommons.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, assert.AnError)
 
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
 
@@ -245,7 +244,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		testDogu := readTestDataDogu(t, redmineBytes)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(testDogu, nil)
+		remoteDoguRepo.EXPECT().Get(testCtx, cescommons.QualifiedVersion{Name: cescommons.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(testDogu, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)
@@ -308,7 +307,7 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		require.Contains(t, testDogu.Dependencies, registratorDep)
 
 		remoteDoguRepo := newMockRemoteDoguDescriptorRepository(t)
-		remoteDoguRepo.EXPECT().Get(testCtx, dogu.QualifiedVersion{Name: dogu.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, nil)
+		remoteDoguRepo.EXPECT().Get(testCtx, cescommons.QualifiedVersion{Name: cescommons.QualifiedName{SimpleName: "redmine", Namespace: "official"}, Version: core.Version{Raw: "4.2.3-10", Major: 4, Minor: 2, Patch: 3, Nano: 0, Extra: 10}}).Return(&core.Dogu{}, nil)
 
 		client := fake.NewClientBuilder().WithScheme(getTestScheme()).Build()
 		sut := NewResourceDoguFetcher(client, remoteDoguRepo)

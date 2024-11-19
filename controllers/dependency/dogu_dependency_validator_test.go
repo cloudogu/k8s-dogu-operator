@@ -2,7 +2,7 @@ package dependency
 
 import (
 	"context"
-	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
+	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

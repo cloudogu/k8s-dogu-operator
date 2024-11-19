@@ -5,16 +5,15 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type doguVersionRegistry interface {
-	dogu.DoguVersionRegistry
+	cescommons.VersionRegistry
 }
 
 type localDoguDescriptorRepository interface {
-	dogu.LocalDoguDescriptorRepository
+	cescommons.LocalDoguDescriptorRepository
 }
 
 type remoteDoguDescriptorRepository interface {

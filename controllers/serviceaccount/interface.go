@@ -3,6 +3,7 @@ package serviceaccount
 import (
 	"bytes"
 	"context"
+	"github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
@@ -44,7 +45,7 @@ type sensitiveDoguConfig interface {
 }
 
 type sensitiveDoguConfigRepository interface {
-	Get(ctx context.Context, name config.SimpleDoguName) (config.DoguConfig, error)
+	Get(ctx context.Context, name dogu.SimpleName) (config.DoguConfig, error)
 	Update(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
 	SaveOrMerge(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
 }

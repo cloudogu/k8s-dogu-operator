@@ -249,12 +249,12 @@ type exposePortRemover interface {
 }
 
 type doguConfigRepository interface {
-	Get(ctx context.Context, name config.SimpleDoguName) (config.DoguConfig, error)
+	Get(ctx context.Context, name cescommons.SimpleName) (config.DoguConfig, error)
 	Create(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
 	Update(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
 	SaveOrMerge(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
-	Delete(ctx context.Context, name config.SimpleDoguName) error
-	Watch(ctx context.Context, dName config.SimpleDoguName, filters ...config.WatchFilter) (<-chan repository.DoguConfigWatchResult, error)
+	Delete(ctx context.Context, name cescommons.SimpleName) error
+	Watch(ctx context.Context, dName cescommons.SimpleName, filters ...config.WatchFilter) (<-chan repository.DoguConfigWatchResult, error)
 }
 
 // dependencyValidator checks if all necessary dependencies for an upgrade are installed.
