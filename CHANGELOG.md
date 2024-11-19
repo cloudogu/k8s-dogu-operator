@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - [#208] Disable default service-account auto-mounting for dogus
+- [#208] Disable service-account token auto-mounting for exec-pods
 
 ## [v3.0.1] - 2024-10-29
 ### Fixed

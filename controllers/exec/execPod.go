@@ -89,6 +89,8 @@ func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1
 		pullPolicy = corev1.PullAlways
 	}
 
+	automountServiceAccountToken := false
+
 	podSpec := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -109,6 +111,7 @@ func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1
 			ImagePullSecrets: []corev1.LocalObjectReference{
 				{Name: "ces-container-registries"},
 			},
+			AutomountServiceAccountToken: &automountServiceAccountToken,
 		},
 	}
 
