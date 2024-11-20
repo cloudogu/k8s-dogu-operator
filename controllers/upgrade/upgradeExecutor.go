@@ -19,7 +19,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
+	"github.com/cloudogu/retry-lib/retry"
 )
 
 const (

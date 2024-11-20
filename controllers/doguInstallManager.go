@@ -3,9 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	"github.com/cloudogu/k8s-registry-lib/config"
-	"github.com/cloudogu/k8s-registry-lib/errors"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -227,7 +228,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 		lCtx := context.WithoutCancel(ctx)
 
 		if !doguCfgAlreadyExists {
-			lErr := m.doguConfigRepository.Delete(lCtx, config.SimpleDoguName(doguName))
+			lErr := m.doguConfigRepository.Delete(lCtx, cescommons.SimpleName(doguName))
 			if lErr != nil && !errors.IsNotFoundError(lErr) {
 				logger.Error(lErr, "could not delete dogu config during cleanUp", "dogu", doguName)
 			} else {
@@ -236,7 +237,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 		}
 
 		if !sensitiveCfgAlreadyExists {
-			lErr := m.sensitiveDoguRepository.Delete(lCtx, config.SimpleDoguName(doguName))
+			lErr := m.sensitiveDoguRepository.Delete(lCtx, cescommons.SimpleName(doguName))
 			if lErr != nil && !errors.IsNotFoundError(lErr) {
 				logger.Error(lErr, "could not delete sensitive dogu config during cleanUp", "dogu", doguName)
 			} else {
@@ -245,7 +246,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 		}
 	}
 
-	emptyCfg := config.CreateDoguConfig(config.SimpleDoguName(doguName), make(config.Entries))
+	emptyCfg := config.CreateDoguConfig(cescommons.SimpleName(doguName), make(config.Entries))
 
 	_, err := m.doguConfigRepository.Create(ctx, emptyCfg)
 	if err != nil {

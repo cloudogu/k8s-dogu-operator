@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
@@ -30,7 +31,7 @@ type hostAliasGenerator interface {
 }
 
 type doguConfigGetter interface {
-	Get(ctx context.Context, name config.SimpleDoguName) (config.DoguConfig, error)
+	Get(ctx context.Context, name dogu.SimpleName) (config.DoguConfig, error)
 }
 
 // ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.

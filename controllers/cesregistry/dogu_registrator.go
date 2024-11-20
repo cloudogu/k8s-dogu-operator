@@ -3,7 +3,7 @@ package cesregistry
 import (
 	"context"
 	"fmt"
-	regLibDogu "github.com/cloudogu/k8s-registry-lib/dogu"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -19,7 +19,7 @@ type CesDoguRegistrator struct {
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(doguVersionRegistry regLibDogu.DoguVersionRegistry, doguDescriptorRepo regLibDogu.LocalDoguDescriptorRepository) *CesDoguRegistrator {
+func NewCESDoguRegistrator(doguVersionRegistry doguVersionRegistry, doguDescriptorRepo localDoguDescriptorRepository) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
 		versionRegistry: doguVersionRegistry,
 		doguRepository:  doguDescriptorRepo,
@@ -51,8 +51,8 @@ func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, _ *k8sv2.Dogu,
 		return err
 	}
 
-	return c.enableDoguInRegistry(ctx, regLibDogu.DoguVersion{
-		Name:    regLibDogu.SimpleDoguName(dogu.GetSimpleName()),
+	return c.enableDoguInRegistry(ctx, cescommons.SimpleNameVersion{
+		Name:    cescommons.SimpleName(dogu.GetSimpleName()),
 		Version: coreVersion,
 	})
 }
@@ -80,7 +80,7 @@ func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core
 
 // UnregisterDogu deletes a dogu from the dogu registry
 func (c *CesDoguRegistrator) UnregisterDogu(ctx context.Context, doguName string) error {
-	err := c.doguRepository.DeleteAll(ctx, regLibDogu.SimpleDoguName(doguName))
+	err := c.doguRepository.DeleteAll(ctx, cescommons.SimpleName(doguName))
 	if err != nil {
 		return fmt.Errorf("failed to unregister dogu %s: %w", doguName, err)
 	}
@@ -88,7 +88,7 @@ func (c *CesDoguRegistrator) UnregisterDogu(ctx context.Context, doguName string
 	return nil
 }
 
-func (c *CesDoguRegistrator) enableDoguInRegistry(ctx context.Context, doguVersion regLibDogu.DoguVersion) error {
+func (c *CesDoguRegistrator) enableDoguInRegistry(ctx context.Context, doguVersion cescommons.SimpleNameVersion) error {
 	err := c.versionRegistry.Enable(ctx, doguVersion)
 	if err != nil {
 		return fmt.Errorf("failed to enable dogu: %w", err)
@@ -97,7 +97,7 @@ func (c *CesDoguRegistrator) enableDoguInRegistry(ctx context.Context, doguVersi
 }
 
 func (c *CesDoguRegistrator) registerDoguInRegistry(ctx context.Context, dogu *core.Dogu) error {
-	err := c.doguRepository.Add(ctx, regLibDogu.SimpleDoguName(dogu.GetSimpleName()), dogu)
+	err := c.doguRepository.Add(ctx, cescommons.SimpleName(dogu.GetSimpleName()), dogu)
 	if err != nil {
 		return fmt.Errorf("failed to register dogu %s: %w", dogu.GetSimpleName(), err)
 	}

@@ -11,7 +11,7 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
+	"github.com/cloudogu/retry-lib/retry"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

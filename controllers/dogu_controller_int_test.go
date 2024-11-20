@@ -6,6 +6,8 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/cesapp-lib/core"
 	"strings"
 	"testing"
 
@@ -46,7 +48,9 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	// Install testdata
 	ldapCr := readDoguCr(t, ldapCrBytes)
+	ldapQualifiedName, _ := cescommons.NewQualifiedName("official", "ldap")
 	redmineCr := readDoguCr(t, redmineCrBytes)
+	redmineQualifiedName, _ := cescommons.NewQualifiedName("official", "redmine")
 	imageConfig := readImageConfig(t, imageConfigBytes)
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 	redmineDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
@@ -76,9 +80,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}).Once()
 			*ImageRegistryMock = mockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil).Once()
-			*DoguRemoteRegistryMock = mockRemoteRegistry{}
-			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.48-4").Return(ldapDogu, nil).Once()
-			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/redmine", "4.2.3-10").Return(redmineDogu, nil).Once()
+			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
+			ldapVersion, _ := core.ParseVersion("2.4.48-4")
+			ldapQualifiedVersion, _ := cescommons.NewQualifiedVersion(ldapQualifiedName, ldapVersion)
+			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(ldapDogu, nil).Once()
+			redmineVersion, _ := core.ParseVersion("4.2.3-10")
+			redmineQualifiedVersion, _ := cescommons.NewQualifiedVersion(redmineQualifiedName, redmineVersion)
+			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, redmineQualifiedVersion).Return(redmineDogu, nil).Once()
 		})
 
 		It("Should install dogu in cluster", func() {
@@ -338,8 +346,10 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Setup mocks and test data for upgrade", func() {
 			// create mocks
-			*DoguRemoteRegistryMock = mockRemoteRegistry{}
-			DoguRemoteRegistryMock.Mock.On("GetVersion", "official/ldap", "2.4.49-1").Once().Return(upgradeLdapToDoguDescriptor, nil)
+			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
+			ldapVersion, _ := core.ParseVersion("2.4.49-1")
+			ldapQualifiedVersion, _ := cescommons.NewQualifiedVersion(ldapQualifiedName, ldapVersion)
+			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Once().Return(upgradeLdapToDoguDescriptor, nil)
 
 			*ImageRegistryMock = mockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil).Once()
@@ -379,7 +389,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Setup mocks and test data for delete", func() {
 			// create mocks
-			*DoguRemoteRegistryMock = mockRemoteRegistry{}
+			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
 			*ImageRegistryMock = mockImageRegistry{}
 		})
 

@@ -18,7 +18,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/retry"
+	"github.com/cloudogu/retry-lib/retry"
 )
 
 const (
