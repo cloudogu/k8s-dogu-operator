@@ -8,11 +8,11 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	netv1 "k8s.io/client-go/kubernetes/typed/networking/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -45,10 +45,12 @@ type doguInstallManager struct {
 	execPodFactory          exec.ExecPodFactory
 	doguConfigRepository    doguConfigRepository
 	sensitiveDoguRepository doguConfigRepository
+	networking              netv1.NetworkPolicyInterface
+	operatorNamespace       string
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
-func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, configRepos util.ConfigRepositories) *doguInstallManager {
+func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, configRepos util.ConfigRepositories, networking netv1.NetworkPolicyInterface, namespace string) *doguInstallManager {
 	return &doguInstallManager{
 		client:                  client,
 		ecosystemClient:         mgrSet.EcosystemClient,
@@ -65,6 +67,8 @@ func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventR
 		execPodFactory:          exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
 		doguConfigRepository:    configRepos.DoguConfigRepository,
 		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
+		networking:              networking,
+		operatorNamespace:       namespace,
 	}
 }
 
@@ -214,7 +218,92 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 		return err
 	}
 
-	return nil
+	return m.createNetworkPolicies(ctx, dogu, doguResource)
+}
+
+func (m *doguInstallManager) createNetworkPolicies(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu) error {
+	logger := log.FromContext(ctx)
+	denyAllPolicy := &v1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-deny-all", dogu.GetSimpleName()),
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: doguResource.APIVersion,
+					Kind:       doguResource.Kind,
+					Name:       doguResource.Name,
+					UID:        doguResource.UID,
+				},
+			},
+		},
+		Spec: v1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"dogu.name": dogu.GetSimpleName(),
+				},
+			},
+			PolicyTypes: []v1.PolicyType{
+				v1.PolicyTypeIngress,
+			},
+		},
+	}
+
+	_, err := m.networking.Create(ctx, denyAllPolicy, metav1.CreateOptions{})
+	if err != nil {
+		logger.Error(err, "failed to create deny all rule")
+	}
+
+	for _, dependency := range dogu.Dependencies {
+		if dependency.Type == "dogu" {
+			dependencyName := dependency.Name
+			dependencyPolicy := &v1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("%s-dependency-%s", dogu.GetSimpleName(), dependencyName),
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: doguResource.APIVersion,
+							Kind:       doguResource.Kind,
+							Name:       doguResource.Name,
+							UID:        doguResource.UID,
+						},
+					},
+				},
+				Spec: v1.NetworkPolicySpec{
+					PodSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"dogu.name": dependencyName,
+						},
+					}, PolicyTypes: []v1.PolicyType{
+						v1.PolicyTypeIngress,
+					},
+					Ingress: []v1.NetworkPolicyIngressRule{
+						{
+							From: []v1.NetworkPolicyPeer{
+								{
+									PodSelector: &metav1.LabelSelector{
+										MatchLabels: map[string]string{
+											"dogu.name": dogu.GetSimpleName(),
+										},
+									},
+									NamespaceSelector: &metav1.LabelSelector{
+										MatchLabels: map[string]string{
+											"kubernetes.io/metadata.name": m.operatorNamespace,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			_, err := m.networking.Create(ctx, dependencyPolicy, metav1.CreateOptions{})
+			if err != nil {
+				logger.Error(err, fmt.Sprintf("failed to create network policy allow rule for dependency %s of dogu %s", dependencyName, dogu.GetSimpleName()))
+			}
+		}
+	}
+
+	return err
 }
 
 func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string, logger logr.Logger) (func(error), error) {
