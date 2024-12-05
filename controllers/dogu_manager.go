@@ -62,7 +62,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 		return nil, err
 	}
 
-	installManager := NewDoguInstallManager(client, mgrSet, eventRecorder, configRepos, clientSet.NetworkingV1().NetworkPolicies(operatorConfig.Namespace), operatorConfig.Namespace)
+	installManager := NewDoguInstallManager(client, mgrSet, eventRecorder, configRepos, clientSet.NetworkingV1().NetworkPolicies(operatorConfig.Namespace), operatorConfig.Namespace, clientSet.NetworkingV1().Ingresses(operatorConfig.Namespace))
 	if err != nil {
 		return nil, err
 	}

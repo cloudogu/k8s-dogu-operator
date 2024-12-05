@@ -46,6 +46,7 @@ type ResourceUpserter interface {
 	UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PersistentVolumeClaim, error)
 	// UpsertDoguExposedService creates oder updates the exposed service with the given dogu.
 	UpsertDoguExposedService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.Service, error)
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) error
 }
 
 // doguSecretHandler includes functionality to associate secrets from setup with a dogu.
