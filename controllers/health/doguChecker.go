@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	regLibErr "github.com/cloudogu/k8s-registry-lib/errors"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 

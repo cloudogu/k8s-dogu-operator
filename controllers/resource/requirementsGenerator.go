@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -35,7 +36,7 @@ func NewRequirementsGenerator(doguConfigGetter doguConfigGetter) *RequirementsGe
 }
 
 func (r RequirementsGenerator) Generate(ctx context.Context, dogu *core.Dogu) (corev1.ResourceRequirements, error) {
-	doguConfig, err := r.doguConfigGetter.Get(ctx, config.SimpleDoguName(dogu.GetSimpleName()))
+	doguConfig, err := r.doguConfigGetter.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		return corev1.ResourceRequirements{}, fmt.Errorf("unable to get config for dogu %s: %w", dogu.GetSimpleName(), err)
 	}

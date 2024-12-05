@@ -53,7 +53,7 @@ var cancel context.CancelFunc
 var (
 	ImageRegistryMock      *mockImageRegistry
 	CommandExecutorMock    *mockCommandExecutor
-	DoguRemoteRegistryMock *mockRemoteRegistry
+	DoguRemoteRegistryMock *mockRemoteDoguDescriptorRepository
 	k8sClient              K8sClient
 	DoguInterfaceMock      *mockDoguInterface
 )
@@ -134,7 +134,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClientSet, err = kubernetes.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	DoguRemoteRegistryMock = &mockRemoteRegistry{}
+	DoguRemoteRegistryMock = &mockRemoteDoguDescriptorRepository{}
 	ImageRegistryMock = &mockImageRegistry{}
 	DoguInterfaceMock = &mockDoguInterface{}
 
