@@ -1,0 +1,14 @@
+{{- if .Values.global.networkPolicies.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-deny-all
+  labels:
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: k8s-dogu-operator
+  policyTypes:
+    - Ingress
+{{- end }}
