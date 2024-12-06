@@ -96,3 +96,7 @@ rules:
   verbs:
     - create
     - delete
+    - list
+    - get
+    - update
+    - watch

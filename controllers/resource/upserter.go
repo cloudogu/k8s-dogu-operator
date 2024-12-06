@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"strings"
 
@@ -15,7 +14,6 @@ import (
 	netv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	netv1t "k8s.io/client-go/kubernetes/typed/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -35,24 +33,18 @@ var (
 )
 
 type upserter struct {
-	client            k8sClient
-	generator         DoguResourceGenerator
-	exposedPortAdder  exposePortAdder
-	networking        netv1t.NetworkPolicyInterface
-	ingress           netv1t.IngressInterface
-	operatorNamespace string
+	client           k8sClient
+	generator        DoguResourceGenerator
+	exposedPortAdder exposePortAdder
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, generator DoguResourceGenerator, networking netv1t.NetworkPolicyInterface, operatorNamespace string, ingress netv1t.IngressInterface) *upserter {
+func NewUpserter(client client.Client, generator DoguResourceGenerator) *upserter {
 	exposedPortAdder := NewDoguExposedPortHandler(client)
 	return &upserter{
-		client:            client,
-		generator:         generator,
-		exposedPortAdder:  exposedPortAdder,
-		networking:        networking,
-		operatorNamespace: operatorNamespace,
-		ingress:           ingress,
+		client:           client,
+		generator:        generator,
+		exposedPortAdder: exposedPortAdder,
 	}
 }
 
@@ -126,22 +118,9 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu,
 // UpsertDoguNetworkPolicies generates the network policies for a dogu
 func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
-	denyAllPolicy := u.createNetPolWithOwner(
-		fmt.Sprintf("%s-deny-all", dogu.GetSimpleName()),
-		doguResource,
-		netv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"dogu.name": dogu.GetSimpleName(),
-				},
-			},
-			PolicyTypes: []netv1.PolicyType{
-				netv1.PolicyTypeIngress,
-			},
-		},
-	)
+	denyAllPolicy := generateDenyAllPolicy(doguResource, dogu)
 
-	_, err := u.networking.Create(ctx, denyAllPolicy, metav1.CreateOptions{})
+	err := u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, denyAllPolicy)
 	if err != nil {
 		logger.Error(err, "failed to create deny all rule")
 	}
@@ -154,17 +133,18 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 			}
 
 			if dependencyName == k8sNginxIngressDoguName {
-				ingressPolicy := u.createIngressNetPol(doguResource, dogu)
+				ingressPolicy := generateIngressNetPol(doguResource, dogu)
 
-				_, err := u.networking.Create(ctx, ingressPolicy, metav1.CreateOptions{})
+				err = u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, ingressPolicy)
+
 				if err != nil {
 					logger.Error(err, fmt.Sprintf("failed to create network policy allow rule for dependency %s of dogu %s", dependencyName, dogu.GetSimpleName()))
 				}
 				continue
 			}
 
-			dependencyPolicy := u.createDoguDepNetPol(doguResource, dogu, dependencyName)
-			_, err := u.networking.Create(ctx, dependencyPolicy, metav1.CreateOptions{})
+			dependencyPolicy := generateDoguDepNetPol(doguResource, dogu, dependencyName)
+			err = u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, dependencyPolicy)
 			if err != nil {
 				logger.Error(err, fmt.Sprintf("failed to create network policy allow rule for dependency %s of dogu %s", dependencyName, dogu.GetSimpleName()))
 			}
@@ -172,87 +152,6 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	}
 
 	return err
-}
-
-func (u *upserter) createDoguDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string) *netv1.NetworkPolicy {
-	return u.createNetPolWithOwner(fmt.Sprintf("%s-dependency-%s", dogu.GetSimpleName(), dependencyName), doguResource, netv1.NetworkPolicySpec{
-		PodSelector: metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"dogu.name": dependencyName,
-			},
-		}, PolicyTypes: []netv1.PolicyType{
-			netv1.PolicyTypeIngress,
-		},
-		Ingress: []netv1.NetworkPolicyIngressRule{
-			{
-				From: []netv1.NetworkPolicyPeer{
-					{
-						PodSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"dogu.name": dogu.GetSimpleName(),
-							},
-						},
-						NamespaceSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"kubernetes.io/metadata.name": u.operatorNamespace,
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-}
-
-func (u *upserter) createIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.NetworkPolicy {
-	return u.createNetPolWithOwner(
-		fmt.Sprintf("%s-ingress", dogu.GetSimpleName()),
-		doguResource,
-		netv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"dogu.name": dogu.GetSimpleName(),
-				},
-			}, PolicyTypes: []netv1.PolicyType{
-				netv1.PolicyTypeIngress,
-			},
-			Ingress: []netv1.NetworkPolicyIngressRule{
-				{
-					From: []netv1.NetworkPolicyPeer{
-						{
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"dogu.name": k8sNginxIngressDoguName,
-								},
-							},
-							NamespaceSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"kubernetes.io/metadata.name": u.operatorNamespace,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	)
-}
-
-func (u *upserter) createNetPolWithOwner(name string, parentDoguResource *k8sv2.Dogu, spec netv1.NetworkPolicySpec) *netv1.NetworkPolicy {
-	return &netv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: parentDoguResource.APIVersion,
-					Kind:       parentDoguResource.Kind,
-					Name:       parentDoguResource.Name,
-					UID:        parentDoguResource.UID,
-				},
-			},
-		},
-		Spec: spec,
-	}
 }
 
 func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim) error {
