@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - [#204] fetch dogu descriptors with retry
 
+### Added
+- [#211] Create network policies for all dogus and their dependencies
+
 ## [v3.0.1] - 2024-10-29
 ### Fixed
 - [#205] Use correct apiVersion `v1` in component patch template.
