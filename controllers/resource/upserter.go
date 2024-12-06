@@ -26,6 +26,7 @@ const (
 	errMsgFailedToGetPVC    = "failed to get pvc"
 	k8sNginxIngressDoguName = "nginx-ingress"
 	k8sNginxStaticDoguName  = "nginx-static"
+	dependencyTypeDogu      = "dogu"
 )
 
 var (
@@ -121,11 +122,11 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	denyAllPolicy := generateDenyAllPolicy(doguResource, dogu)
 
 	if err := u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, denyAllPolicy); err != nil {
-		errors.Join(multiErr, fmt.Errorf("failed to create or update deny all rule for dogu %s: %w", dogu.GetSimpleName(), err))
+		multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update deny all rule for dogu %s: %w", dogu.GetSimpleName(), err))
 	}
 
 	for _, dependency := range dogu.Dependencies {
-		if dependency.Type == "dogu" {
+		if dependency.Type == dependencyTypeDogu {
 			dependencyName := dependency.Name
 			if dependencyName == k8sNginxStaticDoguName {
 				continue
@@ -135,7 +136,7 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 				ingressPolicy := generateIngressNetPol(doguResource, dogu)
 
 				if err := u.updateOrInsert(ctx, getNetPolObjectKey(ingressPolicy), &netv1.NetworkPolicy{}, ingressPolicy); err != nil {
-					errors.Join(multiErr, fmt.Errorf("failed to create or update ingress network policy for dogu %s: %w", dogu.GetSimpleName(), err))
+					multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update ingress network policy for dogu %s: %w", dogu.GetSimpleName(), err))
 				}
 
 				continue
@@ -143,7 +144,7 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 
 			dependencyPolicy := generateDoguDepNetPol(doguResource, dogu, dependencyName)
 			if err := u.updateOrInsert(ctx, getNetPolObjectKey(dependencyPolicy), &netv1.NetworkPolicy{}, dependencyPolicy); err != nil {
-				errors.Join(multiErr, fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err))
+				multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err))
 			}
 		}
 	}
