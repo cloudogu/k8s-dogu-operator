@@ -117,12 +117,11 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu,
 
 // UpsertDoguNetworkPolicies generates the network policies for a dogu
 func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
-	logger := log.FromContext(ctx)
+	var multiErr error
 	denyAllPolicy := generateDenyAllPolicy(doguResource, dogu)
 
-	err := u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, denyAllPolicy)
-	if err != nil {
-		logger.Error(err, "failed to create deny all rule")
+	if err := u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, denyAllPolicy); err != nil {
+		errors.Join(multiErr, fmt.Errorf("failed to create or update deny all rule for dogu %s: %w", dogu.GetSimpleName(), err))
 	}
 
 	for _, dependency := range dogu.Dependencies {
@@ -135,23 +134,27 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 			if dependencyName == k8sNginxIngressDoguName {
 				ingressPolicy := generateIngressNetPol(doguResource, dogu)
 
-				err = u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, ingressPolicy)
-
-				if err != nil {
-					logger.Error(err, fmt.Sprintf("failed to create network policy allow rule for dependency %s of dogu %s", dependencyName, dogu.GetSimpleName()))
+				if err := u.updateOrInsert(ctx, getNetPolObjectKey(ingressPolicy), &netv1.NetworkPolicy{}, ingressPolicy); err != nil {
+					errors.Join(multiErr, fmt.Errorf("failed to create or update ingress network policy for dogu %s: %w", dogu.GetSimpleName(), err))
 				}
+
 				continue
 			}
 
 			dependencyPolicy := generateDoguDepNetPol(doguResource, dogu, dependencyName)
-			err = u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, dependencyPolicy)
-			if err != nil {
-				logger.Error(err, fmt.Sprintf("failed to create network policy allow rule for dependency %s of dogu %s", dependencyName, dogu.GetSimpleName()))
+			if err := u.updateOrInsert(ctx, getNetPolObjectKey(dependencyPolicy), &netv1.NetworkPolicy{}, dependencyPolicy); err != nil {
+				errors.Join(multiErr, fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err))
 			}
 		}
 	}
 
-	return err
+	if multiErr != nil {
+		logger := log.FromContext(ctx)
+		logger.Error(multiErr, fmt.Sprintf("failed to create some network policies for dogu %s", dogu.GetSimpleName()))
+		return multiErr
+	}
+
+	return nil
 }
 
 func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim) error {
