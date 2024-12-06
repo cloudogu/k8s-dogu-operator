@@ -152,6 +152,7 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 			if dependencyName == k8sNginxStaticDoguName {
 				continue
 			}
+
 			if dependencyName == k8sNginxIngressDoguName {
 				ingressPolicy := u.createIngressNetPol(doguResource, dogu)
 
@@ -159,7 +160,9 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 				if err != nil {
 					logger.Error(err, fmt.Sprintf("failed to create network policy allow rule for dependency %s of dogu %s", dependencyName, dogu.GetSimpleName()))
 				}
+				continue
 			}
+
 			dependencyPolicy := u.createDoguDepNetPol(doguResource, dogu, dependencyName)
 			_, err := u.networking.Create(ctx, dependencyPolicy, metav1.CreateOptions{})
 			if err != nil {
