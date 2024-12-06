@@ -11,7 +11,6 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	netv1 "k8s.io/client-go/kubernetes/typed/networking/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -26,8 +25,6 @@ import (
 )
 
 const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
-const k8sNginxIngressDoguName = "nginx-ingress"
-const k8sNginxStaticDoguName = "nginx-static"
 
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
@@ -46,13 +43,10 @@ type doguInstallManager struct {
 	execPodFactory          exec.ExecPodFactory
 	doguConfigRepository    doguConfigRepository
 	sensitiveDoguRepository doguConfigRepository
-	networking              netv1.NetworkPolicyInterface
-	ingress                 netv1.IngressInterface
-	operatorNamespace       string
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
-func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, configRepos util.ConfigRepositories, networking netv1.NetworkPolicyInterface, namespace string, ingress netv1.IngressInterface) *doguInstallManager {
+func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, configRepos util.ConfigRepositories) *doguInstallManager {
 	return &doguInstallManager{
 		client:                  client,
 		ecosystemClient:         mgrSet.EcosystemClient,
@@ -69,9 +63,6 @@ func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventR
 		execPodFactory:          exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
 		doguConfigRepository:    configRepos.DoguConfigRepository,
 		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
-		networking:              networking,
-		operatorNamespace:       namespace,
-		ingress:                 ingress,
 	}
 }
 
