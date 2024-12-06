@@ -110,10 +110,10 @@ func generateNetPolWithOwner(name string, parentDoguResource *k8sv2.Dogu, spec n
 	}
 }
 
-// GetObjectKey returns the object key with the actual name and namespace from the netpol resource
-func getNetPolObjectKey(netpol *netv1.NetworkPolicy) client.ObjectKey {
+// GetObjectKey returns the object key with the actual name and namespace from the netPol resource
+func getNetPolObjectKey(netPol *netv1.NetworkPolicy) client.ObjectKey {
 	return client.ObjectKey{
-		Namespace: netpol.Namespace,
-		Name:      netpol.Name,
+		Namespace: netPol.Namespace,
+		Name:      netPol.Name,
 	}
 }
