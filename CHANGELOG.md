@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  
 ### Changed
 - [#204] fetch dogu descriptors with retry
+- [#208] Disable default service-account auto-mounting for dogus
+- [#208] Disable service-account token auto-mounting for exec-pods
 
 ### Added
 - [#211] Create network policies for all dogus and their dependencies

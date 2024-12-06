@@ -26,6 +26,7 @@ spec:
         dogu.name: ldap
         dogu.version: 2.4.48-4
     spec:
+      automountServiceAccountToken: false
       InitContainers:
         - image: busybox:1.36
           name : dogu-volume-chown-init
