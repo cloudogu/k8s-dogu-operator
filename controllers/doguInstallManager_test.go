@@ -135,7 +135,7 @@ func TestNewDoguInstallManager(t *testing.T) {
 		}
 
 		// when
-		doguManager := NewDoguInstallManager(myClient, mgrSet, eventRecorder, configRepos)
+		doguManager := NewDoguInstallManager(myClient, mgrSet, eventRecorder, configRepos, nil, "", nil)
 
 		// then
 		require.NotNil(t, doguManager)
