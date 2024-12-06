@@ -2,9 +2,13 @@ package resource
 
 import (
 	"context"
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/stretchr/testify/mock"
+	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"slices"
 	"testing"
 	"time"
 
@@ -379,4 +383,129 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, assert.AnError)
 	})
+}
+
+func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
+	tests := []struct {
+		name                    string
+		doguName                string
+		doguDependencies        []string
+		expectedNetworkPolicies []string
+		errorOnUpdate           bool
+		expectError             bool
+	}{
+		{
+			name:                    "creates deny all policy for dogu without dependencies",
+			doguName:                "postgresql",
+			doguDependencies:        []string{},
+			expectedNetworkPolicies: []string{"postgresql-deny-all"},
+		},
+		{
+			name:     "creates all dependencies for a dogu with ui (nginx included)",
+			doguName: "redmine",
+			doguDependencies: []string{
+				"postgresql",
+				"nginx-ingress",
+				"nginx-static",
+				"cas",
+				"postfix",
+			},
+			expectedNetworkPolicies: []string{
+				"redmine-deny-all",
+				"redmine-ingress",
+				"redmine-dependency-cas",
+				"redmine-dependency-postfix",
+				"redmine-dependency-postgresql",
+			},
+		},
+		{
+			name:     "creates all dependencies for a dogu without ui",
+			doguName: "redmine",
+			doguDependencies: []string{
+				"postgresql",
+				"cas",
+				"postfix",
+			},
+			expectedNetworkPolicies: []string{
+				"redmine-deny-all",
+				"redmine-dependency-cas",
+				"redmine-dependency-postfix",
+				"redmine-dependency-postgresql",
+			},
+		},
+		{
+			name:     "fails on error with update",
+			doguName: "redmine",
+			doguDependencies: []string{
+				"postgresql",
+				"nginx-ingress",
+				"nginx-static",
+				"cas",
+				"postfix",
+			},
+			expectedNetworkPolicies: []string{
+				"redmine-deny-all",
+				"redmine-ingress",
+				"redmine-dependency-cas",
+				"redmine-dependency-postfix",
+				"redmine-dependency-postgresql",
+			},
+			errorOnUpdate: true,
+			expectError:   true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var dependencies []cesappcore.Dependency
+			for _, dep := range test.doguDependencies {
+				dependencies = append(dependencies, cesappcore.Dependency{
+					Type: "dogu",
+					Name: dep,
+				})
+			}
+			dogu := &cesappcore.Dogu{
+				Name:         test.doguName,
+				Dependencies: dependencies,
+			}
+			doguResource := &k8sv2.Dogu{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec:       k8sv2.DoguSpec{},
+				Status:     k8sv2.DoguStatus{},
+			}
+
+			times := len(test.expectedNetworkPolicies)
+			mockClient := newMockK8sClient(t)
+			mockClient.EXPECT().Get(context.Background(), mock.Anything, mock.AnythingOfType("*v1.NetworkPolicy")).Return(nil).Times(times)
+
+			var errResult error
+			if test.errorOnUpdate {
+				errResult = assert.AnError
+			}
+
+			mockClient.EXPECT().Update(context.Background(), mock.AnythingOfType("*v1.NetworkPolicy")).Run(func(ctx context.Context, clientObject client.Object, opts ...client.UpdateOption) {
+				policy, ok := clientObject.(*netv1.NetworkPolicy)
+				if !ok {
+					t.Error("the arg 1 passed to Update was not of type *v1.NetworkPolicy")
+				}
+				if !slices.Contains(test.expectedNetworkPolicies, policy.Name) {
+					t.Errorf("the network policy %s was created but not expected", policy)
+				}
+			}).Return(errResult).Times(times)
+
+			generator := NewMockDoguResourceGenerator(t)
+
+			ups := upserter{
+				client:    mockClient,
+				generator: generator,
+			}
+
+			err := ups.UpsertDoguNetworkPolicies(context.Background(), doguResource, dogu)
+			if !test.expectError {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
 }
