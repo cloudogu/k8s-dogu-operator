@@ -173,6 +173,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -230,6 +231,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpect.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
 		upserterExpect.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpect.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpect.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
 		execPod := newMockExecPod(t)
 		execPod.EXPECT().Create(testCtx).Return(nil)
@@ -278,6 +280,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -445,6 +448,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -587,6 +591,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+			upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
 			recorderExpecter := managerWithMocks.recorder.EXPECT()
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
