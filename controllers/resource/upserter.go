@@ -121,30 +121,14 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	var multiErr error
 	denyAllPolicy := generateDenyAllPolicy(doguResource, dogu)
 
-	if err := u.updateOrInsert(ctx, getNetPolObjectKey(denyAllPolicy), &netv1.NetworkPolicy{}, denyAllPolicy); err != nil {
+	if err := u.upsertNetworkPolicy(ctx, denyAllPolicy); err != nil {
 		multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update deny all rule for dogu %s: %w", dogu.GetSimpleName(), err))
 	}
 
 	for _, dependency := range dogu.Dependencies {
 		if dependency.Type == dependencyTypeDogu {
-			dependencyName := dependency.Name
-			if dependencyName == k8sNginxStaticDoguName {
-				continue
-			}
-
-			if dependencyName == k8sNginxIngressDoguName {
-				ingressPolicy := generateIngressNetPol(doguResource, dogu)
-
-				if err := u.updateOrInsert(ctx, getNetPolObjectKey(ingressPolicy), &netv1.NetworkPolicy{}, ingressPolicy); err != nil {
-					multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update ingress network policy for dogu %s: %w", dogu.GetSimpleName(), err))
-				}
-
-				continue
-			}
-
-			dependencyPolicy := generateDoguDepNetPol(doguResource, dogu, dependencyName)
-			if err := u.updateOrInsert(ctx, getNetPolObjectKey(dependencyPolicy), &netv1.NetworkPolicy{}, dependencyPolicy); err != nil {
-				multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err))
+			if err := u.upsertDoguDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
+				multiErr = errors.Join(multiErr, err)
 			}
 		}
 	}
@@ -156,6 +140,29 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	}
 
 	return nil
+}
+
+func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
+	if dependencyName == k8sNginxStaticDoguName {
+		return nil
+	}
+
+	var dependencyNetworkPolicy *netv1.NetworkPolicy
+	if dependencyName == k8sNginxIngressDoguName {
+		dependencyNetworkPolicy = generateIngressNetPol(doguResource, dogu)
+	} else {
+		dependencyNetworkPolicy = generateDoguDepNetPol(doguResource, dogu, dependencyName)
+	}
+
+	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
+		return fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err)
+	}
+
+	return nil
+}
+
+func (u *upserter) upsertNetworkPolicy(ctx context.Context, netPol *netv1.NetworkPolicy) error {
+	return u.updateOrInsert(ctx, getNetPolObjectKey(netPol), &netv1.NetworkPolicy{}, netPol)
 }
 
 func (u *upserter) upsertPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim) error {

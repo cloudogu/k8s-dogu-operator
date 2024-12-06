@@ -16,7 +16,7 @@ func generateDenyAllPolicy(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.Net
 		netv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"dogu.name": dogu.GetSimpleName(),
+					k8sv2.DoguLabelName: dogu.GetSimpleName(),
 				},
 			},
 			PolicyTypes: []netv1.PolicyType{
@@ -31,7 +31,7 @@ func generateDoguDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependency
 	return generateNetPolWithOwner(fmt.Sprintf("%s-dependency-%s", dogu.GetSimpleName(), dependencyName), doguResource, netv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"dogu.name": dependencyName,
+				k8sv2.DoguLabelName: dependencyName,
 			},
 		}, PolicyTypes: []netv1.PolicyType{
 			netv1.PolicyTypeIngress,
@@ -42,7 +42,7 @@ func generateDoguDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependency
 					{
 						PodSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
-								"dogu.name": dogu.GetSimpleName(),
+								k8sv2.DoguLabelName: dogu.GetSimpleName(),
 							},
 						},
 						NamespaceSelector: &metav1.LabelSelector{
@@ -64,7 +64,7 @@ func generateIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.Net
 		netv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"dogu.name": dogu.GetSimpleName(),
+					k8sv2.DoguLabelName: dogu.GetSimpleName(),
 				},
 			}, PolicyTypes: []netv1.PolicyType{
 				netv1.PolicyTypeIngress,
@@ -75,7 +75,7 @@ func generateIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.Net
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"dogu.name": k8sNginxIngressDoguName,
+									k8sv2.DoguLabelName: k8sNginxIngressDoguName,
 								},
 							},
 							NamespaceSelector: &metav1.LabelSelector{
