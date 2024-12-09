@@ -170,8 +170,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.applierMock.EXPECT().ApplyWithOwner(mock.Anything, "", ldapCr).Return(nil)
 		upserterExpecter := managerWithMocks.resourceUpserter.EXPECT()
 		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
@@ -228,8 +227,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		recorderExpect.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 		upserterExpect := managerWithMocks.resourceUpserter.EXPECT()
 		upserterExpect.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
-		upserterExpect.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-		upserterExpect.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpect.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpect.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpect.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
@@ -277,8 +275,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.applierMock.EXPECT().ApplyWithOwner(mock.Anything, "", ldapCr).Return(nil)
 		upserterExpecter := managerWithMocks.resourceUpserter.EXPECT()
 		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
@@ -445,8 +442,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		upserterExpecter := managerWithMocks.resourceUpserter.EXPECT()
 		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
@@ -527,8 +523,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.applierMock.EXPECT().ApplyWithOwner(mock.Anything, "", ldapCr).Return(nil)
 		upserterExpecter := managerWithMocks.resourceUpserter.EXPECT()
 		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(assert.AnError)
 
@@ -639,8 +634,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 			upserterExpecter := managerWithMocks.resourceUpserter.EXPECT()
 			upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
-			upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-			upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+			upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 
@@ -693,8 +687,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
 
 			upserterExpecter := managerWithMocks.resourceUpserter.EXPECT()
-			upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-			upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+			upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, assert.AnError)
 
@@ -730,42 +723,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
-			managerWithMocks.resourceUpserter.EXPECT().UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, assert.AnError)
-
-			managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
-			managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
-
-			// when
-			err := managerWithMocks.installManager.Install(testCtx, ldapCr)
-
-			// then
-			require.Error(t, err)
-			assert.ErrorContains(t, err, "failed to create dogu resources")
-			assert.ErrorIs(t, err, assert.AnError)
-		})
-		t.Run("fails when upserting exposed services", func(t *testing.T) {
-			// given
-			managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
-			managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
-			managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
-			managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
-			managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
-			managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
-			managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(mock.Anything, ldapDogu).Return(nil)
-			managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
-			ldapCr.ResourceVersion = ""
-			_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
-
-			recorderExpecter := managerWithMocks.recorder.EXPECT()
-			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
-			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
-			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
-			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
-			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating kubernetes resources...")
-			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
-			managerWithMocks.resourceUpserter.EXPECT().UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-			managerWithMocks.resourceUpserter.EXPECT().UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, assert.AnError)
+			managerWithMocks.resourceUpserter.EXPECT().UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, assert.AnError)
 
 			managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
@@ -808,8 +766,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.execPodFactory.EXPECT().NewExecPod(ldapCr, ldapDogu).Return(execPod, nil)
 
 			upserterExpecter := managerWithMocks.resourceUpserter.EXPECT()
-			upserterExpecter.UpsertDoguService(testCtx, ldapCr, imageConfig).Once().Return(nil, nil)
-			upserterExpecter.UpsertDoguExposedService(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+			upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, assert.AnError)
 
 			managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
