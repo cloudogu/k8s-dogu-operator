@@ -314,7 +314,7 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 	cesExposedPortAnnotator := annotation.CesExposedPortAnnotator{}
 	err = cesExposedPortAnnotator.AnnotateService(service, dogu)
 	if err != nil {
-		return nil, fmt.Errorf("failed to annotate service: %w", err)
+		return nil, fmt.Errorf("failed to annotate service with exposed ports: %w", err)
 	}
 
 	ingressAnnotationCreator := annotation.IngressAnnotator{}
