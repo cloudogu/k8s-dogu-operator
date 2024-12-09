@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/stretchr/testify/mock"
@@ -390,6 +391,7 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 		name                    string
 		doguName                string
 		doguDependencies        []string
+		componentDependencies   []string
 		expectedNetworkPolicies []string
 		errorOnUpdate           bool
 		expectError             bool
@@ -410,12 +412,16 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				"cas",
 				"postfix",
 			},
+			componentDependencies: []string{
+				"k8s-ces-control",
+			},
 			expectedNetworkPolicies: []string{
 				"redmine-deny-all",
 				"redmine-ingress",
-				"redmine-dependency-cas",
-				"redmine-dependency-postfix",
-				"redmine-dependency-postgresql",
+				"redmine-dependency-dogu-cas",
+				"redmine-dependency-dogu-postfix",
+				"redmine-dependency-dogu-postgresql",
+				"redmine-dependency-component-k8s-ces-control",
 			},
 		},
 		{
@@ -428,9 +434,9 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			},
 			expectedNetworkPolicies: []string{
 				"redmine-deny-all",
-				"redmine-dependency-cas",
-				"redmine-dependency-postfix",
-				"redmine-dependency-postgresql",
+				"redmine-dependency-dogu-cas",
+				"redmine-dependency-dogu-postfix",
+				"redmine-dependency-dogu-postgresql",
 			},
 		},
 		{
@@ -446,9 +452,9 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			expectedNetworkPolicies: []string{
 				"redmine-deny-all",
 				"redmine-ingress",
-				"redmine-dependency-cas",
-				"redmine-dependency-postfix",
-				"redmine-dependency-postgresql",
+				"redmine-dependency-dogu-cas",
+				"redmine-dependency-dogu-postfix",
+				"redmine-dependency-dogu-postgresql",
 			},
 			errorOnUpdate: true,
 			expectError:   true,
@@ -459,7 +465,13 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			var dependencies []cesappcore.Dependency
 			for _, dep := range test.doguDependencies {
 				dependencies = append(dependencies, cesappcore.Dependency{
-					Type: "dogu",
+					Type: dependencyTypeDogu,
+					Name: dep,
+				})
+			}
+			for _, dep := range test.componentDependencies {
+				dependencies = append(dependencies, cesappcore.Dependency{
+					Type: dependencyTypeComponent,
 					Name: dep,
 				})
 			}
@@ -483,15 +495,19 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				errResult = assert.AnError
 			}
 
-			mockClient.EXPECT().Update(context.Background(), mock.AnythingOfType("*v1.NetworkPolicy")).Run(func(ctx context.Context, clientObject client.Object, opts ...client.UpdateOption) {
-				policy, ok := clientObject.(*netv1.NetworkPolicy)
-				if !ok {
-					t.Error("the arg 1 passed to Update was not of type *v1.NetworkPolicy")
-				}
-				if !slices.Contains(test.expectedNetworkPolicies, policy.Name) {
-					t.Errorf("the network policy %s was created but not expected", policy)
-				}
-			}).Return(errResult).Times(times)
+			var actualCalledPolicies []string
+			for _, _ = range test.expectedNetworkPolicies {
+				mockClient.EXPECT().Update(context.Background(), mock.AnythingOfType("*v1.NetworkPolicy")).Run(func(ctx context.Context, clientObject client.Object, opts ...client.UpdateOption) {
+					policy, ok := clientObject.(*netv1.NetworkPolicy)
+					if !ok {
+						t.Error("the arg 1 passed to Update was not of type *v1.NetworkPolicy")
+					}
+					if !slices.Contains(test.expectedNetworkPolicies, policy.Name) {
+						t.Errorf("the network policy %s was created but not expected", policy)
+					}
+					actualCalledPolicies = append(actualCalledPolicies, policy.Name)
+				}).Return(errResult).Once()
+			}
 
 			generator := NewMockDoguResourceGenerator(t)
 
@@ -505,6 +521,12 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				assert.NoError(t, err)
 			} else {
 				assert.Error(t, err)
+			}
+
+			for _, expectedPolicy := range test.expectedNetworkPolicies {
+				if !slices.Contains(actualCalledPolicies, expectedPolicy) {
+					assert.Fail(t, fmt.Sprintf("the policy '%s' was expected but not created", expectedPolicy))
+				}
 			}
 		})
 	}

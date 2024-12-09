@@ -27,6 +27,7 @@ const (
 	k8sNginxIngressDoguName = "nginx-ingress"
 	k8sNginxStaticDoguName  = "nginx-static"
 	dependencyTypeDogu      = "dogu"
+	dependencyTypeComponent = "netPolTypeComponent"
 )
 
 var (
@@ -125,9 +126,19 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 		multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update deny all rule for dogu %s: %w", dogu.GetSimpleName(), err))
 	}
 
-	for _, dependency := range dogu.Dependencies {
+	var allDependencies = dogu.Dependencies
+	for _, dep := range dogu.OptionalDependencies {
+		allDependencies = append(allDependencies, dep)
+	}
+
+	for _, dependency := range allDependencies {
 		if dependency.Type == dependencyTypeDogu {
 			if err := u.upsertDoguDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
+				multiErr = errors.Join(multiErr, err)
+			}
+		}
+		if dependency.Type == dependencyTypeComponent {
+			if err := u.upsertComponentDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
 				multiErr = errors.Join(multiErr, err)
 			}
 		}
@@ -153,6 +164,16 @@ func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, depend
 	} else {
 		dependencyNetworkPolicy = generateDoguDepNetPol(doguResource, dogu, dependencyName)
 	}
+
+	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
+		return fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err)
+	}
+
+	return nil
+}
+
+func (u *upserter) upsertComponentDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
+	dependencyNetworkPolicy := generateComponentDepNetPol(doguResource, dogu, dependencyName)
 
 	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
 		return fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err)

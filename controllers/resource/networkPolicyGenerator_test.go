@@ -105,7 +105,7 @@ func Test_generateDoguDepNetPol(t *testing.T) {
 		dogu := &core.Dogu{Name: "official/redmine"}
 
 		result := generateDoguDepNetPol(doguResource, dogu, "cas")
-		assert.Equal(t, "redmine-dependency-cas", result.Name)
+		assert.Equal(t, "redmine-dependency-dogu-cas", result.Name)
 		assert.Equal(t, "cas", result.Spec.PodSelector.MatchLabels["dogu.name"])
 		assert.Len(t, result.Spec.PolicyTypes, 1)
 		assert.Equal(t, netv1.PolicyTypeIngress, result.Spec.PolicyTypes[0])
