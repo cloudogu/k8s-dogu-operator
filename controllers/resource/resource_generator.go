@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
@@ -279,7 +280,7 @@ func GetAppLabel() k8sv2.CesMatchingLabels {
 // The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 // apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
 // the service ports to the created service.
-func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
+func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
 	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
 
 	service := &corev1.Service{
@@ -295,20 +296,23 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, imageCon
 		},
 	}
 
-	for exposedPort := range imageConfig.Config.ExposedPorts {
-		port, protocol, err := annotation.SplitImagePortConfig(exposedPort)
-		if err != nil {
-			return service, fmt.Errorf("error splitting port config: %w", err)
-		}
+	for _, exposedPort := range dogu.ExposedPorts {
 		service.Spec.Ports = append(service.Spec.Ports, corev1.ServicePort{
-			Name:     strconv.Itoa(int(port)),
-			Protocol: protocol,
-			Port:     port,
+			Name:       strconv.Itoa(exposedPort.Container),
+			Protocol:   corev1.Protocol(strings.ToUpper(exposedPort.Type)),
+			Port:       int32(exposedPort.Container),
+			TargetPort: intstr.FromInt32(int32(exposedPort.Host)),
 		})
 	}
 
 	cesServiceAnnotationCreator := annotation.CesServiceAnnotator{}
 	err := cesServiceAnnotationCreator.AnnotateService(service, &imageConfig.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to annotate service: %w", err)
+	}
+
+	cesExposedPortAnnotator := annotation.CesExposedPortAnnotator{}
+	err = cesExposedPortAnnotator.AnnotateService(service, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to annotate service: %w", err)
 	}

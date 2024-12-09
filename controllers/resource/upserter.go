@@ -34,18 +34,15 @@ var (
 )
 
 type upserter struct {
-	client           k8sClient
-	generator        DoguResourceGenerator
-	exposedPortAdder exposePortAdder
+	client    k8sClient
+	generator DoguResourceGenerator
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
 func NewUpserter(client client.Client, generator DoguResourceGenerator) *upserter {
-	exposedPortAdder := NewDoguExposedPortHandler(client)
 	return &upserter{
-		client:           client,
-		generator:        generator,
-		exposedPortAdder: exposedPortAdder,
+		client:    client,
+		generator: generator,
 	}
 }
 
@@ -71,8 +68,8 @@ func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv2
 }
 
 // UpsertDoguService generates a service for a given dogu and applies it to the cluster.
-func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv2.Dogu, image *imagev1.ConfigFile) (*v1.Service, error) {
-	newService, err := u.generator.CreateDoguService(doguResource, image)
+func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, image *imagev1.ConfigFile) (*v1.Service, error) {
+	newService, err := u.generator.CreateDoguService(doguResource, dogu, image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate service: %w", err)
 	}
@@ -83,10 +80,6 @@ func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv2.Do
 	}
 
 	return newService, nil
-}
-
-func (u *upserter) UpsertDoguExposedService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*v1.Service, error) {
-	return u.exposedPortAdder.CreateOrUpdateCesLoadbalancerService(ctx, doguResource, dogu)
 }
 
 // UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
