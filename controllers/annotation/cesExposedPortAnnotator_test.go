@@ -28,12 +28,12 @@ func TestCesExposedPortAnnotator_AnnotateService(t *testing.T) {
 		// given
 		service := &corev1.Service{}
 		exposedPorts := &[]core.ExposedPort{
-			core.ExposedPort{
+			{
 				Type:      "tcp",
 				Host:      2222,
 				Container: 2222,
 			},
-			core.ExposedPort{
+			{
 				Type:      "udp",
 				Host:      80,
 				Container: 8080,
