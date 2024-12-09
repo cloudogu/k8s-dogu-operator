@@ -1,7 +1,7 @@
 metadata:
   annotations:
     k8s-dogu-operator.cloudogu.com/ces-services: '[{"name":"ldap","port":80,"location":"/ldap","pass":"/ldap"}]'
-    k8s-dogu-operator.cloudogu.com/ces-exposed-ports: '[{"protokoll":"tcp","port":2222,"targetPort":2222},{"protokoll":"tcp","port":8888,"targetPort":8888}]'
+    k8s-dogu-operator.cloudogu.com/ces-exposed-ports: '[{"protocol":"tcp","port":2222,"targetPort":2222},{"protocol":"tcp","port":8888,"targetPort":8888}]'
   creationTimestamp: null
   labels:
     app: ces

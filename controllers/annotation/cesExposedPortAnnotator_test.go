@@ -50,6 +50,6 @@ func TestCesExposedPortAnnotator_AnnotateService(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "[{\"protokoll\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protokoll\":\"udp\",\"port\":8080,\"targetPort\":80}]", service.Annotations[CesExposedPortAnnotation])
+		assert.Equal(t, "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":8080,\"targetPort\":80}]", service.Annotations[CesExposedPortAnnotation])
 	})
 }

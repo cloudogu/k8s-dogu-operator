@@ -8,7 +8,7 @@ import (
 )
 
 type CesExposedPort struct {
-	Protokoll  string `json:"protokoll"`
+	Protocol   string `json:"protocol"`
 	Port       int    `json:"port"`
 	TargetPort int    `json:"targetPort"`
 }
@@ -40,7 +40,7 @@ func parseExposedPorts(exposedPorts []core.ExposedPort) []CesExposedPort {
 
 	for _, exposedPort := range exposedPorts {
 		annotationExposedPorts = append(annotationExposedPorts, CesExposedPort{
-			Protokoll:  exposedPort.Type,
+			Protocol:   exposedPort.Type,
 			Port:       exposedPort.Container,
 			TargetPort: exposedPort.Host,
 		})
