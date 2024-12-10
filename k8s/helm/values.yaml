@@ -1,3 +1,5 @@
+networkPolicies:
+  enabled: true
 global:
   imagePullSecrets:
     - name: "ces-container-registries"

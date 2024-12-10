@@ -35,18 +35,20 @@ var (
 )
 
 type upserter struct {
-	client           k8sClient
-	generator        DoguResourceGenerator
-	exposedPortAdder exposePortAdder
+	client                 k8sClient
+	generator              DoguResourceGenerator
+	exposedPortAdder       exposePortAdder
+	networkPoliciesEnabled bool
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, generator DoguResourceGenerator) *upserter {
+func NewUpserter(client client.Client, generator DoguResourceGenerator, networkPoliciesEnabled bool) *upserter {
 	exposedPortAdder := NewDoguExposedPortHandler(client)
 	return &upserter{
-		client:           client,
-		generator:        generator,
-		exposedPortAdder: exposedPortAdder,
+		client:                 client,
+		generator:              generator,
+		exposedPortAdder:       exposedPortAdder,
+		networkPoliciesEnabled: networkPoliciesEnabled,
 	}
 }
 
@@ -119,6 +121,12 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu,
 
 // UpsertDoguNetworkPolicies generates the network policies for a dogu
 func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
+	logger := log.FromContext(ctx)
+	if !u.networkPoliciesEnabled {
+		logger.Info("Do not create network policies as they are disabled by configuration")
+		return nil
+	}
+
 	var multiErr error
 	denyAllPolicy := generateDenyAllPolicy(doguResource, dogu)
 
