@@ -90,6 +90,8 @@ spec:
               value: {{ quote .Values.controllerManager.env.doguRestartGarbageCollectionDisabled | default false }}
             - name: DOGU_DESCRIPTOR_MAX_RETRIES
               value: {{ quote .Values.controllerManager.env.doguDescriptorMaxRetries | default "20"}}
+            - name: POD_FOR_SERVICE_ACCOUNT_MAX_RETRIES
+              value: {{ quote .Values.controllerManager.env.podForServiceAccountMaxRetries | default "5"}}
           image: "{{ .Values.controllerManager.image.registry }}/{{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}"
           imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent"}}
           livenessProbe:
