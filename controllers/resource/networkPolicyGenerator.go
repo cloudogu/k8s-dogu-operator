@@ -56,7 +56,6 @@ func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyNam
 		matchLabels = map[string]string{
 			k8sv2.DoguLabelName: dependencyName,
 		}
-		break
 	case netPolTypeIngress:
 		netPolName = fmt.Sprintf("%s-ingress", coreDogu.GetSimpleName())
 		podSelector = map[string]string{
@@ -68,7 +67,6 @@ func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyNam
 		matchLabels = map[string]string{
 			k8sv2.DoguLabelName: coreDogu.GetSimpleName(),
 		}
-		break
 	case netPolTypeComponent:
 		netPolName = fmt.Sprintf("%s-dependency-component-%s", coreDogu.GetSimpleName(), dependencyName)
 		podSelector = map[string]string{
@@ -81,7 +79,6 @@ func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyNam
 			"app.kubernetes.io/instance": dependencyName,
 			"app.kubernetes.io/name":     dependencyName,
 		}
-		break
 	}
 
 	return generateNetPolWithOwner(
