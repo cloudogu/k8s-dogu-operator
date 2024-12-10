@@ -90,7 +90,7 @@ func Test_generateIngressNetPol(t *testing.T) {
 }
 
 func Test_generateDoguDepNetPol(t *testing.T) {
-	t.Run("should generate dependency network policy", func(t *testing.T) {
+	t.Run("should generate dogu dependency network policy", func(t *testing.T) {
 		doguResource := &k8sv2.Dogu{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Dogu",
@@ -112,6 +112,34 @@ func Test_generateDoguDepNetPol(t *testing.T) {
 		assert.Len(t, result.Spec.Ingress, 1)
 		assert.Len(t, result.Spec.Ingress[0].From, 1)
 		assert.Equal(t, "redmine", result.Spec.Ingress[0].From[0].PodSelector.MatchLabels["dogu.name"])
+		assert.Equal(t, "testNamespace", result.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"])
+	})
+}
+
+func Test_generateComponentDepNetPol(t *testing.T) {
+	t.Run("should generate component dependency network policy", func(t *testing.T) {
+		doguResource := &k8sv2.Dogu{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Dogu",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "MyDogu",
+				Namespace: "testNamespace",
+				UID:       "DoguUid-1",
+			},
+		}
+		dogu := &core.Dogu{Name: "official/admin"}
+
+		result := generateComponentDepNetPol(doguResource, dogu, "k8s-ces-control")
+		assert.Equal(t, "admin-dependency-component-k8s-ces-control", result.Name)
+		assert.Equal(t, "k8s-ces-control", result.Spec.PodSelector.MatchLabels["app.kubernetes.io/instance"])
+		assert.Equal(t, "k8s-ces-control", result.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+		assert.Len(t, result.Spec.PolicyTypes, 1)
+		assert.Equal(t, netv1.PolicyTypeIngress, result.Spec.PolicyTypes[0])
+		assert.Len(t, result.Spec.Ingress, 1)
+		assert.Len(t, result.Spec.Ingress[0].From, 1)
+		assert.Equal(t, "admin", result.Spec.Ingress[0].From[0].PodSelector.MatchLabels["dogu.name"])
 		assert.Equal(t, "testNamespace", result.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"])
 	})
 }
