@@ -3,7 +3,6 @@ package resource
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
@@ -296,12 +295,15 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 		},
 	}
 
-	for _, exposedPort := range dogu.ExposedPorts {
+	for exposedPort := range imageConfig.Config.ExposedPorts {
+		port, protocol, err := annotation.SplitImagePortConfig(exposedPort)
+		if err != nil {
+			return service, fmt.Errorf("error splitting port config: %w", err)
+		}
 		service.Spec.Ports = append(service.Spec.Ports, corev1.ServicePort{
-			Name:       strconv.Itoa(exposedPort.Container),
-			Protocol:   corev1.Protocol(strings.ToUpper(exposedPort.Type)),
-			Port:       int32(exposedPort.Container),
-			TargetPort: intstr.FromInt32(int32(exposedPort.Host)),
+			Name:     strconv.Itoa(int(port)),
+			Protocol: protocol,
+			Port:     port,
 		})
 	}
 

@@ -17,14 +17,9 @@ metadata:
       uid: ""
 spec:
   ports:
-    - name: "2222"
-      port: 2222
+    - name: "80"
+      port: 80
       protocol: TCP
-      targetPort: 2222
-    - name: "8888"
-      port: 8888
-      protocol: TCP
-      targetPort: 8888
   selector:
     dogu.name: ldap
   type: ClusterIP
