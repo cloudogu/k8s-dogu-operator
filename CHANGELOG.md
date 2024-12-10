@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#204] fetch dogu descriptors with retry
 
 ### Added
-- [#211] Create network policies for all dogus and their dependencies
+- [#211], [#215] Create network policies for all dogus and their dependencies
 
 ## [v3.0.1] - 2024-10-29
 ### Fixed
