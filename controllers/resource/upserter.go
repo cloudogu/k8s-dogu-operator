@@ -126,10 +126,7 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 		multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update deny all rule for dogu %s: %w", dogu.GetSimpleName(), err))
 	}
 
-	var allDependencies = dogu.Dependencies
-	for _, dep := range dogu.OptionalDependencies {
-		allDependencies = append(allDependencies, dep)
-	}
+	var allDependencies = append(dogu.Dependencies, dogu.OptionalDependencies...)
 
 	for _, dependency := range allDependencies {
 		if dependency.Type == dependencyTypeDogu {
