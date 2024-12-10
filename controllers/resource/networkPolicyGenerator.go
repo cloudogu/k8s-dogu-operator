@@ -38,12 +38,7 @@ func generateDenyAllPolicy(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.Net
 	)
 }
 
-func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName string, netPolType NetPolType) *netv1.NetworkPolicy {
-	var netPolName string
-	var podSelector map[string]string
-	var namespaceSelector map[string]string
-	var matchLabels map[string]string
-
+func getSelectors(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName string, netPolType NetPolType) (netPolName string, podSelector map[string]string, namespaceSelector map[string]string, matchLabels map[string]string) {
 	switch netPolType {
 	case netPolTypeDogu:
 		netPolName = fmt.Sprintf("%s-dependency-dogu-%s", coreDogu.GetSimpleName(), dependencyName)
@@ -80,6 +75,12 @@ func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyNam
 			"app.kubernetes.io/name":     dependencyName,
 		}
 	}
+
+	return
+}
+
+func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName string, netPolType NetPolType) *netv1.NetworkPolicy {
+	netPolName, podSelector, namespaceSelector, matchLabels := getSelectors(doguResource, coreDogu, dependencyName, netPolType)
 
 	return generateNetPolWithOwner(
 		netPolName,
