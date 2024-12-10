@@ -27,7 +27,7 @@ const (
 	k8sNginxIngressDoguName = "nginx-ingress"
 	k8sNginxStaticDoguName  = "nginx-static"
 	dependencyTypeDogu      = "dogu"
-	dependencyTypeComponent = "netPolTypeComponent"
+	dependencyTypeComponent = "component"
 )
 
 var (
