@@ -173,7 +173,6 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
 	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutorMock)
-	exposedPortRemover := resource.NewDoguExposedPortHandler(k8sClient)
 
 	sensitiveConfigRepo := registryRepo.NewSensitiveDoguConfigRepository(k8sClientSet.CoreV1().Secrets(testNamespace))
 	doguConfigRepo := registryRepo.NewDoguConfigRepository(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
@@ -201,7 +200,6 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguRegistrator:         doguRegistrator,
 		serviceAccountRemover:   serviceAccountRemover,
 		localDoguFetcher:        localDoguFetcher,
-		exposedPortRemover:      exposedPortRemover,
 		doguConfigRepository:    doguConfigRepo,
 		sensitiveDoguRepository: sensitiveConfigRepo,
 	}
