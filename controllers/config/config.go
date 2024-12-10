@@ -5,6 +5,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"strconv"
 	"strings"
 )
 
@@ -31,6 +32,7 @@ var (
 	envVarDoguRegistryUsername  = "DOGU_REGISTRY_USERNAME"
 	envVarDoguRegistryPassword  = "DOGU_REGISTRY_PASSWORD"
 	envVarDoguRegistryURLSchema = "DOGU_REGISTRY_URLSCHEMA"
+	envVarNetworkPolicyEnabled  = "NETWORK_POLICIES_ENABLED"
 	log                         = ctrl.Log.WithName("config")
 )
 
@@ -50,6 +52,8 @@ type OperatorConfig struct {
 	DoguRegistry DoguRegistryData `json:"dogu_registry"`
 	// Version contains the current version of the operator
 	Version *core.Version `json:"version"`
+	// NetworkPoliciesEnabled defines whether network policies should be created for dogus and their dependencies
+	NetworkPoliciesEnabled bool `json:"network_policies_enabled"`
 }
 
 // NewOperatorConfig creates a new operator config by reading values from the environment variables
@@ -82,10 +86,20 @@ func NewOperatorConfig(version string) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored dogu registry data! Using dogu registry %s", doguRegistryData.Endpoint))
 
+	netPolEnabledStr, err := getEnvVar(envVarNetworkPolicyEnabled)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s from environment: %w", envVarNetworkPolicyEnabled, err)
+	}
+
+	netPolEnabled, err := strconv.ParseBool(netPolEnabledStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse value of environment variable %s: %w", envVarNetworkPolicyEnabled, err)
+	}
 	return &OperatorConfig{
-		Namespace:    namespace,
-		DoguRegistry: doguRegistryData,
-		Version:      &parsedVersion,
+		Namespace:              namespace,
+		DoguRegistry:           doguRegistryData,
+		Version:                &parsedVersion,
+		NetworkPoliciesEnabled: netPolEnabled,
 	}, nil
 }
 

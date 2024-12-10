@@ -171,6 +171,7 @@ func setupEnvironment(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_ENDPOINT", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_USERNAME", "mynamespace")
 	t.Setenv("DOGU_REGISTRY_PASSWORD", "mynamespace")
+	t.Setenv("NETWORK_POLICIES_ENABLED", "true")
 }
 
 func setupOverrides() func() {

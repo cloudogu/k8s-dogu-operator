@@ -67,6 +67,7 @@ func TestNewOperatorConfig(t *testing.T) {
 
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
 	t.Setenv("DOGU_REGISTRY_URLSCHEMA", "")
+	t.Setenv("NETWORK_POLICIES_ENABLED", "true")
 
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
@@ -102,6 +103,8 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarDoguRegistryEndpoint, "myEndpoint")
 	t.Setenv(envVarDoguRegistryUsername, "user")
 	t.Setenv(envVarDoguRegistryPassword, "password")
+	t.Setenv(envVarDoguRegistryPassword, "password")
+	t.Setenv(envVarNetworkPolicyEnabled, "true")
 
 	defer func() {
 		_ = os.Unsetenv(envVarNamespace)
