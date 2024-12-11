@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -149,6 +150,10 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 		}
 	}
 
+	if err := u.deleteNonExistentDependencyPolicies(ctx, dogu, allDependencies); err != nil {
+		multiErr = errors.Join(multiErr, err)
+	}
+
 	if multiErr != nil {
 		logger := log.FromContext(ctx)
 		logger.Error(multiErr, fmt.Sprintf("failed to create some network policies for dogu %s", dogu.GetSimpleName()))
@@ -156,6 +161,36 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	}
 
 	return nil
+}
+
+func (u *upserter) deleteNonExistentDependencyPolicies(ctx context.Context, dogu *core.Dogu, allDependencies []core.Dependency) error {
+	var multiErr error
+
+	currentPolicies := &netv1.NetworkPolicyList{}
+	if err := u.client.List(ctx, currentPolicies, client.MatchingLabels{"dogu.name": dogu.GetSimpleName()}); err != nil {
+		return err
+	}
+
+	for _, policy := range currentPolicies.Items {
+		// Only delete policies which rely on a dependency
+		if policy.Labels[depenendcyLabel] == "" {
+			continue
+		}
+
+		// Check if the dependency of the network policy still exists in dogu dependencies
+		stillExists := slices.ContainsFunc(allDependencies, func(dependency core.Dependency) bool {
+			return dependency.Name == policy.Labels[depenendcyLabel]
+		})
+
+		// If not existent in dogu dependency, remove the network policy
+		if !stillExists {
+			if err := u.client.Delete(ctx, &policy); err != nil {
+				multiErr = errors.Join(multiErr, err)
+			}
+		}
+	}
+
+	return multiErr
 }
 
 func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {

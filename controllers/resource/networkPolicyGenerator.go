@@ -9,6 +9,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const depenendcyLabel = "k8s.cloudogu.com/dependency"
+
 type NetPolType int
 
 const (
@@ -82,7 +84,7 @@ func getSelectors(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName 
 func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName string, netPolType NetPolType) *netv1.NetworkPolicy {
 	netPolName, podSelector, namespaceSelector, matchLabels := getSelectors(doguResource, coreDogu, dependencyName, netPolType)
 
-	return generateNetPolWithOwner(
+	netPol := generateNetPolWithOwner(
 		netPolName,
 		doguResource,
 		netv1.NetworkPolicySpec{
@@ -107,6 +109,10 @@ func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyNam
 			},
 		},
 	)
+
+	netPol.Labels["k8s.cloudogu.com/dependency"] = dependencyName
+
+	return netPol
 }
 
 func generateDoguDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string) *netv1.NetworkPolicy {
