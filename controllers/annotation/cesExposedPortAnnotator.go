@@ -53,6 +53,9 @@ func parseExposedPorts(exposedPorts []core.ExposedPort) []CesExposedPort {
 }
 
 func appendAnnotations(service *corev1.Service, exposedPorts []CesExposedPort) error {
+	if len(exposedPorts) < 1 && service.Annotations[CesExposedPortAnnotation] != "" {
+		removeAnnotation(service)
+	}
 	if len(exposedPorts) < 1 {
 		logrus.Infof("no exposed ports existing. No annotations are added to the service [%s]", service.GetName())
 		return nil
@@ -71,4 +74,8 @@ func appendAnnotations(service *corev1.Service, exposedPorts []CesExposedPort) e
 
 	logrus.Infof("succeeded to append annotation [%s] to service [%s]", CesExposedPortAnnotation, service.GetName())
 	return nil
+}
+
+func removeAnnotation(service *corev1.Service) {
+	delete(service.Annotations, CesExposedPortAnnotation)
 }
