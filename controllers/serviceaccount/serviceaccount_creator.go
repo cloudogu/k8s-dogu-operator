@@ -32,7 +32,7 @@ const (
 
 var defaultMaxTries = 5
 
-const podForServiceAccountMaxRetriesEnv = "POD_FOR_SERVICE_ACCOUNT_MAX_RETRIES"
+const getServiceAccountPodMaxRetriesEnv = "GET_SERVICE_ACCOUNT_POD_MAX_RETRIES"
 
 // creator is the unit to handle the creation of service accounts
 type creator struct {
@@ -161,7 +161,7 @@ func getPodForServiceAccountDogu(ctx context.Context, client client.Client, saDo
 	versionlessDoguLabel := map[string]string{v2.DoguLabelName: saDogu.GetSimpleName()}
 
 	pod := &corev1.Pod{}
-	err := retry.OnError(podForServiceAccountMaxTriesEnv(), regLibErr.IsNotFoundError, func() error {
+	err := retry.OnError(readGetServiceAccountPodMaxRetriesEnv(), regLibErr.IsNotFoundError, func() error {
 		var err error
 		pod, err = v2.GetPodForLabels(ctx, client, versionlessDoguLabel)
 		return err
@@ -290,15 +290,15 @@ func (c *creator) parseServiceCommandOutput(output io.Reader) (map[string]string
 	return serviceAccountSettings, nil
 }
 
-func podForServiceAccountMaxTriesEnv() int {
-	fqdnFromLoadBalancerWaitTimeoutMinsString, found := os.LookupEnv(podForServiceAccountMaxRetriesEnv)
+func readGetServiceAccountPodMaxRetriesEnv() int {
+	fqdnFromLoadBalancerWaitTimeoutMinsString, found := os.LookupEnv(getServiceAccountPodMaxRetriesEnv)
 	if !found {
-		logrus.Debugf("failed to read %s environment variable, using default value of %d", podForServiceAccountMaxRetriesEnv, defaultMaxTries)
+		logrus.Debugf("failed to read %s environment variable, using default value of %d", getServiceAccountPodMaxRetriesEnv, defaultMaxTries)
 		return defaultMaxTries
 	}
 	fqdnFromLoadBalancerWaitTimeoutMinsParsed, err := strconv.Atoi(fqdnFromLoadBalancerWaitTimeoutMinsString)
 	if err != nil {
-		logrus.Warningf("failed to parse %s environment variable, using default value of %d", podForServiceAccountMaxRetriesEnv, defaultMaxTries)
+		logrus.Warningf("failed to parse %s environment variable, using default value of %d", getServiceAccountPodMaxRetriesEnv, defaultMaxTries)
 		return defaultMaxTries
 	}
 	if fqdnFromLoadBalancerWaitTimeoutMinsParsed <= 0 {

@@ -20,7 +20,7 @@ controllerManager:
     doguRestartFailedHistoryLimit: 3
     doguRestartGarbageCollectionDisabled: false
     doguDescriptorMaxRetries: 20
-    podForServiceAccountMaxRetries: 5
+    getServiceAccountPodMaxRetries: 5
   resourceLimits:
     cpu: 500m
     memory: 128Mi
