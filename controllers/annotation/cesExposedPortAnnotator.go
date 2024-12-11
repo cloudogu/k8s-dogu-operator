@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -46,11 +47,14 @@ func parseExposedPorts(exposedPorts []core.ExposedPort) []CesExposedPort {
 			TargetPort: exposedPort.Host,
 		})
 	}
+
+	logrus.Info("successfully parsed exposed ports")
 	return annotationExposedPorts
 }
 
 func appendAnnotations(service *corev1.Service, exposedPorts []CesExposedPort) error {
 	if len(exposedPorts) < 1 {
+		logrus.Infof("no exposed ports existing. No annotations are added to the service [%s]", service.GetName())
 		return nil
 	}
 
@@ -64,5 +68,7 @@ func appendAnnotations(service *corev1.Service, exposedPorts []CesExposedPort) e
 	}
 
 	service.Annotations[CesExposedPortAnnotation] = string(exposedPortsJson)
+
+	logrus.Infof("succeeded to append annotation [%s] to service [%s]", CesExposedPortAnnotation, service.GetName())
 	return nil
 }
