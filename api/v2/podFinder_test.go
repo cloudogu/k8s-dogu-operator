@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -68,6 +69,7 @@ func TestGetPodForLabels(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "found no pods for labels")
+		assert.True(t, cloudoguerrors.IsNotFoundError(err))
 	})
 	t.Run("should return for multiple pods for unique labels", func(t *testing.T) {
 		// given

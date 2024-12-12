@@ -291,20 +291,20 @@ func (c *creator) parseServiceCommandOutput(output io.Reader) (map[string]string
 }
 
 func readGetServiceAccountPodMaxRetriesEnv() int {
-	fqdnFromLoadBalancerWaitTimeoutMinsString, found := os.LookupEnv(getServiceAccountPodMaxRetriesEnv)
+	getServiceAccountPodMaxRetriesString, found := os.LookupEnv(getServiceAccountPodMaxRetriesEnv)
 	if !found {
 		logrus.Debugf("failed to read %s environment variable, using default value of %d", getServiceAccountPodMaxRetriesEnv, defaultMaxTries)
 		return defaultMaxTries
 	}
-	fqdnFromLoadBalancerWaitTimeoutMinsParsed, err := strconv.Atoi(fqdnFromLoadBalancerWaitTimeoutMinsString)
+	getServiceAccountPodMaxRetriesParsed, err := strconv.Atoi(getServiceAccountPodMaxRetriesString)
 	if err != nil {
 		logrus.Warningf("failed to parse %s environment variable, using default value of %d", getServiceAccountPodMaxRetriesEnv, defaultMaxTries)
 		return defaultMaxTries
 	}
-	if fqdnFromLoadBalancerWaitTimeoutMinsParsed <= 0 {
-		logrus.Warningf("parsed value (%d) is smaller than 0, using default value of %d", fqdnFromLoadBalancerWaitTimeoutMinsParsed, defaultMaxTries)
+	if getServiceAccountPodMaxRetriesParsed <= 0 {
+		logrus.Warningf("parsed value (%d) is smaller than 0, using default value of %d", getServiceAccountPodMaxRetriesParsed, defaultMaxTries)
 		return defaultMaxTries
 
 	}
-	return fqdnFromLoadBalancerWaitTimeoutMinsParsed
+	return getServiceAccountPodMaxRetriesParsed
 }
