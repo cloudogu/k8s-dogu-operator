@@ -56,6 +56,19 @@ func TestGetPodForLabels(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get pods")
 	})
+	t.Run("should return an error when no pod was found", func(t *testing.T) {
+		// given
+		labels := CesMatchingLabels{DoguLabelName: "ldap", DoguLabelVersion: "1.2.3-4"}
+		cli := newMockK8sClient(t)
+		cli.On("List", testCtx, mock.Anything, client.MatchingLabels(labels)).Return(nil)
+
+		// when
+		_, err := GetPodForLabels(testCtx, cli, labels)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "found no pods for labels")
+	})
 	t.Run("should return for multiple pods for unique labels", func(t *testing.T) {
 		// given
 		labels := CesMatchingLabels{DoguLabelName: "ldap", DoguLabelVersion: "1.2.3-4"}
