@@ -5,10 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.0.2] - 2024-12-05
+### Added
+- [#212] NetworkPolicy to deny all ingress traffic to this operator
+ 
 ### Changed
 - [#204] fetch dogu descriptors with retry
 - [#208] Disable default service-account auto-mounting for dogus
 - [#208] Disable service-account token auto-mounting for exec-pods
+
+### Added
+- [#211] Create network policies for all dogus and their dependencies
 
 ## [v3.0.1] - 2024-10-29
 ### Fixed

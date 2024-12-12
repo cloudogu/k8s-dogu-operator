@@ -365,6 +365,11 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter res
 		return err
 	}
 
+	err = upserter.UpsertDoguNetworkPolicies(ctx, toDoguResource, toDogu)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
