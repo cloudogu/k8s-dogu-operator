@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.0.3] - 2024-12-12
 ### Added
 - [#215] Create network policies for all dogus and their component-dependencies
 - [#208] Disable default service-account auto-mounting for dogus
