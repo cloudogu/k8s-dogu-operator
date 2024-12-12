@@ -50,6 +50,19 @@ type DoguSpec struct {
 	Version string `json:"version,omitempty"`
 	// Resources of the dogu (e.g. dataVolumeSize)
 	Resources DoguResources `json:"resources,omitempty"`
+	// Security overrides security policies defined in the dogu descriptor. These fields can be used to further reduce a dogu's attack surface.
+	//
+	// Example:
+	//
+	//	"Security": {
+	//	  "Capabilities": {
+	//	     "Drop": ["All"],
+	//	     "Add": ["NetBindService", "Kill"]
+	//	   },
+	//	  "RunAsNonRoot": true,
+	//	  "ReadOnlyRootFileSystem": true
+	//	}
+	Security Security `json:"security,omitempty"`
 	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
 	// a crash loop).
 	SupportMode bool `json:"supportMode,omitempty"`
