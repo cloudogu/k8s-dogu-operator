@@ -9,7 +9,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const depenendcyLabel = "k8s.cloudogu.com/dependency"
+const (
+	depenendcyLabel    = "k8s.cloudogu.com/dependency"
+	componentNameLabel = "k8s.cloudogu.com/component.name"
+)
 
 type NetPolType int
 
@@ -73,8 +76,7 @@ func getSelectors(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName 
 			"kubernetes.io/metadata.name": doguResource.Namespace,
 		}
 		matchLabels = map[string]string{
-			"app.kubernetes.io/instance": dependencyName,
-			"app.kubernetes.io/name":     dependencyName,
+			componentNameLabel: dependencyName,
 		}
 	}
 
