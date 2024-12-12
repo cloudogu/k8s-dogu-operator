@@ -6,7 +6,7 @@ metadata:
     app: ces
 spec:
   name: official/nexus
-  version: 3.68.1-2
+  version: 3.70.2-5
   resources:
     dataVolumeSize: 5Gi
   additionalIngressAnnotations:
