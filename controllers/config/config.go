@@ -86,20 +86,11 @@ func NewOperatorConfig(version string) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored dogu registry data! Using dogu registry %s", doguRegistryData.Endpoint))
 
-	netPolEnabledStr, err := getEnvVar(envVarNetworkPolicyEnabled)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read %s from environment: %w", envVarNetworkPolicyEnabled, err)
-	}
-
-	netPolEnabled, err := strconv.ParseBool(netPolEnabledStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse value of environment variable %s: %w", envVarNetworkPolicyEnabled, err)
-	}
 	return &OperatorConfig{
 		Namespace:              namespace,
 		DoguRegistry:           doguRegistryData,
 		Version:                &parsedVersion,
-		NetworkPoliciesEnabled: netPolEnabled,
+		NetworkPoliciesEnabled: getNetworkPoliciesEnabled(),
 	}, nil
 }
 
@@ -184,4 +175,20 @@ func (o *OperatorConfig) GetRemoteCredentials() *core.Credentials {
 
 func newEnvVarError(envVar string, err error) error {
 	return fmt.Errorf("failed to get env var [%s]: %w", envVar, err)
+}
+
+func getNetworkPoliciesEnabled() bool {
+	netPolEnabledStr, err := getEnvVar(envVarNetworkPolicyEnabled)
+	if err != nil {
+		log.Error(fmt.Errorf("failed to read %s from environment: %w", envVarNetworkPolicyEnabled, err), "Enabling network policies by default")
+		return true
+	}
+
+	netPolEnabled, err := strconv.ParseBool(netPolEnabledStr)
+	if err != nil {
+		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarNetworkPolicyEnabled, err), "Enabling network policies by default")
+		return true
+	}
+
+	return netPolEnabled
 }
