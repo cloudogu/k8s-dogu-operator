@@ -8,11 +8,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
-
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -210,6 +208,11 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	_, err = m.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
+	if err != nil {
+		return err
+	}
+
+	err = m.resourceUpserter.UpsertDoguNetworkPolicies(ctx, doguResource, dogu)
 	if err != nil {
 		return err
 	}

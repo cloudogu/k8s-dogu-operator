@@ -1,3 +1,5 @@
+networkPolicies:
+  enabled: true
 global:
   imagePullSecrets:
     - name: "ces-container-registries"
@@ -10,7 +12,7 @@ controllerManager:
   image:
     registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 3.0.2
+    tag: 3.0.3
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug
