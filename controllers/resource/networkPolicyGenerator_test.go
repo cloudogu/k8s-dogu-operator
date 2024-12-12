@@ -133,8 +133,7 @@ func Test_generateComponentDepNetPol(t *testing.T) {
 
 		result := generateComponentDepNetPol(doguResource, dogu, "k8s-ces-control")
 		assert.Equal(t, "admin-dependency-component-k8s-ces-control", result.Name)
-		assert.Equal(t, "k8s-ces-control", result.Spec.PodSelector.MatchLabels["app.kubernetes.io/instance"])
-		assert.Equal(t, "k8s-ces-control", result.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+		assert.Equal(t, "k8s-ces-control", result.Spec.PodSelector.MatchLabels[componentNameLabel])
 		assert.Len(t, result.Spec.PolicyTypes, 1)
 		assert.Equal(t, netv1.PolicyTypeIngress, result.Spec.PolicyTypes[0])
 		assert.Len(t, result.Spec.Ingress, 1)
