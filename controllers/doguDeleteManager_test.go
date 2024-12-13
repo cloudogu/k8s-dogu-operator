@@ -23,7 +23,6 @@ type doguDeleteManagerWithMocks struct {
 	doguRegistratorMock       *mockDoguRegistrator
 	localDoguFetcherMock      *mockLocalDoguFetcher
 	serviceAccountRemoverMock *mockServiceAccountRemover
-	exposedPortRemover        *mockExposePortRemover
 	doguConfigRepo            *mockDoguConfigRepository
 	sensitiveConfigRepo       *mockDoguConfigRepository
 }
@@ -34,7 +33,6 @@ func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 	doguRegistrator := newMockDoguRegistrator(t)
 	serviceAccountRemover := newMockServiceAccountRemover(t)
 	doguFetcher := newMockLocalDoguFetcher(t)
-	exposedPortRemover := newMockExposePortRemover(t)
 	doguConfigRepo := newMockDoguConfigRepository(t)
 	sensitiveConfigRepo := newMockDoguConfigRepository(t)
 
@@ -43,7 +41,6 @@ func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 		localDoguFetcher:        doguFetcher,
 		doguRegistrator:         doguRegistrator,
 		serviceAccountRemover:   serviceAccountRemover,
-		exposedPortRemover:      exposedPortRemover,
 		doguConfigRepository:    doguConfigRepo,
 		sensitiveDoguRepository: sensitiveConfigRepo,
 	}
@@ -54,7 +51,6 @@ func getDoguDeleteManagerWithMocks(t *testing.T) doguDeleteManagerWithMocks {
 		imageRegistryMock:         imageRegistry,
 		doguRegistratorMock:       doguRegistrator,
 		serviceAccountRemoverMock: serviceAccountRemover,
-		exposedPortRemover:        exposedPortRemover,
 		doguConfigRepo:            doguConfigRepo,
 		sensitiveConfigRepo:       sensitiveConfigRepo,
 	}
@@ -99,7 +95,6 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
-		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(nil)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.deleteManager.client = fakeClient
@@ -150,7 +145,6 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(assert.AnError)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
-		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(nil)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.deleteManager.client = fakeClient
@@ -172,7 +166,6 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(assert.AnError)
-		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(nil)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.deleteManager.client = fakeClient
@@ -194,7 +187,6 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
-		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(assert.AnError)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.deleteManager.client = fakeClient
@@ -216,7 +208,6 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
-		managerWithMocks.exposedPortRemover.EXPECT().RemoveExposedPorts(testCtx, ldapCr, ldapDogu).Return(nil)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.sensitiveConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.deleteManager.client = fakeClient

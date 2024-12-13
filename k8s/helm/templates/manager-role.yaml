@@ -120,3 +120,14 @@ rules:
     - pods/exec
   verbs:
     - create
+- apiGroups:
+    - ""
+  resources:
+    - events
+  verbs:
+    # used to write events while reconciling CRs
+    - create
+    - patch
+    # we list and delete requeue events to avoid spam
+    - list
+    - delete

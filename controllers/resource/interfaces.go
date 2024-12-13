@@ -45,11 +45,9 @@ type ResourceUpserter interface {
 	// The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
 	UpsertDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
 	// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
-	UpsertDoguService(ctx context.Context, doguResource *k8sv2.Dogu, image *image.ConfigFile) (*v1.Service, error)
+	UpsertDoguService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, image *image.ConfigFile) (*v1.Service, error)
 	// UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
 	UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PersistentVolumeClaim, error)
-	// UpsertDoguExposedService creates oder updates the exposed service with the given dogu.
-	UpsertDoguExposedService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.Service, error)
 	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) error
 }
 
@@ -91,21 +89,9 @@ type DoguResourceGenerator interface {
 	// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 	// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
 	// the service ports to the created service.
-	CreateDoguService(doguResource *k8sv2.Dogu, imageConfig *image.ConfigFile) (*v1.Service, error)
+	CreateDoguService(doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, imageConfig *image.ConfigFile) (*v1.Service, error)
 	// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
 	CreateDoguPVC(doguResource *k8sv2.Dogu) (*v1.PersistentVolumeClaim, error)
-}
-
-// exposePortAdder is used to expose exposed services from the dogu.
-type exposePortAdder interface {
-	// CreateOrUpdateCesLoadbalancerService deletes the exposure of the exposed services from the dogu.
-	CreateOrUpdateCesLoadbalancerService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.Service, error)
-}
-
-// ExposePortRemover is used to delete the exposure of the exposed services from the dogu.
-type ExposePortRemover interface {
-	// RemoveExposedPorts deletes the exposure of the exposed services from the dogu.
-	RemoveExposedPorts(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) error
 }
 
 // tcpUpdServiceExposer is used to expose non http services.

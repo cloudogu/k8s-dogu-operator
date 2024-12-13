@@ -168,12 +168,11 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
-	upserter := resource.NewUpserter(k8sClient, resourceGenerator)
+	upserter := resource.NewUpserter(k8sClient, resourceGenerator, true)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
 	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutorMock)
-	exposedPortRemover := resource.NewDoguExposedPortHandler(k8sClient)
 
 	sensitiveConfigRepo := registryRepo.NewSensitiveDoguConfigRepository(k8sClientSet.CoreV1().Secrets(testNamespace))
 	doguConfigRepo := registryRepo.NewDoguConfigRepository(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
@@ -201,7 +200,6 @@ var _ = ginkgo.BeforeSuite(func() {
 		doguRegistrator:         doguRegistrator,
 		serviceAccountRemover:   serviceAccountRemover,
 		localDoguFetcher:        localDoguFetcher,
-		exposedPortRemover:      exposedPortRemover,
 		doguConfigRepository:    doguConfigRepo,
 		sensitiveDoguRepository: sensitiveConfigRepo,
 	}

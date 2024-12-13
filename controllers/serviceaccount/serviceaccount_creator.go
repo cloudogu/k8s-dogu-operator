@@ -5,13 +5,16 @@ import (
 	"context"
 	"fmt"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/retry-lib/retry"
+	"github.com/sirupsen/logrus"
 	"io"
-	"strings"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
+	"strings"
 
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
@@ -26,6 +29,10 @@ const (
 	doguKind      = "dogu"
 	componentKind = "component"
 )
+
+var defaultMaxTries = 5
+
+const getServiceAccountPodMaxRetriesEnv = "GET_SERVICE_ACCOUNT_POD_MAX_RETRIES"
 
 // creator is the unit to handle the creation of service accounts
 type creator struct {
@@ -152,7 +159,14 @@ func serviceAccountExists(registryCredentialPath string, senDoguCfg config.DoguC
 
 func getPodForServiceAccountDogu(ctx context.Context, client client.Client, saDogu *core.Dogu) (*corev1.Pod, error) {
 	versionlessDoguLabel := map[string]string{v2.DoguLabelName: saDogu.GetSimpleName()}
-	return v2.GetPodForLabels(ctx, client, versionlessDoguLabel)
+
+	pod := &corev1.Pod{}
+	err := retry.OnError(readGetServiceAccountPodMaxRetriesEnv(), regLibErr.IsNotFoundError, func() error {
+		var err error
+		pod, err = v2.GetPodForLabels(ctx, client, versionlessDoguLabel)
+		return err
+	})
+	return pod, err
 }
 
 func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saPod *corev1.Pod, serviceAccount core.ServiceAccount) (map[string]string, error) {
@@ -274,4 +288,23 @@ func (c *creator) parseServiceCommandOutput(output io.Reader) (map[string]string
 	}
 
 	return serviceAccountSettings, nil
+}
+
+func readGetServiceAccountPodMaxRetriesEnv() int {
+	getServiceAccountPodMaxRetriesString, found := os.LookupEnv(getServiceAccountPodMaxRetriesEnv)
+	if !found {
+		logrus.Debugf("failed to read %s environment variable, using default value of %d", getServiceAccountPodMaxRetriesEnv, defaultMaxTries)
+		return defaultMaxTries
+	}
+	getServiceAccountPodMaxRetriesParsed, err := strconv.Atoi(getServiceAccountPodMaxRetriesString)
+	if err != nil {
+		logrus.Warningf("failed to parse %s environment variable, using default value of %d", getServiceAccountPodMaxRetriesEnv, defaultMaxTries)
+		return defaultMaxTries
+	}
+	if getServiceAccountPodMaxRetriesParsed <= 0 {
+		logrus.Warningf("parsed value (%d) is smaller than 0, using default value of %d", getServiceAccountPodMaxRetriesParsed, defaultMaxTries)
+		return defaultMaxTries
+
+	}
+	return getServiceAccountPodMaxRetriesParsed
 }

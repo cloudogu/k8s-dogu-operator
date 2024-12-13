@@ -292,7 +292,7 @@ func GetAppLabel() k8sv2.CesMatchingLabels {
 // The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 // apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
 // the service ports to the created service.
-func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
+func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *core.Dogu, imageConfig *imagev1.ConfigFile) (*corev1.Service, error) {
 	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
 
 	service := &corev1.Service{
@@ -324,6 +324,12 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, imageCon
 	err := cesServiceAnnotationCreator.AnnotateService(service, &imageConfig.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to annotate service: %w", err)
+	}
+
+	cesExposedPortAnnotator := annotation.CesExposedPortAnnotator{}
+	err = cesExposedPortAnnotator.AnnotateService(service, dogu)
+	if err != nil {
+		return nil, fmt.Errorf("failed to annotate service with exposed ports: %w", err)
 	}
 
 	ingressAnnotationCreator := annotation.IngressAnnotator{}

@@ -148,9 +148,9 @@ func (_c *MockDoguResourceGenerator_CreateDoguPVC_Call) RunAndReturn(run func(*v
 	return _c
 }
 
-// CreateDoguService provides a mock function with given fields: doguResource, imageConfig
-func (_m *MockDoguResourceGenerator) CreateDoguService(doguResource *v2.Dogu, imageConfig *pkgv1.ConfigFile) (*corev1.Service, error) {
-	ret := _m.Called(doguResource, imageConfig)
+// CreateDoguService provides a mock function with given fields: doguResource, dogu, imageConfig
+func (_m *MockDoguResourceGenerator) CreateDoguService(doguResource *v2.Dogu, dogu *core.Dogu, imageConfig *pkgv1.ConfigFile) (*corev1.Service, error) {
+	ret := _m.Called(doguResource, dogu, imageConfig)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateDoguService")
@@ -158,19 +158,19 @@ func (_m *MockDoguResourceGenerator) CreateDoguService(doguResource *v2.Dogu, im
 
 	var r0 *corev1.Service
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*v2.Dogu, *pkgv1.ConfigFile) (*corev1.Service, error)); ok {
-		return rf(doguResource, imageConfig)
+	if rf, ok := ret.Get(0).(func(*v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) (*corev1.Service, error)); ok {
+		return rf(doguResource, dogu, imageConfig)
 	}
-	if rf, ok := ret.Get(0).(func(*v2.Dogu, *pkgv1.ConfigFile) *corev1.Service); ok {
-		r0 = rf(doguResource, imageConfig)
+	if rf, ok := ret.Get(0).(func(*v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) *corev1.Service); ok {
+		r0 = rf(doguResource, dogu, imageConfig)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*corev1.Service)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*v2.Dogu, *pkgv1.ConfigFile) error); ok {
-		r1 = rf(doguResource, imageConfig)
+	if rf, ok := ret.Get(1).(func(*v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) error); ok {
+		r1 = rf(doguResource, dogu, imageConfig)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -185,14 +185,15 @@ type MockDoguResourceGenerator_CreateDoguService_Call struct {
 
 // CreateDoguService is a helper method to define mock.On call
 //   - doguResource *v2.Dogu
+//   - dogu *core.Dogu
 //   - imageConfig *pkgv1.ConfigFile
-func (_e *MockDoguResourceGenerator_Expecter) CreateDoguService(doguResource interface{}, imageConfig interface{}) *MockDoguResourceGenerator_CreateDoguService_Call {
-	return &MockDoguResourceGenerator_CreateDoguService_Call{Call: _e.mock.On("CreateDoguService", doguResource, imageConfig)}
+func (_e *MockDoguResourceGenerator_Expecter) CreateDoguService(doguResource interface{}, dogu interface{}, imageConfig interface{}) *MockDoguResourceGenerator_CreateDoguService_Call {
+	return &MockDoguResourceGenerator_CreateDoguService_Call{Call: _e.mock.On("CreateDoguService", doguResource, dogu, imageConfig)}
 }
 
-func (_c *MockDoguResourceGenerator_CreateDoguService_Call) Run(run func(doguResource *v2.Dogu, imageConfig *pkgv1.ConfigFile)) *MockDoguResourceGenerator_CreateDoguService_Call {
+func (_c *MockDoguResourceGenerator_CreateDoguService_Call) Run(run func(doguResource *v2.Dogu, dogu *core.Dogu, imageConfig *pkgv1.ConfigFile)) *MockDoguResourceGenerator_CreateDoguService_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*v2.Dogu), args[1].(*pkgv1.ConfigFile))
+		run(args[0].(*v2.Dogu), args[1].(*core.Dogu), args[2].(*pkgv1.ConfigFile))
 	})
 	return _c
 }
@@ -202,7 +203,7 @@ func (_c *MockDoguResourceGenerator_CreateDoguService_Call) Return(_a0 *corev1.S
 	return _c
 }
 
-func (_c *MockDoguResourceGenerator_CreateDoguService_Call) RunAndReturn(run func(*v2.Dogu, *pkgv1.ConfigFile) (*corev1.Service, error)) *MockDoguResourceGenerator_CreateDoguService_Call {
+func (_c *MockDoguResourceGenerator_CreateDoguService_Call) RunAndReturn(run func(*v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) (*corev1.Service, error)) *MockDoguResourceGenerator_CreateDoguService_Call {
 	_c.Call.Return(run)
 	return _c
 }

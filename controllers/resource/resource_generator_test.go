@@ -186,6 +186,8 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.NoError(t, err)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		expectedDeployment.Spec.Template.Spec.ServiceAccountName = "ldap"
+		automountServiceAccountToken := true
+		expectedDeployment.Spec.Template.Spec.AutomountServiceAccountToken = &automountServiceAccountToken
 		assert.Equal(t, expectedDeployment, actualDeployment)
 	})
 
@@ -329,13 +331,14 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 	t.Run("Return simple service", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 		imageConf := readLdapDoguImageConfig(t)
 		generator := resourceGenerator{
 			scheme: getTestScheme(),
 		}
 
 		// when
-		actualService, err := generator.CreateDoguService(ldapDoguResource, imageConf)
+		actualService, err := generator.CreateDoguService(ldapDoguResource, ldapDogu, imageConf)
 
 		assert.NoError(t, err)
 		assert.Equal(t, readLdapDoguExpectedService(t), actualService)
@@ -348,6 +351,7 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 		}
 
 		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 		imageConf := readLdapDoguImageConfig(t)
 
 		oldMethod := ctrl.SetControllerReference
@@ -357,7 +361,7 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 		defer func() { ctrl.SetControllerReference = oldMethod }()
 
 		// when
-		_, err := generator.CreateDoguService(ldapDoguResource, imageConf)
+		_, err := generator.CreateDoguService(ldapDoguResource, ldapDogu, imageConf)
 
 		// then
 		require.Error(t, err)
