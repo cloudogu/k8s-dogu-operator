@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - [#218] Missing RBACs for events
+- [#216] Annotation for exposed ports
+
 ### Removed
 - [#218] Leader-election. It is not necessary as we do not scale for now.
+- [#216] Exposing services
+
 ### Fixed
 - [#218] Problem with missing RBACs for events
 
