@@ -38,6 +38,7 @@ type DoguManager struct {
 	ingressAnnotationsManager additionalIngressAnnotationsManager
 	supportManager            supportManager
 	startStopManager          DoguStartStopManager
+	securityContextManager    securityContextManager
 	recorder                  record.EventRecorder
 }
 
@@ -83,6 +84,8 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 
 	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
 
+	securityContextManager := NewDoguSecurityContextManager(client, mgrSet, eventRecorder)
+
 	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
 	return &DoguManager{
@@ -94,6 +97,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 		volumeManager:             volumeManager,
 		ingressAnnotationsManager: ingressAnnotationsManager,
 		startStopManager:          startStopManager,
+		securityContextManager:    securityContextManager,
 		recorder:                  eventRecorder,
 	}, nil
 }
@@ -152,6 +156,12 @@ func (m *DoguManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k
 
 // SetDoguAdditionalIngressAnnotations edits the additional ingress annotations in the given dogu's service.
 func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, AdditionalIngressAnnotationsChangeEventReason, "Start additional ingress annotations change...")
+	return m.ingressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
+}
+
+// UpdateDeploymentWithSecurityContext edits the securityContext of the deployment
+func (m *DoguManager) UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, AdditionalIngressAnnotationsChangeEventReason, "Start additional ingress annotations change...")
 	return m.ingressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
 }

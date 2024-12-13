@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
 	"testing"
 	"time"
 
@@ -1170,6 +1172,67 @@ func Test_doguReconciler_validateVolumeSize(t *testing.T) {
 				recorder: tt.recorderFunc(t),
 			}
 			assert.Equalf(t, tt.wantSuccess, r.validateVolumeSize(tt.args.doguResource), "validateVolumeSize(%v)", tt.args.doguResource)
+		})
+	}
+}
+
+func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
+	tests := []struct {
+		name         string
+		deployment   *appsv1.Deployment
+		doguResource *k8sv2.Dogu
+		want         bool
+		wantErr      assert.ErrorAssertionFunc
+	}{
+		{
+			name:         "failed to get deployment",
+			doguResource: &k8sv2.Dogu{},
+			want:         false,
+			wantErr:      assert.Error,
+		},
+		{
+			name: "pod security context changed",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						Capabilities: k8sv2.Capabilities{
+							Add: []k8sv2.Capability{
+								"Test",
+							},
+						},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var fakeClient client.Client
+			if tt.deployment != nil {
+				fakeClient = fake.NewClientBuilder().WithObjects(tt.deployment).Build()
+			} else {
+				fakeClient = fake.NewClientBuilder().Build()
+			}
+			r := &doguReconciler{
+				client: fakeClient,
+			}
+			ctx := context.Background()
+			got, err := r.checkSecurityContextChanged(ctx, tt.doguResource)
+			if !tt.wantErr(t, err, fmt.Sprintf("checkSecurityContextChanged(%v, %v)", ctx, tt.doguResource)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "checkSecurityContextChanged(%v, %v)", ctx, tt.doguResource)
 		})
 	}
 }

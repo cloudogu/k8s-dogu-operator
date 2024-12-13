@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
 	"reflect"
 	"strings"
 	"time"
@@ -80,6 +81,7 @@ const (
 	StopDogu                           = operation("StopDogu")
 	CheckStarted                       = operation("CheckStarted")
 	CheckStopped                       = operation("CheckStopped")
+	ChangeSecurityContext              = operation("ChangeSecutiryContext")
 )
 
 const requeueWaitTimeout = 5 * time.Second
@@ -188,6 +190,8 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 		return r.performCheckStartedOperation(ctx, doguResource, requeueForMultipleOperations)
 	case CheckStopped:
 		return r.performCheckStoppedOperation(ctx, doguResource, requeueForMultipleOperations)
+	case ChangeSecurityContext:
+		return r.performSecurityContextOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
@@ -300,6 +304,15 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 		operations = append(operations, ChangeAdditionalIngressAnnotations)
 	}
 
+	securityContextChanged, err := r.checkSecurityContextChanged(ctx, doguResource)
+	if err != nil {
+		return nil, err
+	}
+
+	if securityContextChanged {
+		operations = append(operations, ChangeSecurityContext)
+	}
+
 	// Checking if the resource spec field has changed is unnecessary because we
 	// use a predicate to filter update events where specs don't change
 	upgradeable, err := checkUpgradeability(ctx, doguResource, r.fetcher)
@@ -386,6 +399,67 @@ func (r *doguReconciler) checkForAdditionalIngressAnnotations(ctx context.Contex
 	} else {
 		return true, nil
 	}
+}
+
+func (r *doguReconciler) checkSecurityContextChanged(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
+	doguDeployment := &appsv1.Deployment{}
+	err := r.client.Get(ctx, doguResource.GetObjectKey(), doguDeployment)
+	if err != nil {
+		return false, fmt.Errorf("failed to get service of dogu [%s]: %w", doguResource.Name, err)
+	}
+
+	podSecurityContext := doguDeployment.Spec.Template.Spec.SecurityContext
+	containers := doguDeployment.Spec.Template.Spec.Containers
+
+	if checkIfPodSecurityContextChanged(podSecurityContext, doguResource.Spec.Security) || checkIfContainerContextChanged(containers, doguResource.Spec.Security) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func checkIfPodSecurityContextChanged(podSecurityContext *v1.PodSecurityContext, doguResourceSecurity k8sv2.Security) bool {
+	if podSecurityContext.RunAsNonRoot != doguResourceSecurity.RunAsNonRoot {
+		return true
+	}
+
+	if !reflect.DeepEqual(podSecurityContext.SeccompProfile, doguResourceSecurity.SeccompProfile) {
+		return true
+	}
+	if !reflect.DeepEqual(podSecurityContext.AppArmorProfile, doguResourceSecurity.AppArmorProfile) {
+		return true
+	}
+	if !reflect.DeepEqual(podSecurityContext.SELinuxOptions, doguResourceSecurity.SELinuxOptions) {
+		return true
+	}
+
+	return false
+}
+
+func checkIfContainerContextChanged(containers []v1.Container, doguResourceSecurity k8sv2.Security) bool {
+	for _, container := range containers {
+		securityContext := container.SecurityContext
+
+		if securityContext.RunAsNonRoot != doguResourceSecurity.RunAsNonRoot {
+			return true
+		}
+		if securityContext.ReadOnlyRootFilesystem != doguResourceSecurity.ReadOnlyRootFileSystem {
+			return true
+		}
+		if !reflect.DeepEqual(securityContext.SeccompProfile, doguResourceSecurity.SeccompProfile) {
+			return true
+		}
+		if !reflect.DeepEqual(securityContext.AppArmorProfile, doguResourceSecurity.AppArmorProfile) {
+			return true
+		}
+		if !reflect.DeepEqual(securityContext.SELinuxOptions, doguResourceSecurity.SELinuxOptions) {
+			return true
+		}
+		if !reflect.DeepEqual(securityContext.Capabilities, doguResourceSecurity.Capabilities) {
+			return true
+		}
+	}
+	return false
 }
 
 // SetupWithManager sets up the controller with the manager.
@@ -512,6 +586,18 @@ func (r *doguReconciler) performAdditionalIngressAnnotationsOperation(ctx contex
 
 	// revert to Installed in case of requeueing after an error so that the change check can be done again.
 	return r.performOperation(ctx, doguResource, additionalIngressAnnotationsOperationEventProps, k8sv2.DoguStatusInstalled, r.doguManager.SetDoguAdditionalIngressAnnotations, shouldRequeue)
+}
+
+func (r *doguReconciler) performSecurityContextOperation(ctx context.Context, doguResource *k8sv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	deploymentWithSecurityContextOperationEventProps := operationEventProperties{
+		successReason: SecurityContextChangeEventReason,
+		errorReason:   ErrorOnSecurityContextChangeEventReason,
+		operationName: "SecurityContextChange",
+		operationVerb: "change security context",
+	}
+
+	// revert to Installed in case of requeueing after an error so that the change check can be done again.
+	return r.performOperation(ctx, doguResource, deploymentWithSecurityContextOperationEventProps, k8sv2.DoguStatusInstalled, r.doguManager.UpdateDeploymentWithSecurityContext, shouldRequeue)
 }
 
 func (r *doguReconciler) performStartDoguOperation(ctx context.Context, doguResource *k8sv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
