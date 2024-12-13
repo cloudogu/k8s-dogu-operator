@@ -168,7 +168,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 
 	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
-	upserter := resource.NewUpserter(k8sClient, resourceGenerator)
+	upserter := resource.NewUpserter(k8sClient, resourceGenerator, true)
 	collectApplier := resource.NewCollectApplier(applyClient)
 
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)

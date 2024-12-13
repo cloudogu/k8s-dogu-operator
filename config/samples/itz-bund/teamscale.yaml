@@ -1,9 +1,9 @@
 apiVersion: k8s.cloudogu.com/v2
 kind: Dogu
 metadata:
-  name: grafana
+  name: teamscale
   labels:
     app: ces
 spec:
-  name: premium/grafana
-  version: 11.1.5-3
+  name: itz-bund/teamscale
+  version: 2024.7.3-2

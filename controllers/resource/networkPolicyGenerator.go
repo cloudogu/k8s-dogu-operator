@@ -9,6 +9,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	depenendcyLabel    = "k8s.cloudogu.com/dependency"
+	componentNameLabel = "k8s.cloudogu.com/component.name"
+)
+
+type NetPolType int
+
+const (
+	netPolTypeDogu NetPolType = iota
+	netPolTypeComponent
+	netPolTypeIngress
+)
+
+func (c NetPolType) String() string {
+	return [...]string{"Dogu", "Component", "Ingress"}[c]
+}
+
 func generateDenyAllPolicy(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.NetworkPolicy {
 	return generateNetPolWithOwner(
 		fmt.Sprintf("%s-deny-all", dogu.GetSimpleName()),
@@ -24,48 +41,57 @@ func generateDenyAllPolicy(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.Net
 			},
 		},
 	)
-
 }
 
-func generateDoguDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string) *netv1.NetworkPolicy {
-	return generateNetPolWithOwner(fmt.Sprintf("%s-dependency-%s", dogu.GetSimpleName(), dependencyName), doguResource, netv1.NetworkPolicySpec{
-		PodSelector: metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				k8sv2.DoguLabelName: dependencyName,
-			},
-		}, PolicyTypes: []netv1.PolicyType{
-			netv1.PolicyTypeIngress,
-		},
-		Ingress: []netv1.NetworkPolicyIngressRule{
-			{
-				From: []netv1.NetworkPolicyPeer{
-					{
-						PodSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								k8sv2.DoguLabelName: dogu.GetSimpleName(),
-							},
-						},
-						NamespaceSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"kubernetes.io/metadata.name": doguResource.Namespace,
-							},
-						},
-					},
-				},
-			},
-		},
-	})
+func getSelectors(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName string, netPolType NetPolType) (netPolName string, podSelector map[string]string, namespaceSelector map[string]string, matchLabels map[string]string) {
+	switch netPolType {
+	case netPolTypeDogu:
+		netPolName = fmt.Sprintf("%s-dependency-dogu-%s", coreDogu.GetSimpleName(), dependencyName)
+		podSelector = map[string]string{
+			k8sv2.DoguLabelName: coreDogu.GetSimpleName(),
+		}
+		namespaceSelector = map[string]string{
+			"kubernetes.io/metadata.name": doguResource.Namespace,
+		}
+		matchLabels = map[string]string{
+			k8sv2.DoguLabelName: dependencyName,
+		}
+	case netPolTypeIngress:
+		netPolName = fmt.Sprintf("%s-ingress", coreDogu.GetSimpleName())
+		podSelector = map[string]string{
+			k8sv2.DoguLabelName: k8sNginxIngressDoguName,
+		}
+		namespaceSelector = map[string]string{
+			"kubernetes.io/metadata.name": doguResource.Namespace,
+		}
+		matchLabels = map[string]string{
+			k8sv2.DoguLabelName: coreDogu.GetSimpleName(),
+		}
+	case netPolTypeComponent:
+		netPolName = fmt.Sprintf("%s-dependency-component-%s", coreDogu.GetSimpleName(), dependencyName)
+		podSelector = map[string]string{
+			k8sv2.DoguLabelName: coreDogu.GetSimpleName(),
+		}
+		namespaceSelector = map[string]string{
+			"kubernetes.io/metadata.name": doguResource.Namespace,
+		}
+		matchLabels = map[string]string{
+			componentNameLabel: dependencyName,
+		}
+	}
+
+	return
 }
 
-func generateIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.NetworkPolicy {
-	return generateNetPolWithOwner(
-		fmt.Sprintf("%s-ingress", dogu.GetSimpleName()),
+func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName string, netPolType NetPolType) *netv1.NetworkPolicy {
+	netPolName, podSelector, namespaceSelector, matchLabels := getSelectors(doguResource, coreDogu, dependencyName, netPolType)
+
+	netPol := generateNetPolWithOwner(
+		netPolName,
 		doguResource,
 		netv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					k8sv2.DoguLabelName: dogu.GetSimpleName(),
-				},
+				MatchLabels: matchLabels,
 			}, PolicyTypes: []netv1.PolicyType{
 				netv1.PolicyTypeIngress,
 			},
@@ -74,14 +100,10 @@ func generateIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.Net
 					From: []netv1.NetworkPolicyPeer{
 						{
 							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									k8sv2.DoguLabelName: k8sNginxIngressDoguName,
-								},
+								MatchLabels: podSelector,
 							},
 							NamespaceSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"kubernetes.io/metadata.name": doguResource.Namespace,
-								},
+								MatchLabels: namespaceSelector,
 							},
 						},
 					},
@@ -89,6 +111,22 @@ func generateIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.Net
 			},
 		},
 	)
+
+	netPol.Labels["k8s.cloudogu.com/dependency"] = dependencyName
+
+	return netPol
+}
+
+func generateDoguDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string) *netv1.NetworkPolicy {
+	return generateNetPol(doguResource, dogu, dependencyName, netPolTypeDogu)
+}
+
+func generateComponentDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string) *netv1.NetworkPolicy {
+	return generateNetPol(doguResource, dogu, dependencyName, netPolTypeComponent)
+}
+
+func generateIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.NetworkPolicy {
+	return generateNetPol(doguResource, dogu, "", netPolTypeIngress)
 }
 
 func generateNetPolWithOwner(name string, parentDoguResource *k8sv2.Dogu, spec netv1.NetworkPolicySpec) *netv1.NetworkPolicy {

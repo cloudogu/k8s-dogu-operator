@@ -49,6 +49,11 @@ spec:
             - --metrics-bind-address=127.0.0.1:8080
             - --leader-elect
           env:
+            - name: NETWORK_POLICIES_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  key: network_policies_enabled
+                  name: {{ include "k8s-dogu-operator.name" . }}-manager-config
             - name: STAGE
               value: {{ quote .Values.controllerManager.env.stage | default "production"}}
             - name: LOG_LEVEL

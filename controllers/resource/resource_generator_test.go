@@ -112,6 +112,8 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.NoError(t, err)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		expectedDeployment.Spec.Template.Spec.ServiceAccountName = "ldap"
+		automountServiceAccountToken := true
+		expectedDeployment.Spec.Template.Spec.AutomountServiceAccountToken = &automountServiceAccountToken
 		assert.Equal(t, expectedDeployment, actualDeployment)
 	})
 
