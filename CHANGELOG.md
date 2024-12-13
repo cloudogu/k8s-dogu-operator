@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - [#218] Problem with missing RBACs for events
 
+## [v3.0.3] - 2024-12-12
+### Added
+- [#215] Create network policies for all dogus and their component-dependencies
+- [#208] Disable default service-account auto-mounting for dogus
+- [#208] Disable service-account token auto-mounting for exec-pods
+
 ## [v3.0.2] - 2024-12-05
 ### Added
 - [#212] NetworkPolicy to deny all ingress traffic to this operator
@@ -20,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#204] fetch dogu descriptors with retry
 
 ### Added
-- [#211] Create network policies for all dogus and their dependencies
+- [#211] Create network policies for all dogus and their dogu-dependencies
 
 ## [v3.0.1] - 2024-10-29
 ### Fixed

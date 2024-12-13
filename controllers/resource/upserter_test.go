@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/stretchr/testify/mock"
@@ -9,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,11 +29,12 @@ func TestNewUpserter(t *testing.T) {
 	mockResourceGenerator := NewMockDoguResourceGenerator(t)
 
 	// when
-	upserter := NewUpserter(mockClient, mockResourceGenerator)
+	upserter := NewUpserter(mockClient, mockResourceGenerator, true)
 
 	// then
 	require.NotNil(t, upserter)
 	assert.Equal(t, mockClient, upserter.client)
+	assert.Equal(t, upserter.networkPoliciesEnabled, true)
 	require.NotNil(t, upserter.generator)
 }
 
@@ -387,18 +390,22 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 
 func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 	tests := []struct {
-		name                    string
-		doguName                string
-		doguDependencies        []string
-		expectedNetworkPolicies []string
-		errorOnUpdate           bool
-		expectError             bool
+		name                              string
+		doguName                          string
+		doguDependencies                  []string
+		componentDependencies             []string
+		expectedNetworkPolicies           []string
+		additionalExistingNetworkPolicies []string
+		errorOnUpdate                     bool
+		expectError                       bool
+		networkPoliciesEnabled            bool
 	}{
 		{
 			name:                    "creates deny all policy for dogu without dependencies",
 			doguName:                "postgresql",
 			doguDependencies:        []string{},
 			expectedNetworkPolicies: []string{"postgresql-deny-all"},
+			networkPoliciesEnabled:  true,
 		},
 		{
 			name:     "creates all dependencies for a dogu with ui (nginx included)",
@@ -410,13 +417,18 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				"cas",
 				"postfix",
 			},
+			componentDependencies: []string{
+				"k8s-ces-control",
+			},
 			expectedNetworkPolicies: []string{
 				"redmine-deny-all",
 				"redmine-ingress",
-				"redmine-dependency-cas",
-				"redmine-dependency-postfix",
-				"redmine-dependency-postgresql",
+				"redmine-dependency-dogu-cas",
+				"redmine-dependency-dogu-postfix",
+				"redmine-dependency-dogu-postgresql",
+				"redmine-dependency-component-k8s-ces-control",
 			},
+			networkPoliciesEnabled: true,
 		},
 		{
 			name:     "creates all dependencies for a dogu without ui",
@@ -428,10 +440,11 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			},
 			expectedNetworkPolicies: []string{
 				"redmine-deny-all",
-				"redmine-dependency-cas",
-				"redmine-dependency-postfix",
-				"redmine-dependency-postgresql",
+				"redmine-dependency-dogu-cas",
+				"redmine-dependency-dogu-postfix",
+				"redmine-dependency-dogu-postgresql",
 			},
+			networkPoliciesEnabled: true,
 		},
 		{
 			name:     "fails on error with update",
@@ -446,12 +459,48 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			expectedNetworkPolicies: []string{
 				"redmine-deny-all",
 				"redmine-ingress",
-				"redmine-dependency-cas",
-				"redmine-dependency-postfix",
-				"redmine-dependency-postgresql",
+				"redmine-dependency-dogu-cas",
+				"redmine-dependency-dogu-postfix",
+				"redmine-dependency-dogu-postgresql",
 			},
-			errorOnUpdate: true,
-			expectError:   true,
+			errorOnUpdate:          true,
+			expectError:            true,
+			networkPoliciesEnabled: true,
+		},
+		{
+			name:     "deletes superfluous network policies",
+			doguName: "redmine",
+			doguDependencies: []string{
+				"postgresql",
+				"nginx-ingress",
+				"nginx-static",
+				"cas",
+				"postfix",
+			},
+			expectedNetworkPolicies: []string{
+				"redmine-deny-all",
+				"redmine-ingress",
+				"redmine-dependency-dogu-cas",
+				"redmine-dependency-dogu-postfix",
+				"redmine-dependency-dogu-postgresql",
+			},
+			additionalExistingNetworkPolicies: []string{
+				"redmine-dependency-dogu-scm",
+				"redmine-dependency-dogu-admin",
+			},
+			networkPoliciesEnabled: true,
+		},
+		{
+			name:     "no network policies created when networkPoliciesEnabled=false",
+			doguName: "redmine",
+			doguDependencies: []string{
+				"postgresql",
+				"nginx-ingress",
+				"nginx-static",
+				"cas",
+				"postfix",
+			},
+			expectedNetworkPolicies: []string{},
 		},
 	}
 	for _, test := range tests {
@@ -459,7 +508,13 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			var dependencies []cesappcore.Dependency
 			for _, dep := range test.doguDependencies {
 				dependencies = append(dependencies, cesappcore.Dependency{
-					Type: "dogu",
+					Type: dependencyTypeDogu,
+					Name: dep,
+				})
+			}
+			for _, dep := range test.componentDependencies {
+				dependencies = append(dependencies, cesappcore.Dependency{
+					Type: dependencyTypeComponent,
 					Name: dep,
 				})
 			}
@@ -476,28 +531,62 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 
 			times := len(test.expectedNetworkPolicies)
 			mockClient := newMockK8sClient(t)
-			mockClient.EXPECT().Get(context.Background(), mock.Anything, mock.AnythingOfType("*v1.NetworkPolicy")).Return(nil).Times(times)
+			if times > 0 {
+				mockClient.EXPECT().Get(context.Background(), mock.Anything, mock.AnythingOfType("*v1.NetworkPolicy")).Return(nil).Times(times)
+			}
+
+			if test.networkPoliciesEnabled {
+				mockClient.EXPECT().List(context.Background(), mock.Anything, client.MatchingLabels{"dogu.name": dogu.GetSimpleName()}).Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+					newList := list.(*netv1.NetworkPolicyList)
+					allExpectedPolicies := append(test.expectedNetworkPolicies, test.additionalExistingNetworkPolicies...)
+					newList.Items = make([]netv1.NetworkPolicy, len(allExpectedPolicies))
+
+					for _, policy := range allExpectedPolicies {
+						if strings.Contains(policy, "deny-all") || strings.Contains(policy, "ingress") {
+							continue
+						}
+						doguDependencyPrefix := fmt.Sprintf("%s-dependency-dogu-", dogu.GetSimpleName())
+						componentDependencyPrefix := fmt.Sprintf("%s-dependency-component-", dogu.GetSimpleName())
+						newList.Items = append(newList.Items, netv1.NetworkPolicy{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{
+									depenendcyLabel: strings.TrimPrefix(strings.TrimPrefix(policy, doguDependencyPrefix), componentDependencyPrefix),
+								},
+							},
+						})
+					}
+				}).Return(nil).Once()
+			}
+
+			if len(test.additionalExistingNetworkPolicies) > 0 {
+				mockClient.EXPECT().Delete(context.Background(), mock.Anything, mock.Anything).Times(len(test.additionalExistingNetworkPolicies)).Return(nil)
+			}
 
 			var errResult error
 			if test.errorOnUpdate {
 				errResult = assert.AnError
 			}
 
-			mockClient.EXPECT().Update(context.Background(), mock.AnythingOfType("*v1.NetworkPolicy")).Run(func(ctx context.Context, clientObject client.Object, opts ...client.UpdateOption) {
-				policy, ok := clientObject.(*netv1.NetworkPolicy)
-				if !ok {
-					t.Error("the arg 1 passed to Update was not of type *v1.NetworkPolicy")
-				}
-				if !slices.Contains(test.expectedNetworkPolicies, policy.Name) {
-					t.Errorf("the network policy %s was created but not expected", policy)
-				}
-			}).Return(errResult).Times(times)
+			var actualCalledPolicies []string
+			for range test.expectedNetworkPolicies {
+				mockClient.EXPECT().Update(context.Background(), mock.AnythingOfType("*v1.NetworkPolicy")).Run(func(ctx context.Context, clientObject client.Object, opts ...client.UpdateOption) {
+					policy, ok := clientObject.(*netv1.NetworkPolicy)
+					if !ok {
+						t.Error("the arg 1 passed to Update was not of type *v1.NetworkPolicy")
+					}
+					if !slices.Contains(test.expectedNetworkPolicies, policy.Name) {
+						t.Errorf("the network policy %s was created but not expected", policy)
+					}
+					actualCalledPolicies = append(actualCalledPolicies, policy.Name)
+				}).Return(errResult).Once()
+			}
 
 			generator := NewMockDoguResourceGenerator(t)
 
 			ups := upserter{
-				client:    mockClient,
-				generator: generator,
+				client:                 mockClient,
+				generator:              generator,
+				networkPoliciesEnabled: test.networkPoliciesEnabled,
 			}
 
 			err := ups.UpsertDoguNetworkPolicies(context.Background(), doguResource, dogu)
@@ -506,6 +595,15 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			} else {
 				assert.Error(t, err)
 			}
+
+			for _, expectedPolicy := range test.expectedNetworkPolicies {
+				if !slices.Contains(actualCalledPolicies, expectedPolicy) {
+					assert.Fail(t, fmt.Sprintf("the policy '%s' was expected but not created", expectedPolicy))
+				}
+			}
+
+			mockClient.AssertExpectations(t)
+
 		})
 	}
 }

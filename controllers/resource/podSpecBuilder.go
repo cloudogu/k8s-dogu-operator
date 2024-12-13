@@ -10,22 +10,23 @@ import (
 )
 
 type podSpecBuilder struct {
-	theDoguResource              *k8sv2.Dogu
-	theDogu                      *core.Dogu
-	metaAllLabels                k8sv2.CesMatchingLabels
-	specHostAliases              []corev1.HostAlias
-	specVolumes                  []corev1.Volume
-	specEnableServiceLinks       bool
-	specServiceAccountName       string
-	specInitContainers           []corev1.Container
-	specContainerCommand         []string
-	specContainerArgs            []string
-	specContainerLivenessProbe   *corev1.Probe
-	specContainerStartupProbe    *corev1.Probe
-	specContainerImagePullPolicy corev1.PullPolicy
-	specContainerVolumeMounts    []corev1.VolumeMount
-	specContainerEnvVars         []corev1.EnvVar
-	specContainerResourcesReq    corev1.ResourceRequirements
+	theDoguResource                  *k8sv2.Dogu
+	theDogu                          *core.Dogu
+	metaAllLabels                    k8sv2.CesMatchingLabels
+	specHostAliases                  []corev1.HostAlias
+	specVolumes                      []corev1.Volume
+	specEnableServiceLinks           bool
+	specServiceAccountName           string
+	specAutomountServiceAccountToken bool
+	specInitContainers               []corev1.Container
+	specContainerCommand             []string
+	specContainerArgs                []string
+	specContainerLivenessProbe       *corev1.Probe
+	specContainerStartupProbe        *corev1.Probe
+	specContainerImagePullPolicy     corev1.PullPolicy
+	specContainerVolumeMounts        []corev1.VolumeMount
+	specContainerEnvVars             []corev1.EnvVar
+	specContainerResourcesReq        corev1.ResourceRequirements
 }
 
 func newPodSpecBuilder(doguResource *k8sv2.Dogu, dogu *core.Dogu) *podSpecBuilder {
@@ -135,7 +136,9 @@ func (p *podSpecBuilder) containerResourceRequirements(reqs corev1.ResourceRequi
 func (p *podSpecBuilder) serviceAccount() *podSpecBuilder {
 	for _, account := range p.theDogu.ServiceAccounts {
 		if account.Kind == kubernetesServiceAccountKind && account.Type == doguOperatorClient {
+			// this is used for service accounts deployed from the k8s-folder of a dogu, e.g. in nginx-ingress
 			p.specServiceAccountName = p.theDogu.GetSimpleName()
+			p.specAutomountServiceAccountToken = true
 			return p
 		}
 	}
@@ -149,13 +152,14 @@ func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 			Labels: p.metaAllLabels,
 		},
 		Spec: corev1.PodSpec{
-			ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "ces-container-registries"}},
-			Hostname:           p.theDoguResource.Name,
-			HostAliases:        p.specHostAliases,
-			Volumes:            p.specVolumes,
-			EnableServiceLinks: &p.specEnableServiceLinks,
-			ServiceAccountName: p.specServiceAccountName,
-			InitContainers:     p.specInitContainers,
+			ImagePullSecrets:             []corev1.LocalObjectReference{{Name: "ces-container-registries"}},
+			Hostname:                     p.theDoguResource.Name,
+			HostAliases:                  p.specHostAliases,
+			Volumes:                      p.specVolumes,
+			EnableServiceLinks:           &p.specEnableServiceLinks,
+			ServiceAccountName:           p.specServiceAccountName,
+			AutomountServiceAccountToken: &p.specAutomountServiceAccountToken,
+			InitContainers:               p.specInitContainers,
 			Containers: []corev1.Container{{
 				Name:            p.theDoguResource.Name,
 				Image:           p.theDogu.Image + ":" + p.theDogu.Version,
