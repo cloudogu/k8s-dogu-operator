@@ -89,7 +89,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		assert.Equal(t, expectedDeployment, actualDeployment)
 	})
 
-	t.Run("Return simple deployment with security context", func(t *testing.T) {
+	t.Run("Return deployment with security context", func(t *testing.T) {
 		// when
 		ldapDoguResource := readLdapDoguResource(t)
 		ldapDogu := readLdapDogu(t)
