@@ -16,7 +16,6 @@ import (
 
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 )
 
@@ -28,7 +27,6 @@ type doguDeleteManager struct {
 	localDoguFetcher        localDoguFetcher
 	doguRegistrator         doguRegistrator
 	serviceAccountRemover   serviceaccount.ServiceAccountRemover
-	exposedPortRemover      resource.ExposePortRemover
 	eventRecorder           record.EventRecorder
 	doguConfigRepository    doguConfigRepository
 	sensitiveDoguRepository doguConfigRepository
@@ -47,7 +45,6 @@ func NewDoguDeleteManager(
 		localDoguFetcher:        mgrSet.LocalDoguFetcher,
 		doguRegistrator:         mgrSet.DoguRegistrator,
 		serviceAccountRemover:   serviceaccount.NewRemover(configRepos.SensitiveDoguRepository, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
-		exposedPortRemover:      resource.NewDoguExposedPortHandler(client),
 		eventRecorder:           recorder,
 		doguConfigRepository:    configRepos.DoguConfigRepository,
 		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
@@ -79,12 +76,6 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv2.Dogu
 		err = m.doguRegistrator.UnregisterDogu(ctx, doguResource.Name)
 		if err != nil {
 			logger.Error(err, "failed to unregister dogu")
-		}
-
-		logger.Info("Remove potential exposed ports from loadbalancer...")
-		err = m.exposedPortRemover.RemoveExposedPorts(ctx, doguResource, dogu)
-		if err != nil {
-			logger.Error(err, "failed to remove exposed ports")
 		}
 
 		logger.Info("Remove health state out of ConfigMap")

@@ -304,18 +304,19 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 	t.Run("fail on error when generating resource", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 		imageConfig := readLdapDoguImageConfig(t)
 
 		mockClient := newMockK8sClient(t)
 		generator := NewMockDoguResourceGenerator(t)
-		generator.On("CreateDoguService", doguResource, imageConfig).Return(nil, assert.AnError)
+		generator.On("CreateDoguService", doguResource, ldapDogu, imageConfig).Return(nil, assert.AnError)
 		upserter := upserter{
 			client:    mockClient,
 			generator: generator,
 		}
 
 		// when
-		_, err := upserter.UpsertDoguService(ctx, doguResource, imageConfig)
+		_, err := upserter.UpsertDoguService(ctx, doguResource, ldapDogu, imageConfig)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -323,6 +324,7 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 	t.Run("fail when upserting", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 		imageConfig := readLdapDoguImageConfig(t)
 
 		mockClient := newMockK8sClient(t)
@@ -330,14 +332,14 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 
 		generator := NewMockDoguResourceGenerator(t)
 		expectedService := readLdapDoguExpectedService(t)
-		generator.On("CreateDoguService", doguResource, imageConfig).Return(expectedService, nil)
+		generator.On("CreateDoguService", doguResource, ldapDogu, imageConfig).Return(expectedService, nil)
 		upserter := upserter{
 			client:    mockClient,
 			generator: generator,
 		}
 
 		// when
-		_, err := upserter.UpsertDoguService(ctx, doguResource, imageConfig)
+		_, err := upserter.UpsertDoguService(ctx, doguResource, ldapDogu, imageConfig)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -345,20 +347,21 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 	t.Run("successfully upsert service", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 		imageConfig := readLdapDoguImageConfig(t)
 
 		testClient := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
 
 		generator := NewMockDoguResourceGenerator(t)
 		expectedService := readLdapDoguExpectedService(t)
-		generator.On("CreateDoguService", doguResource, imageConfig).Return(expectedService, nil)
+		generator.On("CreateDoguService", doguResource, ldapDogu, imageConfig).Return(expectedService, nil)
 		upserter := upserter{
 			client:    testClient,
 			generator: generator,
 		}
 
 		// when
-		actualService, err := upserter.UpsertDoguService(ctx, doguResource, imageConfig)
+		actualService, err := upserter.UpsertDoguService(ctx, doguResource, ldapDogu, imageConfig)
 
 		// then
 		require.NoError(t, err)
@@ -368,20 +371,21 @@ func Test_upserter_UpsertDoguService(t *testing.T) {
 	t.Run("fail when upserting a service", func(t *testing.T) {
 		// given
 		doguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
 		imageConfig := readLdapDoguImageConfig(t)
 
 		mockClient := newMockK8sClient(t)
 		mockClient.On("Get", context.Background(), doguResource.GetObjectKey(), &v1.Service{}).Return(assert.AnError)
 
 		generator := NewMockDoguResourceGenerator(t)
-		generator.On("CreateDoguService", doguResource, imageConfig).Return(readLdapDoguExpectedService(t), nil)
+		generator.On("CreateDoguService", doguResource, ldapDogu, imageConfig).Return(readLdapDoguExpectedService(t), nil)
 		upserter := upserter{
 			client:    mockClient,
 			generator: generator,
 		}
 
 		// when
-		_, err := upserter.UpsertDoguService(context.Background(), doguResource, imageConfig)
+		_, err := upserter.UpsertDoguService(context.Background(), doguResource, ldapDogu, imageConfig)
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
