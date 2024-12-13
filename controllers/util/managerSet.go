@@ -65,7 +65,8 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 
 	requirementsGenerator := resource.NewRequirementsGenerator(configRepos.DoguConfigRepository)
 	hostAliasGenerator := alias.NewHostAliasGenerator(configRepos.GlobalConfigRepository)
-	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImages)
+	securityContextGenerator := resource.NewSecurityContextGenerator()
+	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, securityContextGenerator, additionalImages)
 
 	upserter := resource.NewUpserter(client, doguResourceGenerator)
 

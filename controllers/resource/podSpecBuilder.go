@@ -26,6 +26,8 @@ type podSpecBuilder struct {
 	specContainerVolumeMounts    []corev1.VolumeMount
 	specContainerEnvVars         []corev1.EnvVar
 	specContainerResourcesReq    corev1.ResourceRequirements
+	specPodSecurityContext       *corev1.PodSecurityContext
+	specContainerSecurityContext *corev1.SecurityContext
 }
 
 func newPodSpecBuilder(doguResource *k8sv2.Dogu, dogu *core.Dogu) *podSpecBuilder {
@@ -143,6 +145,13 @@ func (p *podSpecBuilder) serviceAccount() *podSpecBuilder {
 	return p
 }
 
+func (p *podSpecBuilder) securityContext(podSecurityContext *corev1.PodSecurityContext, containerSecurityContext *corev1.SecurityContext) *podSpecBuilder {
+	p.specPodSecurityContext = podSecurityContext
+	p.specContainerSecurityContext = containerSecurityContext
+
+	return p
+}
+
 func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 	result := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -156,6 +165,7 @@ func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 			EnableServiceLinks: &p.specEnableServiceLinks,
 			ServiceAccountName: p.specServiceAccountName,
 			InitContainers:     p.specInitContainers,
+			SecurityContext:    p.specPodSecurityContext,
 			Containers: []corev1.Container{{
 				Name:            p.theDoguResource.Name,
 				Image:           p.theDogu.Image + ":" + p.theDogu.Version,
@@ -167,6 +177,7 @@ func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 				VolumeMounts:    p.specContainerVolumeMounts,
 				Env:             p.specContainerEnvVars,
 				Resources:       p.specContainerResourcesReq,
+				SecurityContext: p.specContainerSecurityContext,
 			}},
 		},
 	}

@@ -3,8 +3,6 @@
 package resource
 
 import (
-	context "context"
-
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 
@@ -26,9 +24,9 @@ func (_m *mockSecurityContextGenerator) EXPECT() *mockSecurityContextGenerator_E
 	return &mockSecurityContextGenerator_Expecter{mock: &_m.Mock}
 }
 
-// Generate provides a mock function with given fields: ctx, dogu, doguResource
-func (_m *mockSecurityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu, doguResource *v2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext) {
-	ret := _m.Called(ctx, dogu, doguResource)
+// Generate provides a mock function with given fields: dogu, doguResource
+func (_m *mockSecurityContextGenerator) Generate(dogu *core.Dogu, doguResource *v2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext) {
+	ret := _m.Called(dogu, doguResource)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Generate")
@@ -36,19 +34,19 @@ func (_m *mockSecurityContextGenerator) Generate(ctx context.Context, dogu *core
 
 	var r0 *v1.PodSecurityContext
 	var r1 *v1.SecurityContext
-	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu, *v2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext)); ok {
-		return rf(ctx, dogu, doguResource)
+	if rf, ok := ret.Get(0).(func(*core.Dogu, *v2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext)); ok {
+		return rf(dogu, doguResource)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu, *v2.Dogu) *v1.PodSecurityContext); ok {
-		r0 = rf(ctx, dogu, doguResource)
+	if rf, ok := ret.Get(0).(func(*core.Dogu, *v2.Dogu) *v1.PodSecurityContext); ok {
+		r0 = rf(dogu, doguResource)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v1.PodSecurityContext)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *core.Dogu, *v2.Dogu) *v1.SecurityContext); ok {
-		r1 = rf(ctx, dogu, doguResource)
+	if rf, ok := ret.Get(1).(func(*core.Dogu, *v2.Dogu) *v1.SecurityContext); ok {
+		r1 = rf(dogu, doguResource)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(*v1.SecurityContext)
@@ -64,16 +62,15 @@ type mockSecurityContextGenerator_Generate_Call struct {
 }
 
 // Generate is a helper method to define mock.On call
-//   - ctx context.Context
 //   - dogu *core.Dogu
 //   - doguResource *v2.Dogu
-func (_e *mockSecurityContextGenerator_Expecter) Generate(ctx interface{}, dogu interface{}, doguResource interface{}) *mockSecurityContextGenerator_Generate_Call {
-	return &mockSecurityContextGenerator_Generate_Call{Call: _e.mock.On("Generate", ctx, dogu, doguResource)}
+func (_e *mockSecurityContextGenerator_Expecter) Generate(dogu interface{}, doguResource interface{}) *mockSecurityContextGenerator_Generate_Call {
+	return &mockSecurityContextGenerator_Generate_Call{Call: _e.mock.On("Generate", dogu, doguResource)}
 }
 
-func (_c *mockSecurityContextGenerator_Generate_Call) Run(run func(ctx context.Context, dogu *core.Dogu, doguResource *v2.Dogu)) *mockSecurityContextGenerator_Generate_Call {
+func (_c *mockSecurityContextGenerator_Generate_Call) Run(run func(dogu *core.Dogu, doguResource *v2.Dogu)) *mockSecurityContextGenerator_Generate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*core.Dogu), args[2].(*v2.Dogu))
+		run(args[0].(*core.Dogu), args[1].(*v2.Dogu))
 	})
 	return _c
 }
@@ -83,7 +80,7 @@ func (_c *mockSecurityContextGenerator_Generate_Call) Return(_a0 *v1.PodSecurity
 	return _c
 }
 
-func (_c *mockSecurityContextGenerator_Generate_Call) RunAndReturn(run func(context.Context, *core.Dogu, *v2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext)) *mockSecurityContextGenerator_Generate_Call {
+func (_c *mockSecurityContextGenerator_Generate_Call) RunAndReturn(run func(*core.Dogu, *v2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext)) *mockSecurityContextGenerator_Generate_Call {
 	_c.Call.Return(run)
 	return _c
 }

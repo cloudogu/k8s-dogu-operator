@@ -28,7 +28,7 @@ spec:
     spec:
       InitContainers:
         - image: busybox:1.36
-          name: dogu-volume-chown-init
+          name : dogu-volume-chown-init
           securityContext:
             capabilities:
               add: ["CHOWN"]
@@ -40,7 +40,7 @@ spec:
               type: Unconfined
             appArmorProfile:
               type: Unconfined
-          command: [ "sh", "-c", "mkdir -p \"/var/lib/openldap\" && chown -R 100:101 \"/var/lib/openldap\" && mkdir -p \"/etc/openldap/slapd.d\" && chown -R 100:101 \"/etc/openldap/slapd.d\"" ]
+          command: ["sh", "-c", "mkdir -p \"/var/lib/openldap\" && chown -R 100:101 \"/var/lib/openldap\" && mkdir -p \"/etc/openldap/slapd.d\" && chown -R 100:101 \"/etc/openldap/slapd.d\""]
           volumeMounts:
             - name: ldap-data
               mountPath: "/var/lib/openldap"
@@ -55,7 +55,7 @@ spec:
               readonly: false
       containers:
         - image: registry.cloudogu.com/official/ldap:2.4.48-4
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           name: ldap
           Env:
             - name: POD_NAMESPACE
@@ -67,6 +67,25 @@ spec:
             - name: ECOSYSTEM_MULTINODE
               value: true
           resources: { }
+          securityContext:
+            capabilities:
+              drop: ["ALL"]
+              add: ["DAC_OVERRIDE"]
+            runAsNonRoot: true
+            readOnlyRootFileSystem: true
+            privileged: false
+            allowPrivilegeEscalation: false
+            seLinuxOptions:
+              user: myUser
+              role: myRole
+              type: myType
+              level: myLevel
+            seccompProfile:
+              type: Localhost
+              localhostProfile: myProfile
+            appArmorProfile:
+              type: Localhost
+              localhostProfile: myProfile
           volumeMounts:
             - mountPath: /etc/ces/health
               name: dogu-health
@@ -116,6 +135,21 @@ spec:
       hostname: ldap
       imagePullSecrets:
         - name: ces-container-registries
+      securityContext:
+        runAsNonRoot: true
+        seLinuxOptions:
+          user: myUser
+          role: myRole
+          type: myType
+          level: myLevel
+        seccompProfile:
+          type: Localhost
+          localhostProfile: myProfile
+        appArmorProfile:
+          type: Localhost
+          localhostProfile: myProfile
+        fsGroup: 101
+        fsGroupChangePolicy: OnRootMismatch
       volumes:
         - name: dogu-health
           configMap:

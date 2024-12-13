@@ -53,19 +53,27 @@ const (
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
 // as controller
 type resourceGenerator struct {
-	scheme                *runtime.Scheme
-	requirementsGenerator requirementsGenerator
-	hostAliasGenerator    hostAliasGenerator
-	additionalImages      map[string]string
+	scheme                   *runtime.Scheme
+	requirementsGenerator    requirementsGenerator
+	hostAliasGenerator       hostAliasGenerator
+	securityContextGenerator securityContextGenerator
+	additionalImages         map[string]string
 }
 
 // NewResourceGenerator creates a new generator for k8s resources
-func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator requirementsGenerator, hostAliasGenerator hostAliasGenerator, additionalImages map[string]string) *resourceGenerator {
+func NewResourceGenerator(
+	scheme *runtime.Scheme,
+	requirementsGenerator requirementsGenerator,
+	hostAliasGenerator hostAliasGenerator,
+	securityContextGenerator securityContextGenerator,
+	additionalImages map[string]string,
+) *resourceGenerator {
 	return &resourceGenerator{
-		scheme:                scheme,
-		requirementsGenerator: requirementsGenerator,
-		hostAliasGenerator:    hostAliasGenerator,
-		additionalImages:      additionalImages,
+		scheme:                   scheme,
+		requirementsGenerator:    requirementsGenerator,
+		hostAliasGenerator:       hostAliasGenerator,
+		securityContextGenerator: securityContextGenerator,
+		additionalImages:         additionalImages,
 	}
 }
 
@@ -88,17 +96,6 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 	}}
 
 	deployment.Spec = buildDeploymentSpec(doguResource.GetDoguNameLabel(), podTemplate)
-
-	fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
-
-	if len(dogu.Volumes) > 0 {
-		group, _ := strconv.Atoi(dogu.Volumes[0].Group)
-		gid := int64(group)
-		deployment.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-			FSGroup:             &gid,
-			FSGroupChangePolicy: &fsGroupChangePolicy,
-		}
-	}
 
 	err = ctrl.SetControllerReference(doguResource, deployment, r.scheme)
 	if err != nil {
@@ -143,6 +140,8 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		return nil, err
 	}
 
+	podSecurityContext, containerSecurityContext := r.securityContextGenerator.Generate(dogu, doguResource)
+
 	podTemplate := newPodSpecBuilder(doguResource, dogu).
 		labels(GetAppLabel().Add(doguResource.GetPodLabels())).
 		hostAliases(hostAliases).
@@ -158,6 +157,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		containerEnvVars(envVars).
 		containerResourceRequirements(resourceRequirements).
 		serviceAccount().
+		securityContext(podSecurityContext, containerSecurityContext).
 		build()
 
 	return podTemplate, nil
@@ -197,9 +197,22 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 		commands = append(commands, chownCommand)
 	}
 
+	runAsNonRoot := false
+	readOnlyRootFilesystem := false
 	return &corev1.Container{
-		Name:         chownInitContainerName,
-		Image:        chownInitImage,
+		Name:  chownInitContainerName,
+		Image: chownInitImage,
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+				Add:  []corev1.Capability{"CHOWN"},
+			},
+			RunAsNonRoot:           &runAsNonRoot,
+			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
+			SELinuxOptions:         &corev1.SELinuxOptions{},
+			SeccompProfile:         &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
+			AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
+		},
 		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
 		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
 	}, nil
