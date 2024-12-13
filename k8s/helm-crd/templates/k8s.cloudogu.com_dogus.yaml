@@ -62,12 +62,33 @@ spec:
                       type: string
                   type: object
                 security:
-                  description: "Security overrides security policies defined in the dogu descriptor. These fields can be used to further reduce a dogu's attack surface.\n\n\nExample:\n\n\n\t\"Security\": {\n\t  \"Capabilities\": {\n\t     \"Drop\": [\"All\"],\n\t     \"Add\": [\"NetBindService\", \"Kill\"]\n\t   },\n\t  \"RunAsNonRoot\": true,\n\t  \"ReadOnlyRootFileSystem\": true\n\t}"
+                  description: Security overrides security policies defined in the dogu descriptor. These fields can be used to further reduce a dogu's attack surface.
                   properties:
+                    appArmorProfile:
+                      description: appArmorProfile is the AppArmor options to use by this container.
+                      properties:
+                        localhostProfile:
+                          description: |-
+                            localhostProfile indicates a profile loaded on the node that should be used.
+                            The profile must be preconfigured on the node to work.
+                            Must match the loaded name of the profile.
+                            Must be set if and only if type is "Localhost".
+                          type: string
+                        type:
+                          description: |-
+                            type indicates which kind of AppArmor profile will be applied.
+                            Valid options are:
+                              Localhost - a profile pre-loaded on the node.
+                              RuntimeDefault - the container runtime's default profile.
+                              Unconfined - no AppArmor enforcement.
+                          type: string
+                      required:
+                        - type
+                      type: object
                     capabilities:
                       description: |-
                         Capabilities sets the allowed and dropped capabilities for the dogu. The dogu should not use more than the
-                        configured capabilities here, otherwise failure may occur at start-up or at run-time. This list is optional.
+                        configured capabilities here, otherwise failure may occur at start-up or at run-time.
                       properties:
                         add:
                           description: Add contains the capabilities that should be allowed to be used in a container. This list is optional.
@@ -79,6 +100,7 @@ spec:
                               See docs at https://manned.org/capabilities.7
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                         drop:
                           description: Drop contains the capabilities that should be blocked from being used in a container. This list is optional.
                           items:
@@ -89,6 +111,7 @@ spec:
                               See docs at https://manned.org/capabilities.7
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                       type: object
                     readOnlyRootFileSystem:
                       description: |-
@@ -102,6 +125,48 @@ spec:
                         user otherwise the dogu start may fail. This flag is optional and defaults to nil.
                         If nil, the value defined in the dogu descriptor is used.
                       type: boolean
+                    seLinuxOptions:
+                      description: |-
+                        The SELinux context to be applied to the container.
+                        If unspecified, the container runtime will allocate a random SELinux context for each
+                        container, which is kubernetes default behaviour.
+                      properties:
+                        level:
+                          description: Level is SELinux level label that applies to the container.
+                          type: string
+                        role:
+                          description: Role is a SELinux role label that applies to the container.
+                          type: string
+                        type:
+                          description: Type is a SELinux type label that applies to the container.
+                          type: string
+                        user:
+                          description: User is a SELinux user label that applies to the container.
+                          type: string
+                      type: object
+                    seccompProfile:
+                      description: The seccomp options to use by this container.
+                      properties:
+                        localhostProfile:
+                          description: |-
+                            localhostProfile indicates a profile defined in a file on the node should be used.
+                            The profile must be preconfigured on the node to work.
+                            Must be a descending path, relative to the kubelet's configured seccomp profile location.
+                            Must be set if type is "Localhost". Must NOT be set for any other type.
+                          type: string
+                        type:
+                          description: |-
+                            type indicates which kind of seccomp profile will be applied.
+                            Valid options are:
+
+
+                            Localhost - a profile defined in a file on the node should be used.
+                            RuntimeDefault - the container runtime default profile should be used.
+                            Unconfined - no profile should be applied.
+                          type: string
+                      required:
+                        - type
+                      type: object
                   type: object
                 stopped:
                   description: Stopped indicates whether the dogu should be running (stopped=false) or not (stopped=true).
