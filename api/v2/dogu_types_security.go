@@ -39,16 +39,16 @@ type Capabilities struct {
 type SELinuxOptions struct {
 	// User is a SELinux user label that applies to the container.
 	// +optional
-	User string `json:"user,omitempty" protobuf:"bytes,1,opt,name=user"`
+	User string `json:"user,omitempty"`
 	// Role is a SELinux role label that applies to the container.
 	// +optional
-	Role string `json:"role,omitempty" protobuf:"bytes,2,opt,name=role"`
+	Role string `json:"role,omitempty"`
 	// Type is a SELinux type label that applies to the container.
 	// +optional
-	Type string `json:"type,omitempty" protobuf:"bytes,3,opt,name=type"`
+	Type string `json:"type,omitempty"`
 	// Level is SELinux level label that applies to the container.
 	// +optional
-	Level string `json:"level,omitempty" protobuf:"bytes,4,opt,name=level"`
+	Level string `json:"level,omitempty"`
 }
 
 // SeccompProfile defines a pod/container's seccomp profile settings.
@@ -62,13 +62,13 @@ type SeccompProfile struct {
 	// RuntimeDefault - the container runtime default profile should be used.
 	// Unconfined - no profile should be applied.
 	// +unionDiscriminator
-	Type SeccompProfileType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=SeccompProfileType"`
+	Type SeccompProfileType `json:"type"`
 	// localhostProfile indicates a profile defined in a file on the node should be used.
 	// The profile must be preconfigured on the node to work.
 	// Must be a descending path, relative to the kubelet's configured seccomp profile location.
 	// Must be set if type is "Localhost". Must NOT be set for any other type.
 	// +optional
-	LocalhostProfile *string `json:"localhostProfile,omitempty" protobuf:"bytes,2,opt,name=localhostProfile"`
+	LocalhostProfile *string `json:"localhostProfile,omitempty"`
 }
 
 // SeccompProfileType defines the supported seccomp profile types.
@@ -94,14 +94,14 @@ type AppArmorProfile struct {
 	//   RuntimeDefault - the container runtime's default profile.
 	//   Unconfined - no AppArmor enforcement.
 	// +unionDiscriminator
-	Type AppArmorProfileType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=AppArmorProfileType"`
+	Type AppArmorProfileType `json:"type"`
 
 	// localhostProfile indicates a profile loaded on the node that should be used.
 	// The profile must be preconfigured on the node to work.
 	// Must match the loaded name of the profile.
 	// Must be set if and only if type is "Localhost".
 	// +optional
-	LocalhostProfile *string `json:"localhostProfile,omitempty" protobuf:"bytes,2,opt,name=localhostProfile"`
+	LocalhostProfile *string `json:"localhostProfile,omitempty"`
 }
 
 // AppArmorProfileType references which type of AppArmor profile should be used.
