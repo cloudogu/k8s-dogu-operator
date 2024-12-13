@@ -3,6 +3,7 @@
 package controllers
 
 import (
+	context "context"
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 
@@ -25,7 +26,7 @@ func (_m *mockPodTemplateResourceGenerator) EXPECT() *mockPodTemplateResourceGen
 }
 
 // GetPodTemplate provides a mock function with given fields: doguResource, dogu
-func (_m *mockPodTemplateResourceGenerator) GetPodTemplate(doguResource *v2.Dogu, dogu *core.Dogu) (*v1.PodTemplateSpec, error) {
+func (_m *mockPodTemplateResourceGenerator) GetPodTemplate(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) (*v1.PodTemplateSpec, error) {
 	ret := _m.Called(doguResource, dogu)
 
 	if len(ret) == 0 {

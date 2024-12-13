@@ -70,8 +70,8 @@ func NewResourceGenerator(scheme *runtime.Scheme, requirementsGenerator requirem
 }
 
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
-	podTemplate, err := r.GetPodTemplate(doguResource, dogu)
+func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	podTemplate, err := r.GetPodTemplate(ctx, doguResource, dogu)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (r *resourceGenerator) CreateDoguDeployment(doguResource *k8sv2.Dogu, dogu 
 }
 
 // GetPodTemplate returns a pod template for the given dogu.
-func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
+func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
 	volumes, err := createVolumes(doguResource, dogu)
 	if err != nil {
 		return nil, err
@@ -133,12 +133,12 @@ func (r *resourceGenerator) GetPodTemplate(doguResource *k8sv2.Dogu, dogu *core.
 		return nil, err
 	}
 
-	hostAliases, err := r.hostAliasGenerator.Generate(context.Background())
+	hostAliases, err := r.hostAliasGenerator.Generate(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	resourceRequirements, err := r.requirementsGenerator.Generate(context.Background(), dogu)
+	resourceRequirements, err := r.requirementsGenerator.Generate(ctx, dogu)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@
 package resource
 
 import (
+	context "context"
 	core "github.com/cloudogu/cesapp-lib/core"
 	corev1 "k8s.io/api/core/v1"
 
@@ -29,7 +30,7 @@ func (_m *MockDoguResourceGenerator) EXPECT() *MockDoguResourceGenerator_Expecte
 }
 
 // CreateDoguDeployment provides a mock function with given fields: doguResource, dogu
-func (_m *MockDoguResourceGenerator) CreateDoguDeployment(doguResource *v2.Dogu, dogu *core.Dogu) (*v1.Deployment, error) {
+func (_m *MockDoguResourceGenerator) CreateDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) (*v1.Deployment, error) {
 	ret := _m.Called(doguResource, dogu)
 
 	if len(ret) == 0 {
@@ -205,7 +206,7 @@ func (_c *MockDoguResourceGenerator_CreateDoguService_Call) RunAndReturn(run fun
 }
 
 // GetPodTemplate provides a mock function with given fields: doguResource, dogu
-func (_m *MockDoguResourceGenerator) GetPodTemplate(doguResource *v2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
+func (_m *MockDoguResourceGenerator) GetPodTemplate(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
 	ret := _m.Called(doguResource, dogu)
 
 	if len(ret) == 0 {
