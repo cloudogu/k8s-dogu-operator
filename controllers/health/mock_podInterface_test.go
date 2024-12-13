@@ -920,6 +920,67 @@ func (_c *mockPodInterface_UpdateEphemeralContainers_Call) RunAndReturn(run func
 	return _c
 }
 
+// UpdateResize provides a mock function with given fields: ctx, podName, pod, opts
+func (_m *mockPodInterface) UpdateResize(ctx context.Context, podName string, pod *corev1.Pod, opts metav1.UpdateOptions) (*corev1.Pod, error) {
+	ret := _m.Called(ctx, podName, pod, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateResize")
+	}
+
+	var r0 *corev1.Pod
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, *corev1.Pod, metav1.UpdateOptions) (*corev1.Pod, error)); ok {
+		return rf(ctx, podName, pod, opts)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, *corev1.Pod, metav1.UpdateOptions) *corev1.Pod); ok {
+		r0 = rf(ctx, podName, pod, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*corev1.Pod)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, *corev1.Pod, metav1.UpdateOptions) error); ok {
+		r1 = rf(ctx, podName, pod, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockPodInterface_UpdateResize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateResize'
+type mockPodInterface_UpdateResize_Call struct {
+	*mock.Call
+}
+
+// UpdateResize is a helper method to define mock.On call
+//   - ctx context.Context
+//   - podName string
+//   - pod *corev1.Pod
+//   - opts metav1.UpdateOptions
+func (_e *mockPodInterface_Expecter) UpdateResize(ctx interface{}, podName interface{}, pod interface{}, opts interface{}) *mockPodInterface_UpdateResize_Call {
+	return &mockPodInterface_UpdateResize_Call{Call: _e.mock.On("UpdateResize", ctx, podName, pod, opts)}
+}
+
+func (_c *mockPodInterface_UpdateResize_Call) Run(run func(ctx context.Context, podName string, pod *corev1.Pod, opts metav1.UpdateOptions)) *mockPodInterface_UpdateResize_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(*corev1.Pod), args[3].(metav1.UpdateOptions))
+	})
+	return _c
+}
+
+func (_c *mockPodInterface_UpdateResize_Call) Return(_a0 *corev1.Pod, _a1 error) *mockPodInterface_UpdateResize_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockPodInterface_UpdateResize_Call) RunAndReturn(run func(context.Context, string, *corev1.Pod, metav1.UpdateOptions) (*corev1.Pod, error)) *mockPodInterface_UpdateResize_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateStatus provides a mock function with given fields: ctx, pod, opts
 func (_m *mockPodInterface) UpdateStatus(ctx context.Context, pod *corev1.Pod, opts metav1.UpdateOptions) (*corev1.Pod, error) {
 	ret := _m.Called(ctx, pod, opts)

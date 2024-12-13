@@ -34,6 +34,10 @@ type doguConfigGetter interface {
 	Get(ctx context.Context, name dogu.SimpleName) (config.DoguConfig, error)
 }
 
+type securityContextGenerator interface {
+	Generate(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext)
+}
+
 // ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
 type ResourceUpserter interface {
 	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
