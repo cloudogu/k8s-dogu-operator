@@ -125,7 +125,7 @@ rules:
   resources:
     - events
   verbs:
-    # used to write events
+    # used to write events while reconciling CRs
     - create
     - patch
     # we list and delete requeue events to avoid spam
