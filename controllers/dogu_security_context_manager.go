@@ -29,6 +29,7 @@ type doguSecurityContextManager struct {
 func NewDoguSecurityContextManager(k8sClient client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguSecurityContextManager {
 	return &doguSecurityContextManager{
 		doguResourceGenerator: mgrSet.DoguResourceGenerator,
+		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
 		resourceUpserter:      mgrSet.ResourceUpserter,
 		client:                k8sClient,
 		eventRecorder:         eventRecorder,

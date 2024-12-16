@@ -273,6 +273,7 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 		}
 	case k8sv2.DoguStatusDeleting:
 		return []operation{}, nil
+		//TODO add case
 	default:
 		logger.Info(fmt.Sprintf("Cannot evaluate required operation for unknown dogu status: %s", doguResource.Status.Status))
 		return []operation{}, nil
