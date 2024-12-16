@@ -12,7 +12,7 @@ controllerManager:
   image:
     registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 3.0.3
+    tag: 3.1.0
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug
@@ -22,6 +22,7 @@ controllerManager:
     doguRestartFailedHistoryLimit: 3
     doguRestartGarbageCollectionDisabled: false
     doguDescriptorMaxRetries: 20
+    getServiceAccountPodMaxRetries: 5
   resourceLimits:
     cpu: 500m
     memory: 128Mi

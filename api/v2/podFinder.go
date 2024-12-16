@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -19,7 +20,7 @@ func GetPodForLabels(ctx context.Context, cli client.Client, doguLabels CesMatch
 	}
 
 	if len(pods.Items) == 0 {
-		return nil, fmt.Errorf("found no pods for labels %s", doguLabels)
+		return nil, cloudoguerrors.NewNotFoundError(fmt.Errorf("found no pods for labels %s", doguLabels))
 	}
 	if len(pods.Items) > 1 {
 		return nil, fmt.Errorf("found more than one pod (%s) for labels %s", pods, doguLabels)

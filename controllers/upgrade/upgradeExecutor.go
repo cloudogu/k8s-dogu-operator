@@ -310,12 +310,7 @@ func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguR
 }
 
 func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter resource.ResourceUpserter, toDoguResource *k8sv2.Dogu, toDogu *core.Dogu, fromDogu *core.Dogu, image *imagev1.ConfigFile) error {
-	_, err := upserter.UpsertDoguService(ctx, toDoguResource, image)
-	if err != nil {
-		return err
-	}
-
-	_, err = upserter.UpsertDoguExposedService(ctx, toDoguResource, toDogu)
+	_, err := upserter.UpsertDoguService(ctx, toDoguResource, toDogu, image)
 	if err != nil {
 		return err
 	}

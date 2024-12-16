@@ -168,12 +168,7 @@ func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, custom
 }
 
 func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile) error {
-	_, err := m.resourceUpserter.UpsertDoguService(ctx, doguResource, imageConfig)
-	if err != nil {
-		return err
-	}
-
-	_, err = m.resourceUpserter.UpsertDoguExposedService(ctx, doguResource, dogu)
+	_, err := m.resourceUpserter.UpsertDoguService(ctx, doguResource, dogu, imageConfig)
 	if err != nil {
 		return err
 	}

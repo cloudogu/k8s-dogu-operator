@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.1.0] - 2024-12-16
+### Added
+- [#218] Missing RBACs for events
+- [#216] Annotation for exposed ports
+
+### Removed
+- [#218] Leader-election. It is not necessary as we do not scale for now.
+- [#216] Exposing services
+
+### Fixed
+- [#218] Problem with missing RBACs for events
+
 ## [v3.0.3] - 2024-12-12
 ### Added
 - [#215] Create network policies for all dogus and their component-dependencies

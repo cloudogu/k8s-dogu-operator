@@ -153,48 +153,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(ldapCr.Name).To(Equal(service.Name))
 			Expect(ldapCr.Namespace).To(Equal(service.Namespace))
 
-			By("Expect created loadbalancer service")
-			lbService := &corev1.Service{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, cesLoadbalancerLookupKey, lbService)
-				if err != nil {
-					return false
-				}
-
-				found := false
-				for _, doguPort := range ldapDogu.ExposedPorts {
-					for _, port := range lbService.Spec.Ports {
-						if port.Port == int32(doguPort.Host) && port.TargetPort.IntVal == int32(doguPort.Container) &&
-							strings.EqualFold(string(port.Protocol), doguPort.Type) &&
-							port.Name == fmt.Sprintf("%s-%d", ldapDogu.GetSimpleName(), doguPort.Host) {
-							found = true
-							break
-						}
-					}
-					if !found {
-						return false
-					}
-				}
-
-				return true
-			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-
-			By("Expect created tcp/udp configmap")
-			cm := &corev1.ConfigMap{}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, tcpExposedPortsLookupKey, cm)
-				if err != nil && cm.Data == nil && len(cm.Data) != 2 {
-					return false
-				}
-
-				if cm.Data["2222"] != "default/ldap:2222" && cm.Data["8888"] == "default/ldap:8888" {
-					return false
-				}
-
-				return true
-			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-
 			By("Expect created dogu pvc")
 			doguPvc := &corev1.PersistentVolumeClaim{}
 
