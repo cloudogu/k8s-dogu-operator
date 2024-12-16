@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"k8s.io/client-go/kubernetes/fake"
 	"testing"
@@ -166,6 +168,33 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
 		sensitiveDoguCfgRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
+
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
+		commandExecutorMock := newMockCommandExecutor(t)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
+		serviceAccountCreator := creator{
+			client:            cli,
+			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+		}
+
+		// when
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptorCesSa)
+
+		// then
+		require.NoError(t, err)
+	})
+	t.Run("success with dogu account with merge", func(t *testing.T) {
+		// given
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
+		sensitiveDoguCfgRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, cloudoguerrors.NewConflictError(errors.New("")))
+		sensitiveDoguCfgRepoMock.EXPECT().SaveOrMerge(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 		commandExecutorMock := newMockCommandExecutor(t)
@@ -442,6 +471,33 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get service")
 	})
+	t.Run("fails to write Dogu config", func(t *testing.T) {
+		// given
+		sensitiveDoguCfgRepoMock := newMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
+		sensitiveDoguCfgRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, cloudoguerrors.NewConflictError(errors.New("")))
+		sensitiveDoguCfgRepoMock.EXPECT().SaveOrMerge(mock.Anything, mock.Anything).Return(config.DoguConfig{}, assert.AnError)
+
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
+		commandExecutorMock := newMockCommandExecutor(t)
+		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().Enabled(testCtx, "postgresql").Return(true, nil)
+		serviceAccountCreator := creator{
+			client:            cli,
+			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+		}
+
+		// when
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptorCesSa)
+
+		// then
+		require.Error(t, err)
+	})
 }
 
 func getTestScheme() *runtime.Scheme {
@@ -521,4 +577,51 @@ func Test_creator_isOptionalServiceAccount(t *testing.T) {
 		// then
 		require.False(t, result)
 	})
+}
+
+func Test_readGetServiceAccountPodMaxRetriesEnv(t *testing.T) {
+	tests := []struct {
+		name           string
+		want           int
+		setEnv         bool
+		actualEnvValue string
+	}{
+		{
+			name:   "Environment variable not found",
+			setEnv: false,
+			want:   defaultMaxTries,
+		},
+		{
+			name:           "failed to parse environment variable (string). Use default value",
+			setEnv:         true,
+			actualEnvValue: "NoIntValue",
+			want:           defaultMaxTries,
+		},
+		{
+			name:           "failed to parse environment variable (float). Use default value",
+			setEnv:         true,
+			actualEnvValue: "5.5",
+			want:           defaultMaxTries,
+		},
+		{
+			name:           "parsed environment variable is smaller than 0. Use default value",
+			setEnv:         true,
+			actualEnvValue: "-5",
+			want:           defaultMaxTries,
+		},
+		{
+			name:           "Successfully read environment variable",
+			setEnv:         true,
+			actualEnvValue: "10",
+			want:           10,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setEnv {
+				t.Setenv("GET_SERVICE_ACCOUNT_POD_MAX_RETRIES", tt.actualEnvValue)
+			}
+			assert.Equalf(t, tt.want, readGetServiceAccountPodMaxRetriesEnv(), "readGetServiceAccountPodMaxRetriesEnv()")
+		})
+	}
 }

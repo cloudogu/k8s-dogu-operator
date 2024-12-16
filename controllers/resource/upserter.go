@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -27,6 +28,7 @@ const (
 	k8sNginxIngressDoguName = "nginx-ingress"
 	k8sNginxStaticDoguName  = "nginx-static"
 	dependencyTypeDogu      = "dogu"
+	dependencyTypeComponent = "component"
 )
 
 var (
@@ -34,18 +36,17 @@ var (
 )
 
 type upserter struct {
-	client           k8sClient
-	generator        DoguResourceGenerator
-	exposedPortAdder exposePortAdder
+	client                 k8sClient
+	generator              DoguResourceGenerator
+	networkPoliciesEnabled bool
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, generator DoguResourceGenerator) *upserter {
-	exposedPortAdder := NewDoguExposedPortHandler(client)
+func NewUpserter(client client.Client, generator DoguResourceGenerator, networkPoliciesEnabled bool) *upserter {
 	return &upserter{
-		client:           client,
-		generator:        generator,
-		exposedPortAdder: exposedPortAdder,
+		client:                 client,
+		generator:              generator,
+		networkPoliciesEnabled: networkPoliciesEnabled,
 	}
 }
 
@@ -71,8 +72,8 @@ func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv2
 }
 
 // UpsertDoguService generates a service for a given dogu and applies it to the cluster.
-func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv2.Dogu, image *imagev1.ConfigFile) (*v1.Service, error) {
-	newService, err := u.generator.CreateDoguService(doguResource, image)
+func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, image *imagev1.ConfigFile) (*v1.Service, error) {
+	newService, err := u.generator.CreateDoguService(doguResource, dogu, image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate service: %w", err)
 	}
@@ -83,10 +84,6 @@ func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv2.Do
 	}
 
 	return newService, nil
-}
-
-func (u *upserter) UpsertDoguExposedService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*v1.Service, error) {
-	return u.exposedPortAdder.CreateOrUpdateCesLoadbalancerService(ctx, doguResource, dogu)
 }
 
 // UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
@@ -118,6 +115,12 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu,
 
 // UpsertDoguNetworkPolicies generates the network policies for a dogu
 func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
+	logger := log.FromContext(ctx)
+	if !u.networkPoliciesEnabled {
+		logger.Info("Do not create network policies as they are disabled by configuration")
+		return nil
+	}
+
 	var multiErr error
 	denyAllPolicy := generateDenyAllPolicy(doguResource, dogu)
 
@@ -125,12 +128,23 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 		multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update deny all rule for dogu %s: %w", dogu.GetSimpleName(), err))
 	}
 
-	for _, dependency := range dogu.Dependencies {
+	var allDependencies = append(dogu.Dependencies, dogu.OptionalDependencies...)
+
+	for _, dependency := range allDependencies {
 		if dependency.Type == dependencyTypeDogu {
 			if err := u.upsertDoguDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
 				multiErr = errors.Join(multiErr, err)
 			}
 		}
+		if dependency.Type == dependencyTypeComponent {
+			if err := u.upsertComponentDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
+				multiErr = errors.Join(multiErr, err)
+			}
+		}
+	}
+
+	if err := u.deleteNonExistentDependencyPolicies(ctx, dogu, allDependencies); err != nil {
+		multiErr = errors.Join(multiErr, err)
 	}
 
 	if multiErr != nil {
@@ -140,6 +154,36 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	}
 
 	return nil
+}
+
+func (u *upserter) deleteNonExistentDependencyPolicies(ctx context.Context, dogu *core.Dogu, allDependencies []core.Dependency) error {
+	var multiErr error
+
+	currentPolicies := &netv1.NetworkPolicyList{}
+	if err := u.client.List(ctx, currentPolicies, client.MatchingLabels{"dogu.name": dogu.GetSimpleName()}); err != nil {
+		return err
+	}
+
+	for _, policy := range currentPolicies.Items {
+		// Only delete policies which rely on a dependency
+		if policy.Labels[depenendcyLabel] == "" {
+			continue
+		}
+
+		// Check if the dependency of the network policy still exists in dogu dependencies
+		stillExists := slices.ContainsFunc(allDependencies, func(dependency core.Dependency) bool {
+			return dependency.Name == policy.Labels[depenendcyLabel]
+		})
+
+		// If not existent in dogu dependency, remove the network policy
+		if !stillExists {
+			if err := u.client.Delete(ctx, &policy); err != nil {
+				multiErr = errors.Join(multiErr, err)
+			}
+		}
+	}
+
+	return multiErr
 }
 
 func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
@@ -153,6 +197,16 @@ func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, depend
 	} else {
 		dependencyNetworkPolicy = generateDoguDepNetPol(doguResource, dogu, dependencyName)
 	}
+
+	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
+		return fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err)
+	}
+
+	return nil
+}
+
+func (u *upserter) upsertComponentDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
+	dependencyNetworkPolicy := generateComponentDepNetPol(doguResource, dogu, dependencyName)
 
 	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
 		return fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err)

@@ -5,6 +5,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#218] Missing RBACs for events
+- [#216] Annotation for exposed ports
+
+### Removed
+- [#218] Leader-election. It is not necessary as we do not scale for now.
+- [#216] Exposing services
+
+### Fixed
+- [#218] Problem with missing RBACs for events
+
+## [v3.0.3] - 2024-12-12
+### Added
+- [#215] Create network policies for all dogus and their component-dependencies
+- [#208] Disable default service-account auto-mounting for dogus
+- [#208] Disable service-account token auto-mounting for exec-pods
 
 ## [v3.0.2] - 2024-12-05
 ### Added
@@ -14,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#204] fetch dogu descriptors with retry
 
 ### Added
-- [#211] Create network policies for all dogus and their dependencies
+- [#211] Create network policies for all dogus and their dogu-dependencies
 
 ## [v3.0.1] - 2024-10-29
 ### Fixed

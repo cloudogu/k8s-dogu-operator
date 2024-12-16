@@ -244,15 +244,6 @@ type eventRecorder interface {
 	record.EventRecorder
 }
 
-// exposePortRemover is used to delete the exposure of the exposed services from the dogu.
-//
-//nolint:unused
-//goland:noinspection GoUnusedType
-type exposePortRemover interface {
-	// RemoveExposedPorts deletes the exposure of the exposed services from the dogu.
-	RemoveExposedPorts(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
-}
-
 type doguConfigRepository interface {
 	Get(ctx context.Context, name cescommons.SimpleName) (config.DoguConfig, error)
 	Create(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
