@@ -46,6 +46,7 @@ type doguInstallManagerWithMocks struct {
 	doguInterface             *mockDoguInterface
 	doguConfigRepository      *mockDoguConfigRepository
 	sensitiveDoguRepository   *mockDoguConfigRepository
+	securityValidator         *mockSecurityValidator
 }
 
 func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguInstallManagerWithMocks {
@@ -66,6 +67,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 	podFactory := newMockExecPodFactory(t)
 	doguConfigRepoMock := newMockDoguConfigRepository(t)
 	sensitiveConfigRepoMock := newMockDoguConfigRepository(t)
+	securityValidatorMock := newMockSecurityValidator(t)
 
 	doguInstallManager := &doguInstallManager{
 		client:                  k8sClient,
@@ -83,6 +85,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 		execPodFactory:          podFactory,
 		doguConfigRepository:    doguConfigRepoMock,
 		sensitiveDoguRepository: sensitiveConfigRepoMock,
+		securityValidator:       securityValidatorMock,
 	}
 
 	return doguInstallManagerWithMocks{
@@ -103,6 +106,7 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 		doguInterface:             doguIntrefaceMock,
 		doguConfigRepository:      doguConfigRepoMock,
 		sensitiveDoguRepository:   sensitiveConfigRepoMock,
+		securityValidator:         securityValidatorMock,
 	}
 }
 
@@ -155,6 +159,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).
@@ -176,6 +181,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -208,6 +214,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).Return(ldapCr, nil)
@@ -219,6 +226,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		recorderExpect := managerWithMocks.recorder.EXPECT()
 		recorderExpect.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpect.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpect.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		recorderExpect.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpect.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -260,6 +268,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).
@@ -281,6 +290,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -319,6 +329,26 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		assert.True(t, errors.Is(err, assert.AnError))
 	})
 
+	t.Run("failed to validate security", func(t *testing.T) {
+		// given
+		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
+		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
+		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(assert.AnError)
+		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
+
+		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
+
+		// when
+		err := managerWithMocks.installManager.Install(testCtx, ldapCr)
+
+		// then
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, assert.AnError))
+	})
+
 	t.Run("failed to create dogu config", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
@@ -327,6 +357,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, assert.AnError)
 		managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
@@ -335,6 +366,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 
 		// when
@@ -352,6 +384,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, assert.AnError)
 		managerWithMocks.doguConfigRepository.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
@@ -361,6 +394,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 
 		// when
@@ -380,9 +414,11 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resErrors.NewAlreadyExistsError(assert.AnError))
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
 
 		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 
@@ -404,9 +440,11 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
 
 		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		managerWithMocks.recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 
@@ -431,6 +469,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 		managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).Return(nil, assert.AnError)
@@ -448,6 +487,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -481,11 +521,13 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(assert.AnError)
 		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
@@ -514,6 +556,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 
 		yamlResult := map[string]string{"my-custom-resource.yml": "kind: Namespace"}
@@ -529,6 +572,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -591,11 +635,13 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 		managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 		recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -623,6 +669,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+			managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 			managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.ecosystemClient.EXPECT().Dogus(mock.Anything).Return(managerWithMocks.doguInterface)
 			managerWithMocks.doguInterface.EXPECT().UpdateStatusWithRetry(testCtx, ldapCr, mock.Anything, mock.Anything).Return(ldapCr, nil)
@@ -640,6 +687,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 			recorderExpecter := managerWithMocks.recorder.EXPECT()
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -667,6 +715,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
+			managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 			managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 			yamlResult := make(map[string]string, 0)
 			managerWithMocks.fileExtractorMock.EXPECT().ExtractK8sResourcesFromContainer(mock.Anything, mock.Anything).Return(yamlResult, nil)
@@ -675,6 +724,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 			recorderExpecter := managerWithMocks.recorder.EXPECT()
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -712,12 +762,14 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(mock.Anything, ldapDogu).Return(nil)
+			managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 			managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 			ldapCr.ResourceVersion = ""
 			_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
 
 			recorderExpecter := managerWithMocks.recorder.EXPECT()
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")
@@ -746,6 +798,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			managerWithMocks.imageRegistryMock.EXPECT().PullImageConfig(mock.Anything, mock.Anything).Return(imageConfig, nil)
 			managerWithMocks.doguRegistratorMock.EXPECT().RegisterNewDogu(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(mock.Anything, ldapDogu).Return(nil)
+			managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
 			managerWithMocks.serviceAccountCreatorMock.EXPECT().CreateAll(mock.Anything, mock.Anything).Return(nil)
 			yamlResult := make(map[string]string, 0)
 			managerWithMocks.fileExtractorMock.EXPECT().ExtractK8sResourcesFromContainer(mock.Anything, mock.Anything).Return(yamlResult, nil)
@@ -754,6 +807,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 
 			recorderExpecter := managerWithMocks.recorder.EXPECT()
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
+			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Registering in the local dogu registry...")
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Creating required service accounts...")
 			recorderExpecter.Eventf(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Pulling dogu image %s...", "registry.cloudogu.com/official/ldap:2.4.48-4")

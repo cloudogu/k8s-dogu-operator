@@ -28,7 +28,7 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
-replace github.com/cloudogu/cesapp-lib v0.15.0 => github.com/cloudogu/cesapp-lib v0.0.0-20241213151616-7fc33a52ee5f
+replace github.com/cloudogu/cesapp-lib v0.15.0 => github.com/cloudogu/cesapp-lib v0.0.0-20241219090501-c9fba0fce8b1
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

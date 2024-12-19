@@ -3,10 +3,13 @@ package v2
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
+	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/retry-lib/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"slices"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -41,6 +44,16 @@ const (
 	// DoguLabelVersion is used to select a dogu pod by version.
 	DoguLabelVersion = "dogu.version"
 )
+
+// AllCapabilities are all possible values for capabilities.
+var AllCapabilities = func() []Capability {
+	// To avoid duplication and deviations, we copy these from cesapp-lib.
+	allCapabilities := make([]Capability, len(core.AllCapabilities), len(core.AllCapabilities))
+	for i, capability := range core.AllCapabilities {
+		allCapabilities[i] = Capability(capability)
+	}
+	return allCapabilities
+}()
 
 // DoguSpec defines the desired state of a Dogu
 type DoguSpec struct {
@@ -351,6 +364,39 @@ func (d *Dogu) GetPrivateKeySecret(ctx context.Context, cli client.Client) (*cor
 	}
 
 	return secret, nil
+}
+
+// ValidateSecurity checks the dogu's Security section for configuration errors.
+func (d *Dogu) ValidateSecurity() error {
+	var errs []error
+	for _, value := range d.Spec.Security.Capabilities.Add {
+		if value == core.All {
+			continue
+		}
+
+		if !slices.Contains(AllCapabilities, value) {
+			err := fmt.Errorf("%s is not a valid capability to be added", value)
+			errs = append(errs, err)
+		}
+	}
+
+	for _, value := range d.Spec.Security.Capabilities.Drop {
+		if value == core.All {
+			continue
+		}
+
+		if !slices.Contains(AllCapabilities, value) {
+			err := fmt.Errorf("%s is not a valid capability to be dropped", value)
+			errs = append(errs, err)
+		}
+	}
+
+	err := errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("dogu resource %s:%s contains at least one invalid security field: %w", d.Spec.Name, d.Spec.Version, err)
+	}
+
+	return nil
 }
 
 // +kubebuilder:object:root=true
