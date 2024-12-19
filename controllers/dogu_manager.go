@@ -84,7 +84,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 
 	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
 
-	securityContextManager := NewDoguSecurityContextManager(client, mgrSet, eventRecorder)
+	securityContextManager := NewDoguSecurityContextManager(mgrSet)
 
 	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
@@ -162,8 +162,8 @@ func (m *DoguManager) SetDoguAdditionalIngressAnnotations(ctx context.Context, d
 
 // UpdateDeploymentWithSecurityContext edits the securityContext of the deployment
 func (m *DoguManager) UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *k8sv2.Dogu) error {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, AdditionalIngressAnnotationsChangeEventReason, "Start additional ingress annotations change...")
-	return m.ingressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, SecurityContextChangeEventReason, "Start security context change...")
+	return m.securityContextManager.UpdateDeploymentWithSecurityContext(ctx, doguResource)
 }
 
 // StartDogu scales a stopped dogu to 1.

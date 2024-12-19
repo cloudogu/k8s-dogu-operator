@@ -6,8 +6,6 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -19,20 +17,14 @@ const (
 )
 
 type doguSecurityContextManager struct {
-	doguResourceGenerator resource.DoguResourceGenerator
-	resourceDoguFetcher   resourceDoguFetcher
-	resourceUpserter      resource.ResourceUpserter
-	client                client.Client
-	eventRecorder         record.EventRecorder
+	resourceDoguFetcher resourceDoguFetcher
+	resourceUpserter    resource.ResourceUpserter
 }
 
-func NewDoguSecurityContextManager(k8sClient client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguSecurityContextManager {
+func NewDoguSecurityContextManager(mgrSet *util.ManagerSet) *doguSecurityContextManager {
 	return &doguSecurityContextManager{
-		doguResourceGenerator: mgrSet.DoguResourceGenerator,
-		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
-		resourceUpserter:      mgrSet.ResourceUpserter,
-		client:                k8sClient,
-		eventRecorder:         eventRecorder,
+		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
+		resourceUpserter:    mgrSet.ResourceUpserter,
 	}
 }
 
@@ -41,7 +33,7 @@ func (d doguSecurityContextManager) UpdateDeploymentWithSecurityContext(ctx cont
 	logger.Info("Fetching dogu...")
 	dogu, _, err := d.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch dogu %s: %w", doguResource.Spec.Name, err)
 	}
 
 	logger.Info("Upserting deployment... ")
