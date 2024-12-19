@@ -17,9 +17,10 @@ func TestNewDoguSecurityContextManager(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		mgrSet := &util.ManagerSet{}
+		mockEventRecorder := &mockEventRecorder{}
 
 		// when
-		doguSecurityContextManager := NewDoguSecurityContextManager(mgrSet)
+		doguSecurityContextManager := NewDoguSecurityContextManager(mgrSet, mockEventRecorder)
 
 		// then
 		require.NotNil(t, doguSecurityContextManager)
