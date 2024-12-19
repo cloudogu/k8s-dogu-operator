@@ -34,6 +34,10 @@ type doguConfigGetter interface {
 	Get(ctx context.Context, name dogu.SimpleName) (config.DoguConfig, error)
 }
 
+type securityContextGenerator interface {
+	Generate(dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext)
+}
+
 // ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
 type ResourceUpserter interface {
 	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
@@ -72,7 +76,7 @@ type CollectApplier interface {
 // podTemplateResourceGenerator is used to generate pod templates.
 type podTemplateResourceGenerator interface {
 	// GetPodTemplate returns a pod template for the given dogu.
-	GetPodTemplate(doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PodTemplateSpec, error)
+	GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PodTemplateSpec, error)
 }
 
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.
@@ -80,7 +84,7 @@ type DoguResourceGenerator interface {
 	podTemplateResourceGenerator
 
 	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-	CreateDoguDeployment(doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
+	CreateDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
 	// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
 	// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 	// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides

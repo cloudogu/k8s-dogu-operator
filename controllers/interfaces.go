@@ -101,6 +101,10 @@ type requeueHandler interface {
 	Handle(ctx context.Context, contextMessage string, doguResource *v2.Dogu, err error, onRequeue func(dogu *v2.Dogu) error) (result ctrl.Result, requeueErr error)
 }
 
+type securityValidator interface {
+	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
+}
+
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
 //
 //nolint:unused

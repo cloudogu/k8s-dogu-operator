@@ -68,6 +68,25 @@ spec:
             - name: ECOSYSTEM_MULTINODE
               value: true
           resources: { }
+          securityContext:
+            capabilities:
+              drop: ["ALL"]
+              add: ["DAC_OVERRIDE"]
+            runAsNonRoot: true
+            readOnlyRootFileSystem: true
+            privileged: false
+            allowPrivilegeEscalation: false
+            seLinuxOptions:
+              user: myUser
+              role: myRole
+              type: myType
+              level: myLevel
+            seccompProfile:
+              type: Localhost
+              localhostProfile: myProfile
+            appArmorProfile:
+              type: Localhost
+              localhostProfile: myProfile
           volumeMounts:
             - mountPath: /etc/ces/health
               name: dogu-health
@@ -117,6 +136,21 @@ spec:
       hostname: ldap
       imagePullSecrets:
         - name: ces-container-registries
+      securityContext:
+        runAsNonRoot: true
+        seLinuxOptions:
+          user: myUser
+          role: myRole
+          type: myType
+          level: myLevel
+        seccompProfile:
+          type: Localhost
+          localhostProfile: myProfile
+        appArmorProfile:
+          type: Localhost
+          localhostProfile: myProfile
+        fsGroup: 101
+        fsGroupChangePolicy: OnRootMismatch
       volumes:
         - name: dogu-health
           configMap:

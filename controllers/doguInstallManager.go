@@ -43,6 +43,7 @@ type doguInstallManager struct {
 	execPodFactory          exec.ExecPodFactory
 	doguConfigRepository    doguConfigRepository
 	sensitiveDoguRepository doguConfigRepository
+	securityValidator       securityValidator
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
@@ -63,6 +64,7 @@ func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventR
 		execPodFactory:          exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
 		doguConfigRepository:    configRepos.DoguConfigRepository,
 		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
+		securityValidator:       mgrSet.SecurityValidator,
 	}
 }
 
@@ -96,6 +98,13 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv2.Do
 	logger.Info("Check dogu dependencies...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
 	err = m.dependencyValidator.ValidateDependencies(ctx, dogu)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Validating dogu security...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
+	err = m.securityValidator.ValidateSecurity(dogu, doguResource)
 	if err != nil {
 		return err
 	}

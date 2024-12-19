@@ -149,7 +149,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 			},
 		}
 
-		sut.podTemplateGenerator.EXPECT().GetPodTemplate(ldapCr, ldap).Return(&podSpec, nil)
+		sut.podTemplateGenerator.EXPECT().GetPodTemplate(testCtx, ldapCr, ldap).Return(&podSpec, nil)
 
 		// when
 		err = sut.supportManager.updateDeployment(testCtx, ldapCr, deployment)
@@ -204,7 +204,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldap, nil)
 		podSpec := corev1.PodTemplateSpec{Spec: corev1.PodSpec{}}
-		sut.podTemplateGenerator.EXPECT().GetPodTemplate(ldapCr, ldap).Return(&podSpec, nil)
+		sut.podTemplateGenerator.EXPECT().GetPodTemplate(testCtx, ldapCr, ldap).Return(&podSpec, nil)
 
 		// when
 		err := sut.supportManager.updateDeployment(testCtx, ldapCr, &appsv1.Deployment{})
@@ -230,7 +230,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{{Image: "official/ldap:2.4.48-4"}, {Image: "other:1.2.3"}}}}
 
-		sut.podTemplateGenerator.EXPECT().GetPodTemplate(ldapCr, ldap).Return(&podTemplateSpec, nil)
+		sut.podTemplateGenerator.EXPECT().GetPodTemplate(testCtx, ldapCr, ldap).Return(&podTemplateSpec, nil)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace},
 			Spec: appsv1.DeploymentSpec{
