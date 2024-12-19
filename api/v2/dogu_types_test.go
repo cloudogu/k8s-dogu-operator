@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cloudogu/cesapp-lib/core"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	eventV1 "k8s.io/api/events/v1"
@@ -511,5 +513,56 @@ func TestDogu_NextRequeueWithRetry(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "dogus.k8s.cloudogu.com \"postgresql\" not found")
+	})
+}
+
+func TestDogu_ValidateSecurity(t *testing.T) {
+	type args struct {
+		dogu *Dogu
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{"valid empty", args{&Dogu{}}, assert.NoError},
+		{"valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []Capability{core.AuditControl}}}}}}, assert.NoError},
+		{"valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{core.AuditControl}}}}}}, assert.NoError},
+		{"all possible values", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: AllCapabilities, Drop: AllCapabilities}}}}}, assert.NoError},
+		{"add all keyword", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []Capability{core.All}}}}}}, assert.NoError},
+		{"drop all keyword", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{core.All}}}}}}, assert.NoError},
+
+		{"invalid valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []Capability{"err"}}}}}}, assert.Error},
+		{"invalid valid drop filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{"err"}}}}}}, assert.Error},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.wantErr(t, tt.args.dogu.ValidateSecurity(), fmt.Sprintf("ValidateSecurity(%v)", tt.args.dogu))
+		})
+	}
+}
+
+func TestDogu_ValidateSecurity_message(t *testing.T) {
+	t.Run("should match for drop errors", func(t *testing.T) {
+		// given
+		dogu := &Dogu{Spec: DoguSpec{Name: "official/dogu", Version: "1.2.3", Security: Security{Capabilities: Capabilities{Drop: []Capability{"err"}}}}}
+
+		// when
+		actual := dogu.ValidateSecurity()
+
+		// then
+		require.Error(t, actual)
+		assert.ErrorContains(t, actual, "dogu resource official/dogu:1.2.3 contains at least one invalid security field: err is not a valid capability to be dropped")
+	})
+	t.Run("should match for add errors", func(t *testing.T) {
+		// given
+		dogu := &Dogu{Spec: DoguSpec{Name: "official/dogu", Version: "1.2.3", Security: Security{Capabilities: Capabilities{Add: []Capability{"err"}}}}}
+
+		// when
+		actual := dogu.ValidateSecurity()
+
+		// then
+		require.Error(t, actual)
+		assert.ErrorContains(t, actual, "dogu resource official/dogu:1.2.3 contains at least one invalid security field: err is not a valid capability to be added")
 	})
 }
