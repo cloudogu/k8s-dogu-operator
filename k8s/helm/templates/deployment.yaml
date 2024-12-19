@@ -27,24 +27,6 @@ spec:
         {{- end }}
       containers:
         - args:
-            - --secure-listen-address=0.0.0.0:8443
-            - --upstream=http://127.0.0.1:8080/
-            - --v=0
-          image: "{{ .Values.kubeRbacProxy.image.registry }}/{{ .Values.kubeRbacProxy.image.repository }}:{{ .Values.kubeRbacProxy.image.tag }}"
-          name: kube-rbac-proxy
-          ports:
-            - containerPort: 8443
-              name: https
-              protocol: TCP
-          resources:
-            limits: {{- toYaml .Values.kubeRbacProxy.resourceLimits | nindent 12 }}
-            requests: {{- toYaml .Values.kubeRbacProxy.resourceRequests | nindent 12 }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-        - args:
             - --health-probe-bind-address=:8081
             - --metrics-bind-address=127.0.0.1:8080
           env:

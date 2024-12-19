@@ -29,14 +29,3 @@ controllerManager:
   resourceRequests:
     cpu: 10m
     memory: 64Mi
-kubeRbacProxy:
-  image:
-    registry: gcr.io
-    repository: kubebuilder/kube-rbac-proxy
-    tag: v0.14.1
-  resourceLimits:
-    cpu: 500m
-    memory: 128Mi
-  resourceRequests:
-    cpu: 5m
-    memory: 64Mi
