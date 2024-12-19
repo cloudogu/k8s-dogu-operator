@@ -84,7 +84,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 
 	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
 
-	securityContextManager := NewDoguSecurityContextManager(mgrSet)
+	securityContextManager := NewDoguSecurityContextManager(mgrSet, eventRecorder)
 
 	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
