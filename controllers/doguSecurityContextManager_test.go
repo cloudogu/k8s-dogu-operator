@@ -1,16 +1,19 @@
 package controllers
 
 import (
-	"errors"
 	"fmt"
+	"testing"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/apps/v1"
-	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewDoguSecurityContextManager(t *testing.T) {
@@ -29,98 +32,136 @@ func TestNewDoguSecurityContextManager(t *testing.T) {
 
 func Test_doguSecurityContextManager_UpdateDeploymentWithSecurityContext(t *testing.T) {
 	// TODO all test cases have to be completed
+	doguResource := &k8sv2.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
+		Spec:       k8sv2.DoguSpec{Name: "official/ldap"},
+	}
+	doguDescriptor := &core.Dogu{Name: "official/ldap"}
 	tests := []struct {
-		name                  string
-		resourceDoguFetcherFn func(t *testing.T) resourceDoguFetcher
-		resourceUpserterFn    func(t *testing.T) resource.ResourceUpserter
-		doguResource          *k8sv2.Dogu
-		wantErr               assert.ErrorAssertionFunc
+		name                string
+		localDoguFetcherFn  func(t *testing.T) localDoguFetcher
+		resourceUpserterFn  func(t *testing.T) resourceUpserter
+		recorderFn          func(t *testing.T) eventRecorder
+		securityValidatorFn func(t *testing.T) securityValidator
+		wantErr             assert.ErrorAssertionFunc
 	}{
 		{
-			name: "failed to fetch dogu",
-			resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-				doguResource := &k8sv2.Dogu{
-					Spec: k8sv2.DoguSpec{
-						Name: "ldap",
-					},
-				}
-				mockDoguFetcher := newMockResourceDoguFetcher(t)
-				mockDoguFetcher.EXPECT().FetchWithResource(testCtx, doguResource).Return(nil, nil, errors.New("failed to get development dogu map:"))
+			name: "should fail to get local dogu descriptor",
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				mockDoguFetcher := newMockLocalDoguFetcher(t)
+				mockDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(nil, assert.AnError)
 				return mockDoguFetcher
 			},
-			resourceUpserterFn: func(t *testing.T) resource.ResourceUpserter {
+			recorderFn: func(t *testing.T) eventRecorder {
+				mockEventRecorder := newMockEventRecorder(t)
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Getting local dogu descriptor...")
+				return mockEventRecorder
+			},
+			securityValidatorFn: func(t *testing.T) securityValidator {
+				mockSecurityValidator := newMockSecurityValidator(t)
+				return mockSecurityValidator
+			},
+			resourceUpserterFn: func(t *testing.T) resourceUpserter {
 				mockResourceUpserter := newMockResourceUpserter(t)
 				return mockResourceUpserter
 			},
-			doguResource: &k8sv2.Dogu{
-				Spec: k8sv2.DoguSpec{
-					Name: "ldap",
-				},
-			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				return assert.ErrorContains(t, err, "failed to fetch dogu ldap", i)
+				return assert.ErrorIs(t, err, assert.AnError) &&
+					assert.ErrorContains(t, err, "failed to get local descriptor for dogu \"ldap\"", i)
 			},
 		},
-
 		{
-			name: "failed to upsert dogu deployment",
-			resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-				doguResource := &k8sv2.Dogu{
-					Spec: k8sv2.DoguSpec{
-						Name: "ldap",
-					},
-				}
-				dogu := &core.Dogu{
-					Name: "ldap",
-				}
-				mockDoguFetcher := newMockResourceDoguFetcher(t)
-				mockDoguFetcher.EXPECT().FetchWithResource(testCtx, doguResource).Return(dogu, nil, nil)
+			name: "should fail when validating security",
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				mockDoguFetcher := newMockLocalDoguFetcher(t)
+				mockDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(doguDescriptor, nil)
 				return mockDoguFetcher
 			},
-			resourceUpserterFn: func(t *testing.T) resource.ResourceUpserter {
-				/*
-					TODO
-					doguResource := &k8sv2.Dogu{
-						Spec: k8sv2.DoguSpec{
-							Name: "ldap",
-						},
-					}
-					dogu := &core.Dogu{
-						Name: "ldap",
-					}
-					mockResourceUpserter.EXPECT().UpsertDoguDeployment(testCtx, doguResource, dogu, mock.AnythingOfType("func(*v1.Deployment)")).Return(nil, errors.New("failed to upsert deployment with security context"))
-				*/
-				doguResource := &k8sv2.Dogu{
-					Spec: k8sv2.DoguSpec{
-						Name: "ldap",
-					},
-				}
-				dogu := &core.Dogu{
-					Name: "ldap",
-				}
+			recorderFn: func(t *testing.T) eventRecorder {
+				mockEventRecorder := newMockEventRecorder(t)
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Getting local dogu descriptor...")
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Validating dogu security...")
+				return mockEventRecorder
+			},
+			securityValidatorFn: func(t *testing.T) securityValidator {
+				mockSecurityValidator := newMockSecurityValidator(t)
+				mockSecurityValidator.EXPECT().ValidateSecurity(doguDescriptor, doguResource).Return(assert.AnError)
+				return mockSecurityValidator
+			},
+			resourceUpserterFn: func(t *testing.T) resourceUpserter {
 				mockResourceUpserter := newMockResourceUpserter(t)
-
-				fn := (func(*v1.Deployment))(nil)
-				mockResourceUpserter.On("UpsertDoguDeployment", testCtx, doguResource, dogu, fn).Return(nil, errors.New("failed to upsert deployment with security context"))
 				return mockResourceUpserter
 			},
-			doguResource: &k8sv2.Dogu{
-				Spec: k8sv2.DoguSpec{
-					Name: "ldap",
-				},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorIs(t, err, assert.AnError) &&
+					assert.ErrorContains(t, err, "validation of security context failed for dogu \"ldap\"", i)
+			},
+		},
+		{
+			name: "should fail to upsert deployment",
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				mockDoguFetcher := newMockLocalDoguFetcher(t)
+				mockDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(doguDescriptor, nil)
+				return mockDoguFetcher
+			},
+			recorderFn: func(t *testing.T) eventRecorder {
+				mockEventRecorder := newMockEventRecorder(t)
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Getting local dogu descriptor...")
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Validating dogu security...")
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Upserting deployment...")
+				return mockEventRecorder
+			},
+			securityValidatorFn: func(t *testing.T) securityValidator {
+				mockSecurityValidator := newMockSecurityValidator(t)
+				mockSecurityValidator.EXPECT().ValidateSecurity(doguDescriptor, doguResource).Return(nil)
+				return mockSecurityValidator
+			},
+			resourceUpserterFn: func(t *testing.T) resourceUpserter {
+				mockResourceUpserter := newMockResourceUpserter(t)
+				mockResourceUpserter.EXPECT().UpsertDoguDeployment(testCtx, doguResource, doguDescriptor, mock.AnythingOfType("func(*v1.Deployment)")).Return(nil, assert.AnError)
+				return mockResourceUpserter
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				return assert.ErrorContains(t, err, "failed to fetch dogu ldap", i)
+				return assert.ErrorIs(t, err, assert.AnError) &&
+					assert.ErrorContains(t, err, "failed to upsert deployment with security context for dogu \"ldap\"", i)
 			},
+		},
+		{
+			name: "should succeed",
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				mockDoguFetcher := newMockLocalDoguFetcher(t)
+				mockDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(doguDescriptor, nil)
+				return mockDoguFetcher
+			},
+			recorderFn: func(t *testing.T) eventRecorder {
+				mockEventRecorder := newMockEventRecorder(t)
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Getting local dogu descriptor...")
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Validating dogu security...")
+				mockEventRecorder.EXPECT().Event(doguResource, "Normal", "SecurityContextChange", "Upserting deployment...")
+				return mockEventRecorder
+			},
+			securityValidatorFn: func(t *testing.T) securityValidator {
+				mockSecurityValidator := newMockSecurityValidator(t)
+				mockSecurityValidator.EXPECT().ValidateSecurity(doguDescriptor, doguResource).Return(nil)
+				return mockSecurityValidator
+			},
+			resourceUpserterFn: func(t *testing.T) resourceUpserter {
+				mockResourceUpserter := newMockResourceUpserter(t)
+				mockResourceUpserter.EXPECT().UpsertDoguDeployment(testCtx, doguResource, doguDescriptor, mock.AnythingOfType("func(*v1.Deployment)")).Return(nil, nil)
+				return mockResourceUpserter
+			},
+			wantErr: assert.NoError,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := doguSecurityContextManager{
-				resourceDoguFetcher: tt.resourceDoguFetcherFn(t),
-				resourceUpserter:    tt.resourceUpserterFn(t),
+				localDoguFetcher:  tt.localDoguFetcherFn(t),
+				resourceUpserter:  tt.resourceUpserterFn(t),
+				securityValidator: tt.securityValidatorFn(t),
+				recorder:          tt.recorderFn(t),
 			}
-			tt.wantErr(t, d.UpdateDeploymentWithSecurityContext(testCtx, tt.doguResource), fmt.Sprintf("UpdateDeploymentWithSecurityContext(%v, %v)", testCtx, tt.doguResource))
+			tt.wantErr(t, d.UpdateDeploymentWithSecurityContext(testCtx, doguResource), fmt.Sprintf("UpdateDeploymentWithSecurityContext(%v, %v)", testCtx, doguResource))
 		})
 	}
 }
