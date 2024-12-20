@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
 	"testing"
 	"time"
 
@@ -1171,5 +1173,583 @@ func Test_doguReconciler_validateVolumeSize(t *testing.T) {
 			}
 			assert.Equalf(t, tt.wantSuccess, r.validateVolumeSize(tt.args.doguResource), "validateVolumeSize(%v)", tt.args.doguResource)
 		})
+	}
+}
+
+func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
+	tests := []struct {
+		name         string
+		deployment   *appsv1.Deployment
+		doguResource *k8sv2.Dogu
+		want         bool
+		wantErr      assert.ErrorAssertionFunc
+	}{
+		{
+			name:         "failed to get deployment",
+			doguResource: &k8sv2.Dogu{},
+			want:         false,
+			wantErr:      assert.Error,
+		},
+		{
+			name: "pod security context changed Run as Non Root",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context changed SeccompProfile",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context changed AppArmorProfile",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context changed SELinuxOptions",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context not changed",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed Run as Non Root",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed ReadOnlyRootFilesystem",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed SeccompProfile",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed AppArmorProfile",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed SELinuxOptions",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed Capabilities",
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							SecurityContext: &v1.PodSecurityContext{
+								RunAsNonRoot:    boolPtr(false),
+								SeccompProfile:  &v1.SeccompProfile{},
+								AppArmorProfile: &v1.AppArmorProfile{},
+								SELinuxOptions:  &v1.SELinuxOptions{},
+							},
+							Containers: []v1.Container{
+								{
+									SecurityContext: &v1.SecurityContext{
+										RunAsNonRoot:           boolPtr(false),
+										ReadOnlyRootFilesystem: boolPtr(false),
+										SeccompProfile:         &v1.SeccompProfile{},
+										AppArmorProfile:        &v1.AppArmorProfile{},
+										SELinuxOptions:         &v1.SELinuxOptions{},
+										Capabilities:           &v1.Capabilities{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			doguResource: &k8sv2.Dogu{
+				Spec: k8sv2.DoguSpec{
+					Security: k8sv2.Security{
+						RunAsNonRoot:           boolPtr(true),
+						ReadOnlyRootFileSystem: boolPtr(false),
+						SeccompProfile:         &k8sv2.SeccompProfile{},
+						AppArmorProfile:        &k8sv2.AppArmorProfile{},
+						SELinuxOptions:         &k8sv2.SELinuxOptions{},
+						Capabilities:           k8sv2.Capabilities{},
+					},
+				},
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context not changed",
+			deployment: newDoguDeploymentWithSecurity(
+				true,
+				false,
+				&v1.SeccompProfile{},
+				&v1.AppArmorProfile{},
+				&v1.SELinuxOptions{},
+				&v1.Capabilities{},
+			),
+			doguResource: newDoguResource(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{},
+			),
+			want:    false,
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var fakeClient client.Client
+			if tt.deployment != nil {
+				fakeClient = fake.NewClientBuilder().WithObjects(tt.deployment).Build()
+			} else {
+				fakeClient = fake.NewClientBuilder().Build()
+			}
+			r := &doguReconciler{
+				client: fakeClient,
+			}
+			ctx := context.Background()
+			got, err := r.checkSecurityContextChanged(ctx, tt.doguResource)
+			if !tt.wantErr(t, err, fmt.Sprintf("checkSecurityContextChanged(%v, %v)", ctx, tt.doguResource)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "checkSecurityContextChanged(%v, %v)", ctx, tt.doguResource)
+		})
+	}
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+func newDoguResource(runAsNonRoot bool, readOnlyRootFileSystem bool, seccompProfile *k8sv2.SeccompProfile, appArmorProfile *k8sv2.AppArmorProfile, seLinuxOptions *k8sv2.SELinuxOptions, capabilities k8sv2.Capabilities) *k8sv2.Dogu {
+	return &k8sv2.Dogu{
+		Spec: k8sv2.DoguSpec{
+			Security: k8sv2.Security{
+				RunAsNonRoot:           boolPtr(runAsNonRoot),
+				ReadOnlyRootFileSystem: boolPtr(readOnlyRootFileSystem),
+				SeccompProfile:         seccompProfile,
+				AppArmorProfile:        appArmorProfile,
+				SELinuxOptions:         seLinuxOptions,
+				Capabilities:           capabilities,
+			},
+		},
+	}
+}
+
+func newDoguDeploymentWithSecurity(runAsNonRoot bool, readOnlyRootFileSystem bool, seccompProfile *v1.SeccompProfile, appArmorProfile *v1.AppArmorProfile, seLinuxOptions *v1.SELinuxOptions, capabilities *v1.Capabilities) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					SecurityContext: &v1.PodSecurityContext{
+						RunAsNonRoot:    boolPtr(runAsNonRoot),
+						SeccompProfile:  seccompProfile,
+						AppArmorProfile: appArmorProfile,
+						SELinuxOptions:  seLinuxOptions,
+					},
+					Containers: []v1.Container{
+						{
+							SecurityContext: &v1.SecurityContext{
+								RunAsNonRoot:           boolPtr(runAsNonRoot),
+								ReadOnlyRootFilesystem: boolPtr(readOnlyRootFileSystem),
+								SeccompProfile:         seccompProfile,
+								AppArmorProfile:        appArmorProfile,
+								SELinuxOptions:         seLinuxOptions,
+								Capabilities:           capabilities,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }

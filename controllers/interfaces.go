@@ -61,6 +61,10 @@ type additionalIngressAnnotationsManager interface {
 	SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *v2.Dogu) error
 }
 
+type securityContextManager interface {
+	UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *v2.Dogu) error
+}
+
 // startDoguManager includes functionality to start (stopped) dogus.
 type startDoguManager interface {
 	// StartDogu scales up a dogu to 1.
@@ -93,6 +97,7 @@ type CombinedDoguManager interface {
 	supportManager
 	startDoguManager
 	stopDoguManager
+	securityContextManager
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
@@ -329,4 +334,7 @@ type doguInterface interface {
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
 	ecoSystem.DoguRestartInterface
+}
+
+type doguDeploymentInterface interface {
 }
