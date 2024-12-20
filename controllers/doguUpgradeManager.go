@@ -101,7 +101,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv2.
 }
 
 func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv2.Dogu) (*core.Dogu, *core.Dogu, *k8sv2.DevelopmentDoguMap, error) {
-	fromDogu, err := dum.localDoguFetcher.FetchInstalled(ctx, doguResource.Name)
+	fromDogu, err := dum.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
 	}

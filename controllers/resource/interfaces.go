@@ -94,16 +94,6 @@ type DoguResourceGenerator interface {
 	CreateDoguPVC(doguResource *k8sv2.Dogu) (*v1.PersistentVolumeClaim, error)
 }
 
-// tcpUpdServiceExposer is used to expose non http services.
-type tcpUpdServiceExposer interface {
-	// ExposeOrUpdateDoguServices adds or updates the exposing of the exposed ports in the dogu from the cluster. These are typically
-	// entries in a configmap.
-	ExposeOrUpdateDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
-	// DeleteDoguServices removes the exposing of the exposed ports in the dogu from the cluster. These are typically
-	// entries in a configmap.
-	DeleteDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
-}
-
 // resourceRequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
 //
 //nolint:unused
@@ -119,7 +109,7 @@ type resourceRequirementsGenerator interface {
 type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
+	FetchInstalled(ctx context.Context, doguName dogu.SimpleName) (installedDogu *cesappcore.Dogu, err error)
 }
 
 type k8sClient interface {

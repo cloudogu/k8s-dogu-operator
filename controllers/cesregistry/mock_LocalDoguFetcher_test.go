@@ -5,7 +5,9 @@ package cesregistry
 import (
 	context "context"
 
+	dogu "github.com/cloudogu/ces-commons-lib/dogu"
 	core "github.com/cloudogu/cesapp-lib/core"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -23,7 +25,7 @@ func (_m *MockLocalDoguFetcher) EXPECT() *MockLocalDoguFetcher_Expecter {
 }
 
 // Enabled provides a mock function with given fields: ctx, doguName
-func (_m *MockLocalDoguFetcher) Enabled(ctx context.Context, doguName string) (bool, error) {
+func (_m *MockLocalDoguFetcher) Enabled(ctx context.Context, doguName dogu.SimpleName) (bool, error) {
 	ret := _m.Called(ctx, doguName)
 
 	if len(ret) == 0 {
@@ -32,16 +34,16 @@ func (_m *MockLocalDoguFetcher) Enabled(ctx context.Context, doguName string) (b
 
 	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, dogu.SimpleName) (bool, error)); ok {
 		return rf(ctx, doguName)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, dogu.SimpleName) bool); ok {
 		r0 = rf(ctx, doguName)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, dogu.SimpleName) error); ok {
 		r1 = rf(ctx, doguName)
 	} else {
 		r1 = ret.Error(1)
@@ -57,14 +59,14 @@ type MockLocalDoguFetcher_Enabled_Call struct {
 
 // Enabled is a helper method to define mock.On call
 //   - ctx context.Context
-//   - doguName string
+//   - doguName dogu.SimpleName
 func (_e *MockLocalDoguFetcher_Expecter) Enabled(ctx interface{}, doguName interface{}) *MockLocalDoguFetcher_Enabled_Call {
 	return &MockLocalDoguFetcher_Enabled_Call{Call: _e.mock.On("Enabled", ctx, doguName)}
 }
 
-func (_c *MockLocalDoguFetcher_Enabled_Call) Run(run func(ctx context.Context, doguName string)) *MockLocalDoguFetcher_Enabled_Call {
+func (_c *MockLocalDoguFetcher_Enabled_Call) Run(run func(ctx context.Context, doguName dogu.SimpleName)) *MockLocalDoguFetcher_Enabled_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(dogu.SimpleName))
 	})
 	return _c
 }
@@ -74,13 +76,13 @@ func (_c *MockLocalDoguFetcher_Enabled_Call) Return(_a0 bool, _a1 error) *MockLo
 	return _c
 }
 
-func (_c *MockLocalDoguFetcher_Enabled_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockLocalDoguFetcher_Enabled_Call {
+func (_c *MockLocalDoguFetcher_Enabled_Call) RunAndReturn(run func(context.Context, dogu.SimpleName) (bool, error)) *MockLocalDoguFetcher_Enabled_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FetchInstalled provides a mock function with given fields: ctx, doguName
-func (_m *MockLocalDoguFetcher) FetchInstalled(ctx context.Context, doguName string) (*core.Dogu, error) {
+func (_m *MockLocalDoguFetcher) FetchInstalled(ctx context.Context, doguName dogu.SimpleName) (*core.Dogu, error) {
 	ret := _m.Called(ctx, doguName)
 
 	if len(ret) == 0 {
@@ -89,10 +91,10 @@ func (_m *MockLocalDoguFetcher) FetchInstalled(ctx context.Context, doguName str
 
 	var r0 *core.Dogu
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*core.Dogu, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, dogu.SimpleName) (*core.Dogu, error)); ok {
 		return rf(ctx, doguName)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *core.Dogu); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, dogu.SimpleName) *core.Dogu); ok {
 		r0 = rf(ctx, doguName)
 	} else {
 		if ret.Get(0) != nil {
@@ -100,7 +102,7 @@ func (_m *MockLocalDoguFetcher) FetchInstalled(ctx context.Context, doguName str
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, dogu.SimpleName) error); ok {
 		r1 = rf(ctx, doguName)
 	} else {
 		r1 = ret.Error(1)
@@ -116,14 +118,14 @@ type MockLocalDoguFetcher_FetchInstalled_Call struct {
 
 // FetchInstalled is a helper method to define mock.On call
 //   - ctx context.Context
-//   - doguName string
+//   - doguName dogu.SimpleName
 func (_e *MockLocalDoguFetcher_Expecter) FetchInstalled(ctx interface{}, doguName interface{}) *MockLocalDoguFetcher_FetchInstalled_Call {
 	return &MockLocalDoguFetcher_FetchInstalled_Call{Call: _e.mock.On("FetchInstalled", ctx, doguName)}
 }
 
-func (_c *MockLocalDoguFetcher_FetchInstalled_Call) Run(run func(ctx context.Context, doguName string)) *MockLocalDoguFetcher_FetchInstalled_Call {
+func (_c *MockLocalDoguFetcher_FetchInstalled_Call) Run(run func(ctx context.Context, doguName dogu.SimpleName)) *MockLocalDoguFetcher_FetchInstalled_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(dogu.SimpleName))
 	})
 	return _c
 }
@@ -133,7 +135,7 @@ func (_c *MockLocalDoguFetcher_FetchInstalled_Call) Return(installedDogu *core.D
 	return _c
 }
 
-func (_c *MockLocalDoguFetcher_FetchInstalled_Call) RunAndReturn(run func(context.Context, string) (*core.Dogu, error)) *MockLocalDoguFetcher_FetchInstalled_Call {
+func (_c *MockLocalDoguFetcher_FetchInstalled_Call) RunAndReturn(run func(context.Context, dogu.SimpleName) (*core.Dogu, error)) *MockLocalDoguFetcher_FetchInstalled_Call {
 	_c.Call.Return(run)
 	return _c
 }

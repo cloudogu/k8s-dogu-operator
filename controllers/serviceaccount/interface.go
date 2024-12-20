@@ -66,10 +66,10 @@ type ServiceAccountRemover interface {
 type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
+	FetchInstalled(ctx context.Context, doguName dogu.SimpleName) (installedDogu *cesappcore.Dogu, err error)
 	// Enabled checks is the given dogu is enabled.
 	// Returns false (without error), when the dogu is not installed
-	Enabled(ctx context.Context, doguName string) (bool, error)
+	Enabled(ctx context.Context, doguName dogu.SimpleName) (bool, error)
 }
 
 // commandExecutor is used to execute commands in pods and dogus

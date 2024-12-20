@@ -5,14 +5,16 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/retry-lib/retry"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"slices"
 	"time"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/retry-lib/retry"
+
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -185,6 +187,10 @@ type Dogu struct {
 
 	Spec   DoguSpec   `json:"spec,omitempty"`
 	Status DoguStatus `json:"status,omitempty"`
+}
+
+func (d *Dogu) GetSimpleDoguName() cescommons.SimpleName {
+	return cescommons.SimpleName(d.Name)
 }
 
 // GetDataVolumeName returns the data volume name for the dogu resource for volumes with backup

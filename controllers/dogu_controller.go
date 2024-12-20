@@ -673,7 +673,7 @@ func checkUpgradeability(ctx context.Context, doguResource *k8sv2.Dogu, fetcher 
 		return false, nil
 	}
 
-	fromDogu, err := fetcher.FetchInstalled(ctx, doguResource.Name)
+	fromDogu, err := fetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return false, err
 	}

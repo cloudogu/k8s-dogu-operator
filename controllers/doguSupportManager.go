@@ -74,7 +74,7 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *k8sv2.Dogu, deployment *appsv1.Deployment) error {
 	logger := log.FromContext(ctx)
 
-	dogu, err := dsm.doguFetcher.FetchInstalled(ctx, doguResource.Name)
+	dogu, err := dsm.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
 	}

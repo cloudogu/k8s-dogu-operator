@@ -73,7 +73,7 @@ func (hlu *RequirementsUpdater) triggerSync(ctx context.Context) error {
 
 	var result error
 	for _, dogu := range installedDogus.Items {
-		doguJson, lErr := hlu.doguFetcher.FetchInstalled(ctx, dogu.GetName())
+		doguJson, lErr := hlu.doguFetcher.FetchInstalled(ctx, dogu.GetSimpleDoguName())
 		if lErr != nil {
 			result = errors.Join(result, fmt.Errorf("failed to get dogu.json of dogu [%s] from registry: %w", dogu.Name, lErr))
 			continue
