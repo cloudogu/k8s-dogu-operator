@@ -30,6 +30,7 @@ import (
 var testCtx = context.TODO()
 
 func Test_evaluateRequiredOperation(t *testing.T) {
+	// TODO fix and append tests
 	t.Run("installed should return upgrade", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv2.Dogu{
@@ -1185,6 +1186,7 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 		want         bool
 		wantErr      assert.ErrorAssertionFunc
 	}{
+		// TODO fix and append tests
 		{
 			name:         "failed to get deployment",
 			doguResource: &k8sv2.Dogu{},

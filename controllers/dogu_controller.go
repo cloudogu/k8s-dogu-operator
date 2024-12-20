@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	resource2 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	appsv1 "k8s.io/api/apps/v1"
 	"reflect"
 	"strings"
@@ -402,64 +404,28 @@ func (r *doguReconciler) checkForAdditionalIngressAnnotations(ctx context.Contex
 }
 
 func (r *doguReconciler) checkSecurityContextChanged(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
-	doguDeployment := &appsv1.Deployment{}
-	err := r.client.Get(ctx, doguResource.GetObjectKey(), doguDeployment)
+	doguDescriptor, err := r.fetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
-		return false, fmt.Errorf("failed to get service of dogu [%s]: %w", doguResource.Name, err)
+		return false, fmt.Errorf("failed to get dogu descriptor [%s]: %w", doguResource.Name, err)
 	}
 
-	podSecurityContext := doguDeployment.Spec.Template.Spec.SecurityContext
-	containers := doguDeployment.Spec.Template.Spec.Containers
+	generator := &resource2.SecurityContextGenerator{}
+	podSecurityContext, containerSecurityContext := generator.Generate(doguDescriptor, doguResource)
 
-	if checkIfPodSecurityContextChanged(podSecurityContext, doguResource.Spec.Security) || checkIfContainerContextChanged(containers, doguResource.Spec.Security) {
+	doguDeployment := &appsv1.Deployment{}
+	err = r.client.Get(ctx, doguResource.GetObjectKey(), doguDeployment)
+	if err != nil {
+		return false, fmt.Errorf("failed to get deployment of dogu [%s]: %w", doguResource.Name, err)
+	}
+
+	// TODO consider null-safety when accessing fields
+	if !reflect.DeepEqual(podSecurityContext, doguDeployment.Spec.Template.Spec.SecurityContext) ||
+		// TODO evaluate if accessing the first element directly is okay or if a for loop would be better
+		!reflect.DeepEqual(containerSecurityContext, doguDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
 		return true, nil
 	}
 
 	return false, nil
-}
-
-func checkIfPodSecurityContextChanged(podSecurityContext *v1.PodSecurityContext, doguResourceSecurity k8sv2.Security) bool {
-	if podSecurityContext.RunAsNonRoot != doguResourceSecurity.RunAsNonRoot {
-		return true
-	}
-
-	if !reflect.DeepEqual(podSecurityContext.SeccompProfile, doguResourceSecurity.SeccompProfile) {
-		return true
-	}
-	if !reflect.DeepEqual(podSecurityContext.AppArmorProfile, doguResourceSecurity.AppArmorProfile) {
-		return true
-	}
-	if !reflect.DeepEqual(podSecurityContext.SELinuxOptions, doguResourceSecurity.SELinuxOptions) {
-		return true
-	}
-
-	return false
-}
-
-func checkIfContainerContextChanged(containers []v1.Container, doguResourceSecurity k8sv2.Security) bool {
-	for _, container := range containers {
-		securityContext := container.SecurityContext
-
-		if securityContext.RunAsNonRoot != doguResourceSecurity.RunAsNonRoot {
-			return true
-		}
-		if securityContext.ReadOnlyRootFilesystem != doguResourceSecurity.ReadOnlyRootFileSystem {
-			return true
-		}
-		if !reflect.DeepEqual(securityContext.SeccompProfile, doguResourceSecurity.SeccompProfile) {
-			return true
-		}
-		if !reflect.DeepEqual(securityContext.AppArmorProfile, doguResourceSecurity.AppArmorProfile) {
-			return true
-		}
-		if !reflect.DeepEqual(securityContext.SELinuxOptions, doguResourceSecurity.SELinuxOptions) {
-			return true
-		}
-		if !reflect.DeepEqual(securityContext.Capabilities, doguResourceSecurity.Capabilities) {
-			return true
-		}
-	}
-	return false
 }
 
 // SetupWithManager sets up the controller with the manager.
