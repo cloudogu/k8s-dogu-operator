@@ -30,6 +30,11 @@ type DependencyValidator interface {
 	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
+type securityValidator interface {
+	// ValidateSecurity verifies the security fields of dogu descriptor and resource for correctness.
+	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
+}
+
 // doguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
 type doguHealthChecker interface {
 	// CheckByName returns nil if the dogu described by the resource is up and running.

@@ -20,7 +20,7 @@ import (
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
 func NewDoguUpgradeManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
 	doguChecker := health.NewDoguChecker(mgrSet.EcosystemClient, mgrSet.LocalDoguFetcher)
-	premisesChecker := upgrade.NewPremisesChecker(mgrSet.DependencyValidator, doguChecker, doguChecker)
+	premisesChecker := upgrade.NewPremisesChecker(mgrSet.DependencyValidator, doguChecker, doguChecker, mgrSet.SecurityValidator)
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder, mgrSet.EcosystemClient)
 
@@ -101,7 +101,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv2.
 }
 
 func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv2.Dogu) (*core.Dogu, *core.Dogu, *k8sv2.DevelopmentDoguMap, error) {
-	fromDogu, err := dum.localDoguFetcher.FetchInstalled(ctx, doguResource.Name)
+	fromDogu, err := dum.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
 	}

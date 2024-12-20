@@ -60,7 +60,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv2.Dogu
 	}
 
 	logger.Info("Fetching dogu...")
-	dogu, err := m.localDoguFetcher.FetchInstalled(ctx, doguResource.Name)
+	dogu, err := m.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		logger.Error(err, "failed to fetch installed dogu ")
 	}

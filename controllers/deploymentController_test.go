@@ -1,10 +1,15 @@
 package controllers
 
 import (
+	"testing"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,7 +19,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"testing"
 )
 
 func TestNewDeploymentReconciler(t *testing.T) {
@@ -180,7 +184,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
 
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "my-dogu").Return(nil, assert.AnError)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("my-dogu")).Return(nil, assert.AnError)
 
 		sut := &DeploymentReconciler{
 			k8sClientSet:        clientSetMock,
@@ -219,7 +223,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
 
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("my-dogu")).Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
 
 		doguHealthUpdaterMock := newMockDoguHealthStatusUpdater(t)
 		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(assert.AnError)
@@ -263,7 +267,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(true)
 
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("my-dogu")).Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
 
 		doguHealthUpdaterMock := newMockDoguHealthStatusUpdater(t)
 		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(nil)
@@ -307,7 +311,7 @@ func TestDeploymentReconciler_Reconcile(t *testing.T) {
 		deployAvailCheckMock.EXPECT().IsAvailable(deployment).Return(false)
 
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "my-dogu").Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("my-dogu")).Return(readDoguDescriptor(t, ldapDoguDescriptorBytes), nil)
 
 		doguHealthUpdaterMock := newMockDoguHealthStatusUpdater(t)
 		doguHealthUpdaterMock.EXPECT().UpdateHealthConfigMap(testCtx, deployment, readDoguDescriptor(t, ldapDoguDescriptorBytes)).Return(nil)

@@ -2,6 +2,8 @@ package dependency
 
 import (
 	"context"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 )
 
@@ -9,5 +11,5 @@ import (
 type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
+	FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *cesappcore.Dogu, err error)
 }

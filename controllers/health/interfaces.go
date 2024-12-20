@@ -2,8 +2,11 @@ package health
 
 import (
 	"context"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -45,7 +48,7 @@ type doguRecursiveHealthChecker interface {
 type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
+	FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *cesappcore.Dogu, err error)
 }
 
 //nolint:unused

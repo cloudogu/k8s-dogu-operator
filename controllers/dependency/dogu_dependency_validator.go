@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -77,7 +79,7 @@ func (dc *doguDependencyValidator) validateDoguDependencies(ctx context.Context,
 func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, doguDependency core.Dependency, optional bool) error {
 	log.FromContext(ctx).Info(fmt.Sprintf("checking dogu dependency %s:%s", doguDependency.Name, doguDependency.Version))
 
-	localDependency, err := dc.fetcher.FetchInstalled(ctx, doguDependency.Name)
+	localDependency, err := dc.fetcher.FetchInstalled(ctx, cescommons.SimpleName(doguDependency.Name))
 	if err != nil {
 		log.FromContext(ctx).Info(fmt.Sprintf("+++++ failed to fetch dep (optional: %t) with err: %v", optional, err))
 		log.FromContext(ctx).Info(fmt.Sprintf("+++++ is not found err optional: %t", regLibErr.IsNotFoundError(err)))

@@ -39,7 +39,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
-		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
+		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.GetSimpleDoguName())
 
 		// then
 		require.NoError(t, err)
@@ -65,7 +65,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
-		_, err := sut.FetchInstalled(testCtx, doguCr.Name)
+		_, err := sut.FetchInstalled(testCtx, doguCr.GetSimpleDoguName())
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -97,7 +97,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
-		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
+		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.GetSimpleDoguName())
 
 		// then
 		require.NoError(t, err)
@@ -144,7 +144,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
-		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.Name)
+		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.GetSimpleDoguName())
 
 		// then
 		require.NoError(t, err)

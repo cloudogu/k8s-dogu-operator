@@ -5,6 +5,7 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -13,6 +14,11 @@ import (
 type dependencyValidator interface {
 	// ValidateDependencies is used to check if dogu dependencies are installed.
 	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
+}
+
+type securityValidator interface {
+	// ValidateSecurity verifies the security fields of dogu descriptor and resource for correctness.
+	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
 }
 
 //nolint:unused

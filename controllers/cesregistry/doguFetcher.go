@@ -53,7 +53,7 @@ func NewResourceDoguFetcher(client client.Client, doguRemoteRepository remoteDog
 
 // FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 // otherwise might be incompatible with K8s CES).
-func (df *localDoguFetcher) FetchInstalled(ctx context.Context, doguName string) (installedDogu *core.Dogu, err error) {
+func (df *localDoguFetcher) FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *core.Dogu, err error) {
 	installedDogu, err = df.getLocalDogu(ctx, doguName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local dogu descriptor for %s: %w", doguName, err)
@@ -62,13 +62,13 @@ func (df *localDoguFetcher) FetchInstalled(ctx context.Context, doguName string)
 	return replaceK8sIncompatibleDoguDependencies(installedDogu), nil
 }
 
-func (df *localDoguFetcher) Enabled(ctx context.Context, doguName string) (bool, error) {
+func (df *localDoguFetcher) Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error) {
 	enabled, _, err := checkDoguVersionEnabled(ctx, df.doguVersionRegistry, doguName)
 	return enabled, err
 }
 
-func (df *localDoguFetcher) getLocalDogu(ctx context.Context, fromDoguName string) (*core.Dogu, error) {
-	current, err := df.doguVersionRegistry.GetCurrent(ctx, cescommons.SimpleName(fromDoguName))
+func (df *localDoguFetcher) getLocalDogu(ctx context.Context, fromDoguName cescommons.SimpleName) (*core.Dogu, error) {
+	current, err := df.doguVersionRegistry.GetCurrent(ctx, fromDoguName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current version for dogu %s: %w", fromDoguName, err)
 	}

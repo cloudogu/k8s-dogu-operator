@@ -455,6 +455,53 @@ func (_c *MockCombinedDoguManager_StopDogu_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// UpdateDeploymentWithSecurityContext provides a mock function with given fields: ctx, doguResource
+func (_m *MockCombinedDoguManager) UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *v2.Dogu) error {
+	ret := _m.Called(ctx, doguResource)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateDeploymentWithSecurityContext")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) error); ok {
+		r0 = rf(ctx, doguResource)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateDeploymentWithSecurityContext'
+type MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call struct {
+	*mock.Call
+}
+
+// UpdateDeploymentWithSecurityContext is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguResource *v2.Dogu
+func (_e *MockCombinedDoguManager_Expecter) UpdateDeploymentWithSecurityContext(ctx interface{}, doguResource interface{}) *MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call {
+	return &MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call{Call: _e.mock.On("UpdateDeploymentWithSecurityContext", ctx, doguResource)}
+}
+
+func (_c *MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu)) *MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*v2.Dogu))
+	})
+	return _c
+}
+
+func (_c *MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call) Return(_a0 error) *MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call) RunAndReturn(run func(context.Context, *v2.Dogu) error) *MockCombinedDoguManager_UpdateDeploymentWithSecurityContext_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Upgrade provides a mock function with given fields: ctx, doguResource
 func (_m *MockCombinedDoguManager) Upgrade(ctx context.Context, doguResource *v2.Dogu) error {
 	ret := _m.Called(ctx, doguResource)

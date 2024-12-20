@@ -100,7 +100,7 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 		return nil
 	}
 
-	enabled, err := c.doguFetcher.Enabled(ctx, serviceAccount.Type)
+	enabled, err := c.doguFetcher.Enabled(ctx, cescommons.SimpleName(serviceAccount.Type))
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 	}
@@ -123,7 +123,7 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 }
 
 func (c *creator) create(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
-	saDogu, err := c.doguFetcher.FetchInstalled(ctx, serviceAccount.Type)
+	saDogu, err := c.doguFetcher.FetchInstalled(ctx, cescommons.SimpleName(serviceAccount.Type))
 	if err != nil {
 		return fmt.Errorf("failed to get service account dogu.json: %w", err)
 	}

@@ -7,8 +7,8 @@ import (
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 )
 
-func checkDoguVersionEnabled(ctx context.Context, doguVersionRegistry doguVersionRegistry, doguName string) (bool, dogu.SimpleNameVersion, error) {
-	currentDoguVersion, err := doguVersionRegistry.GetCurrent(ctx, dogu.SimpleName(doguName))
+func checkDoguVersionEnabled(ctx context.Context, doguVersionRegistry doguVersionRegistry, doguName dogu.SimpleName) (bool, dogu.SimpleNameVersion, error) {
+	currentDoguVersion, err := doguVersionRegistry.GetCurrent(ctx, doguName)
 	if err != nil {
 		if regLibErr.IsNotFoundError(err) {
 			// no current version found -> not enabled
