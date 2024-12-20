@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	appsv1 "k8s.io/api/apps/v1"
 	"testing"
 	"time"
@@ -42,7 +43,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := newMockEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
@@ -73,7 +74,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := newMockEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
@@ -105,7 +106,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder.On("Eventf", testDoguCr, v1.EventTypeWarning, operatorEventReason, mock.Anything, mock.Anything)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
@@ -165,7 +166,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
@@ -200,7 +201,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
@@ -239,7 +240,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
@@ -315,7 +316,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
@@ -354,7 +355,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
@@ -431,7 +432,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
