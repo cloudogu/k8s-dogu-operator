@@ -1,11 +1,11 @@
 module github.com/cloudogu/k8s-dogu-operator/v3
 
-go 1.23.2
+go 1.23.4
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/ces-commons-lib v0.2.0
-	github.com/cloudogu/cesapp-lib v0.15.0
+	github.com/cloudogu/cesapp-lib v0.16.0
 	github.com/cloudogu/k8s-apply-lib v0.5.0
 	github.com/cloudogu/k8s-host-change v0.7.0
 	github.com/cloudogu/k8s-registry-lib v0.5.1
@@ -27,8 +27,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.19.3
 	sigs.k8s.io/yaml v1.4.0
 )
-
-replace github.com/cloudogu/cesapp-lib v0.15.0 => github.com/cloudogu/cesapp-lib v0.0.0-20241219090501-c9fba0fce8b1
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
