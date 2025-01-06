@@ -140,7 +140,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		return nil, err
 	}
 
-	podSecurityContext, containerSecurityContext := r.securityContextGenerator.Generate(dogu, doguResource)
+	podSecurityContext, containerSecurityContext := r.securityContextGenerator.Generate(ctx, dogu, doguResource)
 
 	podTemplate := newPodSpecBuilder(doguResource, dogu).
 		labels(GetAppLabel().Add(doguResource.GetPodLabels())).

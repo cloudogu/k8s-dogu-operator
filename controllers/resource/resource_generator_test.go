@@ -71,7 +71,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
 		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
 		securityGenMock := newMockSecurityContextGenerator(t)
-		securityGenMock.EXPECT().Generate(ldapDogu, ldapDoguResource).Return(nil, nil)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                   getTestScheme(),
@@ -139,7 +139,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 			SeccompProfile:           seccompProfile,
 			AppArmorProfile:          appArmorProfile,
 		}
-		securityGenMock.EXPECT().Generate(ldapDogu, ldapDoguResource).Return(podSecurityContext, containerSecurityContext)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(podSecurityContext, containerSecurityContext)
 
 		generator := resourceGenerator{
 			scheme:                   getTestScheme(),
@@ -170,7 +170,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
 		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
 		securityGenMock := newMockSecurityContextGenerator(t)
-		securityGenMock.EXPECT().Generate(ldapDogu, ldapDoguResource).Return(nil, nil)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                   getTestScheme(),
@@ -213,7 +213,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
 		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
 		securityGenMock := newMockSecurityContextGenerator(t)
-		securityGenMock.EXPECT().Generate(ldapDogu, ldapDoguResource).Return(nil, nil)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                   getTestScheme(),
@@ -242,7 +242,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
 		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
 		securityGenMock := newMockSecurityContextGenerator(t)
-		securityGenMock.EXPECT().Generate(ldapDogu, ldapDoguResource).Return(nil, nil)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                   getTestScheme(),
@@ -276,7 +276,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
 		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
 		securityGenMock := newMockSecurityContextGenerator(t)
-		securityGenMock.EXPECT().Generate(ldapDogu, ldapDoguResource).Return(nil, nil)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(nil, nil)
 
 		generator := resourceGenerator{
 			scheme:                   getTestScheme(),

@@ -83,7 +83,7 @@ const (
 	StopDogu                           = operation("StopDogu")
 	CheckStarted                       = operation("CheckStarted")
 	CheckStopped                       = operation("CheckStopped")
-	ChangeSecurityContext              = operation("ChangeSecutiryContext")
+	ChangeSecurityContext              = operation("ChangeSecurityContext")
 )
 
 const requeueWaitTimeout = 5 * time.Second
@@ -308,7 +308,7 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 
 	securityContextChanged, err := r.checkSecurityContextChanged(ctx, doguResource)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to check if security context is changed: %w", err)
 	}
 
 	if securityContextChanged {
@@ -406,23 +406,26 @@ func (r *doguReconciler) checkForAdditionalIngressAnnotations(ctx context.Contex
 func (r *doguReconciler) checkSecurityContextChanged(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
 	doguDescriptor, err := r.fetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
-		return false, fmt.Errorf("failed to get dogu descriptor [%s]: %w", doguResource.Name, err)
+		return false, fmt.Errorf("failed to get dogu descriptor %q: %w", doguResource.Name, err)
 	}
 
 	generator := &resource2.SecurityContextGenerator{}
-	podSecurityContext, containerSecurityContext := generator.Generate(doguDescriptor, doguResource)
+	podSecurityContext, containerSecurityContext := generator.Generate(ctx, doguDescriptor, doguResource)
 
 	doguDeployment := &appsv1.Deployment{}
 	err = r.client.Get(ctx, doguResource.GetObjectKey(), doguDeployment)
 	if err != nil {
-		return false, fmt.Errorf("failed to get deployment of dogu [%s]: %w", doguResource.Name, err)
+		return false, fmt.Errorf("failed to get deployment of dogu %q: %w", doguResource.Name, err)
 	}
 
-	// TODO consider null-safety when accessing fields
-	if !reflect.DeepEqual(podSecurityContext, doguDeployment.Spec.Template.Spec.SecurityContext) ||
-		// TODO evaluate if accessing the first element directly is okay or if a for loop would be better
-		!reflect.DeepEqual(containerSecurityContext, doguDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
+	if !reflect.DeepEqual(podSecurityContext, doguDeployment.Spec.Template.Spec.SecurityContext) {
 		return true, nil
+	}
+
+	for _, container := range doguDeployment.Spec.Template.Spec.Containers {
+		if !reflect.DeepEqual(containerSecurityContext, container.SecurityContext) {
+			return true, nil
+		}
 	}
 
 	return false, nil

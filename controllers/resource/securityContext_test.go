@@ -1,19 +1,18 @@
 package resource
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	"testing"
 )
 
 func TestSecurityContextGenerator_Generate(t *testing.T) {
-	trueValue := true
-	falseValue := false
-	profileValue := "myProfile"
-	fsGroupValue := int64(10000)
-	fsGroupChangePolicyValue := corev1.FSGroupChangeOnRootMismatch
 	tests := []struct {
 		name         string
 		dogu         *core.Dogu
@@ -26,17 +25,17 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			dogu:         &core.Dogu{},
 			doguResource: &v2.Dogu{},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: &falseValue,
+				RunAsNonRoot: ptr.To(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:               &falseValue,
-				RunAsNonRoot:             &falseValue,
-				ReadOnlyRootFilesystem:   &falseValue,
-				AllowPrivilegeEscalation: &falseValue,
+				Privileged:               ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
 			},
 		},
 		{
@@ -45,8 +44,8 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			doguResource: &v2.Dogu{
 				Spec: v2.DoguSpec{
 					Security: v2.Security{
-						RunAsNonRoot:           &trueValue,
-						ReadOnlyRootFileSystem: &trueValue,
+						RunAsNonRoot:           ptr.To(true),
+						ReadOnlyRootFileSystem: ptr.To(true),
 						SELinuxOptions: &v2.SELinuxOptions{
 							User:  "myUser",
 							Role:  "myRole",
@@ -55,17 +54,17 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 						},
 						SeccompProfile: &v2.SeccompProfile{
 							Type:             v2.SeccompProfileTypeLocalhost,
-							LocalhostProfile: &profileValue,
+							LocalhostProfile: ptr.To("myProfile"),
 						},
 						AppArmorProfile: &v2.AppArmorProfile{
 							Type:             v2.AppArmorProfileTypeLocalhost,
-							LocalhostProfile: &profileValue,
+							LocalhostProfile: ptr.To("myProfile"),
 						},
 					},
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: &trueValue,
+				RunAsNonRoot: ptr.To(true),
 				SELinuxOptions: &corev1.SELinuxOptions{
 					User:  "myUser",
 					Role:  "myRole",
@@ -74,11 +73,11 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 				SeccompProfile: &corev1.SeccompProfile{
 					Type:             corev1.SeccompProfileTypeLocalhost,
-					LocalhostProfile: &profileValue,
+					LocalhostProfile: ptr.To("myProfile"),
 				},
 				AppArmorProfile: &corev1.AppArmorProfile{
 					Type:             corev1.AppArmorProfileTypeLocalhost,
-					LocalhostProfile: &profileValue,
+					LocalhostProfile: ptr.To("myProfile"),
 				},
 			},
 			want2: &corev1.SecurityContext{
@@ -86,10 +85,10 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:               &falseValue,
-				AllowPrivilegeEscalation: &falseValue,
-				RunAsNonRoot:             &trueValue,
-				ReadOnlyRootFilesystem:   &trueValue,
+				Privileged:               ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				RunAsNonRoot:             ptr.To(true),
+				ReadOnlyRootFilesystem:   ptr.To(true),
 				SELinuxOptions: &corev1.SELinuxOptions{
 					User:  "myUser",
 					Role:  "myRole",
@@ -98,11 +97,11 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 				SeccompProfile: &corev1.SeccompProfile{
 					Type:             corev1.SeccompProfileTypeLocalhost,
-					LocalhostProfile: &profileValue,
+					LocalhostProfile: ptr.To("myProfile"),
 				},
 				AppArmorProfile: &corev1.AppArmorProfile{
 					Type:             corev1.AppArmorProfileTypeLocalhost,
-					LocalhostProfile: &profileValue,
+					LocalhostProfile: ptr.To("myProfile"),
 				},
 			},
 		},
@@ -120,17 +119,17 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: &falseValue,
+				RunAsNonRoot: ptr.To(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"AUDIT_READ", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:               &falseValue,
-				AllowPrivilegeEscalation: &falseValue,
-				RunAsNonRoot:             &falseValue,
-				ReadOnlyRootFilesystem:   &falseValue,
+				Privileged:               ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
 			},
 		},
 		{
@@ -146,17 +145,17 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: &falseValue,
+				RunAsNonRoot: ptr.To(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"AUDIT_READ", "CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:               &falseValue,
-				AllowPrivilegeEscalation: &falseValue,
-				RunAsNonRoot:             &falseValue,
-				ReadOnlyRootFilesystem:   &falseValue,
+				Privileged:               ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
 			},
 		},
 		{
@@ -172,16 +171,16 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: &falseValue,
+				RunAsNonRoot: ptr.To(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 				},
-				Privileged:               &falseValue,
-				AllowPrivilegeEscalation: &falseValue,
-				RunAsNonRoot:             &falseValue,
-				ReadOnlyRootFilesystem:   &falseValue,
+				Privileged:               ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
 			},
 		},
 		{
@@ -197,17 +196,17 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: &falseValue,
+				RunAsNonRoot: ptr.To(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"ALL"},
 				},
-				Privileged:               &falseValue,
-				AllowPrivilegeEscalation: &falseValue,
-				RunAsNonRoot:             &falseValue,
-				ReadOnlyRootFilesystem:   &falseValue,
+				Privileged:               ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
 			},
 		},
 		{
@@ -224,17 +223,17 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: &falseValue,
+				RunAsNonRoot: ptr.To(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"ALL"},
 				},
-				Privileged:               &falseValue,
-				AllowPrivilegeEscalation: &falseValue,
-				RunAsNonRoot:             &falseValue,
-				ReadOnlyRootFilesystem:   &falseValue,
+				Privileged:               ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
 			},
 		},
 		{
@@ -251,26 +250,53 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			},
 			doguResource: &v2.Dogu{},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot:        &falseValue,
-				FSGroup:             &fsGroupValue,
-				FSGroupChangePolicy: &fsGroupChangePolicyValue,
+				RunAsNonRoot:        ptr.To(false),
+				FSGroup:             ptr.To(int64(10000)),
+				FSGroupChangePolicy: ptr.To(corev1.FSGroupChangeOnRootMismatch),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:               &falseValue,
-				AllowPrivilegeEscalation: &falseValue,
-				RunAsNonRoot:             &falseValue,
-				ReadOnlyRootFilesystem:   &falseValue,
+				Privileged:               ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+			},
+		},
+		{
+			name: "dogu with invalid volume",
+			dogu: &core.Dogu{
+				Volumes: []core.Volume{
+					{
+						Name:  "myVolume",
+						Path:  "/data",
+						Owner: "root",
+						Group: "root",
+					},
+				},
+			},
+			doguResource: &v2.Dogu{},
+			want1: &corev1.PodSecurityContext{
+				RunAsNonRoot: ptr.To(false),
+			},
+			want2: &corev1.SecurityContext{
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+					Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
+				},
+				Privileged:               ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &SecurityContextGenerator{}
-			got1, got2 := s.Generate(tt.dogu, tt.doguResource)
+			got1, got2 := s.Generate(testCtx, tt.dogu, tt.doguResource)
 			assert.Equalf(t, tt.want1, got1, "Generate(%v, %v)", tt.dogu, tt.doguResource)
 			assert.Equalf(t, tt.want2, got2, "Generate(%v, %v)", tt.dogu, tt.doguResource)
 		})

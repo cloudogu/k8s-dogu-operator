@@ -1,12 +1,16 @@
 package resource
 
 import (
+	"context"
+	"fmt"
 	"maps"
 	"slices"
 	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
@@ -18,7 +22,7 @@ func NewSecurityContextGenerator() *SecurityContextGenerator {
 
 type SecurityContextGenerator struct{}
 
-func (s *SecurityContextGenerator) Generate(dogu *core.Dogu, doguResource *v2.Dogu) (*corev1.PodSecurityContext, *corev1.SecurityContext) {
+func (s *SecurityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu, doguResource *v2.Dogu) (*corev1.PodSecurityContext, *corev1.SecurityContext) {
 	runAsNonRoot := isRunAsNonRoot(dogu, doguResource)
 	seLinuxOptions := seLinuxOptions(doguResource.Spec.Security.SELinuxOptions)
 	appArmorProfile := appArmorProfile(doguResource.Spec.Security.AppArmorProfile)
@@ -29,7 +33,7 @@ func (s *SecurityContextGenerator) Generate(dogu *core.Dogu, doguResource *v2.Do
 	privileged := false
 	allowPrivilegeEscalation := false
 
-	fsGroup, fsGroupChangePolicy := fsGroupAndChangePolicy(dogu)
+	fsGroup, fsGroupChangePolicy := fsGroupAndChangePolicy(ctx, dogu)
 
 	return &corev1.PodSecurityContext{
 			RunAsNonRoot:        &runAsNonRoot,
@@ -53,13 +57,18 @@ func (s *SecurityContextGenerator) Generate(dogu *core.Dogu, doguResource *v2.Do
 		}
 }
 
-func fsGroupAndChangePolicy(dogu *core.Dogu) (*int64, *corev1.PodFSGroupChangePolicy) {
+func fsGroupAndChangePolicy(ctx context.Context, dogu *core.Dogu) (*int64, *corev1.PodFSGroupChangePolicy) {
 	if len(dogu.Volumes) > 0 {
-		fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
-		group, _ := strconv.Atoi(dogu.Volumes[0].Group)
-		gid := int64(group)
+		rawGroup := dogu.Volumes[0].Group
+		group, err := strconv.Atoi(rawGroup)
+		if err != nil {
+			// this only happens if the dogu descriptor is invalid; not much we can do here
+			// maybe consider using int64 instead of string for the group in the dogu-descriptor?
+			log.FromContext(ctx).Error(err, fmt.Sprintf("dogu-descriptor %q: failed to convert group %q in volume to int", dogu.Name, rawGroup))
+			return nil, nil
+		}
 
-		return &gid, &fsGroupChangePolicy
+		return ptr.To(int64(group)), ptr.To(corev1.FSGroupChangeOnRootMismatch)
 	}
 
 	return nil, nil
@@ -101,19 +110,11 @@ func seLinuxOptions(options *v2.SELinuxOptions) *corev1.SELinuxOptions {
 }
 
 func isRunAsNonRoot(dogu *core.Dogu, resource *v2.Dogu) bool {
-	if resource.Spec.Security.RunAsNonRoot != nil {
-		return *resource.Spec.Security.RunAsNonRoot
-	}
-
-	return dogu.Security.RunAsNonRoot
+	return ptr.Deref(resource.Spec.Security.RunAsNonRoot, dogu.Security.RunAsNonRoot)
 }
 
 func isReadOnlyRootFS(dogu *core.Dogu, resource *v2.Dogu) bool {
-	if resource.Spec.Security.ReadOnlyRootFileSystem != nil {
-		return *resource.Spec.Security.ReadOnlyRootFileSystem
-	}
-
-	return dogu.Security.ReadOnlyRootFileSystem
+	return ptr.Deref(resource.Spec.Security.ReadOnlyRootFileSystem, dogu.Security.ReadOnlyRootFileSystem)
 }
 
 func effectiveCapabilities(dogu *core.Dogu, doguResource *v2.Dogu) []corev1.Capability {

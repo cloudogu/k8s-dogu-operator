@@ -31,7 +31,6 @@ func TestNewDoguSecurityContextManager(t *testing.T) {
 }
 
 func Test_doguSecurityContextManager_UpdateDeploymentWithSecurityContext(t *testing.T) {
-	// TODO all test cases have to be completed
 	doguResource := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
 		Spec:       k8sv2.DoguSpec{Name: "official/ldap"},
