@@ -205,7 +205,7 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
-				Add:  []corev1.Capability{"CHOWN"},
+				Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE"},
 			},
 			RunAsNonRoot:           &runAsNonRoot,
 			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
