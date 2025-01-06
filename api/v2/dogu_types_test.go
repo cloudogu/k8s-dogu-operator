@@ -527,7 +527,7 @@ func TestDogu_ValidateSecurity(t *testing.T) {
 	}{
 		{"valid empty", args{&Dogu{}}, assert.NoError},
 		{"valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []Capability{core.AuditControl}}}}}}, assert.NoError},
-		{"valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{core.AuditControl}}}}}}, assert.NoError},
+		{"valid drop filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{core.AuditControl}}}}}}, assert.NoError},
 		{"all possible values", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: AllCapabilities, Drop: AllCapabilities}}}}}, assert.NoError},
 		{"add all keyword", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []Capability{core.All}}}}}}, assert.NoError},
 		{"drop all keyword", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{core.All}}}}}}, assert.NoError},
