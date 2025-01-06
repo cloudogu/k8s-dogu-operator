@@ -32,7 +32,7 @@ spec:
           name : dogu-volume-chown-init
           securityContext:
             capabilities:
-              add: ["CHOWN"]
+              add: ["CHOWN", "DAC_OVERRIDE"]
               drop: ["ALL"]
             seLinuxOptions: {}
             runAsNonRoot: false
