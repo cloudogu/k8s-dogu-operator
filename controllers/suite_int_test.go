@@ -5,6 +5,7 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	registryRepo "github.com/cloudogu/k8s-registry-lib/repository"
 	"os"
 	"path/filepath"
@@ -143,8 +144,11 @@ var _ = ginkgo.BeforeSuite(func() {
 	hostAliasGeneratorMock := &mockHostAliasGenerator{}
 	hostAliasGeneratorMock.On("Generate", mock.Anything).Return(nil, nil)
 
+	securityValidator := &security.Validator{}
+	securityGenerator := &resource.SecurityContextGenerator{}
+
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"}
-	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, additionalImages)
+	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, securityGenerator, additionalImages)
 
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -193,6 +197,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		execPodFactory:          execPodFactory,
 		sensitiveDoguRepository: sensitiveConfigRepo,
 		doguConfigRepository:    doguConfigRepo,
+		securityValidator:       securityValidator,
 	}
 
 	deleteManager := &doguDeleteManager{
@@ -215,7 +220,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	doguHealthChecker := health.NewDoguChecker(ecosystemClientSet, localDoguFetcher)
-	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker)
+	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker, securityValidator)
 
 	mgrSet := &util.ManagerSet{
 		RestConfig:            ctrl.GetConfigOrDie(),
@@ -223,6 +228,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		ServiceAccountCreator: serviceAccountCreator,
 		FileExtractor:         fileExtract,
 		CollectApplier:        collectApplier,
+		SecurityValidator:     securityValidator,
 		CommandExecutor:       CommandExecutorMock,
 		ResourceUpserter:      upserter,
 		DoguRegistrator:       doguRegistrator,
@@ -250,6 +256,13 @@ var _ = ginkgo.BeforeSuite(func() {
 		eventRecorder:                eventRecorder,
 	}
 
+	securityManager := &doguSecurityContextManager{
+		localDoguFetcher:  localDoguFetcher,
+		resourceUpserter:  upserter,
+		securityValidator: securityValidator,
+		recorder:          eventRecorder,
+	}
+
 	doguManager := &DoguManager{
 		scheme:                    k8sManager.GetScheme(),
 		installManager:            installManager,
@@ -259,6 +272,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		recorder:                  eventRecorder,
 		volumeManager:             volumeManager,
 		ingressAnnotationsManager: ingressAnnotationManager,
+		securityContextManager:    securityManager,
 	}
 
 	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, localDoguFetcher)
