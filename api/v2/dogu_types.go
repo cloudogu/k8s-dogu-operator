@@ -95,7 +95,7 @@ type UpgradeConfig struct {
 
 // DoguResources defines the physical resources used by the dogu.
 type DoguResources struct {
-	// dataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
+	// DataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
 	// expansion. This includes a downtime for the respective dogu. The default size for volumes is "2Gi".
 	// It is not possible to lower the volume size after an expansion. This will introduce an inconsistent state for the
 	// dogu.

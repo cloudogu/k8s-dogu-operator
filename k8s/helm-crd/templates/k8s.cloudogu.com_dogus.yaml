@@ -55,7 +55,7 @@ spec:
                   properties:
                     dataVolumeSize:
                       description: |-
-                        dataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
+                        DataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
                         expansion. This includes a downtime for the respective dogu. The default size for volumes is "2Gi".
                         It is not possible to lower the volume size after an expansion. This will introduce an inconsistent state for the
                         dogu.
@@ -65,7 +65,7 @@ spec:
                   description: Security overrides security policies defined in the dogu descriptor. These fields can be used to further reduce a dogu's attack surface.
                   properties:
                     appArmorProfile:
-                      description: appArmorProfile is the AppArmor options to use by this container.
+                      description: AppArmorProfile is the AppArmor options to use by this container.
                       properties:
                         localhostProfile:
                           description: |-
@@ -127,7 +127,7 @@ spec:
                       type: boolean
                     seLinuxOptions:
                       description: |-
-                        The SELinux context to be applied to the container.
+                        SELinuxOptions is the SELinux context to be applied to the container.
                         If unspecified, the container runtime will allocate a random SELinux context for each
                         container, which is kubernetes default behaviour.
                       properties:
@@ -145,18 +145,18 @@ spec:
                           type: string
                       type: object
                     seccompProfile:
-                      description: The seccomp options to use by this container.
+                      description: SeccompProfile is the seccomp options to use by this container.
                       properties:
                         localhostProfile:
                           description: |-
-                            localhostProfile indicates a profile defined in a file on the node should be used.
+                            LocalhostProfile indicates a profile defined in a file on the node should be used.
                             The profile must be preconfigured on the node to work.
                             Must be a descending path, relative to the kubelet's configured seccomp profile location.
                             Must be set if type is "Localhost". Must NOT be set for any other type.
                           type: string
                         type:
                           description: |-
-                            type indicates which kind of seccomp profile will be applied.
+                            Type indicates which kind of seccomp profile will be applied.
                             Valid options are:
 
 
