@@ -20,8 +20,10 @@ func NewSecurityContextGenerator() *SecurityContextGenerator {
 	return &SecurityContextGenerator{}
 }
 
+// SecurityContextGenerator provides functionality to create security contexts for dogus.
 type SecurityContextGenerator struct{}
 
+// Generate creates security contexts for the pod and containers of a dogu.
 func (s *SecurityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu, doguResource *v2.Dogu) (*corev1.PodSecurityContext, *corev1.SecurityContext) {
 	runAsNonRoot := isRunAsNonRoot(dogu, doguResource)
 	seLinuxOptions := seLinuxOptions(doguResource.Spec.Security.SELinuxOptions)

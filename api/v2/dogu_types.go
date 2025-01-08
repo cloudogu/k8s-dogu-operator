@@ -189,6 +189,7 @@ type Dogu struct {
 	Status DoguStatus `json:"status,omitempty"`
 }
 
+// GetSimpleDoguName returns the name of the dogu as a dogu.SimpleName.
 func (d *Dogu) GetSimpleDoguName() cescommons.SimpleName {
 	return cescommons.SimpleName(d.Name)
 }

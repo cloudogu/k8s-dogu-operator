@@ -62,6 +62,7 @@ type additionalIngressAnnotationsManager interface {
 }
 
 type securityContextManager interface {
+	// UpdateDeploymentWithSecurityContext regenerates the security context of a dogu deployment.
 	UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *v2.Dogu) error
 }
 

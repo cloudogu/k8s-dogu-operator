@@ -154,7 +154,7 @@ func Test_doguSecurityContextManager_UpdateDeploymentWithSecurityContext(t *test
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := doguSecurityContextManager{
+			d := DoguSecurityContextManager{
 				localDoguFetcher:  tt.localDoguFetcherFn(t),
 				resourceUpserter:  tt.resourceUpserterFn(t),
 				securityValidator: tt.securityValidatorFn(t),

@@ -256,7 +256,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		eventRecorder:                eventRecorder,
 	}
 
-	securityManager := &doguSecurityContextManager{
+	securityManager := &DoguSecurityContextManager{
 		localDoguFetcher:  localDoguFetcher,
 		resourceUpserter:  upserter,
 		securityValidator: securityValidator,

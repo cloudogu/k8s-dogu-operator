@@ -35,6 +35,7 @@ type doguConfigGetter interface {
 }
 
 type securityContextGenerator interface {
+	// Generate creates a k8s security context for the pod and containers of a dogu.
 	Generate(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext)
 }
 

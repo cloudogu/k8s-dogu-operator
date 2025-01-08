@@ -18,15 +18,16 @@ const (
 	ErrorOnSecurityContextChangeEventReason = "ErrSecurityContextChange"
 )
 
-type doguSecurityContextManager struct {
+type DoguSecurityContextManager struct {
 	localDoguFetcher  localDoguFetcher
 	resourceUpserter  resource.ResourceUpserter
 	securityValidator securityValidator
 	recorder          eventRecorder
 }
 
-func NewDoguSecurityContextManager(mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguSecurityContextManager {
-	return &doguSecurityContextManager{
+// NewDoguSecurityContextManager creates a new *DoguSecurityContextManager.
+func NewDoguSecurityContextManager(mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *DoguSecurityContextManager {
+	return &DoguSecurityContextManager{
 		localDoguFetcher:  mgrSet.LocalDoguFetcher,
 		resourceUpserter:  mgrSet.ResourceUpserter,
 		securityValidator: mgrSet.SecurityValidator,
@@ -34,7 +35,8 @@ func NewDoguSecurityContextManager(mgrSet *util.ManagerSet, eventRecorder record
 	}
 }
 
-func (d doguSecurityContextManager) UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *k8sv2.Dogu) error {
+// UpdateDeploymentWithSecurityContext regenerates the security context of a dogu deployment.
+func (d DoguSecurityContextManager) UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Getting local dogu descriptor...")
