@@ -50,7 +50,7 @@ const (
 // AllCapabilities are all possible values for capabilities.
 var AllCapabilities = func() []Capability {
 	// To avoid duplication and deviations, we copy these from cesapp-lib.
-	allCapabilities := make([]Capability, len(core.AllCapabilities), len(core.AllCapabilities))
+	allCapabilities := make([]Capability, len(core.AllCapabilities))
 	for i, capability := range core.AllCapabilities {
 		allCapabilities[i] = Capability(capability)
 	}
