@@ -94,7 +94,7 @@ spec:
                           description: Add contains the capabilities that should be allowed to be used in a container. This list is optional.
                           items:
                             description: |-
-                              Capability represents a single POSIX capability.
+                              Capability represent POSIX capabilities type.
 
 
                               See docs at https://manned.org/capabilities.7
@@ -105,7 +105,7 @@ spec:
                           description: Drop contains the capabilities that should be blocked from being used in a container. This list is optional.
                           items:
                             description: |-
-                              Capability represents a single POSIX capability.
+                              Capability represent POSIX capabilities type.
 
 
                               See docs at https://manned.org/capabilities.7

@@ -9,6 +9,7 @@ This file was generated with "make generate-deepcopy".
 package v2
 
 import (
+	"github.com/cloudogu/cesapp-lib/core"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -37,12 +38,12 @@ func (in *Capabilities) DeepCopyInto(out *Capabilities) {
 	*out = *in
 	if in.Add != nil {
 		in, out := &in.Add, &out.Add
-		*out = make([]Capability, len(*in))
+		*out = make([]core.Capability, len(*in))
 		copy(*out, *in)
 	}
 	if in.Drop != nil {
 		in, out := &in.Drop, &out.Drop
-		*out = make([]Capability, len(*in))
+		*out = make([]core.Capability, len(*in))
 		copy(*out, *in)
 	}
 }

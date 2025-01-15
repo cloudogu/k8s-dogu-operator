@@ -24,8 +24,8 @@ func TestValidator_ValidateSecurity(t *testing.T) {
 				Drop: core.AllCapabilities,
 			}}},
 			doguResource: &k8sv2.Dogu{Spec: k8sv2.DoguSpec{Security: k8sv2.Security{Capabilities: k8sv2.Capabilities{
-				Add:  k8sv2.AllCapabilities,
-				Drop: k8sv2.AllCapabilities,
+				Add:  core.AllCapabilities,
+				Drop: core.AllCapabilities,
 			}}}},
 			wantErr: false,
 		},
@@ -36,8 +36,8 @@ func TestValidator_ValidateSecurity(t *testing.T) {
 				Drop: []core.Capability{"err"},
 			}}},
 			doguResource: &k8sv2.Dogu{Spec: k8sv2.DoguSpec{Security: k8sv2.Security{Capabilities: k8sv2.Capabilities{
-				Add:  k8sv2.AllCapabilities,
-				Drop: k8sv2.AllCapabilities,
+				Add:  core.AllCapabilities,
+				Drop: core.AllCapabilities,
 			}}}},
 			wantErr: true,
 			errMsg:  "invalid security field in dogu descriptor: dogu descriptor : contains at least one invalid security field: err is not a valid capability to be added\nerr is not a valid capability to be dropped",
@@ -49,8 +49,8 @@ func TestValidator_ValidateSecurity(t *testing.T) {
 				Drop: core.AllCapabilities,
 			}}},
 			doguResource: &k8sv2.Dogu{Spec: k8sv2.DoguSpec{Security: k8sv2.Security{Capabilities: k8sv2.Capabilities{
-				Add:  []k8sv2.Capability{"err"},
-				Drop: []k8sv2.Capability{"err"},
+				Add:  []core.Capability{"err"},
+				Drop: []core.Capability{"err"},
 			}}}},
 			wantErr: true,
 			errMsg:  "invalid security field in dogu resource: dogu resource : contains at least one invalid security field: err is not a valid capability to be added\nerr is not a valid capability to be dropped",
@@ -62,8 +62,8 @@ func TestValidator_ValidateSecurity(t *testing.T) {
 				Drop: []core.Capability{"err"},
 			}}},
 			doguResource: &k8sv2.Dogu{Spec: k8sv2.DoguSpec{Security: k8sv2.Security{Capabilities: k8sv2.Capabilities{
-				Add:  []k8sv2.Capability{"err"},
-				Drop: []k8sv2.Capability{"err"},
+				Add:  []core.Capability{"err"},
+				Drop: []core.Capability{"err"},
 			}}}},
 			wantErr: true,
 			errMsg:  "invalid security field in dogu descriptor: dogu descriptor : contains at least one invalid security field: err is not a valid capability to be added\nerr is not a valid capability to be dropped\ninvalid security field in dogu resource: dogu resource : contains at least one invalid security field: err is not a valid capability to be added\nerr is not a valid capability to be dropped",

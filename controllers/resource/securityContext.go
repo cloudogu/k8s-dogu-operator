@@ -3,10 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
-	"maps"
-	"slices"
 	"strconv"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
@@ -120,30 +117,15 @@ func isReadOnlyRootFS(dogu *core.Dogu, resource *v2.Dogu) bool {
 }
 
 func effectiveCapabilities(dogu *core.Dogu, doguResource *v2.Dogu) []corev1.Capability {
-	doguDescriptorCapabilities := dogu.EffectiveCapabilities()
-	effectiveCapabilities := make(map[corev1.Capability]struct{}, len(doguDescriptorCapabilities))
-	for _, capability := range doguDescriptorCapabilities {
-		effectiveCapabilities[corev1.Capability(capability)] = struct{}{}
-	}
+	effectiveCapabilities := core.CalcEffectiveCapabilities(
+		dogu.EffectiveCapabilities(),
+		doguResource.Spec.Security.Capabilities.Drop,
+		doguResource.Spec.Security.Capabilities.Add,
+	)
 
-	for _, dropCap := range doguResource.Spec.Security.Capabilities.Drop {
-		if dropCap == "ALL" {
-			effectiveCapabilities = make(map[corev1.Capability]struct{})
-			break
-		}
-		delete(effectiveCapabilities, corev1.Capability(dropCap))
+	effectiveK8sCapabilities := make([]corev1.Capability, len(effectiveCapabilities))
+	for i, capability := range effectiveCapabilities {
+		effectiveK8sCapabilities[i] = corev1.Capability(capability)
 	}
-
-	for _, addCap := range doguResource.Spec.Security.Capabilities.Add {
-		if addCap == "ALL" {
-			return []corev1.Capability{"ALL"}
-		}
-		effectiveCapabilities[corev1.Capability(addCap)] = struct{}{}
-	}
-
-	capabilitiesSlice := slices.Collect(maps.Keys(effectiveCapabilities))
-	slices.SortFunc(capabilitiesSlice, func(a, b corev1.Capability) int {
-		return strings.Compare(string(a), string(b))
-	})
-	return capabilitiesSlice
+	return effectiveK8sCapabilities
 }

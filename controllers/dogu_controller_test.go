@@ -1654,9 +1654,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -1702,9 +1702,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -1748,9 +1748,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -1795,9 +1795,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -1842,9 +1842,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -1891,9 +1891,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -1935,9 +1935,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -1979,9 +1979,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -2026,9 +2026,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -2073,9 +2073,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -2122,9 +2122,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -2166,8 +2166,8 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add:  []k8sv2.Capability{core.All},
-					Drop: []k8sv2.Capability{core.Chown, core.DacOverride},
+					Add:  []core.Capability{core.All},
+					Drop: []core.Capability{core.Chown, core.DacOverride},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {
@@ -2209,9 +2209,9 @@ func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
 				&k8sv2.AppArmorProfile{},
 				&k8sv2.SELinuxOptions{},
 				k8sv2.Capabilities{
-					Add: []k8sv2.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
 						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
-					Drop: []k8sv2.Capability{core.All},
+					Drop: []core.Capability{core.All},
 				},
 			),
 			fetcherFn: func(t *testing.T) localDoguFetcher {

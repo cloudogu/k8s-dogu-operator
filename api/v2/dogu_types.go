@@ -47,16 +47,6 @@ const (
 	DoguLabelVersion = "dogu.version"
 )
 
-// AllCapabilities are all possible values for capabilities.
-var AllCapabilities = func() []Capability {
-	// To avoid duplication and deviations, we copy these from cesapp-lib.
-	allCapabilities := make([]Capability, len(core.AllCapabilities))
-	for i, capability := range core.AllCapabilities {
-		allCapabilities[i] = Capability(capability)
-	}
-	return allCapabilities
-}()
-
 // DoguSpec defines the desired state of a Dogu
 type DoguSpec struct {
 	// Name of the dogu (e.g. official/ldap)
@@ -381,7 +371,7 @@ func (d *Dogu) ValidateSecurity() error {
 			continue
 		}
 
-		if !slices.Contains(AllCapabilities, value) {
+		if !slices.Contains(core.AllCapabilities, value) {
 			err := fmt.Errorf("%s is not a valid capability to be added", value)
 			errs = append(errs, err)
 		}
@@ -392,7 +382,7 @@ func (d *Dogu) ValidateSecurity() error {
 			continue
 		}
 
-		if !slices.Contains(AllCapabilities, value) {
+		if !slices.Contains(core.AllCapabilities, value) {
 			err := fmt.Errorf("%s is not a valid capability to be dropped", value)
 			errs = append(errs, err)
 		}

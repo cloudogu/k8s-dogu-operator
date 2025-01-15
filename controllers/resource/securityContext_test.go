@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -112,8 +113,8 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				Spec: v2.DoguSpec{
 					Security: v2.Security{
 						Capabilities: v2.Capabilities{
-							Drop: []v2.Capability{"CHOWN"},
-							Add:  []v2.Capability{"AUDIT_READ"},
+							Drop: []core.Capability{"CHOWN"},
+							Add:  []core.Capability{"AUDIT_READ"},
 						},
 					},
 				},
@@ -139,7 +140,7 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				Spec: v2.DoguSpec{
 					Security: v2.Security{
 						Capabilities: v2.Capabilities{
-							Add: []v2.Capability{"AUDIT_READ", "DAC_OVERRIDE"},
+							Add: []core.Capability{"AUDIT_READ", "DAC_OVERRIDE"},
 						},
 					},
 				},
@@ -165,7 +166,7 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				Spec: v2.DoguSpec{
 					Security: v2.Security{
 						Capabilities: v2.Capabilities{
-							Drop: []v2.Capability{"ALL"},
+							Drop: []core.Capability{"ALL"},
 						},
 					},
 				},
@@ -175,6 +176,7 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
+					Add:  make([]corev1.Capability, 0),
 					Drop: []corev1.Capability{"ALL"},
 				},
 				Privileged:               ptr.To(false),
@@ -190,7 +192,7 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				Spec: v2.DoguSpec{
 					Security: v2.Security{
 						Capabilities: v2.Capabilities{
-							Add: []v2.Capability{"ALL"},
+							Add: []core.Capability{"ALL"},
 						},
 					},
 				},
@@ -201,7 +203,13 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
-					Add:  []corev1.Capability{"ALL"},
+					Add: []corev1.Capability{
+						core.AuditControl, core.AuditRead, core.AuditWrite, core.BlockSuspend, core.Bpf, core.CheckpointRestore, core.Chown,
+						core.DacOverride, core.Fowner, core.Fsetid, core.IpcLock, core.IpcOwner, core.Kill, core.Lease, core.LinuxImmutable, core.MacAdmin,
+						core.MacOverride, core.Mknod, core.NetAdmin, core.NetBindService, core.NetBroadcast, core.NetRaw, core.Perfmon, core.Setfcap,
+						core.Setgid, core.Setpcap, core.Setuid, core.Syslog, core.SysAdmin, core.SysBoot, core.SysChroot, core.SysModule, core.SysNice, core.SysPAcct,
+						core.SysPTrace, core.SysResource, core.SysTime, core.SysTtyCONFIG, core.WakeAlarm,
+					},
 				},
 				Privileged:               ptr.To(false),
 				AllowPrivilegeEscalation: ptr.To(false),
@@ -216,8 +224,8 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				Spec: v2.DoguSpec{
 					Security: v2.Security{
 						Capabilities: v2.Capabilities{
-							Drop: []v2.Capability{"ALL"},
-							Add:  []v2.Capability{"ALL"},
+							Drop: []core.Capability{"ALL"},
+							Add:  []core.Capability{"ALL"},
 						},
 					},
 				},
@@ -228,7 +236,13 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
-					Add:  []corev1.Capability{"ALL"},
+					Add: []corev1.Capability{
+						core.AuditControl, core.AuditRead, core.AuditWrite, core.BlockSuspend, core.Bpf, core.CheckpointRestore, core.Chown,
+						core.DacOverride, core.Fowner, core.Fsetid, core.IpcLock, core.IpcOwner, core.Kill, core.Lease, core.LinuxImmutable, core.MacAdmin,
+						core.MacOverride, core.Mknod, core.NetAdmin, core.NetBindService, core.NetBroadcast, core.NetRaw, core.Perfmon, core.Setfcap,
+						core.Setgid, core.Setpcap, core.Setuid, core.Syslog, core.SysAdmin, core.SysBoot, core.SysChroot, core.SysModule, core.SysNice, core.SysPAcct,
+						core.SysPTrace, core.SysResource, core.SysTime, core.SysTtyCONFIG, core.WakeAlarm,
+					},
 				},
 				Privileged:               ptr.To(false),
 				AllowPrivilegeEscalation: ptr.To(false),
@@ -297,6 +311,8 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &SecurityContextGenerator{}
 			got1, got2 := s.Generate(testCtx, tt.dogu, tt.doguResource)
+			slices.Sort(got2.Capabilities.Add)
+			slices.Sort(got2.Capabilities.Drop)
 			assert.Equalf(t, tt.want1, got1, "Generate(%v, %v)", tt.dogu, tt.doguResource)
 			assert.Equalf(t, tt.want2, got2, "Generate(%v, %v)", tt.dogu, tt.doguResource)
 		})

@@ -5,7 +5,7 @@ go 1.23.4
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/ces-commons-lib v0.2.0
-	github.com/cloudogu/cesapp-lib v0.16.0
+	github.com/cloudogu/cesapp-lib v0.18.0
 	github.com/cloudogu/k8s-apply-lib v0.5.0
 	github.com/cloudogu/k8s-host-change v0.7.0
 	github.com/cloudogu/k8s-registry-lib v0.5.1
@@ -75,11 +75,11 @@ require (
 	github.com/vbatts/tar-split v0.11.6 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
-	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect

@@ -1,9 +1,6 @@
 package v2
 
-// Capability represents a single POSIX capability.
-//
-// See docs at https://manned.org/capabilities.7
-type Capability string
+import "github.com/cloudogu/cesapp-lib/core"
 
 // Capabilities represent POSIX capabilities that can be added to or removed from a dogu.
 //
@@ -28,11 +25,11 @@ type Capabilities struct {
 	// Add contains the capabilities that should be allowed to be used in a container. This list is optional.
 	// +optional
 	// +listType=atomic
-	Add []Capability `json:"add,omitempty"`
+	Add []core.Capability `json:"add,omitempty"`
 	// Drop contains the capabilities that should be blocked from being used in a container. This list is optional.
 	// +optional
 	// +listType=atomic
-	Drop []Capability `json:"drop,omitempty"`
+	Drop []core.Capability `json:"drop,omitempty"`
 }
 
 // SELinuxOptions are the labels to be applied to the container

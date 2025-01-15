@@ -8,6 +8,7 @@ import (
 	resource2 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	appsv1 "k8s.io/api/apps/v1"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -411,6 +412,7 @@ func (r *doguReconciler) checkSecurityContextChanged(ctx context.Context, doguRe
 
 	generator := &resource2.SecurityContextGenerator{}
 	podSecurityContext, containerSecurityContext := generator.Generate(ctx, doguDescriptor, doguResource)
+	slices.Sort(containerSecurityContext.Capabilities.Add)
 
 	doguDeployment := &appsv1.Deployment{}
 	err = r.client.Get(ctx, doguResource.GetObjectKey(), doguDeployment)
@@ -423,6 +425,7 @@ func (r *doguReconciler) checkSecurityContextChanged(ctx context.Context, doguRe
 	}
 
 	for _, container := range doguDeployment.Spec.Template.Spec.Containers {
+		slices.Sort(container.SecurityContext.Capabilities.Add)
 		if !reflect.DeepEqual(containerSecurityContext, container.SecurityContext) {
 			return true, nil
 		}

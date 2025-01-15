@@ -526,14 +526,14 @@ func TestDogu_ValidateSecurity(t *testing.T) {
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{"valid empty", args{&Dogu{}}, assert.NoError},
-		{"valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []Capability{core.AuditControl}}}}}}, assert.NoError},
-		{"valid drop filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{core.AuditControl}}}}}}, assert.NoError},
-		{"all possible values", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: AllCapabilities, Drop: AllCapabilities}}}}}, assert.NoError},
-		{"add all keyword", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []Capability{core.All}}}}}}, assert.NoError},
-		{"drop all keyword", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{core.All}}}}}}, assert.NoError},
+		{"valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []core.Capability{core.AuditControl}}}}}}, assert.NoError},
+		{"valid drop filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []core.Capability{core.AuditControl}}}}}}, assert.NoError},
+		{"all possible values", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: core.AllCapabilities, Drop: core.AllCapabilities}}}}}, assert.NoError},
+		{"add all keyword", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []core.Capability{core.All}}}}}}, assert.NoError},
+		{"drop all keyword", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []core.Capability{core.All}}}}}}, assert.NoError},
 
-		{"invalid valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []Capability{"err"}}}}}}, assert.Error},
-		{"invalid valid drop filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []Capability{"err"}}}}}}, assert.Error},
+		{"invalid valid add filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Add: []core.Capability{"err"}}}}}}, assert.Error},
+		{"invalid valid drop filled", args{&Dogu{Spec: DoguSpec{Security: Security{Capabilities: Capabilities{Drop: []core.Capability{"err"}}}}}}, assert.Error},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -545,7 +545,7 @@ func TestDogu_ValidateSecurity(t *testing.T) {
 func TestDogu_ValidateSecurity_message(t *testing.T) {
 	t.Run("should match for drop errors", func(t *testing.T) {
 		// given
-		dogu := &Dogu{Spec: DoguSpec{Name: "official/dogu", Version: "1.2.3", Security: Security{Capabilities: Capabilities{Drop: []Capability{"err"}}}}}
+		dogu := &Dogu{Spec: DoguSpec{Name: "official/dogu", Version: "1.2.3", Security: Security{Capabilities: Capabilities{Drop: []core.Capability{"err"}}}}}
 
 		// when
 		actual := dogu.ValidateSecurity()
@@ -556,7 +556,7 @@ func TestDogu_ValidateSecurity_message(t *testing.T) {
 	})
 	t.Run("should match for add errors", func(t *testing.T) {
 		// given
-		dogu := &Dogu{Spec: DoguSpec{Name: "official/dogu", Version: "1.2.3", Security: Security{Capabilities: Capabilities{Add: []Capability{"err"}}}}}
+		dogu := &Dogu{Spec: DoguSpec{Name: "official/dogu", Version: "1.2.3", Security: Security{Capabilities: Capabilities{Add: []core.Capability{"err"}}}}}
 
 		// when
 		actual := dogu.ValidateSecurity()
