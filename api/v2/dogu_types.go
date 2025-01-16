@@ -3,13 +3,18 @@ package v2
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
-	"github.com/cloudogu/retry-lib/retry"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	"slices"
 	"time"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/retry-lib/retry"
+
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -50,6 +55,9 @@ type DoguSpec struct {
 	Version string `json:"version,omitempty"`
 	// Resources of the dogu (e.g. dataVolumeSize)
 	Resources DoguResources `json:"resources,omitempty"`
+	// Security overrides security policies defined in the dogu descriptor. These fields can be used to further reduce a dogu's attack surface.
+	// +optional
+	Security Security `json:"security,omitempty"`
 	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
 	// a crash loop).
 	SupportMode bool `json:"supportMode,omitempty"`
@@ -77,7 +85,7 @@ type UpgradeConfig struct {
 
 // DoguResources defines the physical resources used by the dogu.
 type DoguResources struct {
-	// dataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
+	// DataVolumeSize represents the current size of the volume. Increasing this value leads to an automatic volume
 	// expansion. This includes a downtime for the respective dogu. The default size for volumes is "2Gi".
 	// It is not possible to lower the volume size after an expansion. This will introduce an inconsistent state for the
 	// dogu.
@@ -169,6 +177,11 @@ type Dogu struct {
 
 	Spec   DoguSpec   `json:"spec,omitempty"`
 	Status DoguStatus `json:"status,omitempty"`
+}
+
+// GetSimpleDoguName returns the name of the dogu as a dogu.SimpleName.
+func (d *Dogu) GetSimpleDoguName() cescommons.SimpleName {
+	return cescommons.SimpleName(d.Name)
 }
 
 // GetDataVolumeName returns the data volume name for the dogu resource for volumes with backup
@@ -348,6 +361,39 @@ func (d *Dogu) GetPrivateKeySecret(ctx context.Context, cli client.Client) (*cor
 	}
 
 	return secret, nil
+}
+
+// ValidateSecurity checks the dogu's Security section for configuration errors.
+func (d *Dogu) ValidateSecurity() error {
+	var errs []error
+	for _, value := range d.Spec.Security.Capabilities.Add {
+		if value == core.All {
+			continue
+		}
+
+		if !slices.Contains(core.AllCapabilities, value) {
+			err := fmt.Errorf("%s is not a valid capability to be added", value)
+			errs = append(errs, err)
+		}
+	}
+
+	for _, value := range d.Spec.Security.Capabilities.Drop {
+		if value == core.All {
+			continue
+		}
+
+		if !slices.Contains(core.AllCapabilities, value) {
+			err := fmt.Errorf("%s is not a valid capability to be dropped", value)
+			errs = append(errs, err)
+		}
+	}
+
+	err := errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("dogu resource %s:%s contains at least one invalid security field: %w", d.Spec.Name, d.Spec.Version, err)
+	}
+
+	return nil
 }
 
 // +kubebuilder:object:root=true

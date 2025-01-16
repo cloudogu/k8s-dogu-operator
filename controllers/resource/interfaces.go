@@ -34,6 +34,11 @@ type doguConfigGetter interface {
 	Get(ctx context.Context, name dogu.SimpleName) (config.DoguConfig, error)
 }
 
+type securityContextGenerator interface {
+	// Generate creates a k8s security context for the pod and containers of a dogu.
+	Generate(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu) (*v1.PodSecurityContext, *v1.SecurityContext)
+}
+
 // ResourceUpserter includes functionality to generate and create all the necessary K8s resources for a given dogu.
 type ResourceUpserter interface {
 	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
@@ -72,7 +77,7 @@ type CollectApplier interface {
 // podTemplateResourceGenerator is used to generate pod templates.
 type podTemplateResourceGenerator interface {
 	// GetPodTemplate returns a pod template for the given dogu.
-	GetPodTemplate(doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PodTemplateSpec, error)
+	GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PodTemplateSpec, error)
 }
 
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.
@@ -80,7 +85,7 @@ type DoguResourceGenerator interface {
 	podTemplateResourceGenerator
 
 	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-	CreateDoguDeployment(doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
+	CreateDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
 	// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
 	// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 	// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
@@ -88,16 +93,6 @@ type DoguResourceGenerator interface {
 	CreateDoguService(doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, imageConfig *image.ConfigFile) (*v1.Service, error)
 	// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
 	CreateDoguPVC(doguResource *k8sv2.Dogu) (*v1.PersistentVolumeClaim, error)
-}
-
-// tcpUpdServiceExposer is used to expose non http services.
-type tcpUpdServiceExposer interface {
-	// ExposeOrUpdateDoguServices adds or updates the exposing of the exposed ports in the dogu from the cluster. These are typically
-	// entries in a configmap.
-	ExposeOrUpdateDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
-	// DeleteDoguServices removes the exposing of the exposed ports in the dogu from the cluster. These are typically
-	// entries in a configmap.
-	DeleteDoguServices(ctx context.Context, namespace string, dogu *cesappcore.Dogu) error
 }
 
 // resourceRequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
@@ -115,7 +110,7 @@ type resourceRequirementsGenerator interface {
 type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
+	FetchInstalled(ctx context.Context, doguName dogu.SimpleName) (installedDogu *cesappcore.Dogu, err error)
 }
 
 type k8sClient interface {

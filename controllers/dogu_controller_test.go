@@ -3,21 +3,26 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -40,10 +45,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := newMockEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -71,10 +98,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder := newMockEventRecorder(t)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -103,10 +152,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		recorder.On("Eventf", testDoguCr, v1.EventTypeWarning, operatorEventReason, mock.Anything, mock.Anything)
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -163,10 +234,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -198,10 +291,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -237,10 +352,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -254,6 +391,69 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, []operation{ChangeAdditionalIngressAnnotations}, operations)
+	})
+
+	t.Run("installed with changed security should return ChangeSecurityContext", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv2.DoguSpec{
+				Name:    "official/ledogu",
+				Version: "42.0.0-1",
+				Security: k8sv2.Security{
+					RunAsNonRoot: ptr.To(true),
+				},
+			},
+			Status: k8sv2.DoguStatus{
+				Status: k8sv2.DoguStatusInstalled,
+			},
+		}
+
+		recorder := newMockEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := newMockLocalDoguFetcher(t)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ChangeSecurityContext}, operations)
 	})
 
 	t.Run("check for ingress annotations should fail", func(t *testing.T) {
@@ -293,6 +493,44 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		assert.Nil(t, operations)
 	})
 
+	t.Run("check for security should fail", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv2.DoguSpec{
+				Name:    "official/ledogu",
+				Version: "42.0.0-1",
+			},
+			Status: k8sv2.DoguStatus{
+				Status: k8sv2.DoguStatusInstalled,
+			},
+		}
+
+		recorder := newMockEventRecorder(t)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+
+		localDoguFetcher := newMockLocalDoguFetcher(t)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(nil, assert.AnError)
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to check if security context is changed")
+		assert.Nil(t, operations)
+	})
+
 	t.Run("installing with changed ingress annotation should return Wait and IngressAnnotationChange", func(t *testing.T) {
 		// given
 		testDoguCr := &k8sv2.Dogu{
@@ -313,10 +551,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -330,6 +590,60 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, []operation{Wait, ChangeAdditionalIngressAnnotations}, operations)
+	})
+
+	t.Run("installing with changed security should return Wait and ChangeSecurityContext", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv2.DoguSpec{
+				Name:    "official/ledogu",
+				Version: "42.0.0-1",
+			},
+			Status: k8sv2.DoguStatus{
+				Status: k8sv2.DoguStatusInstalling,
+			},
+		}
+
+		recorder := newMockEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := newMockLocalDoguFetcher(t)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				RunAsNonRoot: ptr.To(true),
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{Wait, ChangeSecurityContext}, operations)
 	})
 
 	t.Run("pvc resizing with changed ingress annotation should return PVCResize, IngressAnnotationChange", func(t *testing.T) {
@@ -352,10 +666,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -369,6 +705,60 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, []operation{ExpandVolume, ChangeAdditionalIngressAnnotations}, operations)
+	})
+
+	t.Run("pvc resizing with changed security should return PVCResize, ChangeSecurityContext", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv2.DoguSpec{
+				Name:    "official/ledogu",
+				Version: "42.0.0-1",
+			},
+			Status: k8sv2.DoguStatus{
+				Status: k8sv2.DoguStatusPVCResizing,
+			},
+		}
+
+		recorder := newMockEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := newMockLocalDoguFetcher(t)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				RunAsNonRoot: ptr.To(true),
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ExpandVolume, ChangeSecurityContext}, operations)
 	})
 
 	t.Run("deleting should return no operations", func(t *testing.T) {
@@ -429,10 +819,32 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 
 		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
 		localDoguFetcher := newMockLocalDoguFetcher(t)
-		localDoguFetcher.EXPECT().FetchInstalled(testCtx, "ledogu").Return(localDogu, nil)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
 
 		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
-		fakeClient := fake.NewClientBuilder().WithObjects(doguService).Build()
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{
+				SELinuxOptions:  nil,
+				RunAsNonRoot:    ptr.To(false),
+				SeccompProfile:  nil,
+				AppArmorProfile: nil,
+			},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:               ptr.To(false),
+				SELinuxOptions:           nil,
+				RunAsNonRoot:             ptr.To(false),
+				ReadOnlyRootFilesystem:   ptr.To(false),
+				AllowPrivilegeEscalation: ptr.To(false),
+				SeccompProfile:           nil,
+				AppArmorProfile:          nil,
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		sut := &doguReconciler{
 			client:   fakeClient,
@@ -557,7 +969,7 @@ func Test_buildResourceDiff(t *testing.T) {
 		{
 			name: "upgrade-diff",
 			args: args{objOld: oldDoguResource, objNew: newDoguResource},
-			want: "  &v2.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v2.DoguSpec{\n  \t\tName:        \"ns/dogu\",\n- \t\tVersion:     \"1.2.3-4\",\n+ \t\tVersion:     \"1.2.3-5\",\n  \t\tResources:   {},\n  \t\tSupportMode: false,\n  \t\t... // 3 identical fields\n  \t},\n  \tStatus: {},\n  }\n",
+			want: "  &v2.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v2.DoguSpec{\n  \t\tName:      \"ns/dogu\",\n- \t\tVersion:   \"1.2.3-4\",\n+ \t\tVersion:   \"1.2.3-5\",\n  \t\tResources: {},\n  \t\tSecurity:  {},\n  \t\t... // 4 identical fields\n  \t},\n  \tStatus: {},\n  }\n",
 		},
 		{
 			name: "delete-diff",
@@ -1171,5 +1583,730 @@ func Test_doguReconciler_validateVolumeSize(t *testing.T) {
 			}
 			assert.Equalf(t, tt.wantSuccess, r.validateVolumeSize(tt.args.doguResource), "validateVolumeSize(%v)", tt.args.doguResource)
 		})
+	}
+}
+
+func Test_doguReconciler_checkSecurityContextChanged(t *testing.T) {
+	tests := []struct {
+		name         string
+		deployment   *appsv1.Deployment
+		doguResource *k8sv2.Dogu
+		fetcherFn    func(t *testing.T) localDoguFetcher
+		want         bool
+		wantErr      assert.ErrorAssertionFunc
+	}{
+		{
+			name:         "failed to get dogu descriptor",
+			doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}},
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(nil, assert.AnError)
+				return fetcher
+			},
+			want: false,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorIs(t, err, assert.AnError, i) && assert.ErrorContains(t, err, "failed to get dogu descriptor \"ledogu\"", i)
+			},
+		},
+		{
+			name:         "failed to get dogu deployment",
+			doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}},
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want: false,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorContains(t, err, "failed to get deployment of dogu \"ledogu\"", i)
+			},
+		},
+		{
+			name: "pod security context changed fs group",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					FSGroup:             ptr.To(int64(55)),
+					FSGroupChangePolicy: ptr.To(v1.FSGroupChangeOnRootMismatch),
+					SELinuxOptions:      &v1.SELinuxOptions{},
+					RunAsNonRoot:        ptr.To(true),
+					SeccompProfile:      &v1.SeccompProfile{},
+					AppArmorProfile:     &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{
+					Volumes: []core.Volume{{Group: "10001"}},
+				}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context changed fs group change policy",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					FSGroup:             ptr.To(int64(10001)),
+					FSGroupChangePolicy: ptr.To(v1.FSGroupChangeAlways),
+					SELinuxOptions:      &v1.SELinuxOptions{},
+					RunAsNonRoot:        ptr.To(true),
+					SeccompProfile:      &v1.SeccompProfile{},
+					AppArmorProfile:     &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{
+					Volumes: []core.Volume{{Group: "10001"}},
+				}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context changed Run as Non Root",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  &v1.SELinuxOptions{},
+					RunAsNonRoot:    ptr.To(false),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context changed SeccompProfile",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions: &v1.SELinuxOptions{},
+					RunAsNonRoot:   ptr.To(true),
+					SeccompProfile: &v1.SeccompProfile{
+						Type:             v1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("myProfile"),
+					},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context changed AppArmorProfile",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions: &v1.SELinuxOptions{},
+					RunAsNonRoot:   ptr.To(true),
+					SeccompProfile: &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{
+						Type:             v1.AppArmorProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("myProfile"),
+					},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "pod security context changed SELinuxOptions",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions: &v1.SELinuxOptions{
+						User:  "user",
+						Role:  "role",
+						Type:  "type",
+						Level: "level",
+					},
+					RunAsNonRoot:    ptr.To(true),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed Run as Non Root",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  &v1.SELinuxOptions{},
+					RunAsNonRoot:    ptr.To(true),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(false),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed ReadOnlyRootFilesystem",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  &v1.SELinuxOptions{},
+					RunAsNonRoot:    ptr.To(true),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(true),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed SeccompProfile",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  &v1.SELinuxOptions{},
+					RunAsNonRoot:    ptr.To(true),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile: &v1.SeccompProfile{
+						Type:             v1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("myProfile"),
+					},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed AppArmorProfile",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  &v1.SELinuxOptions{},
+					RunAsNonRoot:    ptr.To(true),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{
+						Type:             v1.AppArmorProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("myProfile"),
+					},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed SELinuxOptions",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  &v1.SELinuxOptions{},
+					RunAsNonRoot:    ptr.To(true),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged: ptr.To(false),
+					SELinuxOptions: &v1.SELinuxOptions{
+						User:  "user",
+						Role:  "role",
+						Type:  "type",
+						Level: "level",
+					},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "container security context changed Capabilities",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  &v1.SELinuxOptions{},
+					RunAsNonRoot:    ptr.To(true),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add:  []core.Capability{core.All},
+					Drop: []core.Capability{core.Chown, core.DacOverride},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    true,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "security context not changed",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  &v1.SELinuxOptions{},
+					RunAsNonRoot:    ptr.To(true),
+					SeccompProfile:  &v1.SeccompProfile{},
+					AppArmorProfile: &v1.AppArmorProfile{},
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           &v1.SELinuxOptions{},
+					RunAsNonRoot:             ptr.To(true),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           &v1.SeccompProfile{},
+					AppArmorProfile:          &v1.AppArmorProfile{},
+				},
+			),
+			doguResource: newDoguResourceWithSecurity(
+				true,
+				false,
+				&k8sv2.SeccompProfile{},
+				&k8sv2.AppArmorProfile{},
+				&k8sv2.SELinuxOptions{},
+				k8sv2.Capabilities{
+					Add: []core.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []core.Capability{core.All},
+				},
+			),
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    false,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "security context not changed with descriptor defaults",
+			deployment: newDoguDeploymentWithSecurity(
+				&v1.PodSecurityContext{
+					SELinuxOptions:  nil,
+					RunAsNonRoot:    ptr.To(false),
+					SeccompProfile:  nil,
+					AppArmorProfile: nil,
+				},
+				&v1.SecurityContext{
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+							core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+						Drop: []v1.Capability{core.All},
+					},
+					Privileged:               ptr.To(false),
+					SELinuxOptions:           nil,
+					RunAsNonRoot:             ptr.To(false),
+					ReadOnlyRootFilesystem:   ptr.To(false),
+					AllowPrivilegeEscalation: ptr.To(false),
+					SeccompProfile:           nil,
+					AppArmorProfile:          nil,
+				},
+			),
+			doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}},
+			fetcherFn: func(t *testing.T) localDoguFetcher {
+				fetcher := newMockLocalDoguFetcher(t)
+				fetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(&core.Dogu{}, nil)
+				return fetcher
+			},
+			want:    false,
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var fakeClient client.Client
+			if tt.deployment != nil {
+				fakeClient = fake.NewClientBuilder().WithObjects(tt.deployment).Build()
+			} else {
+				fakeClient = fake.NewClientBuilder().Build()
+			}
+			r := &doguReconciler{
+				client:  fakeClient,
+				fetcher: tt.fetcherFn(t),
+			}
+			got, err := r.checkSecurityContextChanged(testCtx, tt.doguResource)
+			if !tt.wantErr(t, err, fmt.Sprintf("checkSecurityContextChanged(%v, %v)", testCtx, tt.doguResource)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "checkSecurityContextChanged(%v, %v)", testCtx, tt.doguResource)
+		})
+	}
+}
+
+func newDoguResourceWithSecurity(runAsNonRoot bool, readOnlyRootFileSystem bool, seccompProfile *k8sv2.SeccompProfile, appArmorProfile *k8sv2.AppArmorProfile, seLinuxOptions *k8sv2.SELinuxOptions, capabilities k8sv2.Capabilities) *k8sv2.Dogu {
+	return &k8sv2.Dogu{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ledogu",
+		},
+		Spec: k8sv2.DoguSpec{
+			Security: k8sv2.Security{
+				RunAsNonRoot:           ptr.To(runAsNonRoot),
+				ReadOnlyRootFileSystem: ptr.To(readOnlyRootFileSystem),
+				SeccompProfile:         seccompProfile,
+				AppArmorProfile:        appArmorProfile,
+				SELinuxOptions:         seLinuxOptions,
+				Capabilities:           capabilities,
+			},
+		},
+	}
+}
+
+func newDoguDeploymentWithSecurity(podSecurityContext *v1.PodSecurityContext, containerSecurityContext *v1.SecurityContext) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ledogu",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					SecurityContext: podSecurityContext,
+					Containers:      []v1.Container{{SecurityContext: containerSecurityContext}},
+				},
+			},
+		},
 	}
 }

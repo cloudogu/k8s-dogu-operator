@@ -31,7 +31,7 @@ func NewCESDoguRegistrator(doguVersionRegistry doguVersionRegistry, doguDescript
 func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, _ *k8sv2.Dogu, dogu *core.Dogu) error {
 	logger := log.FromContext(ctx)
 
-	enabled, _, err := checkDoguVersionEnabled(ctx, c.versionRegistry, dogu.GetSimpleName())
+	enabled, _, err := checkDoguVersionEnabled(ctx, c.versionRegistry, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu is enabled: %w", err)
 	}
@@ -61,7 +61,7 @@ func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, _ *k8sv2.Dogu,
 // dogu installations.
 func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core.Dogu) error {
 
-	enabled, currentDoguVersion, err := checkDoguVersionEnabled(ctx, c.versionRegistry, dogu.GetSimpleName())
+	enabled, currentDoguVersion, err := checkDoguVersionEnabled(ctx, c.versionRegistry, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu is enabled: %w", err)
 	}

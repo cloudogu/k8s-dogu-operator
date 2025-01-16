@@ -8,6 +8,7 @@ import (
 	"fmt"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
+	"k8s.io/utils/ptr"
 	"strings"
 	"testing"
 
@@ -186,10 +187,9 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		It("Update dogus additional ingress annotations", func() {
 			By("Update dogu resource with ingress annotations")
 			createdDogu := &k8sv2.Dogu{}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
-				return err == nil
-			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
+			Eventually(func() error {
+				return k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
 
 			if createdDogu.Spec.AdditionalIngressAnnotations == nil {
 				createdDogu.Spec.AdditionalIngressAnnotations = map[string]string{}
@@ -212,6 +212,30 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}
 
 				return false
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
+		})
+
+		It("Update dogus security context", func() {
+			By("Update dogu resource with ingress annotations")
+			createdDogu := &k8sv2.Dogu{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
+
+			createdDogu.Spec.Security = k8sv2.Security{RunAsNonRoot: ptr.To(true)}
+			updateDoguCr(ctx, createdDogu)
+
+			By("Expect security context to be updated")
+			deployment := &appsv1.Deployment{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				if err != nil {
+					return false
+				}
+
+				return ptr.Deref(deployment.Spec.Template.Spec.SecurityContext.RunAsNonRoot, false) &&
+					ptr.Deref(deployment.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot, false)
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		})
 

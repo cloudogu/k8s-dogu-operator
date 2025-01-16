@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#222] Functionality to set security-specific fields in Dogu descriptors and CRs.
+  - These will be used to generate a security context for the deployment.
 
 ## [v3.1.1] - 2024-12-19
 ### Fixed 

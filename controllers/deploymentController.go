@@ -3,9 +3,13 @@ package controllers
 import (
 	"context"
 	"fmt"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	doguv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
+
 	"github.com/go-logr/logr"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -84,7 +88,7 @@ func hasDoguLabel(deployment client.Object) bool {
 
 func (dr *DeploymentReconciler) updateDoguHealth(ctx context.Context, doguDeployment *appsv1.Deployment) error {
 	doguAvailable := dr.availabilityChecker.IsAvailable(doguDeployment)
-	doguJson, err := dr.doguFetcher.FetchInstalled(ctx, doguDeployment.Name)
+	doguJson, err := dr.doguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguDeployment.Name))
 	if err != nil {
 		return fmt.Errorf("failed to get current dogu json to update health state configMap: %w", err)
 	}
