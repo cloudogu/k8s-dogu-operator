@@ -7,6 +7,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"net/http"
+	"net/url"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 )
@@ -32,9 +36,20 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 	logger := log.FromContext(ctx)
 	logger.Info(fmt.Sprintf("Try to pull image manifest from image: [%s]", image))
 
+	transport := remote.DefaultTransport
+	proxyURL, found := os.LookupEnv("PROXY_URL")
+	if found && len(proxyURL) > 0 {
+		parsedURL, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, err
+		}
+
+		transport.(*http.Transport).Proxy = http.ProxyURL(parsedURL)
+	}
+
 	var img imagev1.Image
 	err := retry.OnErrorWithLimit(MaxWaitDuration, retry.AlwaysRetryFunc, func() (err error) {
-		img, err = ImagePull(image, crane.WithAuthFromKeychain(authn.DefaultKeychain), ctxOpt)
+		img, err = ImagePull(image, crane.WithAuthFromKeychain(authn.DefaultKeychain), crane.WithTransport(transport), ctxOpt)
 		if err != nil {
 			logger.Error(err, "error on image pull: retry")
 			return err

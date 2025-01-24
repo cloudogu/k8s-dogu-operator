@@ -59,7 +59,11 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguFetcher)
 	securityValidator := security.NewValidator()
 
-	doguRemoteRepository, err := remotedogudescriptor.NewRemoteDoguDescriptorRepository(config.GetRemoteConfiguration(), config.GetRemoteCredentials())
+	remoteConfig, err := config.GetRemoteConfiguration()
+	if err != nil {
+		return nil, err
+	}
+	doguRemoteRepository, err := remotedogudescriptor.NewRemoteDoguDescriptorRepository(remoteConfig, config.GetRemoteCredentials())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new remote dogu repository: %w", err)
 	}

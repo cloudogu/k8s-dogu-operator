@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/cloudogu/cesapp-lib/core"
 	"os"
 	"testing"
 
@@ -84,12 +85,14 @@ func TestNewOperatorConfig(t *testing.T) {
 
 func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	tests := []struct {
-		name          string
-		inputEndpoint string
-		stage         string
-		urlSchemaEnv  string
-		wantUrlSchema string
-		wantEndpoint  string
+		name              string
+		inputEndpoint     string
+		stage             string
+		urlSchemaEnv      string
+		wantUrlSchema     string
+		wantEndpoint      string
+		wantProxySettings core.ProxySettings
+		setEnv            func(t *testing.T)
 	}{
 		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "default", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: ""},
 		{name: "get remote configuration with correct url and development mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageDevelopment, wantUrlSchema: "default", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: "invalid"},
@@ -97,6 +100,9 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 		{name: "get remote configuration with 'dogus/' suffix url", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus/", stage: StageProduction, wantUrlSchema: "default", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: "default"},
 		{name: "get remote configuration with 'dogus' suffix url and non-default url schema", inputEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", stage: StageProduction, wantUrlSchema: "index", wantEndpoint: "https://dogu.cloudogu.com/api/v2/dogus", urlSchemaEnv: "index"},
 		{name: "get remote configuration with correct url and production mode", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "index", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: "index"},
+		{name: "get remote configuration with proxy", inputEndpoint: "https://dogu.cloudogu.com/api/v2/", stage: StageProduction, wantUrlSchema: "index", wantEndpoint: "https://dogu.cloudogu.com/api/v2/", urlSchemaEnv: "index", wantProxySettings: core.ProxySettings{Enabled: true, Server: "host", Port: 3128, Username: "user", Password: "pass"}, setEnv: func(t *testing.T) {
+			t.Setenv("PROXY_URL", "http://user:pass@host:3128")
+		}},
 	}
 
 	t.Setenv(envVarNamespace, "test")
@@ -106,15 +112,11 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarDoguRegistryPassword, "password")
 	t.Setenv(envVarNetworkPolicyEnabled, "true")
 
-	defer func() {
-		_ = os.Unsetenv(envVarNamespace)
-		_ = os.Unsetenv(envVarDoguRegistryEndpoint)
-		_ = os.Unsetenv(envVarDoguRegistryUsername)
-		_ = os.Unsetenv(envVarDoguRegistryPassword)
-	}()
-
 	for _, tt := range tests {
 		t.Setenv(envVarDoguRegistryURLSchema, tt.urlSchemaEnv)
+		if tt.setEnv != nil {
+			tt.setEnv(t)
+		}
 		t.Run(tt.name, func(t *testing.T) {
 			// given
 			t.Setenv(StageEnvironmentVariable, tt.stage)
@@ -127,14 +129,15 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 			o.DoguRegistry = DoguRegistryData{Endpoint: tt.inputEndpoint, URLSchema: tt.urlSchemaEnv}
 
 			// when
-			remoteConfig := o.GetRemoteConfiguration()
+			remoteConfig, err := o.GetRemoteConfiguration()
 
 			// then
+			require.NoError(t, err)
 			assert.NotNil(t, remoteConfig)
 			assert.Equal(t, tt.wantEndpoint, remoteConfig.Endpoint)
 			assert.Equal(t, "/tmp/dogu-registry-cache", remoteConfig.CacheDir)
 			assert.Equal(t, tt.wantUrlSchema, remoteConfig.URLSchema)
-			_ = os.Unsetenv(envVarDoguRegistryURLSchema)
+			assert.Equal(t, tt.wantProxySettings, remoteConfig.ProxySettings)
 		})
 	}
 }
