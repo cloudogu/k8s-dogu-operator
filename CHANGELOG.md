@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.2.0] - 2025-01-27
 ### Added
 - [#225] Proxy support for the container and dogu registry. The proxy will be used from the secret `ces-proxy` which will be created by the setup or the blueprint controller.
 - [#222] Functionality to set security-specific fields in Dogu descriptors and CRs.
