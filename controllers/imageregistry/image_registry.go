@@ -2,6 +2,7 @@ package imageregistry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/cloudogu/retry-lib/retry"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -44,7 +45,11 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 			return nil, err
 		}
 
-		transport.(*http.Transport).Proxy = http.ProxyURL(parsedURL)
+		t, ok := transport.(*http.Transport)
+		if !ok {
+			return nil, errors.New("type assertion error: no transport")
+		}
+		t.Proxy = http.ProxyURL(parsedURL)
 	}
 
 	var img imagev1.Image
