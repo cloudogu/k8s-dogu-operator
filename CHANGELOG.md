@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- [#225] Proxy support for the container and dogu registry. The proxy will be used from the secret `ces-proxy` which will be created by the setup or the blueprint controller.
 - [#222] Functionality to set security-specific fields in Dogu descriptors and CRs.
   - These will be used to generate a security context for the deployment.
 
