@@ -1,9 +1,9 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=3.1.1
+VERSION=3.2.0
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.23.2
+GOTAG=1.23.4
 MAKEFILES_VERSION=9.3.2
 
 PRE_COMPILE = generate-deepcopy

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/mock"
@@ -124,7 +125,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
 		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDoguInstalled, nil)
 
 		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
@@ -182,7 +183,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
 		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDoguInstalled, nil)
 
 		devDoguMap := &v2.DevelopmentDoguMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -251,7 +252,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", "4.2.3-11")
 
 		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDoguInstalled, nil)
 
 		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
@@ -301,7 +302,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		recorderMock.On("Event", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Checking premises...")
 
 		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDoguInstalled, nil)
 
 		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
@@ -349,7 +350,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		recorderMock := newMockEventRecorder(t)
 
 		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(redmineDoguInstalled, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDoguInstalled, nil)
 
 		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(nil, nil, assert.AnError)
@@ -391,7 +392,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		recorderMock := newMockEventRecorder(t)
 
 		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "redmine").Return(nil, assert.AnError)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(nil, assert.AnError)
 
 		resourceFetcher := newMockResourceDoguFetcher(t)
 
@@ -458,7 +459,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
 		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "").Return(redmineDoguInstalled, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("")).Return(redmineDoguInstalled, nil)
 
 		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)
@@ -500,7 +501,7 @@ func Test_doguUpgradeManager_Upgrade(t *testing.T) {
 		recorderMock.On("Eventf", redmineCr, corev1.EventTypeNormal, upgrade.EventReason, "Executing upgrade from %s to %s...", "4.2.3-10", upgradeVersion)
 
 		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "").Return(redmineDoguInstalled, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("")).Return(redmineDoguInstalled, nil)
 
 		resourceFetcher := newMockResourceDoguFetcher(t)
 		resourceFetcher.On("FetchWithResource", testCtx, redmineCr).Return(redmineDoguUpgrade, nil, nil)

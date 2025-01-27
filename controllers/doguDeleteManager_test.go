@@ -1,20 +1,21 @@
 package controllers
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"github.com/cloudogu/k8s-registry-lib/repository"
-	"github.com/stretchr/testify/mock"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
+	"github.com/cloudogu/k8s-registry-lib/repository"
 )
 
 type doguDeleteManagerWithMocks struct {
@@ -92,7 +93,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 	t.Run("successfully delete a dogu", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
-		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
@@ -125,7 +126,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
 
-		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, assert.AnError)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(nil, assert.AnError)
 		managerWithMocks.deleteManager.client = fakeClient
 
 		// when
@@ -142,7 +143,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 	t.Run("failure during service account removal should not interrupt the delete routine", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
-		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(assert.AnError)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
@@ -163,7 +164,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 	t.Run("failure during unregister should not interrupt the delete routine", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
-		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(assert.AnError)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
@@ -184,7 +185,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 	t.Run("failure during exposed port removal should not interrupt the delete routine", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
-		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
@@ -205,7 +206,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 	t.Run("failure during config removal should not interrupt the delete routine", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
-		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldapDogu, nil)
+		managerWithMocks.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(ldapDogu, nil)
 		managerWithMocks.serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, ldapDogu).Return(nil)
 		managerWithMocks.doguRegistratorMock.EXPECT().UnregisterDogu(testCtx, "ldap").Return(nil)
 		managerWithMocks.doguConfigRepo.EXPECT().Delete(mock.Anything, mock.Anything).Return(assert.AnError)

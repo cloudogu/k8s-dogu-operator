@@ -2,7 +2,6 @@ package health
 
 import (
 	"context"
-	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,6 +13,8 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -127,12 +128,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		optional2Dogu := readTestDataDogu(t, optional2Bytes)
 		mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -191,8 +192,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		localFetcher := newMockLocalDoguFetcher(t)
 
-		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu2").Once().Return(testDogu2, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "testDogu3").Once().Return(testDogu3, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("testDogu2")).Once().Return(testDogu2, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("testDogu3")).Once().Return(testDogu3, nil)
 
 		dependencyResource2 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu2"}, Status: doguv2.DoguStatus{Health: "available"}}
 		dependencyResource3 := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "testDogu3"}, Status: doguv2.DoguStatus{Health: "available"}}
@@ -230,12 +231,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		optional2Dogu := readTestDataDogu(t, optional2Bytes)
 		mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-		localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, registryKeyNotFoundTestErr)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-		localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(nil, registryKeyNotFoundTestErr)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 		redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -262,7 +263,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Equal(t, 2, countMultiErrors(err))
-		assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/postgresql\"")                                          // the wrapping error
+		assert.ErrorContains(t, err, "error fetching local dogu descriptor for dependency \"postgresql\"")                                    // the wrapping error
 		assert.ErrorContains(t, err, "dogu \"optional1\" appears unhealthy")                                                                  // wrapped error 1
 		assert.ErrorContains(t, err, `failed to get dogu resource "test-namespace/mandatory2": Dogu.k8s.cloudogu.com "mandatory2" not found`) // wrapped error 2
 	})
@@ -286,11 +287,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(nil, registryKeyNotFoundTestErr)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -316,7 +317,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/postgresql\"")
+				assert.ErrorContains(t, err, "error fetching local dogu descriptor for dependency \"postgresql\"")
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but dogu resource does not exist", func(t *testing.T) {
 				/*
@@ -336,11 +337,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -388,11 +389,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -441,12 +442,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -490,9 +491,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -531,11 +532,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -586,12 +587,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -616,7 +617,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				// then
 				require.Error(t, err)
 				assert.Equal(t, 1, countMultiErrors(err))
-				assert.ErrorContains(t, err, "error getting registry key for \"test-namespace/mandatory2\"")
+				assert.ErrorContains(t, err, "error fetching local dogu descriptor for dependency \"mandatory2\"")
 			})
 			t.Run("should fail when at least one mandatory dependency dogu is installed but dogu resource does not exist", func(t *testing.T) {
 				/*
@@ -636,12 +637,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
 
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -689,11 +690,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -741,11 +742,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -791,11 +792,11 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
 				optional2Dogu := readTestDataDogu(t, optional2Bytes)
 				mandatory2Dogu := readTestDataDogu(t, mandatory2Bytes)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(optional2Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory2").Return(mandatory2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(optional2Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory2")).Return(mandatory2Dogu, nil)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 
@@ -842,10 +843,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				postgresqlDogu := readTestDataDogu(t, postgresqlBytes)
 				mandatory1Dogu := readTestDataDogu(t, mandatory1Bytes)
 				optional1Dogu := readTestDataDogu(t, optional1Bytes)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "postgresql").Return(postgresqlDogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "mandatory1").Return(mandatory1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional1").Return(optional1Dogu, nil)
-				localFetcher.EXPECT().FetchInstalled(testCtx, "optional2").Return(nil, registryKeyNotFoundTestErr)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("mandatory1")).Return(mandatory1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional1")).Return(optional1Dogu, nil)
+				localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("optional2")).Return(nil, registryKeyNotFoundTestErr)
 
 				redmineDogu := readTestDataDogu(t, redmineBytes)
 

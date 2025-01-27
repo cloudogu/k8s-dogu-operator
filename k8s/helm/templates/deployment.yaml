@@ -78,6 +78,12 @@ spec:
               value: {{ quote .Values.controllerManager.env.doguDescriptorMaxRetries | default "20"}}
             - name: GET_SERVICE_ACCOUNT_POD_MAX_RETRIES
               value: {{ quote .Values.controllerManager.env.getServiceAccountPodMaxRetries | default "5"}}
+            - name: PROXY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ces-proxy
+                  key: url
+                  optional: true
           image: "{{ .Values.controllerManager.image.registry }}/{{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}"
           imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent"}}
           livenessProbe:

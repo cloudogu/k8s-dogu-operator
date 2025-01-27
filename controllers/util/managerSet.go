@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	remotedogudescriptor "github.com/cloudogu/remote-dogu-descriptor-lib/repository"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -43,6 +44,7 @@ type ManagerSet struct {
 	EcosystemClient       ecoSystem.EcoSystemV2Interface
 	ClientSet             clientSet
 	DependencyValidator   dependencyValidator
+	SecurityValidator     securityValidator
 }
 
 // NewManagerSet creates a new ManagerSet.
@@ -55,8 +57,13 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(doguVersionReg, doguDescriptorRepo)
 	serviceAccountCreator := serviceaccount.NewCreator(configRepos.SensitiveDoguRepository, localDoguFetcher, commandExecutor, client, clientSet, config.Namespace)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguFetcher)
+	securityValidator := security.NewValidator()
 
-	doguRemoteRepository, err := remotedogudescriptor.NewRemoteDoguDescriptorRepository(config.GetRemoteConfiguration(), config.GetRemoteCredentials())
+	remoteConfig, err := config.GetRemoteConfiguration()
+	if err != nil {
+		return nil, err
+	}
+	doguRemoteRepository, err := remotedogudescriptor.NewRemoteDoguDescriptorRepository(remoteConfig, config.GetRemoteCredentials())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new remote dogu repository: %w", err)
 	}
@@ -65,7 +72,8 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 
 	requirementsGenerator := resource.NewRequirementsGenerator(configRepos.DoguConfigRepository)
 	hostAliasGenerator := alias.NewHostAliasGenerator(configRepos.GlobalConfigRepository)
-	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, additionalImages)
+	securityContextGenerator := resource.NewSecurityContextGenerator()
+	doguResourceGenerator := resource.NewResourceGenerator(client.Scheme(), requirementsGenerator, hostAliasGenerator, securityContextGenerator, additionalImages)
 
 	upserter := resource.NewUpserter(client, doguResourceGenerator, config.NetworkPoliciesEnabled)
 
@@ -87,5 +95,6 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 		EcosystemClient:       ecosystemClient,
 		ClientSet:             clientSet,
 		DependencyValidator:   dependencyValidator,
+		SecurityValidator:     securityValidator,
 	}, nil
 }

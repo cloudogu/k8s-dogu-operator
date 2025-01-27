@@ -83,7 +83,7 @@ func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 		return nil
 	}
 
-	enabled, err := r.doguFetcher.Enabled(ctx, serviceAccount.Type)
+	enabled, err := r.doguFetcher.Enabled(ctx, cescommons.SimpleName(serviceAccount.Type))
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 	}
@@ -107,7 +107,7 @@ func (r *remover) delete(
 	senDoguCfg *config.DoguConfig,
 	registryCredentialPath string,
 ) error {
-	saDogu, err := r.doguFetcher.FetchInstalled(ctx, serviceAccount.Type)
+	saDogu, err := r.doguFetcher.FetchInstalled(ctx, cescommons.SimpleName(serviceAccount.Type))
 	if err != nil {
 		return fmt.Errorf("failed to get service account dogu.json: %w", err)
 	}

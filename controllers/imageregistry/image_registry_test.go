@@ -3,7 +3,10 @@ package imageregistry_test
 import (
 	"context"
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/authn"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
@@ -29,6 +32,36 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, image)
+	})
+
+	t.Run("should pull with proxy transport", func(t *testing.T) {
+		testProxy := "http://user:pass@host:3128"
+
+		parsedTestProxy, err := url.Parse(testProxy)
+		require.NoError(t, err)
+
+		oldFn := imageregistry.ImagePull
+		imageregistry.ImagePull = func(src string, opts ...crane.Option) (imagev1.Image, error) {
+			options := &crane.Options{Remote: []remote.Option{remote.WithAuthFromKeychain(authn.DefaultKeychain)}}
+			for _, opt := range opts {
+				opt(options)
+			}
+
+			proxy, err := options.Transport.(*http.Transport).Proxy(nil)
+			require.NoError(t, err)
+			assert.Equal(t, parsedTestProxy, proxy)
+
+			return mockImage{}, nil
+		}
+		defer func() {
+			imageregistry.ImagePull = oldFn
+		}()
+
+		t.Setenv("PROXY_URL", testProxy)
+
+		_, err = imageRegistry.PullImageConfig(context.Background(), "")
+
+		assert.NoError(t, err)
 	})
 
 	t.Run("error pulling image with wrong URL", func(t *testing.T) {

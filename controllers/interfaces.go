@@ -61,6 +61,11 @@ type additionalIngressAnnotationsManager interface {
 	SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *v2.Dogu) error
 }
 
+type securityContextManager interface {
+	// UpdateDeploymentWithSecurityContext regenerates the security context of a dogu deployment.
+	UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *v2.Dogu) error
+}
+
 // startDoguManager includes functionality to start (stopped) dogus.
 type startDoguManager interface {
 	// StartDogu scales up a dogu to 1.
@@ -93,12 +98,17 @@ type CombinedDoguManager interface {
 	supportManager
 	startDoguManager
 	stopDoguManager
+	securityContextManager
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
 type requeueHandler interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
 	Handle(ctx context.Context, contextMessage string, doguResource *v2.Dogu, err error, onRequeue func(dogu *v2.Dogu) error) (result ctrl.Result, requeueErr error)
+}
+
+type securityValidator interface {
+	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
 }
 
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
@@ -113,7 +123,7 @@ type requirementsGenerator interface {
 type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName string) (installedDogu *cesappcore.Dogu, err error)
+	FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *cesappcore.Dogu, err error)
 }
 
 // doguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.

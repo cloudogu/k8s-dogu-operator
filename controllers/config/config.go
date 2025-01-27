@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
+	"net/url"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"strconv"
@@ -144,7 +145,7 @@ func getEnvVar(name string) (string, error) {
 }
 
 // GetRemoteConfiguration creates a remote configuration with the configured values.
-func (o *OperatorConfig) GetRemoteConfiguration() *core.Remote {
+func (o *OperatorConfig) GetRemoteConfiguration() (*core.Remote, error) {
 	urlSchema := o.DoguRegistry.URLSchema
 	if urlSchema != "index" {
 		log.Info("URLSchema is not index. Setting it to default.")
@@ -158,11 +159,47 @@ func (o *OperatorConfig) GetRemoteConfiguration() *core.Remote {
 		endpoint = strings.TrimSuffix(endpoint, "dogus")
 	}
 
-	return &core.Remote{
-		Endpoint:  endpoint,
-		CacheDir:  cacheDir,
-		URLSchema: urlSchema,
+	proxyURL, found := os.LookupEnv("PROXY_URL")
+	proxySettings := core.ProxySettings{}
+	if found && len(proxyURL) > 0 {
+		var err error
+		if proxySettings, err = configureProxySettings(proxyURL); err != nil {
+			return nil, err
+		}
 	}
+
+	return &core.Remote{
+		Endpoint:      endpoint,
+		CacheDir:      cacheDir,
+		URLSchema:     urlSchema,
+		ProxySettings: proxySettings,
+	}, nil
+}
+
+func configureProxySettings(proxyURL string) (core.ProxySettings, error) {
+	parsedURL, err := url.Parse(proxyURL)
+	if err != nil {
+		return core.ProxySettings{}, fmt.Errorf("invalid proxy url: %w", err)
+	}
+
+	proxySettings := core.ProxySettings{}
+	proxySettings.Enabled = true
+	if parsedURL.User != nil {
+		proxySettings.Username = parsedURL.User.Username()
+		if password, set := parsedURL.User.Password(); set {
+			proxySettings.Password = password
+		}
+	}
+
+	proxySettings.Server = parsedURL.Hostname()
+
+	port, err := strconv.Atoi(parsedURL.Port())
+	if err != nil {
+		return core.ProxySettings{}, fmt.Errorf("invalid port %s: %w", parsedURL.Port(), err)
+	}
+	proxySettings.Port = port
+
+	return proxySettings, nil
 }
 
 // GetRemoteCredentials creates a remote credential pair with the configured values.

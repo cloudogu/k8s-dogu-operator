@@ -30,6 +30,17 @@ spec:
       InitContainers:
         - image: busybox:1.36
           name : dogu-volume-chown-init
+          securityContext:
+            capabilities:
+              add: ["CHOWN", "DAC_OVERRIDE"]
+              drop: ["ALL"]
+            seLinuxOptions: {}
+            runAsNonRoot: false
+            readOnlyRootFileSystem: false
+            seccompProfile:
+              type: Unconfined
+            appArmorProfile:
+              type: Unconfined
           command: ["sh", "-c", "mkdir -p \"/var/lib/openldap\" && chown -R 100:101 \"/var/lib/openldap\" && mkdir -p \"/etc/openldap/slapd.d\" && chown -R 100:101 \"/etc/openldap/slapd.d\""]
           volumeMounts:
             - name: ldap-data
@@ -106,9 +117,6 @@ spec:
       hostname: ldap
       imagePullSecrets:
         - name: ces-container-registries
-      securityContext:
-        fsGroup: 101
-        fsGroupChangePolicy: OnRootMismatch
       volumes:
         - name: dogu-health
           configMap:

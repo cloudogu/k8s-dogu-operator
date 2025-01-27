@@ -54,7 +54,7 @@ func NewUpserter(client client.Client, generator DoguResourceGenerator, networkP
 // All parameters are mandatory except deploymentPatch which may be nil.
 // The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
 func (u *upserter) UpsertDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment)) (*appsv1.Deployment, error) {
-	newDeployment, err := u.generator.CreateDoguDeployment(doguResource, dogu)
+	newDeployment, err := u.generator.CreateDoguDeployment(ctx, doguResource, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate deployment: %w", err)
 	}

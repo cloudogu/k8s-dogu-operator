@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -130,7 +131,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = namespace
 		ldapCr.Spec.SupportMode = true
-		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldap, nil)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(ldap, nil)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace}}
 		err := sut.supportManager.client.Create(testCtx, deployment)
@@ -149,7 +150,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 			},
 		}
 
-		sut.podTemplateGenerator.EXPECT().GetPodTemplate(ldapCr, ldap).Return(&podSpec, nil)
+		sut.podTemplateGenerator.EXPECT().GetPodTemplate(testCtx, ldapCr, ldap).Return(&podSpec, nil)
 
 		// when
 		err = sut.supportManager.updateDeployment(testCtx, ldapCr, deployment)
@@ -183,7 +184,7 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		// given
 		sut := getDoguSupportManagerWithMocks(t, getTestScheme())
 		ldapCr := readDoguCr(t, ldapCrBytes)
-		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, assert.AnError)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(nil, assert.AnError)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace}}
 		err := sut.supportManager.client.Create(testCtx, deployment)
@@ -202,9 +203,9 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 		sut := getDoguSupportManagerWithMocks(t, getTestScheme())
 		ldap := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 		ldapCr := readDoguCr(t, ldapCrBytes)
-		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldap, nil)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(ldap, nil)
 		podSpec := corev1.PodTemplateSpec{Spec: corev1.PodSpec{}}
-		sut.podTemplateGenerator.EXPECT().GetPodTemplate(ldapCr, ldap).Return(&podSpec, nil)
+		sut.podTemplateGenerator.EXPECT().GetPodTemplate(testCtx, ldapCr, ldap).Return(&podSpec, nil)
 
 		// when
 		err := sut.supportManager.updateDeployment(testCtx, ldapCr, &appsv1.Deployment{})
@@ -223,14 +224,14 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = namespace
 		ldapCr.Spec.SupportMode = true
-		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(ldap, nil)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(ldap, nil)
 		sut.recorderMock.On("Eventf", ldapCr, "Normal", "Support", "Support flag changed to %t. Deployment updated.", true)
 
 		podTemplateSpec := corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{{Image: "official/ldap:2.4.48-4"}, {Image: "other:1.2.3"}}}}
 
-		sut.podTemplateGenerator.EXPECT().GetPodTemplate(ldapCr, ldap).Return(&podTemplateSpec, nil)
+		sut.podTemplateGenerator.EXPECT().GetPodTemplate(testCtx, ldapCr, ldap).Return(&podTemplateSpec, nil)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace},
 			Spec: appsv1.DeploymentSpec{
@@ -302,7 +303,7 @@ func Test_doguSupportManager_HandleSupportMode(t *testing.T) {
 		ldapCr := readDoguCr(t, ldapCrBytes)
 		ldapCr.Namespace = namespace
 		ldapCr.Spec.SupportMode = true
-		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, "ldap").Return(nil, assert.AnError)
+		sut.localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ldap")).Return(nil, assert.AnError)
 
 		deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "ldap", Namespace: namespace},
 			Spec: appsv1.DeploymentSpec{
