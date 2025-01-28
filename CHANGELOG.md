@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.2.1] - 2025-01-28
+## Removed
+- [227] Remove allowPrivilegeEscalation flag
+
 ## [v3.2.0] - 2025-01-27
 ### Added
 - [#225] Proxy support for the container and dogu registry. The proxy will be used from the secret `ces-proxy` which will be created by the setup or the blueprint controller.
