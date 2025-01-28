@@ -131,13 +131,12 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 				Drop: []v1.Capability{"ALL"},
 				Add:  []v1.Capability{"DAC_OVERRIDE"},
 			},
-			RunAsNonRoot:             &trueValue,
-			ReadOnlyRootFilesystem:   &trueValue,
-			Privileged:               &falseValue,
-			AllowPrivilegeEscalation: &falseValue,
-			SELinuxOptions:           seLinuxOptions,
-			SeccompProfile:           seccompProfile,
-			AppArmorProfile:          appArmorProfile,
+			RunAsNonRoot:           &trueValue,
+			ReadOnlyRootFilesystem: &trueValue,
+			Privileged:             &falseValue,
+			SELinuxOptions:         seLinuxOptions,
+			SeccompProfile:         seccompProfile,
+			AppArmorProfile:        appArmorProfile,
 		}
 		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(podSecurityContext, containerSecurityContext)
 

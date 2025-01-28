@@ -103,7 +103,7 @@ spec:
             limits: {{- toYaml .Values.controllerManager.resourceLimits | nindent 12 }}
             requests: {{- toYaml .Values.controllerManager.resourceRequests | nindent 12 }}
           securityContext:
-            allowPrivilegeEscalation: false
+            allowPrivilegeEscalation: true
           volumeMounts:
             - mountPath: /tmp/.docker/config.json
               subPath: .dockerconfigjson
