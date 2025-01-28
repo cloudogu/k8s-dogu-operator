@@ -75,7 +75,6 @@ spec:
             runAsNonRoot: true
             readOnlyRootFileSystem: true
             privileged: false
-            allowPrivilegeEscalation: false
             seLinuxOptions:
               user: myUser
               role: myRole

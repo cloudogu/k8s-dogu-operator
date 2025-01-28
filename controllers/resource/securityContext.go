@@ -30,7 +30,6 @@ func (s *SecurityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu
 	readOnlyRootFS := isReadOnlyRootFS(dogu, doguResource)
 	// We never want those to be true and don't respect the dogu descriptor's privileged flag which is deprecated anyway.
 	privileged := false
-	allowPrivilegeEscalation := false
 
 	fsGroup, fsGroupChangePolicy := fsGroupAndChangePolicy(ctx, dogu)
 
@@ -46,13 +45,12 @@ func (s *SecurityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu
 				Drop: []corev1.Capability{"ALL"},
 				Add:  effectiveCapabilities(dogu, doguResource),
 			},
-			ReadOnlyRootFilesystem:   &readOnlyRootFS,
-			RunAsNonRoot:             &runAsNonRoot,
-			SELinuxOptions:           seLinuxOptions,
-			AppArmorProfile:          appArmorProfile,
-			SeccompProfile:           seccompProfile,
-			Privileged:               &privileged,
-			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+			ReadOnlyRootFilesystem: &readOnlyRootFS,
+			RunAsNonRoot:           &runAsNonRoot,
+			SELinuxOptions:         seLinuxOptions,
+			AppArmorProfile:        appArmorProfile,
+			SeccompProfile:         seccompProfile,
+			Privileged:             &privileged,
 		}
 }
 
