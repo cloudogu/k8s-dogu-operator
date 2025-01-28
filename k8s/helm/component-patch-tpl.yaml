@@ -1,7 +1,7 @@
 apiVersion: v1
 values:
   images:
-    doguOperator: cloudogu/k8s-dogu-operator:3.2.0
+    doguOperator: cloudogu/k8s-dogu-operator:3.2.1
     chownInitImage: busybox:1.36
 patches:
   values.yaml:
