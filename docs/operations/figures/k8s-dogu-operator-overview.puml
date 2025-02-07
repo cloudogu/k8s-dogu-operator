@@ -1,0 +1,83 @@
+@startuml
+!define CLOUDOGUURL https://raw.githubusercontent.com/cloudogu/plantuml-cloudogu-sprites/master
+
+!includeurl CLOUDOGUURL/common.puml
+!includeurl CLOUDOGUURL/dogus/cloudogu.puml
+!includeurl CLOUDOGUURL/tools/docker.puml
+!includeurl CLOUDOGUURL/tools/k8s.puml
+!includeurl CLOUDOGUURL/dogus/cas.puml
+!includeurl CLOUDOGUURL/dogus/openldap.puml
+!includeurl CLOUDOGUURL/dogus/nginx.puml
+!includeurl CLOUDOGUURL/dogus/scm.puml
+!includeurl CLOUDOGUURL/dogus/redmine.puml
+!includeurl CLOUDOGUURL/dogus/postgresql.puml
+!define SECONDARY_COLOR #55EE55
+
+rectangle "Cloudogu Backend" as backend <<$cloudogu>> #white {
+  TOOL_DOCKER(harbor, "registry.cloudogu.com")
+  DOGU_CLOUDOGU(dcc, "dogu.cloudogu.com")
+}
+
+rectangle "Cluster" as cluster <<$k8s>> #white {
+  TOOL_DOCKER(docker, "Container Runtime"){
+    DOGU_REDMINE(redmine, "Redmine") #white
+    DOGU_POSTGRESQL(postgresql, "PostgreSQL") #white
+  }
+
+  rectangle "Dogu-Operator" as op <<$k8s>> {
+
+  }
+
+  rectangle "Service" as service <<$k8s>>
+
+  rectangle configMap  <<$k8s>> #white {
+    file nodeMaster
+    file redmineDoguConfig
+    file globalConfig
+  }
+
+  rectangle secrets  <<$k8s>> #white {
+    rectangle instanceCredentials
+    rectangle redmineSensitiveConfig
+  }
+
+  database "volume / volume claim" as vol {
+    package subdirectories #white{
+      package plugins
+      package tmp
+    }
+  }
+
+  rectangle "Ingress" as ingress
+}
+
+op <==u=> dcc : Pull dogu.json (mit Credentials)
+op <=u=> harbor : Pull Image (mit Credentials)
+op => service : erzeugt Service
+instanceCredentials -.- op
+op ===> vol : veranlasst Volume-Bereitstellung
+op ==> redmine : instanziiert
+op ==> postgresql : erzeugt Dogu-Service-Account für Redmine
+
+redmine -.u.-.- configMap : als Volume gemountet
+redmine -.u.-.- redmineSensitiveConfig
+redmine -. postgresql : authentifiziert durch Service Account
+redmine <.-d.- vol : als Volume gemountet
+redmine <-. service
+service <-. ingress
+
+cluster -[hidden]u-> backend
+harbor ------[hidden]r-> dcc
+docker -[hidden]u-> op
+
+actor user
+
+user -u-> ingress : http://server.com/redmine
+
+legend right
+Diese Ansicht ignoriert
+die Verteilung auf Nodes
+endlegend
+
+caption Unterschiedliche Aufgaben des Dogu-Operators bei einer Dogu-Installation
+@enduml
