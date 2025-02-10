@@ -43,16 +43,16 @@ type DoguManager struct {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, error) {
+func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, *util.ManagerSet, error) {
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	clientSet, err := clientSetGetter(restConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	configRepos := createConfigRepositories(clientSet, operatorConfig.Namespace)
@@ -60,22 +60,22 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 	// Instead we must use our own client to avoid an immediate cache error: "the cache is not started, can not read objects"
 	mgrSet, err := createMgrSet(ctx, restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	installManager := NewDoguInstallManager(client, mgrSet, eventRecorder, configRepos)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	upgradeManager := NewDoguUpgradeManager(client, mgrSet, eventRecorder)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	deleteManager := NewDoguDeleteManager(client, operatorConfig, mgrSet, eventRecorder, configRepos)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	supportManager := NewDoguSupportManager(client, mgrSet, eventRecorder)
@@ -99,7 +99,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 		startStopManager:          startStopManager,
 		securityContextManager:    securityContextManager,
 		recorder:                  eventRecorder,
-	}, nil
+	}, mgrSet, nil
 }
 
 func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, configRepos util.ConfigRepositories) (*util.ManagerSet, error) {

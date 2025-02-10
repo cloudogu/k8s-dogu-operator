@@ -160,6 +160,14 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		securityContext(podSecurityContext, containerSecurityContext).
 		build()
 
+	secondContainer := podTemplate.Spec.Containers[0]
+	secondContainer.Name = fmt.Sprintf("%s-rsync-sidecar", dogu.GetSimpleName())
+	secondContainer.Image = "k3ces.local:30099/dogu-rsync-sidecar"
+	secondContainer.StartupProbe = nil
+	secondContainer.LivenessProbe = nil
+
+	podTemplate.Spec.Containers = append(podTemplate.Spec.Containers, secondContainer)
+
 	return podTemplate, nil
 }
 
