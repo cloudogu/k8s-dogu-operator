@@ -10,6 +10,6 @@ spec:
       protocol: TCP
       targetPort: 22
   selector:
-    dogu.name: cas
+    app: exporter-pod
   type: ClusterIP
 

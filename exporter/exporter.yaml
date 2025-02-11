@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exporter-pod
+  namespace: ecosystem
+  labels:
+    app: exporter-pod
+spec:
+  containers:
+    - env:
+        - name: POD_NAMESPACE
+          value: ecosystem
+      image: k3ces.local:30099/exporter
+      imagePullPolicy: Always
+      securityContext:
+        privileged: true
+      name: exporter
+  imagePullSecrets:
+    - name: ces-container-registries

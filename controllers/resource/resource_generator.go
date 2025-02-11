@@ -167,9 +167,6 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	secondContainer.LivenessProbe = nil
 	secondContainer.Resources = corev1.ResourceRequirements{}
 	secondContainer.SecurityContext.Capabilities.Add = append(secondContainer.SecurityContext.Capabilities.Add, core.SysChroot)
-	//secondContainer.Ports = []corev1.ContainerPort{
-	//	{Name: doguPodName, HostPort: , ContainerPort: , Protocol: "TCP", HostIP: },
-	//}
 
 	var newVolumes []corev1.VolumeMount
 
@@ -177,7 +174,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		if v.NeedsBackup {
 			newVolumes = append(newVolumes, corev1.VolumeMount{
 				Name:      fmt.Sprintf("%s-data", dogu.GetSimpleName()),
-				MountPath: "/volume-data",
+				MountPath: "/storage",
 			})
 			log.Log.Error(fmt.Errorf("created volume mount for %s", dogu.GetSimpleName()), "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 			break
@@ -186,7 +183,19 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 
 	secondContainer.VolumeMounts = newVolumes
 
+	thirdContainer := secondContainer
+	thirdContainer.Name = fmt.Sprintf("%s-rsync-sidecar-smb", dogu.GetSimpleName())
+	thirdContainer.Image = "dockurr/samba"
+	thirdContainer.Env = append(thirdContainer.Env, corev1.EnvVar{
+		Name:  "USER",
+		Value: "admin",
+	}, corev1.EnvVar{
+		Name:  "PASS",
+		Value: "admin",
+	})
+
 	podTemplate.Spec.Containers = append(podTemplate.Spec.Containers, secondContainer)
+	podTemplate.Spec.Containers = append(podTemplate.Spec.Containers, thirdContainer)
 
 	return podTemplate, nil
 }
