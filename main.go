@@ -115,17 +115,13 @@ func startDoguOperator() error {
 
 	dogus, err := getInstalledDogus(ctx, k8sManager.GetClient())
 	if err != nil {
-		fmt.Printf("============ERRRR")
-		fmt.Printf(err.Error())
 		panic(err.Error())
 	} else {
 
 		for _, d := range dogus.Items {
 			coreDogu, err := mgrSet.LocalDoguFetcher.FetchInstalled(ctx, d.GetSimpleDoguName())
 			if err != nil {
-				fmt.Printf("==========ERRRR")
-				fmt.Printf(err.Error())
-				continue
+				panic(err.Error())
 			}
 			doguResource := &k8sv2.Dogu{}
 			err = mgrSet.Client.Get(ctx, types.NamespacedName{
@@ -133,9 +129,7 @@ func startDoguOperator() error {
 				Name:      coreDogu.GetSimpleName(),
 			}, doguResource)
 			if err != nil {
-				fmt.Printf("==========ERRRR")
-				fmt.Printf(err.Error())
-				continue
+				panic(err.Error())
 			}
 
 			_, err = mgrSet.ResourceUpserter.UpsertDoguDeployment(
@@ -146,8 +140,7 @@ func startDoguOperator() error {
 				},
 			)
 			if err != nil {
-				fmt.Printf("=========================ERROR")
-				fmt.Printf(err.Error())
+				panic(err.Error())
 			}
 
 		}

@@ -165,6 +165,22 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	secondContainer.Image = "k3ces.local:30099/dogu-rsync-sidecar"
 	secondContainer.StartupProbe = nil
 	secondContainer.LivenessProbe = nil
+	secondContainer.Resources = corev1.ResourceRequirements{}
+
+	var newVolumes []corev1.VolumeMount
+
+	for _, v := range dogu.Volumes {
+		if v.NeedsBackup {
+			newVolumes = append(newVolumes, corev1.VolumeMount{
+				Name:      fmt.Sprintf("%s-data", dogu.GetSimpleName()),
+				MountPath: "/volume-data",
+			})
+			log.Log.Error(fmt.Errorf("created volume mount for %s", dogu.GetSimpleName()), "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+			break
+		}
+	}
+
+	secondContainer.VolumeMounts = newVolumes
 
 	podTemplate.Spec.Containers = append(podTemplate.Spec.Containers, secondContainer)
 
