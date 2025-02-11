@@ -17,4 +17,8 @@ echo "                       'V/(/////////////////////////////V'      "
 
 echo "exporter started"
 
+cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
+chown -R root:root /root/.ssh
+chmod -R 644 /root/.ssh
+
 /usr/sbin/sshd -D
