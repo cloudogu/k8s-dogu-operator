@@ -19,6 +19,7 @@ echo "exporter started"
 
 cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
 chown -R root:root /root/.ssh
-chmod -R 644 /root/.ssh
+chmod -R 700 /root
+chmod -R 600 /root/.ssh/*
 
-/usr/sbin/sshd -D
+/usr/sbin/sshd -e -D

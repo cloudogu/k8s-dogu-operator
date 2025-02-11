@@ -166,6 +166,10 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	secondContainer.StartupProbe = nil
 	secondContainer.LivenessProbe = nil
 	secondContainer.Resources = corev1.ResourceRequirements{}
+	secondContainer.SecurityContext.Capabilities.Add = append(secondContainer.SecurityContext.Capabilities.Add, core.SysChroot)
+	//secondContainer.Ports = []corev1.ContainerPort{
+	//	{Name: doguPodName, HostPort: , ContainerPort: , Protocol: "TCP", HostIP: },
+	//}
 
 	var newVolumes []corev1.VolumeMount
 
