@@ -1,7 +1,7 @@
 FROM alpine:3.21.2
 
 RUN apk update && apk upgrade && \
-  apk --no-cache add bash openssh rsync cifs-utils && \
+  apk --no-cache add bash openssh rsync cifs-utils nano && \
   ssh-keygen -A && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 # Setup SSHsudo apk add
