@@ -15,20 +15,6 @@ echo "                   V///   '°°°°      (/////)      °°°°'   ////  "
 echo "                    V/////(////////\. '°°°' ./////////(///(/'   "
 echo "                       'V/(/////////////////////////////V'      "
 
-echo "exporter started"
+echo "samba started..."
 
-cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
-chown -R root:root /root/.ssh
-chmod -R 700 /root
-chmod -R 600 /root/.ssh/*
-
-mkdir -p /data/cas || true
-mount -t cifs //samba-exporter-cas/Data /data/cas -o username=root,password=root,vers=3.0,rw || true
-
-mkdir -p /data/mysql || true
-mount -t cifs //samba-exporter-mysql/Data /data/mysql -o username=admin,password=admin,vers=3.0,rw,modefromsid || true
-
-mkdir -p /data/ldap || true
-mount -t cifs //samba-exporter-ldap/Data /data/ldap -o username=root,password=root,vers=3.0,rw || true
-
-/usr/sbin/sshd -e -D
+/sbin/tini -- /usr/bin/samba.sh

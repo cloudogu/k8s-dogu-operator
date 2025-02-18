@@ -4,21 +4,24 @@
         security = user
         server min protocol = SMB2
 
-        # disable printing services
         load printers = no
         printing = bsd
         printcap name = /dev/null
         disable spoolss = yes
+        vfs objects = acl_xattr
+        store dos attributes = yes
+        nt acl support = yes
+        acl map full control = no
 
 [Data]
         path = /storage
         comment = Shared
-        valid users = @smb
+        valid users = root
         browseable = yes
         writable = yes
         read only = no
-        force user = root
-        force group = root
         acl allow execute always = yes
         vfs objects = acl_xattr
         map acl inherit = yes
+        inherit permissions = yes
+        inherit acls = yes

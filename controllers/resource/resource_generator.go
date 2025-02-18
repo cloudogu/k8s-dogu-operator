@@ -185,7 +185,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 
 	thirdContainer := secondContainer
 	thirdContainer.Name = fmt.Sprintf("%s-rsync-sidecar-smb", dogu.GetSimpleName())
-	thirdContainer.Image = "dockurr/samba"
+	thirdContainer.Image = "k3ces.local:30099/samba"
 	thirdContainer.Env = append(thirdContainer.Env, corev1.EnvVar{
 		Name:  "USER",
 		Value: "admin",
