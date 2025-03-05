@@ -176,6 +176,10 @@ spec:
                     SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
                     a crash loop).
                   type: boolean
+                exportMode:
+                  description: |-
+                    ExportMode indicates whether the dogu needs a sidecar container to export its volume data.
+                  type: boolean
                 upgradeConfig:
                   description: UpgradeConfig contains options to manipulate the upgrade process.
                   properties:
