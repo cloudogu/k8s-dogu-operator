@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: samba-exporter-cas
+  namespace: ecosystem
+spec:
+  ports:
+    - name: "samba-exporter-cas-port"
+      port: 445
+      protocol: TCP
+      targetPort: 445
+  selector:
+    dogu.name: cas
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: samba-exporter-ldap
+  namespace: ecosystem
+spec:
+  ports:
+    - name: "samba-exporter-ldap-port"
+      port: 445
+      protocol: TCP
+      targetPort: 445
+  selector:
+    dogu.name: ldap
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: samba-exporter-mysql
+  namespace: ecosystem
+spec:
+  ports:
+    - name: "samba-exporter-mysql-port"
+      port: 445
+      protocol: TCP
+      targetPort: 445
+  selector:
+    dogu.name: mysql
+  type: ClusterIP
+
+

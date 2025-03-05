@@ -1,7 +1,9 @@
 package util
 
 import (
+	"context"
 	"fmt"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	remotedogudescriptor "github.com/cloudogu/remote-dogu-descriptor-lib/repository"
 	"k8s.io/client-go/kubernetes"
@@ -45,6 +47,18 @@ type ManagerSet struct {
 	ClientSet             clientSet
 	DependencyValidator   dependencyValidator
 	SecurityValidator     securityValidator
+	Client                client.Client
+}
+
+func getInstalledDogus(ctx context.Context, cl client.Client) (*k8sv2.DoguList, error) {
+	doguList := &k8sv2.DoguList{}
+
+	err := cl.List(ctx, doguList, client.InNamespace("ecosystem"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list dogus in namespace [%s]: %w", "ecosystem", err)
+	}
+
+	return doguList, nil
 }
 
 // NewManagerSet creates a new ManagerSet.
@@ -96,5 +110,6 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 		ClientSet:             clientSet,
 		DependencyValidator:   dependencyValidator,
 		SecurityValidator:     securityValidator,
+		Client:                client,
 	}, nil
 }

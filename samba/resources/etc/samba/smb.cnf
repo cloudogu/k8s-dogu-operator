@@ -1,0 +1,27 @@
+[global]
+        server string = samba
+        idmap config * : range = 3000-7999
+        security = user
+        server min protocol = SMB2
+
+        load printers = no
+        printing = bsd
+        printcap name = /dev/null
+        disable spoolss = yes
+        vfs objects = acl_xattr
+        store dos attributes = yes
+        nt acl support = yes
+        acl map full control = no
+
+[Data]
+        path = /storage
+        comment = Shared
+        valid users = root
+        browseable = yes
+        writable = yes
+        read only = no
+        acl allow execute always = yes
+        vfs objects = acl_xattr
+        map acl inherit = yes
+        inherit permissions = yes
+        inherit acls = yes
