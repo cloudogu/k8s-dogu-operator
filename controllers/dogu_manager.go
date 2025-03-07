@@ -37,6 +37,7 @@ type DoguManager struct {
 	volumeManager             volumeManager
 	ingressAnnotationsManager additionalIngressAnnotationsManager
 	supportManager            supportManager
+	exportManager             exportManager
 	startStopManager          DoguStartStopManager
 	securityContextManager    securityContextManager
 	recorder                  record.EventRecorder
@@ -64,21 +65,14 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 	}
 
 	installManager := NewDoguInstallManager(client, mgrSet, eventRecorder, configRepos)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	upgradeManager := NewDoguUpgradeManager(client, mgrSet, eventRecorder)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	deleteManager := NewDoguDeleteManager(client, operatorConfig, mgrSet, eventRecorder, configRepos)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	supportManager := NewDoguSupportManager(client, mgrSet, eventRecorder)
+
+	exportManager := NewDoguExportManager(client, mgrSet, eventRecorder)
 
 	volumeManager := NewDoguVolumeManager(client, eventRecorder)
 
@@ -94,6 +88,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 		upgradeManager:            upgradeManager,
 		deleteManager:             deleteManager,
 		supportManager:            supportManager,
+		exportManager:             exportManager,
 		volumeManager:             volumeManager,
 		ingressAnnotationsManager: ingressAnnotationsManager,
 		startStopManager:          startStopManager,
@@ -199,6 +194,10 @@ func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv2.Dogu
 // HandleSupportMode handles the support flag in the dogu spec.
 func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
 	return m.supportManager.HandleSupportMode(ctx, doguResource)
+}
+
+func (m *DoguManager) HandleExportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
+	return m.exportManager.HandleExportMode(ctx, doguResource)
 }
 
 // createConfigRepositories creates the repositories for global, dogu and sensitive dogu configs that are based on

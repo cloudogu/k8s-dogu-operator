@@ -47,6 +47,8 @@ spec:
                     type: string
                   description: AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
                   type: object
+                exportMode:
+                  type: boolean
                 name:
                   description: Name of the dogu (e.g. official/ldap)
                   type: string
@@ -175,10 +177,6 @@ spec:
                   description: |-
                     SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
                     a crash loop).
-                  type: boolean
-                exportMode:
-                  description: |-
-                    ExportMode indicates whether the dogu needs a sidecar container to export its volume data.
                   type: boolean
                 upgradeConfig:
                   description: UpgradeConfig contains options to manipulate the upgrade process.

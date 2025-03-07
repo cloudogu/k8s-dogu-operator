@@ -61,6 +61,7 @@ type DoguSpec struct {
 	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
 	// a crash loop).
 	SupportMode bool `json:"supportMode,omitempty"`
+	ExportMode  bool `json:"exportMode,omitempty"`
 	// Stopped indicates whether the dogu should be running (stopped=false) or not (stopped=true).
 	Stopped bool `json:"stopped,omitempty"`
 	// UpgradeConfig contains options to manipulate the upgrade process.

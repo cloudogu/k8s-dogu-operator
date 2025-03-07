@@ -47,6 +47,8 @@ spec:
                     type: string
                   description: AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
                   type: object
+                exportMode:
+                  type: boolean
                 name:
                   description: Name of the dogu (e.g. official/ldap)
                   type: string
