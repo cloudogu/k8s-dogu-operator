@@ -44,16 +44,16 @@ type DoguManager struct {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, *util.ManagerSet, error) {
+func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	clientSet, err := clientSetGetter(restConfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	configRepos := createConfigRepositories(clientSet, operatorConfig.Namespace)
@@ -61,7 +61,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 	// Instead we must use our own client to avoid an immediate cache error: "the cache is not started, can not read objects"
 	mgrSet, err := createMgrSet(ctx, restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	installManager := NewDoguInstallManager(client, mgrSet, eventRecorder, configRepos)
@@ -94,7 +94,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 		startStopManager:          startStopManager,
 		securityContextManager:    securityContextManager,
 		recorder:                  eventRecorder,
-	}, mgrSet, nil
+	}, nil
 }
 
 func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, configRepos util.ConfigRepositories) (*util.ManagerSet, error) {

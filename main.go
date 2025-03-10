@@ -1,15 +1,11 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"os"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
@@ -41,8 +37,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	// +kubebuilder:scaffold:imports
-
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -100,7 +94,7 @@ func startDoguOperator() error {
 		return fmt.Errorf("failed to start manager: %w", err)
 	}
 
-	mgrSet, err := configureManager(k8sManager, operatorConfig)
+	err = configureManager(k8sManager, operatorConfig)
 	if err != nil {
 		return fmt.Errorf("failed to configure manager: %w", err)
 	}
@@ -108,46 +102,7 @@ func startDoguOperator() error {
 	// print starting info to stderr; we don't use the logger here because by default the level must be ERROR
 	println("Starting manager...")
 
-	err = startK8sManager(k8sManager)
-
-	// TODO: Start here
-	ctx := context.Background()
-
-	dogus, err := getInstalledDogus(ctx, k8sManager.GetClient())
-	if err != nil {
-		panic(err.Error())
-	} else {
-
-		for _, d := range dogus.Items {
-			coreDogu, err := mgrSet.LocalDoguFetcher.FetchInstalled(ctx, d.GetSimpleDoguName())
-			if err != nil {
-				panic(err.Error())
-			}
-			doguResource := &k8sv2.Dogu{}
-			err = mgrSet.Client.Get(ctx, types.NamespacedName{
-				Namespace: "ecosystem",
-				Name:      coreDogu.GetSimpleName(),
-			}, doguResource)
-			if err != nil {
-				panic(err.Error())
-			}
-
-			_, err = mgrSet.ResourceUpserter.UpsertDoguDeployment(
-				ctx,
-				doguResource,
-				coreDogu,
-				func(deployment *appsv1.Deployment) {
-				},
-			)
-			if err != nil {
-				panic(err.Error())
-			}
-
-		}
-
-	}
-
-	return err
+	return startK8sManager(k8sManager)
 }
 
 func noAggregationKey(_ *v1.Event) (string, string) {
@@ -159,15 +114,15 @@ func noSpamKey(_ *v1.Event) string {
 	return uuid.NewString()
 }
 
-func configureManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig) (*util.ManagerSet, error) {
+func configureManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig) error {
 	ecosystemClientSet, err := getEcoSystemClientSet(k8sManager.GetConfig())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	k8sClientSet, err := getK8sClientSet(k8sManager.GetConfig())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	availabilityChecker := &health.AvailabilityChecker{}
@@ -175,26 +130,26 @@ func configureManager(k8sManager manager.Manager, operatorConfig *config.Operato
 	healthStatusUpdater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder, k8sClientSet)
 
 	if err = resourceRequirementsUpdater(k8sManager, operatorConfig.Namespace, k8sClientSet); err != nil {
-		return nil, fmt.Errorf("failed to create resource requirements updater: %w", err)
+		return fmt.Errorf("failed to create resource requirements updater: %w", err)
 	}
 
-	mgrSet, err := configureReconciler(k8sManager, k8sClientSet, ecosystemClientSet, healthStatusUpdater, availabilityChecker, operatorConfig, eventRecorder)
+	err = configureReconciler(k8sManager, k8sClientSet, ecosystemClientSet, healthStatusUpdater, availabilityChecker, operatorConfig, eventRecorder)
 	if err != nil {
-		return nil, fmt.Errorf("failed to configure reconciler: %w", err)
+		return fmt.Errorf("failed to configure reconciler: %w", err)
 	}
 
 	err = addRunners(k8sManager, k8sClientSet, ecosystemClientSet, healthStatusUpdater, availabilityChecker, operatorConfig.Namespace)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add runners: %w", err)
+		return fmt.Errorf("failed to add runners: %w", err)
 	}
 
 	// +kubebuilder:scaffold:builder
 	err = addChecks(k8sManager)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add checks to the manager: %w", err)
+		return fmt.Errorf("failed to add checks to the manager: %w", err)
 	}
 
-	return mgrSet, nil
+	return nil
 }
 
 func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options {
@@ -217,17 +172,6 @@ func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options
 	}
 
 	return options
-}
-
-func getInstalledDogus(ctx context.Context, cl k8sclient.Client) (*k8sv2.DoguList, error) {
-	doguList := &k8sv2.DoguList{}
-
-	err := cl.List(ctx, doguList, k8sclient.InNamespace("ecosystem"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to list dogus in namespace [%s]: %w", "ecosystem", err)
-	}
-
-	return doguList, nil
 }
 
 func startK8sManager(k8sManager manager.Manager) error {
@@ -258,21 +202,21 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 
 func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
 	ecosystemClientSet *ecoSystem.EcoSystemV2Client, healthStatusUpdater health.DoguHealthStatusUpdater,
-	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*util.ManagerSet, error) {
+	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(
 		dogu.NewDoguVersionRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
 		dogu.NewLocalDoguDescriptorRepository(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
 	)
 
-	doguManager, mgrSet, err := controllers.NewManager(
+	doguManager, err := controllers.NewManager(
 		k8sManager.GetClient(),
 		ecosystemClientSet,
 		operatorConfig,
 		eventRecorder,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create dogu manager: %w", err)
+		return fmt.Errorf("failed to create dogu manager: %w", err)
 	}
 
 	doguReconciler, err := controllers.NewDoguReconciler(
@@ -284,12 +228,12 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 		localDoguFetcher,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new dogu reconciler: %w", err)
+		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
 	}
 
 	err = doguReconciler.SetupWithManager(k8sManager)
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
+		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
 	}
 
 	deploymentReconciler := controllers.NewDeploymentReconciler(
@@ -300,18 +244,18 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 	)
 	err = deploymentReconciler.SetupWithManager(k8sManager)
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup deployment reconciler with manager: %w", err)
+		return fmt.Errorf("failed to setup deployment reconciler with manager: %w", err)
 	}
 
 	restartInterface := ecosystemClientSet.DoguRestarts(operatorConfig.Namespace)
 	if err = controllers.NewDoguRestartReconciler(restartInterface, ecosystemClientSet.Dogus(operatorConfig.Namespace), eventRecorder, garbagecollection.NewDoguRestartGarbageCollector(restartInterface)).
 		SetupWithManager(k8sManager); err != nil {
-		return nil, fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
+		return fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
 	}
 
 	// +kubebuilder:scaffold:builder
 
-	return mgrSet, nil
+	return nil
 }
 
 func addChecks(mgr manager.Manager) error {

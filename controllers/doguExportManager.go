@@ -80,9 +80,22 @@ func (dem *doguExportManager) setDoguPodTemplateInExportMode(doguResource *k8sv2
 		MountPath: "/storage",
 	})
 
+	//newVolumes = append(newVolumes, corev1.VolumeMount{
+	//	Name:      "ces-importer-public-key-volume",
+	//	MountPath: "/root/.ssh/authorized_keys",
+	//	SubPath:   "publicKey",
+	//	ReadOnly:  true,
+	//})
+
 	exportContainer.VolumeMounts = newVolumes
 
-	log.Log.Error(fmt.Errorf("created volume mount for %s", doguResource.GetSimpleDoguName()), "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	//publicSSHVolume := template.Spec.Volumes[0]
+	//publicSSHVolume.Name = "ces-importer-public-key-volume"
+	//publicSSHVolume.ConfigMap.Name = "ces-importer-public-key"
+	//
+	//template.Spec.Volumes = append(template.Spec.Volumes, publicSSHVolume)
+
+	log.Log.Error(fmt.Errorf("created volume mount for %s", doguResource.GetSimpleDoguName()), "volume mount created")
 
 	template.Spec.Containers = append(template.Spec.Containers, exportContainer)
 
