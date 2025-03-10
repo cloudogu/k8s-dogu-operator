@@ -103,7 +103,14 @@ func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Cl
 	if err != nil {
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
-	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
+
+	additionalExportModeContainer, err := imageGetter.imageForKey(ctx, config.ExporterImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	}
+
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
+		config.ExporterImageConfigmapNameKey: additionalExportModeContainer}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to find cluster config: %w", err)

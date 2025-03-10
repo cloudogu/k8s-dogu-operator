@@ -6,3 +6,4 @@ metadata:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 data:
   chownInitImage: {{ .Values.additionalImages.chownInitImage | quote }}
+  exporterImage: {{ .Values.additionalImages.exporterImage | quote }}

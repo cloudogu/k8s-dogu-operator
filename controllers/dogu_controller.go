@@ -143,11 +143,11 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		if supportResult != nil {
 			return *supportResult, err
 		}
+	}
 
-		exportResult, err := r.handleExportMode(ctx, doguResource)
-		if exportResult != nil {
-			return *exportResult, err
-		}
+	exportResult, err := r.handleExportMode(ctx, doguResource)
+	if exportResult != nil {
+		return *exportResult, err
 	}
 
 	requiredOperations, err := r.evaluateRequiredOperations(ctx, doguResource)
@@ -209,31 +209,24 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 
 func (r *doguReconciler) handleExportMode(ctx context.Context, doguResource *k8sv2.Dogu) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info(fmt.Sprintf("Handling support flag for dogu %s", doguResource.Name))
+	logger.Info(fmt.Sprintf("Handling export flag for dogu %s", doguResource.Name))
 	exportModeChanged, err := r.doguManager.HandleExportMode(ctx, doguResource)
 	if err != nil {
 		printError := strings.ReplaceAll(err.Error(), "\n", "")
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnSupportEventReason, "Handling of support mode failed.", printError)
-		return &ctrl.Result{}, fmt.Errorf("failed to handle support mode: %w", err)
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnExportEventReason, "Handling of export mode failed.", printError)
+		return &ctrl.Result{}, fmt.Errorf("failed to handle export mode: %w", err)
 	}
 
 	// Do not care about other operations if the mode has changed. Data changes with activated support mode won't and shouldn't be processed.
 	logger.Info(fmt.Sprintf("Check if support mode changed for dogu %s", doguResource.Name))
 	if exportModeChanged {
-		if doguResource.Spec.SupportMode {
+		if doguResource.Spec.ExportMode {
 			r.recorder.Event(doguResource, v1.EventTypeNormal, ExportEventReason, "Export mode switched on.")
 			return &ctrl.Result{}, nil
 		}
 
 		r.recorder.Event(doguResource, v1.EventTypeNormal, ExportEventReason, "Export  mode switched off. Resuming processing of other events.")
 		return &ctrl.Result{Requeue: true}, nil
-	}
-
-	// Do not care about other operations if the support mode is currently active.
-	if doguResource.Spec.ExportMode {
-		logger.Info(fmt.Sprintf("Export mode is currently active for dogu %s", doguResource.Name))
-		r.recorder.Event(doguResource, v1.EventTypeNormal, SupportEventReason, "Export mode is active. Ignoring other events.")
-		return &ctrl.Result{}, nil
 	}
 
 	return nil, nil

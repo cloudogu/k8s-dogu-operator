@@ -23,6 +23,7 @@ type doguExportManager struct {
 	client                       client.Client
 	doguFetcher                  localDoguFetcher
 	podTemplateResourceGenerator podTemplateResourceGenerator
+	exporterImage                string
 	eventRecorder                record.EventRecorder
 }
 
@@ -31,6 +32,7 @@ func NewDoguExportManager(client client.Client, mgrSet *util.ManagerSet, eventRe
 		client:                       client,
 		doguFetcher:                  mgrSet.LocalDoguFetcher,
 		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
+		exporterImage:                mgrSet.AdditionalImages[config.ExporterImageConfigmapNameKey],
 		eventRecorder:                eventRecorder,
 	}
 }
@@ -62,10 +64,10 @@ func (dem *doguExportManager) HandleExportMode(ctx context.Context, doguResource
 	return true, nil
 }
 
-func setDoguPodTemplateInExportMode(doguResource *k8sv2.Dogu, template *corev1.PodTemplateSpec) *corev1.PodTemplateSpec {
+func (dem *doguExportManager) setDoguPodTemplateInExportMode(doguResource *k8sv2.Dogu, template *corev1.PodTemplateSpec) *corev1.PodTemplateSpec {
 	exportContainer := template.Spec.Containers[0]
 	exportContainer.Name = fmt.Sprintf("%s-sidecar", doguResource.GetSimpleDoguName())
-	exportContainer.Image = config.ExporterImageConfigmapNameKey
+	exportContainer.Image = dem.exporterImage
 	exportContainer.StartupProbe = nil
 	exportContainer.LivenessProbe = nil
 	exportContainer.Resources = corev1.ResourceRequirements{}
@@ -74,9 +76,11 @@ func setDoguPodTemplateInExportMode(doguResource *k8sv2.Dogu, template *corev1.P
 	var newVolumes []corev1.VolumeMount
 
 	newVolumes = append(newVolumes, corev1.VolumeMount{
-		Name:      fmt.Sprintf("%s-data", doguResource.GetSimpleDoguName()),
+		Name:      doguResource.GetDataVolumeName(),
 		MountPath: "/storage",
 	})
+
+	exportContainer.VolumeMounts = newVolumes
 
 	log.Log.Error(fmt.Errorf("created volume mount for %s", doguResource.GetSimpleDoguName()), "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
@@ -112,7 +116,7 @@ func (dem *doguExportManager) updateDeployment(ctx context.Context, doguResource
 	}
 
 	if doguResource.Spec.ExportMode {
-		setDoguPodTemplateInExportMode(doguResource, podTemplate)
+		dem.setDoguPodTemplateInExportMode(doguResource, podTemplate)
 	}
 
 	deployment.Spec.Template = *podTemplate

@@ -40,6 +40,7 @@ type ManagerSet struct {
 	LocalDoguFetcher      cesregistry.LocalDoguFetcher
 	ResourceDoguFetcher   cesregistry.ResourceDoguFetcher
 	DoguResourceGenerator resource.DoguResourceGenerator
+	AdditionalImages      map[string]string
 	ResourceUpserter      resource.ResourceUpserter
 	DoguRegistrator       cesregistry.DoguRegistrator
 	ImageRegistry         imageregistry.ImageRegistry
@@ -103,6 +104,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 		LocalDoguFetcher:      localDoguFetcher,
 		ResourceDoguFetcher:   resourceDoguFetcher,
 		DoguResourceGenerator: doguResourceGenerator,
+		AdditionalImages:      additionalImages,
 		ResourceUpserter:      upserter,
 		DoguRegistrator:       doguRegistrator,
 		ImageRegistry:         imageRegistry,
