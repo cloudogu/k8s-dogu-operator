@@ -3,150 +3,140 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 const ExportModeEnvVar = "EXPORT_MODE"
 
+const (
+	ChangeExportModeEventReason        = "ChangeExportMode"
+	ErrorOnChangeExportModeEventReason = "ErrChangeExportMode"
+
+	CheckExportModeEventReason        = "CheckExportMode"
+	ErrorOnCheckExportModeEventReason = "ErrCheckExportMode"
+)
+
+type exportModeNotYetChangedError struct {
+	doguName string
+}
+
+func (e exportModeNotYetChangedError) Error() string {
+	return fmt.Sprintf("the export-mode of dogu %q has not yet been changed to its desired state", e.doguName)
+}
+
+func (e exportModeNotYetChangedError) Requeue() bool {
+	return true
+}
+
+func (e exportModeNotYetChangedError) GetRequeueTime() time.Duration {
+	return requeueWaitTimeout
+}
+
 type doguExportManager struct {
-	client                       client.Client
-	doguFetcher                  localDoguFetcher
-	podTemplateResourceGenerator podTemplateResourceGenerator
-	exporterImage                string
-	eventRecorder                record.EventRecorder
+	doguClient       ecoSystem.DoguInterface
+	podClient        podInterface
+	resourceUpserter resource.ResourceUpserter
+	doguFetcher      localDoguFetcher
+	eventRecorder    record.EventRecorder
 }
 
-func NewDoguExportManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguExportManager {
+func NewDoguExportManager(
+	doguClient ecoSystem.DoguInterface,
+	podClient podInterface,
+	resourceUpserter resource.ResourceUpserter,
+	doguFetcher localDoguFetcher,
+	eventRecorder record.EventRecorder,
+) *doguExportManager {
 	return &doguExportManager{
-		client:                       client,
-		doguFetcher:                  mgrSet.LocalDoguFetcher,
-		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
-		exporterImage:                mgrSet.AdditionalImages[config.ExporterImageConfigmapNameKey],
-		eventRecorder:                eventRecorder,
+		doguClient:       doguClient,
+		podClient:        podClient,
+		resourceUpserter: resourceUpserter,
+		doguFetcher:      doguFetcher,
+		eventRecorder:    eventRecorder,
 	}
 }
-func (dem *doguExportManager) HandleExportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
-	logger := log.FromContext(ctx)
 
-	deployment := &appsv1.Deployment{}
-	err := dem.client.Get(ctx, doguResource.GetObjectKey(), deployment)
+func (dem *doguExportManager) CheckExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	shouldExportModeBeActive := doguResource.Spec.ExportMode
+
+	isExportModeActive, err := dem.isDeploymentInExportMode(ctx, doguResource.GetObjectKey())
 	if err != nil {
-		if errors.IsNotFound(err) {
-			dem.eventRecorder.Eventf(doguResource, corev1.EventTypeWarning, ExportEventReason, "No deployment found for dogu %s when checking export handler", doguResource.Name)
-			return false, nil
-		}
-		return false, fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err)
+		return fmt.Errorf("failed to change export-mode dogu %q: %w", doguResource.GetObjectKey(), err)
 	}
 
-	logger.Info(fmt.Sprintf("Check if export mode is currently active for dogu %s...", doguResource.Name))
-	active := isDeploymentInExportMode(deployment)
-	if !exportModeChanged(doguResource, active) {
-		return false, nil
+	if shouldExportModeBeActive != isExportModeActive {
+		return exportModeNotYetChangedError{doguName: doguResource.GetObjectKey().String()}
 	}
 
-	err = dem.updateDeployment(ctx, doguResource, deployment)
+	err = dem.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusInstalled, isExportModeActive)
 	if err != nil {
-		return false, err
-	}
-	dem.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, SupportEventReason, "Export flag changed to %t. Deployment updated.", doguResource.Spec.ExportMode)
-
-	return true, nil
-}
-
-func (dem *doguExportManager) setDoguPodTemplateInExportMode(doguResource *k8sv2.Dogu, template *corev1.PodTemplateSpec) *corev1.PodTemplateSpec {
-	exportContainer := template.Spec.Containers[0]
-	exportContainer.Name = fmt.Sprintf("%s-sidecar", doguResource.GetSimpleDoguName())
-	exportContainer.Image = dem.exporterImage
-	exportContainer.StartupProbe = nil
-	exportContainer.LivenessProbe = nil
-	exportContainer.Resources = corev1.ResourceRequirements{}
-	exportContainer.SecurityContext.Capabilities.Add = append(exportContainer.SecurityContext.Capabilities.Add, core.SysChroot)
-
-	var newVolumes []corev1.VolumeMount
-
-	newVolumes = append(newVolumes, corev1.VolumeMount{
-		Name:      doguResource.GetDataVolumeName(),
-		MountPath: "/storage",
-	})
-
-	//newVolumes = append(newVolumes, corev1.VolumeMount{
-	//	Name:      "ces-importer-public-key-volume",
-	//	MountPath: "/root/.ssh/authorized_keys",
-	//	SubPath:   "publicKey",
-	//	ReadOnly:  true,
-	//})
-
-	exportContainer.VolumeMounts = newVolumes
-
-	//publicSSHVolume := template.Spec.Volumes[0]
-	//publicSSHVolume.Name = "ces-importer-public-key-volume"
-	//publicSSHVolume.ConfigMap.Name = "ces-importer-public-key"
-	//
-	//template.Spec.Volumes = append(template.Spec.Volumes, publicSSHVolume)
-
-	log.Log.Error(fmt.Errorf("created volume mount for %s", doguResource.GetSimpleDoguName()), "volume mount created")
-
-	template.Spec.Containers = append(template.Spec.Containers, exportContainer)
-
-	return template
-}
-
-func isDeploymentInExportMode(deployment *appsv1.Deployment) bool {
-	for _, container := range deployment.Spec.Template.Spec.Containers {
-		envVars := container.Env
-		for _, env := range envVars {
-			if env.Name == ExportModeEnvVar && env.Value == "true" {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-func (dem *doguExportManager) updateDeployment(ctx context.Context, doguResource *k8sv2.Dogu, deployment *appsv1.Deployment) error {
-	logger := log.FromContext(ctx)
-
-	dogu, err := dem.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
-	if err != nil {
-		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
-	}
-
-	podTemplate, err := dem.podTemplateResourceGenerator.GetPodTemplate(ctx, doguResource, dogu)
-	if err != nil {
-		return fmt.Errorf("failed to get pod template for dogu %s in export action: %w", doguResource.Name, err)
-	}
-
-	if doguResource.Spec.ExportMode {
-		dem.setDoguPodTemplateInExportMode(doguResource, podTemplate)
-	}
-
-	deployment.Spec.Template = *podTemplate
-	logger.Info(fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
-	err = dem.client.Update(ctx, deployment)
-	if err != nil {
-		return fmt.Errorf("failed to update dogu deployment %s: %w", doguResource.Name, err)
+		return err
 	}
 
 	return nil
 }
 
-func exportModeChanged(doguResource *k8sv2.Dogu, active bool) bool {
-	mode := doguResource.Spec.ExportMode
-	if mode && active || !mode && !active {
-		return false
+func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	logger := log.FromContext(ctx)
+	err := dem.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode)
+	if err != nil {
+		return err
 	}
 
-	return true
+	logger.Info("Getting local dogu descriptor...")
+	dogu, err := dem.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
+	if err != nil {
+		return fmt.Errorf("failed to get local descriptor for dogu %q: %w", doguResource.Name, err)
+	}
+
+	logger.Info("Upserting deployment...")
+	_, err = dem.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
+	if err != nil {
+		return fmt.Errorf("failed to upsert deployment for export-mode change for dogu %q: %w", doguResource.Name, err)
+	}
+
+	return nil
+}
+
+func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv2.Dogu, phase string, activated bool) error {
+	_, err := dem.doguClient.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
+		status.Status = phase
+		status.ExportMode = activated
+		return status
+	}, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update status of dogu %q to %q: %w", doguResource.Name, phase, err)
+	}
+
+	return nil
+}
+
+func (dem *doguExportManager) isDeploymentInExportMode(ctx context.Context, doguName types.NamespacedName) (bool, error) {
+	logrus.Info(fmt.Sprintf("check export-mode status for deployment %s", doguName))
+
+	podList, getErr := dem.podClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("dogu.name=%s", doguName.Name)})
+	if getErr != nil {
+		return false, fmt.Errorf("failed to get pods of deployment %q: %w", doguName, getErr)
+	}
+
+	exporterContainerName := fmt.Sprintf("%s-exporter", doguName.Name)
+	for _, pod := range podList.Items {
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if containerStatus.Name == exporterContainerName && containerStatus.Ready {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }

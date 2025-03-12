@@ -130,6 +130,19 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		return nil, err
 	}
 
+	sidecars := make([]*corev1.Container, 0)
+
+	if doguResource.Spec.ExportMode {
+		exporterImage := r.additionalImages[config.ExporterImageConfigmapNameKey]
+
+		exporterContainer, err := getExporterContainer(dogu, doguResource, exporterImage)
+		if err != nil {
+			return nil, err
+		}
+
+		sidecars = append(sidecars, exporterContainer)
+	}
+
 	hostAliases, err := r.hostAliasGenerator.Generate(ctx)
 	if err != nil {
 		return nil, err
@@ -149,6 +162,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 		enableServiceLinks(false).
 		initContainers(chownContainer).
+		sidecarContainers(sidecars...).
 		containerEmptyCommandAndArgs().
 		containerLivenessProbe().
 		containerStartupProbe().
@@ -216,6 +230,32 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
 		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
 	}, nil
+}
+
+func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) (*corev1.Container, error) {
+	exporter := &corev1.Container{
+		Name:  fmt.Sprintf("%s-exporter", doguResource.Name),
+		Image: exporterImage,
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      doguResource.GetDataVolumeName(),
+				MountPath: "/data",
+			},
+		},
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+				Add:  []corev1.Capability{core.Chown, core.DacOverride, core.SysChroot},
+			},
+			SELinuxOptions:  &corev1.SELinuxOptions{},
+			SeccompProfile:  &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
+			AppArmorProfile: &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
+		},
+	}
+
+	exporter.SecurityContext.Capabilities.Add = append(exporter.SecurityContext.Capabilities.Add)
+
+	return exporter, nil
 }
 
 func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume {

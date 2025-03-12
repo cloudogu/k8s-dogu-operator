@@ -46,9 +46,7 @@ const (
 
 const (
 	SupportEventReason        = "Support"
-	ExportEventReason         = "Export"
 	ErrorOnSupportEventReason = "ErrSupport"
-	ErrorOnExportEventReason  = "ErrExport"
 )
 
 const (
@@ -87,6 +85,8 @@ const (
 	CheckStarted                       = operation("CheckStarted")
 	CheckStopped                       = operation("CheckStopped")
 	ChangeSecurityContext              = operation("ChangeSecurityContext")
+	ChangeExportMode                   = operation("ChangeExportMode")
+	CheckExportMode                    = operation("CheckExportMode")
 )
 
 const requeueWaitTimeout = 5 * time.Second
@@ -145,11 +145,6 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	exportResult, err := r.handleExportMode(ctx, doguResource)
-	if exportResult != nil {
-		return *exportResult, err
-	}
-
 	requiredOperations, err := r.evaluateRequiredOperations(ctx, doguResource)
 	if err != nil {
 		return requeueWithError(fmt.Errorf("failed to evaluate required operation: %w", err))
@@ -202,35 +197,38 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 		return r.performCheckStoppedOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeSecurityContext:
 		return r.performSecurityContextOperation(ctx, doguResource, requeueForMultipleOperations)
+	case ChangeExportMode:
+		return r.performExportModeOperation(ctx, doguResource, requeueForMultipleOperations)
+	case CheckExportMode:
+		return r.performCheckExportModeOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
 }
 
-func (r *doguReconciler) handleExportMode(ctx context.Context, doguResource *k8sv2.Dogu) (*ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-	logger.Info(fmt.Sprintf("Handling export flag for dogu %s", doguResource.Name))
-	exportModeChanged, err := r.doguManager.HandleExportMode(ctx, doguResource)
-	if err != nil {
-		printError := strings.ReplaceAll(err.Error(), "\n", "")
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnExportEventReason, "Handling of export mode failed.", printError)
-		return &ctrl.Result{}, fmt.Errorf("failed to handle export mode: %w", err)
-	}
-
-	// Do not care about other operations if the mode has changed. Data changes with activated support mode won't and shouldn't be processed.
-	logger.Info(fmt.Sprintf("Check if support mode changed for dogu %s", doguResource.Name))
-	if exportModeChanged {
-		if doguResource.Spec.ExportMode {
-			r.recorder.Event(doguResource, v1.EventTypeNormal, ExportEventReason, "Export mode switched on.")
-			return &ctrl.Result{}, nil
-		}
-
-		r.recorder.Event(doguResource, v1.EventTypeNormal, ExportEventReason, "Export  mode switched off. Resuming processing of other events.")
-		return &ctrl.Result{Requeue: true}, nil
-	}
-
-	return nil, nil
-}
+// TODO remove
+//func (r *doguReconciler) handleExportMode(ctx context.Context, doguResource *k8sv2.Dogu) (*ctrl.Result, error) {
+//	logger := log.FromContext(ctx)
+//	logger.Info(fmt.Sprintf("Handling export flag for dogu %s", doguResource.Name))
+//	exportModeChanged, err := r.doguManager.HandleExportMode(ctx, doguResource)
+//	if err != nil {
+//		printError := strings.ReplaceAll(err.Error(), "\n", "")
+//		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnExportEventReason, "Handling of export mode failed.", printError)
+//		return &ctrl.Result{}, fmt.Errorf("failed to handle export mode: %w", err)
+//	}
+//
+//	if exportModeChanged {
+//		if doguResource.Spec.ExportMode {
+//			r.recorder.Event(doguResource, v1.EventTypeNormal, ExportEventReason, "Export mode switched on.")
+//		} else {
+//			r.recorder.Event(doguResource, v1.EventTypeNormal, ExportEventReason, "Export  mode switched off. Resuming processing of other events.")
+//		}
+//
+//		return &ctrl.Result{Requeue: true}, nil
+//	}
+//
+//	return nil, nil
+//}
 
 func (r *doguReconciler) handleSupportMode(ctx context.Context, doguResource *k8sv2.Dogu) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
@@ -306,6 +304,12 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 		if err != nil {
 			return nil, err
 		}
+	case k8sv2.DoguStatusChangingExportMode:
+		operations = append(operations, CheckExportMode)
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
 	case k8sv2.DoguStatusDeleting:
 		return []operation{}, nil
 	default:
@@ -348,6 +352,10 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 		operations = append(operations, ChangeSecurityContext)
 	}
 
+	if checkShouldChangeExportMode(doguResource) {
+		operations = append(operations, ChangeExportMode)
+	}
+
 	// Checking if the resource spec field has changed is unnecessary because we
 	// use a predicate to filter update events where specs don't change
 	upgradeable, err := checkUpgradeability(ctx, doguResource, r.fetcher)
@@ -375,6 +383,10 @@ func checkShouldStopDogu(doguResource *k8sv2.Dogu) bool {
 
 func checkShouldStartDogu(doguResource *k8sv2.Dogu) bool {
 	return (!doguResource.Spec.Stopped) && doguResource.Status.Stopped
+}
+
+func checkShouldChangeExportMode(doguResource *k8sv2.Dogu) bool {
+	return doguResource.Spec.ExportMode != doguResource.Status.ExportMode
 }
 
 func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
@@ -638,6 +650,24 @@ func (r *doguReconciler) performCheckStartedOperation(ctx context.Context, doguR
 		operationName: "CheckStarted",
 		operationVerb: "check if dogu started",
 	}, k8sv2.DoguStatusStarting, r.doguManager.CheckStarted, shouldRequeue)
+}
+
+func (r *doguReconciler) performExportModeOperation(ctx context.Context, doguResource *k8sv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	return r.performOperation(ctx, doguResource, operationEventProperties{
+		successReason: ChangeExportModeEventReason,
+		errorReason:   ErrorOnChangeExportModeEventReason,
+		operationName: "ChangeExportMode",
+		operationVerb: "activate export-mode",
+	}, k8sv2.DoguStatusChangingExportMode, r.doguManager.UpdateExportMode, shouldRequeue)
+}
+
+func (r *doguReconciler) performCheckExportModeOperation(ctx context.Context, doguResource *k8sv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	return r.performOperation(ctx, doguResource, operationEventProperties{
+		successReason: CheckExportModeEventReason,
+		errorReason:   ErrorOnCheckExportModeEventReason,
+		operationName: "CheckExportMode",
+		operationVerb: "check export-mode is active",
+	}, k8sv2.DoguStatusChangingExportMode, r.doguManager.CheckExportMode, shouldRequeue)
 }
 
 func (r *doguReconciler) validateName(doguResource *k8sv2.Dogu) (success bool) {

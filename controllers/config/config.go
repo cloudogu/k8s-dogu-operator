@@ -23,7 +23,7 @@ const (
 	OperatorAdditionalImagesConfigmapName = "k8s-dogu-operator-additional-images"
 	// ChownInitImageConfigmapNameKey contains the key to retrieve the chown init container image from the OperatorAdditionalImagesConfigmapName configmap.
 	ChownInitImageConfigmapNameKey = "chownInitImage"
-	// ExporterImageConfigmapNameKey contains the key to retrieve the image used for sidecar creation
+	// ExporterImageConfigmapNameKey contains the key to retrieve the image used for exporter-sidecar-container
 	ExporterImageConfigmapNameKey = "exporterImage"
 )
 

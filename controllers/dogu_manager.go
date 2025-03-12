@@ -72,7 +72,13 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 
 	supportManager := NewDoguSupportManager(client, mgrSet, eventRecorder)
 
-	exportManager := NewDoguExportManager(client, mgrSet, eventRecorder)
+	exportManager := NewDoguExportManager(
+		ecosystemClient.Dogus(operatorConfig.Namespace),
+		clientSet.CoreV1().Pods(operatorConfig.Namespace),
+		mgrSet.ResourceUpserter,
+		mgrSet.LocalDoguFetcher,
+		eventRecorder,
+	)
 
 	volumeManager := NewDoguVolumeManager(client, eventRecorder)
 
@@ -201,10 +207,6 @@ func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv2.Dogu
 // HandleSupportMode handles the support flag in the dogu spec.
 func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
 	return m.supportManager.HandleSupportMode(ctx, doguResource)
-}
-
-func (m *DoguManager) HandleExportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
-	return m.exportManager.HandleExportMode(ctx, doguResource)
 }
 
 // createConfigRepositories creates the repositories for global, dogu and sensitive dogu configs that are based on

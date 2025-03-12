@@ -48,6 +48,9 @@ spec:
                   description: AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
                   type: object
                 exportMode:
+                  description: |-
+                    ExportMode indicates whether the dogu should be in "Export-Mode". If "true" an "exporter"-sidecar-container with a volume-mount for the
+                    data-volume of the dogu is added.
                   type: boolean
                 name:
                   description: Name of the dogu (e.g. official/ldap)
@@ -218,6 +221,9 @@ spec:
                   type: string
                 stopped:
                   description: Stopped shows if the dogu has been stopped or not.
+                  type: boolean
+                exportMode:
+                  description: ExportMode shows if the export-mode of the dogu is currently active.
                   type: boolean
               required:
                 - requeuePhase
