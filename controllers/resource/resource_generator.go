@@ -107,7 +107,9 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 
 // GetPodTemplate returns a pod template for the given dogu.
 func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
-	volumes, err := createVolumes(doguResource, dogu)
+	exportModeActive := doguResource.Spec.ExportMode
+
+	volumes, err := createVolumes(doguResource, dogu, exportModeActive)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +134,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 
 	sidecars := make([]*corev1.Container, 0)
 
-	if doguResource.Spec.ExportMode {
+	if exportModeActive {
 		exporterImage := r.additionalImages[config.ExporterImageConfigmapNameKey]
 
 		exporterContainer, err := getExporterContainer(dogu, doguResource, exporterImage)
@@ -233,31 +235,20 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 }
 
 func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) (*corev1.Container, error) {
-	volumeMounts := make([]corev1.VolumeMount, 0)
-
-	if len(dogu.Volumes) > 0 {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      doguResource.GetDataVolumeName(),
-			MountPath: "/data",
-		})
-	}
-
 	exporter := &corev1.Container{
 		Name:         fmt.Sprintf("%s-exporter", doguResource.Name),
 		Image:        exporterImage,
-		VolumeMounts: volumeMounts,
+		VolumeMounts: createExporterSidecarVolumeMounts(doguResource, dogu),
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
-				Add:  []corev1.Capability{core.Chown, core.DacOverride, core.SysChroot, core.NetBindService},
+				Add:  []corev1.Capability{core.DacOverride, core.SysChroot, core.NetBindService, core.Setgid, core.Setuid},
 			},
 			SELinuxOptions:  &corev1.SELinuxOptions{},
 			SeccompProfile:  &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
 			AppArmorProfile: &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
 		},
 	}
-
-	exporter.SecurityContext.Capabilities.Add = append(exporter.SecurityContext.Capabilities.Add)
 
 	return exporter, nil
 }

@@ -118,9 +118,6 @@ func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Cl
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
 		config.ExporterImageConfigmapNameKey: additionalExportModeContainer}
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to find cluster config: %w", err)
-	}
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)

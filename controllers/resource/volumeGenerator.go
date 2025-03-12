@@ -23,6 +23,12 @@ const (
 	doguDependencyType    = "dogu"
 )
 
+const (
+	importPublicKeyVolumeName      = "ces-importer-public-key-volume"
+	importerPublicKeyConfigMapName = "ces-importer-public-key"
+	importerPublicKeySubPath       = "publicKey"
+)
+
 // const names for configs to be mounted
 const (
 	globalConfig    = "global-config"
@@ -49,10 +55,14 @@ type volumeConfigMapContent struct {
 	Name string
 }
 
-func createVolumes(doguResource *k8sv2.Dogu, dogu *core.Dogu) ([]corev1.Volume, error) {
+func createVolumes(doguResource *k8sv2.Dogu, dogu *core.Dogu, exportModeActive bool) ([]corev1.Volume, error) {
 	volumes := createStaticVolumes(doguResource)
 	volumes = append(volumes, createDoguJsonVolumesFromDependencies(dogu)...)
 	volumes = append(volumes, getDoguJsonVolumeForDogu(dogu.GetSimpleName()))
+
+	if exportModeActive {
+		volumes = append(volumes, createImporterPublicKeyVolume())
+	}
 
 	volumesFromDogu, err := createDoguVolumes(dogu.Volumes, doguResource)
 	if err != nil {
@@ -364,4 +374,49 @@ func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv2.Dogu, 
 	}
 
 	return pvc, nil
+}
+
+func createImporterPublicKeyVolume() corev1.Volume {
+	optional := true
+	return corev1.Volume{
+		Name: importPublicKeyVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: importerPublicKeyConfigMapName,
+				},
+				Optional: &optional,
+			},
+		},
+	}
+}
+
+func createExporterSidecarVolumeMounts(doguResource *k8sv2.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      importPublicKeyVolumeName,
+			MountPath: "/root/.ssh/authorized_keys",
+			SubPath:   importerPublicKeySubPath,
+			ReadOnly:  true,
+		},
+	}
+
+	if doguHasVolumesWithBackup(dogu) {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      doguResource.GetDataVolumeName(),
+			MountPath: "/data",
+		})
+	}
+
+	return volumeMounts
+}
+
+func doguHasVolumesWithBackup(dogu *core.Dogu) bool {
+	for _, volume := range dogu.Volumes {
+		if volume.NeedsBackup {
+			return true
+		}
+	}
+
+	return false
 }
