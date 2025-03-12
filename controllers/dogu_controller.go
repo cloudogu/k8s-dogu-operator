@@ -86,7 +86,6 @@ const (
 	CheckStopped                       = operation("CheckStopped")
 	ChangeSecurityContext              = operation("ChangeSecurityContext")
 	ChangeExportMode                   = operation("ChangeExportMode")
-	CheckExportMode                    = operation("CheckExportMode")
 )
 
 const requeueWaitTimeout = 5 * time.Second
@@ -199,36 +198,10 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 		return r.performSecurityContextOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeExportMode:
 		return r.performExportModeOperation(ctx, doguResource, requeueForMultipleOperations)
-	case CheckExportMode:
-		return r.performCheckExportModeOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
 }
-
-// TODO remove
-//func (r *doguReconciler) handleExportMode(ctx context.Context, doguResource *k8sv2.Dogu) (*ctrl.Result, error) {
-//	logger := log.FromContext(ctx)
-//	logger.Info(fmt.Sprintf("Handling export flag for dogu %s", doguResource.Name))
-//	exportModeChanged, err := r.doguManager.HandleExportMode(ctx, doguResource)
-//	if err != nil {
-//		printError := strings.ReplaceAll(err.Error(), "\n", "")
-//		r.recorder.Eventf(doguResource, v1.EventTypeWarning, ErrorOnExportEventReason, "Handling of export mode failed.", printError)
-//		return &ctrl.Result{}, fmt.Errorf("failed to handle export mode: %w", err)
-//	}
-//
-//	if exportModeChanged {
-//		if doguResource.Spec.ExportMode {
-//			r.recorder.Event(doguResource, v1.EventTypeNormal, ExportEventReason, "Export mode switched on.")
-//		} else {
-//			r.recorder.Event(doguResource, v1.EventTypeNormal, ExportEventReason, "Export  mode switched off. Resuming processing of other events.")
-//		}
-//
-//		return &ctrl.Result{Requeue: true}, nil
-//	}
-//
-//	return nil, nil
-//}
 
 func (r *doguReconciler) handleSupportMode(ctx context.Context, doguResource *k8sv2.Dogu) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
@@ -305,7 +278,7 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 			return nil, err
 		}
 	case k8sv2.DoguStatusChangingExportMode:
-		operations = append(operations, CheckExportMode)
+		operations = append(operations, ChangeExportMode)
 		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
 		if err != nil {
 			return nil, err
@@ -352,7 +325,7 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 		operations = append(operations, ChangeSecurityContext)
 	}
 
-	if checkShouldChangeExportMode(doguResource) {
+	if checkShouldChangeExportMode(doguResource) && !operationsContain(operations, ChangeExportMode) {
 		operations = append(operations, ChangeExportMode)
 	}
 
@@ -469,6 +442,10 @@ func (r *doguReconciler) checkSecurityContextChanged(ctx context.Context, doguRe
 	}
 
 	for _, container := range doguDeployment.Spec.Template.Spec.Containers {
+		if container.Name != doguResource.Name {
+			// only check the dogu-container
+			continue
+		}
 		slices.Sort(container.SecurityContext.Capabilities.Add)
 		if !reflect.DeepEqual(containerSecurityContext, container.SecurityContext) {
 			return true, nil
@@ -659,15 +636,6 @@ func (r *doguReconciler) performExportModeOperation(ctx context.Context, doguRes
 		operationName: "ChangeExportMode",
 		operationVerb: "activate export-mode",
 	}, k8sv2.DoguStatusChangingExportMode, r.doguManager.UpdateExportMode, shouldRequeue)
-}
-
-func (r *doguReconciler) performCheckExportModeOperation(ctx context.Context, doguResource *k8sv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
-	return r.performOperation(ctx, doguResource, operationEventProperties{
-		successReason: CheckExportModeEventReason,
-		errorReason:   ErrorOnCheckExportModeEventReason,
-		operationName: "CheckExportMode",
-		operationVerb: "check export-mode is active",
-	}, k8sv2.DoguStatusChangingExportMode, r.doguManager.CheckExportMode, shouldRequeue)
 }
 
 func (r *doguReconciler) validateName(doguResource *k8sv2.Dogu) (success bool) {

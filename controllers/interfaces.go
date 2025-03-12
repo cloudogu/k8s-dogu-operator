@@ -53,8 +53,6 @@ type supportManager interface {
 type exportManager interface {
 	// UpdateExportMode activates/deactivates the export mode for the dogu
 	UpdateExportMode(ctx context.Context, doguResource *v2.Dogu) error
-	// CheckExportMode checks if the export mode for the dogu is active
-	CheckExportMode(ctx context.Context, doguResource *v2.Dogu) error
 }
 
 // volumeManager includes functionality to edit volumes for dogus in the cluster.

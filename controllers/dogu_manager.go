@@ -204,6 +204,16 @@ func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv2.Dogu
 	return err
 }
 
+// UpdateExportMode activates/deactivates the export mode for the dogu
+func (m *DoguManager) UpdateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	err := m.exportManager.UpdateExportMode(ctx, doguResource)
+	if err == nil {
+		m.recorder.Event(doguResource, corev1.EventTypeNormal, ChangeExportModeEventReason, "export-mode changing...")
+	}
+
+	return err
+}
+
 // HandleSupportMode handles the support flag in the dogu spec.
 func (m *DoguManager) HandleSupportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
 	return m.supportManager.HandleSupportMode(ctx, doguResource)

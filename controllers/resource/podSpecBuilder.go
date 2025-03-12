@@ -183,9 +183,7 @@ func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 			AutomountServiceAccountToken: &p.specAutomountServiceAccountToken,
 			InitContainers:               p.specInitContainers,
 			SecurityContext:              p.specPodSecurityContext,
-			Containers: []corev1.Container{
-				p.buildDoguContainer(),
-			},
+			Containers:                   p.buildContainers(),
 		},
 	}
 

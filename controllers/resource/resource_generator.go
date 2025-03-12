@@ -233,19 +233,23 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 }
 
 func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) (*corev1.Container, error) {
+	volumeMounts := make([]corev1.VolumeMount, 0)
+
+	if len(dogu.Volumes) > 0 {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      doguResource.GetDataVolumeName(),
+			MountPath: "/data",
+		})
+	}
+
 	exporter := &corev1.Container{
-		Name:  fmt.Sprintf("%s-exporter", doguResource.Name),
-		Image: exporterImage,
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      doguResource.GetDataVolumeName(),
-				MountPath: "/data",
-			},
-		},
+		Name:         fmt.Sprintf("%s-exporter", doguResource.Name),
+		Image:        exporterImage,
+		VolumeMounts: volumeMounts,
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
-				Add:  []corev1.Capability{core.Chown, core.DacOverride, core.SysChroot},
+				Add:  []corev1.Capability{core.Chown, core.DacOverride, core.SysChroot, core.NetBindService},
 			},
 			SELinuxOptions:  &corev1.SELinuxOptions{},
 			SeccompProfile:  &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},

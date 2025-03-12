@@ -16,22 +16,18 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 )
 
-const ExportModeEnvVar = "EXPORT_MODE"
-
 const (
 	ChangeExportModeEventReason        = "ChangeExportMode"
 	ErrorOnChangeExportModeEventReason = "ErrChangeExportMode"
-
-	CheckExportModeEventReason        = "CheckExportMode"
-	ErrorOnCheckExportModeEventReason = "ErrCheckExportMode"
 )
 
 type exportModeNotYetChangedError struct {
-	doguName string
+	doguName               string
+	desiredExportModeState bool
 }
 
 func (e exportModeNotYetChangedError) Error() string {
-	return fmt.Sprintf("the export-mode of dogu %q has not yet been changed to its desired state", e.doguName)
+	return fmt.Sprintf("the export-mode of dogu %q has not yet been changed to its desired state: %v", e.doguName, e.desiredExportModeState)
 }
 
 func (e exportModeNotYetChangedError) Requeue() bool {
@@ -66,30 +62,39 @@ func NewDoguExportManager(
 	}
 }
 
-func (dem *doguExportManager) CheckExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
+func (dem *doguExportManager) shouldUpdateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) bool {
+	logger := log.FromContext(ctx)
+
 	shouldExportModeBeActive := doguResource.Spec.ExportMode
 
 	isExportModeActive, err := dem.isDeploymentInExportMode(ctx, doguResource.GetObjectKey())
 	if err != nil {
-		return fmt.Errorf("failed to change export-mode dogu %q: %w", doguResource.GetObjectKey(), err)
+		logger.Error(err, fmt.Sprintf("failed to check if deployment is in export-mode dogu %q", doguResource.Name))
+		return false
 	}
 
-	if shouldExportModeBeActive != isExportModeActive {
-		return exportModeNotYetChangedError{doguName: doguResource.GetObjectKey().String()}
-	}
-
-	err = dem.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusInstalled, isExportModeActive)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return shouldExportModeBeActive != isExportModeActive
 }
 
 func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
 	logger := log.FromContext(ctx)
-	err := dem.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode)
-	if err != nil {
+
+	if dem.shouldUpdateExportMode(ctx, doguResource) {
+		if err := dem.updateExportMode(ctx, doguResource); err != nil {
+			return err
+		}
+
+		return exportModeNotYetChangedError{doguName: doguResource.Name, desiredExportModeState: doguResource.Spec.ExportMode}
+	}
+
+	logger.Info(fmt.Sprintf("the export-mode of dogu %q has changed to its desired state: %v", doguResource.Name, doguResource.Spec.ExportMode))
+	return dem.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
+}
+
+func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	logger := log.FromContext(ctx)
+
+	if err := dem.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode); err != nil {
 		return err
 	}
 
