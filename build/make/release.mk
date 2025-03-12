@@ -4,7 +4,7 @@
 
 .PHONY: dogu-release
 dogu-release: ## Start a dogu release
-	build/make/release.sh dogu
+	build/make/release.sh dogu "${FIXED_CVE_LIST}" $(DRY_RUN)
 
 .PHONY: node-release
 node-release: ## Start a node package release
@@ -13,6 +13,10 @@ node-release: ## Start a node package release
 .PHONY: go-release
 go-release: ## Start a go tool release
 	build/make/release.sh go-tool
+
+.PHONY: image-release
+image-release: ## Start a go tool release
+	build/make/release.sh image
 
 .PHONY: dogu-cve-release
 dogu-cve-release: ## Start a dogu release of a new build if the local build fixes critical CVEs
