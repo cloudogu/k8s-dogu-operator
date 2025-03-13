@@ -70,7 +70,7 @@ func (dem *doguExportManager) shouldUpdateExportMode(ctx context.Context, doguRe
 	isExportModeActive, err := dem.isDeploymentInExportMode(ctx, doguResource.GetObjectKey())
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("failed to check if deployment is in export-mode dogu %q", doguResource.Name))
-		return false
+		return true
 	}
 
 	return shouldExportModeBeActive != isExportModeActive

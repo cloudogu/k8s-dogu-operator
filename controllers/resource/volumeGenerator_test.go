@@ -2,6 +2,7 @@ package resource
 
 import (
 	"github.com/cloudogu/cesapp-lib/core"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -385,6 +386,22 @@ func Test_createVolumes(t *testing.T) {
 		assert.True(t, *volumes[5].VolumeSource.ConfigMap.Optional)
 	})
 
+	t.Run("should create importer publicKey-volume for active export-mode", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+
+		// when
+		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{}, true)
+
+		// then
+		require.NoError(t, err)
+		assert.Len(t, volumes, 7)
+
+		assert.Equal(t, importPublicKeyVolumeName, volumes[6].Name)
+		assert.Equal(t, importerPublicKeyConfigMapName, volumes[6].VolumeSource.ConfigMap.Name)
+		assert.True(t, *volumes[6].VolumeSource.ConfigMap.Optional)
+	})
+
 	t.Run("should create dogu volumes", func(t *testing.T) {
 		// given
 		ldapDoguResource := readLdapDoguResource(t)
@@ -538,4 +555,34 @@ func Test_createDoguJsonVolumeMountsFromDependencies(t *testing.T) {
 			assert.Equalf(t, tt.want, createDoguJsonVolumeMountsFromDependencies(tt.args.dogu), "createDoguJsonVolumeMountsFromDependencies(%v)", tt.args.dogu)
 		})
 	}
+}
+
+func Test_createExporterSidecarVolumeMounts(t *testing.T) {
+	t.Run("should create volume-mount for exporter sidecar", func(t *testing.T) {
+		mounts := createExporterSidecarVolumeMounts(&k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{})
+
+		require.NotNil(t, mounts)
+		require.Len(t, mounts, 1)
+
+		assert.Equal(t, importPublicKeyVolumeName, mounts[0].Name)
+		assert.Equal(t, "/root/.ssh/authorized_keys", mounts[0].MountPath)
+		assert.Equal(t, importerPublicKeySubPath, mounts[0].SubPath)
+		assert.True(t, mounts[0].ReadOnly)
+	})
+
+	t.Run("should create volume-mount for exporter sidecar including data-volume", func(t *testing.T) {
+		mounts := createExporterSidecarVolumeMounts(&k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{Volumes: []core.Volume{{NeedsBackup: true}}})
+
+		require.NotNil(t, mounts)
+		require.Len(t, mounts, 2)
+
+		assert.Equal(t, importPublicKeyVolumeName, mounts[0].Name)
+		assert.Equal(t, "/root/.ssh/authorized_keys", mounts[0].MountPath)
+		assert.Equal(t, importerPublicKeySubPath, mounts[0].SubPath)
+		assert.True(t, mounts[0].ReadOnly)
+
+		assert.Equal(t, "test-data", mounts[1].Name)
+		assert.Equal(t, "/data", mounts[1].MountPath)
+		assert.Equal(t, "", mounts[1].SubPath)
+	})
 }

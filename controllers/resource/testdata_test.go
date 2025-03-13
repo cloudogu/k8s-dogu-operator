@@ -28,6 +28,9 @@ var imageConfBytes []byte
 //go:embed testdata/ldap_expectedDeployment.yaml
 var expectedDeploymentBytes []byte
 
+//go:embed testdata/ldap_expectedDeployment_ExporterSidecar.yaml
+var expectedDeploymentWithExporterSidecarBytes []byte
+
 //go:embed testdata/ldap_expectedDeployment_SecurityContext.yaml
 var expectedDeploymentWithSecurityContextBytes []byte
 
@@ -111,6 +114,18 @@ func readLdapDoguExpectedDeployment(t *testing.T) *appsv1.Deployment {
 
 	data := &appsv1.Deployment{}
 	err := yaml.Unmarshal(expectedDeploymentBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readLdapDoguExpectedDeploymentWithExporterSidecar(t *testing.T) *appsv1.Deployment {
+	t.Helper()
+
+	data := &appsv1.Deployment{}
+	err := yaml.Unmarshal(expectedDeploymentWithExporterSidecarBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

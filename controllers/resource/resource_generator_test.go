@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36"}
+var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36", "exporterImage": "exporter:0.0.1"}
 
 const testChownInitContainerImage = "busybox:1.36"
 
@@ -322,6 +322,36 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("Return deployment with exporter-sidecar", func(t *testing.T) {
+		// when
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDoguResource.Spec.ExportMode = true
+		ldapDogu := readLdapDogu(t)
+
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(testCtx, ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
+		securityGenMock := newMockSecurityContextGenerator(t)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:                   getTestScheme(),
+			requirementsGenerator:    requirementsGen,
+			hostAliasGenerator:       hostAliasGeneratorMock,
+			securityContextGenerator: securityGenMock,
+			additionalImages:         testAdditionalImages,
+		}
+
+		actualDeployment, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+
+		// then
+		require.NoError(t, err)
+		expectedDeployment := readLdapDoguExpectedDeploymentWithExporterSidecar(t)
+
+		assert.Equal(t, expectedDeployment, actualDeployment)
 	})
 }
 
