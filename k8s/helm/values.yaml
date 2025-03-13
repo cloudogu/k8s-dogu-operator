@@ -9,7 +9,7 @@ additionalImages:
   # chownInitImage will be used to change file permissions on writeable dogu volumes
   chownInitImage: busybox:1.36
   # exporterImage will be used as sidecar container if the export-mode of a dogu is active
-  exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:0.0.0
+  exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.0.0
 controllerManager:
   image:
     registry: docker.io

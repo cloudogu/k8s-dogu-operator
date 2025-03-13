@@ -15,6 +15,10 @@ update_versions_modify_files() {
   local chownInitImage
   chownInitImage=$(./.bin/yq ".additionalImages.chownInitImage" "${valuesYAML}")
   ./.bin/yq -i ".values.images.chownInitImage = \"${chownInitImage}\"" "${componentPatchTplYAML}"
+
+  local exporterImage
+  exporterImage=$(./.bin/yq ".additionalImages.exporterImage" "${valuesYAML}")
+  ./.bin/yq -i ".values.images.exporterImage = \"${exporterImage}\"" "${componentPatchTplYAML}"
 }
 
 update_versions_stage_modified_files() {
