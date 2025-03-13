@@ -51,3 +51,4 @@ Die aktuelle Liste der zusätzlichen Images und deren Zugriffsschlüssel:
 | Schlüssel        | Image-Beschreibung                                                                                               |
 |------------------|------------------------------------------------------------------------------------------------------------------|
 | `chownInitImage` | init container image zum Ändern der Dateibesitzverhältnisse vor dem Start eines kubectl. Muss `chown` enthalten. |
+| `exporterImage`  | exporter-sidecar image zum Bereitstellen der Volume-Daten eines Dogus per "Rsync over SSH"                       |

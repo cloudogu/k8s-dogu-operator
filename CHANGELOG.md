@@ -5,10 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## Added
+- [#231] Export-Mode on Dogu-CR
+  - When the exportMode of a dogu is active an additional exporter-sidecar-container is added to the pod of the dogu 
+
+## Changed
+- [#231] Update to go v1.24.1
 
 ## [v3.2.1] - 2025-01-28
 ## Removed
-- [227] Remove allowPrivilegeEscalation flag
+- [#227] Remove allowPrivilegeEscalation flag
 
 ## [v3.2.0] - 2025-01-27
 ### Added
