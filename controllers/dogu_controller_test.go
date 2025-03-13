@@ -957,7 +957,7 @@ func Test_buildResourceDiff(t *testing.T) {
 		{
 			name: "upgrade-diff",
 			args: args{objOld: oldDoguResource, objNew: newDoguResource},
-			want: "  &v2.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v2.DoguSpec{\n  \t\tName:      \"ns/dogu\",\n- \t\tVersion:   \"1.2.3-4\",\n+ \t\tVersion:   \"1.2.3-5\",\n  \t\tResources: {},\n  \t\tSecurity:  {},\n  \t\t... // 4 identical fields\n  \t},\n  \tStatus: {},\n  }\n",
+			want: "  &v2.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v2.DoguSpec{\n  \t\tName:      \"ns/dogu\",\n- \t\tVersion:   \"1.2.3-4\",\n+ \t\tVersion:   \"1.2.3-5\",\n  \t\tResources: {},\n  \t\tSecurity:  {},\n  \t\t... // 5 identical fields\n  \t},\n  \tStatus: {},\n  }\n",
 		},
 		{
 			name: "delete-diff",
@@ -2278,7 +2278,7 @@ func newDoguDeploymentWithSecurity(podSecurityContext *v1.PodSecurityContext, co
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					SecurityContext: podSecurityContext,
-					Containers:      []v1.Container{{SecurityContext: containerSecurityContext}},
+					Containers:      []v1.Container{{Name: "ledogu", SecurityContext: containerSecurityContext}},
 				},
 			},
 		},

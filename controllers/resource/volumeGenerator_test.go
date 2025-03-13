@@ -360,7 +360,7 @@ func Test_createVolumes(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{})
+		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{}, false)
 
 		// then
 		require.NoError(t, err)
@@ -374,7 +374,7 @@ func Test_createVolumes(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{Name: "official/ldap"})
+		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{Name: "official/ldap"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -404,7 +404,7 @@ func Test_createVolumes(t *testing.T) {
 					NeedsBackup: false,
 				},
 			},
-		})
+		}, false)
 
 		// then
 		require.NoError(t, err)
@@ -436,7 +436,7 @@ func Test_createVolumes(t *testing.T) {
 					}},
 				},
 			},
-		})
+		}, false)
 
 		// then
 		require.Error(t, err)
