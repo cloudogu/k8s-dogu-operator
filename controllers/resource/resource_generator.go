@@ -137,10 +137,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	if exportModeActive {
 		exporterImage := r.additionalImages[config.ExporterImageConfigmapNameKey]
 
-		exporterContainer, err := getExporterContainer(dogu, doguResource, exporterImage)
-		if err != nil {
-			return nil, err
-		}
+		exporterContainer := getExporterContainer(dogu, doguResource, exporterImage)
 
 		sidecars = append(sidecars, exporterContainer)
 	}
@@ -234,7 +231,7 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 	}, nil
 }
 
-func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) (*corev1.Container, error) {
+func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) *corev1.Container {
 	exporter := &corev1.Container{
 		Name:         fmt.Sprintf("%s-exporter", doguResource.Name),
 		Image:        exporterImage,
@@ -250,7 +247,7 @@ func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterIma
 		},
 	}
 
-	return exporter, nil
+	return exporter
 }
 
 func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume {
