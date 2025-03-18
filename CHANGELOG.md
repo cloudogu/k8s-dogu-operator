@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ## Added
 - [#231] Export-Mode on Dogu-CR
-  - When the exportMode of a dogu is active an additional exporter-sidecar-container is added to the pod of the dogu 
+  - This change adds an additional exporter-sidecar container to the pod of the dogu if the exportMode of a dogu is active
 
 ## Changed
 - [#231] Update to go v1.24.1
