@@ -9,7 +9,6 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 
-	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -91,6 +90,10 @@ func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource
 
 	shouldUpdate, err := dem.shouldUpdateExportMode(ctx, doguResource)
 	if shouldUpdate || err != nil {
+		if err != nil {
+			logger.Error(err, "error while checking export-mode.")
+		}
+
 		if updateErr := dem.updateExportMode(ctx, doguResource); updateErr != nil {
 			return updateErr
 		}
@@ -138,8 +141,6 @@ func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguRes
 }
 
 func (dem *doguExportManager) isDeploymentInExportMode(ctx context.Context, doguName types.NamespacedName) (bool, error) {
-	logrus.Info(fmt.Sprintf("Check export-mode status for deployment %s", doguName))
-
 	podList, err := dem.podClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", k8sv2.DoguLabelName, doguName.Name)})
 	if err != nil {
 		return false, fmt.Errorf("failed to get pods of deployment %q: %w", doguName, err)
