@@ -39,7 +39,7 @@ spec:
                   description: AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
                   type: object
                 exportMode:
-                  description: ExportMode indicates whether the dogu should be in "Export-Mode". If "true" an "exporter"-sidecar-container with a volume-mount for the data-volume of the dogu is added.
+                  description: ExportMode indicates whether the dogu should be in "export mode". If true, the operator will spawn an exporter sidecar container along with a new volume mount to aid the migration process from one Cloudogu EcoSystem to another.
                   type: boolean
                 name:
                   description: Name of the dogu (e.g. official/ldap)

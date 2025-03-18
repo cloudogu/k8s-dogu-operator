@@ -61,8 +61,8 @@ type DoguSpec struct {
 	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
 	// a crash loop).
 	SupportMode bool `json:"supportMode,omitempty"`
-	// ExportMode indicates whether the dogu should be in "Export-Mode". If "true" an "exporter"-sidecar-container with a volume-mount for the
-	// data-volume of the dogu is added.
+	// ExportMode indicates whether the dogu should be in "export mode". If true, the operator will spawn an exporter sidecar
+	// container along with a new volume mount to aid the migration process from one Cloudogu EcoSystem to another.
 	ExportMode bool `json:"exportMode,omitempty"`
 	// Stopped indicates whether the dogu should be running (stopped=false) or not (stopped=true).
 	Stopped bool `json:"stopped,omitempty"`
@@ -118,7 +118,7 @@ type DoguStatus struct {
 	InstalledVersion string `json:"installedVersion,omitempty"`
 	// Stopped shows if the dogu has been stopped or not.
 	Stopped bool `json:"stopped,omitempty"`
-	// ExportMode shows if the export-mode of the dogu is currently active.
+	// ExportMode shows if the export mode of the dogu is currently active.
 	ExportMode bool `json:"exportMode,omitempty"`
 }
 

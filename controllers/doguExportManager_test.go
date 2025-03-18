@@ -53,6 +53,41 @@ func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 		assert.True(t, err.(exportModeNotYetChangedError).Requeue())
 	})
 
+	t.Run("should update deployment when could not get current state of export-mode", func(t *testing.T) {
+		doguResource := &k8sv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec:       k8sv2.DoguSpec{ExportMode: true},
+		}
+
+		dogu := &core.Dogu{}
+
+		mockDoguClient := newMockDoguInterface(t)
+		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil)
+
+		mockPodClient := newMockPodInterface(t)
+		mockPodClient.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=myDogu"}).Return(nil, assert.AnError)
+
+		mockDoguFetcher := newMockLocalDoguFetcher(t)
+		mockDoguFetcher.EXPECT().FetchInstalled(testCtx, doguResource.GetSimpleDoguName()).Return(dogu, nil)
+
+		mockUpserter := newMockResourceUpserter(t)
+		mockUpserter.EXPECT().UpsertDoguDeployment(testCtx, doguResource, dogu, mock.Anything).Return(nil, nil)
+
+		dem := &doguExportManager{
+			doguClient:       mockDoguClient,
+			podClient:        mockPodClient,
+			doguFetcher:      mockDoguFetcher,
+			resourceUpserter: mockUpserter,
+		}
+
+		err := dem.UpdateExportMode(testCtx, doguResource)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error while changing the export-mode of dogu \"myDogu\": failed to check if deployment is in export-mode dogu \"myDogu\": failed to get pods of deployment \"/myDogu\":")
+		assert.Equal(t, requeueWaitTimeout, err.(exportModeNotYetChangedError).GetRequeueTime())
+		assert.True(t, err.(exportModeNotYetChangedError).Requeue())
+	})
+
 	t.Run("should fail to update deployment when export-mode changes on error updating status", func(t *testing.T) {
 		doguResource := &k8sv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
@@ -126,7 +161,8 @@ func Test_doguExportManager_shouldUpdateExportMode(t *testing.T) {
 			podClient: mockPodClient,
 		}
 
-		result := dem.shouldUpdateExportMode(testCtx, doguResource)
+		result, err := dem.shouldUpdateExportMode(testCtx, doguResource)
+		require.NoError(t, err)
 		require.True(t, result)
 	})
 
@@ -147,7 +183,8 @@ func Test_doguExportManager_shouldUpdateExportMode(t *testing.T) {
 			podClient: mockPodClient,
 		}
 
-		result := dem.shouldUpdateExportMode(testCtx, doguResource)
+		result, err := dem.shouldUpdateExportMode(testCtx, doguResource)
+		require.NoError(t, err)
 		require.False(t, result)
 	})
 
@@ -164,8 +201,11 @@ func Test_doguExportManager_shouldUpdateExportMode(t *testing.T) {
 			podClient: mockPodClient,
 		}
 
-		result := dem.shouldUpdateExportMode(testCtx, doguResource)
-		require.True(t, result)
+		result, err := dem.shouldUpdateExportMode(testCtx, doguResource)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to check if deployment is in export-mode dogu \"myDogu\": failed to get pods of deployment \"/myDogu\":")
+		assert.True(t, result)
 	})
 }
 
