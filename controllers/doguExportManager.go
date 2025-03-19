@@ -146,7 +146,7 @@ func (dem *doguExportManager) isDeploymentInExportMode(ctx context.Context, dogu
 		return false, fmt.Errorf("failed to get pods of deployment %q: %w", doguName, err)
 	}
 
-	exporterContainerName := fmt.Sprintf("%s-exporter", doguName.Name)
+	exporterContainerName := resource.CreateExporterContainerName(doguName.Name)
 	for _, pod := range podList.Items {
 		for _, containerStatus := range pod.Status.ContainerStatuses {
 			if containerStatus.Name == exporterContainerName && containerStatus.Ready {

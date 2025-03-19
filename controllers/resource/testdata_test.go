@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"

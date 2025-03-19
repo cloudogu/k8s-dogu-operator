@@ -217,8 +217,8 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 		Image: chownInitImage,
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-				Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE"},
+				Drop: []corev1.Capability{core.All},
+				Add:  []corev1.Capability{core.Chown, core.DacOverride},
 			},
 			RunAsNonRoot:           &runAsNonRoot,
 			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
@@ -233,12 +233,12 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 
 func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) *corev1.Container {
 	exporter := &corev1.Container{
-		Name:         fmt.Sprintf("%s-exporter", doguResource.Name),
+		Name:         CreateExporterContainerName(doguResource.Name),
 		Image:        exporterImage,
 		VolumeMounts: createExporterSidecarVolumeMounts(doguResource, dogu),
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
+				Drop: []corev1.Capability{core.All},
 				Add:  []corev1.Capability{core.DacOverride, core.SysChroot, core.NetBindService, core.Setgid, core.Setuid},
 			},
 			SELinuxOptions:  &corev1.SELinuxOptions{},
@@ -380,4 +380,9 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 
 func wrapControllerReferenceError(err error) error {
 	return fmt.Errorf("failed to set controller reference: %w", err)
+}
+
+// CreateExporterContainerName creates the name for the exporter-container used as a sidecar-container
+func CreateExporterContainerName(doguName string) string {
+	return fmt.Sprintf("%s-exporter", doguName)
 }
