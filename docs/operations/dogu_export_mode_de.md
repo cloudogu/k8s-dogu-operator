@@ -1,7 +1,7 @@
 # Export-Modus für Dogus
 
-Für die Migration einer Multinode CES-Instanz müssen die Daten aller Dogus von der Quell-Instanz ind die Ziel-Instanz kopiert werden.
-Damit die Downtime während der Migration möglichst gering ist, sollen die Daten kopiert während die Quell-Instanz weiterhin im Betrieb ist.
+Für die Migration einer Multinode CES-Instanz müssen die Daten aller Dogus von der Quell-Instanz in die Ziel-Instanz kopiert werden.
+Damit die Downtime während der Migration möglichst gering ist, sollen die Daten kopiert werden, während die Quell-Instanz weiterhin im Betrieb ist.
 Der "Export-Modus" eines Dogus stellt das Daten-Volume des Dogus über einen "Exporter"-Sidecar-Container für die Migration zur Verfügung.
 
 ## Aktivieren des Export-Modus

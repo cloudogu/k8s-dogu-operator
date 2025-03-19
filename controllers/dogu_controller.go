@@ -442,8 +442,8 @@ func (r *doguReconciler) checkSecurityContextChanged(ctx context.Context, doguRe
 	}
 
 	for _, container := range doguDeployment.Spec.Template.Spec.Containers {
-		if container.Name != doguResource.Name {
-			// only check the dogu-container
+		skipNonDoguContainersInPod := container.Name != doguResource.Name
+		if skipNonDoguContainersInPod {
 			continue
 		}
 		slices.Sort(container.SecurityContext.Capabilities.Add)

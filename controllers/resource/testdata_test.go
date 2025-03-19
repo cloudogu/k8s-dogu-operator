@@ -126,9 +126,7 @@ func readLdapDoguExpectedDeploymentWithExporterSidecar(t *testing.T) *appsv1.Dep
 
 	data := &appsv1.Deployment{}
 	err := yaml.Unmarshal(expectedDeploymentWithExporterSidecarBytes, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	require.NoError(t, err)
 
 	return data
 }

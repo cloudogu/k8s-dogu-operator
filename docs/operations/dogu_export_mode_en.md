@@ -2,7 +2,7 @@
 
 To migrate a multinode CES instance, the data of all Dogus must be copied from the source instance to the target instance.
 To minimize downtime during the migration, the data should be copied while the source instance is still in operation.
-The “Export mode” of a Dogus makes the data volume of the Dogus available for migration via an “Exporter” sidecar container.
+The “Export mode” of a Dogu makes its data volume available for migration via an “Exporter” sidecar container.
 
 ## Activating the export mode
 
@@ -37,8 +37,7 @@ This makes the data available for migration via “Rsync over SSH”
 
 ## Deactivation of the export mode
 
-To restore a Dogu to its original state, the Dogu resource must be set to `false` with an
-`exportMode` field must be updated.
+To restore a Dogu to its original state, the Dogu resource must be updated with the `exportMode` field  to `false`.
 
 Example:
 ```yaml
