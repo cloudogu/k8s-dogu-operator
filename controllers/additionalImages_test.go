@@ -43,7 +43,7 @@ func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "configmap 'k8s-dogu-operator-additional-images' must not contain empty chown init image name")
+		assert.ErrorContains(t, err, "configmap 'k8s-dogu-operator-additional-images' must not contain empty image name for key chownInitImage")
 	})
 	t.Run("should fail on invalid image tag", func(t *testing.T) {
 		// given

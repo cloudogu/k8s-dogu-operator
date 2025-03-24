@@ -19,6 +19,7 @@ type podSpecBuilder struct {
 	specServiceAccountName           string
 	specAutomountServiceAccountToken bool
 	specInitContainers               []corev1.Container
+	specSidecarContainers            []corev1.Container
 	specContainerCommand             []string
 	specContainerArgs                []string
 	specContainerLivenessProbe       *corev1.Probe
@@ -66,6 +67,18 @@ func (p *podSpecBuilder) initContainers(initContainers ...*corev1.Container) *po
 
 		foundContainer := *initContainer
 		p.specInitContainers = append(p.specInitContainers, foundContainer)
+	}
+	return p
+}
+
+func (p *podSpecBuilder) sidecarContainers(sidecarContainers ...*corev1.Container) *podSpecBuilder {
+	for _, sidecarContainer := range sidecarContainers {
+		if sidecarContainer == nil {
+			continue
+		}
+
+		foundContainer := *sidecarContainer
+		p.specSidecarContainers = append(p.specSidecarContainers, foundContainer)
 	}
 	return p
 }
@@ -170,21 +183,33 @@ func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 			AutomountServiceAccountToken: &p.specAutomountServiceAccountToken,
 			InitContainers:               p.specInitContainers,
 			SecurityContext:              p.specPodSecurityContext,
-			Containers: []corev1.Container{{
-				Name:            p.theDoguResource.Name,
-				Image:           p.theDogu.Image + ":" + p.theDogu.Version,
-				Command:         p.specContainerCommand,
-				Args:            p.specContainerArgs,
-				LivenessProbe:   p.specContainerLivenessProbe,
-				StartupProbe:    p.specContainerStartupProbe,
-				ImagePullPolicy: p.specContainerImagePullPolicy,
-				VolumeMounts:    p.specContainerVolumeMounts,
-				Env:             p.specContainerEnvVars,
-				Resources:       p.specContainerResourcesReq,
-				SecurityContext: p.specContainerSecurityContext,
-			}},
+			Containers:                   p.buildContainers(),
 		},
 	}
 
 	return result
+}
+
+func (p *podSpecBuilder) buildContainers() []corev1.Container {
+	containers := []corev1.Container{p.buildDoguContainer()}
+
+	return append(containers, p.specSidecarContainers...)
+}
+
+func (p *podSpecBuilder) buildDoguContainer() corev1.Container {
+	container := corev1.Container{
+		Name:            p.theDoguResource.Name,
+		Image:           p.theDogu.Image + ":" + p.theDogu.Version,
+		Command:         p.specContainerCommand,
+		Args:            p.specContainerArgs,
+		LivenessProbe:   p.specContainerLivenessProbe,
+		StartupProbe:    p.specContainerStartupProbe,
+		ImagePullPolicy: p.specContainerImagePullPolicy,
+		VolumeMounts:    p.specContainerVolumeMounts,
+		Env:             p.specContainerEnvVars,
+		Resources:       p.specContainerResourcesReq,
+		SecurityContext: p.specContainerSecurityContext,
+	}
+
+	return container
 }

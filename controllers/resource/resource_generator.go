@@ -107,7 +107,9 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 
 // GetPodTemplate returns a pod template for the given dogu.
 func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
-	volumes, err := createVolumes(doguResource, dogu)
+	exportModeActive := doguResource.Spec.ExportMode
+
+	volumes, err := createVolumes(doguResource, dogu, exportModeActive)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +132,16 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		return nil, err
 	}
 
+	sidecars := make([]*corev1.Container, 0)
+
+	if exportModeActive {
+		exporterImage := r.additionalImages[config.ExporterImageConfigmapNameKey]
+
+		exporterContainer := getExporterContainer(dogu, doguResource, exporterImage)
+
+		sidecars = append(sidecars, exporterContainer)
+	}
+
 	hostAliases, err := r.hostAliasGenerator.Generate(ctx)
 	if err != nil {
 		return nil, err
@@ -149,6 +161,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 		enableServiceLinks(false).
 		initContainers(chownContainer).
+		sidecarContainers(sidecars...).
 		containerEmptyCommandAndArgs().
 		containerLivenessProbe().
 		containerStartupProbe().
@@ -204,8 +217,8 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 		Image: chownInitImage,
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-				Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE"},
+				Drop: []corev1.Capability{core.All},
+				Add:  []corev1.Capability{core.Chown, core.DacOverride},
 			},
 			RunAsNonRoot:           &runAsNonRoot,
 			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
@@ -216,6 +229,25 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
 		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
 	}, nil
+}
+
+func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) *corev1.Container {
+	exporter := &corev1.Container{
+		Name:         CreateExporterContainerName(doguResource.Name),
+		Image:        exporterImage,
+		VolumeMounts: createExporterSidecarVolumeMounts(doguResource, dogu),
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{core.All},
+				Add:  []corev1.Capability{core.DacOverride, core.SysChroot, core.NetBindService, core.Setgid, core.Setuid},
+			},
+			SELinuxOptions:  &corev1.SELinuxOptions{},
+			SeccompProfile:  &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
+			AppArmorProfile: &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
+		},
+	}
+
+	return exporter
 }
 
 func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume {
@@ -348,4 +380,9 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 
 func wrapControllerReferenceError(err error) error {
 	return fmt.Errorf("failed to set controller reference: %w", err)
+}
+
+// CreateExporterContainerName creates the name for the exporter-container used as a sidecar-container
+func CreateExporterContainerName(doguName string) string {
+	return fmt.Sprintf("%s-exporter", doguName)
 }

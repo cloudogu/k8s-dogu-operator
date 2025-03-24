@@ -37,6 +37,7 @@ type DoguManager struct {
 	volumeManager             volumeManager
 	ingressAnnotationsManager additionalIngressAnnotationsManager
 	supportManager            supportManager
+	exportManager             exportManager
 	startStopManager          DoguStartStopManager
 	securityContextManager    securityContextManager
 	recorder                  record.EventRecorder
@@ -64,21 +65,20 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 	}
 
 	installManager := NewDoguInstallManager(client, mgrSet, eventRecorder, configRepos)
-	if err != nil {
-		return nil, err
-	}
 
 	upgradeManager := NewDoguUpgradeManager(client, mgrSet, eventRecorder)
-	if err != nil {
-		return nil, err
-	}
 
 	deleteManager := NewDoguDeleteManager(client, operatorConfig, mgrSet, eventRecorder, configRepos)
-	if err != nil {
-		return nil, err
-	}
 
 	supportManager := NewDoguSupportManager(client, mgrSet, eventRecorder)
+
+	exportManager := NewDoguExportManager(
+		ecosystemClient.Dogus(operatorConfig.Namespace),
+		clientSet.CoreV1().Pods(operatorConfig.Namespace),
+		mgrSet.ResourceUpserter,
+		mgrSet.LocalDoguFetcher,
+		eventRecorder,
+	)
 
 	volumeManager := NewDoguVolumeManager(client, eventRecorder)
 
@@ -94,6 +94,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 		upgradeManager:            upgradeManager,
 		deleteManager:             deleteManager,
 		supportManager:            supportManager,
+		exportManager:             exportManager,
 		volumeManager:             volumeManager,
 		ingressAnnotationsManager: ingressAnnotationsManager,
 		startStopManager:          startStopManager,
@@ -108,11 +109,15 @@ func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Cl
 	if err != nil {
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
-	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer}
 
+	additionalExportModeContainer, err := imageGetter.imageForKey(ctx, config.ExporterImageConfigmapNameKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find cluster config: %w", err)
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
+
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
+		config.ExporterImageConfigmapNameKey: additionalExportModeContainer}
+
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
@@ -191,6 +196,16 @@ func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *k8sv2.Dogu
 	err := m.startStopManager.CheckStopped(ctx, doguResource)
 	if err == nil {
 		m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Dogu stopped.")
+	}
+
+	return err
+}
+
+// UpdateExportMode activates/deactivates the export mode for the dogu
+func (m *DoguManager) UpdateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
+	err := m.exportManager.UpdateExportMode(ctx, doguResource)
+	if err == nil {
+		m.recorder.Event(doguResource, corev1.EventTypeNormal, ChangeExportModeEventReason, "export-mode changing...")
 	}
 
 	return err

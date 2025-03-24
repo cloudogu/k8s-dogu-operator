@@ -32,3 +32,30 @@ func Test_podSpecBuilder_initContainers(t *testing.T) {
 		assert.Equal(t, v1.Container{Image: testChownInitContainerImage}, actual.Spec.InitContainers[0])
 	})
 }
+
+func Test_podSpecBuilder_sidecarContainers(t *testing.T) {
+	ldapDoguResource := readLdapDoguResource(t)
+	ldapDogu := readLdapDogu(t)
+
+	t.Run("should not add sidecar container if list is empty", func(t *testing.T) {
+		// when
+		sut := newPodSpecBuilder(ldapDoguResource, ldapDogu).sidecarContainers(nil)
+		actual := sut.build()
+
+		// then
+		require.NotNil(t, actual)
+		assert.Len(t, actual.Spec.Containers, 1)
+	})
+
+	t.Run("should not add sidecar container if list is not empty", func(t *testing.T) {
+		// when
+		sut := newPodSpecBuilder(ldapDoguResource, ldapDogu).sidecarContainers(&v1.Container{Name: "exporter-sidecar", Image: "exporter:test"})
+		actual := sut.build()
+
+		// then
+		require.NotNil(t, actual)
+		assert.Len(t, actual.Spec.Containers, 2)
+		assert.Equal(t, "exporter-sidecar", actual.Spec.Containers[1].Name)
+		assert.Equal(t, "exporter:test", actual.Spec.Containers[1].Image)
+	})
+}

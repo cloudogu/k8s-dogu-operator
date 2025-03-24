@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
@@ -27,6 +28,9 @@ var imageConfBytes []byte
 
 //go:embed testdata/ldap_expectedDeployment.yaml
 var expectedDeploymentBytes []byte
+
+//go:embed testdata/ldap_expectedDeployment_ExporterSidecar.yaml
+var expectedDeploymentWithExporterSidecarBytes []byte
 
 //go:embed testdata/ldap_expectedDeployment_SecurityContext.yaml
 var expectedDeploymentWithSecurityContextBytes []byte
@@ -114,6 +118,16 @@ func readLdapDoguExpectedDeployment(t *testing.T) *appsv1.Deployment {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+
+	return data
+}
+
+func readLdapDoguExpectedDeploymentWithExporterSidecar(t *testing.T) *appsv1.Deployment {
+	t.Helper()
+
+	data := &appsv1.Deployment{}
+	err := yaml.Unmarshal(expectedDeploymentWithExporterSidecarBytes, data)
+	require.NoError(t, err)
 
 	return data
 }

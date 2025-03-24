@@ -1,4 +1,14 @@
-inpackage: True
-testonly: True
-with-expecter: True
-keeptree: False
+with-expecter: true
+all: true
+exclude: ["vendor"]
+recursive: true
+inpackage: true
+include-auto-generated: false
+mockname: "{{.Mock}}{{.InterfaceName | camelcase }}"
+filename: "mock_{{.InterfaceName}}_test.go"
+dir: "{{.InterfaceDir}}"
+
+packages:
+  github.com/cloudogu/k8s-dogu-operator/v3:
+    config:
+      recursive: True

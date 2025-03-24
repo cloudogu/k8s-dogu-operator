@@ -3,8 +3,9 @@ ARTIFACT_ID=k8s-dogu-operator
 VERSION=3.2.1
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.23.4
-MAKEFILES_VERSION=9.3.2
+GOTAG=1.24.1
+LINT_VERSION=v1.64.7
+MAKEFILES_VERSION=9.7.0
 
 PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
@@ -17,7 +18,7 @@ HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo template-stage templ
 IMAGE_IMPORT_TARGET=image-import
 CHECK_VAR_TARGETS=check-all-vars
 
-MOCKERY_VERSION=v2.46.2
+MOCKERY_VERSION=v2.53.2
 
 include build/make/variables.mk
 include build/make/self-update.mk
@@ -30,6 +31,11 @@ include build/make/clean.mk
 include build/make/digital-signature.mk
 include build/make/k8s-controller.mk
 include build/make/mocks.mk
+
+.PHONY: mocks
+mocks: ${MOCKERY_BIN} ${MOCKERY_YAML} ## target is used to generate mocks for all interfaces in a project.
+	${MOCKERY_BIN}
+	@echo "Mocks successfully created."
 
 .PHONY: build-boot
 build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
