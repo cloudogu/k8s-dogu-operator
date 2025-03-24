@@ -868,6 +868,116 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, operations)
 	})
+
+	t.Run("installed with changed export-mode return ChangeExportMode", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv2.DoguSpec{
+				Name:    "official/ledogu",
+				Version: "42.0.0-1",
+				Security: k8sv2.Security{
+					RunAsNonRoot: ptr.To(true),
+				},
+				ExportMode: true,
+			},
+			Status: k8sv2.DoguStatus{
+				Status: k8sv2.DoguStatusInstalled,
+			},
+		}
+
+		recorder := newMockEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := newMockLocalDoguFetcher(t)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{RunAsNonRoot: ptr.To(true)},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:             ptr.To(false),
+				RunAsNonRoot:           ptr.To(true),
+				ReadOnlyRootFilesystem: ptr.To(false),
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ChangeExportMode}, operations)
+	})
+
+	t.Run("changing export-mode with not yet changed export-mode return ChangeExportMode", func(t *testing.T) {
+		// given
+		testDoguCr := &k8sv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ledogu",
+			},
+			Spec: k8sv2.DoguSpec{
+				Name:    "official/ledogu",
+				Version: "42.0.0-1",
+				Security: k8sv2.Security{
+					RunAsNonRoot: ptr.To(true),
+				},
+				ExportMode: true,
+			},
+			Status: k8sv2.DoguStatus{
+				Status: k8sv2.DoguStatusChangingExportMode,
+			},
+		}
+
+		recorder := newMockEventRecorder(t)
+
+		localDogu := &core.Dogu{Name: "official/ledogu", Version: "42.0.0-1"}
+		localDoguFetcher := newMockLocalDoguFetcher(t)
+		localDoguFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("ledogu")).Return(localDogu, nil)
+
+		doguService := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "ledogu"}}
+		doguDeployment := newDoguDeploymentWithSecurity(
+			&v1.PodSecurityContext{RunAsNonRoot: ptr.To(true)},
+			&v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{core.Chown, core.DacOverride, core.Fowner, core.Fsetid,
+						core.Kill, core.NetBindService, core.Setgid, core.Setpcap, core.Setuid},
+					Drop: []v1.Capability{core.All},
+				},
+				Privileged:             ptr.To(false),
+				RunAsNonRoot:           ptr.To(true),
+				ReadOnlyRootFilesystem: ptr.To(false),
+			},
+		)
+		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
+
+		sut := &doguReconciler{
+			client:   fakeClient,
+			fetcher:  localDoguFetcher,
+			recorder: recorder,
+		}
+
+		// when
+		operations, err := sut.evaluateRequiredOperations(testCtx, testDoguCr)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []operation{ChangeExportMode}, operations)
+	})
 }
 
 func Test_doguResourceChangeDebugPredicate_Update(t *testing.T) {
@@ -957,7 +1067,7 @@ func Test_buildResourceDiff(t *testing.T) {
 		{
 			name: "upgrade-diff",
 			args: args{objOld: oldDoguResource, objNew: newDoguResource},
-			want: "  &v2.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v2.DoguSpec{\n  \t\tName:      \"ns/dogu\",\n- \t\tVersion:   \"1.2.3-4\",\n+ \t\tVersion:   \"1.2.3-5\",\n  \t\tResources: {},\n  \t\tSecurity:  {},\n  \t\t... // 4 identical fields\n  \t},\n  \tStatus: {},\n  }\n",
+			want: "  &v2.Dogu{\n  \tTypeMeta:   {},\n  \tObjectMeta: {},\n  \tSpec: v2.DoguSpec{\n  \t\tName:      \"ns/dogu\",\n- \t\tVersion:   \"1.2.3-4\",\n+ \t\tVersion:   \"1.2.3-5\",\n  \t\tResources: {},\n  \t\tSecurity:  {},\n  \t\t... // 5 identical fields\n  \t},\n  \tStatus: {},\n  }\n",
 		},
 		{
 			name: "delete-diff",
@@ -2278,9 +2388,35 @@ func newDoguDeploymentWithSecurity(podSecurityContext *v1.PodSecurityContext, co
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					SecurityContext: podSecurityContext,
-					Containers:      []v1.Container{{SecurityContext: containerSecurityContext}},
+					Containers:      []v1.Container{{Name: "ledogu", SecurityContext: containerSecurityContext}, {Name: "sidecar"}},
 				},
 			},
 		},
 	}
+}
+
+func Test_doguReconciler_performExportModeOperation(t *testing.T) {
+	doguResource := &k8sv2.Dogu{}
+
+	t.Run("should performExportModeOperation", func(t *testing.T) {
+		mockDoguManager := NewMockCombinedDoguManager(t)
+		mockDoguManager.EXPECT().UpdateExportMode(testCtx, doguResource).Return(nil)
+
+		mockRecorder := newMockEventRecorder(t)
+		mockRecorder.EXPECT().Eventf(doguResource, v1.EventTypeNormal, "ChangeExportMode", "%s successful.", "ChangeExportMode")
+
+		mockDoguRequeueHandler := newMockRequeueHandler(t)
+		mockDoguRequeueHandler.EXPECT().Handle(testCtx, "failed to activate export-mode dogu ", doguResource, nil, mock.Anything).Return(ctrl.Result{}, nil)
+
+		dr := &doguReconciler{
+			doguManager:        mockDoguManager,
+			recorder:           mockRecorder,
+			doguRequeueHandler: mockDoguRequeueHandler,
+		}
+
+		result, err := dr.performExportModeOperation(testCtx, doguResource, true)
+
+		require.NoError(t, err)
+		assert.True(t, result.Requeue)
+	})
 }

@@ -50,3 +50,4 @@ The current list of additional images and their access keys:
 | key              | image description                                                                         |
 |------------------|-------------------------------------------------------------------------------------------|
 | `chownInitImage` | init container image to change file ownership before a dogu starts. Must contain `chown`. |
+| `exporterImage`  | exporter-sidecar image for providing the volume data of a Dogus via “Rsync over SSH”      |

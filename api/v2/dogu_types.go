@@ -61,6 +61,9 @@ type DoguSpec struct {
 	// SupportMode indicates whether the dogu should be restarted in the support mode (f. e. to recover manually from
 	// a crash loop).
 	SupportMode bool `json:"supportMode,omitempty"`
+	// ExportMode indicates whether the dogu should be in "export mode". If true, the operator will spawn an exporter sidecar
+	// container along with a new volume mount to aid the migration process from one Cloudogu EcoSystem to another.
+	ExportMode bool `json:"exportMode,omitempty"`
 	// Stopped indicates whether the dogu should be running (stopped=false) or not (stopped=true).
 	Stopped bool `json:"stopped,omitempty"`
 	// UpgradeConfig contains options to manipulate the upgrade process.
@@ -115,6 +118,8 @@ type DoguStatus struct {
 	InstalledVersion string `json:"installedVersion,omitempty"`
 	// Stopped shows if the dogu has been stopped or not.
 	Stopped bool `json:"stopped,omitempty"`
+	// ExportMode shows if the export mode of the dogu is currently active.
+	ExportMode bool `json:"exportMode,omitempty"`
 }
 
 func (d *Dogu) NextRequeueWithRetry(ctx context.Context, client client.Client) (time.Duration, error) {
@@ -157,14 +162,15 @@ func (ds *DoguStatus) ResetRequeueTime() {
 }
 
 const (
-	DoguStatusNotInstalled = ""
-	DoguStatusInstalling   = "installing"
-	DoguStatusUpgrading    = "upgrading"
-	DoguStatusDeleting     = "deleting"
-	DoguStatusInstalled    = "installed"
-	DoguStatusPVCResizing  = "resizing PVC"
-	DoguStatusStarting     = "starting"
-	DoguStatusStopping     = "stopping"
+	DoguStatusNotInstalled       = ""
+	DoguStatusInstalling         = "installing"
+	DoguStatusUpgrading          = "upgrading"
+	DoguStatusDeleting           = "deleting"
+	DoguStatusInstalled          = "installed"
+	DoguStatusPVCResizing        = "resizing PVC"
+	DoguStatusStarting           = "starting"
+	DoguStatusStopping           = "stopping"
+	DoguStatusChangingExportMode = "changing export-mode"
 )
 
 // +kubebuilder:object:root=true

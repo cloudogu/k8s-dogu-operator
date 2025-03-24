@@ -6,9 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.3.0] - 2025-03-24
+## Added
+- [#231] Export-Mode on Dogu-CR
+  - This change adds an additional exporter-sidecar container to the pod of the dogu if the exportMode of a dogu is active
+
+## Changed
+- [#231] Update to go v1.24.1
+- [#231] Update dogu operator CRD to 2.5.0
+
 ## [v3.2.1] - 2025-01-28
 ## Removed
-- [227] Remove allowPrivilegeEscalation flag
+- [#227] Remove allowPrivilegeEscalation flag
 
 ## [v3.2.0] - 2025-01-27
 ### Added

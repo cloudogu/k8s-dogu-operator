@@ -47,6 +47,11 @@ spec:
                     type: string
                   description: AdditionalIngressAnnotations provides additional annotations that get included into the dogu's ingress rules.
                   type: object
+                exportMode:
+                  description: |-
+                    ExportMode indicates whether the dogu should be in "export mode". If true, the operator will spawn an exporter sidecar
+                    container along with a new volume mount to aid the migration process from one Cloudogu EcoSystem to another.
+                  type: boolean
                 name:
                   description: Name of the dogu (e.g. official/ldap)
                   type: string
@@ -198,6 +203,9 @@ spec:
             status:
               description: DoguStatus defines the observed state of a Dogu.
               properties:
+                exportMode:
+                  description: ExportMode shows if the export mode of the dogu is currently active.
+                  type: boolean
                 health:
                   description: Health describes the health status of the dogu
                   type: string

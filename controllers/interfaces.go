@@ -49,6 +49,12 @@ type supportManager interface {
 	HandleSupportMode(ctx context.Context, doguResource *v2.Dogu) (bool, error)
 }
 
+// exportManager includes functionality to handle the export flag for dogus in the cluster.
+type exportManager interface {
+	// UpdateExportMode activates/deactivates the export mode for the dogu
+	UpdateExportMode(ctx context.Context, doguResource *v2.Dogu) error
+}
+
 // volumeManager includes functionality to edit volumes for dogus in the cluster.
 type volumeManager interface {
 	// SetDoguDataVolumeSize sets the volume size for the given dogu.
@@ -95,6 +101,7 @@ type CombinedDoguManager interface {
 	deleteManager
 	volumeManager
 	additionalIngressAnnotationsManager
+	exportManager
 	supportManager
 	startDoguManager
 	stopDoguManager

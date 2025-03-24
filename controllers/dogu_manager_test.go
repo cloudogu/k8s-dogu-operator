@@ -148,7 +148,7 @@ func TestNewDoguManager(t *testing.T) {
 		// given
 		additionalImages := createConfigMap(
 			config.OperatorAdditionalImagesConfigmapName,
-			map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"})
+			map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag", config.ExporterImageConfigmapNameKey: "exporter:0.0.1"})
 		clientSetGetter = func(c *rest.Config) (kubernetes.Interface, error) {
 			return fake2.NewSimpleClientset(additionalImages), nil
 		}
@@ -178,4 +178,44 @@ func createConfigMap(name string, data map[string]string) *corev1.ConfigMap {
 		},
 		Data: data,
 	}
+}
+
+func TestDoguManager_UpdateExportMode(t *testing.T) {
+	t.Run("should call UpdateExportMode on exportManager", func(t *testing.T) {
+		doguResource := &k8sv2.Dogu{}
+
+		mockEM := newMockExportManager(t)
+		mockEM.EXPECT().UpdateExportMode(testCtx, doguResource).Return(nil)
+
+		mockRecorder := newMockEventRecorder(t)
+		mockRecorder.EXPECT().Event(doguResource, corev1.EventTypeNormal, ChangeExportModeEventReason, "export-mode changing...")
+
+		sut := &DoguManager{
+			exportManager: mockEM,
+			recorder:      mockRecorder,
+		}
+
+		err := sut.UpdateExportMode(testCtx, doguResource)
+
+		require.NoError(t, err)
+	})
+
+	t.Run("should fail calling UpdateExportMode on exportManager", func(t *testing.T) {
+		doguResource := &k8sv2.Dogu{}
+
+		mockEM := newMockExportManager(t)
+		mockEM.EXPECT().UpdateExportMode(testCtx, doguResource).Return(assert.AnError)
+
+		mockRecorder := newMockEventRecorder(t)
+
+		sut := &DoguManager{
+			exportManager: mockEM,
+			recorder:      mockRecorder,
+		}
+
+		err := sut.UpdateExportMode(testCtx, doguResource)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
 }
