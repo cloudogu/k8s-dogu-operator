@@ -8,7 +8,7 @@ This guide is when the CRD has changed must be released.
 
 > [!IMPORTANT] Major CRD version changes may break the operator.
 >
-> Double check if a major version change is really the thing you want and also check the version dependency annotation `k8s.cloudogu.com/ces-dependency/k8s-dogu-operator-crd` in [k8s/helm/Chart.yaml](../../k8s/helm/Chart.yaml)
+> Double check if a major version change is really the thing you want and also check the version dependency annotation `k8s.cloudogu.com/ces-dependency/k8s-dogu-operator-crd` in `$workspace/k8s/helm/Chart.yaml`
 
 1. change to the `develop` branch, pull in any further changes
 2. ensure the new feature/bugfix arrived in `develop` 
