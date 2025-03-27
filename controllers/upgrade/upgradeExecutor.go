@@ -120,8 +120,7 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *apps
 
 func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Dogu, toDogu *core.Dogu, client client.Client) error {
 	originalStartupProbe := resource.CreateStartupProbe(toDogu)
-
-	deploymentUpdated := false
+	shouldWaitForNewPod := false
 
 	// We often used to have resource conflicts here, because the API server wasn't fast enough.
 	// This mechanism retries the operation if there is a conflict.
@@ -134,28 +133,29 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 		for i, container := range deployment.Spec.Template.Spec.Containers {
 			if container.Name == toDoguResource.Name && container.StartupProbe != nil {
 				deployment.Spec.Template.Spec.Containers[i].StartupProbe = originalStartupProbe
-				break
+				shouldWaitForNewPod = true
+				return client.Update(ctx, deployment)
 			}
 		}
 
-		err = client.Update(ctx, deployment)
-		if err == nil {
-			deploymentUpdated = true
-		}
-
-		return err
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	if !deploymentUpdated {
+	if !shouldWaitForNewPod {
 		return nil
 	}
 
 	// The update will trigger a pod restart. We wait here for the pod to ensure that the dogu operator does not install a next dogu
 	// with potential service account create command for this upgraded dogu. The restart could lead to errors in the service account creation.
-	err = retry.OnError(20, retry.AlwaysRetryFunc, func() error {
+	return waitForPodWithRevertedStartupProbe(ctx, client, toDoguResource, originalStartupProbe)
+}
+
+func waitForPodWithRevertedStartupProbe(ctx context.Context, client client.Client, toDoguResource *k8sv2.Dogu, probe *corev1.Probe) error {
+	return retry.OnError(20, retry.AlwaysRetryFunc, func() error {
+		log.FromContext(ctx).Info(fmt.Sprintf("Wait for %s pod with reverted startup probe", toDoguResource.Name))
 		pod, getPodErr := toDoguResource.GetPod(ctx, client)
 		if getPodErr != nil {
 			return getPodErr
@@ -163,7 +163,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 		for _, container := range pod.Spec.Containers {
 			if container.Name == toDoguResource.Name && container.StartupProbe != nil {
 				// We only edit the FailureThreshold. So check only this attribute.
-				if container.StartupProbe.FailureThreshold == originalStartupProbe.FailureThreshold {
+				if container.StartupProbe.FailureThreshold == probe.FailureThreshold {
 					return nil
 				}
 			}
@@ -171,11 +171,6 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 
 		return fmt.Errorf("retry: pod %s of dogu %s does not have original startup probe", pod.Name, toDoguResource.Name)
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func registerUpgradedDoguVersion(ctx context.Context, cesreg doguRegistrator, toDogu *core.Dogu) error {
