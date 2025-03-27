@@ -121,6 +121,8 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *apps
 func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Dogu, toDogu *core.Dogu, client client.Client) error {
 	originalStartupProbe := resource.CreateStartupProbe(toDogu)
 
+	deploymentUpdated := false
+
 	// We often used to have resource conflicts here, because the API server wasn't fast enough.
 	// This mechanism retries the operation if there is a conflict.
 	err := retry.OnConflict(func() error {
@@ -136,10 +138,19 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 			}
 		}
 
-		return client.Update(ctx, deployment)
+		err = client.Update(ctx, deployment)
+		if err == nil {
+			deploymentUpdated = true
+		}
+
+		return err
 	})
 	if err != nil {
 		return err
+	}
+
+	if !deploymentUpdated {
+		return nil
 	}
 
 	// The update will trigger a pod restart. We wait here for the pod to ensure that the dogu operator does not install a next dogu
