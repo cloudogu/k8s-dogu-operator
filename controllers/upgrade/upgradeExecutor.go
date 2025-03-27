@@ -2,7 +2,6 @@ package upgrade
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -159,7 +158,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 			}
 		}
 
-		return errors.New(fmt.Sprintf("retry: pod %s of dogu %s does not have original startup probe", pod.Name, toDoguResource.Name))
+		return fmt.Errorf("retry: pod %s of dogu %s does not have original startup probe", pod.Name, toDoguResource.Name)
 	})
 	if err != nil {
 		return err
