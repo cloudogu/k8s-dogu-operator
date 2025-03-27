@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -137,6 +138,28 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 		}
 
 		return client.Update(ctx, deployment)
+	})
+	if err != nil {
+		return err
+	}
+
+	// The update will trigger a pod restart. We wait here for the pod to ensure that the dogu operator does not install a next dogu
+	// with potential service account create command for this upgraded dogu. The restart could lead to errors in the service account creation.
+	err = retry.OnError(20, retry.AlwaysRetryFunc, func() error {
+		pod, getPodErr := toDoguResource.GetPod(ctx, client)
+		if getPodErr != nil {
+			return getPodErr
+		}
+		for _, container := range pod.Spec.Containers {
+			if container.Name == toDoguResource.Name && container.StartupProbe != nil {
+				// We only edit the FailureThreshold. So check only this attribute.
+				if container.StartupProbe.FailureThreshold == originalStartupProbe.FailureThreshold {
+					return nil
+				}
+			}
+		}
+
+		return errors.New(fmt.Sprintf("retry: pod %s of dogu %s does not have original startup probe", pod.Name, toDoguResource.Name))
 	})
 	if err != nil {
 		return err
@@ -301,7 +324,22 @@ func (ue *upgradeExecutor) applyPostUpgradeScript(ctx context.Context, toDoguRes
 func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguResource *k8sv2.Dogu, fromDogu *core.Dogu, postUpgradeCmd *core.ExposedCommand) error {
 	postUpgradeShellCmd := exec.NewShellCommand(postUpgradeCmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
 
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource, postUpgradeShellCmd, exec.ContainersStarted)
+	toDoguPod := &corev1.Pod{}
+	// Wait until new pod is spawned
+	err := retry.OnError(20, retry.TestableRetryFunc, func() error {
+		var getPodErr error
+		toDoguPod, getPodErr = toDoguResource.GetPod(ctx, ue.client)
+		if getPodErr != nil {
+			return &retry.TestableRetrierError{Err: fmt.Errorf("failed to get new %s pod for post upgrade: %w", toDoguResource.Name, getPodErr)}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, toDoguPod, postUpgradeShellCmd, exec.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", postUpgradeShellCmd, outBuf, err)
 	}
