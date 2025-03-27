@@ -3,12 +3,15 @@ package exec
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"io"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/cloudogu/retry-lib/retry"
 
@@ -72,7 +75,10 @@ func (e *stateError) Requeue() bool {
 
 // maxTries controls the maximum number of waiting intervals between tries when getting an error that is recoverable
 // during command execution.
-var maxTries = 20
+var (
+	maxTries  = 20
+	waitLimit = time.Minute * 30
+)
 
 // commandExecutor is the unit to execute commands in a dogu
 type defaultCommandExecutor struct {
@@ -98,11 +104,23 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command ShellCommand, expectedStatus PodStatusForExec) (*bytes.Buffer, error) {
 	logger := log.FromContext(ctx)
 	pod := &corev1.Pod{}
-	err := retry.OnError(maxTries, retry.AlwaysRetryFunc, func() error {
-		var err error
-		pod, err = resource.GetPod(ctx, ce.client)
+	err := retry.OnErrorWithLimit(waitLimit, retry.AlwaysRetryFunc, func() error {
+		updatedDogu := &v2.Dogu{}
+		err := ce.client.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, updatedDogu)
 		if err != nil {
-			logger.Info(fmt.Sprintf("Failed to get pod. Trying again: %s", err.Error()))
+			logger.Info(fmt.Sprintf("Failed to get dogu %s. Trying again: %s", resource.Name, err.Error()))
+			return err
+		}
+
+		if updatedDogu.Status.Health != v2.AvailableHealthStatus {
+			unavailableErrMsg := fmt.Sprintf("Dogu %s is not available. Trying again", resource.Name)
+			logger.Info(unavailableErrMsg)
+			return errors.New(unavailableErrMsg)
+		}
+
+		pod, err = v2.GetPodForLabels(ctx, ce.client, updatedDogu.GetPodLabelsWithStatusVersion())
+		if err != nil {
+			logger.Info(fmt.Sprintf("Failed to get pod from dogu %s. Trying again: %s", resource.Name, err.Error()))
 			return err
 		}
 		return nil
