@@ -12,3 +12,6 @@ metadata:
 spec:
   name: official/ldap
   version: 2.4.48-4
+status:
+  installedVersion: 2.4.48-4
+  health: available

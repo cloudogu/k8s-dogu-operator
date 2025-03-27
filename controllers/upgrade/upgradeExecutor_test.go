@@ -86,6 +86,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 	redmineOldPod.ObjectMeta.Labels[k8sv2.DoguLabelVersion] = "4.2.3-10"
 	redmineUpgradePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "redmine-new-q3w4e5", Labels: toDoguResource.GetPodLabels()},
+		Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "redmine", StartupProbe: &corev1.Probe{FailureThreshold: 6 * 30}}}},
 		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
 	}
 
@@ -131,7 +132,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Once().Return(bytes.NewBufferString("untar archive"), nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).
 			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).
+			On("ExecCommandForPod", testCtx, redmineUpgradePod, postUpgradeCmd, exec.ContainersStarted).
 			Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := newMockFileExtractor(t)
@@ -235,7 +236,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Once().Return(bytes.NewBufferString("untar archive"), nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).
 			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).
+			On("ExecCommandForPod", testCtx, redmineUpgradePod, postUpgradeCmd, exec.ContainersStarted).
 			Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := newMockFileExtractor(t)
@@ -760,7 +761,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Once().Return(bytes.NewBufferString("untar archive"), nil).
 			On("ExecCommandForPod", testCtx, redmineOldPod, preUpgradeCmd, exec.PodReady).
 			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil).
-			On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).
+			On("ExecCommandForPod", testCtx, redmineUpgradePod, postUpgradeCmd, exec.ContainersStarted).
 			Once().Return(bytes.NewBufferString("ouch"), assert.AnError)
 
 		k8sFileEx := newMockFileExtractor(t)
@@ -1615,6 +1616,14 @@ func Test_upgradeExecutor_applyPreUpgradeScripts(t *testing.T) {
 }
 
 func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
+	toDoguResource := readTestDataRedmineCr(t)
+	toDoguResource.Spec.Version = redmineUpgradeVersion
+
+	redmineUpgradePod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "redmine-new-q3w4e5", Labels: toDoguResource.GetPodLabels()},
+		Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "redmine", StartupProbe: &corev1.Probe{FailureThreshold: 6 * 30}}}},
+		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
+	}
 	t.Run("should succeed if no post-upgrade exposed command", func(t *testing.T) {
 		// given
 		toDoguResource := &k8sv2.Dogu{}
@@ -1633,21 +1642,24 @@ func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
 	})
 	t.Run("should fail on executing post-upgrade script", func(t *testing.T) {
 		// given
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, redmineUpgradePod).
+			WithStatusSubresource(&k8sv2.Dogu{}).
+			Build()
 
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 
 		mockExecutor := newMockCommandExecutor(t)
-		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString("oof"), assert.AnError)
+		mockExecutor.On("ExecCommandForPod", testCtx, redmineUpgradePod, postUpgradeCmd, exec.ContainersStarted).Once().Return(bytes.NewBufferString("oof"), assert.AnError)
 
 		eventRecorder := newMockEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once()
 
-		sut := upgradeExecutor{doguCommandExecutor: mockExecutor, eventRecorder: eventRecorder}
+		sut := upgradeExecutor{doguCommandExecutor: mockExecutor, eventRecorder: eventRecorder, client: myClient}
 
 		// when
 		err := sut.applyPostUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu)
@@ -1662,18 +1674,22 @@ func Test_upgradeExecutor_applyPostUpgradeScript(t *testing.T) {
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDogu.Version = redmineUpgradeVersion
-		toDoguResource := readTestDataRedmineCr(t)
-		toDoguResource.Spec.Version = redmineUpgradeVersion
+
+		myClient := fake.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(toDoguResource, redmineUpgradePod).
+			WithStatusSubresource(&k8sv2.Dogu{}).
+			Build()
 
 		mockExecutor := newMockCommandExecutor(t)
-		mockExecutor.On("ExecCommandForDogu", testCtx, toDoguResource, postUpgradeCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil)
+		mockExecutor.On("ExecCommandForPod", testCtx, redmineUpgradePod, postUpgradeCmd, exec.ContainersStarted).Once().Return(mockCmdOutput, nil)
 
 		eventRecorder := newMockEventRecorder(t)
 		typeNormal := corev1.EventTypeNormal
 		upgradeEvent := EventReason
 		eventRecorder.On("Eventf", toDoguResource, typeNormal, upgradeEvent, "Applying optional post-upgrade scripts...").Once()
 
-		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor}
+		upgradeExecutor := upgradeExecutor{eventRecorder: eventRecorder, doguCommandExecutor: mockExecutor, client: myClient}
 
 		// when
 		err := upgradeExecutor.applyPostUpgradeScript(testCtx, toDoguResource, fromDogu, toDogu)
@@ -1758,8 +1774,14 @@ func Test_revertStartupProbeAfterUpdate(t *testing.T) {
 	})
 	t.Run("should successfully update startup probes", func(t *testing.T) {
 		// given
+
 		toDogu := readTestDataDogu(t, redmineBytes)
 		toDoguResource := readTestDataRedmineCr(t)
+		redminePod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "redmine-new-q3w4e5", Labels: toDoguResource.GetPodLabels()},
+			Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "redmine", StartupProbe: &corev1.Probe{FailureThreshold: 6 * 30}}}},
+			Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
+		}
 		deployment := createTestDeployment("redmine", "")
 		deployment.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name: toDoguResource.Name,
@@ -1769,7 +1791,7 @@ func Test_revertStartupProbeAfterUpdate(t *testing.T) {
 		}}
 		myClient := fake.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(toDoguResource, deployment).
+			WithObjects(toDoguResource, deployment, redminePod).
 			Build()
 
 		// when

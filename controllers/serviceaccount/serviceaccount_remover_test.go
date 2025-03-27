@@ -1,6 +1,7 @@
 package serviceaccount
 
 import (
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,15 +48,20 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 	}
 	require.NotNil(t, casRemoveCmd)
 
+	availablePostgresqlDoguResource := &k8sv2.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Name: "postgresql"},
+		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus},
+	}
+	availableCasDoguResource := &k8sv2.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Name: "cas"},
+		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus},
+	}
+
 	t.Run("success with dogu sa", func(t *testing.T) {
 		// given
-		readyPod := &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
-			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
-		}
 		cli := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(readyPod).
+			WithObjects(availablePostgresqlDoguResource).
 			Build()
 
 		doguCfg := config.CreateDoguConfig("test", config.Entries{
@@ -70,7 +76,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mockCommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPod, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
@@ -91,17 +97,9 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failure during first SA deletion should not interrupt second SA deletion", func(t *testing.T) {
 		// given
-		readyPostgresPod := &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
-			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
-		}
-		readyCasPod := &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "cas-xyz", Labels: casCr.GetPodLabels()},
-			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
-		}
 		cli := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(readyPostgresPod, readyCasPod).
+			WithObjects(availableCasDoguResource, availablePostgresqlDoguResource).
 			Build()
 
 		doguCfg := config.CreateDoguConfig("test", config.Entries{
@@ -119,7 +117,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := &mockCommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", testCtx, readyCasPod, casRemoveSAShellCmd, exec.PodReady).Return(nil, nil)
+			On("ExecCommandForDogu", testCtx, availableCasDoguResource, casRemoveSAShellCmd, exec.PodReady).Return(nil, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("cas")).Return(true, nil)
@@ -227,7 +225,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to get service account dogu.json")
 	})
 
-	t.Run("failed to get service account producer pod", func(t *testing.T) {
+	t.Run("failed to get service account producer dogu", func(t *testing.T) {
 		// given
 		doguCfg := config.CreateDoguConfig("test", config.Entries{
 			"sa-postgresql/username": "testUser",
@@ -250,7 +248,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "could not find service account producer pod postgresql")
+		assert.ErrorContains(t, err, "failed to fetch dogu resource")
 	})
 
 	t.Run("failed because sa dogu does not expose remote command", func(t *testing.T) {
@@ -287,13 +285,9 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failed to execute command", func(t *testing.T) {
 		// given
-		readyPostgresPod := &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
-			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
-		}
 		cli := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(readyPostgresPod).
+			WithObjects(availablePostgresqlDoguResource).
 			Build()
 
 		doguCfg := config.CreateDoguConfig("test", config.Entries{
@@ -308,7 +302,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := &mockCommandExecutor{}
 		commandExecutorMock.Mock.
-			On("ExecCommandForPod", testCtx, readyPostgresPod, postgresRemoveSAShellCmd, exec.PodReady).Return(nil, assert.AnError)
+			On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresRemoveSAShellCmd, exec.PodReady).Return(nil, assert.AnError)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
@@ -326,13 +320,9 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 
 	t.Run("failed to delete SA credentials from dogu config", func(t *testing.T) {
 		// given
-		readyPostgresPod := &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "postgresql-xyz", Labels: postgresqlCr.GetPodLabels()},
-			Status:     v1.PodStatus{Conditions: []v1.PodCondition{{Type: v1.ContainersReady, Status: v1.ConditionTrue}}},
-		}
 		cli := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
-			WithObjects(readyPostgresPod).
+			WithObjects(availablePostgresqlDoguResource).
 			Build()
 
 		doguCfg := config.CreateDoguConfig("test", config.Entries{
@@ -347,7 +337,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mockCommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForPod", testCtx, readyPostgresPod, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
+		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)

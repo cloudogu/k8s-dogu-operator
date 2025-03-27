@@ -3,10 +3,12 @@ package exec
 import (
 	"bytes"
 	"context"
+	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/stretchr/testify/mock"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -78,6 +80,38 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		assert.Equal(t, expectedBuffer, buffer)
 	})
 
+	t.Run("success with retry if dogu was unavailable", func(t *testing.T) {
+		// given
+		doguResource := readLdapDoguResource(t)
+		doguResource.Status.Health = k8sv2.UnavailableHealthStatus
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(doguResource, runningPod).
+			Build()
+		err := cli.Update(ctx, doguResource)
+		require.NoError(t, err)
+		clientSet := testclient.NewSimpleClientset(runningPod)
+		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
+		expectedBuffer := bytes.NewBufferString(commandOutput)
+
+		timer := time.NewTimer(time.Second * 3)
+		go func() {
+			<-timer.C
+			doguResource.Status.Health = k8sv2.AvailableHealthStatus
+			err := cli.Update(ctx, doguResource)
+			require.NoError(t, err)
+		}()
+
+		// when
+		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, ContainersStarted)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, buffer)
+		assert.Equal(t, expectedBuffer, buffer)
+	})
+
 	t.Run("success with expected status PodReady", func(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().
@@ -98,9 +132,13 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		assert.Equal(t, expectedBuffer, buffer)
 	})
 
-	t.Run("found no pods", func(t *testing.T) {
+	t.Run("found no dogu resource", func(t *testing.T) {
 		// given
-		cli := fake2.NewClientBuilder().Build()
+		oldWaitLimit := waitLimit
+		waitLimit = time.Second * 3
+		defer func() { waitLimit = oldWaitLimit }()
+
+		cli := fake2.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		client := testclient.NewSimpleClientset()
 		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
@@ -110,7 +148,26 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "found no pods for labels map[dogu.name:ldap dogu.version:2.4.48-4]")
+		assert.ErrorContains(t, err, "failed to get pod for dogu ldap")
+	})
+
+	t.Run("found no dogu pod", func(t *testing.T) {
+		// given
+		oldWaitLimit := waitLimit
+		waitLimit = time.Second * 3
+		defer func() { waitLimit = oldWaitLimit }()
+
+		cli := fake2.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
+		client := testclient.NewSimpleClientset()
+		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
+		sut.commandExecutorCreator = fakeNewSPDYExecutor
+
+		// when
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, "")
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get pod for dogu ldap")
 	})
 
 	t.Run("pod is not ready", func(t *testing.T) {

@@ -8,7 +8,6 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-registry-lib/config"
-	corev1 "k8s.io/api/core/v1"
 )
 
 //nolint:unused
@@ -79,6 +78,4 @@ type localDoguFetcher interface {
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
 	ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command exec.ShellCommand, expected exec.PodStatusForExec) (*bytes.Buffer, error)
-	// ExecCommandForPod executes a command in a pod that must not necessarily be a dogu.
-	ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command exec.ShellCommand, expected exec.PodStatusForExec) (*bytes.Buffer, error)
 }
