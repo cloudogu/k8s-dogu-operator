@@ -14,10 +14,25 @@ spec:
     kind: DoguRestart
     listKind: DoguRestartList
     plural: dogurestarts
+    shortNames:
+      - dr
     singular: dogurestart
   scope: Namespaced
   versions:
-    - name: v2
+    - additionalPrinterColumns:
+        - description: The name of the dogu
+          jsonPath: .spec.doguName
+          name: Dogu
+          type: string
+        - description: The current phase of the dogu restart
+          jsonPath: .status.phase
+          name: Phase
+          type: string
+        - description: The age of the resource
+          jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v2
       schema:
         openAPIV3Schema:
           description: DoguRestart is the Schema for the dogurestarts API

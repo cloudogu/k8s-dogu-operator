@@ -17,7 +17,28 @@ spec:
     singular: dogu
   scope: Namespaced
   versions:
-    - name: v2
+    - additionalPrinterColumns:
+        - description: The desired version of the dogu
+          jsonPath: .spec.version
+          name: Spec-Version
+          type: string
+        - description: The current version of the dogu
+          jsonPath: .status.installedVersion
+          name: Installed Version
+          type: string
+        - description: The current health state of the dogu
+          jsonPath: .status.health
+          name: Health
+          type: string
+        - description: The current status of the dogu
+          jsonPath: .status.status
+          name: Status
+          type: string
+        - description: The age of the resource
+          jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v2
       schema:
         openAPIV3Schema:
           description: Dogu is the Schema for the dogus API
