@@ -52,6 +52,10 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName="dr"
+// +kubebuilder:printcolumn:name="Dogu",type="string",JSONPath=".spec.doguName",description="The name of the dogu"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="The current phase of the dogu restart"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the resource"
 
 // DoguRestart is the Schema for the dogurestarts API
 type DoguRestart struct {

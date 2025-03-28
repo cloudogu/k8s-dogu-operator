@@ -175,6 +175,11 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Spec-Version",type="string",JSONPath=".spec.version",description="The desired version of the dogu"
+// +kubebuilder:printcolumn:name="Installed Version",type="string",JSONPath=".status.installedVersion",description="The current version of the dogu"
+// +kubebuilder:printcolumn:name="Health",type="string",JSONPath=".status.health",description="The current health state of the dogu"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status",description="The current status of the dogu"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="The age of the resource"
 
 // Dogu is the Schema for the dogus API
 type Dogu struct {
