@@ -5,10 +5,9 @@ import (
 	"context"
 	"fmt"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	"github.com/cloudogu/retry-lib/retry"
 	"github.com/sirupsen/logrus"
 	"io"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,14 +38,14 @@ type creator struct {
 	client            client.Client
 	sensitiveDoguRepo sensitiveDoguConfigRepository
 	doguFetcher       localDoguFetcher
-	executor          exec.CommandExecutor
+	executor          commandExecutor
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
 	namespace         string
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(repo sensitiveDoguConfigRepository, localDoguFetcher localDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
+func NewCreator(repo sensitiveDoguConfigRepository, localDoguFetcher localDoguFetcher, commandExecutor commandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
 	return &creator{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -128,12 +127,7 @@ func (c *creator) create(ctx context.Context, dogu *core.Dogu, serviceAccount co
 		return fmt.Errorf("failed to get service account dogu.json: %w", err)
 	}
 
-	serviceAccountPod, err := getPodForServiceAccountDogu(ctx, c.client, saDogu)
-	if err != nil {
-		return fmt.Errorf("could not find service account producer pod %s: %w", saDogu.GetSimpleName(), err)
-	}
-
-	saCreds, err := c.executeCommand(ctx, dogu, saDogu, serviceAccountPod, serviceAccount)
+	saCreds, err := c.executeCommand(ctx, dogu, saDogu, serviceAccount)
 	if err != nil {
 		return fmt.Errorf("failed to execute service account create command: %w", err)
 	}
@@ -157,19 +151,17 @@ func serviceAccountExists(registryCredentialPath string, senDoguCfg config.DoguC
 	return false
 }
 
-func getPodForServiceAccountDogu(ctx context.Context, client client.Client, saDogu *core.Dogu) (*corev1.Pod, error) {
-	versionlessDoguLabel := map[string]string{v2.DoguLabelName: saDogu.GetSimpleName()}
+func getDoguResource(ctx context.Context, doguName, namespace string, client client.Client) (*v2.Dogu, error) {
+	doguResource := &v2.Dogu{}
+	err := client.Get(ctx, types.NamespacedName{Name: doguName, Namespace: namespace}, doguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch dogu resource %s: %w", doguName, err)
+	}
 
-	pod := &corev1.Pod{}
-	err := retry.OnError(readGetServiceAccountPodMaxRetriesEnv(), regLibErr.IsNotFoundError, func() error {
-		var err error
-		pod, err = v2.GetPodForLabels(ctx, client, versionlessDoguLabel)
-		return err
-	})
-	return pod, err
+	return doguResource, nil
 }
 
-func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, saPod *corev1.Pod, serviceAccount core.ServiceAccount) (map[string]string, error) {
+func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, saDogu *core.Dogu, serviceAccount core.ServiceAccount) (map[string]string, error) {
 	createCommand, err := getExposedCommand(saDogu, "service-account-create")
 	if err != nil {
 		return nil, err
@@ -180,7 +172,14 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	args = append(args, consumerDogu.GetSimpleName())
 
 	command := exec.NewShellCommand(createCommand.Command, args...)
-	buffer, err := c.executor.ExecCommandForPod(ctx, saPod, command, exec.PodReady)
+
+	doguResource, err := getDoguResource(ctx, saDogu.GetSimpleName(), c.namespace, c.client)
+	if err != nil {
+		return nil, err
+	}
+
+	// We use ExecCommandForDogu because it uses a health check for the dogu resource.
+	buffer, err := c.executor.ExecCommandForDogu(ctx, doguResource, command, exec.PodReady)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}

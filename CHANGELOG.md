@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.5.0] - 2025-04-02
+### Fixed
+- [#210] A bug where the operator tried to create a service account for example CAS when it was not healthy.
+This occurred in situations where the producer dogu got upgraded and immediately after that an installation with a service account create for that dogu happened.
+
 ## [v3.4.0] - 2025-03-31
 ### Added
 - [#234] Add additional print columns and aliases to CRDs
