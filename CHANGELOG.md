@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.5.0] - 2025-04-02
 ### Fixed
 - [#210] A bug where the operator tried to create a service account for example CAS when it was not healthy.
 This occurred in situations where the producer dogu got upgraded and immediately after that an installation with a service account create for that dogu happened.
