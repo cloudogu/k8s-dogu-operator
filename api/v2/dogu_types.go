@@ -318,6 +318,13 @@ func (d *Dogu) GetPodLabels() CesMatchingLabels {
 	}
 }
 
+func (d *Dogu) GetPodLabelsWithStatusVersion() CesMatchingLabels {
+	return map[string]string{
+		DoguLabelName:    d.Name,
+		DoguLabelVersion: d.Status.InstalledVersion,
+	}
+}
+
 // GetDoguNameLabel returns labels that select any resource being associated with this dogu.
 func (d *Dogu) GetDoguNameLabel() CesMatchingLabels {
 	return map[string]string{

@@ -33,6 +33,8 @@ const upgradeStartupProbeFailureThresholdRetries = int32(1080)
 
 const preUpgradeScriptDir = "/tmp/pre-upgrade"
 
+const maxRetries = 20
+
 type upgradeExecutor struct {
 	client                client.Client
 	ecosystemClient       ecoSystem.EcoSystemV2Interface
@@ -120,6 +122,7 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *apps
 
 func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Dogu, toDogu *core.Dogu, client client.Client) error {
 	originalStartupProbe := resource.CreateStartupProbe(toDogu)
+	shouldWaitForNewPod := false
 
 	// We often used to have resource conflicts here, because the API server wasn't fast enough.
 	// This mechanism retries the operation if there is a conflict.
@@ -132,17 +135,44 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 		for i, container := range deployment.Spec.Template.Spec.Containers {
 			if container.Name == toDoguResource.Name && container.StartupProbe != nil {
 				deployment.Spec.Template.Spec.Containers[i].StartupProbe = originalStartupProbe
-				break
+				shouldWaitForNewPod = true
+				return client.Update(ctx, deployment)
 			}
 		}
 
-		return client.Update(ctx, deployment)
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	return nil
+	if !shouldWaitForNewPod {
+		return nil
+	}
+
+	// The update will trigger a pod restart. We wait here for the pod to ensure that the dogu operator does not install a next dogu
+	// with potential service account create command for this upgraded dogu. The restart could lead to errors in the service account creation.
+	return waitForPodWithRevertedStartupProbe(ctx, client, toDoguResource, originalStartupProbe)
+}
+
+func waitForPodWithRevertedStartupProbe(ctx context.Context, client client.Client, toDoguResource *k8sv2.Dogu, probe *corev1.Probe) error {
+	return retry.OnError(maxRetries, retry.AlwaysRetryFunc, func() error {
+		log.FromContext(ctx).Info(fmt.Sprintf("Wait for %s pod with reverted startup probe", toDoguResource.Name))
+		pod, getPodErr := toDoguResource.GetPod(ctx, client)
+		if getPodErr != nil {
+			return getPodErr
+		}
+		for _, container := range pod.Spec.Containers {
+			if container.Name == toDoguResource.Name && container.StartupProbe != nil {
+				// We only edit the FailureThreshold. So check only this attribute.
+				if container.StartupProbe.FailureThreshold == probe.FailureThreshold {
+					return nil
+				}
+			}
+		}
+
+		return fmt.Errorf("retry: pod %s of dogu %s does not have original startup probe", pod.Name, toDoguResource.Name)
+	})
 }
 
 func registerUpgradedDoguVersion(ctx context.Context, cesreg doguRegistrator, toDogu *core.Dogu) error {
@@ -301,7 +331,22 @@ func (ue *upgradeExecutor) applyPostUpgradeScript(ctx context.Context, toDoguRes
 func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguResource *k8sv2.Dogu, fromDogu *core.Dogu, postUpgradeCmd *core.ExposedCommand) error {
 	postUpgradeShellCmd := exec.NewShellCommand(postUpgradeCmd.Command, fromDogu.Version, toDoguResource.Spec.Version)
 
-	outBuf, err := ue.doguCommandExecutor.ExecCommandForDogu(ctx, toDoguResource, postUpgradeShellCmd, exec.ContainersStarted)
+	toDoguPod := &corev1.Pod{}
+	// Wait until new pod is spawned
+	err := retry.OnError(maxRetries, retry.TestableRetryFunc, func() error {
+		var getPodErr error
+		toDoguPod, getPodErr = toDoguResource.GetPod(ctx, ue.client)
+		if getPodErr != nil {
+			return &retry.TestableRetrierError{Err: fmt.Errorf("failed to get new %s pod for post upgrade: %w", toDoguResource.Name, getPodErr)}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	outBuf, err := ue.doguCommandExecutor.ExecCommandForPod(ctx, toDoguPod, postUpgradeShellCmd, exec.ContainersStarted)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", postUpgradeShellCmd, outBuf, err)
 	}

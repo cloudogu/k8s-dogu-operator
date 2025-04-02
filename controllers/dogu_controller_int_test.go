@@ -360,6 +360,8 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			setExecPodRunning(ctx, "ldap")
 			createDoguPod(ctx, upgradedLdapDoguCr, oldPodLabels)
 
+			// create updated dogu pod because the upgrade routine waits for it
+			createDoguPod(ctx, upgradedLdapDoguCr, upgradedLdapDoguCr.GetPodLabels())
 			assertNewDeploymentVersionWithStartupProbe(ldapDoguLookupKey, ldapToVersion, 180)
 
 			assertRessourceStatus(ldapDoguLookupKey, "installed")
@@ -404,7 +406,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	// Fails sporadically. A cluster test did not show this behavior.
 	// The test needs to be analyzed in more detail as to why there is a problem here.
 	//
-	//It("Should fail dogu installation as dependency is missing", func() {
+	// It("Should fail dogu installation as dependency is missing", func() {
 	//	By("Creating redmine dogu resource")
 	//	installDoguCr(ctx, redmineCr)
 	//
@@ -442,7 +444,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	//	Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 	//	Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 	//	Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
-	//})
+	// })
 })
 
 func assertRessourceStatus(ressourceLookupKey types.NamespacedName, expectedStatus string) {
@@ -534,11 +536,13 @@ func createDoguPod(ctx context.Context, doguCr *k8sv2.Dogu, podLabels k8sv2.CesM
 	By("Simulate dogu pod creation by deployment controller")
 	doguPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguCr.Name,
-			Namespace: doguCr.Namespace,
-			Labels:    podLabels,
+			GenerateName: doguCr.Name,
+			Namespace:    doguCr.Namespace,
+			Labels:       podLabels,
 		},
-		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "asdf", Image: "ldap-image"}}},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: doguCr.Name, Image: "ldap-image", StartupProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{Command: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
+		}, FailureThreshold: 6 * 30}}}},
 		Status: corev1.PodStatus{Phase: corev1.PodRunning,
 			Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}},
 		},
