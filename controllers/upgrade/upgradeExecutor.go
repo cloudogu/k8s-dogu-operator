@@ -33,6 +33,8 @@ const upgradeStartupProbeFailureThresholdRetries = int32(1080)
 
 const preUpgradeScriptDir = "/tmp/pre-upgrade"
 
+const maxRetries = 20
+
 type upgradeExecutor struct {
 	client                client.Client
 	ecosystemClient       ecoSystem.EcoSystemV2Interface
@@ -154,7 +156,7 @@ func revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *k8sv2.Do
 }
 
 func waitForPodWithRevertedStartupProbe(ctx context.Context, client client.Client, toDoguResource *k8sv2.Dogu, probe *corev1.Probe) error {
-	return retry.OnError(20, retry.AlwaysRetryFunc, func() error {
+	return retry.OnError(maxRetries, retry.AlwaysRetryFunc, func() error {
 		log.FromContext(ctx).Info(fmt.Sprintf("Wait for %s pod with reverted startup probe", toDoguResource.Name))
 		pod, getPodErr := toDoguResource.GetPod(ctx, client)
 		if getPodErr != nil {
@@ -331,7 +333,7 @@ func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguR
 
 	toDoguPod := &corev1.Pod{}
 	// Wait until new pod is spawned
-	err := retry.OnError(20, retry.TestableRetryFunc, func() error {
+	err := retry.OnError(maxRetries, retry.TestableRetryFunc, func() error {
 		var getPodErr error
 		toDoguPod, getPodErr = toDoguResource.GetPod(ctx, ue.client)
 		if getPodErr != nil {
