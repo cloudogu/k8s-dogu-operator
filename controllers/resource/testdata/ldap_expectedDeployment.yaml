@@ -41,6 +41,7 @@ spec:
               type: Unconfined
             appArmorProfile:
               type: Unconfined
+          resources: { }
           command: ["sh", "-c", "mkdir -p \"/var/lib/openldap\" && chown -R 100:101 \"/var/lib/openldap\" && mkdir -p \"/etc/openldap/slapd.d\" && chown -R 100:101 \"/etc/openldap/slapd.d\""]
           volumeMounts:
             - name: ldap-data

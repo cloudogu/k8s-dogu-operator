@@ -89,6 +89,9 @@ func getTestDeployments() (*appsv1.Deployment, *appsv1.Deployment, *appsv1.Deplo
 			Namespace: "test",
 		},
 		Spec: appsv1.DeploymentSpec{Template: v1.PodTemplateSpec{Spec: v1.PodSpec{
+			InitContainers: []v1.Container{
+				{},
+			},
 			Containers: []v1.Container{
 				{},
 			},
@@ -100,6 +103,9 @@ func getTestDeployments() (*appsv1.Deployment, *appsv1.Deployment, *appsv1.Deplo
 			Namespace: "test",
 		},
 		Spec: appsv1.DeploymentSpec{Template: v1.PodTemplateSpec{Spec: v1.PodSpec{
+			InitContainers: []v1.Container{
+				{},
+			},
 			Containers: []v1.Container{
 				{},
 			},
@@ -111,6 +117,9 @@ func getTestDeployments() (*appsv1.Deployment, *appsv1.Deployment, *appsv1.Deplo
 			Namespace: "test",
 		},
 		Spec: appsv1.DeploymentSpec{Template: v1.PodTemplateSpec{Spec: v1.PodSpec{
+			InitContainers: []v1.Container{
+				{},
+			},
 			Containers: []v1.Container{
 				{},
 			},
@@ -223,14 +232,17 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 		err := clientMock.Get(ctx, types.NamespacedName{Name: dd1.GetName(), Namespace: dd1.GetNamespace()}, doguDeployment1)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.MustParse("500Mi"), doguDeployment1.Spec.Template.Spec.Containers[0].Resources.Limits[v1.ResourceMemory])
+		assert.Equal(t, resource.MustParse("500Mi"), doguDeployment1.Spec.Template.Spec.InitContainers[0].Resources.Limits[v1.ResourceMemory])
 		doguDeployment2 := &appsv1.Deployment{}
 		err = clientMock.Get(ctx, types.NamespacedName{Name: dd2.GetName(), Namespace: dd2.GetNamespace()}, doguDeployment2)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.MustParse("2Gi"), doguDeployment2.Spec.Template.Spec.Containers[0].Resources.Requests[v1.ResourceEphemeralStorage])
+		assert.Equal(t, resource.MustParse("2Gi"), doguDeployment2.Spec.Template.Spec.InitContainers[0].Resources.Requests[v1.ResourceEphemeralStorage])
 		doguDeployment3 := &appsv1.Deployment{}
 		err = clientMock.Get(ctx, types.NamespacedName{Name: dd3.GetName(), Namespace: dd3.GetNamespace()}, doguDeployment3)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.MustParse("500m"), doguDeployment3.Spec.Template.Spec.Containers[0].Resources.Limits[v1.ResourceCPU])
+		assert.Equal(t, resource.MustParse("500m"), doguDeployment3.Spec.Template.Spec.InitContainers[0].Resources.Limits[v1.ResourceCPU])
 	})
 
 	t.Run("run start and get error on change method", func(t *testing.T) {

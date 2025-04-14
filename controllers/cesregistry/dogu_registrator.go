@@ -41,27 +41,13 @@ func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, _ *k8sv2.Dogu,
 		return nil
 	}
 
-	coreVersion, err := dogu.GetVersion()
-	if err != nil {
-		return fmt.Errorf("failed to get dogu-version for dogu '%s' with version '%s': %w", dogu.GetSimpleName(), dogu.Version, err)
-	}
-
-	err = c.registerDoguInRegistry(ctx, dogu)
-	if err != nil {
-		return err
-	}
-
-	return c.enableDoguInRegistry(ctx, cescommons.SimpleNameVersion{
-		Name:    cescommons.SimpleName(dogu.GetSimpleName()),
-		Version: coreVersion,
-	})
+	return c.registerAndEnableDogu(ctx, dogu)
 }
 
 // RegisterDoguVersion registers an upgrade of an existing dogu in a cluster. Use RegisterNewDogu() to complete new
 // dogu installations.
 func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core.Dogu) error {
-
-	enabled, currentDoguVersion, err := checkDoguVersionEnabled(ctx, c.versionRegistry, cescommons.SimpleName(dogu.GetSimpleName()))
+	enabled, _, err := checkDoguVersionEnabled(ctx, c.versionRegistry, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		return fmt.Errorf("failed to check if dogu is enabled: %w", err)
 	}
@@ -70,12 +56,24 @@ func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core
 		return fmt.Errorf("could not register dogu version: previous version not found")
 	}
 
-	err = c.registerDoguInRegistry(ctx, dogu)
+	return c.registerAndEnableDogu(ctx, dogu)
+}
+
+func (c *CesDoguRegistrator) registerAndEnableDogu(ctx context.Context, dogu *core.Dogu) error {
+	err := c.registerDoguInRegistry(ctx, dogu)
 	if err != nil {
 		return err
 	}
 
-	return c.enableDoguInRegistry(ctx, currentDoguVersion)
+	coreVersion, err := dogu.GetVersion()
+	if err != nil {
+		return fmt.Errorf("failed to get dogu-version for dogu '%s' with version '%s': %w", dogu.GetSimpleName(), dogu.Version, err)
+	}
+
+	return c.enableDoguInRegistry(ctx, cescommons.SimpleNameVersion{
+		Name:    cescommons.SimpleName(dogu.GetSimpleName()),
+		Version: coreVersion,
+	})
 }
 
 // UnregisterDogu deletes a dogu from the dogu registry

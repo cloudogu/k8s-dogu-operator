@@ -228,6 +228,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.NoError(t, err)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		expectedDeployment.Spec.Template.Spec.Containers[0].Resources = requirements
+		expectedDeployment.Spec.Template.Spec.InitContainers[0].Resources = requirements
 		assert.Equal(t, expectedDeployment, actualDeployment)
 	})
 
@@ -307,13 +308,10 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 
 		requirementsGen := newMockRequirementsGenerator(t)
 		requirementsGen.EXPECT().Generate(testCtx, ldapDogu).Return(v1.ResourceRequirements{}, assert.AnError)
-		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
-		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
 
 		generatorFail := resourceGenerator{
 			scheme:                getTestScheme(),
 			requirementsGenerator: requirementsGen,
-			hostAliasGenerator:    hostAliasGeneratorMock,
 			additionalImages:      testAdditionalImages,
 		}
 
@@ -405,21 +403,31 @@ func Test_getChownInitContainer(t *testing.T) {
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "whitespace", Path: "/etc/ldap config/test", Owner: "100", Group: "100"}}}
 		doguResource := &corev1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "ldap"}}
 		expectedCommand := []string{"sh", "-c", "mkdir -p \"/etc/ldap config/test\" && chown -R 100:100 \"/etc/ldap config/test\""}
+		resources := v1.ResourceRequirements{
+			Limits: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceCPU: resource.MustParse("100m"),
+			},
+			Requests: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceMemory: resource.MustParse("100Mi"),
+			},
+		}
 
 		// when
-		container, err := getChownInitContainer(dogu, doguResource, testChownInitContainerImage)
+		container, err := getChownInitContainer(dogu, doguResource, testChownInitContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
 		require.Equal(t, expectedCommand, container.Command)
+		require.Equal(t, resources, container.Resources)
 	})
 
 	t.Run("should return nil if volumes are only of type dogu-operator", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Clients: []core.VolumeClient{{Name: "k8s-dogu-operator"}}}}}
+		resources := v1.ResourceRequirements{}
 
 		// when
-		container, err := getChownInitContainer(dogu, nil, testChownInitContainerImage)
+		container, err := getChownInitContainer(dogu, nil, testChownInitContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -429,9 +437,10 @@ func Test_getChownInitContainer(t *testing.T) {
 	t.Run("should return error if owner cannot be parsed", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "test", Owner: "3sdf"}}}
+		resources := v1.ResourceRequirements{}
 
 		// when
-		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage)
+		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage, resources)
 
 		// then
 		require.Error(t, err)
@@ -441,9 +450,10 @@ func Test_getChownInitContainer(t *testing.T) {
 	t.Run("should return error if group cannot be parsed", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "test", Owner: "1", Group: "3sdf"}}}
+		resources := v1.ResourceRequirements{}
 
 		// when
-		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage)
+		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage, resources)
 
 		// then
 		require.Error(t, err)
@@ -453,9 +463,10 @@ func Test_getChownInitContainer(t *testing.T) {
 	t.Run("should return error if ids are not greater than 0", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "test", Owner: "0", Group: "-1"}}}
+		resources := v1.ResourceRequirements{}
 
 		// when
-		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage)
+		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage, resources)
 
 		// then
 		require.Error(t, err)
@@ -463,7 +474,7 @@ func Test_getChownInitContainer(t *testing.T) {
 	})
 	t.Run("should return no initContainer if the desired image is empty", func(t *testing.T) {
 		// when
-		actual, err := getChownInitContainer(nil, nil, "")
+		actual, err := getChownInitContainer(nil, nil, "", v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)

@@ -93,6 +93,7 @@ func (hlu *RequirementsUpdater) triggerSync(ctx context.Context) error {
 			continue
 		}
 
+		doguDeployment.Spec.Template.Spec.InitContainers[0].Resources = requirements
 		doguDeployment.Spec.Template.Spec.Containers[0].Resources = requirements
 
 		lErr = hlu.client.Update(ctx, doguDeployment)

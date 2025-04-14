@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - [#236] Set sensible resource requests and limits
+- [#237] Set resource requests and limits in all containers of dogu, including init container
 
 ## [v3.5.0] - 2025-04-02
 ### Fixed

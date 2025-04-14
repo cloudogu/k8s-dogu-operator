@@ -129,12 +129,22 @@ func TestCesDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		Name:    "official/ldap",
 		Version: "1.0.0",
 	}
+	ldapDoguNew := &core.Dogu{
+		Name:    "official/ldap",
+		Version: "1.1.0",
+	}
 	coreLdapDoguVersion, lerr := ldapDogu.GetVersion()
+	require.NoError(t, lerr)
+	coreLdapDoguVersionNew, lerr := ldapDoguNew.GetVersion()
 	require.NoError(t, lerr)
 	simpleLdapDoguName := cescommons.SimpleName("ldap")
 	ldapDoguVersion := cescommons.SimpleNameVersion{
 		Name:    simpleLdapDoguName,
 		Version: coreLdapDoguVersion,
+	}
+	ldapDoguVersionNew := cescommons.SimpleNameVersion{
+		Name:    simpleLdapDoguName,
+		Version: coreLdapDoguVersionNew,
 	}
 
 	t.Run("successfully register a new dogu version", func(t *testing.T) {
@@ -142,14 +152,14 @@ func TestCesDoguRegistrator_RegisterDoguVersion(t *testing.T) {
 		mockDoguVersionRegistry := newMockDoguVersionRegistry(t)
 		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleLdapDoguName).Return(ldapDoguVersion, nil)
 		mockDoguVersionRegistry.EXPECT().IsEnabled(testCtx, ldapDoguVersion).Return(true, nil)
-		mockDoguVersionRegistry.EXPECT().Enable(testCtx, ldapDoguVersion).Return(nil)
+		mockDoguVersionRegistry.EXPECT().Enable(testCtx, ldapDoguVersionNew).Return(nil)
 		mockLocalDoguDescriptorRepository := newMockLocalDoguDescriptorRepository(t)
-		mockLocalDoguDescriptorRepository.EXPECT().Add(testCtx, simpleLdapDoguName, ldapDogu).Return(nil)
+		mockLocalDoguDescriptorRepository.EXPECT().Add(testCtx, simpleLdapDoguName, ldapDoguNew).Return(nil)
 
 		registrator := NewCESDoguRegistrator(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
 
 		// when
-		err := registrator.RegisterDoguVersion(testCtx, ldapDogu)
+		err := registrator.RegisterDoguVersion(testCtx, ldapDoguNew)
 
 		// then
 		require.NoError(t, err)
