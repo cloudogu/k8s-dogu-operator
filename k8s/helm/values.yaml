@@ -26,8 +26,7 @@ controllerManager:
     doguDescriptorMaxRetries: 20
     getServiceAccountPodMaxRetries: 5
   resourceLimits:
-    cpu: 500m
-    memory: 128Mi
+    memory: 105M
   resourceRequests:
-    cpu: 10m
-    memory: 64Mi
+    cpu: 15m
+    memory: 105M
