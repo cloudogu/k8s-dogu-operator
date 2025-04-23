@@ -41,7 +41,7 @@ func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, _ *k8sv2.Dogu,
 		return nil
 	}
 
-	return c.registerAndEnableDogu(ctx, dogu)
+	return c.registerAndEnableDoguInRegistry(ctx, dogu)
 }
 
 // RegisterDoguVersion registers an upgrade of an existing dogu in a cluster. Use RegisterNewDogu() to complete new
@@ -56,10 +56,10 @@ func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core
 		return fmt.Errorf("could not register dogu version: previous version not found")
 	}
 
-	return c.registerAndEnableDogu(ctx, dogu)
+	return c.registerAndEnableDoguInRegistry(ctx, dogu)
 }
 
-func (c *CesDoguRegistrator) registerAndEnableDogu(ctx context.Context, dogu *core.Dogu) error {
+func (c *CesDoguRegistrator) registerAndEnableDoguInRegistry(ctx context.Context, dogu *core.Dogu) error {
 	err := c.registerDoguInRegistry(ctx, dogu)
 	if err != nil {
 		return err
