@@ -100,8 +100,8 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
-            limits: {{- toYaml .Values.controllerManager.resourceLimits | nindent 12 }}
-            requests: {{- toYaml .Values.controllerManager.resourceRequests | nindent 12 }}
+            limits: {{- toYaml .Values.controllerManager.resourceLimits | nindent 14 }}
+            requests: {{- toYaml .Values.controllerManager.resourceRequests | nindent 14 }}
           securityContext:
             allowPrivilegeEscalation: true
           volumeMounts:

@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.5.1] - 2025-05-02
+
+### Changed
+- [#236] Set sensible resource requests and limits
+- [#237] Set resource requests and limits in all containers of dogu, including init container
+
+### Fixed
+- A bug where the operator would not register the new dogu version on upgrade.
+
 ## [v3.5.0] - 2025-04-02
 ### Fixed
 - [#210] A bug where the operator tried to create a service account for example CAS when it was not healthy.
