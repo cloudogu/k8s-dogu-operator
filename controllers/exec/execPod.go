@@ -15,6 +15,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	quantity "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/rest"
@@ -106,6 +107,15 @@ func (ep *execPod) createPod(k8sNamespace string, containerName string) (*corev1
 					Image:           image,
 					Command:         doNothingCommand,
 					ImagePullPolicy: pullPolicy,
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: quantity.MustParse("105M"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: quantity.MustParse("105M"),
+							corev1.ResourceCPU:    quantity.MustParse("15m"),
+						},
+					},
 				},
 			},
 			ImagePullSecrets: []corev1.LocalObjectReference{

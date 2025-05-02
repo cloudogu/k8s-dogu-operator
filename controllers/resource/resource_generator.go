@@ -127,7 +127,12 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 
 	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
 
-	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage)
+	resourceRequirements, err := r.requirementsGenerator.Generate(ctx, dogu)
+	if err != nil {
+		return nil, err
+	}
+
+	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage, resourceRequirements)
 	if err != nil {
 		return nil, err
 	}
@@ -143,11 +148,6 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	}
 
 	hostAliases, err := r.hostAliasGenerator.Generate(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	resourceRequirements, err := r.requirementsGenerator.Generate(ctx, dogu)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	return podTemplate, nil
 }
 
-func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitImage string) (*corev1.Container, error) {
+func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitImage string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
 	noInitContainerNeeded := chownInitImage == ""
 	if noInitContainerNeeded {
 		return nil, nil
@@ -228,6 +228,7 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 		},
 		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
 		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
+		Resources:    requirements,
 	}, nil
 }
 
