@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 )
@@ -38,7 +38,7 @@ func NewDoguUpgradeManager(client client.Client, mgrSet *util.ManagerSet, eventR
 type doguUpgradeManager struct {
 	// general purpose
 	client          client.Client
-	ecosystemClient ecoSystem.EcoSystemV2Interface
+	ecosystemClient doguClient.EcoSystemV2Interface
 	eventRecorder   record.EventRecorder
 	// upgrade business
 	premisesChecker     upgrade.PremisesChecker

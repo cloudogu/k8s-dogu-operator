@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	doguv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 
 	"github.com/go-logr/logr"

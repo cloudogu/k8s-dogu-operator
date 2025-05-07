@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 )
@@ -79,7 +79,7 @@ func TestNewDoguUpgradeManager(t *testing.T) {
 
 func newTestDoguUpgradeManager(
 	client client.Client,
-	ecosystemClient ecoSystem.EcoSystemV2Interface,
+	ecosystemClient doguClient.EcoSystemV2Interface,
 	recorder record.EventRecorder,
 	ldf localDoguFetcher,
 	rdf resourceDoguFetcher,

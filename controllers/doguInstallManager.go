@@ -5,7 +5,7 @@ import (
 	"fmt"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/ces-commons-lib/errors"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
@@ -29,7 +29,7 @@ const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
 	client                  K8sClient
-	ecosystemClient         ecoSystem.EcoSystemV2Interface
+	ecosystemClient         doguClient.EcoSystemV2Interface
 	recorder                record.EventRecorder
 	localDoguFetcher        localDoguFetcher
 	resourceDoguFetcher     resourceDoguFetcher

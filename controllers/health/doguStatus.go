@@ -10,20 +10,20 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv1 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 )
 
 const statusUpdateEventReason = "HealthStatusUpdate"
 const healthConfigMapName = "k8s-dogu-operator-dogu-health"
 
 type DoguStatusUpdater struct {
-	ecosystemClient ecoSystem.EcoSystemV2Interface
+	ecosystemClient doguClient.EcoSystemV2Interface
 	recorder        record.EventRecorder
 	k8sClientSet    clientSet
 }
 
-func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV2Interface, recorder record.EventRecorder, k8sClientSet clientSet) *DoguStatusUpdater {
+func NewDoguStatusUpdater(ecosystemClient doguClient.EcoSystemV2Interface, recorder record.EventRecorder, k8sClientSet clientSet) *DoguStatusUpdater {
 	return &DoguStatusUpdater{
 		ecosystemClient: ecosystemClient,
 		recorder:        recorder,
@@ -33,9 +33,9 @@ func NewDoguStatusUpdater(ecosystemClient ecoSystem.EcoSystemV2Interface, record
 
 // UpdateStatus sets the health status of the dogu according to whether if it's available or not.
 func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.NamespacedName, isAvailable bool) error {
-	doguClient := dsw.ecosystemClient.Dogus(doguName.Namespace)
+	doguEcosystemClient := dsw.ecosystemClient.Dogus(doguName.Namespace)
 
-	dogu, err := doguClient.Get(ctx, doguName.Name, metav1api.GetOptions{})
+	dogu, err := doguEcosystemClient.Get(ctx, doguName.Name, metav1api.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
 	}
@@ -45,7 +45,7 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.N
 		desiredHealthStatus = doguv1.AvailableHealthStatus
 	}
 
-	_, err = doguClient.UpdateStatusWithRetry(ctx, dogu, func(status doguv1.DoguStatus) doguv1.DoguStatus {
+	_, err = doguEcosystemClient.UpdateStatusWithRetry(ctx, dogu, func(status doguv1.DoguStatus) doguv1.DoguStatus {
 		status.Health = desiredHealthStatus
 		return status
 	}, metav1api.UpdateOptions{})

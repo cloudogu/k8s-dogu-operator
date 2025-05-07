@@ -28,7 +28,6 @@ developmentBranch = "develop"
 currentBranch = "${env.BRANCH_NAME}"
 k8sTargetDir = "target/k8s"
 helmChartDir = "${k8sTargetDir}/helm"
-helmCRDChartDir = "${k8sTargetDir}/helm-crd"
 
 node('docker') {
     timestamps {
@@ -69,13 +68,11 @@ node('docker') {
                             }
 
                             stage('Generate k8s Resources') {
-                                make 'crd-helm-generate'
                                 make 'helm-generate'
                                 archiveArtifacts "${k8sTargetDir}/**/*"
                             }
 
                             stage("Lint helm") {
-                                make 'crd-helm-lint'
                                 make 'helm-lint'
                             }
                         }
@@ -113,7 +110,6 @@ node('docker') {
             }
 
             stage('Deploy Manager') {
-                k3d.helm("install ${repositoryName}-crd ${helmCRDChartDir}")
                 k3d.helm("install ${repositoryName} ${helmChartDir}")
             }
 
@@ -222,7 +218,6 @@ void stageAutomaticRelease() {
                 .inside("--volume ${WORKSPACE}:/go/src/${project} -w /go/src/${project}")
                         {
                             make 'helm-package'
-                            make 'crd-helm-package'
                             archiveArtifacts "${k8sTargetDir}/**/*"
 
                             // Push charts
@@ -230,8 +225,6 @@ void stageAutomaticRelease() {
                                 sh ".bin/helm registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'"
 
                                 sh ".bin/helm push ${helmChartDir}/${repositoryName}-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
-                                // Disabled until the CRDs are in their own repo and can be released separately
-                                // sh ".bin/helm push ${helmCRDChartDir}/${repositoryName}-crd-${controllerVersion}.tgz oci://${registry}/${registry_namespace}/"
                             }
                         }
         }

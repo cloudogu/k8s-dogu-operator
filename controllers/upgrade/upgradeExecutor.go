@@ -3,7 +3,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -15,7 +15,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
@@ -37,7 +37,7 @@ const maxRetries = 20
 
 type upgradeExecutor struct {
 	client                client.Client
-	ecosystemClient       ecoSystem.EcoSystemV2Interface
+	ecosystemClient       doguClient.EcoSystemV2Interface
 	eventRecorder         record.EventRecorder
 	imageRegistry         imageRegistry
 	collectApplier        resource.CollectApplier
@@ -54,7 +54,7 @@ func NewUpgradeExecutor(
 	client client.Client,
 	mgrSet *util.ManagerSet,
 	eventRecorder record.EventRecorder,
-	ecosystemClient ecoSystem.EcoSystemV2Interface,
+	ecosystemClient doguClient.EcoSystemV2Interface,
 ) *upgradeExecutor {
 	return &upgradeExecutor{
 		client:                client,
@@ -187,9 +187,7 @@ func registerUpgradedDoguVersion(ctx context.Context, cesreg doguRegistrator, to
 func registerNewServiceAccount(ctx context.Context, saCreator serviceAccountCreator, toDogu *core.Dogu) error {
 	err := saCreator.CreateAll(ctx, toDogu)
 	if err != nil {
-		if err != nil {
-			return fmt.Errorf("failed to register service accounts: %w", err)
-		}
+		return fmt.Errorf("failed to register service accounts: %w", err)
 	}
 	return nil
 }

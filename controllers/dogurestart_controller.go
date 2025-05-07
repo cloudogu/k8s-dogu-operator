@@ -10,14 +10,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 )
 
 // DoguRestartReconciler reconciles a DoguRestart object
 type DoguRestartReconciler struct {
-	doguInterface        ecoSystem.DoguInterface
-	doguRestartInterface ecoSystem.DoguRestartInterface
+	doguInterface        doguClient.DoguInterface
+	doguRestartInterface doguClient.DoguRestartInterface
 	garbageCollector     DoguRestartGarbageCollector
 	recorder             record.EventRecorder
 }
@@ -26,7 +26,7 @@ type DoguRestartGarbageCollector interface {
 	DoGarbageCollection(ctx context.Context, doguName string) error
 }
 
-func NewDoguRestartReconciler(doguRestartInterface ecoSystem.DoguRestartInterface, doguInterface ecoSystem.DoguInterface, recorder record.EventRecorder, gc DoguRestartGarbageCollector) *DoguRestartReconciler {
+func NewDoguRestartReconciler(doguRestartInterface doguClient.DoguRestartInterface, doguInterface doguClient.DoguInterface, recorder record.EventRecorder, gc DoguRestartGarbageCollector) *DoguRestartReconciler {
 	return &DoguRestartReconciler{doguRestartInterface: doguRestartInterface, doguInterface: doguInterface, recorder: recorder, garbageCollector: gc}
 }
 

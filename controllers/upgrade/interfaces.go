@@ -3,8 +3,8 @@ package upgrade
 import (
 	"context"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -68,19 +68,19 @@ type serviceAccountCreator interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type ecosystemInterface interface {
-	ecoSystem.EcoSystemV2Interface
+	doguClient.EcoSystemV2Interface
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguInterface interface {
-	ecoSystem.DoguInterface
+	doguClient.DoguInterface
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
-	ecoSystem.DoguRestartInterface
+	doguClient.DoguRestartInterface
 }
 
 // fileExtractor provides functionality to get the contents of files from a container.

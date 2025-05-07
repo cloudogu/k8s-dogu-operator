@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	corev1 "k8s.io/api/core/v1"
@@ -15,7 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 )
@@ -44,7 +44,7 @@ type DoguManager struct {
 }
 
 // NewDoguManager creates a new instance of DoguManager
-func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, error) {
+func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*DoguManager, error) {
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
@@ -103,7 +103,7 @@ func NewDoguManager(client client.Client, ecosystemClient ecoSystem.EcoSystemV2I
 	}, nil
 }
 
-func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, configRepos util.ConfigRepositories) (*util.ManagerSet, error) {
+func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, configRepos util.ConfigRepositories) (*util.ManagerSet, error) {
 	imageGetter := newAdditionalImageGetter(clientSet, operatorConfig.Namespace)
 	additionalImageChownInitContainer, err := imageGetter.imageForKey(ctx, config.ChownInitImageConfigmapNameKey)
 	if err != nil {

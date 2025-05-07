@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
@@ -97,11 +97,11 @@ type doguReconciler struct {
 	doguRequeueHandler requeueHandler
 	recorder           record.EventRecorder
 	fetcher            localDoguFetcher
-	doguInterface      ecoSystem.DoguInterface
+	doguInterface      doguClient.DoguInterface
 }
 
 // NewDoguReconciler creates a new reconciler instance for the dogu resource
-func NewDoguReconciler(client client.Client, doguInterface ecoSystem.DoguInterface, doguManager CombinedDoguManager, eventRecorder record.EventRecorder, namespace string, doguFetcher localDoguFetcher) (*doguReconciler, error) {
+func NewDoguReconciler(client client.Client, doguInterface doguClient.DoguInterface, doguManager CombinedDoguManager, eventRecorder record.EventRecorder, namespace string, doguFetcher localDoguFetcher) (*doguReconciler, error) {
 	doguRequeueHandler, err := NewDoguRequeueHandler(doguInterface, eventRecorder, namespace)
 	if err != nil {
 		return nil, err

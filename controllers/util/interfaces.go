@@ -4,8 +4,8 @@ import (
 	"context"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -24,7 +24,7 @@ type securityValidator interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type ecosystemInterface interface {
-	ecoSystem.EcoSystemV2Interface
+	doguClient.EcoSystemV2Interface
 }
 
 // applier provides ways to apply unstructured Kubernetes resources against the API.

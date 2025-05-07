@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +49,7 @@ func (e exportModeNotYetChangedError) GetRequeueTime() time.Duration {
 }
 
 type doguExportManager struct {
-	doguClient       ecoSystem.DoguInterface
+	doguClient       doguClient.DoguInterface
 	podClient        podInterface
 	resourceUpserter resource.ResourceUpserter
 	doguFetcher      localDoguFetcher
@@ -58,7 +58,7 @@ type doguExportManager struct {
 
 // NewDoguExportManager creates a new doguExportManager
 func NewDoguExportManager(
-	doguClient ecoSystem.DoguInterface,
+	doguClient doguClient.DoguInterface,
 	podClient podInterface,
 	resourceUpserter resource.ResourceUpserter,
 	doguFetcher localDoguFetcher,

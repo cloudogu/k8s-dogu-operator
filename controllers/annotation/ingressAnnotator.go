@@ -3,7 +3,7 @@ package annotation
 import (
 	"encoding/json"
 	"fmt"
-	doguv1 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv1 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 
 	corev1 "k8s.io/api/core/v1"
 )

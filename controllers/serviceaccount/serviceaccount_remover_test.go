@@ -1,7 +1,7 @@
 package serviceaccount
 
 import (
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

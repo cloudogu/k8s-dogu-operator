@@ -7,6 +7,7 @@ require (
 	github.com/cloudogu/ces-commons-lib v0.2.0
 	github.com/cloudogu/cesapp-lib v0.18.1
 	github.com/cloudogu/k8s-apply-lib v0.5.0
+	github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250507061332-dac3d91c2065
 	github.com/cloudogu/k8s-host-change v0.7.0
 	github.com/cloudogu/k8s-registry-lib v0.5.1
 	github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1
@@ -70,7 +71,6 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.61.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/vbatts/tar-split v0.11.6 // indirect

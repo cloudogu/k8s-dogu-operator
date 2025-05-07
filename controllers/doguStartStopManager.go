@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 const (
@@ -34,7 +34,7 @@ const containerStateCrashLoop = "CrashLoopBackOff"
 
 // doguStartStopManager includes functionality to start and stop dogus.
 type doguStartStopManager struct {
-	doguInterface       ecoSystem.DoguInterface
+	doguInterface       doguClient.DoguInterface
 	deploymentInterface deploymentInterface
 	podInterface        podInterface
 }
@@ -91,7 +91,7 @@ func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k
 	return nil
 }
 
-func newDoguStartStopManager(doguInterface ecoSystem.DoguInterface, deploymentInterface deploymentInterface, podInterface podInterface) *doguStartStopManager {
+func newDoguStartStopManager(doguInterface doguClient.DoguInterface, deploymentInterface deploymentInterface, podInterface podInterface) *doguStartStopManager {
 	return &doguStartStopManager{doguInterface: doguInterface, deploymentInterface: deploymentInterface, podInterface: podInterface}
 }
 

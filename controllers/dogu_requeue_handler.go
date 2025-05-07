@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"time"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,11 +46,11 @@ type doguRequeueHandler struct {
 	nonCacheClient kubernetes.Interface
 	namespace      string
 	recorder       record.EventRecorder
-	doguInterface  ecoSystem.DoguInterface
+	doguInterface  doguClient.DoguInterface
 }
 
 // NewDoguRequeueHandler creates a new dogu requeue handler.
-func NewDoguRequeueHandler(doguInterface ecoSystem.DoguInterface, recorder record.EventRecorder, namespace string) (*doguRequeueHandler, error) {
+func NewDoguRequeueHandler(doguInterface doguClient.DoguInterface, recorder record.EventRecorder, namespace string) (*doguRequeueHandler, error) {
 	clusterConfig, err := ctrl.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load cluster configuration: %w", err)
@@ -115,7 +115,7 @@ func getRequeuePhase(err error) string {
 	return ""
 }
 
-func getRequeueTime(ctx context.Context, dogu *k8sv2.Dogu, doguInterface ecoSystem.DoguInterface, err error) (time.Duration, error) {
+func getRequeueTime(ctx context.Context, dogu *k8sv2.Dogu, doguInterface doguClient.DoguInterface, err error) (time.Duration, error) {
 	var errorWithTime requeuableErrorWithTime
 	if errors.As(err, &errorWithTime) {
 		return errorWithTime.GetRequeueTime(), nil

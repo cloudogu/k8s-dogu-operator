@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -55,8 +55,8 @@ type restartInstruction struct {
 	req                  ctrl.Request
 	restart              *k8sv2.DoguRestart
 	dogu                 *k8sv2.Dogu
-	doguRestartInterface ecoSystem.DoguRestartInterface
-	doguInterface        ecoSystem.DoguInterface
+	doguRestartInterface doguClient.DoguRestartInterface
+	doguInterface        doguClient.DoguInterface
 	recorder             record.EventRecorder
 }
 
