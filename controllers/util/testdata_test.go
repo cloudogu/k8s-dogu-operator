@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
 
-	corev1 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 //go:embed testdata/ldap-dogu.json
@@ -34,10 +34,10 @@ func readLdapDogu(t *testing.T) *core.Dogu {
 	return data
 }
 
-func readLdapDoguResource(t *testing.T) *corev1.Dogu {
+func readLdapDoguResource(t *testing.T) *doguv2.Dogu {
 	t.Helper()
 
-	data := &corev1.Dogu{}
+	data := &doguv2.Dogu{}
 	err := yaml.Unmarshal(ldapDoguResourceBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -53,7 +53,7 @@ func getTestScheme() *runtime.Scheme {
 		Group:   "k8s.cloudogu.com",
 		Version: "v2",
 		Kind:    "Dogu",
-	}, &corev1.Dogu{})
+	}, &doguv2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

@@ -10,15 +10,12 @@ MAKEFILES_VERSION=9.9.1
 PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
 K8S_COMPONENT_TARGET_VALUES = ${HELM_TARGET_DIR}/values.yaml
-CRD_DOGU_SOURCE = ${HELM_CRD_SOURCE_DIR}/templates/k8s.cloudogu.com_dogus.yaml
-CRD_RESTART_SOURCE = ${HELM_CRD_SOURCE_DIR}/templates/k8s.cloudogu.com_dogurestarts.yaml
-CRD_POST_MANIFEST_TARGETS = crd-add-labels crd-copy-for-go-embedding
 HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
 HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo template-stage template-log-level template-image-pull-policy
 IMAGE_IMPORT_TARGET=image-import
 CHECK_VAR_TARGETS=check-all-vars
 
-MOCKERY_VERSION=v2.53.2
+MOCKERY_VERSION=v2.53.3
 
 include build/make/variables.mk
 include build/make/self-update.mk
@@ -38,12 +35,7 @@ mocks: ${MOCKERY_BIN} ${MOCKERY_YAML} ## target is used to generate mocks for al
 	@echo "Mocks successfully created."
 
 .PHONY: build-boot
-build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
-
-.PHONY: crd-copy-for-go-embedding
-crd-copy-for-go-embedding:
-	@echo "Copy CRD to api/v2/"
-	@cp ${CRD_DOGU_SOURCE} api/v2/
+build-boot: helm-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
 
 .PHONY: helm-values-update-image-version
 helm-values-update-image-version: $(BINARY_YQ)

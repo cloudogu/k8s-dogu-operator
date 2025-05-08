@@ -5,8 +5,8 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-registry-lib/config"
@@ -329,17 +329,17 @@ type k8sSubResourceWriter interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type ecosystemInterface interface {
-	ecoSystem.EcoSystemV2Interface
+	doguClient.EcoSystemV2Interface
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguInterface interface {
-	ecoSystem.DoguInterface
+	doguClient.DoguInterface
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
-	ecoSystem.DoguRestartInterface
+	doguClient.DoguRestartInterface
 }

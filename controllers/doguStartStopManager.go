@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 const (
@@ -34,7 +34,7 @@ const containerStateCrashLoop = "CrashLoopBackOff"
 
 // doguStartStopManager includes functionality to start and stop dogus.
 type doguStartStopManager struct {
-	doguInterface       ecoSystem.DoguInterface
+	doguInterface       doguClient.DoguInterface
 	deploymentInterface deploymentInterface
 	podInterface        podInterface
 }
@@ -55,7 +55,7 @@ func (n deploymentNotYetScaledError) GetRequeueTime() time.Duration {
 	return requeueWaitTimeout
 }
 
-func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k8sv2.Dogu) error {
+func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *doguv2.Dogu) error {
 	rolledOut, err := m.checkForDeploymentRollout(ctx, doguResource.GetObjectKey())
 	if err != nil {
 		return fmt.Errorf("failed to start dogu %q: %w", doguResource.GetObjectKey(), err)
@@ -65,7 +65,7 @@ func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k
 		return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 	}
 
-	err = m.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusInstalled, false)
+	err = m.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusInstalled, false)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (m *doguStartStopManager) CheckStarted(ctx context.Context, doguResource *k
 	return nil
 }
 
-func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k8sv2.Dogu) error {
+func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *doguv2.Dogu) error {
 	rolledOut, err := m.checkForDeploymentRollout(ctx, doguResource.GetObjectKey())
 	if err != nil {
 		return fmt.Errorf("failed to stop dogu %q: %w", doguResource.GetObjectKey(), err)
@@ -83,7 +83,7 @@ func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k
 		return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 	}
 
-	err = m.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusInstalled, true)
+	err = m.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusInstalled, true)
 	if err != nil {
 		return err
 	}
@@ -91,13 +91,13 @@ func (m *doguStartStopManager) CheckStopped(ctx context.Context, doguResource *k
 	return nil
 }
 
-func newDoguStartStopManager(doguInterface ecoSystem.DoguInterface, deploymentInterface deploymentInterface, podInterface podInterface) *doguStartStopManager {
+func newDoguStartStopManager(doguInterface doguClient.DoguInterface, deploymentInterface deploymentInterface, podInterface podInterface) *doguStartStopManager {
 	return &doguStartStopManager{doguInterface: doguInterface, deploymentInterface: deploymentInterface, podInterface: podInterface}
 }
 
 // StartDogu scales a stopped dogu to 1.
-func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv2.Dogu) error {
-	err := m.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusStarting, doguResource.Status.Stopped)
+func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *doguv2.Dogu) error {
+	err := m.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusStarting, doguResource.Status.Stopped)
 	if err != nil {
 		return err
 	}
@@ -111,8 +111,8 @@ func (m *doguStartStopManager) StartDogu(ctx context.Context, doguResource *k8sv
 }
 
 // StopDogu scales a running dogu to 0.
-func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv2.Dogu) error {
-	err := m.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusStopping, doguResource.Status.Stopped)
+func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *doguv2.Dogu) error {
+	err := m.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusStopping, doguResource.Status.Stopped)
 	if err != nil {
 		return err
 	}
@@ -125,8 +125,8 @@ func (m *doguStartStopManager) StopDogu(ctx context.Context, doguResource *k8sv2
 	return deploymentNotYetScaledError{doguName: doguResource.GetObjectKey().String()}
 }
 
-func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv2.Dogu, phase string, stopped bool) error {
-	_, err := m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
+func (m *doguStartStopManager) updateStatusWithRetry(ctx context.Context, doguResource *doguv2.Dogu, phase string, stopped bool) error {
+	_, err := m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		status.Status = phase
 		status.Stopped = stopped
 		return status

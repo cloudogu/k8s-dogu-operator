@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- [#239] Extracted Dogu-CRD, Dogurestart-CRD and associated clients to own [repository](https://github.com/cloudogu/k8s-dogu-lib)
+
 ## [v3.5.1] - 2025-05-02
 
 ### Changed

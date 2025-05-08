@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 type myRequeueableError struct{}
@@ -33,9 +33,9 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 	t.Run("handle no error at all", func(t *testing.T) {
 		// given
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}},
-			Status:     k8sv2.DoguStatus{},
+			Status:     doguv2.DoguStatus{},
 		}
 		fakeNonCacheClient := fake2.NewSimpleClientset()
 		eventRecorder := &mockEventRecorder{}
@@ -48,7 +48,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 			recorder:       eventRecorder,
 		}
 
-		onRequeue := func(doguResource *k8sv2.Dogu) error { doguResource.Labels["test"] = "true"; return nil }
+		onRequeue := func(doguResource *doguv2.Dogu) error { doguResource.Labels["test"] = "true"; return nil }
 
 		// when
 		result, err := handler.Handle(context.Background(), "my context", doguResource, nil, onRequeue)
@@ -64,9 +64,9 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 	t.Run("handle non reportable error", func(t *testing.T) {
 		// given
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Labels: map[string]string{"test": "false"}},
-			Status:     k8sv2.DoguStatus{},
+			Status:     doguv2.DoguStatus{},
 		}
 		fakeNonCacheClient := fake2.NewSimpleClientset()
 		eventRecorder := &mockEventRecorder{}
@@ -79,7 +79,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 			recorder:       eventRecorder,
 		}
 
-		onRequeue := func(doguResource *k8sv2.Dogu) error { doguResource.Labels["test"] = "true"; return nil }
+		onRequeue := func(doguResource *doguv2.Dogu) error { doguResource.Labels["test"] = "true"; return nil }
 
 		// when
 		result, err := handler.Handle(context.Background(), "my context", doguResource, assert.AnError, onRequeue)
@@ -93,9 +93,9 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 	t.Run("handle with requeueable error", func(t *testing.T) {
 		// given
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Namespace: namespace},
-			Status:     k8sv2.DoguStatus{},
+			Status:     doguv2.DoguStatus{},
 		}
 
 		event := &v1.Event{
@@ -114,9 +114,9 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 		doguInterfaceMock := newMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(context.Background(), doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguResource.Status)
-				assert.Equal(t, k8sv2.DoguStatus{Status: "", RequeueTime: 10000000000, RequeuePhase: "", Health: "", Stopped: false}, status)
+				assert.Equal(t, doguv2.DoguStatus{Status: "", RequeueTime: 10000000000, RequeuePhase: "", Health: "", Stopped: false}, status)
 			})
 
 		handler := doguRequeueHandler{
@@ -128,7 +128,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		myError := myRequeueableError{}
 
 		requeueCalled := false
-		onRequeue := func(doguResource *k8sv2.Dogu) error {
+		onRequeue := func(doguResource *doguv2.Dogu) error {
 			requeueCalled = true
 			return nil
 		}
@@ -150,9 +150,9 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 	t.Run("handle with multierror error", func(t *testing.T) {
 		// given
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myName", Namespace: namespace},
-			Status:     k8sv2.DoguStatus{},
+			Status:     doguv2.DoguStatus{},
 		}
 
 		event := &v1.Event{
@@ -171,9 +171,9 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 
 		doguInterfaceMock := newMockDoguInterface(t)
 		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(context.Background(), doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
+			Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
 				status := modifyStatusFn(doguResource.Status)
-				assert.Equal(t, k8sv2.DoguStatus{Status: "", RequeueTime: 10000000000, RequeuePhase: "", Health: "", Stopped: false}, status)
+				assert.Equal(t, doguv2.DoguStatus{Status: "", RequeueTime: 10000000000, RequeuePhase: "", Health: "", Stopped: false}, status)
 			})
 
 		handler := doguRequeueHandler{
@@ -189,7 +189,7 @@ func TestDoguRequeueHandler_Handle(t *testing.T) {
 		myMultipleErrors = errors.Join(myMultipleErrors, myError, myError2)
 
 		requeueCalled := false
-		onRequeue := func(doguResource *k8sv2.Dogu) error {
+		onRequeue := func(doguResource *doguv2.Dogu) error {
 			requeueCalled = true
 			return nil
 		}

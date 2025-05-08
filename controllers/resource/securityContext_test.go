@@ -10,7 +10,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 func TestSecurityContextGenerator_Generate(t *testing.T) {
