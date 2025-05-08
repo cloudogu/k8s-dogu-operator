@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 )
@@ -47,8 +47,8 @@ type doguUpgradeManager struct {
 	upgradeExecutor     upgrade.UpgradeExecutor
 }
 
-func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv2.Dogu) error {
-	err := doguResource.ChangeStateWithRetry(ctx, dum.client, k8sv2.DoguStatusUpgrading)
+func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *doguv2.Dogu) error {
+	err := doguResource.ChangeStateWithRetry(ctx, dum.client, doguv2.DoguStatusUpgrading)
 	if err != nil {
 		return err
 	}
@@ -74,12 +74,12 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv2.
 	}
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
 
-	err = doguResource.ChangeStateWithRetry(ctx, dum.client, k8sv2.DoguStatusInstalled)
+	err = doguResource.ChangeStateWithRetry(ctx, dum.client, doguv2.DoguStatusInstalled)
 	if err != nil {
 		return err
 	}
 
-	updateInstalledVersionFn := func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
+	updateInstalledVersionFn := func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		status.InstalledVersion = doguResource.Spec.Version
 		return status
 	}
@@ -100,7 +100,7 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *k8sv2.
 	return nil
 }
 
-func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *k8sv2.Dogu) (*core.Dogu, *core.Dogu, *k8sv2.DevelopmentDoguMap, error) {
+func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResource *doguv2.Dogu) (*core.Dogu, *core.Dogu, *doguv2.DevelopmentDoguMap, error) {
 	fromDogu, err := dum.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("dogu upgrade failed: %w", err)
@@ -114,10 +114,10 @@ func (dum *doguUpgradeManager) getDogusForUpgrade(ctx context.Context, doguResou
 	return fromDogu, toDogu, developmentDoguMap, nil
 }
 
-func (dum *doguUpgradeManager) normalEvent(doguResource *k8sv2.Dogu, msg string) {
+func (dum *doguUpgradeManager) normalEvent(doguResource *doguv2.Dogu, msg string) {
 	dum.eventRecorder.Event(doguResource, corev1.EventTypeNormal, upgrade.EventReason, msg)
 }
 
-func (dum *doguUpgradeManager) normalEventf(doguResource *k8sv2.Dogu, msg string, msgArg ...interface{}) {
+func (dum *doguUpgradeManager) normalEventf(doguResource *doguv2.Dogu, msg string, msgArg ...interface{}) {
 	dum.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, upgrade.EventReason, msg, msgArg...)
 }

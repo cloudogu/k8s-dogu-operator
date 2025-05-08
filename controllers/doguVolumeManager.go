@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/async"
 
 	"time"
@@ -88,8 +88,8 @@ func createAsyncSteps(executor async.AsyncExecutor, client client.Client, record
 }
 
 // SetDoguDataVolumeSize sets the quantity from the doguResource in the dogu data PVC.
-func (d *doguVolumeManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *k8sv2.Dogu) error {
-	err := doguResource.ChangeStateWithRetry(ctx, d.client, k8sv2.DoguStatusPVCResizing)
+func (d *doguVolumeManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *doguv2.Dogu) error {
+	err := doguResource.ChangeStateWithRetry(ctx, d.client, doguv2.DoguStatusPVCResizing)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (d *doguVolumeManager) SetDoguDataVolumeSize(ctx context.Context, doguResou
 		return err
 	}
 
-	return doguResource.ChangeStateWithRetry(ctx, d.client, k8sv2.DoguStatusInstalled)
+	return doguResource.ChangeStateWithRetry(ctx, d.client, doguv2.DoguStatusInstalled)
 }
 
 type editPVCStep struct {
@@ -114,7 +114,7 @@ func (e *editPVCStep) GetStartCondition() string {
 
 // Execute executes the step and returns the next state and if the step fails an error.
 // The error can be a requeueable error so that the step will be executed again.
-func (e *editPVCStep) Execute(ctx context.Context, dogu *k8sv2.Dogu) (string, error) {
+func (e *editPVCStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, error) {
 	quantity, err := getQuantityForDogu(dogu)
 	if err != nil {
 		return e.GetStartCondition(), err
@@ -128,7 +128,7 @@ func (e *editPVCStep) Execute(ctx context.Context, dogu *k8sv2.Dogu) (string, er
 	return startConditionWaitForResize, nil
 }
 
-func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *k8sv2.Dogu, quantity resource.Quantity) error {
+func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *doguv2.Dogu, quantity resource.Quantity) error {
 	e.eventRecorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Update dogu data PVC request storage...")
 	pvc, err := doguResource.GetDataPVC(ctx, e.client)
 	if err != nil {
@@ -158,7 +158,7 @@ func (s *scaleDownStep) GetStartCondition() string {
 
 // Execute executes the step and returns the next state and if the step fails an error.
 // The error can be a requeueable error so that the step will be executed again.
-func (s *scaleDownStep) Execute(ctx context.Context, dogu *k8sv2.Dogu) (string, error) {
+func (s *scaleDownStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, error) {
 	oldReplicas, err := scaleDeployment(ctx, s.client, s.eventRecorder, dogu, 0)
 	if err != nil {
 		return s.GetStartCondition(), err
@@ -181,7 +181,7 @@ func (s *scaleUpStep) GetStartCondition() string {
 
 // Execute executes the step and returns the next state and if the step fails an error.
 // The error can be a requeueable error so that the step will be executed again.
-func (s *scaleUpStep) Execute(ctx context.Context, dogu *k8sv2.Dogu) (string, error) {
+func (s *scaleUpStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, error) {
 	_, err := scaleDeployment(ctx, s.client, s.eventRecorder, dogu, s.replicas)
 	if err != nil {
 		return s.GetStartCondition(), err
@@ -195,7 +195,7 @@ func (s *scaleUpStep) Execute(ctx context.Context, dogu *k8sv2.Dogu) (string, er
 	return async.FinishedState, nil
 }
 
-func scaleDeployment(ctx context.Context, client client.Client, recorder record.EventRecorder, doguResource *k8sv2.Dogu, newReplicas int32) (oldReplicas int32, err error) {
+func scaleDeployment(ctx context.Context, client client.Client, recorder record.EventRecorder, doguResource *doguv2.Dogu, newReplicas int32) (oldReplicas int32, err error) {
 	recorder.Eventf(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Scale deployment to %d replicas...", newReplicas)
 	deployment, err := doguResource.GetDeployment(ctx, client)
 	if err != nil {
@@ -212,7 +212,7 @@ func scaleDeployment(ctx context.Context, client client.Client, recorder record.
 	return oldReplicas, err
 }
 
-func getQuantityForDogu(dogu *k8sv2.Dogu) (resource.Quantity, error) {
+func getQuantityForDogu(dogu *doguv2.Dogu) (resource.Quantity, error) {
 	size := dogu.Spec.Resources.DataVolumeSize
 	quantity, err := resource.ParseQuantity(size)
 	if err != nil {
@@ -234,7 +234,7 @@ func (c *checkIfPVCIsResizedStep) GetStartCondition() string {
 
 // Execute executes the step and returns the next state and if the step fails an error.
 // The error can be a requeueable error so that the step will be executed again.
-func (c *checkIfPVCIsResizedStep) Execute(ctx context.Context, dogu *k8sv2.Dogu) (string, error) {
+func (c *checkIfPVCIsResizedStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, error) {
 	quantity, err := getQuantityForDogu(dogu)
 	if err != nil {
 		return c.GetStartCondition(), err
@@ -243,7 +243,7 @@ func (c *checkIfPVCIsResizedStep) Execute(ctx context.Context, dogu *k8sv2.Dogu)
 	return startConditionScaleUp, c.waitForPVCResize(ctx, dogu, quantity)
 }
 
-func (c *checkIfPVCIsResizedStep) waitForPVCResize(ctx context.Context, doguResource *k8sv2.Dogu, quantity resource.Quantity) error {
+func (c *checkIfPVCIsResizedStep) waitForPVCResize(ctx context.Context, doguResource *doguv2.Dogu, quantity resource.Quantity) error {
 	c.eventRecorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Wait for pvc to be resized...")
 	pvc, err := doguResource.GetDataPVC(ctx, c.client)
 	if err != nil {

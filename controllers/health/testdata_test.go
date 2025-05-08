@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	corev1 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 //go:embed testdata/redmine-dogu.json
@@ -36,10 +36,10 @@ var optional1Bytes []byte
 //go:embed testdata/optional2-dogu.json
 var optional2Bytes []byte
 
-func readTestDataLdapCr(t *testing.T) *corev1.Dogu {
+func readTestDataLdapCr(t *testing.T) *doguv2.Dogu {
 	t.Helper()
 
-	ldapCr := &corev1.Dogu{}
+	ldapCr := &doguv2.Dogu{}
 	err := yaml.Unmarshal(ldapCrBytes, ldapCr)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -67,7 +67,7 @@ func getTestScheme() *runtime.Scheme {
 		Group:   "k8s.cloudogu.com",
 		Version: "v2",
 		Kind:    "dogu",
-	}, &corev1.Dogu{})
+	}, &doguv2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

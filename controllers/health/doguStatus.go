@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
-	doguv1 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 )
 
@@ -40,12 +40,12 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.N
 		return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
 	}
 
-	desiredHealthStatus := doguv1.UnavailableHealthStatus
+	desiredHealthStatus := doguv2.UnavailableHealthStatus
 	if isAvailable {
-		desiredHealthStatus = doguv1.AvailableHealthStatus
+		desiredHealthStatus = doguv2.AvailableHealthStatus
 	}
 
-	_, err = doguEcosystemClient.UpdateStatusWithRetry(ctx, dogu, func(status doguv1.DoguStatus) doguv1.DoguStatus {
+	_, err = doguEcosystemClient.UpdateStatusWithRetry(ctx, dogu, func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		status.Health = desiredHealthStatus
 		return status
 	}, metav1api.UpdateOptions{})

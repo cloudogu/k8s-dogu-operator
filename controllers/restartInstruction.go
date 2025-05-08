@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,17 +32,17 @@ const (
 	updateStatusErrorMessage = "failed to update status of dogu restart"
 )
 
-func RestartOperationFromRestartStatusPhase(phase k8sv2.RestartStatusPhase) RestartOperation {
+func RestartOperationFromRestartStatusPhase(phase doguv2.RestartStatusPhase) RestartOperation {
 	switch phase {
-	case k8sv2.RestartStatusPhaseCompleted, k8sv2.RestartStatusPhaseDoguNotFound:
+	case doguv2.RestartStatusPhaseCompleted, doguv2.RestartStatusPhaseDoguNotFound:
 		return ignore
-	case k8sv2.RestartStatusPhaseStopping:
+	case doguv2.RestartStatusPhaseStopping:
 		return checkStopped
-	case k8sv2.RestartStatusPhaseStarting:
+	case doguv2.RestartStatusPhaseStarting:
 		return checkStarted
-	case k8sv2.RestartStatusPhaseStopped, k8sv2.RestartStatusPhaseFailedStart:
+	case doguv2.RestartStatusPhaseStopped, doguv2.RestartStatusPhaseFailedStart:
 		return start
-	case k8sv2.RestartStatusPhaseNew, k8sv2.RestartStatusPhaseFailedStop:
+	case doguv2.RestartStatusPhaseNew, doguv2.RestartStatusPhaseFailedStop:
 		return stop
 	default:
 		return ignore
@@ -53,8 +53,8 @@ type restartInstruction struct {
 	op                   RestartOperation
 	err                  error
 	req                  ctrl.Request
-	restart              *k8sv2.DoguRestart
-	dogu                 *k8sv2.Dogu
+	restart              *doguv2.DoguRestart
+	dogu                 *doguv2.Dogu
 	doguRestartInterface doguClient.DoguRestartInterface
 	doguInterface        doguClient.DoguInterface
 	recorder             record.EventRecorder
@@ -121,18 +121,18 @@ func (r *restartInstruction) checkStartStop(ctx context.Context, shouldBeStopped
 	return ctrl.Result{RequeueAfter: requeueWaitTimeout}, nil
 }
 
-func getCheckStartStopAttributes(stopped bool) (eventMessage, logMessage, notReadyLogMessage, eventReason string, requeue bool, phase k8sv2.RestartStatusPhase) {
+func getCheckStartStopAttributes(stopped bool) (eventMessage, logMessage, notReadyLogMessage, eventReason string, requeue bool, phase doguv2.RestartStatusPhase) {
 	eventReason = "Started"
 	eventMessage = "dogu started, restart completed"
 	logMessage = "dogu started, setting completed phase"
 	notReadyLogMessage = "dogu not yet started, requeue"
-	phase = k8sv2.RestartStatusPhaseCompleted
+	phase = doguv2.RestartStatusPhaseCompleted
 	requeue = false
 	if stopped {
 		eventReason = "Stopped"
 		eventMessage = "dogu stopped, restarting"
 		logMessage = "dogu stopped, setting stopped phase"
-		phase = k8sv2.RestartStatusPhaseStopped
+		phase = doguv2.RestartStatusPhaseStopped
 		notReadyLogMessage = "dogu not yet stopped, requeue"
 		requeue = true
 	}
@@ -185,22 +185,22 @@ func (r *restartInstruction) handleStartStop(ctx context.Context, shouldStop boo
 	}
 }
 
-func getHandleStartStopAttributes(stopped bool) (eventMessage, eventInitMessage, restartStatusErrorMessage, eventReason string, requeue bool, phase, phaseOnFail k8sv2.RestartStatusPhase) {
+func getHandleStartStopAttributes(stopped bool) (eventMessage, eventInitMessage, restartStatusErrorMessage, eventReason string, requeue bool, phase, phaseOnFail doguv2.RestartStatusPhase) {
 	eventReason = "Starting"
 	eventMessage = "failed to start dogu"
 	eventInitMessage = "initiated start of dogu"
 	restartStatusErrorMessage = "failed to set starting status for restart"
 	requeue = false
-	phase = k8sv2.RestartStatusPhaseStarting
-	phaseOnFail = k8sv2.RestartStatusPhaseFailedStart
+	phase = doguv2.RestartStatusPhaseStarting
+	phaseOnFail = doguv2.RestartStatusPhaseFailedStart
 	if stopped {
 		eventReason = "Stopping"
 		eventMessage = "failed to stop dogu"
 		eventInitMessage = "initiated stop of dogu"
 		restartStatusErrorMessage = "failed to set stopping status for restart"
 		requeue = true
-		phase = k8sv2.RestartStatusPhaseStopping
-		phaseOnFail = k8sv2.RestartStatusPhaseFailedStop
+		phase = doguv2.RestartStatusPhaseStopping
+		phaseOnFail = doguv2.RestartStatusPhaseFailedStop
 	}
 
 	return
@@ -212,7 +212,7 @@ func (r *restartInstruction) handleGetDoguFailed(ctx context.Context) (ctrl.Resu
 		WithValues("doguRestart", r.req.NamespacedName)
 	r.recorder.Event(r.restart, v1.EventTypeWarning, "FailedGetDogu", "Could not get ressource of dogu to restart.")
 
-	statusErr := r.updateDoguRestartPhase(ctx, k8sv2.RestartStatusPhaseFailedGetDogu)
+	statusErr := r.updateDoguRestartPhase(ctx, doguv2.RestartStatusPhaseFailedGetDogu)
 	if statusErr != nil {
 		logger.Error(statusErr, updateStatusErrorMessage)
 	}
@@ -227,7 +227,7 @@ func (r *restartInstruction) handleDoguNotFound(ctx context.Context) (ctrl.Resul
 		WithValues("doguRestart", r.req.NamespacedName)
 	r.recorder.Event(r.restart, v1.EventTypeWarning, "DoguNotFound", "Dogu to restart was not found.")
 
-	statusErr := r.updateDoguRestartPhase(ctx, k8sv2.RestartStatusPhaseDoguNotFound)
+	statusErr := r.updateDoguRestartPhase(ctx, doguv2.RestartStatusPhaseDoguNotFound)
 	if statusErr != nil {
 		logger.Error(statusErr, updateStatusErrorMessage)
 	}
@@ -236,8 +236,8 @@ func (r *restartInstruction) handleDoguNotFound(ctx context.Context) (ctrl.Resul
 	return ctrl.Result{}, nil
 }
 
-func (r *restartInstruction) updateDoguRestartPhase(ctx context.Context, phase k8sv2.RestartStatusPhase) error {
-	_, statusErr := r.doguRestartInterface.UpdateStatusWithRetry(ctx, r.restart, func(status k8sv2.DoguRestartStatus) k8sv2.DoguRestartStatus {
+func (r *restartInstruction) updateDoguRestartPhase(ctx context.Context, phase doguv2.RestartStatusPhase) error {
+	_, statusErr := r.doguRestartInterface.UpdateStatusWithRetry(ctx, r.restart, func(status doguv2.DoguRestartStatus) doguv2.DoguRestartStatus {
 		status.Phase = phase
 		return status
 	}, metav1.UpdateOptions{})
@@ -246,7 +246,7 @@ func (r *restartInstruction) updateDoguRestartPhase(ctx context.Context, phase k
 }
 
 func (r *restartInstruction) updateDoguSpecStopped(ctx context.Context, shouldStop bool) error {
-	_, statusErr := r.doguInterface.UpdateSpecWithRetry(ctx, r.dogu, func(spec k8sv2.DoguSpec) k8sv2.DoguSpec {
+	_, statusErr := r.doguInterface.UpdateSpecWithRetry(ctx, r.dogu, func(spec doguv2.DoguSpec) doguv2.DoguSpec {
 		spec.Stopped = shouldStop
 		return spec
 	}, metav1.UpdateOptions{})

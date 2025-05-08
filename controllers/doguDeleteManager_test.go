@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/repository"
@@ -89,7 +89,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 	ldapCr := readDoguCr(t, ldapCrBytes)
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 
-	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&k8sv2.Dogu{}).WithObjects(ldapCr).Build()
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&doguv2.Dogu{}).WithObjects(ldapCr).Build()
 	t.Run("successfully delete a dogu", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguDeleteManagerWithMocks(t)
@@ -105,7 +105,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		deletedDogu := k8sv2.Dogu{}
+		deletedDogu := doguv2.Dogu{}
 		err = fakeClient.Get(testCtx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
@@ -134,7 +134,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		deletedDogu := k8sv2.Dogu{}
+		deletedDogu := doguv2.Dogu{}
 		err = fakeClient.Get(testCtx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
@@ -155,7 +155,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		deletedDogu := k8sv2.Dogu{}
+		deletedDogu := doguv2.Dogu{}
 		err = fakeClient.Get(testCtx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
@@ -176,7 +176,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		deletedDogu := k8sv2.Dogu{}
+		deletedDogu := doguv2.Dogu{}
 		err = fakeClient.Get(testCtx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
@@ -197,7 +197,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		deletedDogu := k8sv2.Dogu{}
+		deletedDogu := doguv2.Dogu{}
 		err = fakeClient.Get(testCtx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)
@@ -218,7 +218,7 @@ func Test_doguDeleteManager_Delete(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		deletedDogu := k8sv2.Dogu{}
+		deletedDogu := doguv2.Dogu{}
 		err = fakeClient.Get(testCtx, runtimeclient.ObjectKey{Name: ldapCr.Name, Namespace: ldapCr.Namespace}, &deletedDogu)
 		require.NoError(t, err)
 		assert.Empty(t, deletedDogu.Finalizers)

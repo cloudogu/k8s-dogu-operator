@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 
@@ -73,7 +73,7 @@ func NewDoguExportManager(
 	}
 }
 
-func (dem *doguExportManager) shouldUpdateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
+func (dem *doguExportManager) shouldUpdateExportMode(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
 	shouldExportModeBeActive := doguResource.Spec.ExportMode
 
 	isExportModeActive, err := dem.isDeploymentInExportMode(ctx, doguResource.GetObjectKey())
@@ -85,7 +85,7 @@ func (dem *doguExportManager) shouldUpdateExportMode(ctx context.Context, doguRe
 }
 
 // UpdateExportMode activates/deactivates the export mode for the dogu
-func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
+func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource *doguv2.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	shouldUpdate, err := dem.shouldUpdateExportMode(ctx, doguResource)
@@ -102,13 +102,13 @@ func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource
 	}
 
 	logger.Info(fmt.Sprintf("The export-mode of dogu %q has changed to its desired state: %v", doguResource.Name, doguResource.Spec.ExportMode))
-	return dem.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
+	return dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
 }
 
-func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource *k8sv2.Dogu) error {
+func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource *doguv2.Dogu) error {
 	logger := log.FromContext(ctx)
 
-	if err := dem.updateStatusWithRetry(ctx, doguResource, k8sv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode); err != nil {
+	if err := dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode); err != nil {
 		return err
 	}
 
@@ -127,8 +127,8 @@ func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource
 	return nil
 }
 
-func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguResource *k8sv2.Dogu, phase string, activated bool) error {
-	_, err := dem.doguClient.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
+func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguResource *doguv2.Dogu, phase string, activated bool) error {
+	_, err := dem.doguClient.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		status.Status = phase
 		status.ExportMode = activated
 		return status
@@ -141,7 +141,7 @@ func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguRes
 }
 
 func (dem *doguExportManager) isDeploymentInExportMode(ctx context.Context, doguName types.NamespacedName) (bool, error) {
-	podList, err := dem.podClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", k8sv2.DoguLabelName, doguName.Name)})
+	podList, err := dem.podClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", doguv2.DoguLabelName, doguName.Name)})
 	if err != nil {
 		return false, fmt.Errorf("failed to get pods of deployment %q: %w", doguName, err)
 	}

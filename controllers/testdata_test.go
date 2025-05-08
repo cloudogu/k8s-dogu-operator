@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	corev1 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 //go:embed testdata/redmine-cr.yaml
@@ -35,10 +35,10 @@ var ldapDoguDevelopmentMapBytes []byte
 //go:embed testdata/image-config.json
 var imageConfigBytes []byte
 
-func readDoguCr(t *testing.T, bytes []byte) *corev1.Dogu {
+func readDoguCr(t *testing.T, bytes []byte) *doguv2.Dogu {
 	t.Helper()
 
-	doguCr := &corev1.Dogu{}
+	doguCr := &doguv2.Dogu{}
 	err := yaml.Unmarshal(bytes, doguCr)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -71,7 +71,7 @@ func readDoguDescriptor(t *testing.T, doguBytes []byte) *core.Dogu {
 	return dogu
 }
 
-func readDoguDevelopmentMap(t *testing.T, devMapBytes []byte) *corev1.DevelopmentDoguMap {
+func readDoguDevelopmentMap(t *testing.T, devMapBytes []byte) *doguv2.DevelopmentDoguMap {
 	t.Helper()
 
 	descriptorCM := &v1.ConfigMap{}
@@ -80,7 +80,7 @@ func readDoguDevelopmentMap(t *testing.T, devMapBytes []byte) *corev1.Developmen
 		t.Fatal(err.Error())
 	}
 
-	doguDevMap := corev1.DevelopmentDoguMap(*descriptorCM)
+	doguDevMap := doguv2.DevelopmentDoguMap(*descriptorCM)
 	return &doguDevMap
 }
 
@@ -91,7 +91,7 @@ func getTestScheme() *runtime.Scheme {
 		Group:   "k8s.cloudogu.com",
 		Version: "v2",
 		Kind:    "Dogu",
-	}, &corev1.Dogu{})
+	}, &doguv2.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

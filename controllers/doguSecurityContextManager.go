@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
@@ -36,7 +36,7 @@ func NewDoguSecurityContextManager(mgrSet *util.ManagerSet, eventRecorder record
 }
 
 // UpdateDeploymentWithSecurityContext regenerates the security context of a dogu deployment.
-func (d DoguSecurityContextManager) UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *k8sv2.Dogu) error {
+func (d DoguSecurityContextManager) UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *doguv2.Dogu) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Getting local dogu descriptor...")

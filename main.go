@@ -8,7 +8,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"os"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -56,7 +56,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(k8sv2.AddToScheme(scheme))
+	utilruntime.Must(doguv2.AddToScheme(scheme))
 
 	// +kubebuilder:scaffold:scheme
 }

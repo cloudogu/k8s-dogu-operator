@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 )
@@ -52,9 +52,9 @@ func NewDoguDeleteManager(
 }
 
 // Delete deletes the given dogu along with all those Kubernetes resources that the dogu operator initially created.
-func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv2.Dogu) error {
+func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *doguv2.Dogu) error {
 	logger := log.FromContext(ctx)
-	err := doguResource.ChangeStateWithRetry(ctx, m.client, k8sv2.DoguStatusDeleting)
+	err := doguResource.ChangeStateWithRetry(ctx, m.client, doguv2.DoguStatusDeleting)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *k8sv2.Dogu
 	return nil
 }
 
-func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *k8sv2.Dogu) error {
+func (m *doguDeleteManager) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *doguv2.Dogu) error {
 	namespace := dogu.Namespace
 	stateConfigMap := &corev1.ConfigMap{}
 	cmKey := types.NamespacedName{Namespace: namespace, Name: "k8s-dogu-operator-dogu-health"}

@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
@@ -70,10 +70,10 @@ func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventR
 
 // Install installs a given Dogu Resource. This includes fetching the dogu.json and the container image. With the
 // information Install creates a Deployment and a Service
-func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv2.Dogu) (err error) {
+func (m *doguInstallManager) Install(ctx context.Context, doguResource *doguv2.Dogu) (err error) {
 	logger := log.FromContext(ctx)
 
-	err = doguResource.ChangeStateWithRetry(ctx, m.client, k8sv2.DoguStatusInstalling)
+	err = doguResource.ChangeStateWithRetry(ctx, m.client, doguv2.DoguStatusInstalling)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
@@ -147,12 +147,12 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv2.Do
 		return fmt.Errorf("failed to create dogu resources: %w", err)
 	}
 
-	err = doguResource.ChangeStateWithRetry(ctx, m.client, k8sv2.DoguStatusInstalled)
+	err = doguResource.ChangeStateWithRetry(ctx, m.client, doguv2.DoguStatusInstalled)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
 
-	updateInstalledVersionFn := func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
+	updateInstalledVersionFn := func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		status.InstalledVersion = doguResource.Spec.Version
 		return status
 	}
@@ -172,11 +172,11 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *k8sv2.Do
 	return nil
 }
 
-func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *k8sv2.Dogu) error {
+func (m *doguInstallManager) applyCustomK8sResources(ctx context.Context, customK8sResources map[string]string, doguResource *doguv2.Dogu) error {
 	return m.collectApplier.CollectApply(ctx, customK8sResources, doguResource)
 }
 
-func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile) error {
+func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResource *doguv2.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile) error {
 	_, err := m.resourceUpserter.UpsertDoguService(ctx, doguResource, dogu, imageConfig)
 	if err != nil {
 		return err
@@ -276,7 +276,7 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 	return cleanUp, nil
 }
 
-func deleteExecPod(ctx context.Context, execPod exec.ExecPod, recorder record.EventRecorder, doguResource *k8sv2.Dogu) {
+func deleteExecPod(ctx context.Context, execPod exec.ExecPod, recorder record.EventRecorder, doguResource *doguv2.Dogu) {
 	err := execPod.Delete(ctx)
 	if err != nil {
 		recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)
