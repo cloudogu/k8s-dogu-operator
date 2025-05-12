@@ -109,6 +109,8 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *doguv2.D
 		return err
 	}
 
+	// TODO: Validate VolumeMounts
+
 	logger.Info("Create dogu config and sensitive dogu config...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
 	cleanUp, err := m.createConfigs(ctx, doguResource.Name, logger)

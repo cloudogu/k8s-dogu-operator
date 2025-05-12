@@ -115,8 +115,14 @@ func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Cl
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
 
+	additionalDataSeederContainer, err := imageGetter.imageForKey(ctx, config.DataSeederImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	}
+
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
-		config.ExporterImageConfigmapNameKey: additionalExportModeContainer}
+		config.ExporterImageConfigmapNameKey:   additionalExportModeContainer,
+		config.DataSeederImageConfigmapNameKey: additionalDataSeederContainer}
 
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {

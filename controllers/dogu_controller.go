@@ -329,6 +329,8 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 		operations = append(operations, ChangeExportMode)
 	}
 
+	// TODO: checkShouldChangeDataSeeds
+
 	// Checking if the resource spec field has changed is unnecessary because we
 	// use a predicate to filter update events where specs don't change
 	upgradeable, err := checkUpgradeability(ctx, doguResource, r.fetcher)

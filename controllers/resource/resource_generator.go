@@ -125,6 +125,8 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		{Name: doguPodMultiNode, Value: "true"},
 	}
 
+	// TODO: Add additional VolumeMount init container
+	initContainers := make([]*corev1.Container, 0)
 	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
 
 	resourceRequirements, err := r.requirementsGenerator.Generate(ctx, dogu)
@@ -135,6 +137,18 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage, resourceRequirements)
 	if err != nil {
 		return nil, err
+	}
+	initContainers = append(initContainers, chownContainer)
+
+	if len(doguResource.Spec.Data) > 0 {
+		dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
+
+		// TODO: Create getDataSeederContainer()
+		dataSeederContainer, err := getChownInitContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
+		if err != nil {
+			return nil, err
+		}
+		initContainers = append(initContainers, dataSeederContainer)
 	}
 
 	sidecars := make([]*corev1.Container, 0)
@@ -160,7 +174,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		volumes(volumes).
 		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 		enableServiceLinks(false).
-		initContainers(chownContainer).
+		initContainers(initContainers...).
 		sidecarContainers(sidecars...).
 		containerEmptyCommandAndArgs().
 		containerLivenessProbe().
