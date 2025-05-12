@@ -210,7 +210,8 @@ func getDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image str
 	volumeMounts := make([]corev1.VolumeMount, 0, len(doguResource.Spec.Data))
 	args := make([]string, 0, len(doguResource.Spec.Data)+1)
 	args = append(args, dataSeederArg)
-
+	// TODO If a second configmap should be mounted in an already mounted dir:
+	// We have to use subPath for that. Should this be relevant? Do we have to extend the CRD for this? To define items.
 	for _, dataMount := range doguResource.Spec.Data {
 		doguVolumePath, err := getDoguVolumePath(dogu, dataMount.Volume)
 		if err != nil {

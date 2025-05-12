@@ -72,6 +72,15 @@ type securityContextManager interface {
 	UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *v2.Dogu) error
 }
 
+type dataSeedManager interface {
+	DataMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error)
+	UpdateDataMounts(ctx context.Context, doguResource *v2.Dogu) error
+}
+
+type dataSeederInitContainerGenerator interface {
+	GetDataSeederContainer(dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string) (*coreV1.Container, error)
+}
+
 // startDoguManager includes functionality to start (stopped) dogus.
 type startDoguManager interface {
 	// StartDogu scales up a dogu to 1.
@@ -106,6 +115,7 @@ type CombinedDoguManager interface {
 	startDoguManager
 	stopDoguManager
 	securityContextManager
+	dataSeedManager
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.

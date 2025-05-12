@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -40,6 +41,7 @@ type DoguManager struct {
 	exportManager             exportManager
 	startStopManager          DoguStartStopManager
 	securityContextManager    securityContextManager
+	dataSeedManager           dataSeedManager
 	recorder                  record.EventRecorder
 }
 
@@ -88,6 +90,13 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
+	// TODO Is this ok?
+	containerGenerator, ok := mgrSet.DoguResourceGenerator.(dataSeederInitContainerGenerator)
+	if !ok {
+		return nil, errors.New("failed cast dogu resource generator to dataSeederInitContainerGenerator")
+	}
+	dataSeedManager := NewDoguDataSeedManager(client, containerGenerator, mgrSet.ResourceDoguFetcher)
+
 	return &DoguManager{
 		scheme:                    client.Scheme(),
 		installManager:            installManager,
@@ -99,6 +108,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 		ingressAnnotationsManager: ingressAnnotationsManager,
 		startStopManager:          startStopManager,
 		securityContextManager:    securityContextManager,
+		dataSeedManager:           dataSeedManager,
 		recorder:                  eventRecorder,
 	}, nil
 }
@@ -233,4 +243,12 @@ func createConfigRepositories(clientSet kubernetes.Interface, namespace string) 
 		DoguConfigRepository:    repository.NewDoguConfigRepository(configMapClient),
 		SensitiveDoguRepository: repository.NewSensitiveDoguConfigRepository(secretsClient),
 	}
+}
+
+func (m *DoguManager) DataMountsChanged(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
+	return m.dataSeedManager.DataMountsChanged(ctx, doguResource)
+}
+
+func (m *DoguManager) UpdateDataMounts(ctx context.Context, doguResource *doguv2.Dogu) error {
+	return m.dataSeedManager.UpdateDataMounts(ctx, doguResource)
 }
