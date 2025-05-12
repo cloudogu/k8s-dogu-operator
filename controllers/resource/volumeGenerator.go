@@ -68,10 +68,63 @@ func createVolumes(doguResource *k8sv2.Dogu, dogu *core.Dogu, exportModeActive b
 	if err != nil {
 		return nil, err
 	}
-
 	volumes = append(volumes, volumesFromDogu...)
 
+	dataMountVolumes, err := createAdditionalDataVolumes(doguResource)
+	if err != nil {
+		return nil, err
+	}
+	volumes = append(volumes, dataMountVolumes...)
+
 	return volumes, nil
+}
+
+func createAdditionalDataVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
+	// If there is are data mounts with e.g. the same config map only one volume is required.
+	var dataMountsByName = map[string]k8sv2.DataMount{}
+	var volumes []corev1.Volume
+	var multiErr []error
+	for _, dataMount := range doguResource.Spec.Data {
+		_, ok := dataMountsByName[dataMount.Name]
+		if ok {
+			continue
+		}
+		dataMountsByName[dataMount.Name] = dataMount
+
+		mount, err := getVolumeForDataMount(dataMount)
+		if err != nil {
+			multiErr = append(multiErr, err)
+		}
+		volumes = append(volumes, mount)
+	}
+
+	return volumes, errors.Join(multiErr...)
+}
+
+func getVolumeForDataMount(mount k8sv2.DataMount) (corev1.Volume, error) {
+	volumeSource := corev1.VolumeSource{}
+	// TODO discuss generic usage of volumesource? If yes createAdditionalDataVolumes should be able to create multiple volumes for same source.
+	// TODO Change CRD to use DataSourceType
+	// TODO Add optional flag to CRD?
+	switch mount.SourceType {
+	case string(k8sv2.DataSourceConfigMap):
+		volumeSource.ConfigMap = &corev1.ConfigMapVolumeSource{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: mount.Name,
+			},
+		}
+	case string(k8sv2.DataSourceSecret):
+		volumeSource.Secret = &corev1.SecretVolumeSource{
+			SecretName: mount.Name,
+		}
+	default:
+		return corev1.Volume{}, fmt.Errorf("volume source %s not supported", mount.SourceType)
+	}
+
+	return corev1.Volume{
+		Name:         mount.Name,
+		VolumeSource: volumeSource,
+	}, nil
 }
 
 func createDoguJsonVolumesFromDependencies(dogu *core.Dogu) []corev1.Volume {

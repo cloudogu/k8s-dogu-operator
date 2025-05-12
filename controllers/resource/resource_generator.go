@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 	"strings"
@@ -39,7 +40,8 @@ const (
 )
 
 const (
-	chownInitContainerName = "dogu-volume-chown-init"
+	chownInitContainerName    = "dogu-volume-chown-init"
+	dataSeedInitContainerName = "dogu-data-seeder-init"
 )
 
 // kubernetesServiceAccountKind describes a service account on kubernetes.
@@ -48,6 +50,12 @@ const kubernetesServiceAccountKind = "k8s"
 const (
 	startupProbeTimoutEnv      = "DOGU_STARTUP_PROBE_TIMEOUT"
 	defaultStartupProbeTimeout = 1
+)
+
+const (
+	dataSeederDoguMountDir = "dogumount"
+	dataSeederDataMountDir = "datamount"
+	dataSeederArg          = "copy"
 )
 
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
@@ -125,7 +133,6 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		{Name: doguPodMultiNode, Value: "true"},
 	}
 
-	// TODO: Add additional VolumeMount init container
 	initContainers := make([]*corev1.Container, 0)
 	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
 
@@ -143,8 +150,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	if len(doguResource.Spec.Data) > 0 {
 		dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
 
-		// TODO: Create getDataSeederContainer()
-		dataSeederContainer, err := getChownInitContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
+		dataSeederContainer, err := getDataSeederContainer(dogu, doguResource, dataSeederImage)
 		if err != nil {
 			return nil, err
 		}
@@ -188,6 +194,55 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		build()
 
 	return podTemplate, nil
+}
+
+func getDoguVolumePath(dogu *core.Dogu, volumeName string) (string, error) {
+	for _, v := range dogu.Volumes {
+		if v.Name == volumeName {
+			return v.Path, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find volume name %s in dogu %s", volumeName, dogu.Name)
+}
+
+func getDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string) (*corev1.Container, error) {
+	volumeMounts := make([]corev1.VolumeMount, 0, len(doguResource.Spec.Data))
+	args := make([]string, 0, len(doguResource.Spec.Data)+1)
+	args = append(args, dataSeederArg)
+
+	for _, dataMount := range doguResource.Spec.Data {
+		doguVolumePath, err := getDoguVolumePath(dogu, dataMount.Volume)
+		if err != nil {
+			return nil, err
+		}
+
+		pathSepStr := string(os.PathSeparator)
+		sourcePath := path.Join(pathSepStr, dataSeederDataMountDir, dataMount.Name)
+		sourceVolumeMount := corev1.VolumeMount{
+			Name:      dataMount.Name,
+			MountPath: sourcePath,
+		}
+		volumeMounts = append(volumeMounts, sourceVolumeMount)
+
+		targetPath := path.Join(pathSepStr, dataSeederDoguMountDir, doguVolumePath, dataMount.Subfolder)
+		args = append(args, fmt.Sprintf("-source=%s", sourcePath))
+		args = append(args, fmt.Sprintf("-target=%s", targetPath))
+
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      doguResource.GetDataVolumeName(),
+			MountPath: path.Join(pathSepStr, dataSeederDoguMountDir, doguVolumePath),
+			SubPath:   dataMount.Volume,
+		})
+	}
+
+	return &corev1.Container{
+		Name:            dataSeedInitContainerName,
+		Image:           image,
+		Args:            args,
+		VolumeMounts:    volumeMounts,
+		ImagePullPolicy: corev1.PullAlways, // TODO Change to IfNotPresent
+	}, nil
 }
 
 func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitImage string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
