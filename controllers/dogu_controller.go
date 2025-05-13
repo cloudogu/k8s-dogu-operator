@@ -656,8 +656,7 @@ func (r *doguReconciler) performDataMountsOperation(ctx context.Context, doguRes
 		errorReason:   ErrorOnChangeDataMountsEventReason,
 		operationName: "ChangeDataMounts",
 		operationVerb: "change data mounts",
-		// TODO doguv2.DoguStatusChangingDataMounts
-	}, "todo", r.doguManager.UpdateDataMounts, shouldRequeue)
+	}, doguv2.DoguStatusChangingDataMounts, r.doguManager.UpdateDataMounts, shouldRequeue)
 }
 
 func (r *doguReconciler) validateName(doguResource *doguv2.Dogu) (success bool) {

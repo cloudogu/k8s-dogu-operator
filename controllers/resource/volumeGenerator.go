@@ -104,16 +104,15 @@ func createAdditionalDataVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, err
 func getVolumeForDataMount(mount k8sv2.DataMount) (corev1.Volume, error) {
 	volumeSource := corev1.VolumeSource{}
 	// TODO discuss generic usage of volumesource? If yes createAdditionalDataVolumes should be able to create multiple volumes for same source.
-	// TODO Change CRD to use DataSourceType
 	// TODO Add optional flag to CRD?
 	switch mount.SourceType {
-	case string(k8sv2.DataSourceConfigMap):
+	case k8sv2.DataSourceConfigMap:
 		volumeSource.ConfigMap = &corev1.ConfigMapVolumeSource{
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: mount.Name,
 			},
 		}
-	case string(k8sv2.DataSourceSecret):
+	case k8sv2.DataSourceSecret:
 		volumeSource.Secret = &corev1.SecretVolumeSource{
 			SecretName: mount.Name,
 		}
