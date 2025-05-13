@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dataseed"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	remotedogudescriptor "github.com/cloudogu/remote-dogu-descriptor-lib/repository"
 	"k8s.io/client-go/kubernetes"
@@ -45,6 +46,7 @@ type ManagerSet struct {
 	ClientSet             clientSet
 	DependencyValidator   dependencyValidator
 	SecurityValidator     securityValidator
+	DoguDataSeedValidator doguDataSeedValidator
 }
 
 // NewManagerSet creates a new ManagerSet.
@@ -58,6 +60,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	serviceAccountCreator := serviceaccount.NewCreator(configRepos.SensitiveDoguRepository, localDoguFetcher, commandExecutor, client, clientSet, config.Namespace)
 	dependencyValidator := dependency.NewCompositeDependencyValidator(config.Version, localDoguFetcher)
 	securityValidator := security.NewValidator()
+	doguDataSeedValidator := dataseed.NewValidator(clientSet.CoreV1().ConfigMaps(config.Namespace), clientSet.CoreV1().Secrets(config.Namespace))
 
 	remoteConfig, err := config.GetRemoteConfiguration()
 	if err != nil {
@@ -96,5 +99,6 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 		ClientSet:             clientSet,
 		DependencyValidator:   dependencyValidator,
 		SecurityValidator:     securityValidator,
+		DoguDataSeedValidator: doguDataSeedValidator,
 	}, nil
 }

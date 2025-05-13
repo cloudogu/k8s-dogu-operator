@@ -128,6 +128,10 @@ type securityValidator interface {
 	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
 }
 
+type doguDataSeedValidator interface {
+	ValidateDataSeeds(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
+}
+
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
 //
 //nolint:unused

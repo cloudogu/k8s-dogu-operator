@@ -44,6 +44,7 @@ type doguInstallManager struct {
 	doguConfigRepository    doguConfigRepository
 	sensitiveDoguRepository doguConfigRepository
 	securityValidator       securityValidator
+	doguDataSeedValidator   doguDataSeedValidator
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
@@ -65,6 +66,7 @@ func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventR
 		doguConfigRepository:    configRepos.DoguConfigRepository,
 		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
 		securityValidator:       mgrSet.SecurityValidator,
+		doguDataSeedValidator:   mgrSet.DoguDataSeedValidator,
 	}
 }
 
@@ -109,7 +111,12 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *doguv2.D
 		return err
 	}
 
-	// TODO: Validate VolumeMounts
+	logger.Info("Validating dogu data seed mounts...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Validating dogu data seed mounts...")
+	err = m.doguDataSeedValidator.ValidateDataSeeds(ctx, dogu, doguResource)
+	if err != nil {
+		return err
+	}
 
 	logger.Info("Create dogu config and sensitive dogu config...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Create dogu and sensitive config...")
