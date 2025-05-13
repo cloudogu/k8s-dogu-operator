@@ -43,23 +43,19 @@ func (m *doguDataSeedManager) DataMountsChanged(ctx context.Context, doguResourc
 
 	initContainers := deployment.Spec.Template.Spec.InitContainers
 	var actualDoguDataSeedContainer *v1.Container
+
+	// find init container
 	for _, container := range initContainers {
 		if container.Name == dataSeedInitContainerName {
-			*actualDoguDataSeedContainer = container
+			actualDoguDataSeedContainer = &container
+			break
 		}
 	}
 
 	data := doguResource.Spec.Data
-	if len(data) == 0 && actualDoguDataSeedContainer == nil {
-		return false, nil
-	}
-
-	if len(data) == 0 && actualDoguDataSeedContainer != nil {
-		return true, nil
-	}
-
-	if len(data) != 0 && actualDoguDataSeedContainer == nil {
-		return true, nil
+	// If either data or container is missing, check if they're in different states => changed
+	if len(data) == 0 || actualDoguDataSeedContainer == nil {
+		return (len(data) == 0) != (actualDoguDataSeedContainer == nil), nil
 	}
 
 	// Recreate init container and check for equality
@@ -68,7 +64,7 @@ func (m *doguDataSeedManager) DataMountsChanged(ctx context.Context, doguResourc
 		return false, err
 	}
 
-	return reflect.DeepEqual(container, actualDoguDataSeedContainer), nil
+	return !reflect.DeepEqual(container, actualDoguDataSeedContainer), nil
 }
 
 func (m *doguDataSeedManager) createDataMountInitContainer(ctx context.Context, doguResource *v2.Dogu) (*v1.Container, error) {
