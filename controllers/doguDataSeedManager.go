@@ -87,7 +87,7 @@ func (m *doguDataSeedManager) createDataMountInitContainer(ctx context.Context, 
 	}
 
 	// TODO Image
-	container, err := m.resourceGenerator.GetDataSeederContainer(dogu, doguResource, "")
+	container, err := m.resourceGenerator.BuildDataSeederContainer(dogu, doguResource, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate data seeder init container while diff calculation: %w", err)
 	}

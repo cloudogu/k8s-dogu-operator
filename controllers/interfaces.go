@@ -78,7 +78,7 @@ type dataSeedManager interface {
 }
 
 type dataSeederInitContainerGenerator interface {
-	GetDataSeederContainer(dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string) (*coreV1.Container, error)
+	BuildDataSeederContainer(dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string) (*coreV1.Container, error)
 }
 
 // startDoguManager includes functionality to start (stopped) dogus.

@@ -552,7 +552,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		}
 
 		// when
-		container, err := buildDataSeederContainer(dogu, doguResource, testInitContainerImage, resources)
+		container, err := BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -594,7 +594,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		}
 
 		// when
-		container, err := buildDataSeederContainer(dogu, doguResource, expectedContainerImage, resources)
+		container, err := BuildDataSeederContainer(dogu, doguResource, expectedContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -634,7 +634,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		}
 
 		// when
-		container, err := buildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -681,7 +681,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		}
 
 		// when
-		container, err := buildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -710,7 +710,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		expectedArgs := []string{"copy", "-source=/datamount/space-config", "-target=/dogumount/etc/with spaces/conf/with more spaces"}
 
 		// when
-		container, err := buildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -728,7 +728,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		}}}}
 
 		// when
-		_, err := buildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		_, err := BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.Error(t, err)
@@ -748,7 +748,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		expectedArgs := []string{"copy", "-source=/datamount/root-config", "-target=/dogumount/etc/app"}
 
 		// when
-		container, err := buildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -764,7 +764,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		}}
 
 		// when
-		container, err := buildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)

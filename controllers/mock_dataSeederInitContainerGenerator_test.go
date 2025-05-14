@@ -24,12 +24,12 @@ func (_m *mockDataSeederInitContainerGenerator) EXPECT() *mockDataSeederInitCont
 	return &mockDataSeederInitContainerGenerator_Expecter{mock: &_m.Mock}
 }
 
-// GetDataSeederContainer provides a mock function with given fields: dogu, doguResource, image
-func (_m *mockDataSeederInitContainerGenerator) GetDataSeederContainer(dogu *core.Dogu, doguResource *v2.Dogu, image string) (*v1.Container, error) {
+// BuildDataSeederContainer provides a mock function with given fields: dogu, doguResource, image
+func (_m *mockDataSeederInitContainerGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResource *v2.Dogu, image string) (*v1.Container, error) {
 	ret := _m.Called(dogu, doguResource, image)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetDataSeederContainer")
+		panic("no return value specified for BuildDataSeederContainer")
 	}
 
 	var r0 *v1.Container
@@ -54,32 +54,32 @@ func (_m *mockDataSeederInitContainerGenerator) GetDataSeederContainer(dogu *cor
 	return r0, r1
 }
 
-// mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDataSeederContainer'
-type mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call struct {
+// mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BuildDataSeederContainer'
+type mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call struct {
 	*mock.Call
 }
 
-// GetDataSeederContainer is a helper method to define mock.On call
+// BuildDataSeederContainer is a helper method to define mock.On call
 //   - dogu *core.Dogu
 //   - doguResource *v2.Dogu
 //   - image string
-func (_e *mockDataSeederInitContainerGenerator_Expecter) GetDataSeederContainer(dogu interface{}, doguResource interface{}, image interface{}) *mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call {
-	return &mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call{Call: _e.mock.On("GetDataSeederContainer", dogu, doguResource, image)}
+func (_e *mockDataSeederInitContainerGenerator_Expecter) BuildDataSeederContainer(dogu interface{}, doguResource interface{}, image interface{}) *mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call {
+	return &mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call{Call: _e.mock.On("BuildDataSeederContainer", dogu, doguResource, image)}
 }
 
-func (_c *mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call) Run(run func(dogu *core.Dogu, doguResource *v2.Dogu, image string)) *mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call {
+func (_c *mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call) Run(run func(dogu *core.Dogu, doguResource *v2.Dogu, image string)) *mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(*core.Dogu), args[1].(*v2.Dogu), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call) Return(_a0 *v1.Container, _a1 error) *mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call {
+func (_c *mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call) Return(_a0 *v1.Container, _a1 error) *mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call) RunAndReturn(run func(*core.Dogu, *v2.Dogu, string) (*v1.Container, error)) *mockDataSeederInitContainerGenerator_GetDataSeederContainer_Call {
+func (_c *mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call) RunAndReturn(run func(*core.Dogu, *v2.Dogu, string) (*v1.Container, error)) *mockDataSeederInitContainerGenerator_BuildDataSeederContainer_Call {
 	_c.Call.Return(run)
 	return _c
 }

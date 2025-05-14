@@ -150,7 +150,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	if len(doguResource.Spec.Data) > 0 {
 		dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
 
-		dataSeederContainer, err := buildDataSeederContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
+		dataSeederContainer, err := BuildDataSeederContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
 		if err != nil {
 			return nil, err
 		}
@@ -207,8 +207,8 @@ func findVolumeByName(dogu *core.Dogu, volumeName string) (*core.Volume, error) 
 	return nil, fmt.Errorf("could not find volume name %s in dogu %s", volumeName, dogu.Name)
 }
 
-// buildDataSeederContainer creates a container for seeding data into a dogu.
-func buildDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
+// BuildDataSeederContainer creates a container for seeding data into a dogu.
+func BuildDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
 	if len(doguResource.Spec.Data) == 0 {
 		return nil, nil
 	}
