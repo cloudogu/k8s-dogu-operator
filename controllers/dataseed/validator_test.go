@@ -30,7 +30,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 	validDoguDataSeed := &k8sv2.Dogu{
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
-			Data: []k8sv2.DataMount{
+			AdditionalMounts: []k8sv2.DataMount{
 				{
 					SourceType: k8sv2.DataSourceConfigMap,
 					Name:       "configmap1",
@@ -59,7 +59,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 	duplicatedDoguDataSeed := &k8sv2.Dogu{
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
-			Data: []k8sv2.DataMount{
+			AdditionalMounts: []k8sv2.DataMount{
 				{
 					SourceType: k8sv2.DataSourceConfigMap,
 					Name:       "configmap1",
@@ -78,7 +78,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{Name: "nginx"},
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
-			Data: []k8sv2.DataMount{
+			AdditionalMounts: []k8sv2.DataMount{
 				{
 					SourceType: k8sv2.DataSourceConfigMap,
 					Name:       "configmap1",
@@ -91,7 +91,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 	simpleDoguDataSeed := &k8sv2.Dogu{
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
-			Data: []k8sv2.DataMount{
+			AdditionalMounts: []k8sv2.DataMount{
 				{
 					SourceType: k8sv2.DataSourceConfigMap,
 					Name:       "configmap1",
@@ -104,7 +104,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 	invalidSourceTypeDoguDataSeed := &k8sv2.Dogu{
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
-			Data: []k8sv2.DataMount{
+			AdditionalMounts: []k8sv2.DataMount{
 				{
 					SourceType: "invalid",
 					Name:       "configmap1",

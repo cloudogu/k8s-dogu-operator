@@ -59,7 +59,7 @@ func (m *doguDataSeedManager) DataMountsChanged(ctx context.Context, doguResourc
 		}
 	}
 
-	data := doguResource.Spec.Data
+	data := doguResource.Spec.AdditionalMounts
 	// If either data or container is missing, check if they're in different states => changed
 	if len(data) == 0 || actualDoguDataSeedContainer == nil {
 		return (len(data) == 0) != (actualDoguDataSeedContainer == nil), nil
@@ -112,6 +112,7 @@ func (m *doguDataSeedManager) UpdateDataMounts(ctx context.Context, doguResource
 	}
 
 	err = retry.OnConflict(func() error {
+		//TODO: Add Data Volumes if CR changed
 		deployment, retryErr := m.getDoguDeployment(ctx, doguResource)
 		if retryErr != nil {
 			return retryErr

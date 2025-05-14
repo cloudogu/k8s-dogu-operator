@@ -84,7 +84,7 @@ func createAdditionalDataVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, err
 	var dataMountsByName = map[string]k8sv2.DataMount{}
 	var volumes []corev1.Volume
 	var multiErr []error
-	for _, dataMount := range doguResource.Spec.Data {
+	for _, dataMount := range doguResource.Spec.AdditionalMounts {
 		_, ok := dataMountsByName[dataMount.Name]
 		if ok {
 			continue

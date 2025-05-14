@@ -530,7 +530,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 	t.Run("success with standard volume setup\n", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "testVolume", Path: "/etc/test", NeedsBackup: true}}}
-		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "ldap"}, Spec: doguv2.DoguSpec{Data: []doguv2.DataMount{{
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "ldap"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
 			SourceType: "ConfigMap",
 			Name:       "cm-1",
 			Volume:     "testVolume",
@@ -578,7 +578,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 	t.Run("success with ephemeral volume setup", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "ephemeralVolume", Path: "/var/cache", NeedsBackup: false}}}
-		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "redis"}, Spec: doguv2.DoguSpec{Data: []doguv2.DataMount{{
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "redis"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
 			SourceType: "ConfigMap",
 			Name:       "redis-config",
 			Volume:     "ephemeralVolume",
@@ -614,7 +614,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 	t.Run("success with multiple source volumes mounted to a single target volume", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "configVolume", Path: "/etc/app", NeedsBackup: true}}}
-		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{Data: []doguv2.DataMount{
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{
 			{
 				SourceType: "ConfigMap",
 				Name:       "main-config",
@@ -663,7 +663,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 			{Name: "configVolume", Path: "/etc/app/config", NeedsBackup: true},
 			{Name: "dataVolume", Path: "/var/lib/app/data", NeedsBackup: true},
 		}}
-		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{Data: []doguv2.DataMount{
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{
 			{
 				SourceType: "ConfigMap",
 				Name:       "shared-config",
@@ -708,7 +708,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 	t.Run("success with whitespace in volume paths", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "spaceVolume", Path: "/etc/with spaces/conf", NeedsBackup: true}}}
-		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{Data: []doguv2.DataMount{{
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
 			SourceType: "ConfigMap",
 			Name:       "space-config",
 			Volume:     "spaceVolume",
@@ -730,7 +730,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 	t.Run("failure with cr-Volume not matching a dogu volume name", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "existingVolume", Path: "/etc/test", NeedsBackup: true}}}
-		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{Data: []doguv2.DataMount{{
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
 			SourceType: "ConfigMap",
 			Name:       "test-config",
 			Volume:     "nonExistingVolume", // This doesn't match any volume in dogu
@@ -750,7 +750,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 	t.Run("success with empty subfolder", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "rootVolume", Path: "/etc/app", NeedsBackup: true}}}
-		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{Data: []doguv2.DataMount{{
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
 			SourceType: "ConfigMap",
 			Name:       "root-config",
 			Volume:     "rootVolume",
@@ -774,7 +774,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "testVolume", Path: "/etc/test", NeedsBackup: true}}}
 		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{
 			// No data mounts specified
-			Data: []doguv2.DataMount{},
+			AdditionalMounts: []doguv2.DataMount{},
 		}}
 
 		sut := &resourceGenerator{}

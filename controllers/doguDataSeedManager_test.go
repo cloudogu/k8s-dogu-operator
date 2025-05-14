@@ -88,7 +88,7 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 			Namespace: testNamespace,
 		},
 		Spec: v2.DoguSpec{
-			Data: []v2.DataMount{
+			AdditionalMounts: []v2.DataMount{
 				{
 					SourceType: "ConfigMap",
 					Name:       "configmap",
@@ -492,7 +492,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			Namespace: testNamespace,
 		},
 		Spec: v2.DoguSpec{
-			Data: []v2.DataMount{
+			AdditionalMounts: []v2.DataMount{
 				{
 					SourceType: "ConfigMap",
 					Name:       "configmap",

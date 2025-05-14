@@ -147,7 +147,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	}
 	initContainers = append(initContainers, chownContainer)
 
-	if len(doguResource.Spec.Data) > 0 {
+	if len(doguResource.Spec.AdditionalMounts) > 0 {
 		dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
 
 		dataSeederContainer, err := r.BuildDataSeederContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
@@ -209,7 +209,7 @@ func findVolumeByName(dogu *core.Dogu, volumeName string) (*core.Volume, error) 
 
 // BuildDataSeederContainer creates a container for seeding data into a dogu.
 func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
-	if len(doguResource.Spec.Data) == 0 {
+	if len(doguResource.Spec.AdditionalMounts) == 0 {
 		return nil, nil
 	}
 
@@ -242,14 +242,14 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 
 // prepareDataSeederMountsAndArgs generates volume mounts and command arguments for the data seeder.
 func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) ([]corev1.VolumeMount, []string, error) {
-	volumeMounts := make([]corev1.VolumeMount, 0, 2*len(doguResource.Spec.Data))
+	volumeMounts := make([]corev1.VolumeMount, 0, 2*len(doguResource.Spec.AdditionalMounts))
 	args := []string{dataSeederArg}
 	sourceVolumeSet := make(map[string]struct{})
 	targetVolumeSet := make(map[string]struct{})
 	pathSepStr := string(os.PathSeparator)
 
 	// TODO: Optional flag?
-	for _, dataMount := range doguResource.Spec.Data {
+	for _, dataMount := range doguResource.Spec.AdditionalMounts {
 		doguVolume, err := findVolumeByName(dogu, dataMount.Volume)
 		if err != nil {
 			return nil, nil, err

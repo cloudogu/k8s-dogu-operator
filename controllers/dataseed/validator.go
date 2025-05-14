@@ -30,7 +30,7 @@ func NewValidator(configMapGetter configMapGetter, secretGatter secretGetter) *V
 func (v *Validator) ValidateDataSeeds(ctx context.Context, doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error {
 	var multiErr []error
 	var dataMounts = make(map[k8sv2.DataMount]struct{})
-	for _, dataMount := range doguResource.Spec.Data {
+	for _, dataMount := range doguResource.Spec.AdditionalMounts {
 		// check for duplicate entries
 		if _, ok := dataMounts[dataMount]; ok {
 			multiErr = append(multiErr, fmt.Errorf("duplicate entry %+v", dataMount))

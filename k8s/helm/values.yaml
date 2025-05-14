@@ -12,12 +12,12 @@ additionalImages:
   exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.0.0
   # dataSeederImage will be used as init container if the dogu mounts additional data
   # TODO: Replace image!
-  dataSeederImage: registry.cloudogu.com/k8s/rsync-sidecar:1.0.0
+  dataSeederImage: k3ces.local:30099/dogu-init-file-copy:test
 controllerManager:
   image:
     registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 3.5.1
+    tag: 3.5.3
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug
