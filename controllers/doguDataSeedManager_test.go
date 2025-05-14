@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -117,9 +118,10 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 	nginxDogu := &core.Dogu{}
 
 	type fields struct {
-		deploymentInterface func() deploymentInterface
-		resourceGenerator   func() dataSeederInitContainerGenerator
-		resourceDoguFetcher func() resourceDoguFetcher
+		deploymentInterface   func() deploymentInterface
+		resourceGenerator     func() dataSeederInitContainerGenerator
+		resourceDoguFetcher   func() resourceDoguFetcher
+		requirementsGenerator func() requirementsGenerator
 	}
 	type args struct {
 		ctx          context.Context
@@ -147,7 +149,12 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 				},
 				resourceGenerator: func() dataSeederInitContainerGenerator {
 					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().GetDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "").Return(expectedInitContainerWithSeederMounts, nil)
+					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithSeederMounts, nil)
+					return mock
+				},
+				requirementsGenerator: func() requirementsGenerator {
+					mock := newMockRequirementsGenerator(t)
+					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
 			},
@@ -189,7 +196,12 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 				},
 				resourceGenerator: func() dataSeederInitContainerGenerator {
 					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().GetDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "").Return(expectedInitContainerWithSeederMounts, nil)
+					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithSeederMounts, nil)
+					return mock
+				},
+				requirementsGenerator: func() requirementsGenerator {
+					mock := newMockRequirementsGenerator(t)
+					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
 			},
@@ -212,6 +224,9 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 			}
 			if tt.fields.resourceDoguFetcher != nil {
 				m.resourceDoguFetcher = tt.fields.resourceDoguFetcher()
+			}
+			if tt.fields.requirementsGenerator != nil {
+				m.requirementsGenerator = tt.fields.requirementsGenerator()
 			}
 
 			got, err := m.DataMountsChanged(tt.args.ctx, tt.args.doguResource)
@@ -296,8 +311,9 @@ func Test_doguDataSeedManager_createDataMountInitContainer(t *testing.T) {
 	nginxDogu := &core.Dogu{Name: "nginx"}
 
 	type fields struct {
-		resourceGenerator   func() dataSeederInitContainerGenerator
-		resourceDoguFetcher func() resourceDoguFetcher
+		resourceGenerator     func() dataSeederInitContainerGenerator
+		resourceDoguFetcher   func() resourceDoguFetcher
+		requirementsGenerator func() requirementsGenerator
 	}
 	type args struct {
 		ctx          context.Context
@@ -339,7 +355,12 @@ func Test_doguDataSeedManager_createDataMountInitContainer(t *testing.T) {
 				},
 				resourceGenerator: func() dataSeederInitContainerGenerator {
 					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().GetDataSeederContainer(nginxDogu, nginxDoguResource, "").Return(nil, assert.AnError)
+					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResource, "", corev1.ResourceRequirements{}).Return(nil, assert.AnError)
+					return mock
+				},
+				requirementsGenerator: func() requirementsGenerator {
+					mock := newMockRequirementsGenerator(t)
+					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
 			},
@@ -363,6 +384,9 @@ func Test_doguDataSeedManager_createDataMountInitContainer(t *testing.T) {
 			if tt.fields.resourceDoguFetcher != nil {
 				m.resourceDoguFetcher = tt.fields.resourceDoguFetcher()
 			}
+			if tt.fields.requirementsGenerator != nil {
+				m.requirementsGenerator = tt.fields.requirementsGenerator()
+			}
 			got, err := m.createDataMountInitContainer(tt.args.ctx, tt.args.doguResource)
 			if !tt.wantErr(t, err, fmt.Sprintf("createDataMountInitContainer(%v, %v)", tt.args.ctx, tt.args.doguResource)) {
 				return
@@ -378,12 +402,20 @@ func TestNewDoguDataSeedManager(t *testing.T) {
 		deploymentMock := newMockDeploymentInterface(t)
 		resourceGeneratorMock := newMockDataSeederInitContainerGenerator(t)
 		resourceDoguFetcherMock := newMockResourceDoguFetcher(t)
+		requirementsGeneratorMock := newMockRequirementsGenerator(t)
+
+		mgrSet := &util.ManagerSet{
+			DoguDataSeedContainerGenerator: resourceGeneratorMock,
+			RequirementsGenerator:          requirementsGeneratorMock,
+			ResourceDoguFetcher:            resourceDoguFetcherMock,
+			AdditionalImages:               map[string]string{config.DataSeederImageConfigmapNameKey: "image"},
+		}
 
 		// when
-		sut := NewDoguDataSeedManager(deploymentMock, resourceGeneratorMock, resourceDoguFetcherMock, map[string]string{config.DataSeederImageConfigmapNameKey: "image"})
+		sut, err := NewDoguDataSeedManager(deploymentMock, mgrSet)
 
 		// then
-		require.NotNil(t, sut)
+		require.NoError(t, err)
 		assert.Equal(t, deploymentMock, sut.deploymentInterface)
 		assert.Equal(t, resourceGeneratorMock, sut.resourceGenerator)
 		assert.Equal(t, resourceDoguFetcherMock, sut.resourceDoguFetcher)
@@ -473,9 +505,10 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 	nginxDogu := &core.Dogu{}
 
 	type fields struct {
-		deploymentInterface func() deploymentInterface
-		resourceGenerator   func() dataSeederInitContainerGenerator
-		resourceDoguFetcher func() resourceDoguFetcher
+		deploymentInterface   func() deploymentInterface
+		resourceGenerator     func() dataSeederInitContainerGenerator
+		resourceDoguFetcher   func() resourceDoguFetcher
+		requirementsGenerator func() requirementsGenerator
 	}
 	type args struct {
 		ctx          context.Context
@@ -503,7 +536,12 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 				},
 				resourceGenerator: func() dataSeederInitContainerGenerator {
 					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().GetDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "").Return(updatedInitContainer, nil)
+					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+					return mock
+				},
+				requirementsGenerator: func() requirementsGenerator {
+					mock := newMockRequirementsGenerator(t)
+					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
 			},
@@ -530,7 +568,12 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 				},
 				resourceGenerator: func() dataSeederInitContainerGenerator {
 					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().GetDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "").Return(updatedInitContainer, nil)
+					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+					return mock
+				},
+				requirementsGenerator: func() requirementsGenerator {
+					mock := newMockRequirementsGenerator(t)
+					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
 			},
@@ -555,7 +598,12 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 				},
 				resourceGenerator: func() dataSeederInitContainerGenerator {
 					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().GetDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "").Return(updatedInitContainer, nil)
+					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+					return mock
+				},
+				requirementsGenerator: func() requirementsGenerator {
+					mock := newMockRequirementsGenerator(t)
+					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
 			},
@@ -581,6 +629,9 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			}
 			if tt.fields.resourceDoguFetcher != nil {
 				m.resourceDoguFetcher = tt.fields.resourceDoguFetcher()
+			}
+			if tt.fields.requirementsGenerator != nil {
+				m.requirementsGenerator = tt.fields.requirementsGenerator()
 			}
 			tt.wantErr(t, m.UpdateDataMounts(tt.args.ctx, tt.args.doguResource), fmt.Sprintf("UpdateDataMounts(%v, %v)", tt.args.ctx, tt.args.doguResource))
 		})

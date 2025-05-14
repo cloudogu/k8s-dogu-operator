@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -23,6 +24,15 @@ type securityValidator interface {
 
 type doguDataSeedValidator interface {
 	ValidateDataSeeds(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
+}
+
+type dataSeederInitContainerGenerator interface {
+	BuildDataSeederContainer(dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
+}
+
+// requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
+type requirementsGenerator interface {
+	Generate(ctx context.Context, dogu *cesappcore.Dogu) (coreV1.ResourceRequirements, error)
 }
 
 //nolint:unused

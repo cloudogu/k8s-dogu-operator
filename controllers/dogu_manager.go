@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -90,11 +89,10 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
-	containerGenerator, ok := (mgrSet.DoguResourceGenerator).(dataSeederInitContainerGenerator)
-	if !ok {
-		return nil, errors.New("failed cast dogu resource generator to dataSeederInitContainerGenerator")
+	dataSeedManager, err := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet)
+	if err != nil {
+		return nil, err
 	}
-	dataSeedManager := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), containerGenerator, mgrSet.ResourceDoguFetcher, mgrSet.AdditionalImages)
 
 	return &DoguManager{
 		scheme:                    client.Scheme(),

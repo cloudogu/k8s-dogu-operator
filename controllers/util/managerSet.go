@@ -31,23 +31,25 @@ type ConfigRepositories struct {
 
 // ManagerSet contains functors that are repeatedly used by different dogu operator managers.
 type ManagerSet struct {
-	RestConfig            *rest.Config
-	CollectApplier        resource.CollectApplier
-	FileExtractor         exec.FileExtractor
-	CommandExecutor       exec.CommandExecutor
-	ServiceAccountCreator serviceaccount.ServiceAccountCreator
-	LocalDoguFetcher      cesregistry.LocalDoguFetcher
-	ResourceDoguFetcher   cesregistry.ResourceDoguFetcher
-	DoguResourceGenerator resource.DoguResourceGenerator
-	ResourceUpserter      resource.ResourceUpserter
-	DoguRegistrator       cesregistry.DoguRegistrator
-	ImageRegistry         imageregistry.ImageRegistry
-	EcosystemClient       doguClient.EcoSystemV2Interface
-	ClientSet             clientSet
-	DependencyValidator   dependencyValidator
-	SecurityValidator     securityValidator
-	DoguDataSeedValidator doguDataSeedValidator
-	AdditionalImages      map[string]string
+	RestConfig                     *rest.Config
+	CollectApplier                 resource.CollectApplier
+	FileExtractor                  exec.FileExtractor
+	CommandExecutor                exec.CommandExecutor
+	ServiceAccountCreator          serviceaccount.ServiceAccountCreator
+	LocalDoguFetcher               cesregistry.LocalDoguFetcher
+	ResourceDoguFetcher            cesregistry.ResourceDoguFetcher
+	DoguResourceGenerator          resource.DoguResourceGenerator
+	ResourceUpserter               resource.ResourceUpserter
+	DoguRegistrator                cesregistry.DoguRegistrator
+	ImageRegistry                  imageregistry.ImageRegistry
+	EcosystemClient                doguClient.EcoSystemV2Interface
+	ClientSet                      clientSet
+	DependencyValidator            dependencyValidator
+	SecurityValidator              securityValidator
+	DoguDataSeedValidator          doguDataSeedValidator
+	RequirementsGenerator          requirementsGenerator
+	DoguDataSeedContainerGenerator dataSeederInitContainerGenerator
+	AdditionalImages               map[string]string
 }
 
 // NewManagerSet creates a new ManagerSet.
@@ -85,22 +87,24 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry()
 
 	return &ManagerSet{
-		RestConfig:            restConfig,
-		CollectApplier:        collectApplier,
-		FileExtractor:         fileExtractor,
-		CommandExecutor:       commandExecutor,
-		ServiceAccountCreator: serviceAccountCreator,
-		LocalDoguFetcher:      localDoguFetcher,
-		ResourceDoguFetcher:   resourceDoguFetcher,
-		DoguResourceGenerator: doguResourceGenerator,
-		ResourceUpserter:      upserter,
-		DoguRegistrator:       doguRegistrator,
-		ImageRegistry:         imageRegistry,
-		EcosystemClient:       ecosystemClient,
-		ClientSet:             clientSet,
-		DependencyValidator:   dependencyValidator,
-		SecurityValidator:     securityValidator,
-		DoguDataSeedValidator: doguDataSeedValidator,
-		AdditionalImages:      additionalImages,
+		RestConfig:                     restConfig,
+		CollectApplier:                 collectApplier,
+		FileExtractor:                  fileExtractor,
+		CommandExecutor:                commandExecutor,
+		ServiceAccountCreator:          serviceAccountCreator,
+		LocalDoguFetcher:               localDoguFetcher,
+		ResourceDoguFetcher:            resourceDoguFetcher,
+		DoguResourceGenerator:          doguResourceGenerator,
+		ResourceUpserter:               upserter,
+		DoguRegistrator:                doguRegistrator,
+		ImageRegistry:                  imageRegistry,
+		EcosystemClient:                ecosystemClient,
+		ClientSet:                      clientSet,
+		DependencyValidator:            dependencyValidator,
+		SecurityValidator:              securityValidator,
+		DoguDataSeedValidator:          doguDataSeedValidator,
+		AdditionalImages:               additionalImages,
+		RequirementsGenerator:          requirementsGenerator,
+		DoguDataSeedContainerGenerator: doguResourceGenerator,
 	}, nil
 }

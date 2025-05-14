@@ -78,7 +78,7 @@ type dataSeedManager interface {
 }
 
 type dataSeederInitContainerGenerator interface {
-	BuildDataSeederContainer(dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string) (*coreV1.Container, error)
+	BuildDataSeederContainer(dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
 }
 
 // startDoguManager includes functionality to start (stopped) dogus.
@@ -138,6 +138,24 @@ type doguDataSeedValidator interface {
 //goland:noinspection GoUnusedType
 type requirementsGenerator interface {
 	Generate(ctx context.Context, dogu *cesappcore.Dogu) (coreV1.ResourceRequirements, error)
+}
+
+// DoguResourceGenerator handles resource generation for dogus.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type DoguResourceGenerator interface {
+	podTemplateResourceGenerator
+
+	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
+	CreateDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (*appsv1.Deployment, error)
+	// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
+	// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
+	// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
+	// the service ports to the created service.
+	CreateDoguService(doguResource *v2.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile) (*coreV1.Service, error)
+	// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
+	CreateDoguPVC(doguResource *v2.Dogu) (*coreV1.PersistentVolumeClaim, error)
 }
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/retry-lib/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,19 +23,21 @@ const (
 )
 
 type doguDataSeedManager struct {
-	deploymentInterface deploymentInterface
-	resourceGenerator   dataSeederInitContainerGenerator
-	resourceDoguFetcher resourceDoguFetcher
-	image               string
+	deploymentInterface   deploymentInterface
+	resourceGenerator     dataSeederInitContainerGenerator
+	resourceDoguFetcher   resourceDoguFetcher
+	requirementsGenerator requirementsGenerator
+	image                 string
 }
 
-func NewDoguDataSeedManager(deploymentInterface deploymentInterface, resourceGenerator dataSeederInitContainerGenerator, resourceDoguFetcher resourceDoguFetcher, additionalImages map[string]string) *doguDataSeedManager {
+func NewDoguDataSeedManager(deploymentInterface deploymentInterface, mgrSet *util.ManagerSet) (*doguDataSeedManager, error) {
 	return &doguDataSeedManager{
-		deploymentInterface: deploymentInterface,
-		resourceGenerator:   resourceGenerator,
-		resourceDoguFetcher: resourceDoguFetcher,
-		image:               additionalImages[config.DataSeederImageConfigmapNameKey],
-	}
+		deploymentInterface:   deploymentInterface,
+		resourceGenerator:     mgrSet.DoguDataSeedContainerGenerator,
+		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
+		requirementsGenerator: mgrSet.RequirementsGenerator,
+		image:                 mgrSet.AdditionalImages[config.DataSeederImageConfigmapNameKey],
+	}, nil
 }
 
 func (m *doguDataSeedManager) DataMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error) {
@@ -89,7 +92,12 @@ func (m *doguDataSeedManager) createDataMountInitContainer(ctx context.Context, 
 		return nil, fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err)
 	}
 
-	container, err := m.resourceGenerator.BuildDataSeederContainer(dogu, doguResource, "")
+	requirements, err := m.requirementsGenerator.Generate(ctx, dogu)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate requirements for dogu %s: %w", doguResource.Name, err)
+	}
+
+	container, err := m.resourceGenerator.BuildDataSeederContainer(dogu, doguResource, m.image, requirements)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate data seeder init container while diff calculation: %w", err)
 	}
