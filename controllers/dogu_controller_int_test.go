@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
+	"slices"
 	"strings"
 	"testing"
 
@@ -84,7 +85,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
 			ldapVersion, _ := core.ParseVersion("2.4.48-4")
 			ldapQualifiedVersion, _ := cescommons.NewQualifiedVersion(ldapQualifiedName, ldapVersion)
-			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(ldapDogu, nil).Once()
+			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(ldapDogu, nil).Times(3)
 			redmineVersion, _ := core.ParseVersion("4.2.3-10")
 			redmineQualifiedVersion, _ := cescommons.NewQualifiedVersion(redmineQualifiedName, redmineVersion)
 			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, redmineQualifiedVersion).Return(redmineDogu, nil).Once()
@@ -236,6 +237,73 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 				return ptr.Deref(deployment.Spec.Template.Spec.SecurityContext.RunAsNonRoot, false) &&
 					ptr.Deref(deployment.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot, false)
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
+		})
+
+		It("Update dogus additional mounts", func() {
+			By("Update dogu resource with data mounts")
+			createdDogu := &doguv2.Dogu{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
+
+			sourceCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "sourcecm", Namespace: testNamespace}}
+			_, err := k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(ctx, sourceCm, metav1.CreateOptions{})
+			if err != nil {
+				panic(err)
+			}
+
+			createdDogu.Spec.Data = []doguv2.DataMount{
+				{
+					SourceType: doguv2.DataSourceConfigMap,
+					Name:       "sourcecm",
+					Volume:     "config",
+					Subfolder:  "test",
+				},
+			}
+
+			updateDoguCr(ctx, createdDogu)
+
+			By("Expect volume and volume mounts in init container")
+			deployment := &appsv1.Deployment{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				if err != nil {
+					return false
+				}
+
+				var initContainer *corev1.Container
+				for _, container := range deployment.Spec.Template.Spec.InitContainers {
+					if container.Name == "dogu-data-seeder-init" {
+						*initContainer = container
+					}
+				}
+
+				if initContainer == nil {
+					return false
+				}
+
+				sourceVolumeMount := corev1.VolumeMount{
+					Name:      "sourceCM",
+					MountPath: "/datamount/sourcecm",
+					SubPath:   "sourceCM",
+				}
+
+				targetVolumeMount := corev1.VolumeMount{
+					Name:      "ldap-data",
+					MountPath: "/dogumount/config",
+					SubPath:   "config",
+				}
+
+				if len(initContainer.VolumeMounts) != 2 ||
+					!slices.Contains(initContainer.VolumeMounts, sourceVolumeMount) ||
+					!slices.Contains(initContainer.VolumeMounts, targetVolumeMount) {
+					return false
+				}
+
+				return true
+
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		})
 
@@ -444,7 +512,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	//	Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 	//	Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 	//	Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
-	// })
 })
 
 func assertRessourceStatus(ressourceLookupKey types.NamespacedName, expectedStatus string) {

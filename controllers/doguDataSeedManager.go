@@ -30,14 +30,14 @@ type doguDataSeedManager struct {
 	image                 string
 }
 
-func NewDoguDataSeedManager(deploymentInterface deploymentInterface, mgrSet *util.ManagerSet) (*doguDataSeedManager, error) {
+func NewDoguDataSeedManager(deploymentInterface deploymentInterface, mgrSet *util.ManagerSet) *doguDataSeedManager {
 	return &doguDataSeedManager{
 		deploymentInterface:   deploymentInterface,
 		resourceGenerator:     mgrSet.DoguDataSeedContainerGenerator,
 		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
 		requirementsGenerator: mgrSet.RequirementsGenerator,
 		image:                 mgrSet.AdditionalImages[config.DataSeederImageConfigmapNameKey],
-	}, nil
+	}
 }
 
 func (m *doguDataSeedManager) DataMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error) {

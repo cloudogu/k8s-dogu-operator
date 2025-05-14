@@ -412,10 +412,10 @@ func TestNewDoguDataSeedManager(t *testing.T) {
 		}
 
 		// when
-		sut, err := NewDoguDataSeedManager(deploymentMock, mgrSet)
+		sut := NewDoguDataSeedManager(deploymentMock, mgrSet)
 
 		// then
-		require.NoError(t, err)
+		require.NotNil(t, sut)
 		assert.Equal(t, deploymentMock, sut.deploymentInterface)
 		assert.Equal(t, resourceGeneratorMock, sut.resourceGenerator)
 		assert.Equal(t, resourceDoguFetcherMock, sut.resourceDoguFetcher)
