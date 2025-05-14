@@ -218,6 +218,8 @@ func BuildDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image s
 		return nil, fmt.Errorf("failed to prepare data seeder configuration: %w", err)
 	}
 
+	runAsNonRoot := false
+	readOnlyRootFilesystem := false
 	return &corev1.Container{
 		Name:            dataSeedInitContainerName,
 		Image:           image,
@@ -225,7 +227,16 @@ func BuildDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image s
 		VolumeMounts:    mounts,
 		ImagePullPolicy: corev1.PullAlways, // TODO: Change to IfNotPresent when stable
 		Resources:       requirements,
-		// TODO SecurityContext?
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{core.All},
+			},
+			RunAsNonRoot:           &runAsNonRoot,
+			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
+			SELinuxOptions:         &corev1.SELinuxOptions{},
+			SeccompProfile:         &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
+			AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
+		},
 	}, nil
 }
 
