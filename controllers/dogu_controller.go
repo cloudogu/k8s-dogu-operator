@@ -332,7 +332,6 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 		operations = append(operations, ChangeExportMode)
 	}
 
-	// TODO: checkShouldChangeDataSeeds
 	changed, err := r.doguManager.DataMountsChanged(ctx, doguResource)
 	if err != nil {
 		return nil, err

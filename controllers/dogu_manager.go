@@ -90,12 +90,11 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
-	// TODO Is this ok?
-	containerGenerator, ok := mgrSet.DoguResourceGenerator.(dataSeederInitContainerGenerator)
+	containerGenerator, ok := (mgrSet.DoguResourceGenerator).(dataSeederInitContainerGenerator)
 	if !ok {
 		return nil, errors.New("failed cast dogu resource generator to dataSeederInitContainerGenerator")
 	}
-	dataSeedManager := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), containerGenerator, mgrSet.ResourceDoguFetcher)
+	dataSeedManager := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), containerGenerator, mgrSet.ResourceDoguFetcher, mgrSet.AdditionalImages)
 
 	return &DoguManager{
 		scheme:                    client.Scheme(),

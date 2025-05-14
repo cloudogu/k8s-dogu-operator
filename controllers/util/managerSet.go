@@ -47,6 +47,7 @@ type ManagerSet struct {
 	DependencyValidator   dependencyValidator
 	SecurityValidator     securityValidator
 	DoguDataSeedValidator doguDataSeedValidator
+	AdditionalImages      map[string]string
 }
 
 // NewManagerSet creates a new ManagerSet.
@@ -100,5 +101,6 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 		DependencyValidator:   dependencyValidator,
 		SecurityValidator:     securityValidator,
 		DoguDataSeedValidator: doguDataSeedValidator,
+		AdditionalImages:      additionalImages,
 	}, nil
 }

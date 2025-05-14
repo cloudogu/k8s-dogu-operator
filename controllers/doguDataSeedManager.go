@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/retry-lib/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,13 +25,15 @@ type doguDataSeedManager struct {
 	deploymentInterface deploymentInterface
 	resourceGenerator   dataSeederInitContainerGenerator
 	resourceDoguFetcher resourceDoguFetcher
+	image               string
 }
 
-func NewDoguDataSeedManager(deploymentInterface deploymentInterface, resourceGenerator dataSeederInitContainerGenerator, resourceDoguFetcher resourceDoguFetcher) *doguDataSeedManager {
+func NewDoguDataSeedManager(deploymentInterface deploymentInterface, resourceGenerator dataSeederInitContainerGenerator, resourceDoguFetcher resourceDoguFetcher, additionalImages map[string]string) *doguDataSeedManager {
 	return &doguDataSeedManager{
 		deploymentInterface: deploymentInterface,
 		resourceGenerator:   resourceGenerator,
 		resourceDoguFetcher: resourceDoguFetcher,
+		image:               additionalImages[config.DataSeederImageConfigmapNameKey],
 	}
 }
 
@@ -86,7 +89,6 @@ func (m *doguDataSeedManager) createDataMountInitContainer(ctx context.Context, 
 		return nil, fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err)
 	}
 
-	// TODO Image
 	container, err := m.resourceGenerator.BuildDataSeederContainer(dogu, doguResource, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate data seeder init container while diff calculation: %w", err)

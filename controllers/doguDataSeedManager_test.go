@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -379,13 +380,14 @@ func TestNewDoguDataSeedManager(t *testing.T) {
 		resourceDoguFetcherMock := newMockResourceDoguFetcher(t)
 
 		// when
-		sut := NewDoguDataSeedManager(deploymentMock, resourceGeneratorMock, resourceDoguFetcherMock)
+		sut := NewDoguDataSeedManager(deploymentMock, resourceGeneratorMock, resourceDoguFetcherMock, map[string]string{config.DataSeederImageConfigmapNameKey: "image"})
 
 		// then
 		require.NotNil(t, sut)
 		assert.Equal(t, deploymentMock, sut.deploymentInterface)
 		assert.Equal(t, resourceGeneratorMock, sut.resourceGenerator)
 		assert.Equal(t, resourceDoguFetcherMock, sut.resourceDoguFetcher)
+		assert.Equal(t, "image", sut.image)
 	})
 }
 
