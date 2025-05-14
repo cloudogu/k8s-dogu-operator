@@ -95,7 +95,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 	if !ok {
 		return nil, errors.New("failed cast dogu resource generator to dataSeederInitContainerGenerator")
 	}
-	dataSeedManager := NewDoguDataSeedManager(client, containerGenerator, mgrSet.ResourceDoguFetcher)
+	dataSeedManager := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), containerGenerator, mgrSet.ResourceDoguFetcher)
 
 	return &DoguManager{
 		scheme:                    client.Scheme(),

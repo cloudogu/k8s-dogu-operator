@@ -21,6 +21,10 @@ type securityValidator interface {
 	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
 }
 
+type doguDataSeedValidator interface {
+	ValidateDataSeeds(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
+}
+
 //nolint:unused
 //goland:noinspection GoUnusedType
 type ecosystemInterface interface {

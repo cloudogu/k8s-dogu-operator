@@ -34,6 +34,7 @@ type premisesChecker struct {
 	doguHealthChecker          doguHealthChecker
 	doguRecursiveHealthChecker doguRecursiveHealthChecker
 	securityValidator          securityValidator
+	doguDataSeedValidator      doguDataSeedValidator
 }
 
 // NewPremisesChecker creates a new upgrade premises checker.
@@ -42,12 +43,14 @@ func NewPremisesChecker(
 	healthChecker doguHealthChecker,
 	recursiveHealthChecker doguRecursiveHealthChecker,
 	securityValidator securityValidator,
+	doguDataSeedValidator doguDataSeedValidator,
 ) *premisesChecker {
 	return &premisesChecker{
 		dependencyValidator:        depValidator,
 		doguHealthChecker:          healthChecker,
 		doguRecursiveHealthChecker: recursiveHealthChecker,
 		securityValidator:          securityValidator,
+		doguDataSeedValidator:      doguDataSeedValidator,
 	}
 }
 
@@ -79,6 +82,11 @@ func (pc *premisesChecker) Check(
 	err = pc.securityValidator.ValidateSecurity(remoteDogu, doguResource)
 	if err != nil {
 		// error is not requeueable
+		return err
+	}
+
+	err = pc.doguDataSeedValidator.ValidateDataSeeds(ctx, remoteDogu, doguResource)
+	if err != nil {
 		return err
 	}
 
