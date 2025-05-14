@@ -150,7 +150,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	if len(doguResource.Spec.Data) > 0 {
 		dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
 
-		dataSeederContainer, err := getDataSeederContainer(dogu, doguResource, dataSeederImage)
+		dataSeederContainer, err := buildDataSeederContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
 		if err != nil {
 			return nil, err
 		}
@@ -196,54 +196,85 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	return podTemplate, nil
 }
 
-func getDoguVolumePath(dogu *core.Dogu, volumeName string) (string, error) {
+// findVolumeByName looks for a volume with the given name in the dogu's volumes.
+func findVolumeByName(dogu *core.Dogu, volumeName string) (*core.Volume, error) {
 	for _, v := range dogu.Volumes {
 		if v.Name == volumeName {
-			return v.Path, nil
+			return &v, nil
 		}
 	}
 
-	return "", fmt.Errorf("could not find volume name %s in dogu %s", volumeName, dogu.Name)
+	return nil, fmt.Errorf("could not find volume name %s in dogu %s", volumeName, dogu.Name)
 }
 
-func getDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string) (*corev1.Container, error) {
-	volumeMounts := make([]corev1.VolumeMount, 0, len(doguResource.Spec.Data))
-	args := make([]string, 0, len(doguResource.Spec.Data)+1)
-	args = append(args, dataSeederArg)
-	// TODO If a second configmap should be mounted in an already mounted dir:
-	// We have to use subPath for that. Should this be relevant? Do we have to extend the CRD for this? To define items.
-	for _, dataMount := range doguResource.Spec.Data {
-		doguVolumePath, err := getDoguVolumePath(dogu, dataMount.Volume)
-		if err != nil {
-			return nil, err
-		}
+// buildDataSeederContainer creates a container for seeding data into a dogu.
+func buildDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
+	if len(doguResource.Spec.Data) == 0 {
+		return nil, nil
+	}
 
-		pathSepStr := string(os.PathSeparator)
-		sourcePath := path.Join(pathSepStr, dataSeederDataMountDir, dataMount.Name)
-		sourceVolumeMount := corev1.VolumeMount{
-			Name:      dataMount.Name,
-			MountPath: sourcePath,
-		}
-		volumeMounts = append(volumeMounts, sourceVolumeMount)
-
-		targetPath := path.Join(pathSepStr, dataSeederDoguMountDir, doguVolumePath, dataMount.Subfolder)
-		args = append(args, fmt.Sprintf("-source=%s", sourcePath))
-		args = append(args, fmt.Sprintf("-target=%s", targetPath))
-
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      doguResource.GetDataVolumeName(),
-			MountPath: path.Join(pathSepStr, dataSeederDoguMountDir, doguVolumePath),
-			SubPath:   dataMount.Volume,
-		})
+	mounts, args, err := prepareDataSeederMountsAndArgs(dogu, doguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare data seeder configuration: %w", err)
 	}
 
 	return &corev1.Container{
 		Name:            dataSeedInitContainerName,
 		Image:           image,
 		Args:            args,
-		VolumeMounts:    volumeMounts,
-		ImagePullPolicy: corev1.PullAlways, // TODO Change to IfNotPresent
+		VolumeMounts:    mounts,
+		ImagePullPolicy: corev1.PullAlways, // TODO: Change to IfNotPresent when stable
+		Resources:       requirements,
+		// TODO SecurityContext?
 	}, nil
+}
+
+// prepareDataSeederMountsAndArgs generates volume mounts and command arguments for the data seeder.
+func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) ([]corev1.VolumeMount, []string, error) {
+	volumeMounts := make([]corev1.VolumeMount, 0, 2*len(doguResource.Spec.Data))
+	args := []string{dataSeederArg}
+	sourceVolumeSet := make(map[string]struct{})
+	targetVolumeSet := make(map[string]struct{})
+	pathSepStr := string(os.PathSeparator)
+
+	// TODO: Optional flag?
+	for _, dataMount := range doguResource.Spec.Data {
+		doguVolume, err := findVolumeByName(dogu, dataMount.Volume)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Set up the source volume mount if not already processed
+		sourcePath := path.Join(pathSepStr, dataSeederDataMountDir, dataMount.Name)
+		if _, processed := sourceVolumeSet[dataMount.Name]; !processed {
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      dataMount.Name,
+				MountPath: sourcePath,
+			})
+			sourceVolumeSet[dataMount.Name] = struct{}{}
+		}
+
+		// Set up the target volume mount if not already processed
+		doguVolumePath := doguVolume.Path
+		targetPath := path.Join(pathSepStr, dataSeederDoguMountDir, doguVolumePath, dataMount.Subfolder)
+		args = append(args, fmt.Sprintf("-source=%s", sourcePath), fmt.Sprintf("-target=%s", targetPath))
+
+		if _, processed := targetVolumeSet[dataMount.Volume]; !processed {
+			mainVolumeName := doguResource.GetDataVolumeName()
+			if !doguVolume.NeedsBackup {
+				mainVolumeName = doguResource.GetEphemeralDataVolumeName()
+			}
+
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      mainVolumeName,
+				MountPath: path.Join(pathSepStr, dataSeederDoguMountDir, doguVolumePath),
+				SubPath:   dataMount.Volume,
+			})
+			targetVolumeSet[dataMount.Volume] = struct{}{}
+		}
+	}
+
+	return volumeMounts, args, nil
 }
 
 func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitImage string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
