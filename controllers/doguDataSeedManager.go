@@ -5,6 +5,7 @@ import (
 	"fmt"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/retry-lib/retry"
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,6 +28,7 @@ type doguDataSeedManager struct {
 	resourceGenerator     dataSeederInitContainerGenerator
 	resourceDoguFetcher   resourceDoguFetcher
 	requirementsGenerator requirementsGenerator
+	dataSeedValidator     doguDataSeedValidator
 	image                 string
 }
 
@@ -36,6 +38,7 @@ func NewDoguDataSeedManager(deploymentInterface deploymentInterface, mgrSet *uti
 		resourceGenerator:     mgrSet.DoguDataSeedContainerGenerator,
 		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
 		requirementsGenerator: mgrSet.RequirementsGenerator,
+		dataSeedValidator:     mgrSet.DoguDataSeedValidator,
 		image:                 mgrSet.AdditionalImages[config.DataSeederImageConfigmapNameKey],
 	}
 }
@@ -106,13 +109,26 @@ func (m *doguDataSeedManager) createDataMountInitContainer(ctx context.Context, 
 }
 
 func (m *doguDataSeedManager) UpdateDataMounts(ctx context.Context, doguResource *v2.Dogu) error {
+	dogu, _, err := m.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err)
+	}
+	err = m.dataSeedValidator.ValidateDataSeeds(ctx, dogu, doguResource)
+	if err != nil {
+		return fmt.Errorf("additinal data mounts are not valid dogu %s: %w", doguResource.Name, err)
+	}
+
 	container, err := m.createDataMountInitContainer(ctx, doguResource)
 	if err != nil {
 		return err
 	}
 
+	volumes, err := resource.CreateVolumes(doguResource, dogu, doguResource.Spec.ExportMode)
+	if err != nil {
+		return err
+	}
+
 	err = retry.OnConflict(func() error {
-		//TODO: Add Data Volumes if CR changed
 		deployment, retryErr := m.getDoguDeployment(ctx, doguResource)
 		if retryErr != nil {
 			return retryErr
@@ -126,6 +142,7 @@ func (m *doguDataSeedManager) UpdateDataMounts(ctx context.Context, doguResource
 		}
 		updatedInitContainers = append(updatedInitContainers, *container)
 		deployment.Spec.Template.Spec.InitContainers = updatedInitContainers
+		deployment.Spec.Template.Spec.Volumes = volumes
 
 		_, retryErr = m.deploymentInterface.Update(ctx, deployment, v1.UpdateOptions{})
 

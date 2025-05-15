@@ -361,7 +361,7 @@ func Test_createVolumes(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{}, false)
+		volumes, err := CreateVolumes(ldapDoguResource, &core.Dogu{}, false)
 
 		// then
 		require.NoError(t, err)
@@ -375,7 +375,7 @@ func Test_createVolumes(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{Name: "official/ldap"}, false)
+		volumes, err := CreateVolumes(ldapDoguResource, &core.Dogu{Name: "official/ldap"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -391,7 +391,7 @@ func Test_createVolumes(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{}, true)
+		volumes, err := CreateVolumes(ldapDoguResource, &core.Dogu{}, true)
 
 		// then
 		require.NoError(t, err)
@@ -407,7 +407,7 @@ func Test_createVolumes(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		volumes, err := createVolumes(ldapDoguResource, &core.Dogu{
+		volumes, err := CreateVolumes(ldapDoguResource, &core.Dogu{
 			Name: "official/ldap",
 			Volumes: []core.Volume{
 				{
@@ -441,7 +441,7 @@ func Test_createVolumes(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		_, err := createVolumes(ldapDoguResource, &core.Dogu{
+		_, err := CreateVolumes(ldapDoguResource, &core.Dogu{
 			Volumes: []core.Volume{
 				{
 					Name:        "Vol1",

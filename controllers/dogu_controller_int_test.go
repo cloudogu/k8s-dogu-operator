@@ -8,15 +8,14 @@ import (
 	"fmt"
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 	"slices"
 	"strings"
 	"testing"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -85,7 +84,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
 			ldapVersion, _ := core.ParseVersion("2.4.48-4")
 			ldapQualifiedVersion, _ := cescommons.NewQualifiedVersion(ldapQualifiedName, ldapVersion)
-			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(ldapDogu, nil).Times(3)
+			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(ldapDogu, nil).Times(6)
 			redmineVersion, _ := core.ParseVersion("4.2.3-10")
 			redmineQualifiedVersion, _ := cescommons.NewQualifiedVersion(redmineQualifiedName, redmineVersion)
 			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, redmineQualifiedVersion).Return(redmineDogu, nil).Once()
@@ -253,7 +252,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				panic(err)
 			}
 
-			createdDogu.Spec.Data = []doguv2.DataMount{
+			createdDogu.Spec.AdditionalMounts = []doguv2.DataMount{
 				{
 					SourceType: doguv2.DataSourceConfigMap,
 					Name:       "sourcecm",
@@ -276,7 +275,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				var initContainer *corev1.Container
 				for _, container := range deployment.Spec.Template.Spec.InitContainers {
 					if container.Name == "dogu-data-seeder-init" {
-						*initContainer = container
+						initContainer = &container
 					}
 				}
 
@@ -285,20 +284,19 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				}
 
 				sourceVolumeMount := corev1.VolumeMount{
-					Name:      "sourceCM",
+					Name:      "sourcecm",
 					MountPath: "/datamount/sourcecm",
-					SubPath:   "sourceCM",
 				}
 
 				targetVolumeMount := corev1.VolumeMount{
 					Name:      "ldap-data",
-					MountPath: "/dogumount/config",
+					MountPath: "/dogumount/etc/openldap/slapd.d",
 					SubPath:   "config",
 				}
 
 				if len(initContainer.VolumeMounts) != 2 ||
-					!slices.Contains(initContainer.VolumeMounts, sourceVolumeMount) ||
-					!slices.Contains(initContainer.VolumeMounts, targetVolumeMount) {
+					!containsVolumeMount(initContainer.VolumeMounts, sourceVolumeMount) ||
+					!containsVolumeMount(initContainer.VolumeMounts, targetVolumeMount) {
 					return false
 				}
 
@@ -399,7 +397,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
 			ldapVersion, _ := core.ParseVersion("2.4.49-1")
 			ldapQualifiedVersion, _ := cescommons.NewQualifiedVersion(ldapQualifiedName, ldapVersion)
-			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Once().Return(upgradeLdapToDoguDescriptor, nil)
+			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(upgradeLdapToDoguDescriptor, nil).Twice()
 
 			*ImageRegistryMock = mockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil).Once()
@@ -680,4 +678,12 @@ func verifyOwner(name string, obj metav1.ObjectMeta) bool {
 	}
 
 	return false
+}
+
+func containsVolumeMount(volumeMounts []corev1.VolumeMount, expected corev1.VolumeMount) bool {
+	return slices.ContainsFunc(volumeMounts, func(mount corev1.VolumeMount) bool {
+		return mount.Name == expected.Name &&
+			mount.MountPath == expected.MountPath &&
+			mount.SubPath == expected.SubPath
+	})
 }

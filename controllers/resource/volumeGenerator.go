@@ -55,7 +55,7 @@ type volumeConfigMapContent struct {
 	Name string
 }
 
-func createVolumes(doguResource *k8sv2.Dogu, dogu *core.Dogu, exportModeActive bool) ([]corev1.Volume, error) {
+func CreateVolumes(doguResource *k8sv2.Dogu, dogu *core.Dogu, exportModeActive bool) ([]corev1.Volume, error) {
 	volumes := createStaticVolumes(doguResource)
 	volumes = append(volumes, createDoguJsonVolumesFromDependencies(dogu)...)
 	volumes = append(volumes, getDoguJsonVolumeForDogu(dogu.GetSimpleName()))

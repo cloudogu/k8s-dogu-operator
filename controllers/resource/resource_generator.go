@@ -117,7 +117,7 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
 	exportModeActive := doguResource.Spec.ExportMode
 
-	volumes, err := createVolumes(doguResource, dogu, exportModeActive)
+	volumes, err := CreateVolumes(doguResource, dogu, exportModeActive)
 	if err != nil {
 		return nil, err
 	}
@@ -227,6 +227,9 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 		VolumeMounts:    mounts,
 		ImagePullPolicy: corev1.PullAlways, // TODO: Change to IfNotPresent when stable
 		Resources:       requirements,
+		// TODO: only for int-tests necessary? Seem to be default values and the test runs into endless datamount changes otherwise
+		TerminationMessagePath:   "/dev/termination-log",
+		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{core.All},
@@ -235,7 +238,8 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
 			SELinuxOptions:         &corev1.SELinuxOptions{},
 			SeccompProfile:         &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
-			AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
+			// TODO: only for int-tests necessary? is missing on old container and leads to endless datamount changes
+			//AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
 		},
 	}, nil
 }

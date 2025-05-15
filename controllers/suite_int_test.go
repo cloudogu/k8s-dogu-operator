@@ -148,7 +148,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	securityValidator := &security.Validator{}
 	securityGenerator := &resource.SecurityContextGenerator{}
 
-	doguDataSeedValidator := &dataseed.Validator{}
+	configMapClient := k8sClientSet.CoreV1().ConfigMaps(testNamespace)
+	secretClient := k8sClientSet.CoreV1().Secrets(testNamespace)
+	doguDataSeedValidator := dataseed.NewValidator(configMapClient, secretClient)
 
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag", config.DataSeederImageConfigmapNameKey: "test:tag"}
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, securityGenerator, additionalImages)

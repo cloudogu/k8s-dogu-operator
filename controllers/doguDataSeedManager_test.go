@@ -481,6 +481,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 						},
 						*updatedInitContainer,
 					},
+					Volumes: CreateExpectedVolumes(),
 				},
 			},
 		},
@@ -509,6 +510,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 		resourceGenerator     func() dataSeederInitContainerGenerator
 		resourceDoguFetcher   func() resourceDoguFetcher
 		requirementsGenerator func() requirementsGenerator
+		dataSeedValidator     func() doguDataSeedValidator
 	}
 	type args struct {
 		ctx          context.Context
@@ -544,6 +546,11 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
+				dataSeedValidator: func() doguDataSeedValidator {
+					mock := newMockDoguDataSeedValidator(t)
+					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(nil)
+					return mock
+				},
 			},
 			args: args{
 				ctx:          testCtx,
@@ -576,6 +583,11 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
+				dataSeedValidator: func() doguDataSeedValidator {
+					mock := newMockDoguDataSeedValidator(t)
+					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(nil)
+					return mock
+				},
 			},
 			args: args{
 				ctx:          testCtx,
@@ -606,6 +618,11 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
+				dataSeedValidator: func() doguDataSeedValidator {
+					mock := newMockDoguDataSeedValidator(t)
+					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(nil)
+					return mock
+				},
 			},
 			args: args{
 				ctx:          testCtx,
@@ -614,6 +631,42 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				assert.ErrorIs(t, err, assert.AnError)
 				assert.ErrorContains(t, err, "failed to update deployment dogu data mount for dogu nginx")
+				return true
+			},
+		},
+		{
+			name: "should return retry error on general error",
+			fields: fields{
+				deploymentInterface: func() deploymentInterface {
+					mock := newMockDeploymentInterface(t)
+					return mock
+				},
+				resourceDoguFetcher: func() resourceDoguFetcher {
+					mock := newMockResourceDoguFetcher(t)
+					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithSeederMounts).Return(nginxDogu, nil, nil)
+					return mock
+				},
+				resourceGenerator: func() dataSeederInitContainerGenerator {
+					mock := newMockDataSeederInitContainerGenerator(t)
+					return mock
+				},
+				requirementsGenerator: func() requirementsGenerator {
+					mock := newMockRequirementsGenerator(t)
+					return mock
+				},
+				dataSeedValidator: func() doguDataSeedValidator {
+					mock := newMockDoguDataSeedValidator(t)
+					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(assert.AnError)
+					return mock
+				},
+			},
+			args: args{
+				ctx:          testCtx,
+				doguResource: nginxDoguResourceWithSeederMounts,
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				assert.ErrorIs(t, err, assert.AnError)
+				assert.ErrorContains(t, err, "Additinal data mounts are not valid dogu nginx")
 				return true
 			},
 		},
@@ -633,7 +686,82 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			if tt.fields.requirementsGenerator != nil {
 				m.requirementsGenerator = tt.fields.requirementsGenerator()
 			}
+			if tt.fields.dataSeedValidator != nil {
+				m.dataSeedValidator = tt.fields.dataSeedValidator()
+			}
 			tt.wantErr(t, m.UpdateDataMounts(tt.args.ctx, tt.args.doguResource), fmt.Sprintf("UpdateDataMounts(%v, %v)", tt.args.ctx, tt.args.doguResource))
 		})
+	}
+}
+
+// CreateExpectedVolumes creates a set of volumes that match the expected volumes in the deployment
+func CreateExpectedVolumes() []corev1.Volume {
+	optional := true
+	return []corev1.Volume{
+		{
+			Name: "dogu-health",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "k8s-dogu-operator-dogu-health",
+					},
+				},
+			},
+		},
+		{
+			Name: "nginx-ephemeral",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "global-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "global-config",
+					},
+				},
+			},
+		},
+		{
+			Name: "normal-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "nginx-config",
+					},
+				},
+			},
+		},
+		{
+			Name: "sensitive-config",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "nginx-config",
+				},
+			},
+		},
+		{
+			Name: "-dogu-json",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "dogu-spec-",
+					},
+					Optional: &optional,
+				},
+			},
+		},
+		{
+			Name: "configmap",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "configmap",
+					},
+				},
+			},
+		},
 	}
 }
