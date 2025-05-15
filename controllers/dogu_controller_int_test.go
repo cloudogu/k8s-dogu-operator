@@ -294,9 +294,17 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					SubPath:   "config",
 				}
 
-				if len(initContainer.VolumeMounts) != 2 ||
+				// All dogu descriptor volumes are mounted in the init container.
+				dbVolumeMount := corev1.VolumeMount{
+					Name:      "ldap-data",
+					MountPath: "/dogumount/var/lib/openldap",
+					SubPath:   "db",
+				}
+
+				if len(initContainer.VolumeMounts) != 3 ||
 					!containsVolumeMount(initContainer.VolumeMounts, sourceVolumeMount) ||
-					!containsVolumeMount(initContainer.VolumeMounts, targetVolumeMount) {
+					!containsVolumeMount(initContainer.VolumeMounts, targetVolumeMount) ||
+					!containsVolumeMount(initContainer.VolumeMounts, dbVolumeMount) {
 					return false
 				}
 

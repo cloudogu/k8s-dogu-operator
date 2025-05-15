@@ -611,6 +611,56 @@ func Test_getDataSeederContainer(t *testing.T) {
 		}))
 	})
 
+	t.Run("contains all dogu descriptor volume mounts as targets", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{
+			{Name: "ephemeralVolume", Path: "/var/cache", NeedsBackup: false},
+			{Name: "ephemeralVolumeNotInCR", Path: "/tmp/dir1", NeedsBackup: false},
+			{Name: "dataVolumeNotInCR", Path: "/tmp/dir2", NeedsBackup: true}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "redis"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
+			SourceType: "ConfigMap",
+			Name:       "redis-config",
+			Volume:     "ephemeralVolume",
+			Subfolder:  "config",
+		}}}}
+
+		expectedContainerImage := testInitContainerImage
+		expectedArgs := []string{"copy", "-source=/datamount/redis-config", "-target=/dogumount/var/cache/config"}
+		expectedEphemeralVolumeName := doguResource.GetEphemeralDataVolumeName()
+		expectedDataVolumeName := doguResource.GetDataVolumeName()
+
+		resources := v1.ResourceRequirements{
+			Limits: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceCPU: resource.MustParse("50m"),
+			},
+		}
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildDataSeederContainer(dogu, doguResource, expectedContainerImage, resources)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedArgs, container.Args)
+		require.Equal(t, 4, len(container.VolumeMounts))
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == expectedEphemeralVolumeName &&
+				mount.MountPath == "/dogumount/var/cache" &&
+				mount.SubPath == "ephemeralVolume"
+		}))
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == expectedEphemeralVolumeName &&
+				mount.MountPath == "/dogumount/tmp/dir1" &&
+				mount.SubPath == "ephemeralVolumeNotInCR"
+		}))
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == expectedDataVolumeName &&
+				mount.MountPath == "/dogumount/tmp/dir2" &&
+				mount.SubPath == "dataVolumeNotInCR"
+		}))
+	})
+
 	t.Run("success with multiple source volumes mounted to a single target volume", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "configVolume", Path: "/etc/app", NeedsBackup: true}}}
@@ -769,13 +819,17 @@ func Test_getDataSeederContainer(t *testing.T) {
 		require.Equal(t, expectedArgs, container.Args)
 	})
 
-	t.Run("no data mounts results in no container", func(t *testing.T) {
+	t.Run("no data mounts results in container with only target mounts (for possible deletion)", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "testVolume", Path: "/etc/test", NeedsBackup: true}}}
 		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{
 			// No data mounts specified
 			AdditionalMounts: []doguv2.DataMount{},
 		}}
+
+		expectedDataSeederContainerName := "dogu-data-seeder-init"
+		expectedContainerImage := testInitContainerImage
+		expectedDataVolumeName := doguResource.GetDataVolumeName()
 
 		sut := &resourceGenerator{}
 
@@ -784,7 +838,13 @@ func Test_getDataSeederContainer(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		require.Nil(t, container, "Should return nil container when no data mounts specified")
+		require.Empty(t, container.Args)
+		require.Equal(t, expectedContainerImage, container.Image)
+		require.Equal(t, expectedDataSeederContainerName, container.Name)
+		require.Equal(t, 1, len(container.VolumeMounts))
+		resultVolumeMount := container.VolumeMounts[0]
+		require.Equal(t, expectedDataVolumeName, resultVolumeMount.Name)
+		require.Equal(t, "/dogumount/etc/test", resultVolumeMount.MountPath)
+		require.Equal(t, "testVolume", resultVolumeMount.SubPath)
 	})
-
 }

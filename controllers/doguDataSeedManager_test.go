@@ -635,7 +635,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			},
 		},
 		{
-			name: "should return retry error on general error",
+			name: "should return validation error on failing validation",
 			fields: fields{
 				deploymentInterface: func() deploymentInterface {
 					mock := newMockDeploymentInterface(t)
@@ -666,7 +666,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				assert.ErrorIs(t, err, assert.AnError)
-				assert.ErrorContains(t, err, "Additinal data mounts are not valid dogu nginx")
+				assert.ErrorContains(t, err, "additinal data mounts are not valid dogu nginx")
 				return true
 			},
 		},

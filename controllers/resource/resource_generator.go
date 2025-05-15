@@ -209,10 +209,6 @@ func findVolumeByName(dogu *core.Dogu, volumeName string) (*core.Volume, error) 
 
 // BuildDataSeederContainer creates a container for seeding data into a dogu.
 func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
-	if len(doguResource.Spec.AdditionalMounts) == 0 {
-		return nil, nil
-	}
-
 	mounts, args, err := prepareDataSeederMountsAndArgs(dogu, doguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare data seeder configuration: %w", err)
@@ -246,14 +242,17 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 
 // prepareDataSeederMountsAndArgs generates volume mounts and command arguments for the data seeder.
 func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) ([]corev1.VolumeMount, []string, error) {
-	volumeMounts := make([]corev1.VolumeMount, 0, 2*len(doguResource.Spec.AdditionalMounts))
-	args := []string{dataSeederArg}
+	additionalMounts := doguResource.Spec.AdditionalMounts
+	volumeMounts := make([]corev1.VolumeMount, 0, 2*len(additionalMounts))
+	var args []string
+	if len(additionalMounts) > 0 {
+		args = append(args, dataSeederArg)
+	}
 	sourceVolumeSet := make(map[string]struct{})
-	targetVolumeSet := make(map[string]struct{})
 	pathSepStr := string(os.PathSeparator)
 
 	// TODO: Optional flag?
-	for _, dataMount := range doguResource.Spec.AdditionalMounts {
+	for _, dataMount := range additionalMounts {
 		doguVolume, err := findVolumeByName(dogu, dataMount.Volume)
 		if err != nil {
 			return nil, nil, err
@@ -269,24 +268,23 @@ func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) (
 			sourceVolumeSet[dataMount.Name] = struct{}{}
 		}
 
-		// Set up the target volume mount if not already processed
-		doguVolumePath := doguVolume.Path
-		targetPath := path.Join(pathSepStr, dataSeederDoguMountDir, doguVolumePath, dataMount.Subfolder)
+		// Set up init-Container arguments
+		targetPath := path.Join(pathSepStr, dataSeederDoguMountDir, doguVolume.Path, dataMount.Subfolder)
 		args = append(args, fmt.Sprintf("-source=%s", sourcePath), fmt.Sprintf("-target=%s", targetPath))
+	}
 
-		if _, processed := targetVolumeSet[dataMount.Volume]; !processed {
-			mainVolumeName := doguResource.GetDataVolumeName()
-			if !doguVolume.NeedsBackup {
-				mainVolumeName = doguResource.GetEphemeralDataVolumeName()
-			}
-
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      mainVolumeName,
-				MountPath: path.Join(pathSepStr, dataSeederDoguMountDir, doguVolumePath),
-				SubPath:   dataMount.Volume,
-			})
-			targetVolumeSet[dataMount.Volume] = struct{}{}
+	// mount all dogu descriptor volumes as target, so that the deletion of unneeded files is still possible
+	for _, doguVolume := range dogu.Volumes {
+		mainVolumeName := doguResource.GetDataVolumeName()
+		if !doguVolume.NeedsBackup {
+			mainVolumeName = doguResource.GetEphemeralDataVolumeName()
 		}
+
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      mainVolumeName,
+			MountPath: path.Join(pathSepStr, dataSeederDoguMountDir, doguVolume.Path),
+			SubPath:   doguVolume.Name,
+		})
 	}
 
 	return volumeMounts, args, nil
