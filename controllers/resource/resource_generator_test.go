@@ -17,7 +17,7 @@ import (
 	"testing"
 )
 
-var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36", "exporterImage": "exporter:0.0.1"}
+var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36", "exporterImage": "exporter:0.0.1", "dataSeederImage": "dataSeeder:0.0.1"}
 
 const testInitContainerImage = "busybox:1.36"
 
@@ -230,6 +230,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		expectedDeployment.Spec.Template.Spec.Containers[0].Resources = requirements
 		expectedDeployment.Spec.Template.Spec.InitContainers[0].Resources = requirements
+		expectedDeployment.Spec.Template.Spec.InitContainers[1].Resources = requirements
 		assert.Equal(t, expectedDeployment, actualDeployment)
 	})
 
@@ -838,7 +839,8 @@ func Test_getDataSeederContainer(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		require.Empty(t, container.Args)
+		require.Equal(t, 1, len(container.Args))
+		require.Equal(t, dataSeederArg, container.Args[0])
 		require.Equal(t, expectedContainerImage, container.Image)
 		require.Equal(t, expectedDataSeederContainerName, container.Name)
 		require.Equal(t, 1, len(container.VolumeMounts))

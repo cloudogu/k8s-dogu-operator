@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"path"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -395,6 +396,28 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu) cor
 		MountPath: doguVolume.Path,
 		SubPath:   doguVolume.Name,
 	}
+}
+
+// Helper function to create the appropriate volume mount for the data seeder init container
+func createDataSeederVolumeMount(doguResource *k8sv2.Dogu, doguVolume core.Volume, pathSepStr string) corev1.VolumeMount {
+	_, clientExists := doguVolume.GetClient(doguOperatorClient)
+
+	volumeMount := corev1.VolumeMount{
+		MountPath: path.Join(pathSepStr, dataSeederDoguMountDir, doguVolume.Path),
+	}
+
+	switch {
+	case clientExists: // ConfigMap-Mount
+		volumeMount.Name = doguVolume.Name
+	case doguVolume.NeedsBackup: // PVC-Data-Volume-Mount
+		volumeMount.Name = doguResource.GetDataVolumeName()
+		volumeMount.SubPath = doguVolume.Name
+	default: // Empty-Dir-Volume-Mount
+		volumeMount.Name = doguResource.GetEphemeralDataVolumeName()
+		volumeMount.SubPath = doguVolume.Name
+	}
+
+	return volumeMount
 }
 
 // CreateDoguPVC creates a persistent volume claim for the given dogu.

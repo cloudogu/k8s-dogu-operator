@@ -147,15 +147,13 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	}
 	initContainers = append(initContainers, chownContainer)
 
-	if len(doguResource.Spec.AdditionalMounts) > 0 {
-		dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
+	dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
 
-		dataSeederContainer, err := r.BuildDataSeederContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
-		if err != nil {
-			return nil, err
-		}
-		initContainers = append(initContainers, dataSeederContainer)
+	dataSeederContainer, err := r.BuildDataSeederContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
+	if err != nil {
+		return nil, err
 	}
+	initContainers = append(initContainers, dataSeederContainer)
 
 	sidecars := make([]*corev1.Container, 0)
 
@@ -223,9 +221,10 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 		VolumeMounts:    mounts,
 		ImagePullPolicy: corev1.PullAlways, // TODO: Change to IfNotPresent when stable
 		Resources:       requirements,
-		// TODO: only for int-tests necessary? Seem to be default values and the test runs into endless datamount changes otherwise
+		// set default values explicitly to make deep equality work
 		TerminationMessagePath:   "/dev/termination-log",
 		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
+
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{core.All},
@@ -234,8 +233,7 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
 			SELinuxOptions:         &corev1.SELinuxOptions{},
 			SeccompProfile:         &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
-			// TODO: only for int-tests necessary? is missing on old container and leads to endless datamount changes
-			//AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
+			AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
 		},
 	}, nil
 }
@@ -244,10 +242,7 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) ([]corev1.VolumeMount, []string, error) {
 	additionalMounts := doguResource.Spec.AdditionalMounts
 	volumeMounts := make([]corev1.VolumeMount, 0, 2*len(additionalMounts))
-	var args []string
-	if len(additionalMounts) > 0 {
-		args = append(args, dataSeederArg)
-	}
+	args := []string{dataSeederArg}
 	sourceVolumeSet := make(map[string]struct{})
 	pathSepStr := string(os.PathSeparator)
 
@@ -275,16 +270,8 @@ func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) (
 
 	// mount all dogu descriptor volumes as target, so that the deletion of unneeded files is still possible
 	for _, doguVolume := range dogu.Volumes {
-		mainVolumeName := doguResource.GetDataVolumeName()
-		if !doguVolume.NeedsBackup {
-			mainVolumeName = doguResource.GetEphemeralDataVolumeName()
-		}
-
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      mainVolumeName,
-			MountPath: path.Join(pathSepStr, dataSeederDoguMountDir, doguVolume.Path),
-			SubPath:   doguVolume.Name,
-		})
+		volumeMount := createDataSeederVolumeMount(doguResource, doguVolume, pathSepStr)
+		volumeMounts = append(volumeMounts, volumeMount)
 	}
 
 	return volumeMounts, args, nil

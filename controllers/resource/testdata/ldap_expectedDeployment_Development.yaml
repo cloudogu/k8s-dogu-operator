@@ -54,6 +54,34 @@ spec:
             - name: configmap-test
               mountPath: "/etc/my-configmap.conf"
               readonly: false
+        - image: dataSeeder:0.0.1
+          imagePullPolicy: Always
+          name: dogu-data-seeder-init
+          resources: { }
+          securityContext:
+            appArmorProfile:
+              type: Unconfined
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+            seLinuxOptions: { }
+            seccompProfile:
+              type: Unconfined
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /dogumount/var/lib/openldap
+              name: ldap-data
+              subPath: db
+            - mountPath: /dogumount/etc/openldap/slapd.d
+              name: ldap-data
+              subPath: config
+            - mountPath: /dogumount/etc/my-configmap.conf
+              name: configmap-test
+          args:
+            - "copy"
       containers:
         - image: registry.cloudogu.com/official/ldap:2.4.48-4
           imagePullPolicy: Always
