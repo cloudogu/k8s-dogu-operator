@@ -232,7 +232,7 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 		Image:           image,
 		Args:            args,
 		VolumeMounts:    mounts,
-		ImagePullPolicy: corev1.PullAlways, // TODO: Change to IfNotPresent when stable
+		ImagePullPolicy: corev1.PullIfNotPresent,
 		Resources:       requirements,
 		// set default values explicitly to make deep equality work
 		TerminationMessagePath:   "/dev/termination-log",
