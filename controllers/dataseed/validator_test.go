@@ -24,6 +24,10 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 				Name: "app.conf.d",
 				Path: "/etc/nginx/app.conf.d",
 			},
+			{
+				Name: "localConfig",
+				Path: "/var/ces/config",
+			},
 		},
 	}
 

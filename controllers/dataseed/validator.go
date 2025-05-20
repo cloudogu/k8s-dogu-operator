@@ -12,6 +12,22 @@ import (
 	"time"
 )
 
+type requeueableValidationError struct {
+	wrapped error
+}
+
+func (r *requeueableValidationError) Unwrap() error {
+	return r.wrapped
+}
+
+func (r *requeueableValidationError) Error() string {
+	return r.wrapped.Error()
+}
+
+func (r *requeueableValidationError) Requeue() bool {
+	return true
+}
+
 var sourceWaitLimit = time.Minute
 
 type Validator struct {
@@ -30,6 +46,11 @@ func NewValidator(configMapGetter configMapGetter, secretGatter secretGetter) *V
 func (v *Validator) ValidateDataSeeds(ctx context.Context, doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error {
 	var multiErr []error
 	var dataMounts = make(map[k8sv2.DataMount]struct{})
+
+	if len(doguResource.Spec.AdditionalMounts) > 0 && !hasVolumeWithName(doguDescriptor, "localConfig") {
+		multiErr = append(multiErr, fmt.Errorf("dogu %s has no local config volume needed by addtional data mounts", doguResource.Name))
+	}
+
 	for _, dataMount := range doguResource.Spec.AdditionalMounts {
 		// check for duplicate entries
 		if _, ok := dataMounts[dataMount]; ok {
@@ -39,27 +60,27 @@ func (v *Validator) ValidateDataSeeds(ctx context.Context, doguDescriptor *core.
 		dataMounts[dataMount] = struct{}{}
 
 		// check for valid dogu descriptor volume references
-		volumeFound := false
-		// volumeClientFound := false
-		for _, doguVolume := range doguDescriptor.Volumes {
-			if doguVolume.Name == dataMount.Volume {
-				// TODO check volume clients?
-				// if len(doguVolume.Clients) > 0 {
-				// 	volumeClientFound = true
-				// }
-				volumeFound = true
-				break
-			}
-		}
-		if !volumeFound {
+		if !hasVolumeWithName(doguDescriptor, dataMount.Volume) {
 			multiErr = append(multiErr, fmt.Errorf("volume %s does not exists in dogu descriptor for dogu %s", dataMount.Volume, doguResource.Name))
 		}
 
 		// check if the source really exists
-		multiErr = append(multiErr, v.validateSource(ctx, dataMount))
+		err := v.validateSource(ctx, dataMount)
+		if err != nil {
+			multiErr = append(multiErr, &requeueableValidationError{err})
+		}
 	}
 
 	return errors.Join(multiErr...)
+}
+
+func hasVolumeWithName(dogu *core.Dogu, volume string) bool {
+	for _, doguVolume := range dogu.Volumes {
+		if doguVolume.Name == volume {
+			return true
+		}
+	}
+	return false
 }
 
 func (v *Validator) validateSource(ctx context.Context, mount k8sv2.DataMount) error {
