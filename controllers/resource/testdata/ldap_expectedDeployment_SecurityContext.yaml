@@ -58,7 +58,7 @@ spec:
               name: ldap-data
               subPath: localConfig
         - image: dataSeeder:0.0.1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           name: dogu-data-seeder-init
           resources: { }
           securityContext:
