@@ -26,6 +26,11 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 						{
 							Name:  "dogu-data-seeder-init",
 							Image: "",
+							Args: []string{
+								"copy",
+								"-source=/datamount/oldconfigmap",
+								"-target=/dogumount/customhtml",
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "customhtml",
@@ -63,6 +68,11 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 						{
 							Name:  "dogu-data-seeder-init",
 							Image: "",
+							Args: []string{
+								"copy",
+								"-source=/datamount/configmap",
+								"-target=/dogumount/customhtml",
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "customhtml",
@@ -101,6 +111,11 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 	expectedInitContainerWithSeederMounts := &corev1.Container{
 		Name:  "dogu-data-seeder-init",
 		Image: "",
+		Args: []string{
+			"copy",
+			"-source=/datamount/configmap",
+			"-target=/dogumount/customhtml",
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "customhtml",

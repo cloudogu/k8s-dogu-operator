@@ -64,8 +64,9 @@ func (m *doguDataSeedManager) DataMountsChanged(ctx context.Context, doguResourc
 
 	data := doguResource.Spec.AdditionalMounts
 	// If either data or container is missing, check if they're in different states => changed
-	if len(data) == 0 || actualDoguDataSeedContainer == nil {
-		return (len(data) == 0) != (actualDoguDataSeedContainer == nil), nil
+	isNoCopyDataSeeder := actualDoguDataSeedContainer == nil || len(actualDoguDataSeedContainer.Args) <= 1
+	if len(data) == 0 || isNoCopyDataSeeder {
+		return (len(data) == 0) != (isNoCopyDataSeeder), nil
 	}
 
 	// Recreate init container and check for equality
@@ -74,7 +75,7 @@ func (m *doguDataSeedManager) DataMountsChanged(ctx context.Context, doguResourc
 		return false, err
 	}
 
-	return !reflect.DeepEqual(container, actualDoguDataSeedContainer), nil
+	return !reflect.DeepEqual(container.Args, actualDoguDataSeedContainer.Args), nil
 }
 
 func (m *doguDataSeedManager) getDoguDeployment(ctx context.Context, doguResource *v2.Dogu) (*appsv1.Deployment, error) {
@@ -109,6 +110,8 @@ func (m *doguDataSeedManager) createDataMountInitContainer(ctx context.Context, 
 }
 
 func (m *doguDataSeedManager) UpdateDataMounts(ctx context.Context, doguResource *v2.Dogu) error {
+	logger := log.FromContext(ctx)
+	logger.Info(fmt.Sprintf("Update data mounts for dogu resource %s...", doguResource.Name))
 	dogu, _, err := m.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err)
@@ -153,5 +156,6 @@ func (m *doguDataSeedManager) UpdateDataMounts(ctx context.Context, doguResource
 		return fmt.Errorf("failed to update deployment dogu data mount for dogu %s: %w", doguResource.Name, err)
 	}
 
+	logger.Info(fmt.Sprintf("Successfully updated data mounts for dogu resource %s", doguResource.Name))
 	return nil
 }
