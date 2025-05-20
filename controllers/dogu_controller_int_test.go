@@ -53,7 +53,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	redmineCr := readDoguCr(t, redmineCrBytes)
 	redmineQualifiedName, _ := cescommons.NewQualifiedName("official", "redmine")
 	imageConfig := readImageConfig(t, imageConfigBytes)
-	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorWithLocalConfigVolumeBytes)
 	redmineDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 
 	ldapCr.Namespace = testNamespace
@@ -68,7 +68,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	ctx := context.TODO()
 
 	// Upgrade testdata
-	upgradeLdapToDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorBytes)
+	upgradeLdapToDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorWithLocalConfigVolumeBytes)
 	ldapToVersion := "2.4.49-1"
 	upgradeLdapToDoguDescriptor.Version = ldapToVersion
 
@@ -301,9 +301,30 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 					SubPath:   "db",
 				}
 
-				if len(initContainer.VolumeMounts) != 3 ||
+				normalConfigVolumeMount := corev1.VolumeMount{
+					Name:      "normal-config",
+					MountPath: "/dogumount/etc/ces/config/normal",
+					ReadOnly:  true,
+				}
+
+				sensitiveConfigVolumeMount := corev1.VolumeMount{
+					Name:      "sensitive-config",
+					MountPath: "/dogumount/etc/ces/config/sensitive",
+					ReadOnly:  true,
+				}
+
+				localConfigVolumeMount := corev1.VolumeMount{
+					Name:      "ldap-data",
+					MountPath: "/dogumount/var/ces/config",
+					SubPath:   "localConfig",
+				}
+
+				if len(initContainer.VolumeMounts) != 6 ||
 					!containsVolumeMount(initContainer.VolumeMounts, sourceVolumeMount) ||
 					!containsVolumeMount(initContainer.VolumeMounts, targetVolumeMount) ||
+					!containsVolumeMount(initContainer.VolumeMounts, normalConfigVolumeMount) ||
+					!containsVolumeMount(initContainer.VolumeMounts, sensitiveConfigVolumeMount) ||
+					!containsVolumeMount(initContainer.VolumeMounts, localConfigVolumeMount) ||
 					!containsVolumeMount(initContainer.VolumeMounts, dbVolumeMount) {
 					return false
 				}

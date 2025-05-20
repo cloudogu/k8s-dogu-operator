@@ -29,6 +29,9 @@ var ldapCrBytes []byte
 //go:embed testdata/ldap-dogu.json
 var ldapDoguDescriptorBytes []byte
 
+//go:embed testdata/ldap-dogu-local-config-volume.json
+var ldapDoguDescriptorWithLocalConfigVolumeBytes []byte
+
 //go:embed testdata/ldap-descriptor-cm.yaml
 var ldapDoguDevelopmentMapBytes []byte
 
