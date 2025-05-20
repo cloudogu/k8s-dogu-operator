@@ -150,13 +150,14 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	}
 	initContainers = append(initContainers, chownContainer)
 
-	dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
-
-	dataSeederContainer, err := r.BuildDataSeederContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
-	if err != nil {
-		return nil, err
+	if hasLocalConfigVolume(dogu) {
+		dataSeederImage := r.additionalImages[config.DataSeederImageConfigmapNameKey]
+		dataSeederContainer, err := r.BuildDataSeederContainer(dogu, doguResource, dataSeederImage, resourceRequirements)
+		if err != nil {
+			return nil, err
+		}
+		initContainers = append(initContainers, dataSeederContainer)
 	}
-	initContainers = append(initContainers, dataSeederContainer)
 
 	sidecars := make([]*corev1.Container, 0)
 
@@ -195,6 +196,15 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		build()
 
 	return podTemplate, nil
+}
+
+func hasLocalConfigVolume(dogu *core.Dogu) bool {
+	for _, doguVolume := range dogu.Volumes {
+		if doguVolume.Name == "localConfig" {
+			return true
+		}
+	}
+	return false
 }
 
 // findVolumeByName looks for a volume with the given name in the dogu's volumes.
