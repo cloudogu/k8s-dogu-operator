@@ -9,3 +9,6 @@ Dieses wird verwendet, damit der Init-Container gemountete Files speichern und s
 löschen kann.
 
 Das Repository für den Init-Container ist [hier](https://github.com/cloudogu/dogu-data-seeder) zu finden.
+
+Der Dogu-Operator verwendet das `Name`-Attribute des DataMounts als Namen für das Volume.
+Daher gelten die [Namensrichtlinien](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names) für Volumenamen.
