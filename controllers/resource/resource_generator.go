@@ -52,10 +52,13 @@ const (
 	defaultStartupProbeTimeout = 1
 )
 
+var (
+	dataSeederDoguMountDir = fmt.Sprintf("%sdogumount", string(os.PathSeparator))
+	dataSeederDataMountDir = fmt.Sprintf("%sdatamount", string(os.PathSeparator))
+)
+
 const (
-	dataSeederDoguMountDir = "dogumount"
-	dataSeederDataMountDir = "datamount"
-	dataSeederArg          = "copy"
+	dataSeederArg = "copy"
 )
 
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
@@ -224,7 +227,6 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 		// set default values explicitly to make deep equality work
 		TerminationMessagePath:   "/dev/termination-log",
 		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
-
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{core.All},
@@ -241,12 +243,10 @@ func (r *resourceGenerator) BuildDataSeederContainer(dogu *core.Dogu, doguResour
 // prepareDataSeederMountsAndArgs generates volume mounts and command arguments for the data seeder.
 func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) ([]corev1.VolumeMount, []string, error) {
 	additionalMounts := doguResource.Spec.AdditionalMounts
-	volumeMounts := make([]corev1.VolumeMount, 0, 2*len(additionalMounts))
+	var volumeMounts []corev1.VolumeMount
 	args := []string{dataSeederArg}
 	sourceVolumeSet := make(map[string]struct{})
-	pathSepStr := string(os.PathSeparator)
 
-	// TODO: Optional flag?
 	for _, dataMount := range additionalMounts {
 		doguVolume, err := findVolumeByName(dogu, dataMount.Volume)
 		if err != nil {
@@ -254,7 +254,7 @@ func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) (
 		}
 
 		// Set up the source volume mount if not already processed
-		sourcePath := path.Join(pathSepStr, dataSeederDataMountDir, dataMount.Name)
+		sourcePath := path.Join(dataSeederDataMountDir, dataMount.Name)
 		if _, processed := sourceVolumeSet[dataMount.Name]; !processed {
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
 				Name:      dataMount.Name,
@@ -264,15 +264,14 @@ func prepareDataSeederMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) (
 		}
 
 		// Set up init-Container arguments
-		targetPath := path.Join(pathSepStr, dataSeederDoguMountDir, doguVolume.Path, dataMount.Subfolder)
+		targetPath := path.Join(dataSeederDoguMountDir, doguVolume.Path, dataMount.Subfolder)
 		args = append(args, fmt.Sprintf("-source=%s", sourcePath), fmt.Sprintf("-target=%s", targetPath))
 	}
 
 	// mount all dogu descriptor volumes as target, so that the deletion of unneeded files is still possible
-	for _, doguVolume := range dogu.Volumes {
-		volumeMount := createDataSeederVolumeMount(doguResource, doguVolume, pathSepStr)
-		volumeMounts = append(volumeMounts, volumeMount)
-	}
+	volumeMounts = append(volumeMounts, createDoguVolumeMountsWithMountPathPrefix(doguResource, dogu, dataSeederDoguMountDir)...)
+	// add static volumes needed by the init container to write config
+	volumeMounts = append(volumeMounts, createStaticDoguConfigVolumeMounts(dataSeederDoguMountDir)...)
 
 	return volumeMounts, args, nil
 }

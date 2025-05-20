@@ -80,6 +80,12 @@ spec:
               subPath: config
             - mountPath: /dogumount/etc/my-configmap.conf
               name: configmap-test
+            - mountPath: /dogumount/etc/ces/config/normal
+              readOnly: true
+              name: normal-config
+            - mountPath: /dogumount/etc/ces/config/sensitive
+              readOnly: true
+              name: sensitive-config
           args:
             - "copy"
       containers:

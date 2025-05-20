@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"path"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -323,15 +322,24 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 			ReadOnly:  true,
 			MountPath: "/etc/ces/config/global",
 		},
+	}
+
+	doguVolumeMounts = append(doguVolumeMounts, createStaticDoguConfigVolumeMounts("")...)
+
+	return doguVolumeMounts
+}
+
+func createStaticDoguConfigVolumeMounts(mountPathPrefix string) []corev1.VolumeMount {
+	doguVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      normalConfig,
 			ReadOnly:  true,
-			MountPath: "/etc/ces/config/normal",
+			MountPath: fmt.Sprintf("%s/etc/ces/config/normal", mountPathPrefix),
 		},
 		{
 			Name:      sensitiveConfig,
 			ReadOnly:  true,
-			MountPath: "/etc/ces/config/sensitive",
+			MountPath: fmt.Sprintf("%s/etc/ces/config/sensitive", mountPathPrefix),
 		},
 	}
 	return doguVolumeMounts
@@ -361,23 +369,28 @@ func getDoguJsonVolumeMountForDogu(simpleDoguName string) corev1.VolumeMount {
 	}
 }
 
-func createDoguVolumeMounts(doguResource *k8sv2.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+func createDoguVolumeMountsWithMountPathPrefix(doguResource *k8sv2.Dogu, dogu *core.Dogu, mountPathPrefix string) []corev1.VolumeMount {
 	var volumeMounts []corev1.VolumeMount
 	for _, doguVolume := range dogu.Volumes {
-		newVolume := createDoguVolumeMount(doguVolume, doguResource)
+		newVolume := createDoguVolumeMount(doguVolume, doguResource, mountPathPrefix)
 		volumeMounts = append(volumeMounts, newVolume)
 	}
 
 	return volumeMounts
 }
 
-func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu) corev1.VolumeMount {
+func createDoguVolumeMounts(doguResource *k8sv2.Dogu, dogu *core.Dogu) []corev1.VolumeMount {
+	return createDoguVolumeMountsWithMountPathPrefix(doguResource, dogu, "")
+}
+
+func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu, mountPathPrefix string) corev1.VolumeMount {
 	_, clientExists := doguVolume.GetClient(doguOperatorClient)
+	mountPath := fmt.Sprintf("%s%s", mountPathPrefix, doguVolume.Path)
 	if clientExists {
 		return corev1.VolumeMount{
 			Name:      doguVolume.Name,
 			ReadOnly:  false,
-			MountPath: doguVolume.Path,
+			MountPath: mountPath,
 		}
 	}
 
@@ -385,7 +398,7 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu) cor
 		return corev1.VolumeMount{
 			Name:      doguResource.GetEphemeralDataVolumeName(),
 			ReadOnly:  false,
-			MountPath: doguVolume.Path,
+			MountPath: mountPath,
 			SubPath:   doguVolume.Name,
 		}
 	}
@@ -393,31 +406,9 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu) cor
 	return corev1.VolumeMount{
 		Name:      doguResource.GetDataVolumeName(),
 		ReadOnly:  false,
-		MountPath: doguVolume.Path,
+		MountPath: mountPath,
 		SubPath:   doguVolume.Name,
 	}
-}
-
-// Helper function to create the appropriate volume mount for the data seeder init container
-func createDataSeederVolumeMount(doguResource *k8sv2.Dogu, doguVolume core.Volume, pathSepStr string) corev1.VolumeMount {
-	_, clientExists := doguVolume.GetClient(doguOperatorClient)
-
-	volumeMount := corev1.VolumeMount{
-		MountPath: path.Join(pathSepStr, dataSeederDoguMountDir, doguVolume.Path),
-	}
-
-	switch {
-	case clientExists: // ConfigMap-Mount
-		volumeMount.Name = doguVolume.Name
-	case doguVolume.NeedsBackup: // PVC-Data-Volume-Mount
-		volumeMount.Name = doguResource.GetDataVolumeName()
-		volumeMount.SubPath = doguVolume.Name
-	default: // Empty-Dir-Volume-Mount
-		volumeMount.Name = doguResource.GetEphemeralDataVolumeName()
-		volumeMount.SubPath = doguVolume.Name
-	}
-
-	return volumeMount
 }
 
 // CreateDoguPVC creates a persistent volume claim for the given dogu.

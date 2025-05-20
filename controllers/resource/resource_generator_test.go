@@ -562,7 +562,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		require.Equal(t, expectedArgs, container.Args)
 		require.Equal(t, expectedContainerImage, container.Image)
 		require.Equal(t, expectedDataSeederContainerName, container.Name)
-		require.Equal(t, 2, len(container.VolumeMounts))
+		require.Equal(t, 4, len(container.VolumeMounts))
 		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
 			return mount.Name == expectedDataVolumeName &&
 				mount.MountPath == "/dogumount/etc/test" &&
@@ -604,7 +604,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Equal(t, expectedArgs, container.Args)
-		require.Equal(t, 2, len(container.VolumeMounts))
+		require.Equal(t, 4, len(container.VolumeMounts))
 		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
 			return mount.Name == expectedEphemeralVolumeName &&
 				mount.MountPath == "/dogumount/var/cache" &&
@@ -644,7 +644,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Equal(t, expectedArgs, container.Args)
-		require.Equal(t, 4, len(container.VolumeMounts))
+		require.Equal(t, 6, len(container.VolumeMounts))
 		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
 			return mount.Name == expectedEphemeralVolumeName &&
 				mount.MountPath == "/dogumount/var/cache" &&
@@ -696,7 +696,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Equal(t, expectedArgs, container.Args)
-		require.Equal(t, 3, len(container.VolumeMounts)) // One target volume + two source volumes
+		require.Equal(t, 5, len(container.VolumeMounts)) // One target volume + two source volumes
 
 		// The target volume should only be mounted once
 		volumeCount := 0
@@ -843,7 +843,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		require.Equal(t, dataSeederArg, container.Args[0])
 		require.Equal(t, expectedContainerImage, container.Image)
 		require.Equal(t, expectedDataSeederContainerName, container.Name)
-		require.Equal(t, 1, len(container.VolumeMounts))
+		require.Equal(t, 3, len(container.VolumeMounts))
 		resultVolumeMount := container.VolumeMounts[0]
 		require.Equal(t, expectedDataVolumeName, resultVolumeMount.Name)
 		require.Equal(t, "/dogumount/etc/test", resultVolumeMount.MountPath)
