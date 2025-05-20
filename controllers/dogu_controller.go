@@ -372,19 +372,9 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 		return false, fmt.Errorf("failed to get persistent volume claim of dogu [%s]: %w", doguResource.Name, err)
 	}
 
-	dataVolumeSize := doguResource.Spec.Resources.DataVolumeSize
-	if dataVolumeSize == "" {
-		return false, nil
-	}
-
-	doguTargetDataVolumeSize := resource.MustParse(doguv2.DefaultVolumeSize)
-	size, err := resource.ParseQuantity(dataVolumeSize)
+	doguTargetDataVolumeSize, err := doguResource.GetMinDataVolumeSize()
 	if err != nil {
-		return false, fmt.Errorf("failed to parse resource volume size: %w", err)
-	}
-
-	if !size.IsZero() {
-		doguTargetDataVolumeSize = size
+		return false, fmt.Errorf("failed to parse data volume size: %w", err)
 	}
 
 	if doguTargetDataVolumeSize.Value() > doguPvc.Spec.Resources.Requests.Storage().Value() {
@@ -392,9 +382,7 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 	} else if doguTargetDataVolumeSize.Value() == doguPvc.Spec.Resources.Requests.Storage().Value() {
 		return false, nil
 	} else {
-		return false, fmt.Errorf("invalid dogu state for dogu [%s] as requested volume size is [%s] while "+
-			"existing volume is [%s], shrinking of volumes is not allowed", doguResource.Name,
-			doguTargetDataVolumeSize.String(), doguPvc.Spec.Resources.Requests.Storage().String())
+		return false, nil
 	}
 }
 
@@ -662,7 +650,12 @@ func (r *doguReconciler) validateVolumeSize(doguResource *doguv2.Dogu) (success 
 	}
 
 	if quantity.Format != resource.BinarySI {
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeSIValidationEventReason, "Dogu resource volume size format is not Binary-SI (\"Mi\" or \"Gi\"): %s", quantity)
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeSIValidationEventReason, "Dogu resource volume size format is not Binary-SI (\"Mi\" or \"Gi\"): %s", quantity.String())
+		return false
+	}
+
+	if doguResource.Spec.Resources.MinDataVolumeSize.Format != resource.BinarySI {
+		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeSIValidationEventReason, "Dogu resource minimum volume size format is not Binary-SI (\"Mi\" or \"Gi\"): %s", quantity.String())
 		return false
 	}
 
