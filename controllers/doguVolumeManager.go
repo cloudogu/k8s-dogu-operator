@@ -268,7 +268,7 @@ func isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Qu
 
 	// Longhorn works this way and does not add the Condition "FileSystemResizePending" to the PVC
 	// see https://github.com/longhorn/longhorn/issues/2749
-	isRequestedCapacityAvailable := pvc.Status.Capacity.Storage().Equal(quantity)
+	isRequestedCapacityAvailable := pvc.Status.Capacity.Storage().Value() >= quantity.Value()
 	return isRequestedCapacityAvailable
 }
 

@@ -379,8 +379,6 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 
 	if doguTargetDataVolumeSize.Value() > doguPvc.Spec.Resources.Requests.Storage().Value() {
 		return true, nil
-	} else if doguTargetDataVolumeSize.Value() == doguPvc.Spec.Resources.Requests.Storage().Value() {
-		return false, nil
 	} else {
 		return false, nil
 	}
@@ -643,19 +641,9 @@ func (r *doguReconciler) validateVolumeSize(doguResource *doguv2.Dogu) (success 
 		return true
 	}
 
-	quantity, err := resource.ParseQuantity(size)
+	_, err := resource.ParseQuantity(size)
 	if err != nil {
 		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeParsingValidationEventReason, "Dogu resource volume size parsing error: %s", size)
-		return false
-	}
-
-	if quantity.Format != resource.BinarySI {
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeSIValidationEventReason, "Dogu resource volume size format is not Binary-SI (\"Mi\" or \"Gi\"): %s", quantity.String())
-		return false
-	}
-
-	if doguResource.Spec.Resources.MinDataVolumeSize.Format != resource.BinarySI {
-		r.recorder.Eventf(doguResource, v1.EventTypeWarning, FailedVolumeSizeSIValidationEventReason, "Dogu resource minimum volume size format is not Binary-SI (\"Mi\" or \"Gi\"): %s", quantity.String())
 		return false
 	}
 
