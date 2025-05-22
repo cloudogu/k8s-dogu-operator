@@ -80,6 +80,8 @@ import (
 
 	resourcev1beta1 "k8s.io/client-go/kubernetes/typed/resource/v1beta1"
 
+	resourcev1beta2 "k8s.io/client-go/kubernetes/typed/resource/v1beta2"
+
 	schedulingv1 "k8s.io/client-go/kubernetes/typed/scheduling/v1"
 
 	schedulingv1alpha1 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1"
@@ -2380,6 +2382,53 @@ func (_c *MockClientSet_ResourceV1beta1_Call) Return(_a0 resourcev1beta1.Resourc
 }
 
 func (_c *MockClientSet_ResourceV1beta1_Call) RunAndReturn(run func() resourcev1beta1.ResourceV1beta1Interface) *MockClientSet_ResourceV1beta1_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResourceV1beta2 provides a mock function with no fields
+func (_m *MockClientSet) ResourceV1beta2() resourcev1beta2.ResourceV1beta2Interface {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResourceV1beta2")
+	}
+
+	var r0 resourcev1beta2.ResourceV1beta2Interface
+	if rf, ok := ret.Get(0).(func() resourcev1beta2.ResourceV1beta2Interface); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(resourcev1beta2.ResourceV1beta2Interface)
+		}
+	}
+
+	return r0
+}
+
+// MockClientSet_ResourceV1beta2_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResourceV1beta2'
+type MockClientSet_ResourceV1beta2_Call struct {
+	*mock.Call
+}
+
+// ResourceV1beta2 is a helper method to define mock.On call
+func (_e *MockClientSet_Expecter) ResourceV1beta2() *MockClientSet_ResourceV1beta2_Call {
+	return &MockClientSet_ResourceV1beta2_Call{Call: _e.mock.On("ResourceV1beta2")}
+}
+
+func (_c *MockClientSet_ResourceV1beta2_Call) Run(run func()) *MockClientSet_ResourceV1beta2_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientSet_ResourceV1beta2_Call) Return(_a0 resourcev1beta2.ResourceV1beta2Interface) *MockClientSet_ResourceV1beta2_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientSet_ResourceV1beta2_Call) RunAndReturn(run func() resourcev1beta2.ResourceV1beta2Interface) *MockClientSet_ResourceV1beta2_Call {
 	_c.Call.Return(run)
 	return _c
 }
