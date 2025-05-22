@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.6.0] - 2025-05-22
+
 ### Changed
 - [#239] Extracted Dogu-CRD, Dogurestart-CRD and associated clients to own [repository](https://github.com/cloudogu/k8s-dogu-lib)
 - [#242] Prevent decreasing volume size
