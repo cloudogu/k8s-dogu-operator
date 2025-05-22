@@ -8,8 +8,8 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,7 +36,7 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV2Interface, localFetcher localDoguFetcher) *doguChecker {
+func NewDoguChecker(ecosystemClient doguClient.EcoSystemV2Interface, localFetcher localDoguFetcher) *doguChecker {
 	return &doguChecker{
 		ecosystemClient:   ecosystemClient,
 		doguLocalRegistry: localFetcher,
@@ -44,7 +44,7 @@ func NewDoguChecker(ecosystemClient ecoSystem.EcoSystemV2Interface, localFetcher
 }
 
 type doguChecker struct {
-	ecosystemClient   ecoSystem.EcoSystemV2Interface
+	ecosystemClient   doguClient.EcoSystemV2Interface
 	doguLocalRegistry localDoguFetcher
 }
 

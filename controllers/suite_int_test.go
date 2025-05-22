@@ -29,8 +29,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
@@ -45,7 +45,7 @@ import (
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-var ecosystemClientSet *ecoSystem.EcoSystemV2Client
+var ecosystemClientSet *doguClient.EcoSystemV2Client
 var k8sClientSet ClientSet
 var testEnv *envtest.Environment
 var cancel context.CancelFunc
@@ -117,7 +117,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		return builder
 	}
 
-	err = k8sv2.AddToScheme(scheme.Scheme)
+	err = doguv2.AddToScheme(scheme.Scheme)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
@@ -129,7 +129,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClient = k8sManager.GetClient()
 	gomega.Expect(k8sClient).ToNot(gomega.BeNil())
 
-	ecosystemClientSet, err = ecoSystem.NewForConfig(cfg)
+	ecosystemClientSet, err = doguClient.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	k8sClientSet, err = kubernetes.NewForConfig(cfg)

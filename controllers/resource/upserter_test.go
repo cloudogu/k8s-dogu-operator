@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/mock"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"

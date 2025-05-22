@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 func NewSecurityContextGenerator() *SecurityContextGenerator {

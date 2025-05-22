@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
@@ -20,7 +20,7 @@ const SupportModeEnvVar = "SUPPORT_MODE"
 
 // podTemplateResourceGenerator is used to generate pod templates.
 type podTemplateResourceGenerator interface {
-	GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error)
+	GetPodTemplate(ctx context.Context, doguResource *doguv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error)
 }
 
 // doguSupportManager is used to handle the support mode for dogus.
@@ -43,7 +43,7 @@ func NewDoguSupportManager(client client.Client, mgrSet *util.ManagerSet, eventR
 
 // HandleSupportMode handles the support flag in the dogu spec and returns whether the support modes changed during the
 // last operation. If any action failed a non-requeue-able error will be returned.
-func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error) {
+func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
 	logger := log.FromContext(ctx)
 
 	deployment := &appsv1.Deployment{}
@@ -71,7 +71,7 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 	return true, nil
 }
 
-func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *k8sv2.Dogu, deployment *appsv1.Deployment) error {
+func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *doguv2.Dogu, deployment *appsv1.Deployment) error {
 	logger := log.FromContext(ctx)
 
 	dogu, err := dsm.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
@@ -98,7 +98,7 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 	return nil
 }
 
-func setDoguPodTemplateInSupportMode(doguResource *k8sv2.Dogu, template *corev1.PodTemplateSpec) *corev1.PodTemplateSpec {
+func setDoguPodTemplateInSupportMode(doguResource *doguv2.Dogu, template *corev1.PodTemplateSpec) *corev1.PodTemplateSpec {
 	for index := range template.Spec.Containers {
 		container := &template.Spec.Containers[index]
 		if container.Name == doguResource.Name {
@@ -127,7 +127,7 @@ func isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
 	return false
 }
 
-func supportModeChanged(doguResource *k8sv2.Dogu, active bool) bool {
+func supportModeChanged(doguResource *doguv2.Dogu, active bool) bool {
 	mode := doguResource.Spec.SupportMode
 	if mode && active || !mode && !active {
 		return false

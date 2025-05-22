@@ -4,14 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/go-logr/logr"
@@ -210,7 +210,7 @@ func setupOverrides() func() {
 	oldSetLoggerDelegate := ctrl.SetLogger
 
 	oldDoguManager := controllers.NewManager
-	controllers.NewManager = func(client client.Client, ecosystemClient ecoSystem.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
+	controllers.NewManager = func(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
 		return &controllers.DoguManager{}, nil
 	}
 

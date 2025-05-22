@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.24.1 AS builder
+FROM golang:1.24.3 AS builder
 
 WORKDIR /workspace
 
@@ -13,7 +13,6 @@ RUN go mod download
 
 # Copy the go source
 COPY main.go main.go
-COPY api/ api/
 COPY controllers/ controllers/
 
 # Copy .git files as the build process builds the current commit id into the binary via ldflags.
@@ -36,7 +35,7 @@ RUN make compile-generic
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="3.5.1"
+      VERSION="3.6.0"
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .

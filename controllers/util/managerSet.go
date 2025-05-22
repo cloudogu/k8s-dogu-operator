@@ -12,7 +12,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
@@ -41,14 +41,14 @@ type ManagerSet struct {
 	ResourceUpserter      resource.ResourceUpserter
 	DoguRegistrator       cesregistry.DoguRegistrator
 	ImageRegistry         imageregistry.ImageRegistry
-	EcosystemClient       ecoSystem.EcoSystemV2Interface
+	EcosystemClient       doguClient.EcoSystemV2Interface
 	ClientSet             clientSet
 	DependencyValidator   dependencyValidator
 	SecurityValidator     securityValidator
 }
 
 // NewManagerSet creates a new ManagerSet.
-func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient ecoSystem.EcoSystemV2Interface, config *config.OperatorConfig, configRepos ConfigRepositories, applier resource.Applier, additionalImages map[string]string) (*ManagerSet, error) {
+func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient doguClient.EcoSystemV2Interface, config *config.OperatorConfig, configRepos ConfigRepositories, applier resource.Applier, additionalImages map[string]string) (*ManagerSet, error) {
 	collectApplier := resource.NewCollectApplier(applier)
 	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())

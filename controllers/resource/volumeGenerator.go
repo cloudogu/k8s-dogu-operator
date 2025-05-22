@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -347,7 +347,12 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu) cor
 
 // CreateDoguPVC creates a persistent volume claim for the given dogu.
 func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv2.Dogu) (*corev1.PersistentVolumeClaim, error) {
-	return r.createPVC(doguResource.Name, doguResource, doguResource.GetDataVolumeSize())
+	size, err := doguResource.GetMinDataVolumeSize()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse data volume size: %w", err)
+	}
+
+	return r.createPVC(doguResource.Name, doguResource, size)
 }
 
 func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv2.Dogu, size resource.Quantity) (*corev1.PersistentVolumeClaim, error) {

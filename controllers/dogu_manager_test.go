@@ -16,14 +16,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 )
 
 func TestDoguManager_SetDoguAdditionalIngressAnnotations(t *testing.T) {
 	// given
-	dogu := &k8sv2.Dogu{}
+	dogu := &doguv2.Dogu{}
 	recorder := newMockEventRecorder(t)
 	recorder.EXPECT().Event(dogu, "Normal", "AdditionalIngressAnnotationsChange", "Start additional ingress annotations change...")
 	annotationsManager := newMockAdditionalIngressAnnotationsManager(t)
@@ -39,7 +39,7 @@ func TestDoguManager_SetDoguAdditionalIngressAnnotations(t *testing.T) {
 
 func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 	// given
-	dogu := &k8sv2.Dogu{}
+	dogu := &doguv2.Dogu{}
 	volumeManagerMock := newMockVolumeManager(t)
 	eventRecorderMock := newMockEventRecorder(t)
 	manager := DoguManager{volumeManager: volumeManagerMock, recorder: eventRecorderMock}
@@ -56,7 +56,7 @@ func TestDoguManager_HandleVolumeExpansion(t *testing.T) {
 
 func TestDoguManager_HandleSupportMode(t *testing.T) {
 	// given
-	dogu := &k8sv2.Dogu{}
+	dogu := &doguv2.Dogu{}
 	supportManagerMock := newMockSupportManager(t)
 	eventRecorderMock := newMockEventRecorder(t)
 	manager := DoguManager{supportManager: supportManagerMock, recorder: eventRecorderMock}
@@ -73,7 +73,7 @@ func TestDoguManager_HandleSupportMode(t *testing.T) {
 
 func TestDoguManager_Delete(t *testing.T) {
 	// given
-	inputDogu := &k8sv2.Dogu{}
+	inputDogu := &doguv2.Dogu{}
 	inputContext := context.Background()
 	deleteManager := newMockDeleteManager(t)
 	deleteManager.EXPECT().Delete(inputContext, inputDogu).Return(nil)
@@ -91,7 +91,7 @@ func TestDoguManager_Delete(t *testing.T) {
 
 func TestDoguManager_Install(t *testing.T) {
 	// given
-	inputDogu := &k8sv2.Dogu{}
+	inputDogu := &doguv2.Dogu{}
 	inputContext := context.Background()
 	installManager := newMockInstallManager(t)
 	installManager.EXPECT().Install(inputContext, inputDogu).Return(nil)
@@ -109,7 +109,7 @@ func TestDoguManager_Install(t *testing.T) {
 
 func TestDoguManager_Upgrade(t *testing.T) {
 	// given
-	inputDogu := &k8sv2.Dogu{}
+	inputDogu := &doguv2.Dogu{}
 	inputContext := context.Background()
 	upgradeManager := newMockUpgradeManager(t)
 	upgradeManager.EXPECT().Upgrade(inputContext, inputDogu).Return(nil)
@@ -182,7 +182,7 @@ func createConfigMap(name string, data map[string]string) *corev1.ConfigMap {
 
 func TestDoguManager_UpdateExportMode(t *testing.T) {
 	t.Run("should call UpdateExportMode on exportManager", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{}
+		doguResource := &doguv2.Dogu{}
 
 		mockEM := newMockExportManager(t)
 		mockEM.EXPECT().UpdateExportMode(testCtx, doguResource).Return(nil)
@@ -201,7 +201,7 @@ func TestDoguManager_UpdateExportMode(t *testing.T) {
 	})
 
 	t.Run("should fail calling UpdateExportMode on exportManager", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{}
+		doguResource := &doguv2.Dogu{}
 
 		mockEM := newMockExportManager(t)
 		mockEM.EXPECT().UpdateExportMode(testCtx, doguResource).Return(assert.AnError)

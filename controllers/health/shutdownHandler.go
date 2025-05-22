@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	v2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type ShutdownHandler struct {
-	doguInterface ecoSystem.DoguInterface
+	doguInterface doguClient.DoguInterface
 }
 
-func NewShutdownHandler(doguInterface ecoSystem.DoguInterface) *ShutdownHandler {
+func NewShutdownHandler(doguInterface doguClient.DoguInterface) *ShutdownHandler {
 	return &ShutdownHandler{doguInterface: doguInterface}
 }
 

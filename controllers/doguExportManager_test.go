@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -14,9 +14,9 @@ import (
 
 func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 	t.Run("should update deployment when export-mode changes", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		dogu := &core.Dogu{}
@@ -54,9 +54,9 @@ func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 	})
 
 	t.Run("should update deployment when could not get current state of export-mode", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		dogu := &core.Dogu{}
@@ -89,9 +89,9 @@ func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 	})
 
 	t.Run("should fail to update deployment when export-mode changes on error updating status", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		podList := &corev1.PodList{Items: []corev1.Pod{
@@ -116,9 +116,9 @@ func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 	})
 
 	t.Run("should not update deployment when export-mode already in desired state", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		//dogu := &core.Dogu{}
@@ -145,9 +145,9 @@ func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 
 func Test_doguExportManager_shouldUpdateExportMode(t *testing.T) {
 	t.Run("should update export-mode changes", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		podList := &corev1.PodList{Items: []corev1.Pod{
@@ -167,9 +167,9 @@ func Test_doguExportManager_shouldUpdateExportMode(t *testing.T) {
 	})
 
 	t.Run("should not update export-mode", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		podList := &corev1.PodList{Items: []corev1.Pod{
@@ -189,9 +189,9 @@ func Test_doguExportManager_shouldUpdateExportMode(t *testing.T) {
 	})
 
 	t.Run("should update export-mode for error getting pods", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		mockPodClient := newMockPodInterface(t)
@@ -211,9 +211,9 @@ func Test_doguExportManager_shouldUpdateExportMode(t *testing.T) {
 
 func Test_doguExportManager_updateExportMode(t *testing.T) {
 	t.Run("should fail to update deployment on error getting dogu", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		dogu := &core.Dogu{}
@@ -237,9 +237,9 @@ func Test_doguExportManager_updateExportMode(t *testing.T) {
 	})
 
 	t.Run("should fail to update deployment on error upserting deployment", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		dogu := &core.Dogu{}
@@ -269,14 +269,14 @@ func Test_doguExportManager_updateExportMode(t *testing.T) {
 
 func Test_doguExportManager_updateStatusWithRetry(t *testing.T) {
 	t.Run("should update status", func(t *testing.T) {
-		doguResource := &k8sv2.Dogu{
+		doguResource := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
-			Spec:       k8sv2.DoguSpec{ExportMode: true},
+			Spec:       doguv2.DoguSpec{ExportMode: true},
 		}
 
 		mockDoguClient := newMockDoguInterface(t)
-		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
-			status := k8sv2.DoguStatus{Status: "foo", ExportMode: false}
+		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
+			status := doguv2.DoguStatus{Status: "foo", ExportMode: false}
 			modifiedStatus := modifyStatusFn(status)
 
 			assert.Equal(t, "testPhase", modifiedStatus.Status)

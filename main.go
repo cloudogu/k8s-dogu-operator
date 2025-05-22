@@ -8,8 +8,8 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"os"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/api/ecoSystem"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
@@ -56,7 +56,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(k8sv2.AddToScheme(scheme))
+	utilruntime.Must(doguv2.AddToScheme(scheme))
 
 	// +kubebuilder:scaffold:scheme
 }
@@ -201,7 +201,7 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 }
 
 func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
-	ecosystemClientSet *ecoSystem.EcoSystemV2Client, healthStatusUpdater health.DoguHealthStatusUpdater,
+	ecosystemClientSet *doguClient.EcoSystemV2Client, healthStatusUpdater health.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
 
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(
@@ -273,7 +273,7 @@ func addChecks(mgr manager.Manager) error {
 }
 
 func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
-	ecosystemClientSet ecoSystem.EcoSystemV2Interface, updater health.DoguHealthStatusUpdater,
+	ecosystemClientSet doguClient.EcoSystemV2Interface, updater health.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, namespace string) error {
 	doguInterface := ecosystemClientSet.Dogus(namespace)
 	deploymentInterface := k8sClientSet.AppsV1().Deployments(namespace)
@@ -292,8 +292,8 @@ func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
 	return nil
 }
 
-func getEcoSystemClientSet(config *rest.Config) (*ecoSystem.EcoSystemV2Client, error) {
-	ecosystemClientSet, err := ecoSystem.NewForConfig(config)
+func getEcoSystemClientSet(config *rest.Config) (*doguClient.EcoSystemV2Client, error) {
+	ecosystemClientSet, err := doguClient.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ecosystem client set: %w", err)
 	}

@@ -7,7 +7,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/retry-lib/retry"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -83,7 +83,7 @@ func (df *localDoguFetcher) getLocalDogu(ctx context.Context, fromDoguName cesco
 
 // FetchWithResource fetches the dogu either from the remote dogu registry or from a local development dogu map and
 // returns it with patched dogu dependencies (which otherwise might be incompatible with K8s CES).
-func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResource *k8sv2.Dogu) (*core.Dogu, *k8sv2.DevelopmentDoguMap, error) {
+func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResource *doguv2.Dogu) (*core.Dogu, *doguv2.DevelopmentDoguMap, error) {
 	developmentDoguMap, err := rdf.getDevelopmentDoguMap(ctx, doguResource)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get development dogu map: %w", err)
@@ -120,7 +120,7 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 	return patchedDogu, developmentDoguMap, err
 }
 
-func (rdf *resourceDoguFetcher) getDevelopmentDoguMap(ctx context.Context, doguResource *k8sv2.Dogu) (*k8sv2.DevelopmentDoguMap, error) {
+func (rdf *resourceDoguFetcher) getDevelopmentDoguMap(ctx context.Context, doguResource *doguv2.Dogu) (*doguv2.DevelopmentDoguMap, error) {
 	configMap := &corev1.ConfigMap{}
 	err := rdf.client.Get(ctx, doguResource.GetDevelopmentDoguMapKey(), configMap)
 	if err != nil {
@@ -130,12 +130,12 @@ func (rdf *resourceDoguFetcher) getDevelopmentDoguMap(ctx context.Context, doguR
 			return nil, fmt.Errorf("failed to get development dogu map for dogu %s: %w", doguResource.Name, err)
 		}
 	} else {
-		doguDevMap := k8sv2.DevelopmentDoguMap(*configMap)
+		doguDevMap := doguv2.DevelopmentDoguMap(*configMap)
 		return &doguDevMap, nil
 	}
 }
 
-func (rdf *resourceDoguFetcher) getFromDevelopmentDoguMap(doguConfigMap *k8sv2.DevelopmentDoguMap) (*core.Dogu, error) {
+func (rdf *resourceDoguFetcher) getFromDevelopmentDoguMap(doguConfigMap *doguv2.DevelopmentDoguMap) (*core.Dogu, error) {
 	jsonStr := doguConfigMap.Data["dogu.json"]
 	configMapDogu := &core.Dogu{}
 	err := json.Unmarshal([]byte(jsonStr), configMapDogu)

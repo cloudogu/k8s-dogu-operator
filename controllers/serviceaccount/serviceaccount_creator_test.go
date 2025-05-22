@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,7 +22,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-operator/v3/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-registry-lib/config"
 
@@ -154,6 +155,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		Labels: map[string]string{"app": "k8s-ces-control"}}}
 	availablePostgresqlDoguResource := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Name: "postgresql"},
+		Spec:       k8sv2.DoguSpec{Resources: k8sv2.DoguResources{MinDataVolumeSize: resource.MustParse("0")}},
 		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus},
 	}
 	cli := fake2.NewClientBuilder().
