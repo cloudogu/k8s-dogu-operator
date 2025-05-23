@@ -4,11 +4,13 @@ values:
     doguOperator: cloudogu/k8s-dogu-operator:3.6.0
     chownInitImage: busybox:1.36
     exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.0.0
+    dataSeederImage: cloudogu/dogu-data-seeder:0.1.0
 patches:
   values.yaml:
     additionalImages:
       chownInitImage: "{{ .images.chownInitImage }}"
       exporterImage: "{{ .images.exporterImage }}"
+      dataSeederImage: "{{ .images.dataSeederImage }}"
     controllerManager:
       image:
         registry: "{{ registryFrom .images.doguOperator }}"
