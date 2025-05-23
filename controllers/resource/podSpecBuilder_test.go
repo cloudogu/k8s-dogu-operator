@@ -23,13 +23,13 @@ func Test_podSpecBuilder_initContainers(t *testing.T) {
 	})
 	t.Run("should set init container ", func(t *testing.T) {
 		// when
-		sut := newPodSpecBuilder(ldapDoguResource, ldapDogu).initContainers(&v1.Container{Image: testChownInitContainerImage})
+		sut := newPodSpecBuilder(ldapDoguResource, ldapDogu).initContainers(&v1.Container{Image: testInitContainerImage})
 		actual := sut.build()
 
 		// then
 		require.NotNil(t, actual)
 		require.Len(t, actual.Spec.InitContainers, 1)
-		assert.Equal(t, v1.Container{Image: testChownInitContainerImage}, actual.Spec.InitContainers[0])
+		assert.Equal(t, v1.Container{Image: testInitContainerImage}, actual.Spec.InitContainers[0])
 	})
 }
 

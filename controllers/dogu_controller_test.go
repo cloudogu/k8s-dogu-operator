@@ -71,10 +71,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			recorder: recorder,
-			fetcher:  localDoguFetcher,
+			client:      fakeClient,
+			recorder:    recorder,
+			fetcher:     localDoguFetcher,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -123,10 +127,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			recorder: recorder,
-			fetcher:  localDoguFetcher,
+			client:      fakeClient,
+			recorder:    recorder,
+			fetcher:     localDoguFetcher,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -176,10 +184,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			recorder: recorder,
-			fetcher:  localDoguFetcher,
+			client:      fakeClient,
+			recorder:    recorder,
+			fetcher:     localDoguFetcher,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -257,10 +269,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -313,10 +329,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -373,10 +393,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -435,10 +459,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -570,10 +598,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -623,10 +655,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -683,10 +719,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -736,10 +776,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -834,10 +878,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -910,10 +958,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when
@@ -965,10 +1017,14 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		)
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
+		doguManagerMock := NewMockCombinedDoguManager(t)
+		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+
 		sut := &doguReconciler{
-			client:   fakeClient,
-			fetcher:  localDoguFetcher,
-			recorder: recorder,
+			client:      fakeClient,
+			fetcher:     localDoguFetcher,
+			recorder:    recorder,
+			doguManager: doguManagerMock,
 		}
 
 		// when

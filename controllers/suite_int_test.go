@@ -5,8 +5,11 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dataseed"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	registryRepo "github.com/cloudogu/k8s-registry-lib/repository"
+	"k8s.io/client-go/kubernetes/scheme"
 	"os"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -22,14 +25,12 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -89,7 +90,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	ginkgo.By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "k8s", "helm-crd", "templates")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "api", "v2")},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -147,7 +148,11 @@ var _ = ginkgo.BeforeSuite(func() {
 	securityValidator := &security.Validator{}
 	securityGenerator := &resource.SecurityContextGenerator{}
 
-	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag"}
+	configMapClient := k8sClientSet.CoreV1().ConfigMaps(testNamespace)
+	secretClient := k8sClientSet.CoreV1().Secrets(testNamespace)
+	doguDataSeedValidator := dataseed.NewValidator(configMapClient, secretClient)
+
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag", config.DataSeederImageConfigmapNameKey: "test:tag"}
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, securityGenerator, additionalImages)
 
 	version, err := core.ParseVersion("0.0.0")
@@ -198,6 +203,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		sensitiveDoguRepository: sensitiveConfigRepo,
 		doguConfigRepository:    doguConfigRepo,
 		securityValidator:       securityValidator,
+		doguDataSeedValidator:   doguDataSeedValidator,
 	}
 
 	deleteManager := &doguDeleteManager{
@@ -220,21 +226,25 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	doguHealthChecker := health.NewDoguChecker(ecosystemClientSet, localDoguFetcher)
-	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker, securityValidator)
+	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker, securityValidator, doguDataSeedValidator)
 
 	mgrSet := &util.ManagerSet{
-		RestConfig:            ctrl.GetConfigOrDie(),
-		ImageRegistry:         ImageRegistryMock,
-		ServiceAccountCreator: serviceAccountCreator,
-		FileExtractor:         fileExtract,
-		CollectApplier:        collectApplier,
-		SecurityValidator:     securityValidator,
-		CommandExecutor:       CommandExecutorMock,
-		ResourceUpserter:      upserter,
-		DoguRegistrator:       doguRegistrator,
-		LocalDoguFetcher:      localDoguFetcher,
-		DoguResourceGenerator: resourceGenerator,
-		ResourceDoguFetcher:   remoteDoguFetcher,
+		RestConfig:                     ctrl.GetConfigOrDie(),
+		ImageRegistry:                  ImageRegistryMock,
+		ServiceAccountCreator:          serviceAccountCreator,
+		FileExtractor:                  fileExtract,
+		CollectApplier:                 collectApplier,
+		SecurityValidator:              securityValidator,
+		CommandExecutor:                CommandExecutorMock,
+		ResourceUpserter:               upserter,
+		DoguRegistrator:                doguRegistrator,
+		LocalDoguFetcher:               localDoguFetcher,
+		DoguResourceGenerator:          resourceGenerator,
+		ResourceDoguFetcher:            remoteDoguFetcher,
+		DoguDataSeedValidator:          doguDataSeedValidator,
+		AdditionalImages:               additionalImages,
+		RequirementsGenerator:          requirementsGen,
+		DoguDataSeedContainerGenerator: resourceGenerator,
 	}
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder, ecosystemClientSet)
@@ -263,6 +273,8 @@ var _ = ginkgo.BeforeSuite(func() {
 		recorder:          eventRecorder,
 	}
 
+	dataSeedManager := NewDoguDataSeedManager(k8sClientSet.AppsV1().Deployments(testNamespace), mgrSet)
+
 	doguManager := &DoguManager{
 		scheme:                    k8sManager.GetScheme(),
 		installManager:            installManager,
@@ -273,6 +285,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		volumeManager:             volumeManager,
 		ingressAnnotationsManager: ingressAnnotationManager,
 		securityContextManager:    securityManager,
+		dataSeedManager:           dataSeedManager,
 	}
 
 	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, localDoguFetcher)

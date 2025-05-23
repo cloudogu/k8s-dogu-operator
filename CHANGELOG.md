@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- [#240] Init-Container creation for `additionalMounts` from the Dogu-CRD.
+  The dogu-operator now supports mounting configmaps or secrets in dogus with the `dogu-data-seed-init` container.
+
 ## [v3.6.0] - 2025-05-22
 
 ### Changed

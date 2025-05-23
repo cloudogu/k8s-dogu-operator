@@ -19,6 +19,10 @@ update_versions_modify_files() {
   local exporterImage
   exporterImage=$(./.bin/yq ".additionalImages.exporterImage" "${valuesYAML}")
   ./.bin/yq -i ".values.images.exporterImage = \"${exporterImage}\"" "${componentPatchTplYAML}"
+
+  local dataSeederImage
+  dataSeederImage=$(./.bin/yq ".additionalImages.dataSeederImage" "${valuesYAML}")
+  ./.bin/yq -i ".values.images.dataSeederImage = \"${dataSeederImage}\"" "${componentPatchTplYAML}"
 }
 
 update_versions_stage_modified_files() {

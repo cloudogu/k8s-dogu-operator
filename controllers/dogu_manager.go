@@ -40,6 +40,7 @@ type DoguManager struct {
 	exportManager             exportManager
 	startStopManager          DoguStartStopManager
 	securityContextManager    securityContextManager
+	dataSeedManager           dataSeedManager
 	recorder                  record.EventRecorder
 }
 
@@ -88,6 +89,8 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
+	dataSeedManager := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet)
+
 	return &DoguManager{
 		scheme:                    client.Scheme(),
 		installManager:            installManager,
@@ -99,6 +102,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 		ingressAnnotationsManager: ingressAnnotationsManager,
 		startStopManager:          startStopManager,
 		securityContextManager:    securityContextManager,
+		dataSeedManager:           dataSeedManager,
 		recorder:                  eventRecorder,
 	}, nil
 }
@@ -115,8 +119,14 @@ func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Cl
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
 
+	additionalDataSeederContainer, err := imageGetter.imageForKey(ctx, config.DataSeederImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	}
+
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
-		config.ExporterImageConfigmapNameKey: additionalExportModeContainer}
+		config.ExporterImageConfigmapNameKey:   additionalExportModeContainer,
+		config.DataSeederImageConfigmapNameKey: additionalDataSeederContainer}
 
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
@@ -227,4 +237,12 @@ func createConfigRepositories(clientSet kubernetes.Interface, namespace string) 
 		DoguConfigRepository:    repository.NewDoguConfigRepository(configMapClient),
 		SensitiveDoguRepository: repository.NewSensitiveDoguConfigRepository(secretsClient),
 	}
+}
+
+func (m *DoguManager) DataMountsChanged(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
+	return m.dataSeedManager.DataMountsChanged(ctx, doguResource)
+}
+
+func (m *DoguManager) UpdateDataMounts(ctx context.Context, doguResource *doguv2.Dogu) error {
+	return m.dataSeedManager.UpdateDataMounts(ctx, doguResource)
 }

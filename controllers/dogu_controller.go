@@ -86,6 +86,7 @@ const (
 	CheckStopped                       = operation("CheckStopped")
 	ChangeSecurityContext              = operation("ChangeSecurityContext")
 	ChangeExportMode                   = operation("ChangeExportMode")
+	ChangeDoguDataMounts               = operation("ChangeDataMounts")
 )
 
 const requeueWaitTimeout = 5 * time.Second
@@ -198,6 +199,8 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 		return r.performSecurityContextOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeExportMode:
 		return r.performExportModeOperation(ctx, doguResource, requeueForMultipleOperations)
+	case ChangeDoguDataMounts:
+		return r.performDataMountsOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
@@ -327,6 +330,14 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 
 	if checkShouldChangeExportMode(doguResource) && !operationsContain(operations, ChangeExportMode) {
 		operations = append(operations, ChangeExportMode)
+	}
+
+	changed, err := r.doguManager.DataMountsChanged(ctx, doguResource)
+	if err != nil {
+		return nil, err
+	}
+	if changed && !operationsContain(operations, ChangeDoguDataMounts) {
+		operations = append(operations, ChangeDoguDataMounts)
 	}
 
 	// Checking if the resource spec field has changed is unnecessary because we
@@ -622,6 +633,15 @@ func (r *doguReconciler) performExportModeOperation(ctx context.Context, doguRes
 		operationName: "ChangeExportMode",
 		operationVerb: "activate export-mode",
 	}, doguv2.DoguStatusChangingExportMode, r.doguManager.UpdateExportMode, shouldRequeue)
+}
+
+func (r *doguReconciler) performDataMountsOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	return r.performOperation(ctx, doguResource, operationEventProperties{
+		successReason: ChangeDataMountsEventReason,
+		errorReason:   ErrorOnChangeDataMountsEventReason,
+		operationName: "ChangeDataMounts",
+		operationVerb: "change data mounts",
+	}, doguv2.DoguStatusChangingDataMounts, r.doguManager.UpdateDataMounts, shouldRequeue)
 }
 
 func (r *doguReconciler) validateName(doguResource *doguv2.Dogu) (success bool) {
