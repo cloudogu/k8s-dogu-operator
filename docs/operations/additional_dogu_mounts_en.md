@@ -2,7 +2,7 @@
 
 The attribute `spec.addionalMounts` can be used to mount files in Dogus.
 A description of the format can be found in the repo of the
-[Dogu-CRD](https://github.com/cloudogu/k8s-dogu-lib/docs/operations/dogu_format_en.md##AdditionalMounts).
+[Dogu-CRD](https://github.com/cloudogu/k8s-dogu-lib/blob/develop/docs/operations/dogu_format_en.md#additionalmounts).
 
 The use of additionalMounts requires that the affected Dogu has a `localConfig` volume.
 This is used so that the init container can save mounted files and thus later delete them from the Dogu volumes again later.
