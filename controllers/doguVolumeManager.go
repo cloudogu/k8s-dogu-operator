@@ -115,9 +115,9 @@ func (e *editPVCStep) GetStartCondition() string {
 // Execute executes the step and returns the next state and if the step fails an error.
 // The error can be a requeueable error so that the step will be executed again.
 func (e *editPVCStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, error) {
-	quantity, err := getQuantityForDogu(dogu)
+	quantity, err := dogu.GetMinDataVolumeSize()
 	if err != nil {
-		return e.GetStartCondition(), err
+		return e.GetStartCondition(), fmt.Errorf("failed to parse data volume size: %w", err)
 	}
 
 	err = e.updatePVCQuantity(ctx, dogu, quantity)
@@ -212,16 +212,6 @@ func scaleDeployment(ctx context.Context, client client.Client, recorder record.
 	return oldReplicas, err
 }
 
-func getQuantityForDogu(dogu *doguv2.Dogu) (resource.Quantity, error) {
-	size := dogu.Spec.Resources.DataVolumeSize
-	quantity, err := resource.ParseQuantity(size)
-	if err != nil {
-		return resource.Quantity{}, fmt.Errorf("failed to parse to quantity: %w", err)
-	}
-
-	return quantity, nil
-}
-
 type checkIfPVCIsResizedStep struct {
 	client        client.Client
 	eventRecorder record.EventRecorder
@@ -235,9 +225,9 @@ func (c *checkIfPVCIsResizedStep) GetStartCondition() string {
 // Execute executes the step and returns the next state and if the step fails an error.
 // The error can be a requeueable error so that the step will be executed again.
 func (c *checkIfPVCIsResizedStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, error) {
-	quantity, err := getQuantityForDogu(dogu)
+	quantity, err := dogu.GetMinDataVolumeSize()
 	if err != nil {
-		return c.GetStartCondition(), err
+		return c.GetStartCondition(), fmt.Errorf("failed to parse data volume size: %w", err)
 	}
 
 	return startConditionScaleUp, c.waitForPVCResize(ctx, dogu, quantity)
@@ -268,7 +258,7 @@ func isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Qu
 
 	// Longhorn works this way and does not add the Condition "FileSystemResizePending" to the PVC
 	// see https://github.com/longhorn/longhorn/issues/2749
-	isRequestedCapacityAvailable := pvc.Status.Capacity.Storage().Equal(quantity)
+	isRequestedCapacityAvailable := pvc.Status.Capacity.Storage().Value() >= quantity.Value()
 	return isRequestedCapacityAvailable
 }
 

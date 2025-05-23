@@ -243,6 +243,7 @@ func Test_editPVCStep_Execute(t *testing.T) {
 	t.Run("fail to parse quantity", func(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
+		dogu.Spec.Resources.DataVolumeSize = "error"
 		client := fake.NewClientBuilder().Build()
 		recorder := newMockEventRecorder(t)
 		sut := &editPVCStep{client: client, eventRecorder: recorder}
@@ -252,7 +253,7 @@ func Test_editPVCStep_Execute(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to parse to quantity")
+		assert.ErrorContains(t, err, "failed to parse data volume size")
 		assert.Equal(t, "Edit PVC", stage)
 	})
 }
@@ -338,7 +339,7 @@ func Test_checkIfPVCIsResizedStep_execute(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to parse to quantity")
+		assert.ErrorContains(t, err, "failed to parse data volume size")
 		assert.Equal(t, "Wait for resize", stage)
 	})
 
