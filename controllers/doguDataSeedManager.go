@@ -75,7 +75,10 @@ func (m *doguDataSeedManager) DataMountsChanged(ctx context.Context, doguResourc
 		return false, err
 	}
 
-	return !reflect.DeepEqual(container.Args, actualDoguDataSeedContainer.Args), nil
+	argsEqual := reflect.DeepEqual(container.Args, actualDoguDataSeedContainer.Args)
+	imageEqual := actualDoguDataSeedContainer.Image == m.image
+
+	return !argsEqual || !imageEqual, nil
 }
 
 func (m *doguDataSeedManager) getDoguDeployment(ctx context.Context, doguResource *v2.Dogu) (*appsv1.Deployment, error) {
