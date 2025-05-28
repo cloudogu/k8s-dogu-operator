@@ -73,8 +73,9 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	supportManager := NewDoguSupportManager(client, mgrSet, eventRecorder)
 
+	doguInterface := ecosystemClient.Dogus(operatorConfig.Namespace)
 	exportManager := NewDoguExportManager(
-		ecosystemClient.Dogus(operatorConfig.Namespace),
+		doguInterface,
 		clientSet.CoreV1().Pods(operatorConfig.Namespace),
 		mgrSet.ResourceUpserter,
 		mgrSet.LocalDoguFetcher,
@@ -87,9 +88,9 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	securityContextManager := NewDoguSecurityContextManager(mgrSet, eventRecorder)
 
-	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
+	startStopManager := newDoguStartStopManager(doguInterface, clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
-	dataSeedManager := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet)
+	dataSeedManager := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet, doguInterface)
 
 	return &DoguManager{
 		scheme:                    client.Scheme(),

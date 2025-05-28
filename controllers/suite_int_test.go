@@ -273,7 +273,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		recorder:          eventRecorder,
 	}
 
-	dataSeedManager := NewDoguDataSeedManager(k8sClientSet.AppsV1().Deployments(testNamespace), mgrSet)
+	dataSeedManager := NewDoguDataSeedManager(k8sClientSet.AppsV1().Deployments(testNamespace), mgrSet, DoguInterfaceMock)
 
 	doguManager := &DoguManager{
 		scheme:                    k8sManager.GetScheme(),

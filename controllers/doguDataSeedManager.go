@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
@@ -29,10 +30,11 @@ type doguDataSeedManager struct {
 	resourceDoguFetcher   resourceDoguFetcher
 	requirementsGenerator requirementsGenerator
 	dataSeedValidator     doguDataSeedValidator
+	doguInterface         doguClient.DoguInterface
 	image                 string
 }
 
-func NewDoguDataSeedManager(deploymentInterface deploymentInterface, mgrSet *util.ManagerSet) *doguDataSeedManager {
+func NewDoguDataSeedManager(deploymentInterface deploymentInterface, mgrSet *util.ManagerSet, doguInterface doguClient.DoguInterface) *doguDataSeedManager {
 	return &doguDataSeedManager{
 		deploymentInterface:   deploymentInterface,
 		resourceGenerator:     mgrSet.DoguDataSeedContainerGenerator,
@@ -40,6 +42,7 @@ func NewDoguDataSeedManager(deploymentInterface deploymentInterface, mgrSet *uti
 		requirementsGenerator: mgrSet.RequirementsGenerator,
 		dataSeedValidator:     mgrSet.DoguDataSeedValidator,
 		image:                 mgrSet.AdditionalImages[config.DataSeederImageConfigmapNameKey],
+		doguInterface:         doguInterface,
 	}
 }
 
@@ -160,5 +163,16 @@ func (m *doguDataSeedManager) UpdateDataMounts(ctx context.Context, doguResource
 	}
 
 	logger.Info(fmt.Sprintf("Successfully updated data mounts for dogu resource %s", doguResource.Name))
-	return nil
+
+	installedStatus := v2.DoguStatusInstalled
+	_, err = m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+		doguResource.Status.Status = installedStatus
+		return doguResource.Status
+	}, v1.UpdateOptions{})
+
+	if err != nil {
+		return fmt.Errorf("failed to update status of dogu %s to %s", doguResource.Name, installedStatus)
+	}
+
+	return err
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
+	mock2 "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -418,6 +419,7 @@ func TestNewDoguDataSeedManager(t *testing.T) {
 		resourceGeneratorMock := newMockDataSeederInitContainerGenerator(t)
 		resourceDoguFetcherMock := newMockResourceDoguFetcher(t)
 		requirementsGeneratorMock := newMockRequirementsGenerator(t)
+		doguInterfaceMock := newMockDoguInterface(t)
 
 		mgrSet := &util.ManagerSet{
 			DoguDataSeedContainerGenerator: resourceGeneratorMock,
@@ -427,7 +429,7 @@ func TestNewDoguDataSeedManager(t *testing.T) {
 		}
 
 		// when
-		sut := NewDoguDataSeedManager(deploymentMock, mgrSet)
+		sut := NewDoguDataSeedManager(deploymentMock, mgrSet, doguInterfaceMock)
 
 		// then
 		require.NotNil(t, sut)
@@ -526,6 +528,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 		resourceDoguFetcher   func() resourceDoguFetcher
 		requirementsGenerator func() requirementsGenerator
 		dataSeedValidator     func() doguDataSeedValidator
+		doguInterface         func() doguInterface
 	}
 	type args struct {
 		ctx          context.Context
@@ -566,6 +569,11 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(nil)
 					return mock
 				},
+				doguInterface: func() doguInterface {
+					mock := newMockDoguInterface(t)
+					mock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithSeederMounts, mock2.Anything, v1.UpdateOptions{}).Return(nil, nil)
+					return mock
+				},
 			},
 			args: args{
 				ctx:          testCtx,
@@ -601,6 +609,11 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 				dataSeedValidator: func() doguDataSeedValidator {
 					mock := newMockDoguDataSeedValidator(t)
 					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(nil)
+					return mock
+				},
+				doguInterface: func() doguInterface {
+					mock := newMockDoguInterface(t)
+					mock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithSeederMounts, mock2.Anything, v1.UpdateOptions{}).Return(nil, nil)
 					return mock
 				},
 			},
@@ -703,6 +716,9 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			}
 			if tt.fields.dataSeedValidator != nil {
 				m.dataSeedValidator = tt.fields.dataSeedValidator()
+			}
+			if tt.fields.doguInterface != nil {
+				m.doguInterface = tt.fields.doguInterface()
 			}
 			tt.wantErr(t, m.UpdateDataMounts(tt.args.ctx, tt.args.doguResource), fmt.Sprintf("UpdateDataMounts(%v, %v)", tt.args.ctx, tt.args.doguResource))
 		})

@@ -288,6 +288,12 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 		}
 	case doguv2.DoguStatusDeleting:
 		return []operation{}, nil
+	case doguv2.DoguStatusChangingDataMounts:
+		operations = append(operations, ChangeDoguDataMounts)
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		logger.Info(fmt.Sprintf("Cannot evaluate required operation for unknown dogu status: %s", doguResource.Status.Status))
 		return []operation{}, nil
