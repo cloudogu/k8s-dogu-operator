@@ -2,323 +2,430 @@ package controllers
 
 import (
 	"context"
-	"errors"
+	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	scalingv1 "k8s.io/api/autoscaling/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"testing"
-	"time"
 )
 
-func Test_doguStartStopManager_CheckStarted(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		// given
-		rolledOutDeployment := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cas",
-				Namespace: "test",
+func Test_doguStartStopManager_StartStopDogu(t *testing.T) {
+	testCtx := context.Background()
+
+	t.Run("should stop dogu", func(t *testing.T) {
+		doguResource := &doguv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec: doguv2.DoguSpec{
+				Name:    "official/myDogu",
+				Stopped: true,
 			},
-			Status: appsv1.DeploymentStatus{
-				Replicas:          1,
-				ReadyReplicas:     1,
-				UpdatedReplicas:   1,
-				AvailableReplicas: 1,
+			Status: doguv2.DoguStatus{
+				Status:  "installed",
+				Stopped: false,
 			},
 		}
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
-		dogu := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := newMockDoguInterface(t)
-		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
-				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, doguv2.DoguStatusInstalled, status.Status)
-				assert.Equal(t, false, status.Stopped)
-			})
+		deployment := &appsv1.Deployment{
+			Status: appsv1.DeploymentStatus{
+				Replicas: 1,
+			},
+		}
 
-		podInterfaceMock := newMockPodInterface(t)
-		podList := &v1.PodList{Items: []v1.Pod{{Status: v1.PodStatus{ContainerStatuses: []v1.ContainerStatus{{Name: "cas"}}}}}}
-		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
+		dogu := &core.Dogu{Name: "myDogu"}
 
-		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
+		mResourceUpserter := newMockResourceUpserter(t)
+		mResourceUpserter.EXPECT().UpsertDoguDeployment(testCtx, doguResource, dogu, mock.Anything).Return(nil, nil)
 
-		// when
-		err := sut.CheckStarted(testCtx, dogu)
+		mDoguFetcher := newMockLocalDoguFetcher(t)
+		mDoguFetcher.EXPECT().FetchInstalled(testCtx, doguResource.GetSimpleDoguName()).Return(dogu, nil)
 
-		// then
+		mDoguInterface := newMockDoguInterface(t)
+		mDoguInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).RunAndReturn(func(ctx context.Context, dogu *doguv2.Dogu, f func(doguv2.DoguStatus) doguv2.DoguStatus, options metav1.UpdateOptions) (*doguv2.Dogu, error) {
+			updatedStatus := f(dogu.Status)
+			assert.Equal(t, "stopping", updatedStatus.Status)
+			assert.False(t, updatedStatus.Stopped)
+
+			return nil, nil
+		})
+
+		mDeploymentInterface := newMockDeploymentInterface(t)
+		mDeploymentInterface.EXPECT().Get(testCtx, "myDogu", metav1.GetOptions{}).Return(deployment, nil)
+
+		m := doguStartStopManager{
+			resourceUpserter:    mResourceUpserter,
+			doguFetcher:         mDoguFetcher,
+			doguInterface:       mDoguInterface,
+			deploymentInterface: mDeploymentInterface,
+		}
+
+		err := m.StartStopDogu(testCtx, doguResource)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, doguNotYetStartedStoppedError{doguName: "myDogu", stopped: true})
+	})
+
+	t.Run("should start dogu", func(t *testing.T) {
+		doguResource := &doguv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec: doguv2.DoguSpec{
+				Name:    "official/myDogu",
+				Stopped: false,
+			},
+			Status: doguv2.DoguStatus{
+				Status:  "installed",
+				Stopped: true,
+			},
+		}
+
+		deployment := &appsv1.Deployment{
+			Status: appsv1.DeploymentStatus{
+				Replicas: 0,
+			},
+		}
+
+		dogu := &core.Dogu{Name: "myDogu"}
+
+		mResourceUpserter := newMockResourceUpserter(t)
+		mResourceUpserter.EXPECT().UpsertDoguDeployment(testCtx, doguResource, dogu, mock.Anything).Return(nil, nil)
+
+		mDoguFetcher := newMockLocalDoguFetcher(t)
+		mDoguFetcher.EXPECT().FetchInstalled(testCtx, doguResource.GetSimpleDoguName()).Return(dogu, nil)
+
+		mDoguInterface := newMockDoguInterface(t)
+		mDoguInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).RunAndReturn(func(ctx context.Context, dogu *doguv2.Dogu, f func(doguv2.DoguStatus) doguv2.DoguStatus, options metav1.UpdateOptions) (*doguv2.Dogu, error) {
+			updatedStatus := f(dogu.Status)
+			assert.Equal(t, "starting", updatedStatus.Status)
+			assert.True(t, updatedStatus.Stopped)
+
+			return nil, nil
+		})
+
+		mDeploymentInterface := newMockDeploymentInterface(t)
+		mDeploymentInterface.EXPECT().Get(testCtx, "myDogu", metav1.GetOptions{}).Return(deployment, nil)
+
+		m := doguStartStopManager{
+			resourceUpserter:    mResourceUpserter,
+			doguFetcher:         mDoguFetcher,
+			doguInterface:       mDoguInterface,
+			deploymentInterface: mDeploymentInterface,
+		}
+
+		err := m.StartStopDogu(testCtx, doguResource)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, doguNotYetStartedStoppedError{doguName: "myDogu", stopped: false})
+	})
+
+	t.Run("should update status when dogu is stopped", func(t *testing.T) {
+		doguResource := &doguv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec: doguv2.DoguSpec{
+				Name:    "official/myDogu",
+				Stopped: true,
+			},
+			Status: doguv2.DoguStatus{
+				Status:  "stopping",
+				Stopped: true,
+			},
+		}
+
+		deployment := &appsv1.Deployment{
+			Status: appsv1.DeploymentStatus{
+				Replicas: 0,
+			},
+		}
+
+		mResourceUpserter := newMockResourceUpserter(t)
+		mDoguFetcher := newMockLocalDoguFetcher(t)
+
+		mDoguInterface := newMockDoguInterface(t)
+		mDoguInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).RunAndReturn(func(ctx context.Context, dogu *doguv2.Dogu, f func(doguv2.DoguStatus) doguv2.DoguStatus, options metav1.UpdateOptions) (*doguv2.Dogu, error) {
+			updatedStatus := f(dogu.Status)
+			assert.Equal(t, "installed", updatedStatus.Status)
+			assert.True(t, updatedStatus.Stopped)
+
+			return nil, nil
+		})
+
+		mDeploymentInterface := newMockDeploymentInterface(t)
+		mDeploymentInterface.EXPECT().Get(testCtx, "myDogu", metav1.GetOptions{}).Return(deployment, nil)
+
+		m := doguStartStopManager{
+			resourceUpserter:    mResourceUpserter,
+			doguFetcher:         mDoguFetcher,
+			doguInterface:       mDoguInterface,
+			deploymentInterface: mDeploymentInterface,
+		}
+
+		err := m.StartStopDogu(testCtx, doguResource)
+
 		require.NoError(t, err)
 	})
 
-	t.Run("should return error on deployment get error", func(t *testing.T) {
-		// given
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, assert.AnError)
-
-		dogu := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := newMockDoguInterface(t)
-		podInterfaceMock := newMockPodInterface(t)
-
-		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
-
-		// when
-		err := sut.CheckStarted(testCtx, dogu)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to start dogu \"test/cas\": failed to get deployment \"test/cas\"")
-	})
-
-	t.Run("should return deployment not yet scaled error if deployment is not rolled out", func(t *testing.T) {
-		// given
-		rolledOutDeployment := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cas",
-				Namespace: "test",
+	t.Run("should update status when dogu is started", func(t *testing.T) {
+		doguResource := &doguv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec: doguv2.DoguSpec{
+				Name:    "official/myDogu",
+				Stopped: false,
 			},
-			Status: appsv1.DeploymentStatus{
-				Replicas:          1,
-				ReadyReplicas:     0,
-				UpdatedReplicas:   0,
-				AvailableReplicas: 0,
+			Status: doguv2.DoguStatus{
+				Status:  "starting",
+				Stopped: false,
 			},
 		}
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
-		dogu := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := newMockDoguInterface(t)
-
-		podInterfaceMock := newMockPodInterface(t)
-		podList := &v1.PodList{Items: []v1.Pod{{Status: v1.PodStatus{ContainerStatuses: []v1.ContainerStatus{{Name: "cas"}}}}}}
-		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
-
-		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
-
-		// when
-		err := sut.CheckStarted(testCtx, dogu)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "the deployment of dogu \"test/cas\" has not yet been scaled to its desired number of replicas")
-		var requeueError deploymentNotYetScaledError
-		errors.As(err, &requeueError)
-	})
-}
-
-func Test_doguStartStopManager_CheckStopped(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		// given
-		scaledDownDeployment := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cas",
-				Namespace: "test",
-			},
+		deployment := &appsv1.Deployment{
 			Status: appsv1.DeploymentStatus{
-				Replicas:          0,
-				ReadyReplicas:     0,
-				UpdatedReplicas:   0,
-				AvailableReplicas: 0,
+				Replicas: 1,
 			},
 		}
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(scaledDownDeployment, nil)
 
-		dogu := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := newMockDoguInterface(t)
-		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
-				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, doguv2.DoguStatusInstalled, status.Status)
-				assert.Equal(t, true, status.Stopped)
-			})
+		mResourceUpserter := newMockResourceUpserter(t)
+		mDoguFetcher := newMockLocalDoguFetcher(t)
 
-		podInterfaceMock := newMockPodInterface(t)
-		podList := &v1.PodList{Items: []v1.Pod{{Status: v1.PodStatus{ContainerStatuses: []v1.ContainerStatus{{Name: "cas"}}}}}}
-		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
+		mDoguInterface := newMockDoguInterface(t)
+		mDoguInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).RunAndReturn(func(ctx context.Context, dogu *doguv2.Dogu, f func(doguv2.DoguStatus) doguv2.DoguStatus, options metav1.UpdateOptions) (*doguv2.Dogu, error) {
+			updatedStatus := f(dogu.Status)
+			assert.Equal(t, "installed", updatedStatus.Status)
+			assert.False(t, updatedStatus.Stopped)
 
-		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
+			return nil, nil
+		})
 
-		// when
-		err := sut.CheckStopped(testCtx, dogu)
+		mDeploymentInterface := newMockDeploymentInterface(t)
+		mDeploymentInterface.EXPECT().Get(testCtx, "myDogu", metav1.GetOptions{}).Return(deployment, nil)
 
-		// then
+		m := doguStartStopManager{
+			resourceUpserter:    mResourceUpserter,
+			doguFetcher:         mDoguFetcher,
+			doguInterface:       mDoguInterface,
+			deploymentInterface: mDeploymentInterface,
+		}
+
+		err := m.StartStopDogu(testCtx, doguResource)
+
 		require.NoError(t, err)
 	})
 
-	t.Run("should return error on deployment get error", func(t *testing.T) {
-		// given
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, assert.AnError)
+	t.Run("should fail to stop dogu i cant get deployment", func(t *testing.T) {
+		doguResource := &doguv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec: doguv2.DoguSpec{
+				Name:    "official/myDogu",
+				Stopped: true,
+			},
+			Status: doguv2.DoguStatus{
+				Status:  "installed",
+				Stopped: false,
+			},
+		}
 
-		dogu := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := newMockDoguInterface(t)
-		podInterfaceMock := newMockPodInterface(t)
+		dogu := &core.Dogu{Name: "myDogu"}
 
-		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
+		mResourceUpserter := newMockResourceUpserter(t)
+		mResourceUpserter.EXPECT().UpsertDoguDeployment(testCtx, doguResource, dogu, mock.Anything).Return(nil, nil)
 
-		// when
-		err := sut.CheckStopped(testCtx, dogu)
+		mDoguFetcher := newMockLocalDoguFetcher(t)
+		mDoguFetcher.EXPECT().FetchInstalled(testCtx, doguResource.GetSimpleDoguName()).Return(dogu, nil)
 
-		// then
+		mDoguInterface := newMockDoguInterface(t)
+		mDoguInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).RunAndReturn(func(ctx context.Context, dogu *doguv2.Dogu, f func(doguv2.DoguStatus) doguv2.DoguStatus, options metav1.UpdateOptions) (*doguv2.Dogu, error) {
+			updatedStatus := f(dogu.Status)
+			assert.Equal(t, "stopping", updatedStatus.Status)
+			assert.False(t, updatedStatus.Stopped)
+
+			return nil, nil
+		})
+
+		mDeploymentInterface := newMockDeploymentInterface(t)
+		mDeploymentInterface.EXPECT().Get(testCtx, "myDogu", metav1.GetOptions{}).Return(nil, assert.AnError)
+
+		m := doguStartStopManager{
+			resourceUpserter:    mResourceUpserter,
+			doguFetcher:         mDoguFetcher,
+			doguInterface:       mDoguInterface,
+			deploymentInterface: mDeploymentInterface,
+		}
+
+		err := m.StartStopDogu(testCtx, doguResource)
+
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to stop dogu \"test/cas\": failed to get deployment \"test/cas\"")
+		assert.ErrorIs(t, err.(doguNotYetStartedStoppedError).err, assert.AnError)
+		assert.ErrorContains(t, err, "error while starting/stopping dogu \"myDogu\": failed to get deployment \"myDogu\":")
 	})
 
-	t.Run("should return deployment not yet scaled error if deployment is not rolled out", func(t *testing.T) {
-		// given
-		rolledOutDeployment := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cas",
-				Namespace: "test",
+	t.Run("should fail to stop dogu for error while updating status", func(t *testing.T) {
+		doguResource := &doguv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec: doguv2.DoguSpec{
+				Name:    "official/myDogu",
+				Stopped: true,
 			},
+			Status: doguv2.DoguStatus{
+				Status:  "installed",
+				Stopped: false,
+			},
+		}
+
+		deployment := &appsv1.Deployment{
 			Status: appsv1.DeploymentStatus{
-				Replicas:          1,
-				ReadyReplicas:     0,
-				UpdatedReplicas:   0,
-				AvailableReplicas: 0,
+				Replicas: 1,
 			},
 		}
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(rolledOutDeployment, nil)
 
-		dogu := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-		doguInterfaceMock := newMockDoguInterface(t)
+		mResourceUpserter := newMockResourceUpserter(t)
+		mDoguFetcher := newMockLocalDoguFetcher(t)
 
-		podInterfaceMock := newMockPodInterface(t)
-		podList := &v1.PodList{Items: []v1.Pod{{Status: v1.PodStatus{ContainerStatuses: []v1.ContainerStatus{{Name: "cas"}}}}}}
-		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
+		mDoguInterface := newMockDoguInterface(t)
+		mDoguInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
 
-		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
+		mDeploymentInterface := newMockDeploymentInterface(t)
+		mDeploymentInterface.EXPECT().Get(testCtx, "myDogu", metav1.GetOptions{}).Return(deployment, nil)
 
-		// when
-		err := sut.CheckStopped(testCtx, dogu)
+		m := doguStartStopManager{
+			resourceUpserter:    mResourceUpserter,
+			doguFetcher:         mDoguFetcher,
+			doguInterface:       mDoguInterface,
+			deploymentInterface: mDeploymentInterface,
+		}
 
-		// then
+		err := m.StartStopDogu(testCtx, doguResource)
+
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "the deployment of dogu \"test/cas\" has not yet been scaled to its desired number of replicas")
-		var requeueError deploymentNotYetScaledError
-		errors.As(err, &requeueError)
-	})
-}
-
-func Test_deploymentNotYetScaledError(t *testing.T) {
-	t.Run("deployment not yet scaled error should requeue", func(t *testing.T) {
-		assert.True(t, deploymentNotYetScaledError{}.Requeue())
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to update status of dogu \"myDogu\" to \"stopping\":")
 	})
 
-	t.Run("deployment not yet scaled error should have requeue time", func(t *testing.T) {
-		assert.Equal(t, 5*time.Second, deploymentNotYetScaledError{}.GetRequeueTime())
-	})
-}
-
-func Test_doguStartStopManager_StartDogu(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		// given
-		dogu := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-
-		doguInterfaceMock := newMockDoguInterface(t)
-		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
-				oldStopped := dogu.Status.Stopped
-				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, doguv2.DoguStatusStarting, status.Status)
-				assert.Equal(t, oldStopped, status.Stopped)
-			})
-
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		scale := &scalingv1.Scale{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}, Spec: scalingv1.ScaleSpec{Replicas: 1}}
-		deploymentInterfaceMock.EXPECT().UpdateScale(testCtx, "cas", scale, metav1.UpdateOptions{}).Return(nil, nil)
-
-		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock}
-
-		// when
-		err := sut.StartDogu(testCtx, dogu)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "the deployment of dogu \"test/cas\" has not yet been scaled to its desired number of replicas")
-		var requeueError deploymentNotYetScaledError
-		errors.As(err, &requeueError)
-	})
-}
-
-func Test_doguStartStopManager_StopDogu(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		// given
-		dogu := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}}
-
-		doguInterfaceMock := newMockDoguInterface(t)
-		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
-				oldStopped := dogu.Status.Stopped
-				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, doguv2.DoguStatusStopping, status.Status)
-				assert.Equal(t, oldStopped, status.Stopped)
-			})
-
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		scale := &scalingv1.Scale{ObjectMeta: metav1.ObjectMeta{Name: "cas", Namespace: "test"}, Spec: scalingv1.ScaleSpec{Replicas: 0}}
-		deploymentInterfaceMock.EXPECT().UpdateScale(testCtx, "cas", scale, metav1.UpdateOptions{}).Return(nil, nil)
-
-		sut := doguStartStopManager{doguInterface: doguInterfaceMock, deploymentInterface: deploymentInterfaceMock}
-
-		// when
-		err := sut.StopDogu(testCtx, dogu)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "the deployment of dogu \"test/cas\" has not yet been scaled to its desired number of replicas")
-		var requeueError deploymentNotYetScaledError
-		errors.As(err, &requeueError)
-	})
-}
-
-func Test_doguStartStopManager_checkForDeploymentRollout(t *testing.T) {
-	t.Run("should return false if container is in crash loop", func(t *testing.T) {
-		// given
-		dogu := types.NamespacedName{Name: "cas", Namespace: "test"}
-
-		crashPod := v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cas",
-				Namespace: "test",
+	t.Run("should fail to stop dogu for while fetching dogu descriptor", func(t *testing.T) {
+		doguResource := &doguv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec: doguv2.DoguSpec{
+				Name:    "official/myDogu",
+				Stopped: true,
 			},
-			Status: v1.PodStatus{
-				ContainerStatuses: []v1.ContainerStatus{
-					{
-						Name: "cas",
-						State: v1.ContainerState{
-							Waiting: &v1.ContainerStateWaiting{
-								Reason:  "CrashLoopBackOff",
-								Message: "",
-							},
-						},
-					},
-				},
+			Status: doguv2.DoguStatus{
+				Status:  "installed",
+				Stopped: false,
 			},
 		}
-		podList := &v1.PodList{Items: []v1.Pod{crashPod}}
 
-		podInterfaceMock := newMockPodInterface(t)
-		podInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=cas"}).Return(podList, nil)
+		deployment := &appsv1.Deployment{
+			Status: appsv1.DeploymentStatus{
+				Replicas: 1,
+			},
+		}
 
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		deploymentInterfaceMock.EXPECT().Get(testCtx, "cas", metav1.GetOptions{}).Return(nil, nil)
+		mResourceUpserter := newMockResourceUpserter(t)
 
-		sut := doguStartStopManager{deploymentInterface: deploymentInterfaceMock, podInterface: podInterfaceMock}
+		mDoguFetcher := newMockLocalDoguFetcher(t)
+		mDoguFetcher.EXPECT().FetchInstalled(testCtx, doguResource.GetSimpleDoguName()).Return(nil, assert.AnError)
 
-		// when
-		result, err := sut.checkForDeploymentRollout(testCtx, dogu)
+		mDoguInterface := newMockDoguInterface(t)
+		mDoguInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).RunAndReturn(func(ctx context.Context, dogu *doguv2.Dogu, f func(doguv2.DoguStatus) doguv2.DoguStatus, options metav1.UpdateOptions) (*doguv2.Dogu, error) {
+			updatedStatus := f(dogu.Status)
+			assert.Equal(t, "stopping", updatedStatus.Status)
+			assert.False(t, updatedStatus.Stopped)
 
-		// then
-		require.NoError(t, err)
-		assert.False(t, result)
+			return nil, nil
+		})
+
+		mDeploymentInterface := newMockDeploymentInterface(t)
+		mDeploymentInterface.EXPECT().Get(testCtx, "myDogu", metav1.GetOptions{}).Return(deployment, nil)
+
+		m := doguStartStopManager{
+			resourceUpserter:    mResourceUpserter,
+			doguFetcher:         mDoguFetcher,
+			doguInterface:       mDoguInterface,
+			deploymentInterface: mDeploymentInterface,
+		}
+
+		err := m.StartStopDogu(testCtx, doguResource)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to get local descriptor for dogu \"myDogu\":")
+	})
+
+	t.Run("should fail to stop dogu for while upserting deployment", func(t *testing.T) {
+		doguResource := &doguv2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "myDogu"},
+			Spec: doguv2.DoguSpec{
+				Name:    "official/myDogu",
+				Stopped: true,
+			},
+			Status: doguv2.DoguStatus{
+				Status:  "installed",
+				Stopped: false,
+			},
+		}
+
+		deployment := &appsv1.Deployment{
+			Status: appsv1.DeploymentStatus{
+				Replicas: 1,
+			},
+		}
+
+		dogu := &core.Dogu{Name: "myDogu"}
+
+		mResourceUpserter := newMockResourceUpserter(t)
+		mResourceUpserter.EXPECT().UpsertDoguDeployment(testCtx, doguResource, dogu, mock.Anything).Return(nil, assert.AnError)
+
+		mDoguFetcher := newMockLocalDoguFetcher(t)
+		mDoguFetcher.EXPECT().FetchInstalled(testCtx, doguResource.GetSimpleDoguName()).Return(dogu, nil)
+
+		mDoguInterface := newMockDoguInterface(t)
+		mDoguInterface.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).RunAndReturn(func(ctx context.Context, dogu *doguv2.Dogu, f func(doguv2.DoguStatus) doguv2.DoguStatus, options metav1.UpdateOptions) (*doguv2.Dogu, error) {
+			updatedStatus := f(dogu.Status)
+			assert.Equal(t, "stopping", updatedStatus.Status)
+			assert.False(t, updatedStatus.Stopped)
+
+			return nil, nil
+		})
+
+		mDeploymentInterface := newMockDeploymentInterface(t)
+		mDeploymentInterface.EXPECT().Get(testCtx, "myDogu", metav1.GetOptions{}).Return(deployment, nil)
+
+		m := doguStartStopManager{
+			resourceUpserter:    mResourceUpserter,
+			doguFetcher:         mDoguFetcher,
+			doguInterface:       mDoguInterface,
+			deploymentInterface: mDeploymentInterface,
+		}
+
+		err := m.StartStopDogu(testCtx, doguResource)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to upsert deployment for starting/stopping dogu \"myDogu\":")
+	})
+}
+
+func Test_doguNotYetStartedStoppedError(t *testing.T) {
+	t.Run("should return correct error message for stopping", func(t *testing.T) {
+		err := doguNotYetStartedStoppedError{doguName: "myDogu", stopped: true}
+
+		assert.Equal(t, "the dogu \"myDogu\" has not yet been changed to its desired state: stopped", err.Error())
+		assert.True(t, err.Requeue())
+		assert.Equal(t, requeueWaitTimeout, err.GetRequeueTime())
+	})
+
+	t.Run("should return correct error message for starting", func(t *testing.T) {
+		err := doguNotYetStartedStoppedError{doguName: "myDogu", stopped: false}
+
+		assert.Equal(t, "the dogu \"myDogu\" has not yet been changed to its desired state: started", err.Error())
+		assert.True(t, err.Requeue())
+		assert.Equal(t, requeueWaitTimeout, err.GetRequeueTime())
+	})
+
+	t.Run("should return correct error message with nested error", func(t *testing.T) {
+		err := doguNotYetStartedStoppedError{doguName: "myDogu", stopped: true, err: assert.AnError}
+
+		assert.Equal(t, "error while starting/stopping dogu \"myDogu\": assert.AnError general error for testing", err.Error())
+		assert.True(t, err.Requeue())
+		assert.Equal(t, requeueWaitTimeout, err.GetRequeueTime())
 	})
 }
