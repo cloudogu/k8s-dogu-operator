@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
-- [#245] getting stuck in status "starting" when a dogu cannot be started
+- [#245] Check Replica count instead of readiness status at Dogu startup to prevent blocking operator when a Dogu cannot be started
 
 ## [v3.6.0] - 2025-05-22
 ### Changed
