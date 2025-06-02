@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-func Test_doguAdditionalMountsManager_DataMountsChanged(t *testing.T) {
+func Test_doguAdditionalMountsManager_AdditionalMountsChanged(t *testing.T) {
 	nginxDeploymentWithOutdatedAdditionalMounts := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
@@ -151,7 +151,7 @@ func Test_doguAdditionalMountsManager_DataMountsChanged(t *testing.T) {
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
-			name: "should return true if data mounts differ from deployment entries",
+			name: "should return true if additional mounts differ from deployment entries",
 			fields: fields{
 				deploymentInterface: func() deploymentInterface {
 					mock := newMockDeploymentInterface(t)
@@ -440,7 +440,7 @@ func TestNewdoguAdditionalMountsManager(t *testing.T) {
 	})
 }
 
-func Test_doguAdditionalMountsManager_UpdateDataMounts(t *testing.T) {
+func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 	nginxDeploymentWithOutdatedAdditionalMounts := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{

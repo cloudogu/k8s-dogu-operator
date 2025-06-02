@@ -90,7 +90,7 @@ func (v *Validator) validateSource(ctx context.Context, mount k8sv2.DataMount) e
 	case k8sv2.DataSourceSecret:
 		return v.checkIfResourceExists(ctx, v.secretResourceGetter, mount.Name)
 	default:
-		return fmt.Errorf("unknown data mount type %s for dogu", mount.SourceType)
+		return fmt.Errorf("unknown additional mount type %s for dogu", mount.SourceType)
 	}
 }
 

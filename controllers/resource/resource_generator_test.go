@@ -820,11 +820,11 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		require.Equal(t, expectedArgs, container.Args)
 	})
 
-	t.Run("no data mounts results in container with only target mounts (for possible deletion)", func(t *testing.T) {
+	t.Run("no additional mounts results in container with only target mounts (for possible deletion)", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "testVolume", Path: "/etc/test", NeedsBackup: true}}}
 		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{
-			// No data mounts specified
+			// No additional mounts specified
 			AdditionalMounts: []doguv2.DataMount{},
 		}}
 

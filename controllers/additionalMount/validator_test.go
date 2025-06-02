@@ -245,7 +245,7 @@ func TestValidator_ValidateAdditionalMounts(t *testing.T) {
 			},
 			wantErr: true,
 			assertError: func(t assert.TestingT, err error) {
-				assert.ErrorContains(t, err, "unknown data mount type invalid for dogu")
+				assert.ErrorContains(t, err, "unknown additional mount type invalid for dogu")
 			},
 		},
 	}

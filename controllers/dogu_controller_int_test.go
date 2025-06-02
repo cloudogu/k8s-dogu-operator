@@ -240,7 +240,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		})
 
 		It("Update dogus additional mounts", func() {
-			By("Update dogu resource with data mounts")
+			By("Update dogu resource with additional mounts")
 			createdDogu := &doguv2.Dogu{}
 			Eventually(func() error {
 				return k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
