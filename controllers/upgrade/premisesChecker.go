@@ -30,11 +30,11 @@ func (r *requeueablePremisesError) Requeue() bool {
 }
 
 type premisesChecker struct {
-	dependencyValidator        DependencyValidator
-	doguHealthChecker          doguHealthChecker
-	doguRecursiveHealthChecker doguRecursiveHealthChecker
-	securityValidator          securityValidator
-	doguDataSeedValidator      doguDataSeedValidator
+	dependencyValidator           DependencyValidator
+	doguHealthChecker             doguHealthChecker
+	doguRecursiveHealthChecker    doguRecursiveHealthChecker
+	securityValidator             securityValidator
+	doguAdditionalMountsValidator doguAdditionalMountsValidator
 }
 
 // NewPremisesChecker creates a new upgrade premises checker.
@@ -43,14 +43,14 @@ func NewPremisesChecker(
 	healthChecker doguHealthChecker,
 	recursiveHealthChecker doguRecursiveHealthChecker,
 	securityValidator securityValidator,
-	doguDataSeedValidator doguDataSeedValidator,
+	doguAdditionalMountsValidator doguAdditionalMountsValidator,
 ) *premisesChecker {
 	return &premisesChecker{
-		dependencyValidator:        depValidator,
-		doguHealthChecker:          healthChecker,
-		doguRecursiveHealthChecker: recursiveHealthChecker,
-		securityValidator:          securityValidator,
-		doguDataSeedValidator:      doguDataSeedValidator,
+		dependencyValidator:           depValidator,
+		doguHealthChecker:             healthChecker,
+		doguRecursiveHealthChecker:    recursiveHealthChecker,
+		securityValidator:             securityValidator,
+		doguAdditionalMountsValidator: doguAdditionalMountsValidator,
 	}
 }
 
@@ -85,7 +85,7 @@ func (pc *premisesChecker) Check(
 		return err
 	}
 
-	err = pc.doguDataSeedValidator.ValidateDataSeeds(ctx, remoteDogu, doguResource)
+	err = pc.doguAdditionalMountsValidator.ValidateAdditionalMounts(ctx, remoteDogu, doguResource)
 	if err != nil {
 		return err
 	}

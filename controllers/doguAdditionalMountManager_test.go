@@ -18,14 +18,14 @@ import (
 	"testing"
 )
 
-func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
-	nginxDeploymentWithOutdatedSeederMounts := appsv1.Deployment{
+func Test_doguAdditionalMountsManager_DataMountsChanged(t *testing.T) {
+	nginxDeploymentWithOutdatedAdditionalMounts := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					InitContainers: []corev1.Container{
 						{
-							Name:  "dogu-data-seeder-init",
+							Name:  "dogu-additional-mounts-init",
 							Image: "",
 							Args: []string{
 								"copy",
@@ -51,7 +51,7 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 		},
 	}
 
-	nginxDeploymentWithoutDataSeederMounts := appsv1.Deployment{
+	nginxDeploymentWithoutAdditionalMounts := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
@@ -61,13 +61,13 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 		},
 	}
 
-	nginxDeploymentWithSameSeederMounts := appsv1.Deployment{
+	nginxDeploymentWithSameAdditionalMounts := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					InitContainers: []corev1.Container{
 						{
-							Name:  "dogu-data-seeder-init",
+							Name:  "dogu-additional-mounts-init",
 							Image: "",
 							Args: []string{
 								"copy",
@@ -93,7 +93,7 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 		},
 	}
 
-	nginxDoguResourceWithSeederMounts := &v2.Dogu{
+	nginxDoguResourceWithAdditionalMounts := &v2.Dogu{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "nginx",
 			Namespace: testNamespace,
@@ -109,8 +109,8 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 		},
 	}
 
-	expectedInitContainerWithSeederMounts := &corev1.Container{
-		Name:  "dogu-data-seeder-init",
+	expectedInitContainerWithAdditionalMounts := &corev1.Container{
+		Name:  "dogu-additional-mounts-init",
 		Image: "",
 		Args: []string{
 			"copy",
@@ -135,7 +135,7 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 
 	type fields struct {
 		deploymentInterface   func() deploymentInterface
-		resourceGenerator     func() dataSeederInitContainerGenerator
+		resourceGenerator     func() additionalMountsInitContainerGenerator
 		resourceDoguFetcher   func() resourceDoguFetcher
 		requirementsGenerator func() requirementsGenerator
 	}
@@ -155,17 +155,17 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 			fields: fields{
 				deploymentInterface: func() deploymentInterface {
 					mock := newMockDeploymentInterface(t)
-					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithOutdatedSeederMounts}}, nil)
+					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithOutdatedAdditionalMounts}}, nil)
 					return mock
 				},
 				resourceDoguFetcher: func() resourceDoguFetcher {
 					mock := newMockResourceDoguFetcher(t)
-					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithSeederMounts).Return(nginxDogu, nil, nil)
+					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithAdditionalMounts).Return(nginxDogu, nil, nil)
 					return mock
 				},
-				resourceGenerator: func() dataSeederInitContainerGenerator {
-					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithSeederMounts, nil)
+				resourceGenerator: func() additionalMountsInitContainerGenerator {
+					mock := newMockAdditionalMountsInitContainerGenerator(t)
+					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithAdditionalMounts, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -176,7 +176,7 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 			},
 			args: args{
 				ctx:          testCtx,
-				doguResource: nginxDoguResourceWithSeederMounts,
+				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
 			want:    true,
 			wantErr: assert.NoError,
@@ -186,13 +186,13 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 			fields: fields{
 				deploymentInterface: func() deploymentInterface {
 					mock := newMockDeploymentInterface(t)
-					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithoutDataSeederMounts}}, nil)
+					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithoutAdditionalMounts}}, nil)
 					return mock
 				},
 			},
 			args: args{
 				ctx:          testCtx,
-				doguResource: nginxDoguResourceWithSeederMounts,
+				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
 			want:    true,
 			wantErr: assert.NoError,
@@ -202,17 +202,17 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 			fields: fields{
 				deploymentInterface: func() deploymentInterface {
 					mock := newMockDeploymentInterface(t)
-					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithSameSeederMounts}}, nil)
+					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithSameAdditionalMounts}}, nil)
 					return mock
 				},
 				resourceDoguFetcher: func() resourceDoguFetcher {
 					mock := newMockResourceDoguFetcher(t)
-					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithSeederMounts).Return(nginxDogu, nil, nil)
+					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithAdditionalMounts).Return(nginxDogu, nil, nil)
 					return mock
 				},
-				resourceGenerator: func() dataSeederInitContainerGenerator {
-					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithSeederMounts, nil)
+				resourceGenerator: func() additionalMountsInitContainerGenerator {
+					mock := newMockAdditionalMountsInitContainerGenerator(t)
+					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithAdditionalMounts, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -223,7 +223,7 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 			},
 			args: args{
 				ctx:          testCtx,
-				doguResource: nginxDoguResourceWithSeederMounts,
+				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
 			want:    false,
 			wantErr: assert.NoError,
@@ -231,7 +231,7 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &doguDataSeedManager{}
+			m := &doguAdditionalMountManager{}
 			if tt.fields.deploymentInterface != nil {
 				m.deploymentInterface = tt.fields.deploymentInterface()
 			}
@@ -245,16 +245,16 @@ func Test_doguDataSeedManager_DataMountsChanged(t *testing.T) {
 				m.requirementsGenerator = tt.fields.requirementsGenerator()
 			}
 
-			got, err := m.DataMountsChanged(tt.args.ctx, tt.args.doguResource)
-			if !tt.wantErr(t, err, fmt.Sprintf("DataMountsChanged(%v, %v)", tt.args.ctx, tt.args.doguResource)) {
+			got, err := m.AdditionalMountsChanged(tt.args.ctx, tt.args.doguResource)
+			if !tt.wantErr(t, err, fmt.Sprintf("AdditionalMountsChanged(%v, %v)", tt.args.ctx, tt.args.doguResource)) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "DataMountsChanged(%v, %v)", tt.args.ctx, tt.args.doguResource)
+			assert.Equalf(t, tt.want, got, "AdditionalMountsChanged(%v, %v)", tt.args.ctx, tt.args.doguResource)
 		})
 	}
 }
 
-func Test_doguDataSeedManager_getDoguDeployment(t *testing.T) {
+func Test_doguAdditionalMountsManager_getDoguDeployment(t *testing.T) {
 	nginxDoguResource := &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "nginx"}}
 
 	type fields struct {
@@ -309,7 +309,7 @@ func Test_doguDataSeedManager_getDoguDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &doguDataSeedManager{}
+			m := &doguAdditionalMountManager{}
 			if tt.fields.deploymentInterface != nil {
 				m.deploymentInterface = tt.fields.deploymentInterface()
 			}
@@ -322,12 +322,12 @@ func Test_doguDataSeedManager_getDoguDeployment(t *testing.T) {
 	}
 }
 
-func Test_doguDataSeedManager_createDataMountInitContainer(t *testing.T) {
+func Test_doguAdditionalMountsManager_createDataMountInitContainer(t *testing.T) {
 	nginxDoguResource := &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "nginx"}}
 	nginxDogu := &core.Dogu{Name: "nginx"}
 
 	type fields struct {
-		resourceGenerator     func() dataSeederInitContainerGenerator
+		resourceGenerator     func() additionalMountsInitContainerGenerator
 		resourceDoguFetcher   func() resourceDoguFetcher
 		requirementsGenerator func() requirementsGenerator
 	}
@@ -362,16 +362,16 @@ func Test_doguDataSeedManager_createDataMountInitContainer(t *testing.T) {
 			},
 		},
 		{
-			name: "should return error on error getting data seed container",
+			name: "should return error on error getting additional mounts container",
 			fields: fields{
 				resourceDoguFetcher: func() resourceDoguFetcher {
 					mock := newMockResourceDoguFetcher(t)
 					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResource).Return(nginxDogu, nil, nil)
 					return mock
 				},
-				resourceGenerator: func() dataSeederInitContainerGenerator {
-					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResource, "", corev1.ResourceRequirements{}).Return(nil, assert.AnError)
+				resourceGenerator: func() additionalMountsInitContainerGenerator {
+					mock := newMockAdditionalMountsInitContainerGenerator(t)
+					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResource, "", corev1.ResourceRequirements{}).Return(nil, assert.AnError)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -386,14 +386,14 @@ func Test_doguDataSeedManager_createDataMountInitContainer(t *testing.T) {
 			},
 			want: nil,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				assert.ErrorContains(t, err, "failed to generate data seeder init container while diff calculation")
+				assert.ErrorContains(t, err, "failed to generate dogu additional mounts init container while diff calculation")
 				return true
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &doguDataSeedManager{}
+			m := &doguAdditionalMountManager{}
 			if tt.fields.resourceGenerator != nil {
 				m.resourceGenerator = tt.fields.resourceGenerator()
 			}
@@ -403,33 +403,33 @@ func Test_doguDataSeedManager_createDataMountInitContainer(t *testing.T) {
 			if tt.fields.requirementsGenerator != nil {
 				m.requirementsGenerator = tt.fields.requirementsGenerator()
 			}
-			got, err := m.createDataMountInitContainer(tt.args.ctx, tt.args.doguResource)
-			if !tt.wantErr(t, err, fmt.Sprintf("createDataMountInitContainer(%v, %v)", tt.args.ctx, tt.args.doguResource)) {
+			got, err := m.createAdditionalMountInitContainer(tt.args.ctx, tt.args.doguResource)
+			if !tt.wantErr(t, err, fmt.Sprintf("createAdditionalMountInitContainer(%v, %v)", tt.args.ctx, tt.args.doguResource)) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "createDataMountInitContainer(%v, %v)", tt.args.ctx, tt.args.doguResource)
+			assert.Equalf(t, tt.want, got, "createAdditionalMountInitContainer(%v, %v)", tt.args.ctx, tt.args.doguResource)
 		})
 	}
 }
 
-func TestNewDoguDataSeedManager(t *testing.T) {
+func TestNewdoguAdditionalMountsManager(t *testing.T) {
 	t.Run("should set attributes", func(t *testing.T) {
 		// given
 		deploymentMock := newMockDeploymentInterface(t)
-		resourceGeneratorMock := newMockDataSeederInitContainerGenerator(t)
+		resourceGeneratorMock := newMockAdditionalMountsInitContainerGenerator(t)
 		resourceDoguFetcherMock := newMockResourceDoguFetcher(t)
 		requirementsGeneratorMock := newMockRequirementsGenerator(t)
 		doguInterfaceMock := newMockDoguInterface(t)
 
 		mgrSet := &util.ManagerSet{
-			DoguDataSeedContainerGenerator: resourceGeneratorMock,
-			RequirementsGenerator:          requirementsGeneratorMock,
-			ResourceDoguFetcher:            resourceDoguFetcherMock,
-			AdditionalImages:               map[string]string{config.DataSeederImageConfigmapNameKey: "image"},
+			DoguAdditionalMountsInitContainerGenerator: resourceGeneratorMock,
+			RequirementsGenerator:                      requirementsGeneratorMock,
+			ResourceDoguFetcher:                        resourceDoguFetcherMock,
+			AdditionalImages:                           map[string]string{config.AdditionalMountsInitContainerImageConfigmapNameKey: "image"},
 		}
 
 		// when
-		sut := NewDoguDataSeedManager(deploymentMock, mgrSet, doguInterfaceMock)
+		sut := NewDoguAdditionalMountManager(deploymentMock, mgrSet, doguInterfaceMock)
 
 		// then
 		require.NotNil(t, sut)
@@ -440,8 +440,8 @@ func TestNewDoguDataSeedManager(t *testing.T) {
 	})
 }
 
-func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
-	nginxDeploymentWithOutdatedSeederMounts := appsv1.Deployment{
+func Test_doguAdditionalMountsManager_UpdateDataMounts(t *testing.T) {
+	nginxDeploymentWithOutdatedAdditionalMounts := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
@@ -450,7 +450,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 							Name: "others should be kept",
 						},
 						{
-							Name:  "dogu-data-seeder-init",
+							Name:  "dogu-additional-mounts-init",
 							Image: "",
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -472,7 +472,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 	}
 
 	updatedInitContainer := &corev1.Container{
-		Name:  "dogu-data-seeder-init",
+		Name:  "dogu-additional-mounts-init",
 		Image: "",
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -488,7 +488,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 		},
 	}
 
-	nginxDeploymentWithNewSeederMounts := &appsv1.Deployment{
+	nginxDeploymentWithNewAdditionalMounts := &appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
@@ -504,7 +504,7 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 		},
 	}
 
-	nginxDoguResourceWithSeederMounts := &v2.Dogu{
+	nginxDoguResourceWithAdditionalMounts := &v2.Dogu{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "nginx",
 			Namespace: testNamespace,
@@ -523,12 +523,12 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 	nginxDogu := &core.Dogu{}
 
 	type fields struct {
-		deploymentInterface   func() deploymentInterface
-		resourceGenerator     func() dataSeederInitContainerGenerator
-		resourceDoguFetcher   func() resourceDoguFetcher
-		requirementsGenerator func() requirementsGenerator
-		dataSeedValidator     func() doguDataSeedValidator
-		doguInterface         func() doguInterface
+		deploymentInterface       func() deploymentInterface
+		resourceGenerator         func() additionalMountsInitContainerGenerator
+		resourceDoguFetcher       func() resourceDoguFetcher
+		requirementsGenerator     func() requirementsGenerator
+		additionalMountsValidator func() doguAdditionalMountsValidator
+		doguInterface             func() doguInterface
 	}
 	type args struct {
 		ctx          context.Context
@@ -545,18 +545,18 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			fields: fields{
 				deploymentInterface: func() deploymentInterface {
 					mock := newMockDeploymentInterface(t)
-					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithOutdatedSeederMounts}}, nil)
-					mock.EXPECT().Update(testCtx, nginxDeploymentWithNewSeederMounts, v1.UpdateOptions{}).Return(nil, nil)
+					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithOutdatedAdditionalMounts}}, nil)
+					mock.EXPECT().Update(testCtx, nginxDeploymentWithNewAdditionalMounts, v1.UpdateOptions{}).Return(nil, nil)
 					return mock
 				},
 				resourceDoguFetcher: func() resourceDoguFetcher {
 					mock := newMockResourceDoguFetcher(t)
-					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithSeederMounts).Return(nginxDogu, nil, nil)
+					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithAdditionalMounts).Return(nginxDogu, nil, nil)
 					return mock
 				},
-				resourceGenerator: func() dataSeederInitContainerGenerator {
-					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+				resourceGenerator: func() additionalMountsInitContainerGenerator {
+					mock := newMockAdditionalMountsInitContainerGenerator(t)
+					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -564,20 +564,20 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
-				dataSeedValidator: func() doguDataSeedValidator {
-					mock := newMockDoguDataSeedValidator(t)
-					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(nil)
+				additionalMountsValidator: func() doguAdditionalMountsValidator {
+					mock := newMockDoguAdditionalMountsValidator(t)
+					mock.EXPECT().ValidateAdditionalMounts(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts).Return(nil)
 					return mock
 				},
 				doguInterface: func() doguInterface {
 					mock := newMockDoguInterface(t)
-					mock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithSeederMounts, mock2.Anything, v1.UpdateOptions{}).Return(nil, nil)
+					mock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithAdditionalMounts, mock2.Anything, v1.UpdateOptions{}).Return(nil, nil)
 					return mock
 				},
 			},
 			args: args{
 				ctx:          testCtx,
-				doguResource: nginxDoguResourceWithSeederMounts,
+				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
 			wantErr: assert.NoError,
 		},
@@ -586,19 +586,19 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			fields: fields{
 				deploymentInterface: func() deploymentInterface {
 					mock := newMockDeploymentInterface(t)
-					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithOutdatedSeederMounts}}, nil).Times(2)
-					mock.EXPECT().Update(testCtx, nginxDeploymentWithNewSeederMounts, v1.UpdateOptions{}).Return(nil, errors.NewConflict(schema.GroupResource{}, "name", assert.AnError)).Times(1)
-					mock.EXPECT().Update(testCtx, nginxDeploymentWithNewSeederMounts, v1.UpdateOptions{}).Return(nil, nil).Times(1)
+					mock.EXPECT().List(testCtx, v1.ListOptions{LabelSelector: "dogu.name=nginx"}).Return(&appsv1.DeploymentList{Items: []appsv1.Deployment{nginxDeploymentWithOutdatedAdditionalMounts}}, nil).Times(2)
+					mock.EXPECT().Update(testCtx, nginxDeploymentWithNewAdditionalMounts, v1.UpdateOptions{}).Return(nil, errors.NewConflict(schema.GroupResource{}, "name", assert.AnError)).Times(1)
+					mock.EXPECT().Update(testCtx, nginxDeploymentWithNewAdditionalMounts, v1.UpdateOptions{}).Return(nil, nil).Times(1)
 					return mock
 				},
 				resourceDoguFetcher: func() resourceDoguFetcher {
 					mock := newMockResourceDoguFetcher(t)
-					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithSeederMounts).Return(nginxDogu, nil, nil)
+					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithAdditionalMounts).Return(nginxDogu, nil, nil)
 					return mock
 				},
-				resourceGenerator: func() dataSeederInitContainerGenerator {
-					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+				resourceGenerator: func() additionalMountsInitContainerGenerator {
+					mock := newMockAdditionalMountsInitContainerGenerator(t)
+					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -606,20 +606,20 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
-				dataSeedValidator: func() doguDataSeedValidator {
-					mock := newMockDoguDataSeedValidator(t)
-					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(nil)
+				additionalMountsValidator: func() doguAdditionalMountsValidator {
+					mock := newMockDoguAdditionalMountsValidator(t)
+					mock.EXPECT().ValidateAdditionalMounts(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts).Return(nil)
 					return mock
 				},
 				doguInterface: func() doguInterface {
 					mock := newMockDoguInterface(t)
-					mock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithSeederMounts, mock2.Anything, v1.UpdateOptions{}).Return(nil, nil)
+					mock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithAdditionalMounts, mock2.Anything, v1.UpdateOptions{}).Return(nil, nil)
 					return mock
 				},
 			},
 			args: args{
 				ctx:          testCtx,
-				doguResource: nginxDoguResourceWithSeederMounts,
+				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
 			wantErr: assert.NoError,
 		},
@@ -633,12 +633,12 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 				},
 				resourceDoguFetcher: func() resourceDoguFetcher {
 					mock := newMockResourceDoguFetcher(t)
-					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithSeederMounts).Return(nginxDogu, nil, nil)
+					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithAdditionalMounts).Return(nginxDogu, nil, nil)
 					return mock
 				},
-				resourceGenerator: func() dataSeederInitContainerGenerator {
-					mock := newMockDataSeederInitContainerGenerator(t)
-					mock.EXPECT().BuildDataSeederContainer(nginxDogu, nginxDoguResourceWithSeederMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+				resourceGenerator: func() additionalMountsInitContainerGenerator {
+					mock := newMockAdditionalMountsInitContainerGenerator(t)
+					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -646,19 +646,19 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 					mock.EXPECT().Generate(testCtx, nginxDogu).Return(corev1.ResourceRequirements{}, nil)
 					return mock
 				},
-				dataSeedValidator: func() doguDataSeedValidator {
-					mock := newMockDoguDataSeedValidator(t)
-					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(nil)
+				additionalMountsValidator: func() doguAdditionalMountsValidator {
+					mock := newMockDoguAdditionalMountsValidator(t)
+					mock.EXPECT().ValidateAdditionalMounts(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts).Return(nil)
 					return mock
 				},
 			},
 			args: args{
 				ctx:          testCtx,
-				doguResource: nginxDoguResourceWithSeederMounts,
+				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				assert.ErrorIs(t, err, assert.AnError)
-				assert.ErrorContains(t, err, "failed to update deployment dogu data mount for dogu nginx")
+				assert.ErrorContains(t, err, "failed to update deployment additional mounts for dogu nginx")
 				return true
 			},
 		},
@@ -671,37 +671,37 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 				},
 				resourceDoguFetcher: func() resourceDoguFetcher {
 					mock := newMockResourceDoguFetcher(t)
-					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithSeederMounts).Return(nginxDogu, nil, nil)
+					mock.EXPECT().FetchWithResource(testCtx, nginxDoguResourceWithAdditionalMounts).Return(nginxDogu, nil, nil)
 					return mock
 				},
-				resourceGenerator: func() dataSeederInitContainerGenerator {
-					mock := newMockDataSeederInitContainerGenerator(t)
+				resourceGenerator: func() additionalMountsInitContainerGenerator {
+					mock := newMockAdditionalMountsInitContainerGenerator(t)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
 					mock := newMockRequirementsGenerator(t)
 					return mock
 				},
-				dataSeedValidator: func() doguDataSeedValidator {
-					mock := newMockDoguDataSeedValidator(t)
-					mock.EXPECT().ValidateDataSeeds(testCtx, nginxDogu, nginxDoguResourceWithSeederMounts).Return(assert.AnError)
+				additionalMountsValidator: func() doguAdditionalMountsValidator {
+					mock := newMockDoguAdditionalMountsValidator(t)
+					mock.EXPECT().ValidateAdditionalMounts(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts).Return(assert.AnError)
 					return mock
 				},
 			},
 			args: args{
 				ctx:          testCtx,
-				doguResource: nginxDoguResourceWithSeederMounts,
+				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				assert.ErrorIs(t, err, assert.AnError)
-				assert.ErrorContains(t, err, "additinal data mounts are not valid dogu nginx")
+				assert.ErrorContains(t, err, "additional mounts are not valid for dogu nginx")
 				return true
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &doguDataSeedManager{}
+			m := &doguAdditionalMountManager{}
 			if tt.fields.deploymentInterface != nil {
 				m.deploymentInterface = tt.fields.deploymentInterface()
 			}
@@ -714,13 +714,13 @@ func Test_doguDataSeedManager_UpdateDataMounts(t *testing.T) {
 			if tt.fields.requirementsGenerator != nil {
 				m.requirementsGenerator = tt.fields.requirementsGenerator()
 			}
-			if tt.fields.dataSeedValidator != nil {
-				m.dataSeedValidator = tt.fields.dataSeedValidator()
+			if tt.fields.additionalMountsValidator != nil {
+				m.doguAdditionalMountValidator = tt.fields.additionalMountsValidator()
 			}
 			if tt.fields.doguInterface != nil {
 				m.doguInterface = tt.fields.doguInterface()
 			}
-			tt.wantErr(t, m.UpdateDataMounts(tt.args.ctx, tt.args.doguResource), fmt.Sprintf("UpdateDataMounts(%v, %v)", tt.args.ctx, tt.args.doguResource))
+			tt.wantErr(t, m.UpdateAdditionalMounts(tt.args.ctx, tt.args.doguResource), fmt.Sprintf("UpdateAdditionalMounts(%v, %v)", tt.args.ctx, tt.args.doguResource))
 		})
 	}
 }

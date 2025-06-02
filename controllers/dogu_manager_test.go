@@ -148,7 +148,7 @@ func TestNewDoguManager(t *testing.T) {
 		// given
 		additionalImages := createConfigMap(
 			config.OperatorAdditionalImagesConfigmapName,
-			map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag", config.ExporterImageConfigmapNameKey: "exporter:0.0.1", config.DataSeederImageConfigmapNameKey: "data-seed:57.0.01"})
+			map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag", config.ExporterImageConfigmapNameKey: "exporter:0.0.1", config.AdditionalMountsInitContainerImageConfigmapNameKey: "additional-mounts:57.0.01"})
 		clientSetGetter = func(c *rest.Config) (kubernetes.Interface, error) {
 			return fake2.NewSimpleClientset(additionalImages), nil
 		}

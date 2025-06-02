@@ -57,9 +57,9 @@ spec:
             - mountPath: /var/ces/config
               name: ldap-data
               subPath: localConfig
-        - image: dataSeeder:0.0.1
+        - image: additionalMounts:0.0.1
           imagePullPolicy: IfNotPresent
-          name: dogu-data-seeder-init
+          name: dogu-additional-mounts-init
           resources: { }
           securityContext:
             appArmorProfile:

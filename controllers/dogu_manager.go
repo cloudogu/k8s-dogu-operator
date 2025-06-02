@@ -40,7 +40,7 @@ type DoguManager struct {
 	exportManager             exportManager
 	startStopManager          DoguStartStopManager
 	securityContextManager    securityContextManager
-	dataSeedManager           dataSeedManager
+	additionalMountsManager   additionalMountsManager
 	recorder                  record.EventRecorder
 }
 
@@ -90,7 +90,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	startStopManager := newDoguStartStopManager(doguInterface, clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
 
-	dataSeedManager := NewDoguDataSeedManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet, doguInterface)
+	additionalMountsManager := NewDoguAdditionalMountManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet, doguInterface)
 
 	return &DoguManager{
 		scheme:                    client.Scheme(),
@@ -103,7 +103,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 		ingressAnnotationsManager: ingressAnnotationsManager,
 		startStopManager:          startStopManager,
 		securityContextManager:    securityContextManager,
-		dataSeedManager:           dataSeedManager,
+		additionalMountsManager:   additionalMountsManager,
 		recorder:                  eventRecorder,
 	}, nil
 }
@@ -120,14 +120,14 @@ func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Cl
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
 
-	additionalDataSeederContainer, err := imageGetter.imageForKey(ctx, config.DataSeederImageConfigmapNameKey)
+	additionalMountsContainer, err := imageGetter.imageForKey(ctx, config.AdditionalMountsInitContainerImageConfigmapNameKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
 
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
-		config.ExporterImageConfigmapNameKey:   additionalExportModeContainer,
-		config.DataSeederImageConfigmapNameKey: additionalDataSeederContainer}
+		config.ExporterImageConfigmapNameKey:                      additionalExportModeContainer,
+		config.AdditionalMountsInitContainerImageConfigmapNameKey: additionalMountsContainer}
 
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
@@ -240,10 +240,10 @@ func createConfigRepositories(clientSet kubernetes.Interface, namespace string) 
 	}
 }
 
-func (m *DoguManager) DataMountsChanged(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
-	return m.dataSeedManager.DataMountsChanged(ctx, doguResource)
+func (m *DoguManager) AdditionalMountsChanged(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
+	return m.additionalMountsManager.AdditionalMountsChanged(ctx, doguResource)
 }
 
-func (m *DoguManager) UpdateDataMounts(ctx context.Context, doguResource *doguv2.Dogu) error {
-	return m.dataSeedManager.UpdateDataMounts(ctx, doguResource)
+func (m *DoguManager) UpdateAdditionalMounts(ctx context.Context, doguResource *doguv2.Dogu) error {
+	return m.additionalMountsManager.UpdateAdditionalMounts(ctx, doguResource)
 }

@@ -72,13 +72,13 @@ type securityContextManager interface {
 	UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-type dataSeedManager interface {
-	DataMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error)
-	UpdateDataMounts(ctx context.Context, doguResource *v2.Dogu) error
+type additionalMountsManager interface {
+	AdditionalMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error)
+	UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-type dataSeederInitContainerGenerator interface {
-	BuildDataSeederContainer(dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
+type additionalMountsInitContainerGenerator interface {
+	BuildAdditionalMountInitContainer(dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
 }
 
 // startDoguManager includes functionality to start (stopped) dogus.
@@ -115,7 +115,7 @@ type CombinedDoguManager interface {
 	startDoguManager
 	stopDoguManager
 	securityContextManager
-	dataSeedManager
+	additionalMountsManager
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
@@ -128,8 +128,8 @@ type securityValidator interface {
 	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
 }
 
-type doguDataSeedValidator interface {
-	ValidateDataSeeds(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
+type doguAdditionalMountsValidator interface {
+	ValidateAdditionalMounts(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
 }
 
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.

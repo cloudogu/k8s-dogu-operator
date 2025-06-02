@@ -338,7 +338,7 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 		operations = append(operations, ChangeExportMode)
 	}
 
-	changed, err := r.doguManager.DataMountsChanged(ctx, doguResource)
+	changed, err := r.doguManager.AdditionalMountsChanged(ctx, doguResource)
 	if err != nil {
 		return nil, err
 	}
@@ -643,11 +643,11 @@ func (r *doguReconciler) performExportModeOperation(ctx context.Context, doguRes
 
 func (r *doguReconciler) performDataMountsOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
 	return r.performOperation(ctx, doguResource, operationEventProperties{
-		successReason: ChangeDataMountsEventReason,
-		errorReason:   ErrorOnChangeDataMountsEventReason,
+		successReason: ChangeDoguAdditionalMountsEventReason,
+		errorReason:   ErrorOnChangeDoguAdditionalMountsEventReason,
 		operationName: "ChangeDataMounts",
 		operationVerb: "change data mounts",
-	}, doguv2.DoguStatusChangingDataMounts, r.doguManager.UpdateDataMounts, shouldRequeue)
+	}, doguv2.DoguStatusChangingDataMounts, r.doguManager.UpdateAdditionalMounts, shouldRequeue)
 }
 
 func (r *doguReconciler) validateName(doguResource *doguv2.Dogu) (success bool) {

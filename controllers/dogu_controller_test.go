@@ -72,7 +72,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -128,7 +128,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -185,7 +185,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -270,7 +270,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -330,7 +330,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -394,7 +394,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -460,7 +460,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -599,7 +599,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -656,7 +656,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -720,7 +720,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -777,7 +777,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -879,7 +879,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -959,7 +959,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,
@@ -1018,7 +1018,7 @@ func Test_evaluateRequiredOperation(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithObjects(doguService, doguDeployment).Build()
 
 		doguManagerMock := NewMockCombinedDoguManager(t)
-		doguManagerMock.EXPECT().DataMountsChanged(testCtx, testDoguCr).Return(false, nil)
+		doguManagerMock.EXPECT().AdditionalMountsChanged(testCtx, testDoguCr).Return(false, nil)
 
 		sut := &doguReconciler{
 			client:      fakeClient,

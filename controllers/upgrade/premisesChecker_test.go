@@ -72,10 +72,10 @@ func Test_premisesChecker_Check(t *testing.T) {
 		mockedRecursiveHealthChecker.On("CheckDependenciesRecursive", ctx, fromDogu, "").Return(nil)
 		mockedSecurityValidator := newMockSecurityValidator(t)
 		mockedSecurityValidator.EXPECT().ValidateSecurity(toDogu, fromDoguResource).Return(nil)
-		mockedDoguDataSeedValidator := newMockDoguDataSeedValidator(t)
-		mockedDoguDataSeedValidator.EXPECT().ValidateDataSeeds(testCtx, toDogu, fromDoguResource).Return(nil)
+		mockedDoguAdditionalMountsValidator := newMockDoguAdditionalMountsValidator(t)
+		mockedDoguAdditionalMountsValidator.EXPECT().ValidateAdditionalMounts(testCtx, toDogu, fromDoguResource).Return(nil)
 
-		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker, mockedSecurityValidator, mockedDoguDataSeedValidator)
+		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker, mockedSecurityValidator, mockedDoguAdditionalMountsValidator)
 
 		// when
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
@@ -97,9 +97,9 @@ func Test_premisesChecker_Check(t *testing.T) {
 		mockedRecursiveHealthChecker.On("CheckDependenciesRecursive", ctx, fromDogu, "").Return(nil)
 		mockedSecurityValidator := newMockSecurityValidator(t)
 		mockedSecurityValidator.EXPECT().ValidateSecurity(toDogu, fromDoguResource).Return(assert.AnError)
-		mockedDoguDataSeedValidator := newMockDoguDataSeedValidator(t)
+		mockedDoguAdditionalMountsValidator := newMockDoguAdditionalMountsValidator(t)
 
-		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker, mockedSecurityValidator, mockedDoguDataSeedValidator)
+		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker, mockedSecurityValidator, mockedDoguAdditionalMountsValidator)
 
 		// when
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)
@@ -107,7 +107,7 @@ func Test_premisesChecker_Check(t *testing.T) {
 		// then
 		assert.ErrorIs(t, err, assert.AnError)
 	})
-	t.Run("should fail when dogu data seed validation fails", func(t *testing.T) {
+	t.Run("should fail when dogu additional mounts validation fails", func(t *testing.T) {
 		fromDoguResource := readTestDataRedmineCr(t)
 		fromDogu := readTestDataDogu(t, redmineBytes)
 		toDogu := readTestDataDogu(t, redmineBytes)
@@ -120,10 +120,10 @@ func Test_premisesChecker_Check(t *testing.T) {
 		mockedRecursiveHealthChecker.On("CheckDependenciesRecursive", ctx, fromDogu, "").Return(nil)
 		mockedSecurityValidator := newMockSecurityValidator(t)
 		mockedSecurityValidator.EXPECT().ValidateSecurity(toDogu, fromDoguResource).Return(nil)
-		mockedDoguDataSeedValidator := newMockDoguDataSeedValidator(t)
-		mockedDoguDataSeedValidator.EXPECT().ValidateDataSeeds(testCtx, toDogu, fromDoguResource).Return(assert.AnError)
+		mockedDoguAdditionalMountsValidator := newMockDoguAdditionalMountsValidator(t)
+		mockedDoguAdditionalMountsValidator.EXPECT().ValidateAdditionalMounts(testCtx, toDogu, fromDoguResource).Return(assert.AnError)
 
-		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker, mockedSecurityValidator, mockedDoguDataSeedValidator)
+		sut := NewPremisesChecker(mockedDependencyValidator, mockedHealthChecker, mockedRecursiveHealthChecker, mockedSecurityValidator, mockedDoguAdditionalMountsValidator)
 
 		// when
 		err := sut.Check(ctx, fromDoguResource, fromDogu, toDogu)

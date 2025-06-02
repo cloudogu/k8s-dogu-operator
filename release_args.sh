@@ -20,9 +20,9 @@ update_versions_modify_files() {
   exporterImage=$(./.bin/yq ".additionalImages.exporterImage" "${valuesYAML}")
   ./.bin/yq -i ".values.images.exporterImage = \"${exporterImage}\"" "${componentPatchTplYAML}"
 
-  local dataSeederImage
-  dataSeederImage=$(./.bin/yq ".additionalImages.dataSeederImage" "${valuesYAML}")
-  ./.bin/yq -i ".values.images.dataSeederImage = \"${dataSeederImage}\"" "${componentPatchTplYAML}"
+  local doguAdditionalMountsInitContainerImage
+  doguAdditionalMountsInitContainerImage=$(./.bin/yq ".additionalImages.additionalMountsInitContainerImage" "${valuesYAML}")
+  ./.bin/yq -i ".values.images.additionalMountsInitContainerImage = \"${doguAdditionalMountsInitContainerImage}\"" "${componentPatchTplYAML}"
 }
 
 update_versions_stage_modified_files() {

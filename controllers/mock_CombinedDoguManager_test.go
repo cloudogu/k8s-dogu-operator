@@ -22,6 +22,63 @@ func (_m *MockCombinedDoguManager) EXPECT() *MockCombinedDoguManager_Expecter {
 	return &MockCombinedDoguManager_Expecter{mock: &_m.Mock}
 }
 
+// AdditionalMountsChanged provides a mock function with given fields: ctx, doguResource
+func (_m *MockCombinedDoguManager) AdditionalMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error) {
+	ret := _m.Called(ctx, doguResource)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdditionalMountsChanged")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) (bool, error)); ok {
+		return rf(ctx, doguResource)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) bool); ok {
+		r0 = rf(ctx, doguResource)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v2.Dogu) error); ok {
+		r1 = rf(ctx, doguResource)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCombinedDoguManager_AdditionalMountsChanged_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdditionalMountsChanged'
+type MockCombinedDoguManager_AdditionalMountsChanged_Call struct {
+	*mock.Call
+}
+
+// AdditionalMountsChanged is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguResource *v2.Dogu
+func (_e *MockCombinedDoguManager_Expecter) AdditionalMountsChanged(ctx interface{}, doguResource interface{}) *MockCombinedDoguManager_AdditionalMountsChanged_Call {
+	return &MockCombinedDoguManager_AdditionalMountsChanged_Call{Call: _e.mock.On("AdditionalMountsChanged", ctx, doguResource)}
+}
+
+func (_c *MockCombinedDoguManager_AdditionalMountsChanged_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu)) *MockCombinedDoguManager_AdditionalMountsChanged_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*v2.Dogu))
+	})
+	return _c
+}
+
+func (_c *MockCombinedDoguManager_AdditionalMountsChanged_Call) Return(_a0 bool, _a1 error) *MockCombinedDoguManager_AdditionalMountsChanged_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCombinedDoguManager_AdditionalMountsChanged_Call) RunAndReturn(run func(context.Context, *v2.Dogu) (bool, error)) *MockCombinedDoguManager_AdditionalMountsChanged_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CheckStarted provides a mock function with given fields: ctx, doguResource
 func (_m *MockCombinedDoguManager) CheckStarted(ctx context.Context, doguResource *v2.Dogu) error {
 	ret := _m.Called(ctx, doguResource)
@@ -112,63 +169,6 @@ func (_c *MockCombinedDoguManager_CheckStopped_Call) Return(_a0 error) *MockComb
 }
 
 func (_c *MockCombinedDoguManager_CheckStopped_Call) RunAndReturn(run func(context.Context, *v2.Dogu) error) *MockCombinedDoguManager_CheckStopped_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// DataMountsChanged provides a mock function with given fields: ctx, doguResource
-func (_m *MockCombinedDoguManager) DataMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error) {
-	ret := _m.Called(ctx, doguResource)
-
-	if len(ret) == 0 {
-		panic("no return value specified for DataMountsChanged")
-	}
-
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) (bool, error)); ok {
-		return rf(ctx, doguResource)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) bool); ok {
-		r0 = rf(ctx, doguResource)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *v2.Dogu) error); ok {
-		r1 = rf(ctx, doguResource)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockCombinedDoguManager_DataMountsChanged_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DataMountsChanged'
-type MockCombinedDoguManager_DataMountsChanged_Call struct {
-	*mock.Call
-}
-
-// DataMountsChanged is a helper method to define mock.On call
-//   - ctx context.Context
-//   - doguResource *v2.Dogu
-func (_e *MockCombinedDoguManager_Expecter) DataMountsChanged(ctx interface{}, doguResource interface{}) *MockCombinedDoguManager_DataMountsChanged_Call {
-	return &MockCombinedDoguManager_DataMountsChanged_Call{Call: _e.mock.On("DataMountsChanged", ctx, doguResource)}
-}
-
-func (_c *MockCombinedDoguManager_DataMountsChanged_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu)) *MockCombinedDoguManager_DataMountsChanged_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v2.Dogu))
-	})
-	return _c
-}
-
-func (_c *MockCombinedDoguManager_DataMountsChanged_Call) Return(_a0 bool, _a1 error) *MockCombinedDoguManager_DataMountsChanged_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockCombinedDoguManager_DataMountsChanged_Call) RunAndReturn(run func(context.Context, *v2.Dogu) (bool, error)) *MockCombinedDoguManager_DataMountsChanged_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -512,12 +512,12 @@ func (_c *MockCombinedDoguManager_StopDogu_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// UpdateDataMounts provides a mock function with given fields: ctx, doguResource
-func (_m *MockCombinedDoguManager) UpdateDataMounts(ctx context.Context, doguResource *v2.Dogu) error {
+// UpdateAdditionalMounts provides a mock function with given fields: ctx, doguResource
+func (_m *MockCombinedDoguManager) UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error {
 	ret := _m.Called(ctx, doguResource)
 
 	if len(ret) == 0 {
-		panic("no return value specified for UpdateDataMounts")
+		panic("no return value specified for UpdateAdditionalMounts")
 	}
 
 	var r0 error
@@ -530,31 +530,31 @@ func (_m *MockCombinedDoguManager) UpdateDataMounts(ctx context.Context, doguRes
 	return r0
 }
 
-// MockCombinedDoguManager_UpdateDataMounts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateDataMounts'
-type MockCombinedDoguManager_UpdateDataMounts_Call struct {
+// MockCombinedDoguManager_UpdateAdditionalMounts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateAdditionalMounts'
+type MockCombinedDoguManager_UpdateAdditionalMounts_Call struct {
 	*mock.Call
 }
 
-// UpdateDataMounts is a helper method to define mock.On call
+// UpdateAdditionalMounts is a helper method to define mock.On call
 //   - ctx context.Context
 //   - doguResource *v2.Dogu
-func (_e *MockCombinedDoguManager_Expecter) UpdateDataMounts(ctx interface{}, doguResource interface{}) *MockCombinedDoguManager_UpdateDataMounts_Call {
-	return &MockCombinedDoguManager_UpdateDataMounts_Call{Call: _e.mock.On("UpdateDataMounts", ctx, doguResource)}
+func (_e *MockCombinedDoguManager_Expecter) UpdateAdditionalMounts(ctx interface{}, doguResource interface{}) *MockCombinedDoguManager_UpdateAdditionalMounts_Call {
+	return &MockCombinedDoguManager_UpdateAdditionalMounts_Call{Call: _e.mock.On("UpdateAdditionalMounts", ctx, doguResource)}
 }
 
-func (_c *MockCombinedDoguManager_UpdateDataMounts_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu)) *MockCombinedDoguManager_UpdateDataMounts_Call {
+func (_c *MockCombinedDoguManager_UpdateAdditionalMounts_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu)) *MockCombinedDoguManager_UpdateAdditionalMounts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*v2.Dogu))
 	})
 	return _c
 }
 
-func (_c *MockCombinedDoguManager_UpdateDataMounts_Call) Return(_a0 error) *MockCombinedDoguManager_UpdateDataMounts_Call {
+func (_c *MockCombinedDoguManager_UpdateAdditionalMounts_Call) Return(_a0 error) *MockCombinedDoguManager_UpdateAdditionalMounts_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockCombinedDoguManager_UpdateDataMounts_Call) RunAndReturn(run func(context.Context, *v2.Dogu) error) *MockCombinedDoguManager_UpdateDataMounts_Call {
+func (_c *MockCombinedDoguManager_UpdateAdditionalMounts_Call) RunAndReturn(run func(context.Context, *v2.Dogu) error) *MockCombinedDoguManager_UpdateAdditionalMounts_Call {
 	_c.Call.Return(run)
 	return _c
 }

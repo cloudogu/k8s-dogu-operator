@@ -6,7 +6,7 @@ import (
 	"context"
 	_ "embed"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dataseed"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	registryRepo "github.com/cloudogu/k8s-registry-lib/repository"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -150,9 +150,9 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	configMapClient := k8sClientSet.CoreV1().ConfigMaps(testNamespace)
 	secretClient := k8sClientSet.CoreV1().Secrets(testNamespace)
-	doguDataSeedValidator := dataseed.NewValidator(configMapClient, secretClient)
+	doguAdditionalMountsValidator := additionalMount.NewValidator(configMapClient, secretClient)
 
-	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag", config.DataSeederImageConfigmapNameKey: "test:tag"}
+	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag", config.AdditionalMountsInitContainerImageConfigmapNameKey: "test:tag"}
 	resourceGenerator := resource.NewResourceGenerator(k8sManager.GetScheme(), requirementsGen, hostAliasGeneratorMock, securityGenerator, additionalImages)
 
 	version, err := core.ParseVersion("0.0.0")
@@ -187,23 +187,23 @@ var _ = ginkgo.BeforeSuite(func() {
 	doguConfigRepo := registryRepo.NewDoguConfigRepository(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
 
 	installManager := &doguInstallManager{
-		client:                  k8sClient,
-		ecosystemClient:         ecosystemClientSet,
-		recorder:                eventRecorder,
-		resourceUpserter:        upserter,
-		resourceDoguFetcher:     remoteDoguFetcher,
-		imageRegistry:           ImageRegistryMock,
-		doguRegistrator:         doguRegistrator,
-		dependencyValidator:     dependencyValidator,
-		serviceAccountCreator:   serviceAccountCreator,
-		collectApplier:          collectApplier,
-		fileExtractor:           fileExtract,
-		localDoguFetcher:        localDoguFetcher,
-		execPodFactory:          execPodFactory,
-		sensitiveDoguRepository: sensitiveConfigRepo,
-		doguConfigRepository:    doguConfigRepo,
-		securityValidator:       securityValidator,
-		doguDataSeedValidator:   doguDataSeedValidator,
+		client:                        k8sClient,
+		ecosystemClient:               ecosystemClientSet,
+		recorder:                      eventRecorder,
+		resourceUpserter:              upserter,
+		resourceDoguFetcher:           remoteDoguFetcher,
+		imageRegistry:                 ImageRegistryMock,
+		doguRegistrator:               doguRegistrator,
+		dependencyValidator:           dependencyValidator,
+		serviceAccountCreator:         serviceAccountCreator,
+		collectApplier:                collectApplier,
+		fileExtractor:                 fileExtract,
+		localDoguFetcher:              localDoguFetcher,
+		execPodFactory:                execPodFactory,
+		sensitiveDoguRepository:       sensitiveConfigRepo,
+		doguConfigRepository:          doguConfigRepo,
+		securityValidator:             securityValidator,
+		doguAdditionalMountsValidator: doguAdditionalMountsValidator,
 	}
 
 	deleteManager := &doguDeleteManager{
@@ -226,25 +226,25 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	doguHealthChecker := health.NewDoguChecker(ecosystemClientSet, localDoguFetcher)
-	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker, securityValidator, doguDataSeedValidator)
+	upgradePremiseChecker := upgrade.NewPremisesChecker(dependencyValidator, doguHealthChecker, doguHealthChecker, securityValidator, doguAdditionalMountsValidator)
 
 	mgrSet := &util.ManagerSet{
-		RestConfig:                     ctrl.GetConfigOrDie(),
-		ImageRegistry:                  ImageRegistryMock,
-		ServiceAccountCreator:          serviceAccountCreator,
-		FileExtractor:                  fileExtract,
-		CollectApplier:                 collectApplier,
-		SecurityValidator:              securityValidator,
-		CommandExecutor:                CommandExecutorMock,
-		ResourceUpserter:               upserter,
-		DoguRegistrator:                doguRegistrator,
-		LocalDoguFetcher:               localDoguFetcher,
-		DoguResourceGenerator:          resourceGenerator,
-		ResourceDoguFetcher:            remoteDoguFetcher,
-		DoguDataSeedValidator:          doguDataSeedValidator,
-		AdditionalImages:               additionalImages,
-		RequirementsGenerator:          requirementsGen,
-		DoguDataSeedContainerGenerator: resourceGenerator,
+		RestConfig:                   ctrl.GetConfigOrDie(),
+		ImageRegistry:                ImageRegistryMock,
+		ServiceAccountCreator:        serviceAccountCreator,
+		FileExtractor:                fileExtract,
+		CollectApplier:               collectApplier,
+		SecurityValidator:            securityValidator,
+		CommandExecutor:              CommandExecutorMock,
+		ResourceUpserter:             upserter,
+		DoguRegistrator:              doguRegistrator,
+		LocalDoguFetcher:             localDoguFetcher,
+		DoguResourceGenerator:        resourceGenerator,
+		ResourceDoguFetcher:          remoteDoguFetcher,
+		DoguAdditionalMountValidator: doguAdditionalMountsValidator,
+		AdditionalImages:             additionalImages,
+		RequirementsGenerator:        requirementsGen,
+		DoguAdditionalMountsInitContainerGenerator: resourceGenerator,
 	}
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(k8sClient, mgrSet, eventRecorder, ecosystemClientSet)
@@ -273,7 +273,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		recorder:          eventRecorder,
 	}
 
-	dataSeedManager := NewDoguDataSeedManager(k8sClientSet.AppsV1().Deployments(testNamespace), mgrSet, DoguInterfaceMock)
+	additionalMountsManager := NewDoguAdditionalMountManager(k8sClientSet.AppsV1().Deployments(testNamespace), mgrSet, DoguInterfaceMock)
 
 	doguManager := &DoguManager{
 		scheme:                    k8sManager.GetScheme(),
@@ -285,7 +285,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		volumeManager:             volumeManager,
 		ingressAnnotationsManager: ingressAnnotationManager,
 		securityContextManager:    securityManager,
-		dataSeedManager:           dataSeedManager,
+		additionalMountsManager:   additionalMountsManager,
 	}
 
 	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, localDoguFetcher)

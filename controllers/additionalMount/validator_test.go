@@ -1,4 +1,4 @@
-package dataseed
+package additionalMount
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestValidator_ValidateDataSeeds(t *testing.T) {
+func TestValidator_ValidateAdditionalMounts(t *testing.T) {
 	testCtx := context.Background()
 
 	nginxDogu := &core.Dogu{
@@ -31,7 +31,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 		},
 	}
 
-	validDoguDataSeed := &k8sv2.Dogu{
+	validDoguAdditionalMounts := &k8sv2.Dogu{
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
 			AdditionalMounts: []k8sv2.DataMount{
@@ -60,7 +60,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 		},
 	}
 
-	duplicatedDoguDataSeed := &k8sv2.Dogu{
+	duplicatedDoguAdditionalMounts := &k8sv2.Dogu{
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
 			AdditionalMounts: []k8sv2.DataMount{
@@ -78,7 +78,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 		},
 	}
 
-	notFoundDoguDataSeed := &k8sv2.Dogu{
+	notFoundDoguAdditionalMount := &k8sv2.Dogu{
 		ObjectMeta: v1.ObjectMeta{Name: "nginx"},
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
@@ -92,7 +92,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 		},
 	}
 
-	simpleDoguDataSeed := &k8sv2.Dogu{
+	simpleDoguAdditionalMounts := &k8sv2.Dogu{
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
 			AdditionalMounts: []k8sv2.DataMount{
@@ -105,7 +105,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 		},
 	}
 
-	invalidSourceTypeDoguDataSeed := &k8sv2.Dogu{
+	invalidSourceTypeDoguAdditionalMounts := &k8sv2.Dogu{
 		Spec: k8sv2.DoguSpec{
 			Name: "nginx",
 			AdditionalMounts: []k8sv2.DataMount{
@@ -154,12 +154,12 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 			args: args{
 				ctx:            testCtx,
 				doguDescriptor: nginxDogu,
-				doguResource:   validDoguDataSeed,
+				doguResource:   validDoguAdditionalMounts,
 			},
 			wantErr: false,
 		},
 		{
-			name: "should return an error on duplicated data seed entries",
+			name: "should return an error on duplicated additional mounts entries",
 			fields: fields{
 				configMapInterface: func(t *testing.T) configMapGetter {
 					mock := newMockConfigMapGetter(t)
@@ -170,7 +170,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 			},
 			args: args{
 				ctx:            testCtx,
-				doguResource:   duplicatedDoguDataSeed,
+				doguResource:   duplicatedDoguAdditionalMounts,
 				doguDescriptor: nginxDogu,
 			},
 			wantErr: true,
@@ -190,7 +190,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 			},
 			args: args{
 				ctx:            testCtx,
-				doguResource:   notFoundDoguDataSeed,
+				doguResource:   notFoundDoguAdditionalMount,
 				doguDescriptor: nginxDogu,
 			},
 			wantErr: true,
@@ -210,7 +210,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 			},
 			args: args{
 				ctx:            testCtx,
-				doguResource:   simpleDoguDataSeed,
+				doguResource:   simpleDoguAdditionalMounts,
 				doguDescriptor: nginxDogu,
 			},
 			wantErr: true,
@@ -231,7 +231,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 			},
 			args: args{
 				ctx:            testCtx,
-				doguResource:   simpleDoguDataSeed,
+				doguResource:   simpleDoguAdditionalMounts,
 				doguDescriptor: nginxDogu,
 			},
 			wantErr: false,
@@ -240,7 +240,7 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 			name: "should return error on invalid source type",
 			args: args{
 				ctx:            testCtx,
-				doguResource:   invalidSourceTypeDoguDataSeed,
+				doguResource:   invalidSourceTypeDoguAdditionalMounts,
 				doguDescriptor: nginxDogu,
 			},
 			wantErr: true,
@@ -266,9 +266,9 @@ func TestValidator_ValidateDataSeeds(t *testing.T) {
 				configMapInterface: configMapMock,
 				secretInterface:    secretMapMock,
 			}
-			err := v.ValidateDataSeeds(tt.args.ctx, tt.args.doguDescriptor, tt.args.doguResource)
+			err := v.ValidateAdditionalMounts(tt.args.ctx, tt.args.doguDescriptor, tt.args.doguResource)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateDataSeeds() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ValidateAdditionalMounts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if err != nil && tt.assertError != nil {

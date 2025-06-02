@@ -22,12 +22,12 @@ type securityValidator interface {
 	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
 }
 
-type doguDataSeedValidator interface {
-	ValidateDataSeeds(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
+type doguAdditionalMountsValidator interface {
+	ValidateAdditionalMounts(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
 }
 
-type dataSeederInitContainerGenerator interface {
-	BuildDataSeederContainer(dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
+type additionalMountsInitContainerGenerator interface {
+	BuildAdditionalMountInitContainer(dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
 }
 
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.

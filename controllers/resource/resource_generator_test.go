@@ -17,7 +17,7 @@ import (
 	"testing"
 )
 
-var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36", "exporterImage": "exporter:0.0.1", "dataSeederImage": "dataSeeder:0.0.1"}
+var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36", "exporterImage": "exporter:0.0.1", "additionalMountsInitContainerImage": "additionalMounts:0.0.1"}
 
 const testInitContainerImage = "busybox:1.36"
 
@@ -527,7 +527,7 @@ func Test_CreateStartupProbe(t *testing.T) {
 	}
 }
 
-func Test_getDataSeederContainer(t *testing.T) {
+func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 	t.Run("success with standard volume setup\n", func(t *testing.T) {
 		// given
 		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "testVolume", Path: "/etc/test", NeedsBackup: true}}}
@@ -538,7 +538,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 			Subfolder:  "testSubFolder",
 		}}}}
 
-		expectedDataSeederContainerName := "dogu-data-seeder-init"
+		expectedAdditionalMountsContainerName := "dogu-additional-mounts-init"
 		expectedContainerImage := testInitContainerImage
 		expectedArgs := []string{"copy", "-source=/datamount/cm-1", "-target=/dogumount/etc/test/testSubFolder"}
 		expectedDataVolumeName := doguResource.GetDataVolumeName()
@@ -555,13 +555,13 @@ func Test_getDataSeederContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, resources)
+		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
 		require.Equal(t, expectedArgs, container.Args)
 		require.Equal(t, expectedContainerImage, container.Image)
-		require.Equal(t, expectedDataSeederContainerName, container.Name)
+		require.Equal(t, expectedAdditionalMountsContainerName, container.Name)
 		require.Equal(t, 4, len(container.VolumeMounts))
 		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
 			return mount.Name == expectedDataVolumeName &&
@@ -599,7 +599,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildDataSeederContainer(dogu, doguResource, expectedContainerImage, resources)
+		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, expectedContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -639,7 +639,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildDataSeederContainer(dogu, doguResource, expectedContainerImage, resources)
+		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, expectedContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -691,7 +691,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -740,7 +740,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -771,7 +771,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -791,7 +791,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		_, err := sut.BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		_, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.Error(t, err)
@@ -813,7 +813,7 @@ func Test_getDataSeederContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -828,21 +828,21 @@ func Test_getDataSeederContainer(t *testing.T) {
 			AdditionalMounts: []doguv2.DataMount{},
 		}}
 
-		expectedDataSeederContainerName := "dogu-data-seeder-init"
+		expectedAdditionalMountsContainerName := "dogu-additional-mounts-init"
 		expectedContainerImage := testInitContainerImage
 		expectedDataVolumeName := doguResource.GetDataVolumeName()
 
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildDataSeederContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
 		require.Equal(t, 1, len(container.Args))
-		require.Equal(t, dataSeederArg, container.Args[0])
+		require.Equal(t, additionalMountsArg, container.Args[0])
 		require.Equal(t, expectedContainerImage, container.Image)
-		require.Equal(t, expectedDataSeederContainerName, container.Name)
+		require.Equal(t, expectedAdditionalMountsContainerName, container.Name)
 		require.Equal(t, 3, len(container.VolumeMounts))
 		resultVolumeMount := container.VolumeMounts[0]
 		require.Equal(t, expectedDataVolumeName, resultVolumeMount.Name)

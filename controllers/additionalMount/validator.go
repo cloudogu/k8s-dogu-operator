@@ -1,4 +1,4 @@
-package dataseed
+package additionalMount
 
 import (
 	"context"
@@ -42,10 +42,10 @@ func NewValidator(configMapGetter configMapGetter, secretGatter secretGetter) *V
 	}
 }
 
-// ValidateDataSeeds validates the data seed mounts
-func (v *Validator) ValidateDataSeeds(ctx context.Context, doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error {
+// ValidateAdditionalMounts validates the additional mounts from the dogu resource and dogu.json
+func (v *Validator) ValidateAdditionalMounts(ctx context.Context, doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error {
 	var multiErr []error
-	var dataMounts = make(map[k8sv2.DataMount]struct{})
+	var additionalMounts = make(map[k8sv2.DataMount]struct{})
 
 	if len(doguResource.Spec.AdditionalMounts) > 0 && !hasVolumeWithName(doguDescriptor, "localConfig") {
 		multiErr = append(multiErr, fmt.Errorf("dogu %s has no local config volume needed by addtional data mounts", doguResource.Name))
@@ -53,11 +53,11 @@ func (v *Validator) ValidateDataSeeds(ctx context.Context, doguDescriptor *core.
 
 	for _, dataMount := range doguResource.Spec.AdditionalMounts {
 		// check for duplicate entries
-		if _, ok := dataMounts[dataMount]; ok {
+		if _, ok := additionalMounts[dataMount]; ok {
 			multiErr = append(multiErr, fmt.Errorf("duplicate entry %+v", dataMount))
 			continue
 		}
-		dataMounts[dataMount] = struct{}{}
+		additionalMounts[dataMount] = struct{}{}
 
 		// check for valid dogu descriptor volume references
 		if !hasVolumeWithName(doguDescriptor, dataMount.Volume) {

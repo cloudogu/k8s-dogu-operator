@@ -274,7 +274,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 				var initContainer *corev1.Container
 				for _, container := range deployment.Spec.Template.Spec.InitContainers {
-					if container.Name == "dogu-data-seeder-init" {
+					if container.Name == "dogu-additional-mounts-init" {
 						initContainer = &container
 					}
 				}
