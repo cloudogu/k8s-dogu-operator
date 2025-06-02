@@ -7,7 +7,7 @@ A description of the format can be found in the repo of the
 The use of additionalMounts requires that the affected Dogu has a `localConfig` volume.
 This is used so that the init container can save mounted files and thus later delete them from the Dogu volumes again later.
 
-The repository for the init container can be found [here](https://github.com/cloudogu/dogu-data-seeder).
+The repository for the init container can be found [here](https://github.com/cloudogu/dogu-additional-mounts-init).
 
 The Dogu operator uses the `Name` attribute of the DataMount as the name for the volume.
 The [naming guidelines](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names) therefore apply to volume names.

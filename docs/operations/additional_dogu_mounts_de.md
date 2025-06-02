@@ -8,7 +8,7 @@ Die Anwendung von additionalMounts setzt voraus, dass das betroffene Dogu ein `l
 Dieses wird verwendet, damit der Init-Container gemountete Files speichern und somit später wieder aus den Dogu-Volumes
 löschen kann.
 
-Das Repository für den Init-Container ist [hier](https://github.com/cloudogu/dogu-data-seeder) zu finden.
+Das Repository für den Init-Container ist [hier](https://github.com/cloudogu/dogu-additional-mounts-init) zu finden.
 
 Der Dogu-Operator verwendet das `Name`-Attribute des DataMounts als Namen für das Volume.
 Daher gelten die [Namensrichtlinien](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names) für Volumenamen.
