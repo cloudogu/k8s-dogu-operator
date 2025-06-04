@@ -18,6 +18,7 @@ spec:
       dogu.name: ldap
   strategy:
     type: Recreate
+  replicas: 1
   template:
     metadata:
       creationTimestamp: null
