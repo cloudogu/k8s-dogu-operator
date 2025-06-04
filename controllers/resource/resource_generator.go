@@ -22,6 +22,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 )
 
+const ReplicaCountStarted = 1
+const ReplicaCountStopped = 0
+
 const (
 	appLabelKey      = "app"
 	appLabelValueCes = "ces"
@@ -265,9 +268,9 @@ func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume
 }
 
 func buildDeploymentSpec(doguResource *k8sv2.Dogu, podTemplate *corev1.PodTemplateSpec) appsv1.DeploymentSpec {
-	var replicas int32 = 1
+	var replicas int32 = ReplicaCountStarted
 	if doguResource.Spec.Stopped {
-		replicas = 0
+		replicas = ReplicaCountStopped
 	}
 
 	return appsv1.DeploymentSpec{

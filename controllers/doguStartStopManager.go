@@ -86,9 +86,9 @@ func (m *doguStartStopManager) StartStopDogu(ctx context.Context, doguResource *
 }
 
 func (m *doguStartStopManager) shouldStartStopDogu(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
-	var desiredReplicas int32 = 1
+	var desiredReplicas int32 = resource.ReplicaCountStarted
 	if doguResource.Spec.Stopped {
-		desiredReplicas = 0
+		desiredReplicas = resource.ReplicaCountStopped
 	}
 
 	deployment, getErr := m.deploymentInterface.Get(ctx, doguResource.GetObjectKey().Name, metav1.GetOptions{})
