@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"testing"
@@ -87,6 +88,35 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.NoError(t, err)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		assert.Equal(t, expectedDeployment, actualDeployment)
+		assert.Equal(t, pointer.Int32(1), actualDeployment.Spec.Replicas)
+	})
+
+	t.Run("Return simple deployment with 0 replicas", func(t *testing.T) {
+		// when
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDoguResource.Spec.Stopped = true
+		ldapDogu := readLdapDogu(t)
+
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(testCtx, ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
+		securityGenMock := newMockSecurityContextGenerator(t)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:                   getTestScheme(),
+			requirementsGenerator:    requirementsGen,
+			hostAliasGenerator:       hostAliasGeneratorMock,
+			securityContextGenerator: securityGenMock,
+			additionalImages:         testAdditionalImages,
+		}
+
+		actualDeployment, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, pointer.Int32(0), actualDeployment.Spec.Replicas)
 	})
 
 	t.Run("Return deployment with security context", func(t *testing.T) {

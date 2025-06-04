@@ -84,7 +84,7 @@ func Test_upserter_updateOrInsert(t *testing.T) {
 
 		afterUpsert := &appsv1.Deployment{}
 		err = testClient.Get(context.Background(), doguResource.GetObjectKey(), afterUpsert)
-		assert.Nil(t, afterUpsert.Spec.Replicas)
+		assert.Equal(t, pointer.Int32(1), afterUpsert.Spec.Replicas)
 		// mock assert happens during cleanup
 	})
 }

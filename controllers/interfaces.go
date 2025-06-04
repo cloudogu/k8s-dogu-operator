@@ -72,26 +72,8 @@ type securityContextManager interface {
 	UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// startDoguManager includes functionality to start (stopped) dogus.
-type startDoguManager interface {
-	// StartDogu scales up a dogu to 1.
-	StartDogu(ctx context.Context, doguResource *v2.Dogu) error
-	// CheckStarted checks if the dogu has been successfully scaled to 1.
-	CheckStarted(ctx context.Context, doguResource *v2.Dogu) error
-}
-
-// stopDoguManager includes functionality to stop running dogus.
-type stopDoguManager interface {
-	// StopDogu scales down a dogu to 0.
-	StopDogu(ctx context.Context, doguResource *v2.Dogu) error
-	// CheckStopped checks if the dogu has been successfully scaled to 0.
-	CheckStopped(ctx context.Context, doguResource *v2.Dogu) error
-}
-
-// DoguStartStopManager includes functionality to start and stop dogus.
-type DoguStartStopManager interface {
-	startDoguManager
-	stopDoguManager
+type startStopManager interface {
+	StartStopDogu(ctx context.Context, doguResource *v2.Dogu) error
 }
 
 // CombinedDoguManager abstracts the simple dogu operations in a k8s CES.
@@ -103,8 +85,7 @@ type CombinedDoguManager interface {
 	additionalIngressAnnotationsManager
 	exportManager
 	supportManager
-	startDoguManager
-	stopDoguManager
+	startStopManager
 	securityContextManager
 }
 
