@@ -80,10 +80,7 @@ const (
 	Wait                               = operation("Wait")
 	ExpandVolume                       = operation("ExpandVolume")
 	ChangeAdditionalIngressAnnotations = operation("ChangeAdditionalIngressAnnotations")
-	StartDogu                          = operation("StartDogu")
-	StopDogu                           = operation("StopDogu")
-	CheckStarted                       = operation("CheckStarted")
-	CheckStopped                       = operation("CheckStopped")
+	StartStopDogu                      = operation("StartStopDogu")
 	ChangeSecurityContext              = operation("ChangeSecurityContext")
 	ChangeExportMode                   = operation("ChangeExportMode")
 	ChangeAdditionalMounts             = operation("ChangeAdditionalMounts")
@@ -187,14 +184,8 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 		return r.performVolumeOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeAdditionalIngressAnnotations:
 		return r.performAdditionalIngressAnnotationsOperation(ctx, doguResource, requeueForMultipleOperations)
-	case StartDogu:
-		return r.performStartDoguOperation(ctx, doguResource, requeueForMultipleOperations)
-	case StopDogu:
-		return r.performStopDoguOperation(ctx, doguResource, requeueForMultipleOperations)
-	case CheckStarted:
-		return r.performCheckStartedOperation(ctx, doguResource, requeueForMultipleOperations)
-	case CheckStopped:
-		return r.performCheckStoppedOperation(ctx, doguResource, requeueForMultipleOperations)
+	case StartStopDogu:
+		return r.performStartStopDoguOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeSecurityContext:
 		return r.performSecurityContextOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeExportMode:
@@ -250,13 +241,13 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 	case doguv2.DoguStatusNotInstalled:
 		return []operation{Install}, nil
 	case doguv2.DoguStatusStarting:
-		operations = append(operations, CheckStarted)
+		operations = append(operations, StartStopDogu)
 		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
 		if err != nil {
 			return nil, err
 		}
 	case doguv2.DoguStatusStopping:
-		operations = append(operations, CheckStopped)
+		operations = append(operations, StartStopDogu)
 		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
 		if err != nil {
 			return nil, err
@@ -303,8 +294,8 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 }
 
 func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context, doguResource *doguv2.Dogu, operations []operation) ([]operation, error) {
-	if checkShouldStartDogu(doguResource) {
-		operations = append(operations, StartDogu)
+	if checkShouldStartStopDogu(doguResource) {
+		operations = append(operations, StartStopDogu)
 	}
 
 	isVolumeExpansion, err := r.checkForVolumeExpansion(ctx, doguResource)
@@ -361,19 +352,11 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 		}
 	}
 
-	if checkShouldStopDogu(doguResource) {
-		operations = append(operations, StopDogu)
-	}
-
 	return operations, nil
 }
 
-func checkShouldStopDogu(doguResource *doguv2.Dogu) bool {
-	return doguResource.Spec.Stopped && (!doguResource.Status.Stopped)
-}
-
-func checkShouldStartDogu(doguResource *doguv2.Dogu) bool {
-	return (!doguResource.Spec.Stopped) && doguResource.Status.Stopped
+func checkShouldStartStopDogu(doguResource *doguv2.Dogu) bool {
+	return doguResource.Spec.Stopped != doguResource.Status.Stopped
 }
 
 func checkShouldChangeExportMode(doguResource *doguv2.Dogu) bool {
@@ -597,40 +580,18 @@ func (r *doguReconciler) performSecurityContextOperation(ctx context.Context, do
 	return r.performOperation(ctx, doguResource, deploymentWithSecurityContextOperationEventProps, doguv2.DoguStatusInstalled, r.doguManager.UpdateDeploymentWithSecurityContext, shouldRequeue)
 }
 
-func (r *doguReconciler) performStartDoguOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
-	return r.performOperation(ctx, doguResource, operationEventProperties{
-		successReason: StartDoguEventReason,
-		errorReason:   ErrorOnStartDoguEventReason,
-		operationName: "StartDogu",
-		operationVerb: "start dogu",
-	}, doguv2.DoguStatusStarting, r.doguManager.StartDogu, shouldRequeue)
-}
+func (r *doguReconciler) performStartStopDoguOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	status := doguv2.DoguStatusStarting
+	if doguResource.Spec.Stopped {
+		status = doguv2.DoguStatusStopping
+	}
 
-func (r *doguReconciler) performStopDoguOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
 	return r.performOperation(ctx, doguResource, operationEventProperties{
-		successReason: StopDoguEventReason,
-		errorReason:   ErrorOnStopDoguEventReason,
-		operationName: "StopDogu",
-		operationVerb: "stop dogu",
-	}, doguv2.DoguStatusStopping, r.doguManager.StopDogu, shouldRequeue)
-}
-
-func (r *doguReconciler) performCheckStoppedOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
-	return r.performOperation(ctx, doguResource, operationEventProperties{
-		successReason: CheckStoppedEventReason,
-		errorReason:   ErrorOnCheckStoppedEventReason,
-		operationName: "CheckStopped",
-		operationVerb: "check if dogu stopped",
-	}, doguv2.DoguStatusStopping, r.doguManager.CheckStopped, shouldRequeue)
-}
-
-func (r *doguReconciler) performCheckStartedOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
-	return r.performOperation(ctx, doguResource, operationEventProperties{
-		successReason: CheckStartedEventReason,
-		errorReason:   ErrorOnCheckStartedEventReason,
-		operationName: "CheckStarted",
-		operationVerb: "check if dogu started",
-	}, doguv2.DoguStatusStarting, r.doguManager.CheckStarted, shouldRequeue)
+		successReason: StartStopDoguEventReason,
+		errorReason:   ErrorOnStartStopDoguEventReason,
+		operationName: "StartStopDogu",
+		operationVerb: "start/stop dogu",
+	}, status, r.doguManager.StartStopDogu, shouldRequeue)
 }
 
 func (r *doguReconciler) performExportModeOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {

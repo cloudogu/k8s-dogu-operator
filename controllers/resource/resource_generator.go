@@ -23,6 +23,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 )
 
+const ReplicaCountStarted = 1
+const ReplicaCountStopped = 0
+
 const (
 	appLabelKey      = "app"
 	appLabelValueCes = "ces"
@@ -106,7 +109,7 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 		Labels:    appDoguNameLabels,
 	}}
 
-	deployment.Spec = buildDeploymentSpec(doguResource.GetDoguNameLabel(), podTemplate)
+	deployment.Spec = buildDeploymentSpec(doguResource, podTemplate)
 
 	err = ctrl.SetControllerReference(doguResource, deployment, r.scheme)
 	if err != nil {
@@ -374,13 +377,19 @@ func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume
 	return filteredList
 }
 
-func buildDeploymentSpec(selectorLabels map[string]string, podTemplate *corev1.PodTemplateSpec) appsv1.DeploymentSpec {
+func buildDeploymentSpec(doguResource *k8sv2.Dogu, podTemplate *corev1.PodTemplateSpec) appsv1.DeploymentSpec {
+	var replicas int32 = ReplicaCountStarted
+	if doguResource.Spec.Stopped {
+		replicas = ReplicaCountStopped
+	}
+
 	return appsv1.DeploymentSpec{
-		Selector: &metav1.LabelSelector{MatchLabels: selectorLabels},
+		Selector: &metav1.LabelSelector{MatchLabels: doguResource.GetDoguNameLabel()},
 		Strategy: appsv1.DeploymentStrategy{
 			Type: "Recreate",
 		},
 		Template: *podTemplate,
+		Replicas: &replicas,
 	}
 }
 

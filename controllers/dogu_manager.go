@@ -38,7 +38,7 @@ type DoguManager struct {
 	ingressAnnotationsManager additionalIngressAnnotationsManager
 	supportManager            supportManager
 	exportManager             exportManager
-	startStopManager          DoguStartStopManager
+	startStopManager          startStopManager
 	securityContextManager    securityContextManager
 	additionalMountsManager   additionalMountsManager
 	recorder                  record.EventRecorder
@@ -88,9 +88,15 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	securityContextManager := NewDoguSecurityContextManager(mgrSet, eventRecorder)
 
-	startStopManager := newDoguStartStopManager(doguInterface, clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
+	startStopManager := newDoguStartStopManager(
+		mgrSet.ResourceUpserter,
+		mgrSet.LocalDoguFetcher,
+		ecosystemClient.Dogus(operatorConfig.Namespace),
+		clientSet.AppsV1().Deployments(operatorConfig.Namespace),
+	)
 
 	additionalMountsManager := NewDoguAdditionalMountManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet, doguInterface)
+
 
 	return &DoguManager{
 		scheme:                    client.Scheme(),
@@ -182,34 +188,10 @@ func (m *DoguManager) UpdateDeploymentWithSecurityContext(ctx context.Context, d
 	return m.securityContextManager.UpdateDeploymentWithSecurityContext(ctx, doguResource)
 }
 
-// StartDogu scales a stopped dogu to 1.
-func (m *DoguManager) StartDogu(ctx context.Context, doguResource *doguv2.Dogu) error {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Starting dogu...")
-	return m.startStopManager.StartDogu(ctx, doguResource)
-}
-
-// StopDogu scales a running dogu to 0.
-func (m *DoguManager) StopDogu(ctx context.Context, doguResource *doguv2.Dogu) error {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Stopping dogu...")
-	return m.startStopManager.StopDogu(ctx, doguResource)
-}
-
-func (m *DoguManager) CheckStarted(ctx context.Context, doguResource *doguv2.Dogu) error {
-	err := m.startStopManager.CheckStarted(ctx, doguResource)
-	if err == nil {
-		m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Dogu started.")
-	}
-
-	return err
-}
-
-func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *doguv2.Dogu) error {
-	err := m.startStopManager.CheckStopped(ctx, doguResource)
-	if err == nil {
-		m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Dogu stopped.")
-	}
-
-	return err
+// StartStopDogu starts or stops the dogu.
+func (m *DoguManager) StartStopDogu(ctx context.Context, doguResource *doguv2.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, StartStopDoguEventReason, "Starting/Stopping dogu...")
+	return m.startStopManager.StartStopDogu(ctx, doguResource)
 }
 
 // UpdateExportMode activates/deactivates the export mode for the dogu
