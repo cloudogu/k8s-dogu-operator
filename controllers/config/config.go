@@ -25,6 +25,8 @@ const (
 	ChownInitImageConfigmapNameKey = "chownInitImage"
 	// ExporterImageConfigmapNameKey contains the key to retrieve the image used for exporter-sidecar-container
 	ExporterImageConfigmapNameKey = "exporterImage"
+	// AdditionalMountsInitContainerImageConfigmapNameKey contains the key to retrieve the image used for the dogu-additional-mount-init-container
+	AdditionalMountsInitContainerImageConfigmapNameKey = "additionalMountsInitContainerImage"
 )
 
 var Stage = StageProduction

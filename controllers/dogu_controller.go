@@ -83,6 +83,7 @@ const (
 	StartStopDogu                      = operation("StartStopDogu")
 	ChangeSecurityContext              = operation("ChangeSecurityContext")
 	ChangeExportMode                   = operation("ChangeExportMode")
+	ChangeAdditionalMounts             = operation("ChangeAdditionalMounts")
 )
 
 const requeueWaitTimeout = 5 * time.Second
@@ -189,6 +190,8 @@ func (r *doguReconciler) executeRequiredOperation(ctx context.Context, requiredO
 		return r.performSecurityContextOperation(ctx, doguResource, requeueForMultipleOperations)
 	case ChangeExportMode:
 		return r.performExportModeOperation(ctx, doguResource, requeueForMultipleOperations)
+	case ChangeAdditionalMounts:
+		return r.performAdditionalMountsOperation(ctx, doguResource, requeueForMultipleOperations)
 	default:
 		return finishOperation()
 	}
@@ -276,6 +279,12 @@ func (r *doguReconciler) evaluateRequiredOperations(ctx context.Context, doguRes
 		}
 	case doguv2.DoguStatusDeleting:
 		return []operation{}, nil
+	case doguv2.DoguStatusChangingDataMounts:
+		operations = append(operations, ChangeAdditionalMounts)
+		operations, err = r.appendRequiredPostInstallOperations(ctx, doguResource, operations)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		logger.Info(fmt.Sprintf("Cannot evaluate required operation for unknown dogu status: %s", doguResource.Status.Status))
 		return []operation{}, nil
@@ -332,6 +341,15 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 
 	if upgradeable {
 		operations = append(operations, Upgrade)
+	} else {
+		// ChangeAdditionalMounts operation should only be triggered if the dogu does not upgrade because the upgrade itself does this anyway.
+		changed, err := r.doguManager.AdditionalMountsChanged(ctx, doguResource)
+		if err != nil {
+			return nil, err
+		}
+		if changed && !operationsContain(operations, ChangeAdditionalMounts) {
+			operations = append(operations, ChangeAdditionalMounts)
+		}
 	}
 
 	return operations, nil
@@ -583,6 +601,15 @@ func (r *doguReconciler) performExportModeOperation(ctx context.Context, doguRes
 		operationName: "ChangeExportMode",
 		operationVerb: "activate export-mode",
 	}, doguv2.DoguStatusChangingExportMode, r.doguManager.UpdateExportMode, shouldRequeue)
+}
+
+func (r *doguReconciler) performAdditionalMountsOperation(ctx context.Context, doguResource *doguv2.Dogu, shouldRequeue bool) (ctrl.Result, error) {
+	return r.performOperation(ctx, doguResource, operationEventProperties{
+		successReason: ChangeDoguAdditionalMountsEventReason,
+		errorReason:   ErrorOnChangeDoguAdditionalMountsEventReason,
+		operationName: "ChangeAdditionalMounts",
+		operationVerb: "change additional mounts",
+	}, doguv2.DoguStatusChangingDataMounts, r.doguManager.UpdateAdditionalMounts, shouldRequeue)
 }
 
 func (r *doguReconciler) validateName(doguResource *doguv2.Dogu) (success bool) {

@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.8.0] - 2025-06-05
+### Added
+- [#240] Init-Container creation for `additionalMounts` from the Dogu-CRD.
+  The dogu-operator now supports mounting configmaps or secrets in dogus with the `dogu-additional-mounts-init` container.
+  - If only the `additionalMounts` change and there is no dogu upgrade, the dogu.json used for this process is fetched from the local dogu registry.
+  - Thus, you can add a new volume while developing a dogu and test the `addtionalMounts`.
+  - On dogu upgrades the routine will always use the new dogu descriptor from remote.
+
 ## [v3.7.0] - 2025-06-04
 ### Fixed
 - [#245] Check Replica count instead of readiness status at Dogu startup to prevent blocking operator when a Dogu cannot be started

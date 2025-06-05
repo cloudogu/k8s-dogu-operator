@@ -7,3 +7,4 @@ metadata:
 data:
   chownInitImage: {{ .Values.additionalImages.chownInitImage | quote }}
   exporterImage: {{ .Values.additionalImages.exporterImage | quote }}
+  additionalMountsInitContainerImage: {{ .Values.additionalImages.additionalMountsInitContainerImage | quote }}

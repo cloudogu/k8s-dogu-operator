@@ -28,43 +28,45 @@ const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
 
 // doguInstallManager is a central unit in the process of handling the installation process of a custom dogu resource.
 type doguInstallManager struct {
-	client                  K8sClient
-	ecosystemClient         doguClient.EcoSystemV2Interface
-	recorder                record.EventRecorder
-	localDoguFetcher        localDoguFetcher
-	resourceDoguFetcher     resourceDoguFetcher
-	imageRegistry           imageRegistry
-	doguRegistrator         doguRegistrator
-	dependencyValidator     upgrade.DependencyValidator
-	serviceAccountCreator   serviceAccountCreator
-	fileExtractor           exec.FileExtractor
-	collectApplier          resource.CollectApplier
-	resourceUpserter        resource.ResourceUpserter
-	execPodFactory          exec.ExecPodFactory
-	doguConfigRepository    doguConfigRepository
-	sensitiveDoguRepository doguConfigRepository
-	securityValidator       securityValidator
+	client                        K8sClient
+	ecosystemClient               doguClient.EcoSystemV2Interface
+	recorder                      record.EventRecorder
+	localDoguFetcher              localDoguFetcher
+	resourceDoguFetcher           resourceDoguFetcher
+	imageRegistry                 imageRegistry
+	doguRegistrator               doguRegistrator
+	dependencyValidator           upgrade.DependencyValidator
+	serviceAccountCreator         serviceAccountCreator
+	fileExtractor                 exec.FileExtractor
+	collectApplier                resource.CollectApplier
+	resourceUpserter              resource.ResourceUpserter
+	execPodFactory                exec.ExecPodFactory
+	doguConfigRepository          doguConfigRepository
+	sensitiveDoguRepository       doguConfigRepository
+	securityValidator             securityValidator
+	doguAdditionalMountsValidator doguAdditionalMountsValidator
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
 func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, configRepos util.ConfigRepositories) *doguInstallManager {
 	return &doguInstallManager{
-		client:                  client,
-		ecosystemClient:         mgrSet.EcosystemClient,
-		recorder:                eventRecorder,
-		localDoguFetcher:        mgrSet.LocalDoguFetcher,
-		resourceDoguFetcher:     mgrSet.ResourceDoguFetcher,
-		imageRegistry:           mgrSet.ImageRegistry,
-		doguRegistrator:         mgrSet.DoguRegistrator,
-		dependencyValidator:     mgrSet.DependencyValidator,
-		serviceAccountCreator:   mgrSet.ServiceAccountCreator,
-		fileExtractor:           mgrSet.FileExtractor,
-		collectApplier:          mgrSet.CollectApplier,
-		resourceUpserter:        mgrSet.ResourceUpserter,
-		execPodFactory:          exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
-		doguConfigRepository:    configRepos.DoguConfigRepository,
-		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
-		securityValidator:       mgrSet.SecurityValidator,
+		client:                        client,
+		ecosystemClient:               mgrSet.EcosystemClient,
+		recorder:                      eventRecorder,
+		localDoguFetcher:              mgrSet.LocalDoguFetcher,
+		resourceDoguFetcher:           mgrSet.ResourceDoguFetcher,
+		imageRegistry:                 mgrSet.ImageRegistry,
+		doguRegistrator:               mgrSet.DoguRegistrator,
+		dependencyValidator:           mgrSet.DependencyValidator,
+		serviceAccountCreator:         mgrSet.ServiceAccountCreator,
+		fileExtractor:                 mgrSet.FileExtractor,
+		collectApplier:                mgrSet.CollectApplier,
+		resourceUpserter:              mgrSet.ResourceUpserter,
+		execPodFactory:                exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
+		doguConfigRepository:          configRepos.DoguConfigRepository,
+		sensitiveDoguRepository:       configRepos.SensitiveDoguRepository,
+		securityValidator:             mgrSet.SecurityValidator,
+		doguAdditionalMountsValidator: mgrSet.DoguAdditionalMountValidator,
 	}
 }
 
@@ -105,6 +107,13 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *doguv2.D
 	logger.Info("Validating dogu security...")
 	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Validating dogu security...")
 	err = m.securityValidator.ValidateSecurity(dogu, doguResource)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Validating dogu additional mounts...")
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, InstallEventReason, "Validating dogu additional mounts...")
+	err = m.doguAdditionalMountsValidator.ValidateAdditionalMounts(ctx, dogu, doguResource)
 	if err != nil {
 		return err
 	}

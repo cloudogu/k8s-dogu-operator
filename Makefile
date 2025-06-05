@@ -1,11 +1,10 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=3.7.0
+VERSION=3.8.0
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG=1.24.3
-LINT_VERSION=v1.64.7
-MAKEFILES_VERSION=9.9.1
+MAKEFILES_VERSION=10.1.0
 
 PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
