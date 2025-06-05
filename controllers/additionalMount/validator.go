@@ -47,7 +47,7 @@ func (v *Validator) ValidateAdditionalMounts(ctx context.Context, doguDescriptor
 	var multiErr []error
 	var additionalMounts = make(map[k8sv2.DataMount]struct{})
 
-	if len(doguResource.Spec.AdditionalMounts) > 0 && !hasVolumeWithName(doguDescriptor, "localConfig") {
+	if len(doguResource.Spec.AdditionalMounts) > 0 && getDoguVolumeWithName(doguDescriptor, "localConfig") == nil {
 		multiErr = append(multiErr, fmt.Errorf("dogu %s has no local config volume needed by addtional data mounts", doguResource.Name))
 	}
 
@@ -59,9 +59,12 @@ func (v *Validator) ValidateAdditionalMounts(ctx context.Context, doguDescriptor
 		}
 		additionalMounts[dataMount] = struct{}{}
 
+		doguVolume := getDoguVolumeWithName(doguDescriptor, dataMount.Volume)
 		// check for valid dogu descriptor volume references
-		if !hasVolumeWithName(doguDescriptor, dataMount.Volume) {
+		if doguVolume == nil {
 			multiErr = append(multiErr, fmt.Errorf("volume %s does not exists in dogu descriptor for dogu %s", dataMount.Volume, doguResource.Name))
+		} else if len(doguVolume.Clients) > 0 {
+			multiErr = append(multiErr, fmt.Errorf("volume %s with volumeclients are currently not supported for addtitionalMounts on dogu %s", dataMount.Volume, doguResource.Name))
 		}
 
 		// check if the source really exists
@@ -74,13 +77,13 @@ func (v *Validator) ValidateAdditionalMounts(ctx context.Context, doguDescriptor
 	return errors.Join(multiErr...)
 }
 
-func hasVolumeWithName(dogu *core.Dogu, volume string) bool {
+func getDoguVolumeWithName(dogu *core.Dogu, volume string) *core.Volume {
 	for _, doguVolume := range dogu.Volumes {
 		if doguVolume.Name == volume {
-			return true
+			return &doguVolume
 		}
 	}
-	return false
+	return nil
 }
 
 func (v *Validator) validateSource(ctx context.Context, mount k8sv2.DataMount) error {

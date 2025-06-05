@@ -28,6 +28,15 @@ func TestValidator_ValidateAdditionalMounts(t *testing.T) {
 				Name: "localConfig",
 				Path: "/var/ces/config",
 			},
+			{
+				Name: "menu-json",
+				Path: "/var/www/html/warp/menu",
+				Clients: []core.VolumeClient{
+					{
+						Name: "k8s-dogu-operator",
+					},
+				},
+			},
 		},
 	}
 
@@ -87,6 +96,20 @@ func TestValidator_ValidateAdditionalMounts(t *testing.T) {
 					SourceType: k8sv2.DataSourceConfigMap,
 					Name:       "configmap1",
 					Volume:     "not found",
+				},
+			},
+		},
+	}
+
+	volumeClientAdditionalMount := &k8sv2.Dogu{
+		ObjectMeta: v1.ObjectMeta{Name: "nginx"},
+		Spec: k8sv2.DoguSpec{
+			Name: "nginx",
+			AdditionalMounts: []k8sv2.DataMount{
+				{
+					SourceType: k8sv2.DataSourceConfigMap,
+					Name:       "configmap1",
+					Volume:     "menu-json",
 				},
 			},
 		},
@@ -196,6 +219,26 @@ func TestValidator_ValidateAdditionalMounts(t *testing.T) {
 			wantErr: true,
 			assertError: func(t assert.TestingT, err error) {
 				assert.ErrorContains(t, err, "volume not found does not exists in dogu descriptor for dogu nginx")
+			},
+		},
+		{
+			name: "should return an error on dogu volume with volume clients",
+			fields: fields{
+				configMapInterface: func(t *testing.T) configMapGetter {
+					mock := newMockConfigMapGetter(t)
+					mock.EXPECT().Get(testCtx, "configmap1", v1.GetOptions{}).Times(1).Return(nil, nil)
+
+					return mock
+				},
+			},
+			args: args{
+				ctx:            testCtx,
+				doguResource:   volumeClientAdditionalMount,
+				doguDescriptor: nginxDogu,
+			},
+			wantErr: true,
+			assertError: func(t assert.TestingT, err error) {
+				assert.ErrorContains(t, err, "volume menu-json with volumeclients are currently not supported for addtitionalMounts on dogu nginx")
 			},
 		},
 		{
