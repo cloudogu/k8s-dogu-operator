@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -27,7 +28,7 @@ const (
 type doguAdditionalMountManager struct {
 	deploymentInterface          deploymentInterface
 	resourceGenerator            additionalMountsInitContainerGenerator
-	resourceDoguFetcher          resourceDoguFetcher
+	localDoguFetcher             localDoguFetcher
 	requirementsGenerator        requirementsGenerator
 	doguAdditionalMountValidator doguAdditionalMountsValidator
 	doguInterface                doguClient.DoguInterface
@@ -38,7 +39,7 @@ func NewDoguAdditionalMountManager(deploymentInterface deploymentInterface, mgrS
 	return &doguAdditionalMountManager{
 		deploymentInterface:          deploymentInterface,
 		resourceGenerator:            mgrSet.DoguAdditionalMountsInitContainerGenerator,
-		resourceDoguFetcher:          mgrSet.ResourceDoguFetcher,
+		localDoguFetcher:             mgrSet.LocalDoguFetcher,
 		requirementsGenerator:        mgrSet.RequirementsGenerator,
 		doguAdditionalMountValidator: mgrSet.DoguAdditionalMountValidator,
 		image:                        mgrSet.AdditionalImages[config.AdditionalMountsInitContainerImageConfigmapNameKey],
@@ -97,7 +98,9 @@ func (m *doguAdditionalMountManager) getDoguDeployment(ctx context.Context, dogu
 }
 
 func (m *doguAdditionalMountManager) createAdditionalMountInitContainer(ctx context.Context, doguResource *v2.Dogu) (*corev1.Container, error) {
-	dogu, _, err := m.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	// We have to fetch the dogu.json from the local dogu registry because the actual dogu.json is already registered.
+	// If we fetched the dogu.json from remote or dev configmap the dev configmap dogu.json will be deleted at this time.
+	dogu, err := m.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err)
 	}
@@ -118,7 +121,7 @@ func (m *doguAdditionalMountManager) createAdditionalMountInitContainer(ctx cont
 func (m *doguAdditionalMountManager) UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error {
 	logger := log.FromContext(ctx)
 	logger.Info(fmt.Sprintf("Update additional mounts for dogu resource %s...", doguResource.Name))
-	dogu, _, err := m.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	dogu, err := m.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
 		return fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err)
 	}

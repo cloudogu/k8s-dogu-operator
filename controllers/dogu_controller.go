@@ -338,14 +338,6 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 		operations = append(operations, ChangeExportMode)
 	}
 
-	changed, err := r.doguManager.AdditionalMountsChanged(ctx, doguResource)
-	if err != nil {
-		return nil, err
-	}
-	if changed && !operationsContain(operations, ChangeAdditionalMounts) {
-		operations = append(operations, ChangeAdditionalMounts)
-	}
-
 	// Checking if the resource spec field has changed is unnecessary because we
 	// use a predicate to filter update events where specs don't change
 	upgradeable, err := checkUpgradeability(ctx, doguResource, r.fetcher)
@@ -358,6 +350,15 @@ func (r *doguReconciler) appendRequiredPostInstallOperations(ctx context.Context
 
 	if upgradeable {
 		operations = append(operations, Upgrade)
+	} else {
+		// ChangeAdditionalMounts operation should only be triggered if the dogu does not upgrade because the upgrade itself does this anyway.
+		changed, err := r.doguManager.AdditionalMountsChanged(ctx, doguResource)
+		if err != nil {
+			return nil, err
+		}
+		if changed && !operationsContain(operations, ChangeAdditionalMounts) {
+			operations = append(operations, ChangeAdditionalMounts)
+		}
 	}
 
 	if checkShouldStopDogu(doguResource) {
