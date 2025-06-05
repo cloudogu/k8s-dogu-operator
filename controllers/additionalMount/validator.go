@@ -64,7 +64,7 @@ func (v *Validator) ValidateAdditionalMounts(ctx context.Context, doguDescriptor
 		if doguVolume == nil {
 			multiErr = append(multiErr, fmt.Errorf("volume %s does not exists in dogu descriptor for dogu %s", dataMount.Volume, doguResource.Name))
 		} else if len(doguVolume.Clients) > 0 {
-			multiErr = append(multiErr, fmt.Errorf("volume %s with volumeclients are currently not supported for addtitionalMounts on dogu %s", dataMount.Volume, doguResource.Name))
+			multiErr = append(multiErr, fmt.Errorf("volume %s with volumeclients is currently not supported for addtitionalMounts on dogu %s", dataMount.Volume, doguResource.Name))
 		}
 
 		// check if the source really exists
