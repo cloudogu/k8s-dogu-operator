@@ -20,7 +20,7 @@ import (
 // NewDoguUpgradeManager creates a new instance of doguUpgradeManager which handles dogu upgrades.
 func NewDoguUpgradeManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguUpgradeManager {
 	doguChecker := health.NewDoguChecker(mgrSet.EcosystemClient, mgrSet.LocalDoguFetcher)
-	premisesChecker := upgrade.NewPremisesChecker(mgrSet.DependencyValidator, doguChecker, doguChecker, mgrSet.SecurityValidator)
+	premisesChecker := upgrade.NewPremisesChecker(mgrSet.DependencyValidator, doguChecker, doguChecker, mgrSet.SecurityValidator, mgrSet.DoguAdditionalMountValidator)
 
 	upgradeExecutor := upgrade.NewUpgradeExecutor(client, mgrSet, eventRecorder, mgrSet.EcosystemClient)
 

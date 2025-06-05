@@ -42,7 +42,7 @@ spec:
               type: Unconfined
             appArmorProfile:
               type: Unconfined
-          command: ["sh", "-c", "mkdir -p \"/var/lib/openldap\" && chown -R 100:101 \"/var/lib/openldap\" && mkdir -p \"/etc/openldap/slapd.d\" && chown -R 100:101 \"/etc/openldap/slapd.d\""]
+          command: ["sh", "-c", "mkdir -p \"/var/lib/openldap\" && chown -R 100:101 \"/var/lib/openldap\" && mkdir -p \"/etc/openldap/slapd.d\" && chown -R 100:101 \"/etc/openldap/slapd.d\" && mkdir -p \"/var/ces/config\" && chown -R 100:101 \"/var/ces/config\""]
           volumeMounts:
             - name: ldap-data
               mountPath: "/var/lib/openldap"
@@ -55,6 +55,46 @@ spec:
             - name: configmap-test
               mountPath: "/etc/my-configmap.conf"
               readonly: false
+            - mountPath: /var/ces/config
+              name: ldap-data
+              subPath: localConfig
+        - image: additionalMounts:0.0.1
+          imagePullPolicy: IfNotPresent
+          name: dogu-additional-mounts-init
+          resources: { }
+          securityContext:
+            appArmorProfile:
+              type: Unconfined
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+            seLinuxOptions: { }
+            seccompProfile:
+              type: Unconfined
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - name: ldap-data
+              mountpath: /dogumount/var/lib/openldap
+              subpath: db
+            - name: ldap-data
+              mountpath: /dogumount/etc/openldap/slapd.d
+              subpath: config
+            - name: configmap-test
+              mountpath: /dogumount/etc/my-configmap.conf
+            - name: ldap-data
+              mountpath: /dogumount/var/ces/config
+              subpath: localConfig
+            - name: normal-config
+              readonly: true
+              mountpath: /dogumount/etc/ces/config/normal
+            - name: sensitive-config
+              readonly: true
+              mountpath: /dogumount/etc/ces/config/sensitive
+          args:
+            - "copy"
       containers:
         - image: registry.cloudogu.com/official/ldap:2.4.48-4
           imagePullPolicy: IfNotPresent
@@ -97,6 +137,9 @@ spec:
               subPath: config
             - mountPath: /etc/my-configmap.conf
               name: configmap-test
+            - mountPath: /var/ces/config
+              name: ldap-data
+              subPath: localConfig
           livenessProbe:
             failureThreshold: 180
             periodSeconds: 10

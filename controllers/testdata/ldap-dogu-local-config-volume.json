@@ -47,24 +47,6 @@
       "NeedsBackup": true
     },
     {
-      "Name": "configmap-test",
-      "Path": "/etc/my-configmap.conf",
-      "Owner": "100",
-      "Group": "101",
-      "NeedsBackup": true,
-      "Clients": [
-        {
-          "Name": "k8s-dogu-operator",
-          "Params": {
-            "Type": "configmap",
-            "Content": {
-              "Name": "k8s-my-configmap"
-            }
-          }
-        }
-      ]
-    },
-    {
       "Name": "localConfig",
       "Path": "/var/ces/config",
       "Owner": "100",

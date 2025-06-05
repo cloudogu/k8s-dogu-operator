@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 	"strings"
@@ -42,7 +43,8 @@ const (
 )
 
 const (
-	chownInitContainerName = "dogu-volume-chown-init"
+	chownInitContainerName            = "dogu-volume-chown-init"
+	additionalMountsInitContainerName = "dogu-additional-mounts-init"
 )
 
 // kubernetesServiceAccountKind describes a service account on kubernetes.
@@ -51,6 +53,15 @@ const kubernetesServiceAccountKind = "k8s"
 const (
 	startupProbeTimoutEnv      = "DOGU_STARTUP_PROBE_TIMEOUT"
 	defaultStartupProbeTimeout = 1
+)
+
+var (
+	additionalMountsDoguMountDir  = fmt.Sprintf("%sdogumount", string(os.PathSeparator))
+	additionalMouuntsDataMountDir = fmt.Sprintf("%sdatamount", string(os.PathSeparator))
+)
+
+const (
+	additionalMountsArg = "copy"
 )
 
 // resourceGenerator generate k8s resources for a given dogu. All resources will be referenced with the dogu resource
@@ -112,7 +123,7 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
 	exportModeActive := doguResource.Spec.ExportMode
 
-	volumes, err := createVolumes(doguResource, dogu, exportModeActive)
+	volumes, err := CreateVolumes(doguResource, dogu, exportModeActive)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +139,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		{Name: doguPodMultiNode, Value: "true"},
 	}
 
+	initContainers := make([]*corev1.Container, 0)
 	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
 
 	resourceRequirements, err := r.requirementsGenerator.Generate(ctx, dogu)
@@ -138,6 +150,16 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage, resourceRequirements)
 	if err != nil {
 		return nil, err
+	}
+	initContainers = append(initContainers, chownContainer)
+
+	if hasLocalConfigVolume(dogu) {
+		additionalMountsContainerImage := r.additionalImages[config.AdditionalMountsInitContainerImageConfigmapNameKey]
+		additionalMountsContainer, err := r.BuildAdditionalMountInitContainer(dogu, doguResource, additionalMountsContainerImage, resourceRequirements)
+		if err != nil {
+			return nil, err
+		}
+		initContainers = append(initContainers, additionalMountsContainer)
 	}
 
 	sidecars := make([]*corev1.Container, 0)
@@ -163,7 +185,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		volumes(volumes).
 		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 		enableServiceLinks(false).
-		initContainers(chownContainer).
+		initContainers(initContainers...).
 		sidecarContainers(sidecars...).
 		containerEmptyCommandAndArgs().
 		containerLivenessProbe().
@@ -177,6 +199,94 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		build()
 
 	return podTemplate, nil
+}
+
+func hasLocalConfigVolume(dogu *core.Dogu) bool {
+	for _, doguVolume := range dogu.Volumes {
+		if doguVolume.Name == "localConfig" {
+			return true
+		}
+	}
+	return false
+}
+
+// findVolumeByName looks for a volume with the given name in the dogu's volumes.
+func findVolumeByName(dogu *core.Dogu, volumeName string) (*core.Volume, error) {
+	for _, v := range dogu.Volumes {
+		if v.Name == volumeName {
+			return &v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find volume name %s in dogu %s", volumeName, dogu.Name)
+}
+
+// BuildAdditionalMountInitContainer creates a container for mounting data into a dogu.
+func (r *resourceGenerator) BuildAdditionalMountInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
+	mounts, args, err := prepareAdditionalMountsAndArgs(dogu, doguResource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare additional mounts configuration: %w", err)
+	}
+
+	runAsNonRoot := false
+	readOnlyRootFilesystem := false
+	return &corev1.Container{
+		Name:            additionalMountsInitContainerName,
+		Image:           image,
+		Args:            args,
+		VolumeMounts:    mounts,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Resources:       requirements,
+		// set default values explicitly to make deep equality work
+		TerminationMessagePath:   "/dev/termination-log",
+		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{core.All},
+			},
+			RunAsNonRoot:           &runAsNonRoot,
+			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
+			SELinuxOptions:         &corev1.SELinuxOptions{},
+			SeccompProfile:         &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
+			AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
+		},
+	}, nil
+}
+
+// prepareAdditionalMountsAndArgs generates volume mounts and command arguments for the dogu additional mount init container.
+func prepareAdditionalMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) ([]corev1.VolumeMount, []string, error) {
+	additionalMounts := doguResource.Spec.AdditionalMounts
+	var volumeMounts []corev1.VolumeMount
+	args := []string{additionalMountsArg}
+	sourceVolumeSet := make(map[string]struct{})
+
+	for _, dataMount := range additionalMounts {
+		doguVolume, err := findVolumeByName(dogu, dataMount.Volume)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Set up the source volume mount if not already processed
+		sourcePath := path.Join(additionalMouuntsDataMountDir, dataMount.Name)
+		if _, processed := sourceVolumeSet[dataMount.Name]; !processed {
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      dataMount.Name,
+				MountPath: sourcePath,
+			})
+			sourceVolumeSet[dataMount.Name] = struct{}{}
+		}
+
+		// Set up init-Container arguments
+		targetPath := path.Join(additionalMountsDoguMountDir, doguVolume.Path, dataMount.Subfolder)
+		args = append(args, fmt.Sprintf("-source=%s", sourcePath), fmt.Sprintf("-target=%s", targetPath))
+	}
+
+	// mount all dogu descriptor volumes as target, so that the deletion of unneeded files is still possible
+	volumeMounts = append(volumeMounts, createDoguVolumeMountsWithMountPathPrefix(doguResource, dogu, additionalMountsDoguMountDir)...)
+	// add static volumes needed by the init container to write config
+	volumeMounts = append(volumeMounts, createStaticDoguConfigVolumeMounts(additionalMountsDoguMountDir)...)
+
+	return volumeMounts, args, nil
 }
 
 func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitImage string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
