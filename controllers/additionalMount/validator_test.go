@@ -238,7 +238,7 @@ func TestValidator_ValidateAdditionalMounts(t *testing.T) {
 			},
 			wantErr: true,
 			assertError: func(t assert.TestingT, err error) {
-				assert.ErrorContains(t, err, "volume menu-json with volumeclients are currently not supported for addtitionalMounts on dogu nginx")
+				assert.ErrorContains(t, err, "volume menu-json with volumeclients is currently not supported for addtitionalMounts on dogu nginx")
 			},
 		},
 		{
