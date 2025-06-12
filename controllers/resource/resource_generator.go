@@ -270,7 +270,6 @@ func getUIDAndGIDFromDogu(ctx context.Context, dogu *core.Dogu) (*int64, *int64)
 	owner, err := strconv.Atoi(ownerStr)
 	if err != nil {
 		// this only happens if the dogu descriptor is invalid; not much we can do here
-		// maybe consider using int64 instead of string for the group in the dogu-descriptor?
 		logInvalidVolumePropertyError(ctx, err, "owner", dogu.Name, ownerStr)
 		return nil, nil
 	}
