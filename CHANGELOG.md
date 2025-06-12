@@ -5,8 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.8.1] - 2025-06-12
 ### Fixed
 - [#248] Use correct user and group ids for the `additionalMounts` Init-Container.
+  - Note that UIDs/GIDs need to be uniform for all dogu volumes, otherwise this feature may not work as expected
 - [#248] update to image cloudogu/dogu-additional-mounts-init:0.1.2, so that user and group ids are set correctly.
 
 ## [v3.8.0] - 2025-06-05
