@@ -27,7 +27,7 @@ type doguAdditionalMountsValidator interface {
 }
 
 type additionalMountsInitContainerGenerator interface {
-	BuildAdditionalMountInitContainer(dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
+	BuildAdditionalMountInitContainer(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
 }
 
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.

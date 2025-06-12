@@ -166,7 +166,7 @@ func Test_doguAdditionalMountsManager_AdditionalMountsChanged(t *testing.T) {
 				},
 				resourceGenerator: func() additionalMountsInitContainerGenerator {
 					mock := newMockAdditionalMountsInitContainerGenerator(t)
-					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithAdditionalMounts, nil)
+					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithAdditionalMounts, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -213,7 +213,7 @@ func Test_doguAdditionalMountsManager_AdditionalMountsChanged(t *testing.T) {
 				},
 				resourceGenerator: func() additionalMountsInitContainerGenerator {
 					mock := newMockAdditionalMountsInitContainerGenerator(t)
-					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithAdditionalMounts, nil)
+					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithAdditionalMounts, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -372,7 +372,7 @@ func Test_doguAdditionalMountsManager_createDataMountInitContainer(t *testing.T)
 				},
 				resourceGenerator: func() additionalMountsInitContainerGenerator {
 					mock := newMockAdditionalMountsInitContainerGenerator(t)
-					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResource, "", corev1.ResourceRequirements{}).Return(nil, assert.AnError)
+					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResource, "", corev1.ResourceRequirements{}).Return(nil, assert.AnError)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -557,7 +557,7 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 				},
 				resourceGenerator: func() additionalMountsInitContainerGenerator {
 					mock := newMockAdditionalMountsInitContainerGenerator(t)
-					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -599,7 +599,7 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 				},
 				resourceGenerator: func() additionalMountsInitContainerGenerator {
 					mock := newMockAdditionalMountsInitContainerGenerator(t)
-					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {
@@ -639,7 +639,7 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 				},
 				resourceGenerator: func() additionalMountsInitContainerGenerator {
 					mock := newMockAdditionalMountsInitContainerGenerator(t)
-					mock.EXPECT().BuildAdditionalMountInitContainer(nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
+					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {

@@ -64,6 +64,8 @@ spec:
           name: dogu-additional-mounts-init
           resources: { }
           securityContext:
+            RunAsUser: 100
+            RunAsGroup: 101
             appArmorProfile:
               type: Unconfined
             capabilities:

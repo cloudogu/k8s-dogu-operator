@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/ptr"
 	"os"
 	"path"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -155,7 +156,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 
 	if hasLocalConfigVolume(dogu) {
 		additionalMountsContainerImage := r.additionalImages[config.AdditionalMountsInitContainerImageConfigmapNameKey]
-		additionalMountsContainer, err := r.BuildAdditionalMountInitContainer(dogu, doguResource, additionalMountsContainerImage, resourceRequirements)
+		additionalMountsContainer, err := r.BuildAdditionalMountInitContainer(ctx, dogu, doguResource, additionalMountsContainerImage, resourceRequirements)
 		if err != nil {
 			return nil, err
 		}
@@ -222,12 +223,13 @@ func findVolumeByName(dogu *core.Dogu, volumeName string) (*core.Volume, error) 
 }
 
 // BuildAdditionalMountInitContainer creates a container for mounting data into a dogu.
-func (r *resourceGenerator) BuildAdditionalMountInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, image string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
+func (r *resourceGenerator) BuildAdditionalMountInitContainer(ctx context.Context, dogu *core.Dogu, doguResource *k8sv2.Dogu, image string, requirements corev1.ResourceRequirements) (*corev1.Container, error) {
 	mounts, args, err := prepareAdditionalMountsAndArgs(dogu, doguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare additional mounts configuration: %w", err)
 	}
 
+	uid, gid := getUIDAndGIDFromDogu(ctx, dogu)
 	runAsNonRoot := false
 	readOnlyRootFilesystem := false
 	return &corev1.Container{
@@ -241,6 +243,8 @@ func (r *resourceGenerator) BuildAdditionalMountInitContainer(dogu *core.Dogu, d
 		TerminationMessagePath:   "/dev/termination-log",
 		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
 		SecurityContext: &corev1.SecurityContext{
+			RunAsUser:  uid,
+			RunAsGroup: gid,
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{core.All},
 			},
@@ -251,6 +255,36 @@ func (r *resourceGenerator) BuildAdditionalMountInitContainer(dogu *core.Dogu, d
 			AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
 		},
 	}, nil
+}
+
+// getUIDAndGIDFromDogu selects the first volume of a dogu and returns the specified uid and gid from it.
+// Errors during parsing will be logged and nil, nil will be returned.
+// We can choose the first volume from the dogu here because in every volume of the dogu.json the ids must be equal.
+func getUIDAndGIDFromDogu(ctx context.Context, dogu *core.Dogu) (*int64, *int64) {
+	if len(dogu.Volumes) == 0 {
+		return nil, nil
+	}
+
+	ownerStr := dogu.Volumes[0].Owner
+	groupStr := dogu.Volumes[0].Group
+	owner, err := strconv.Atoi(ownerStr)
+	if err != nil {
+		// this only happens if the dogu descriptor is invalid; not much we can do here
+		// maybe consider using int64 instead of string for the group in the dogu-descriptor?
+		logInvalidVolumePropertyError(ctx, err, "owner", dogu.Name, ownerStr)
+		return nil, nil
+	}
+	group, err := strconv.Atoi(groupStr)
+	if err != nil {
+		logInvalidVolumePropertyError(ctx, err, "group", dogu.Name, groupStr)
+		return nil, nil
+	}
+
+	return ptr.To(int64(owner)), ptr.To(int64(group))
+}
+
+func logInvalidVolumePropertyError(ctx context.Context, err error, property, doguName, value string) {
+	log.FromContext(ctx).Error(err, fmt.Sprintf("dogu-descriptor %q: failed to convert %s %q in volume to int", property, doguName, value))
 }
 
 // prepareAdditionalMountsAndArgs generates volume mounts and command arguments for the dogu additional mount init container.

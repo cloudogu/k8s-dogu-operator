@@ -3,6 +3,8 @@
 package controllers
 
 import (
+	context "context"
+
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 
@@ -24,9 +26,9 @@ func (_m *mockAdditionalMountsInitContainerGenerator) EXPECT() *mockAdditionalMo
 	return &mockAdditionalMountsInitContainerGenerator_Expecter{mock: &_m.Mock}
 }
 
-// BuildAdditionalMountInitContainer provides a mock function with given fields: dogu, doguResource, image, requirements
-func (_m *mockAdditionalMountsInitContainerGenerator) BuildAdditionalMountInitContainer(dogu *core.Dogu, doguResource *v2.Dogu, image string, requirements v1.ResourceRequirements) (*v1.Container, error) {
-	ret := _m.Called(dogu, doguResource, image, requirements)
+// BuildAdditionalMountInitContainer provides a mock function with given fields: ctx, dogu, doguResource, image, requirements
+func (_m *mockAdditionalMountsInitContainerGenerator) BuildAdditionalMountInitContainer(ctx context.Context, dogu *core.Dogu, doguResource *v2.Dogu, image string, requirements v1.ResourceRequirements) (*v1.Container, error) {
+	ret := _m.Called(ctx, dogu, doguResource, image, requirements)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BuildAdditionalMountInitContainer")
@@ -34,19 +36,19 @@ func (_m *mockAdditionalMountsInitContainerGenerator) BuildAdditionalMountInitCo
 
 	var r0 *v1.Container
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*core.Dogu, *v2.Dogu, string, v1.ResourceRequirements) (*v1.Container, error)); ok {
-		return rf(dogu, doguResource, image, requirements)
+	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu, *v2.Dogu, string, v1.ResourceRequirements) (*v1.Container, error)); ok {
+		return rf(ctx, dogu, doguResource, image, requirements)
 	}
-	if rf, ok := ret.Get(0).(func(*core.Dogu, *v2.Dogu, string, v1.ResourceRequirements) *v1.Container); ok {
-		r0 = rf(dogu, doguResource, image, requirements)
+	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu, *v2.Dogu, string, v1.ResourceRequirements) *v1.Container); ok {
+		r0 = rf(ctx, dogu, doguResource, image, requirements)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v1.Container)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*core.Dogu, *v2.Dogu, string, v1.ResourceRequirements) error); ok {
-		r1 = rf(dogu, doguResource, image, requirements)
+	if rf, ok := ret.Get(1).(func(context.Context, *core.Dogu, *v2.Dogu, string, v1.ResourceRequirements) error); ok {
+		r1 = rf(ctx, dogu, doguResource, image, requirements)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -60,17 +62,18 @@ type mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContaine
 }
 
 // BuildAdditionalMountInitContainer is a helper method to define mock.On call
+//   - ctx context.Context
 //   - dogu *core.Dogu
 //   - doguResource *v2.Dogu
 //   - image string
 //   - requirements v1.ResourceRequirements
-func (_e *mockAdditionalMountsInitContainerGenerator_Expecter) BuildAdditionalMountInitContainer(dogu interface{}, doguResource interface{}, image interface{}, requirements interface{}) *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call {
-	return &mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call{Call: _e.mock.On("BuildAdditionalMountInitContainer", dogu, doguResource, image, requirements)}
+func (_e *mockAdditionalMountsInitContainerGenerator_Expecter) BuildAdditionalMountInitContainer(ctx interface{}, dogu interface{}, doguResource interface{}, image interface{}, requirements interface{}) *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call {
+	return &mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call{Call: _e.mock.On("BuildAdditionalMountInitContainer", ctx, dogu, doguResource, image, requirements)}
 }
 
-func (_c *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call) Run(run func(dogu *core.Dogu, doguResource *v2.Dogu, image string, requirements v1.ResourceRequirements)) *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call {
+func (_c *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call) Run(run func(ctx context.Context, dogu *core.Dogu, doguResource *v2.Dogu, image string, requirements v1.ResourceRequirements)) *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*core.Dogu), args[1].(*v2.Dogu), args[2].(string), args[3].(v1.ResourceRequirements))
+		run(args[0].(context.Context), args[1].(*core.Dogu), args[2].(*v2.Dogu), args[3].(string), args[4].(v1.ResourceRequirements))
 	})
 	return _c
 }
@@ -80,7 +83,7 @@ func (_c *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitCon
 	return _c
 }
 
-func (_c *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call) RunAndReturn(run func(*core.Dogu, *v2.Dogu, string, v1.ResourceRequirements) (*v1.Container, error)) *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call {
+func (_c *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call) RunAndReturn(run func(context.Context, *core.Dogu, *v2.Dogu, string, v1.ResourceRequirements) (*v1.Container, error)) *mockAdditionalMountsInitContainerGenerator_BuildAdditionalMountInitContainer_Call {
 	_c.Call.Return(run)
 	return _c
 }
