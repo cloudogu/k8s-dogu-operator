@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - [#248] Use correct user and group ids for the `additionalMounts` Init-Container.
+- [#248] update to image cloudogu/dogu-additional-mounts-init:0.1.2, so that user and group ids are set correctly.
 
 ## [v3.8.0] - 2025-06-05
 ### Added

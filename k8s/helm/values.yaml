@@ -11,7 +11,7 @@ additionalImages:
   # exporterImage will be used as sidecar container if the export-mode of a dogu is active
   exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.0.0
   # additionalMountsInitContainerImage will be used as init container if the dogu mounts additional data
-  additionalMountsInitContainerImage: cloudogu/dogu-additional-mounts-init:0.1.1
+  additionalMountsInitContainerImage: cloudogu/dogu-additional-mounts-init:0.1.2
 controllerManager:
   image:
     registry: docker.io
