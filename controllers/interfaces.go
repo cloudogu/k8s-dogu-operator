@@ -78,7 +78,7 @@ type additionalMountsManager interface {
 }
 
 type additionalMountsInitContainerGenerator interface {
-	BuildAdditionalMountInitContainer(dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
+	BuildAdditionalMountInitContainer(ctx context.Context, dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
 }
 
 type startStopManager interface {

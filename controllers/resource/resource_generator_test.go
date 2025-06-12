@@ -585,7 +585,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, resources)
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -629,7 +629,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, expectedContainerImage, resources)
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, expectedContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -669,7 +669,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, expectedContainerImage, resources)
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, expectedContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -721,7 +721,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -770,7 +770,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -801,7 +801,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -821,7 +821,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		_, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		_, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.Error(t, err)
@@ -843,7 +843,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)
@@ -865,7 +865,7 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		sut := &resourceGenerator{}
 
 		// when
-		container, err := sut.BuildAdditionalMountInitContainer(dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
 
 		// then
 		require.NoError(t, err)

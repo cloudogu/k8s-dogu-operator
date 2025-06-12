@@ -2,15 +2,10 @@ package resource
 
 import (
 	"context"
-	"fmt"
-	"strconv"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 func NewSecurityContextGenerator() *SecurityContextGenerator {
@@ -55,20 +50,11 @@ func (s *SecurityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu
 }
 
 func fsGroupAndChangePolicy(ctx context.Context, dogu *core.Dogu) (*int64, *corev1.PodFSGroupChangePolicy) {
-	if len(dogu.Volumes) > 0 {
-		rawGroup := dogu.Volumes[0].Group
-		group, err := strconv.Atoi(rawGroup)
-		if err != nil {
-			// this only happens if the dogu descriptor is invalid; not much we can do here
-			// maybe consider using int64 instead of string for the group in the dogu-descriptor?
-			log.FromContext(ctx).Error(err, fmt.Sprintf("dogu-descriptor %q: failed to convert group %q in volume to int", dogu.Name, rawGroup))
-			return nil, nil
-		}
-
-		return ptr.To(int64(group)), ptr.To(corev1.FSGroupChangeOnRootMismatch)
+	_, group := getUIDAndGIDFromDogu(ctx, dogu)
+	if group == nil {
+		return nil, nil
 	}
-
-	return nil, nil
+	return group, ptr.To(corev1.FSGroupChangeOnRootMismatch)
 }
 
 func seccompProfile(profile *v2.SeccompProfile) *corev1.SeccompProfile {

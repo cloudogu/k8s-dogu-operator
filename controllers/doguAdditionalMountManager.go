@@ -110,7 +110,7 @@ func (m *doguAdditionalMountManager) createAdditionalMountInitContainer(ctx cont
 		return nil, fmt.Errorf("failed to generate requirements for dogu %s: %w", doguResource.Name, err)
 	}
 
-	container, err := m.resourceGenerator.BuildAdditionalMountInitContainer(dogu, doguResource, m.image, requirements)
+	container, err := m.resourceGenerator.BuildAdditionalMountInitContainer(ctx, dogu, doguResource, m.image, requirements)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate dogu additional mounts init container while diff calculation: %w", err)
 	}
