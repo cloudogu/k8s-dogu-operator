@@ -1,7 +1,7 @@
 apiVersion: v1
 values:
   images:
-    doguOperator: cloudogu/k8s-dogu-operator:3.8.1
+    doguOperator: cloudogu/k8s-dogu-operator:3.8.2
     chownInitImage: busybox:1.36
     exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.0.0
     additionalMountsInitContainerImage: cloudogu/dogu-additional-mounts-init:0.1.2
