@@ -258,7 +258,7 @@ func (r *resourceGenerator) BuildAdditionalMountInitContainer(ctx context.Contex
 }
 
 // getUIDAndGIDFromDogu selects the first volume of a dogu and returns the specified uid and gid from it.
-// Errors during parsing will be logged and nil, nil will be returned.
+// Errors during parsing will be logged and (nil, nil) will be returned.
 // We can choose the first volume from the dogu here because in every volume of the dogu.json the ids must be equal.
 func getUIDAndGIDFromDogu(ctx context.Context, dogu *core.Dogu) (*int64, *int64) {
 	if len(dogu.Volumes) == 0 {
