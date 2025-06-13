@@ -124,7 +124,7 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		err = client.Get(context.TODO(), dogu.GetObjectKey(), resultDogu)
 		require.NoError(t, err)
 		assert.Equal(t, "", resultDogu.Status.RequeuePhase)
-		assert.Equal(t, "finished", state)
+		assert.Equal(t, "Validate Conditions", state)
 	})
 
 	t.Run("fail to get deployment", func(t *testing.T) {

@@ -134,18 +134,16 @@ func (e *editPVCStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, e
 }
 
 func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *doguv2.Dogu, quantity resource.Quantity) error {
-	logger := log.FromContext(ctx)
-	// Update Status before Resizing - this should set the condition to false
-	// because the new Minsize is larger than the actual current size before the resizing is finished
-	logger.Info("xxxxxxxxx Start Set Current Data Volume size in update PVC Quantity")
-	_ = SetCurrentDataVolumeSize(ctx, e.client, doguResource)
-	logger.Info("xxxxxxxxx End Set Current Data Volume size in update PVC Quantity")
 
 	e.eventRecorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Update dogu data PVC request storage...")
 	pvc, err := doguResource.GetDataPVC(ctx, e.client)
 	if err != nil {
 		return err
 	}
+
+	// Update Status before Resizing - this should set the condition to false
+	// because the new Minsize is larger than the actual current size before the resizing is finished
+	_ = SetCurrentDataVolumeSize(ctx, e.client, doguResource)
 
 	// It is necessary to create a new map because just setting a new quantity results in an exception.
 	pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}
