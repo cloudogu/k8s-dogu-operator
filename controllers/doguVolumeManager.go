@@ -355,7 +355,8 @@ func SetCurrentDataVolumeSize(ctx context.Context, client client.Client, doguRes
 	}
 	if minDataSize.Value() > currentSize.Value() {
 		condition.Status = metav1.ConditionFalse
-		condition.Reason = fmt.Sprintf("Current VolumeSize '%d' is less then the configured minimum VolumeSize '%d'", currentSize.Value(), minDataSize.Value())
+		condition.Message = fmt.Sprintf("Current VolumeSize '%d' is less then the configured minimum VolumeSize '%d'", currentSize.Value(), minDataSize.Value())
+		condition.Reason = "VolumeSizeNotMeetsMinDataSize"
 	}
 
 	logger.Info(fmt.Sprintf("set condition for resizing %d - %d -> %v", currentSize.Value(), minDataSize.Value(), condition.Status))
