@@ -330,7 +330,6 @@ func SetCurrentDataVolumeSize(ctx context.Context, client client.Client, doguRes
 
 	logger.Info("Get Data PVC...")
 	pvc, err := doguResource.GetDataPVC(ctx, client)
-	logger.Info(fmt.Sprintf("zzzzzzzzzzzz %d", pvc.Status.Capacity.Storage().Value()))
 	if err != nil {
 		logger.Error(err, "failed to get data pvc")
 		return err
