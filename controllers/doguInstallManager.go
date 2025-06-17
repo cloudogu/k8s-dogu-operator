@@ -299,7 +299,7 @@ func SetDefaultDataVolumeSize(ctx context.Context, client client.Client, doguRes
 
 	// Check min size condition
 	condition := metav1.Condition{
-		Type:               doguv2.DoguStatusConditionMeetsMinimumDataVolumeSize,
+		Type:               doguv2.ConditionMeetsMinVolumeSize,
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 		Reason:             "DefaultVolumeSizeNotMeetsMinDataSize",
@@ -310,7 +310,7 @@ func SetDefaultDataVolumeSize(ctx context.Context, client client.Client, doguRes
 		return err
 	}
 
-	doguResource.Status.DataVolumeSize.Set(minDataSize.Value())
+	doguResource.Status.DataVolumeSize = &minDataSize
 
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
 

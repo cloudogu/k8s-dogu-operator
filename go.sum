@@ -24,6 +24,10 @@ github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250611075819-8545fa68cf3b h1:30qfAE
 github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250611075819-8545fa68cf3b/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250611084136-e47868d158de h1:+N/pbdQ1tQ+1iHl2d8/eZdDHlS88qeNub1TGcO22Iu8=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250611084136-e47868d158de/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250617063410-fd45a4d83428 h1:GXs1kKI35DiM//vIjQoPd06v4QqC5FmwxQX6Ms0tjws=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250617063410-fd45a4d83428/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250617064447-9b2bbe9ee7d7 h1:Ac7yIFvsnr1tFHOw62Hxm2FlpwNeYoy3e2l4adA26nQ=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250617064447-9b2bbe9ee7d7/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.8.0 h1:ae+LtiY+J2/qIX1AUJLcVxx/FQvlstq9ViVMwlJD26Y=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.8.0/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
 github.com/cloudogu/k8s-host-change v0.7.2 h1:so4QkgZxYkMPVF39xNETVHlVpATWMwTuu4beE7laUbw=

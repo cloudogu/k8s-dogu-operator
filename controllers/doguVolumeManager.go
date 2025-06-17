@@ -337,11 +337,11 @@ func SetCurrentDataVolumeSize(ctx context.Context, client client.Client, doguRes
 
 	logger.Info("Get Current Data Size..")
 	currentSize := pvc.Status.Capacity.Storage()
-	doguResource.Status.DataVolumeSize.Set(currentSize.Value())
+	doguResource.Status.DataVolumeSize = currentSize
 
 	// Check min size condition
 	condition := metav1.Condition{
-		Type:               doguv2.DoguStatusConditionMeetsMinimumDataVolumeSize,
+		Type:               doguv2.ConditionMeetsMinVolumeSize,
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 	}

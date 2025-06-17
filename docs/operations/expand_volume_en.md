@@ -40,7 +40,7 @@ If the controller determines that the volume size needs to be changed, the confi
 `minDataVolumeSize` and the actual size of the volume are not identical at the start of the resize process. 
 Since volumes cannot be reduced in size, the `minDataVolumeSize` is therefore larger than the current size.
 
-This state is stored in the condition `MeetsMinimumDataVolumeSize`, together with the status field `dogu.Status.DataVolumeSize`.
+This state is stored in the condition `meetsMinVolumeSize`, together with the status field `dogu.Status.DataVolumeSize`.
 
 Before starting, the condition has the value `False`.
 
@@ -49,5 +49,5 @@ This is used for the pod restart so that the PVCs can be updated and mounted. Th
 
 After the restart, the status is updated again. The system waits until the actual size equals (or exceeds) the configured minimum.
 
-This updates both the condition `MeetsMinimumDataVolumeSize` to `True` and the value of the status field `dogu.Status.DataVolumeSize`
+This updates both the condition `meetsMinVolumeSize` to `True` and the value of the status field `dogu.Status.DataVolumeSize`
 to the new actual size.
