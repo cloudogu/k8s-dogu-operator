@@ -156,7 +156,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 	availablePostgresqlDoguResource := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Name: "postgresql"},
 		Spec:       k8sv2.DoguSpec{Resources: k8sv2.DoguResources{MinDataVolumeSize: resource.MustParse("0")}},
-		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus, DataVolumeSize: resource.MustParse("0")},
+		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus},
 	}
 	cli := fake2.NewClientBuilder().
 		WithScheme(getTestScheme()).

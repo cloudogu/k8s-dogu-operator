@@ -52,12 +52,12 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 	availablePostgresqlDoguResource := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Name: "postgresql"},
 		Spec:       k8sv2.DoguSpec{Resources: k8sv2.DoguResources{MinDataVolumeSize: resource.MustParse("0")}},
-		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus, DataVolumeSize: resource.MustParse("0")},
+		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus},
 	}
 	availableCasDoguResource := &k8sv2.Dogu{
 		ObjectMeta: metav1.ObjectMeta{Name: "cas"},
 		Spec:       k8sv2.DoguSpec{Resources: k8sv2.DoguResources{MinDataVolumeSize: resource.MustParse("0")}},
-		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus, DataVolumeSize: resource.MustParse("0")},
+		Status:     k8sv2.DoguStatus{Health: k8sv2.AvailableHealthStatus},
 	}
 
 	t.Run("success with dogu sa", func(t *testing.T) {
