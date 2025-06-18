@@ -3,8 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -16,6 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 )
 
 const (
@@ -67,29 +68,31 @@ func (nre notResizedError) Error() string {
 // 4. scaleUpStep - Starts the terminated pods from the dogu.
 type doguVolumeManager struct {
 	client        client.Client
+	doguInterface doguClient.DoguInterface
 	eventRecorder record.EventRecorder
 	asyncExecutor async.AsyncExecutor
 }
 
 // NewDoguVolumeManager creates a new instance of the doguVolumeManager.
-func NewDoguVolumeManager(client client.Client, eventRecorder record.EventRecorder) *doguVolumeManager {
+func NewDoguVolumeManager(client client.Client, eventRecorder record.EventRecorder, doguInterface doguClient.DoguInterface) *doguVolumeManager {
 	asyncExecutor := async.NewDoguExecutionController()
-	createAsyncSteps(asyncExecutor, client, eventRecorder)
+	createAsyncSteps(asyncExecutor, client, eventRecorder, doguInterface)
 
 	return &doguVolumeManager{
 		client:        client,
+		doguInterface: doguInterface,
 		eventRecorder: eventRecorder,
 		asyncExecutor: asyncExecutor,
 	}
 }
 
-func createAsyncSteps(executor async.AsyncExecutor, client client.Client, recorder record.EventRecorder) {
+func createAsyncSteps(executor async.AsyncExecutor, client client.Client, recorder record.EventRecorder, doguInterface doguClient.DoguInterface) {
 	scaleUp := &scaleUpStep{client: client, eventRecorder: recorder, replicas: 1}
 	executor.AddStep(&scaleDownStep{client: client, eventRecorder: recorder, scaleUpStep: scaleUp})
-	executor.AddStep(&editPVCStep{client: client, eventRecorder: recorder})
+	executor.AddStep(&editPVCStep{client: client, eventRecorder: recorder, doguInterface: doguInterface})
 	executor.AddStep(&checkIfPVCIsResizedStep{client: client, eventRecorder: recorder})
 	executor.AddStep(scaleUp)
-	executor.AddStep(&dataVolumeSizeStep{client: client, eventRecorder: recorder})
+	executor.AddStep(&dataVolumeSizeStep{client: client, eventRecorder: recorder, doguInterface: doguInterface})
 }
 
 // SetDoguDataVolumeSize sets the quantity from the doguResource in the dogu data PVC.
@@ -109,6 +112,7 @@ func (d *doguVolumeManager) SetDoguDataVolumeSize(ctx context.Context, doguResou
 
 type editPVCStep struct {
 	client        client.Client
+	doguInterface doguClient.DoguInterface
 	eventRecorder record.EventRecorder
 }
 
@@ -134,7 +138,6 @@ func (e *editPVCStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, e
 }
 
 func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *doguv2.Dogu, quantity resource.Quantity) error {
-
 	e.eventRecorder.Event(doguResource, corev1.EventTypeNormal, VolumeExpansionEventReason, "Update dogu data PVC request storage...")
 	pvc, err := doguResource.GetDataPVC(ctx, e.client)
 	if err != nil {
@@ -143,7 +146,7 @@ func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *doguv
 
 	// Update Status before Resizing - this should set the condition to false
 	// because the new Minsize is larger than the actual current size before the resizing is finished
-	_ = SetCurrentDataVolumeSize(ctx, e.client, doguResource)
+	_ = opresource.SetCurrentDataVolumeSize(ctx, e.doguInterface, doguResource, pvc)
 
 	// It is necessary to create a new map because just setting a new quantity results in an exception.
 	pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}
@@ -279,6 +282,7 @@ func isPvcResizeApplicable(pvc *corev1.PersistentVolumeClaim) bool {
 
 type dataVolumeSizeStep struct {
 	client        client.Client
+	doguInterface doguClient.DoguInterface
 	eventRecorder record.EventRecorder
 }
 
@@ -295,7 +299,9 @@ func (d *dataVolumeSizeStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (st
 	if err != nil {
 		return "", err
 	}
+
 	currentSize := pvc.Status.Capacity.Storage()
+
 	minDataSize, err := dogu.GetMinDataVolumeSize()
 	if err != nil {
 		logger.Error(err, "failed to get min data volume size")
@@ -309,7 +315,7 @@ func (d *dataVolumeSizeStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (st
 		}
 	}
 
-	err = SetCurrentDataVolumeSize(ctx, d.client, dogu)
+	err = opresource.SetCurrentDataVolumeSize(ctx, d.doguInterface, dogu, pvc)
 
 	if err != nil {
 		return "", err
@@ -322,52 +328,4 @@ func (d *dataVolumeSizeStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (st
 	}
 
 	return async.FinishedState, nil
-}
-
-// SetCurrentDataVolumeSize set the current DataVolumeSize within the status of the dogu
-func SetCurrentDataVolumeSize(ctx context.Context, client client.Client, doguResource *doguv2.Dogu) error {
-	logger := log.FromContext(ctx)
-
-	logger.Info("Get Data PVC...")
-	pvc, err := doguResource.GetDataPVC(ctx, client)
-	if err != nil {
-		logger.Error(err, "failed to get data pvc")
-		return err
-	}
-
-	logger.Info("Get Current Data Size..")
-	currentSize := pvc.Status.Capacity.Storage()
-	doguResource.Status.DataVolumeSize = currentSize
-
-	// Check min size condition
-	condition := metav1.Condition{
-		Type:               doguv2.ConditionMeetsMinVolumeSize,
-		Status:             metav1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-	}
-	minDataSize, err := doguResource.GetMinDataVolumeSize()
-	if err != nil {
-		logger.Error(err, "failed to get min data volume size")
-		return err
-	}
-	if minDataSize.Value() > currentSize.Value() {
-		condition.Status = metav1.ConditionFalse
-		condition.Message = fmt.Sprintf("Current VolumeSize '%d' is less then the configured minimum VolumeSize '%d'", currentSize.Value(), minDataSize.Value())
-		condition.Reason = "VolumeSizeNotMeetsMinDataSize"
-	}
-
-	logger.Info(fmt.Sprintf("set condition for resizing %d - %d -> %v", currentSize.Value(), minDataSize.Value(), condition.Status))
-	changed := meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
-	logger.Info(fmt.Sprintf("set condition for resizing %v: %v", changed, doguResource.Status.Conditions))
-
-	logger.Info("Send Update to Resource...")
-
-	// Update resource
-	err = client.Status().Update(ctx, doguResource)
-	if err != nil {
-		logger.Error(err, "failed to update data volume size")
-		return err
-	}
-
-	return nil
 }

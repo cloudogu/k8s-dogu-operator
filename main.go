@@ -277,8 +277,15 @@ func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
 	availabilityChecker *health.AvailabilityChecker, namespace string) error {
 	doguInterface := ecosystemClientSet.Dogus(namespace)
 	deploymentInterface := k8sClientSet.AppsV1().Deployments(namespace)
+
+	volumesizeStartupHandler := resource.NewVolumeStartupHandler(k8sManager.GetClient(), doguInterface)
+	err := k8sManager.Add(volumesizeStartupHandler)
+	if err != nil {
+		return err
+	}
+
 	healthStartupHandler := health.NewStartupHandler(doguInterface, deploymentInterface, availabilityChecker, updater)
-	err := k8sManager.Add(healthStartupHandler)
+	err = k8sManager.Add(healthStartupHandler)
 	if err != nil {
 		return err
 	}

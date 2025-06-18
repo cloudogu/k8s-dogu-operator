@@ -10,7 +10,6 @@ import (
 	"github.com/go-logr/logr"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -181,9 +180,9 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *doguv2.D
 
 	// Update Status for DataVolume
 	logger.Info("Set Default Data Volume Size...")
-	err = SetDefaultDataVolumeSize(ctx, m.client, doguResource)
+	err = resource.SetCurrentDataVolumeSize(ctx, m.ecosystemClient.Dogus(doguResource.Namespace), doguResource, nil)
 	if err != nil {
-		return fmt.Errorf("failed to update Dogu-Status: %w", err)
+		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
 
 	return nil
@@ -291,37 +290,6 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 	}
 
 	return cleanUp, nil
-}
-
-// SetCurrentDataVolumeSize set the default DataVolumeSize within the status of the dogu
-func SetDefaultDataVolumeSize(ctx context.Context, client client.Client, doguResource *doguv2.Dogu) error {
-	logger := log.FromContext(ctx)
-
-	// Check min size condition
-	condition := metav1.Condition{
-		Type:               doguv2.ConditionMeetsMinVolumeSize,
-		Status:             metav1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-		Reason:             "DefaultVolumeSizeNotMeetsMinDataSize",
-	}
-	minDataSize, err := doguResource.GetMinDataVolumeSize()
-	if err != nil {
-		logger.Error(err, "failed to get min data volume size")
-		return err
-	}
-
-	doguResource.Status.DataVolumeSize = &minDataSize
-
-	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
-
-	// Update resource
-	err = client.Status().Update(ctx, doguResource)
-	if err != nil {
-		logger.Error(err, "failed to update data volume size")
-		return err
-	}
-
-	return nil
 }
 
 func deleteExecPod(ctx context.Context, execPod exec.ExecPod, recorder record.EventRecorder, doguResource *doguv2.Dogu) {

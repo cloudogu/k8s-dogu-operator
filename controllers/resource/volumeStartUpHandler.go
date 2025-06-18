@@ -1,0 +1,95 @@
+package resource
+
+import (
+	"context"
+	"fmt"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+const (
+	ActualVolumeSizeMeetsMinDataSize = "ActualVolumeSizeMeetsMinDataSize"
+	VolumeSizeNotMeetsMinDataSize    = "VolumeSizeNotMeetsMinDataSize"
+)
+
+type VolumneStartupHandler struct {
+	client        client.Client
+	doguInterface doguClient.DoguInterface
+}
+
+func NewVolumeStartupHandler(client client.Client, doguInterface doguClient.DoguInterface) *VolumneStartupHandler {
+	return &VolumneStartupHandler{
+		client:        client,
+		doguInterface: doguInterface,
+	}
+}
+
+func (v *VolumneStartupHandler) Start(ctx context.Context) error {
+	logger := log.FromContext(ctx)
+	logger.WithName("volume startup handler").Info("updating data volume size of all dogus on startup")
+
+	list, err := v.doguInterface.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, dogu := range list.Items {
+		pvc, e := dogu.GetDataPVC(ctx, v.client)
+		if e != nil {
+			logger.Info(fmt.Sprintf("no pvc for dogu %s: %w", dogu.Name, e))
+			continue
+		}
+		_ = SetCurrentDataVolumeSize(ctx, v.doguInterface, &dogu, pvc)
+	}
+	return nil
+}
+
+// SetCurrentDataVolumeSize set the current DataVolumeSize within the status of the dogu
+func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.DoguInterface, doguResource *doguv2.Dogu, pvc *corev1.PersistentVolumeClaim) error {
+	logger := log.FromContext(ctx)
+
+	// Check min size condition
+	condition := metav1.Condition{
+		Type:               doguv2.ConditionMeetsMinVolumeSize,
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+	}
+	minDataSize, err := doguResource.GetMinDataVolumeSize()
+	if err != nil {
+		logger.Error(err, "failed to get min data volume size")
+		return err
+	}
+	var currentSize *resource.Quantity
+	if pvc != nil {
+		currentSize = pvc.Status.Capacity.Storage()
+		if minDataSize.Value() > currentSize.Value() {
+			logger.Info(fmt.Sprintf("set condition for resizing %d - %d -> %v", currentSize.Value(), minDataSize.Value(), condition.Status))
+			condition.Status = metav1.ConditionFalse
+			condition.Message = fmt.Sprintf("Current VolumeSize '%d' is less then the configured minimum VolumeSize '%d'", currentSize.Value(), minDataSize.Value())
+			condition.Reason = VolumeSizeNotMeetsMinDataSize
+		}
+	} else {
+		condition.Reason = ActualVolumeSizeMeetsMinDataSize
+		currentSize = &minDataSize
+	}
+
+	_, err = doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+		meta.SetStatusCondition(&status.Conditions, condition)
+		logger.Info(fmt.Sprintf("set data volume size %v for dogu %s", currentSize, doguResource.Name))
+		status.DataVolumeSize = currentSize
+		return status
+	}, metav1.UpdateOptions{})
+
+	if err != nil {
+		logger.Error(err, "failed to update data volume size")
+		return err
+	}
+
+	return nil
+}
