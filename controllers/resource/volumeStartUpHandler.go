@@ -42,7 +42,7 @@ func (v *VolumneStartupHandler) Start(ctx context.Context) error {
 	for _, dogu := range list.Items {
 		pvc, e := dogu.GetDataPVC(ctx, v.client)
 		if e != nil {
-			logger.Info(fmt.Sprintf("no pvc for dogu %s: %w", dogu.Name, e))
+			logger.Info(fmt.Sprintf("no pvc for dogu %s: %v", dogu.Name, e))
 			continue
 		}
 		_ = SetCurrentDataVolumeSize(ctx, v.doguInterface, &dogu, pvc)
