@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/async"
+	"github.com/stretchr/testify/mock"
+	"k8s.io/apimachinery/pkg/types"
 	"testing"
 	"time"
 
@@ -22,9 +24,10 @@ func TestNewDoguVolumeManager(t *testing.T) {
 		// given
 		recorder := newMockEventRecorder(t)
 		cli := NewMockK8sClient(t)
+		doguclient := newMockDoguInterface(t)
 
 		// when
-		result := NewDoguVolumeManager(cli, recorder)
+		result := NewDoguVolumeManager(cli, recorder, doguclient)
 
 		// then
 		require.NotNil(t, result)
@@ -124,7 +127,7 @@ func Test_scaleUpStep_Execute(t *testing.T) {
 		err = client.Get(context.TODO(), dogu.GetObjectKey(), resultDogu)
 		require.NoError(t, err)
 		assert.Equal(t, "", resultDogu.Status.RequeuePhase)
-		assert.Equal(t, "finished", state)
+		assert.Equal(t, "Validate Conditions", state)
 	})
 
 	t.Run("fail to get deployment", func(t *testing.T) {
@@ -193,10 +196,6 @@ func Test_editPVCStep_Execute(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
-		oldSize := dogu.Spec.Resources.DataVolumeSize
-		defer func() {
-			dogu.Spec.Resources.DataVolumeSize = oldSize
-		}()
 		dogu.Spec.Resources.DataVolumeSize = "1Gi"
 		requests := make(map[corev1.ResourceName]resource.Quantity)
 		requests[corev1.ResourceStorage] = resource.MustParse("0.5Gi")
@@ -204,7 +203,11 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
 		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Update dogu data PVC request storage...")
-		sut := &editPVCStep{client: client, eventRecorder: recorder}
+
+		doguClient := newMockDoguInterface(t)
+		doguClient.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, mock.Anything).Return(dogu, nil)
+
+		sut := &editPVCStep{client: client, eventRecorder: recorder, doguInterface: doguClient}
 		wantedCapacity := resource.MustParse("1Gi")
 
 		// when
@@ -221,15 +224,14 @@ func Test_editPVCStep_Execute(t *testing.T) {
 	t.Run("fail to get dogu pvc", func(t *testing.T) {
 		// given
 		dogu := readDoguCr(t, ldapCrBytes)
-		oldSize := dogu.Spec.Resources.DataVolumeSize
-		defer func() {
-			dogu.Spec.Resources.DataVolumeSize = oldSize
-		}()
 		dogu.Spec.Resources.DataVolumeSize = "1Gi"
 		client := fake.NewClientBuilder().Build()
 		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Update dogu data PVC request storage...")
-		sut := &editPVCStep{client: client, eventRecorder: recorder}
+
+		doguClient := newMockDoguInterface(t)
+
+		sut := &editPVCStep{client: client, eventRecorder: recorder, doguInterface: doguClient}
 
 		// when
 		stage, err := sut.Execute(context.TODO(), dogu)
@@ -434,4 +436,125 @@ func Test_notResizedError(t *testing.T) {
 	require.True(t, err.Requeue())
 	assert.Equal(t, "state", err.GetState())
 	assert.Equal(t, time.Second*5, err.GetRequeueTime())
+}
+
+func Test_dataVolumeSizeStep_Execute(t *testing.T) {
+	t.Run("success with matching size", func(t *testing.T) {
+		// given
+		dogu := readDoguCr(t, ldapCrBytes)
+		dogu.Spec.Resources.MinDataVolumeSize = resource.MustParse("1Gi")
+		requests := make(map[corev1.ResourceName]resource.Quantity)
+		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: requests}}, Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}}
+		mockClient := &MockClient{}
+
+		mockClient.On("Get", context.TODO(), dogu.GetObjectKey(), &corev1.PersistentVolumeClaim{}).
+			Run(func(args mock.Arguments) {
+				out := args.Get(2).(*corev1.PersistentVolumeClaim)
+				*out = *doguPvc
+			}).
+			Return(nil)
+
+		mockClient.On("Get", context.TODO(), dogu.GetObjectKey(), &doguv2.Dogu{}).Return(nil)
+		mockClient.On("Get", context.TODO(), types.NamespacedName{}, &doguv2.Dogu{}).Return(nil)
+
+		mockStatus := new(MockStatusWriter)
+		mockStatus.On("Update", mock.Anything, mock.Anything).Return(nil)
+		mockClient.On("Status").Return(mockStatus)
+
+		recorder := newMockEventRecorder(t)
+
+		doguClient := newMockDoguInterface(t)
+		doguClient.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, mock.Anything).Return(dogu, nil)
+
+		sut := &dataVolumeSizeStep{client: mockClient, eventRecorder: recorder, doguInterface: doguClient}
+
+		// when
+		state, err := sut.Execute(testCtx, dogu)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "finished", state)
+	})
+	t.Run("error getting pvc", func(t *testing.T) {
+		// given
+		dogu := readDoguCr(t, ldapCrBytes)
+
+		dogu.Spec.Resources.MinDataVolumeSize = resource.MustParse("1Gi")
+		requests := make(map[corev1.ResourceName]resource.Quantity)
+		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		mockClient := &MockClient{}
+		mockClient.On("Get", context.TODO(), dogu.GetObjectKey(), &corev1.PersistentVolumeClaim{}).
+			Return(assert.AnError)
+		recorder := newMockEventRecorder(t)
+		sut := &dataVolumeSizeStep{client: mockClient, eventRecorder: recorder}
+
+		// when
+		_, err := sut.Execute(context.TODO(), dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get data pvc for dogu ldap:")
+	})
+	t.Run("failed to get min-data-size", func(t *testing.T) {
+		// given
+		dogu := readDoguCr(t, ldapCrBytes)
+		oldSize := dogu.Spec.Resources.DataVolumeSize
+		defer func() {
+			dogu.Spec.Resources.DataVolumeSize = oldSize
+		}()
+		dogu.Spec.Resources.DataVolumeSize = "invalid"
+		requests := make(map[corev1.ResourceName]resource.Quantity)
+		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: requests}}, Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}}
+		mockClient := &MockClient{}
+
+		mockClient.On("Get", context.TODO(), dogu.GetObjectKey(), &corev1.PersistentVolumeClaim{}).
+			Run(func(args mock.Arguments) {
+				out := args.Get(2).(*corev1.PersistentVolumeClaim)
+				*out = *doguPvc
+			}).
+			Return(nil)
+
+		recorder := newMockEventRecorder(t)
+		sut := &dataVolumeSizeStep{client: mockClient, eventRecorder: recorder}
+
+		// when
+		_, err := sut.Execute(context.TODO(), dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "quantities must match the regular expression")
+	})
+	t.Run("retry-error because current size does not match", func(t *testing.T) {
+		// given
+		dogu := readDoguCr(t, ldapCrBytes)
+		oldSize := dogu.Spec.Resources.MinDataVolumeSize
+		defer func() {
+			dogu.Spec.Resources.MinDataVolumeSize = oldSize
+		}()
+		dogu.Spec.Resources.MinDataVolumeSize = resource.MustParse("2Gi")
+		requests := make(map[corev1.ResourceName]resource.Quantity)
+		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: requests}}, Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}}
+		mockClient := &MockClient{}
+
+		mockClient.On("Get", context.TODO(), dogu.GetObjectKey(), &corev1.PersistentVolumeClaim{}).
+			Run(func(args mock.Arguments) {
+				out := args.Get(2).(*corev1.PersistentVolumeClaim)
+				*out = *doguPvc
+			}).
+			Return(nil)
+
+		recorder := newMockEventRecorder(t)
+		sut := &dataVolumeSizeStep{client: mockClient, eventRecorder: recorder}
+
+		// when
+		_, err := sut.Execute(context.TODO(), dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "pvc resizing is in progress")
+	})
+
 }

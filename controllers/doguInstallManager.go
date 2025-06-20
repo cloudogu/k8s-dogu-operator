@@ -178,6 +178,13 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *doguv2.D
 		}
 	}
 
+	// Update Status for DataVolume
+	logger.Info("Set Default Data Volume Size...")
+	err = resource.SetCurrentDataVolumeSize(ctx, m.ecosystemClient.Dogus(doguResource.Namespace), doguResource, nil)
+	if err != nil {
+		return fmt.Errorf("failed to update dogu status: %w", err)
+	}
+
 	return nil
 }
 
