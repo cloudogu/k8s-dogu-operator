@@ -5,8 +5,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/async"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/types"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"testing"
 	"time"
 
@@ -19,8 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
-	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestNewDoguVolumeManager(t *testing.T) {
@@ -561,62 +557,4 @@ func Test_dataVolumeSizeStep_Execute(t *testing.T) {
 		assert.ErrorContains(t, err, "pvc resizing is in progress")
 	})
 
-}
-
-func TestVolumeStartUpHandler(t *testing.T) {
-
-	t.Run("simple constructor", func(t *testing.T) {
-		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
-		doguClient := newMockDoguInterface(t)
-		_ = opresource.NewVolumeStartupHandler(clientMock, doguClient)
-	})
-
-}
-
-func TestVolumeStartUpHandler_Start(t *testing.T) {
-
-	t.Run("success", func(t *testing.T) {
-		dogu := readDoguCr(t, ldapCrBytes)
-		requests := make(map[corev1.ResourceName]resource.Quantity)
-		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
-		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: requests}}, Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}}
-
-		doguClient := newMockDoguInterface(t)
-		doguClient.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, mock.Anything).Return(dogu, nil)
-
-		doguClient.EXPECT().List(testCtx, mock.Anything).Return(&doguv2.DoguList{Items: []doguv2.Dogu{
-			*dogu,
-		}}, nil)
-
-		mockClient := &MockClient{}
-
-		mockClient.On("Get", context.TODO(), dogu.GetObjectKey(), &corev1.PersistentVolumeClaim{}).
-			Run(func(args mock.Arguments) {
-				out := args.Get(2).(*corev1.PersistentVolumeClaim)
-				*out = *doguPvc
-			}).
-			Return(nil)
-
-		vsh := opresource.NewVolumeStartupHandler(mockClient, doguClient)
-
-		err := vsh.Start(testCtx)
-		require.NoError(t, err)
-	})
-	t.Run("error on getting dogus", func(t *testing.T) {
-		doguClient := newMockDoguInterface(t)
-		doguClient.EXPECT().List(testCtx, mock.Anything).Return(nil, assert.AnError)
-		mockClient := &MockClient{}
-		vsh := opresource.NewVolumeStartupHandler(mockClient, doguClient)
-
-		err := vsh.Start(testCtx)
-		require.Error(t, err)
-	})
-
-}
-
-func getScheme() *runtime.Scheme {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(doguv2.AddToScheme(scheme))
-	return scheme
 }

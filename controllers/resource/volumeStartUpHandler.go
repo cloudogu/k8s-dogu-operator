@@ -18,9 +18,17 @@ const (
 	VolumeSizeNotMeetsMinDataSize    = "VolumeSizeNotMeetsMinDataSize"
 )
 
+type VolumeStartUpHandlerClient interface {
+	client.Client
+}
+
+type VolumeStartUpHandlerDoguInterface interface {
+	doguClient.DoguInterface
+}
+
 type VolumneStartupHandler struct {
-	client        client.Client
-	doguInterface doguClient.DoguInterface
+	client        VolumeStartUpHandlerClient
+	doguInterface VolumeStartUpHandlerDoguInterface
 }
 
 func NewVolumeStartupHandler(client client.Client, doguInterface doguClient.DoguInterface) *VolumneStartupHandler {
