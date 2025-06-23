@@ -92,7 +92,7 @@ func createAsyncSteps(executor async.AsyncExecutor, client client.Client, record
 	executor.AddStep(&editPVCStep{client: client, eventRecorder: recorder, doguInterface: doguInterface})
 	executor.AddStep(&checkIfPVCIsResizedStep{client: client, eventRecorder: recorder})
 	executor.AddStep(scaleUp)
-	executor.AddStep(&dataVolumeSizeStep{client: client, eventRecorder: recorder, doguInterface: doguInterface})
+	//executor.AddStep(&dataVolumeSizeStep{client: client, eventRecorder: recorder, doguInterface: doguInterface})
 }
 
 // SetDoguDataVolumeSize sets the quantity from the doguResource in the dogu data PVC.

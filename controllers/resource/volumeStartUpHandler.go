@@ -87,7 +87,8 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 		}
 		// Resize PVC is current dogu size is larger than current pvc-capacity
 		// this might happen during backup and restore
-		if doguResource.Status.DataVolumeSize != nil && currentSize.Cmp(*doguResource.Status.DataVolumeSize) < 0 {
+		specsize := pvc.Spec.Resources.Requests.Storage()
+		if doguResource.Status.DataVolumeSize != nil && specsize.Cmp(*currentSize) < 0 {
 			specrequests := make(map[corev1.ResourceName]resource.Quantity)
 			specrequests[corev1.ResourceStorage] = *currentSize
 			pvc.Spec.Resources.Requests = specrequests
