@@ -74,17 +74,16 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 		return err
 	}
 	var currentSize *resource.Quantity
+	condition.Reason = ActualVolumeSizeMeetsMinDataSize
+	currentSize = &minDataSize
 	if pvc != nil {
 		currentSize = pvc.Status.Capacity.Storage()
-		if minDataSize.Value() > currentSize.Value() {
+		if minDataSize.Cmp(*currentSize) != 0 {
 			logger.Info(fmt.Sprintf("set condition for resizing %d - %d -> %v", currentSize.Value(), minDataSize.Value(), condition.Status))
 			condition.Status = metav1.ConditionFalse
 			condition.Message = fmt.Sprintf("Current VolumeSize '%d' is less then the configured minimum VolumeSize '%d'", currentSize.Value(), minDataSize.Value())
 			condition.Reason = VolumeSizeNotMeetsMinDataSize
 		}
-	} else {
-		condition.Reason = ActualVolumeSizeMeetsMinDataSize
-		currentSize = &minDataSize
 	}
 
 	_, err = doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
