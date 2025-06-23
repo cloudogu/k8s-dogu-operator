@@ -5,6 +5,7 @@ import (
 	"fmt"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/retry-lib/retry"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -53,13 +54,13 @@ func (v *VolumneStartupHandler) Start(ctx context.Context) error {
 			logger.Info(fmt.Sprintf("no pvc for dogu %s: %v", dogu.Name, e))
 			continue
 		}
-		_ = SetCurrentDataVolumeSize(ctx, v.doguInterface, &dogu, pvc)
+		_ = SetCurrentDataVolumeSize(ctx, v.doguInterface, v.client, &dogu, pvc)
 	}
 	return nil
 }
 
 // SetCurrentDataVolumeSize set the current DataVolumeSize within the status of the dogu
-func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.DoguInterface, doguResource *doguv2.Dogu, pvc *corev1.PersistentVolumeClaim) error {
+func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.DoguInterface, client client.Client, doguResource *doguv2.Dogu, pvc *corev1.PersistentVolumeClaim) error {
 	logger := log.FromContext(ctx)
 
 	// Check min size condition
@@ -83,6 +84,20 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 			condition.Status = metav1.ConditionFalse
 			condition.Message = fmt.Sprintf("Current VolumeSize '%d' is less then the configured minimum VolumeSize '%d'", currentSize.Value(), minDataSize.Value())
 			condition.Reason = VolumeSizeNotMeetsMinDataSize
+		}
+		// Resize PVC is current dogu size is larger than current pvc-capacity
+		// this might happen during backup and restore
+		if doguResource.Status.DataVolumeSize != nil && currentSize.Cmp(*doguResource.Status.DataVolumeSize) < 0 {
+			specrequests := make(map[corev1.ResourceName]resource.Quantity)
+			specrequests[corev1.ResourceStorage] = *currentSize
+			pvc.Spec.Resources.Requests = specrequests
+			err = retry.OnConflict(func() error {
+				return client.Update(ctx, pvc)
+			})
+			if err != nil {
+				logger.Error(err, "failed to update pvc size")
+				return err
+			}
 		}
 	}
 

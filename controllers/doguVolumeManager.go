@@ -146,7 +146,7 @@ func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *doguv
 
 	// Update Status before Resizing - this should set the condition to false
 	// because the new Minsize is larger than the actual current size before the resizing is finished
-	_ = opresource.SetCurrentDataVolumeSize(ctx, e.doguInterface, doguResource, pvc)
+	_ = opresource.SetCurrentDataVolumeSize(ctx, e.doguInterface, e.client, doguResource, pvc)
 
 	// It is necessary to create a new map because just setting a new quantity results in an exception.
 	pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}
@@ -315,7 +315,7 @@ func (d *dataVolumeSizeStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (st
 		}
 	}
 
-	err = opresource.SetCurrentDataVolumeSize(ctx, d.doguInterface, dogu, pvc)
+	err = opresource.SetCurrentDataVolumeSize(ctx, d.doguInterface, d.client, dogu, pvc)
 
 	if err != nil {
 		return "", err
