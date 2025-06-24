@@ -17,7 +17,7 @@ func TestVolumeStartUpHandler(t *testing.T) {
 
 	t.Run("simple constructor", func(t *testing.T) {
 		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
-		doguClient := NewMockVolumeStartUpHandlerDoguInterface(t)
+		doguClient := newMockDoguClientInterface(t)
 		_ = NewVolumeStartupHandler(clientMock, doguClient)
 	})
 
@@ -31,14 +31,14 @@ func TestVolumeStartUpHandler_Start(t *testing.T) {
 		requests[corev1.ResourceStorage] = resource.MustParse("1Gi")
 		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(), Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: requests}}, Status: corev1.PersistentVolumeClaimStatus{Capacity: requests}}
 
-		doguClient := NewMockVolumeStartUpHandlerDoguInterface(t)
+		doguClient := newMockDoguClientInterface(t)
 		doguClient.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, mock.Anything).Return(dogu, nil)
 
 		doguClient.EXPECT().List(testCtx, mock.Anything).Return(&doguv2.DoguList{Items: []doguv2.Dogu{
 			*dogu,
 		}}, nil)
 
-		mockClient := NewMockVolumeStartUpHandlerClient(t)
+		mockClient := newMockK8sClient(t)
 
 		mockClient.On("Get", context.TODO(), dogu.GetObjectKey(), &corev1.PersistentVolumeClaim{}).
 			Run(func(args mock.Arguments) {
@@ -53,9 +53,9 @@ func TestVolumeStartUpHandler_Start(t *testing.T) {
 		require.NoError(t, err)
 	})
 	t.Run("error on getting dogus", func(t *testing.T) {
-		doguClient := NewMockVolumeStartUpHandlerDoguInterface(t)
+		doguClient := newMockDoguClientInterface(t)
 		doguClient.EXPECT().List(testCtx, mock.Anything).Return(nil, assert.AnError)
-		mockClient := NewMockVolumeStartUpHandlerClient(t)
+		mockClient := newMockK8sClient(t)
 		vsh := NewVolumeStartupHandler(mockClient, doguClient)
 
 		err := vsh.Start(testCtx)
@@ -66,7 +66,7 @@ func TestVolumeStartUpHandler_Start(t *testing.T) {
 func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 	t.Run("error no pvc", func(t *testing.T) {
 		dogu := &doguv2.Dogu{}
-		doguClient := NewMockVolumeStartUpHandlerDoguInterface(t)
+		doguClient := newMockDoguClientInterface(t)
 		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(nil, nil)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
@@ -81,7 +81,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 				},
 			},
 		}
-		doguClient := NewMockVolumeStartUpHandlerDoguInterface(t)
+		doguClient := newMockDoguClientInterface(t)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
 
@@ -89,7 +89,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 	})
 	t.Run("error update status", func(t *testing.T) {
 		dogu := &doguv2.Dogu{}
-		doguClient := NewMockVolumeStartUpHandlerDoguInterface(t)
+		doguClient := newMockDoguClientInterface(t)
 		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(nil, assert.AnError)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
@@ -98,7 +98,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 	})
 	t.Run("run inline function", func(t *testing.T) {
 		dogu := &doguv2.Dogu{}
-		doguClient := NewMockVolumeStartUpHandlerDoguInterface(t)
+		doguClient := newMockDoguClientInterface(t)
 		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Run(
 			func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
 				modifyStatusFn(dogu.Status)
@@ -115,9 +115,9 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 				DataVolumeSize: &dvs,
 			},
 		}
-		clientMock := NewMockVolumeStartUpHandlerClient(t)
+		clientMock := newMockK8sClient(t)
 
-		doguClient := NewMockVolumeStartUpHandlerDoguInterface(t)
+		doguClient := newMockDoguClientInterface(t)
 		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(dogu, nil)
 		specrequests := make(map[corev1.ResourceName]resource.Quantity)
 		specrequests[corev1.ResourceStorage] = resource.MustParse("10Mi")

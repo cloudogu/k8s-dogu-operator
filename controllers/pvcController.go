@@ -78,7 +78,15 @@ func (r *PvcReconciler) getEventFilter() predicate.Funcs {
 				return false
 			}
 
-			if e.ObjectNew.(*v1.PersistentVolumeClaim).Status.Capacity.Storage().Value() != e.ObjectOld.(*v1.PersistentVolumeClaim).Status.Capacity.Storage().Value() {
+			newPvc, ok := e.ObjectNew.(*v1.PersistentVolumeClaim)
+			if !ok {
+				return false
+			}
+			oldPvc, ok := e.ObjectOld.(*v1.PersistentVolumeClaim)
+			if !ok {
+				return false
+			}
+			if newPvc.Status.Capacity.Storage().Value() != oldPvc.Status.Capacity.Storage().Value() {
 				return true
 			}
 
@@ -89,9 +97,7 @@ func (r *PvcReconciler) getEventFilter() predicate.Funcs {
 
 // SetupWithManager sets up the controller with the manager.
 func (r *PvcReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	var eventFilter predicate.Predicate
-
-	eventFilter = r.getEventFilter()
+	eventFilter := r.getEventFilter()
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.PersistentVolumeClaim{}).
