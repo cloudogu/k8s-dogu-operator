@@ -14,7 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// PvcReconciler watches every pvc object with a dogu.name label in the cluster and sets the Min-Data-size condition for the corresponding dogu
+// PvcReconciler watches every pvc object with a dogu.name label in the cluster and sets the Min-Data-size condition
+// for the corresponding dogu and the PVC request size if the status capacity is larger than the current request
 type PvcReconciler struct {
 	client             K8sClient
 	k8sClientSet       ClientSet
