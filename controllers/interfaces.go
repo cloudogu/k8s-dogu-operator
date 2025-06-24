@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -205,11 +204,13 @@ type ClientSet interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type coreV1Interface interface {
-	corev1client.CoreV1Interface
+	v1.CoreV1Interface
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
 type pvcInterface interface {
-	corev1client.PersistentVolumeClaimInterface
+	v1.PersistentVolumeClaimInterface
 }
 
 //nolint:unused
