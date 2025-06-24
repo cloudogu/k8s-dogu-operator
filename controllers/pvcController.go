@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// DeploymentReconciler watches every Deployment object in the cluster and writes the state of dogus into their respective custom resources.
+// PvcReconciler watches every pvc object with a dogu.name label in the cluster and sets the Min-Data-size condition for the corresponding dogu
 type PvcReconciler struct {
 	client             client.Client
 	k8sClientSet       ClientSet
@@ -33,6 +33,7 @@ func NewPvcReconciler(client K8sClient, k8sClientSet ClientSet, ecoSystemClientS
 // move the current state of the cluster closer to the desired state.
 func (pr *PvcReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+	logger.Info("start reconciling pvc")
 
 	pvc, err := pr.k8sClientSet.CoreV1().PersistentVolumeClaims(request.Namespace).Get(ctx, request.Name, metav1api.GetOptions{})
 	if err != nil {
@@ -44,6 +45,7 @@ func (pr *PvcReconciler) Reconcile(ctx context.Context, request ctrl.Request) (c
 	}
 
 	doguName := getDoguLabel(pvc)
+	logger.Info(fmt.Sprintf("reconciling pvc for %s", doguName))
 
 	dogu, err := pr.ecoSystemClientSet.Dogus(request.Namespace).Get(ctx, doguName, metav1api.GetOptions{})
 	if err != nil {
@@ -58,11 +60,8 @@ func (pr *PvcReconciler) Reconcile(ctx context.Context, request ctrl.Request) (c
 	return finishOperation()
 }
 
-// SetupWithManager sets up the controller with the manager.
-func (r *PvcReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	var eventFilter predicate.Predicate
-
-	eventFilter = predicate.Funcs{
+func (r *PvcReconciler) getEventFilter() predicate.Funcs {
+	return predicate.Funcs{
 		CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
 			return false
 		},
@@ -73,6 +72,7 @@ func (r *PvcReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
+
 			if !hasDoguLabel(e.ObjectNew) {
 				return false
 			}
@@ -84,6 +84,13 @@ func (r *PvcReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 	}
+}
+
+// SetupWithManager sets up the controller with the manager.
+func (r *PvcReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	var eventFilter predicate.Predicate
+
+	eventFilter = r.getEventFilter()
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.PersistentVolumeClaim{}).

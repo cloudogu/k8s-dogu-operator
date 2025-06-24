@@ -79,7 +79,8 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 	currentSize = &minDataSize
 	if pvc != nil {
 		currentSize = pvc.Status.Capacity.Storage()
-		if minDataSize.Cmp(*currentSize) != 0 {
+		// is minDataSize larger than currentsize
+		if minDataSize.Cmp(*currentSize) > 0 {
 			logger.Info(fmt.Sprintf("set condition for resizing %d - %d -> %v", currentSize.Value(), minDataSize.Value(), condition.Status))
 			condition.Status = metav1.ConditionFalse
 			condition.Message = fmt.Sprintf("Current VolumeSize '%d' is less then the configured minimum VolumeSize '%d'", currentSize.Value(), minDataSize.Value())
@@ -88,7 +89,8 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 		// Resize PVC is current dogu size is larger than current pvc-capacity
 		// this might happen during backup and restore
 		specsize := pvc.Spec.Resources.Requests.Storage()
-		if doguResource.Status.DataVolumeSize != nil && specsize.Cmp(*currentSize) < 0 {
+		if specsize.Cmp(*currentSize) < 0 {
+			logger.Info(fmt.Sprintf("set spec request size for pvc %d - %d", specsize.Value(), currentSize.Value()))
 			specrequests := make(map[corev1.ResourceName]resource.Quantity)
 			specrequests[corev1.ResourceStorage] = *currentSize
 			pvc.Spec.Resources.Requests = specrequests
