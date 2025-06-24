@@ -378,7 +378,7 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 		return false, fmt.Errorf("failed to parse data volume size: %w", err)
 	}
 
-	if doguTargetDataVolumeSize.Value() > doguPvc.Spec.Resources.Requests.Storage().Value() {
+	if doguTargetDataVolumeSize.Value() > doguPvc.Status.Capacity.Storage().Value() {
 		return true, nil
 	} else {
 		return false, nil

@@ -1190,7 +1190,7 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		doguCr := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}
 		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(), Spec: v1.PersistentVolumeClaimSpec{
 			Resources: v1.VolumeResourceRequirements{Requests: v1.ResourceList{v1.ResourceStorage: resource.MustParse("2Gi")}},
-		}}
+		}, Status: v1.PersistentVolumeClaimStatus{Capacity: v1.ResourceList{v1.ResourceStorage: resource.MustParse("2Gi")}}}
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
@@ -1241,11 +1241,13 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		// given
 		doguCr := &doguv2.Dogu{
 			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
-			Spec:       doguv2.DoguSpec{Resources: doguv2.DoguResources{DataVolumeSize: "2Gi"}}}
+			Spec:       doguv2.DoguSpec{Resources: doguv2.DoguResources{DataVolumeSize: "2Gi"}},
+		}
 		resources := make(map[v1.ResourceName]resource.Quantity)
 		resources[v1.ResourceStorage] = resource.MustParse("2Gi")
 		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(),
-			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.VolumeResourceRequirements{Requests: resources}}}
+			Spec:   v1.PersistentVolumeClaimSpec{Resources: v1.VolumeResourceRequirements{Requests: resources}},
+			Status: v1.PersistentVolumeClaimStatus{Capacity: v1.ResourceList{v1.ResourceStorage: resource.MustParse("2Gi")}}}
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
@@ -1283,7 +1285,8 @@ func Test_doguReconciler_checkForVolumeExpansion(t *testing.T) {
 		resources := make(map[v1.ResourceName]resource.Quantity)
 		resources[v1.ResourceStorage] = resource.MustParse("3Gi")
 		pvc := &v1.PersistentVolumeClaim{ObjectMeta: *doguCr.GetObjectMeta(),
-			Spec: v1.PersistentVolumeClaimSpec{Resources: v1.VolumeResourceRequirements{Requests: resources}}}
+			Spec:   v1.PersistentVolumeClaimSpec{Resources: v1.VolumeResourceRequirements{Requests: resources}},
+			Status: v1.PersistentVolumeClaimStatus{Capacity: v1.ResourceList{v1.ResourceStorage: resource.MustParse("2Gi")}}}
 		sut := &doguReconciler{client: fake.NewClientBuilder().WithObjects(pvc).Build()}
 
 		// when
