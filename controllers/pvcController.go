@@ -16,7 +16,7 @@ import (
 
 // PvcReconciler watches every pvc object with a dogu.name label in the cluster and sets the Min-Data-size condition for the corresponding dogu
 type PvcReconciler struct {
-	client             client.Client
+	client             K8sClient
 	k8sClientSet       ClientSet
 	ecoSystemClientSet ecosystemInterface
 }
@@ -94,12 +94,7 @@ func (r *PvcReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.PersistentVolumeClaim{}).
-		// Since we don't want to process dogus with same spec we use a generation change predicate
-		// as a filter to reduce the reconcile calls.
-		// The predicate implements a function that will be invoked of every update event that
-		// the k8s api will fire. On writing the objects spec field the k8s api
-		// increments the generation field. The function compares this field from the old
-		// and new dogu resource. If they are equal the reconcile loop will not be called.
+		// Only reconcile dogu PVCs whose storage capacity changed.
 		WithEventFilter(eventFilter).
 		Complete(r)
 }
