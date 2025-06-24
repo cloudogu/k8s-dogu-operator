@@ -38,16 +38,13 @@ der `k8s-dogu-operator` das Deployment des Dogus wieder auf die ursprüngliche A
 
 ## Aktuelle Größe als Status der Dogu-CR
 
-Stellt der Kontroller fest, dass die Größe des Volumes verändert werden soll, so sind zu Beginn der Vergrößerung die konfigurierte
-`minDataVolumeSize` und die tatsächliche Größe des Volumes nicht identisch. Da Volumes nicht verkleinert werden dürfen, ist die `minDataVolumeSize` 
-somit größer als die aktuelle Größe.
+Stellt der Controller fest, dass die Größe des Volumes verändert werden soll, so sind zu Beginn der Vergrößerung die konfigurierte `minDataVolumeSize` und die tatsächliche Größe des Volumes nicht identisch. Da Volumes nicht verkleinert werden dürfen, ist die `minDataVolumeSize` somit größer als die aktuelle Größe.
 
 Dieser Zustand wird in der Condition `meetsMinVolumeSize` hinterlegt, gemeinsam mit dem Statusfeld `dogu.Status.DataVolumeSize`.
 Vor dem Start hat die Condition den Wert `False`.
 
-Im Zuge der eigentlichen Volume-Vergrößerung wird das Deployments zunächst auf 0 skaliert und hinterher wieder auf die konfigurierte Größe hochskaliert.
-Dies dient dem Pod-Restart, so dass die PVCs aktualiert eingebunden werden können. Dies kann einige Zeit dauern. 
-Nachdem Neustart wird der Status erneut aktualiert. Dabei wird solange gewartet, bis die tatschliche Größe dem konfigurierten Minimum entsprecht (oder größer).
+Im Zuge der eigentlichen Volume-Vergrößerung wird das Deployment zunächst auf 0 skaliert und hinterher wieder auf die konfigurierte Größe hochskaliert.
+Dies dient dem Pod-Restart, so dass die PVCs aktualisiert eingebunden werden können. Dies kann einige Zeit dauern. 
+Nachdem Neustart wird der Status erneut aktualisiert. Dabei wird solange gewartet, bis die tatsächliche Größe dem konfigurierten Minimum entspricht (oder größer).
 
-Dies aktualisert sowohl die Condition `meetsMinVolumeSize` auf `True` als auch den Wert des Statusfelds `dogu.Status.DataVolumeSize` 
-auf die neue tatsächlich Größe.
+Dies aktualisiert sowohl die Condition `meetsMinVolumeSize` auf `True` als auch den Wert des Statusfelds `dogu.Status.DataVolumeSize` auf die neue tatsächlich Größe.
