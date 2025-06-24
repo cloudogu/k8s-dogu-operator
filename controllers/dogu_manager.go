@@ -82,7 +82,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 		eventRecorder,
 	)
 
-	volumeManager := NewDoguVolumeManager(client, eventRecorder)
+	volumeManager := NewDoguVolumeManager(client, eventRecorder, doguInterface)
 
 	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
 

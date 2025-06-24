@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/async"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
@@ -22,9 +23,10 @@ func TestNewDoguVolumeManager(t *testing.T) {
 		// given
 		recorder := newMockEventRecorder(t)
 		cli := NewMockK8sClient(t)
+		doguclient := newMockDoguInterface(t)
 
 		// when
-		result := NewDoguVolumeManager(cli, recorder)
+		result := NewDoguVolumeManager(cli, recorder, doguclient)
 
 		// then
 		require.NotNil(t, result)
@@ -204,7 +206,10 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(doguPvc).Build()
 		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Update dogu data PVC request storage...")
-		sut := &editPVCStep{client: client, eventRecorder: recorder}
+		doguClient := newMockDoguInterface(t)
+		doguClient.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, mock.Anything).Return(dogu, nil)
+
+		sut := &editPVCStep{client: client, eventRecorder: recorder, doguInterface: doguClient}
 		wantedCapacity := resource.MustParse("1Gi")
 
 		// when
@@ -229,7 +234,9 @@ func Test_editPVCStep_Execute(t *testing.T) {
 		client := fake.NewClientBuilder().Build()
 		recorder := newMockEventRecorder(t)
 		recorder.On("Event", dogu, "Normal", "VolumeExpansion", "Update dogu data PVC request storage...")
-		sut := &editPVCStep{client: client, eventRecorder: recorder}
+		doguClient := newMockDoguInterface(t)
+
+		sut := &editPVCStep{client: client, eventRecorder: recorder, doguInterface: doguClient}
 
 		// when
 		stage, err := sut.Execute(context.TODO(), dogu)
