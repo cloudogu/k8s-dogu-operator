@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/async"
@@ -13,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 )
 
 const (
@@ -63,26 +66,28 @@ func (nre notResizedError) Error() string {
 // 4. scaleUpStep - Starts the terminated pods from the dogu.
 type doguVolumeManager struct {
 	client        client.Client
+	doguInterface doguClient.DoguInterface
 	eventRecorder record.EventRecorder
 	asyncExecutor async.AsyncExecutor
 }
 
 // NewDoguVolumeManager creates a new instance of the doguVolumeManager.
-func NewDoguVolumeManager(client client.Client, eventRecorder record.EventRecorder) *doguVolumeManager {
+func NewDoguVolumeManager(client client.Client, eventRecorder record.EventRecorder, doguInterface doguClient.DoguInterface) *doguVolumeManager {
 	asyncExecutor := async.NewDoguExecutionController()
-	createAsyncSteps(asyncExecutor, client, eventRecorder)
+	createAsyncSteps(asyncExecutor, client, eventRecorder, doguInterface)
 
 	return &doguVolumeManager{
 		client:        client,
+		doguInterface: doguInterface,
 		eventRecorder: eventRecorder,
 		asyncExecutor: asyncExecutor,
 	}
 }
 
-func createAsyncSteps(executor async.AsyncExecutor, client client.Client, recorder record.EventRecorder) {
+func createAsyncSteps(executor async.AsyncExecutor, client client.Client, recorder record.EventRecorder, doguInterface doguClient.DoguInterface) {
 	scaleUp := &scaleUpStep{client: client, eventRecorder: recorder, replicas: 1}
 	executor.AddStep(&scaleDownStep{client: client, eventRecorder: recorder, scaleUpStep: scaleUp})
-	executor.AddStep(&editPVCStep{client: client, eventRecorder: recorder})
+	executor.AddStep(&editPVCStep{client: client, doguInterface: doguInterface, eventRecorder: recorder})
 	executor.AddStep(&checkIfPVCIsResizedStep{client: client, eventRecorder: recorder})
 	executor.AddStep(scaleUp)
 }
@@ -104,6 +109,7 @@ func (d *doguVolumeManager) SetDoguDataVolumeSize(ctx context.Context, doguResou
 
 type editPVCStep struct {
 	client        client.Client
+	doguInterface doguClient.DoguInterface
 	eventRecorder record.EventRecorder
 }
 
@@ -134,6 +140,8 @@ func (e *editPVCStep) updatePVCQuantity(ctx context.Context, doguResource *doguv
 	if err != nil {
 		return err
 	}
+
+	_ = opresource.SetCurrentDataVolumeSize(ctx, e.doguInterface, e.client, doguResource, pvc)
 
 	// It is necessary to create a new map because just setting a new quantity results in an exception.
 	pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}

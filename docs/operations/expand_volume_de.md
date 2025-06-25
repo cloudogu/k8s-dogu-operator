@@ -1,7 +1,7 @@
 # Dogu-Volumes
 
 In der Regel wird bei der Installation eines Dogus ein Volume mit einer Standardgröße erzeugt.
-Die Größe des Volumes beträgt zwei Gigabyte. Über das Feld `dataVolumeSize` kann initial eine definierte Größe
+Die Größe des Volumes beträgt zwei Gigabyte. Über das Feld `minDataVolumeSize` kann initial eine definierte Größe
 für ein Volume angegeben werden. Bei manchen Dogus kann es im späteren Betrieb allerdings sinnvoll sein
 die Größe der Volumes zu bearbeiten.
 
@@ -14,14 +14,14 @@ Beispiel:
 ```yaml
 spec:
   resources:
-    dataVolumeSize: 2Gi
+    minDataVolumeSize: 2Gi
 ```
 
 > Die Größen der Volumes müssen im binären Format angegeben werden (z.B. Mi oder Gi).
 
-Setzt man `dataVolumeSize` und aktualisiert die Dogu-Ressource wird der Prozess zum Vergrößern des Volumes gestartet.
+Setzt man `minDataVolumeSize` und aktualisiert die Dogu-Ressource wird der Prozess zum Vergrößern des Volumes gestartet.
 
-Zu beachten ist, dass der Wert von `dataVolumeSize` der Norm von 
+Zu beachten ist, dass der Wert von `minDataVolumeSize` der Norm von 
 [Kubernetes-Quantities](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/) entsprechen 
 muss.
 
@@ -35,3 +35,16 @@ der `k8s-dogu-operator` das Deployment des Dogus wieder auf die ursprüngliche A
 ### Info
 - Das Vergrößern der Volumes kann mehrere Minuten bis Stunden in Anspruch nehmen.
 - Volumes können nicht verkleinert werden.
+
+## Aktuelle Größe als Status der Dogu-CR
+
+Stellt der Controller fest, dass die Größe des Volumes verändert werden soll, so sind zu Beginn der Vergrößerung die konfigurierte `minDataVolumeSize` und die tatsächliche Größe des Volumes nicht identisch. Da Volumes nicht verkleinert werden dürfen, ist die `minDataVolumeSize` somit größer als die aktuelle Größe.
+
+Dieser Zustand wird in der Condition `meetsMinVolumeSize` hinterlegt, gemeinsam mit dem Statusfeld `dogu.Status.DataVolumeSize`.
+Vor dem Start hat die Condition den Wert `False`.
+
+Im Zuge der eigentlichen Volume-Vergrößerung wird das Deployment zunächst auf 0 skaliert und hinterher wieder auf die konfigurierte Größe hochskaliert.
+Dies dient dem Pod-Restart, so dass die PVCs aktualisiert eingebunden werden können. Dies kann einige Zeit dauern. 
+Nachdem Neustart wird der Status erneut aktualisiert. Dabei wird solange gewartet, bis die tatsächliche Größe dem konfigurierten Minimum entspricht (oder größer).
+
+Dies aktualisiert sowohl die Condition `meetsMinVolumeSize` auf `True` als auch den Wert des Statusfelds `dogu.Status.DataVolumeSize` auf die neue tatsächlich Größe.

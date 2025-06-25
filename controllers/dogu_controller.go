@@ -378,11 +378,19 @@ func (r *doguReconciler) checkForVolumeExpansion(ctx context.Context, doguResour
 		return false, fmt.Errorf("failed to parse data volume size: %w", err)
 	}
 
-	if doguTargetDataVolumeSize.Value() > doguPvc.Spec.Resources.Requests.Storage().Value() {
+	if doguTargetDataVolumeSize.Cmp(*getPvcSize(doguPvc)) > 0 {
 		return true, nil
 	} else {
 		return false, nil
 	}
+}
+
+func getPvcSize(pvc *v1.PersistentVolumeClaim) *resource.Quantity {
+	if pvc.Status.Capacity == nil {
+		return pvc.Spec.Resources.Requests.Storage()
+	}
+
+	return pvc.Status.Capacity.Storage()
 }
 
 func (r *doguReconciler) checkForAdditionalIngressAnnotations(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {

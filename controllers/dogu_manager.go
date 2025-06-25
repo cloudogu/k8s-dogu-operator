@@ -82,7 +82,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 		eventRecorder,
 	)
 
-	volumeManager := NewDoguVolumeManager(client, eventRecorder)
+	volumeManager := NewDoguVolumeManager(client, eventRecorder, doguInterface)
 
 	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
 
@@ -96,7 +96,6 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 	)
 
 	additionalMountsManager := NewDoguAdditionalMountManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet, doguInterface)
-
 
 	return &DoguManager{
 		scheme:                    client.Scheme(),

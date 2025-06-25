@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,9 +39,26 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 		}
 
 		ldapDoguResource := readLdapDoguResource(t)
-		sizeBefore := ldapDoguResource.Spec.Resources.DataVolumeSize
-		defer func() { ldapDoguResource.Spec.Resources.DataVolumeSize = sizeBefore }()
 		ldapDoguResource.Spec.Resources.DataVolumeSize = "6Gi"
+
+		// when
+		actualPVC, err := generator.CreateDoguPVC(ldapDoguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, readLdapDoguExpectedDoguPVCWithCustomSize(t), actualPVC)
+	})
+
+	t.Run("Return simple pvc with size from status", func(t *testing.T) {
+		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDoguResource.Spec.Resources.DataVolumeSize = "3Gi"
+		statusSize := resource.MustParse("6Gi")
+		ldapDoguResource.Status.DataVolumeSize = &statusSize
 
 		// when
 		actualPVC, err := generator.CreateDoguPVC(ldapDoguResource)
