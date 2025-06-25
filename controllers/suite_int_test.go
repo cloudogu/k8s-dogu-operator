@@ -300,6 +300,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	err = deploymentReconciler.SetupWithManager(k8sManager)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
+	pvcReconciler := NewPvcReconciler(k8sClient, k8sClientSet, ecosystemClientSet)
+	err = pvcReconciler.SetupWithManager(k8sManager)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
 	go func() {
 		err = k8sManager.Start(ctx)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())

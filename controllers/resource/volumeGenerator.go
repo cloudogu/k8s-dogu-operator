@@ -7,7 +7,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -411,15 +410,19 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu, mou
 
 // CreateDoguPVC creates a persistent volume claim for the given dogu.
 func (r *resourceGenerator) CreateDoguPVC(doguResource *k8sv2.Dogu) (*corev1.PersistentVolumeClaim, error) {
+	return r.createPVC(doguResource.Name, doguResource)
+}
+
+func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv2.Dogu) (*corev1.PersistentVolumeClaim, error) {
 	size, err := doguResource.GetMinDataVolumeSize()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse data volume size: %w", err)
 	}
 
-	return r.createPVC(doguResource.Name, doguResource, size)
-}
+	if doguResource.Status.DataVolumeSize != nil && doguResource.Status.DataVolumeSize.Cmp(size) > 0 {
+		size = *doguResource.Status.DataVolumeSize
+	}
 
-func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv2.Dogu, size resource.Quantity) (*corev1.PersistentVolumeClaim, error) {
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,
@@ -437,7 +440,7 @@ func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv2.Dogu, 
 		},
 	}
 
-	err := ctrl.SetControllerReference(doguResource, pvc, r.scheme)
+	err = ctrl.SetControllerReference(doguResource, pvc, r.scheme)
 	if err != nil {
 		return nil, wrapControllerReferenceError(err)
 	}

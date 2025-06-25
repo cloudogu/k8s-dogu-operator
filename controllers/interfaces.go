@@ -203,6 +203,18 @@ type ClientSet interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
+type coreV1Interface interface {
+	v1.CoreV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type pvcInterface interface {
+	v1.PersistentVolumeClaimInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
 type deploymentAvailabilityChecker interface {
 	// IsAvailable checks whether the deployment has reached its desired state and is available.
 	IsAvailable(deployment *appsv1.Deployment) bool

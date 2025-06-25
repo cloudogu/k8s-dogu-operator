@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.9.0] - 2025-06-25
+### Added
+- [#247] Implemented status field `dataVolumeSize` and the condition `meetsMinVolumeSize`. These fields will be updated on the operator start and every volume provisioning.
+
 ## [v3.8.2] - 2025-06-12
 ### Fixed
 - [#248] Use correct user and group ids for the `additionalMounts` Init-Container.
