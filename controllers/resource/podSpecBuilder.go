@@ -13,6 +13,7 @@ type podSpecBuilder struct {
 	theDoguResource                  *k8sv2.Dogu
 	theDogu                          *core.Dogu
 	metaAllLabels                    k8sv2.CesMatchingLabels
+	metaAllAnnotations               map[string]string
 	specHostAliases                  []corev1.HostAlias
 	specVolumes                      []corev1.Volume
 	specEnableServiceLinks           bool
@@ -41,6 +42,11 @@ func newPodSpecBuilder(doguResource *k8sv2.Dogu, dogu *core.Dogu) *podSpecBuilde
 
 func (p *podSpecBuilder) labels(labels k8sv2.CesMatchingLabels) *podSpecBuilder {
 	p.metaAllLabels = labels
+	return p
+}
+
+func (p *podSpecBuilder) annotations(annos map[string]string) *podSpecBuilder {
+	p.metaAllAnnotations = annos
 	return p
 }
 
@@ -171,7 +177,8 @@ func (p *podSpecBuilder) securityContext(podSecurityContext *corev1.PodSecurityC
 func (p *podSpecBuilder) build() *corev1.PodTemplateSpec {
 	result := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: p.metaAllLabels,
+			Labels:      p.metaAllLabels,
+			Annotations: p.metaAllAnnotations,
 		},
 		Spec: corev1.PodSpec{
 			ImagePullSecrets:             []corev1.LocalObjectReference{{Name: "ces-container-registries"}},
