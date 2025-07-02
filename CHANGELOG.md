@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.10.0] - 2025-07-02
+### Added
+- [#148] Metadata Mapping for log level
+
 ## [v3.9.0] - 2025-06-25
 ### Added
 - [#247] Implemented status field `dataVolumeSize` and the condition `meetsMinVolumeSize`. These fields will be updated on the operator start and every volume provisioning.
