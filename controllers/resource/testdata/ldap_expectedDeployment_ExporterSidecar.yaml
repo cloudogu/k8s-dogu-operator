@@ -161,6 +161,9 @@ spec:
             timeoutSeconds: 1
         - image: exporter:0.0.1
           name: ldap-exporter
+          Env:
+            - name: DOGU_NAME
+              value: ldap
           resources: { }
           securityContext:
             appArmorProfile:
