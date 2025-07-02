@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- [#148] Metadata Mapping for log level
+
 ## [v3.6.0] - 2025-05-22
 
 ### Changed
