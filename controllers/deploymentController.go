@@ -76,14 +76,24 @@ func finishOrRequeue(logger logr.Logger, err error) (ctrl.Result, error) {
 	return ctrl.Result{}, err
 }
 
-func hasDoguLabel(deployment client.Object) bool {
-	for label := range deployment.GetLabels() {
+func hasDoguLabel(object client.Object) bool {
+	for label := range object.GetLabels() {
 		if label == legacyDoguLabel || label == doguv2.DoguLabelName {
 			return true
 		}
 	}
 
 	return false
+}
+
+func getDoguLabel(object client.Object) string {
+	for label, value := range object.GetLabels() {
+		if label == legacyDoguLabel || label == doguv2.DoguLabelName {
+			return value
+		}
+	}
+
+	return ""
 }
 
 func (dr *DeploymentReconciler) updateDoguHealth(ctx context.Context, doguDeployment *appsv1.Deployment) error {

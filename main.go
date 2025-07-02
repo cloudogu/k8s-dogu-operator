@@ -253,6 +253,12 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 		return fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
 	}
 
+	pvcReconciler := controllers.NewPvcReconciler(k8sManager.GetClient(), k8sClientSet, ecosystemClientSet)
+	err = pvcReconciler.SetupWithManager(k8sManager)
+	if err != nil {
+		return fmt.Errorf("failed to setup pvc reconciler with manager: %w", err)
+	}
+
 	// +kubebuilder:scaffold:builder
 
 	return nil
@@ -277,8 +283,15 @@ func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
 	availabilityChecker *health.AvailabilityChecker, namespace string) error {
 	doguInterface := ecosystemClientSet.Dogus(namespace)
 	deploymentInterface := k8sClientSet.AppsV1().Deployments(namespace)
+
+	volumesizeStartupHandler := resource.NewVolumeStartupHandler(k8sManager.GetClient(), doguInterface)
+	err := k8sManager.Add(volumesizeStartupHandler)
+	if err != nil {
+		return err
+	}
+
 	healthStartupHandler := health.NewStartupHandler(doguInterface, deploymentInterface, availabilityChecker, updater)
-	err := k8sManager.Add(healthStartupHandler)
+	err = k8sManager.Add(healthStartupHandler)
 	if err != nil {
 		return err
 	}

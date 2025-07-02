@@ -5,19 +5,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
 ### Added
 - [#148] Metadata Mapping for log level
 
-## [v3.6.0] - 2025-05-22
+## [v3.9.0] - 2025-06-25
+### Added
+- [#247] Implemented status field `dataVolumeSize` and the condition `meetsMinVolumeSize`. These fields will be updated on the operator start and every volume provisioning.
 
+## [v3.8.2] - 2025-06-12
+### Fixed
+- [#248] Use correct user and group ids for the `additionalMounts` Init-Container.
+  - Note that UIDs/GIDs need to be uniform for all dogu volumes, otherwise this feature may not work as expected
+- [#248] update to image cloudogu/dogu-additional-mounts-init:0.1.2, so that user and group ids are set correctly.
+
+## [v3.8.1] - 2025-06-12
+
+- Release fehlgeschlagen
+
+## [v3.8.0] - 2025-06-05
+### Added
+- [#240] Init-Container creation for `additionalMounts` from the Dogu-CRD.
+  The dogu-operator now supports mounting configmaps or secrets in dogus with the `dogu-additional-mounts-init` container.
+  - If only the `additionalMounts` change and there is no dogu upgrade, the dogu.json used for this process is fetched from the local dogu registry.
+  - Thus, you can add a new volume while developing a dogu and test the `addtionalMounts`.
+  - On dogu upgrades the routine will always use the new dogu descriptor from remote.
+
+## [v3.7.0] - 2025-06-04
+### Fixed
+- [#245] Check Replica count instead of readiness status at Dogu startup to prevent blocking operator when a Dogu cannot be started
+
+## [v3.6.0] - 2025-05-22
 ### Changed
 - [#239] Extracted Dogu-CRD, Dogurestart-CRD and associated clients to own [repository](https://github.com/cloudogu/k8s-dogu-lib)
 - [#242] Prevent decreasing volume size
 - [#242] Update to dogu resource with new minimal volume size field
 
 ## [v3.5.1] - 2025-05-02
-
 ### Changed
 - [#236] Set sensible resource requests and limits
 - [#237] Set resource requests and limits in all containers of dogu, including init container

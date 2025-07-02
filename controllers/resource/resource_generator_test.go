@@ -11,14 +11,16 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"slices"
 	"testing"
 )
 
-var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36", "exporterImage": "exporter:0.0.1"}
+var testAdditionalImages = map[string]string{"chownInitImage": "busybox:1.36", "exporterImage": "exporter:0.0.1", "additionalMountsInitContainerImage": "additionalMounts:0.0.1"}
 
-const testChownInitContainerImage = "busybox:1.36"
+const testInitContainerImage = "busybox:1.36"
 
 func TestNewResourceGenerator(t *testing.T) {
 	// given
@@ -87,6 +89,35 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		require.NoError(t, err)
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		assert.Equal(t, expectedDeployment, actualDeployment)
+		assert.Equal(t, pointer.Int32(1), actualDeployment.Spec.Replicas)
+	})
+
+	t.Run("Return simple deployment with 0 replicas", func(t *testing.T) {
+		// when
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDoguResource.Spec.Stopped = true
+		ldapDogu := readLdapDogu(t)
+
+		requirementsGen := newMockRequirementsGenerator(t)
+		requirementsGen.EXPECT().Generate(testCtx, ldapDogu).Return(v1.ResourceRequirements{}, nil)
+		hostAliasGeneratorMock := newMockHostAliasGenerator(t)
+		hostAliasGeneratorMock.EXPECT().Generate(testCtx).Return(nil, nil)
+		securityGenMock := newMockSecurityContextGenerator(t)
+		securityGenMock.EXPECT().Generate(testCtx, ldapDogu, ldapDoguResource).Return(nil, nil)
+
+		generator := resourceGenerator{
+			scheme:                   getTestScheme(),
+			requirementsGenerator:    requirementsGen,
+			hostAliasGenerator:       hostAliasGeneratorMock,
+			securityContextGenerator: securityGenMock,
+			additionalImages:         testAdditionalImages,
+		}
+
+		actualDeployment, err := generator.CreateDoguDeployment(testCtx, ldapDoguResource, ldapDogu)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, pointer.Int32(0), actualDeployment.Spec.Replicas)
 	})
 
 	t.Run("Return deployment with security context", func(t *testing.T) {
@@ -229,6 +260,7 @@ func TestResourceGenerator_GetDoguDeployment(t *testing.T) {
 		expectedDeployment := readLdapDoguExpectedDeployment(t)
 		expectedDeployment.Spec.Template.Spec.Containers[0].Resources = requirements
 		expectedDeployment.Spec.Template.Spec.InitContainers[0].Resources = requirements
+		expectedDeployment.Spec.Template.Spec.InitContainers[1].Resources = requirements
 		assert.Equal(t, expectedDeployment, actualDeployment)
 	})
 
@@ -413,7 +445,7 @@ func Test_getChownInitContainer(t *testing.T) {
 		}
 
 		// when
-		container, err := getChownInitContainer(dogu, doguResource, testChownInitContainerImage, resources)
+		container, err := getChownInitContainer(dogu, doguResource, testInitContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -427,7 +459,7 @@ func Test_getChownInitContainer(t *testing.T) {
 		resources := v1.ResourceRequirements{}
 
 		// when
-		container, err := getChownInitContainer(dogu, nil, testChownInitContainerImage, resources)
+		container, err := getChownInitContainer(dogu, nil, testInitContainerImage, resources)
 
 		// then
 		require.NoError(t, err)
@@ -440,7 +472,7 @@ func Test_getChownInitContainer(t *testing.T) {
 		resources := v1.ResourceRequirements{}
 
 		// when
-		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage, resources)
+		_, err := getChownInitContainer(dogu, nil, testInitContainerImage, resources)
 
 		// then
 		require.Error(t, err)
@@ -453,7 +485,7 @@ func Test_getChownInitContainer(t *testing.T) {
 		resources := v1.ResourceRequirements{}
 
 		// when
-		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage, resources)
+		_, err := getChownInitContainer(dogu, nil, testInitContainerImage, resources)
 
 		// then
 		require.Error(t, err)
@@ -466,7 +498,7 @@ func Test_getChownInitContainer(t *testing.T) {
 		resources := v1.ResourceRequirements{}
 
 		// when
-		_, err := getChownInitContainer(dogu, nil, testChownInitContainerImage, resources)
+		_, err := getChownInitContainer(dogu, nil, testInitContainerImage, resources)
 
 		// then
 		require.Error(t, err)
@@ -523,4 +555,328 @@ func Test_CreateStartupProbe(t *testing.T) {
 			assert.Equalf(t, tt.want, probe.ProbeHandler.Exec.Command, "CreateStartupProbe()")
 		})
 	}
+}
+
+func Test_BuildAdditionalMountInitContainer(t *testing.T) {
+	t.Run("success with standard volume setup\n", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "testVolume", Path: "/etc/test", NeedsBackup: true}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "ldap"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
+			SourceType: "ConfigMap",
+			Name:       "cm-1",
+			Volume:     "testVolume",
+			Subfolder:  "testSubFolder",
+		}}}}
+
+		expectedAdditionalMountsContainerName := "dogu-additional-mounts-init"
+		expectedContainerImage := testInitContainerImage
+		expectedArgs := []string{"copy", "-source=/datamount/cm-1", "-target=/dogumount/etc/test/testSubFolder"}
+		expectedDataVolumeName := doguResource.GetDataVolumeName()
+
+		resources := v1.ResourceRequirements{
+			Limits: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceCPU: resource.MustParse("100m"),
+			},
+			Requests: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceMemory: resource.MustParse("100Mi"),
+			},
+		}
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, resources)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedArgs, container.Args)
+		require.Equal(t, expectedContainerImage, container.Image)
+		require.Equal(t, expectedAdditionalMountsContainerName, container.Name)
+		require.Equal(t, 4, len(container.VolumeMounts))
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == expectedDataVolumeName &&
+				mount.MountPath == "/dogumount/etc/test" &&
+				mount.SubPath == "testVolume"
+		}))
+
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == "cm-1" && mount.MountPath == "/datamount/cm-1"
+		}))
+
+		require.Equal(t, resources, container.Resources)
+	})
+
+	t.Run("success with ephemeral volume setup", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "ephemeralVolume", Path: "/var/cache", NeedsBackup: false}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "redis"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
+			SourceType: "ConfigMap",
+			Name:       "redis-config",
+			Volume:     "ephemeralVolume",
+			Subfolder:  "config",
+		}}}}
+
+		expectedContainerImage := testInitContainerImage
+		expectedArgs := []string{"copy", "-source=/datamount/redis-config", "-target=/dogumount/var/cache/config"}
+		expectedEphemeralVolumeName := doguResource.GetEphemeralDataVolumeName()
+
+		resources := v1.ResourceRequirements{
+			Limits: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceCPU: resource.MustParse("50m"),
+			},
+		}
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, expectedContainerImage, resources)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedArgs, container.Args)
+		require.Equal(t, 4, len(container.VolumeMounts))
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == expectedEphemeralVolumeName &&
+				mount.MountPath == "/dogumount/var/cache" &&
+				mount.SubPath == "ephemeralVolume"
+		}))
+	})
+
+	t.Run("contains all dogu descriptor volume mounts as targets", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{
+			{Name: "ephemeralVolume", Path: "/var/cache", NeedsBackup: false},
+			{Name: "ephemeralVolumeNotInCR", Path: "/tmp/dir1", NeedsBackup: false},
+			{Name: "dataVolumeNotInCR", Path: "/tmp/dir2", NeedsBackup: true}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "redis"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
+			SourceType: "ConfigMap",
+			Name:       "redis-config",
+			Volume:     "ephemeralVolume",
+			Subfolder:  "config",
+		}}}}
+
+		expectedContainerImage := testInitContainerImage
+		expectedArgs := []string{"copy", "-source=/datamount/redis-config", "-target=/dogumount/var/cache/config"}
+		expectedEphemeralVolumeName := doguResource.GetEphemeralDataVolumeName()
+		expectedDataVolumeName := doguResource.GetDataVolumeName()
+
+		resources := v1.ResourceRequirements{
+			Limits: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceCPU: resource.MustParse("50m"),
+			},
+		}
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, expectedContainerImage, resources)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedArgs, container.Args)
+		require.Equal(t, 6, len(container.VolumeMounts))
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == expectedEphemeralVolumeName &&
+				mount.MountPath == "/dogumount/var/cache" &&
+				mount.SubPath == "ephemeralVolume"
+		}))
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == expectedEphemeralVolumeName &&
+				mount.MountPath == "/dogumount/tmp/dir1" &&
+				mount.SubPath == "ephemeralVolumeNotInCR"
+		}))
+		require.True(t, slices.ContainsFunc(container.VolumeMounts, func(mount v1.VolumeMount) bool {
+			return mount.Name == expectedDataVolumeName &&
+				mount.MountPath == "/dogumount/tmp/dir2" &&
+				mount.SubPath == "dataVolumeNotInCR"
+		}))
+	})
+
+	t.Run("success with multiple source volumes mounted to a single target volume", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "configVolume", Path: "/etc/app", NeedsBackup: true}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{
+			{
+				SourceType: "ConfigMap",
+				Name:       "main-config",
+				Volume:     "configVolume",
+				Subfolder:  "main",
+			},
+			{
+				SourceType: "ConfigMap",
+				Name:       "extra-config",
+				Volume:     "configVolume",
+				Subfolder:  "extra",
+			},
+		}}}
+
+		expectedArgs := []string{
+			"copy",
+			"-source=/datamount/main-config",
+			"-target=/dogumount/etc/app/main",
+			"-source=/datamount/extra-config",
+			"-target=/dogumount/etc/app/extra",
+		}
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedArgs, container.Args)
+		require.Equal(t, 5, len(container.VolumeMounts)) // One target volume + two source volumes
+
+		// The target volume should only be mounted once
+		volumeCount := 0
+		for _, mount := range container.VolumeMounts {
+			if mount.Name == doguResource.GetDataVolumeName() {
+				volumeCount++
+			}
+		}
+		require.Equal(t, 1, volumeCount, "Target volume should only be mounted once")
+	})
+
+	t.Run("success with one source volume mounted to multiple target volumes", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{
+			{Name: "configVolume", Path: "/etc/app/config", NeedsBackup: true},
+			{Name: "dataVolume", Path: "/var/lib/app/data", NeedsBackup: true},
+		}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{
+			{
+				SourceType: "ConfigMap",
+				Name:       "shared-config",
+				Volume:     "configVolume",
+				Subfolder:  "shared",
+			},
+			{
+				SourceType: "ConfigMap",
+				Name:       "shared-config", // Same source
+				Volume:     "dataVolume",    // Different target
+				Subfolder:  "imported",
+			},
+		}}}
+
+		expectedArgs := []string{
+			"copy",
+			"-source=/datamount/shared-config",
+			"-target=/dogumount/etc/app/config/shared",
+			"-source=/datamount/shared-config",
+			"-target=/dogumount/var/lib/app/data/imported",
+		}
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedArgs, container.Args)
+
+		// The source volume should only be mounted once
+		volumeCount := 0
+		for _, mount := range container.VolumeMounts {
+			if mount.Name == "shared-config" {
+				volumeCount++
+			}
+		}
+		require.Equal(t, 1, volumeCount, "Source volume should only be mounted once")
+	})
+
+	t.Run("success with whitespace in volume paths", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "spaceVolume", Path: "/etc/with spaces/conf", NeedsBackup: true}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
+			SourceType: "ConfigMap",
+			Name:       "space-config",
+			Volume:     "spaceVolume",
+			Subfolder:  "with more spaces",
+		}}}}
+
+		expectedArgs := []string{"copy", "-source=/datamount/space-config", "-target=/dogumount/etc/with spaces/conf/with more spaces"}
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedArgs, container.Args)
+	})
+
+	t.Run("failure with cr-Volume not matching a dogu volume name", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "existingVolume", Path: "/etc/test", NeedsBackup: true}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
+			SourceType: "ConfigMap",
+			Name:       "test-config",
+			Volume:     "nonExistingVolume", // This doesn't match any volume in dogu
+			Subfolder:  "config",
+		}}}}
+
+		sut := &resourceGenerator{}
+
+		// when
+		_, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+
+		// then
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not find volume name nonExistingVolume")
+	})
+
+	t.Run("success with empty subfolder", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "rootVolume", Path: "/etc/app", NeedsBackup: true}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{AdditionalMounts: []doguv2.DataMount{{
+			SourceType: "ConfigMap",
+			Name:       "root-config",
+			Volume:     "rootVolume",
+			Subfolder:  "", // Empty subfolder
+		}}}}
+
+		expectedArgs := []string{"copy", "-source=/datamount/root-config", "-target=/dogumount/etc/app"}
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, expectedArgs, container.Args)
+	})
+
+	t.Run("no additional mounts results in container with only target mounts (for possible deletion)", func(t *testing.T) {
+		// given
+		dogu := &core.Dogu{Volumes: []core.Volume{{Name: "testVolume", Path: "/etc/test", NeedsBackup: true}}}
+		doguResource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "app"}, Spec: doguv2.DoguSpec{
+			// No additional mounts specified
+			AdditionalMounts: []doguv2.DataMount{},
+		}}
+
+		expectedAdditionalMountsContainerName := "dogu-additional-mounts-init"
+		expectedContainerImage := testInitContainerImage
+		expectedDataVolumeName := doguResource.GetDataVolumeName()
+
+		sut := &resourceGenerator{}
+
+		// when
+		container, err := sut.BuildAdditionalMountInitContainer(testCtx, dogu, doguResource, testInitContainerImage, v1.ResourceRequirements{})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, 1, len(container.Args))
+		require.Equal(t, additionalMountsArg, container.Args[0])
+		require.Equal(t, expectedContainerImage, container.Image)
+		require.Equal(t, expectedAdditionalMountsContainerName, container.Name)
+		require.Equal(t, 3, len(container.VolumeMounts))
+		resultVolumeMount := container.VolumeMounts[0]
+		require.Equal(t, expectedDataVolumeName, resultVolumeMount.Name)
+		require.Equal(t, "/dogumount/etc/test", resultVolumeMount.MountPath)
+		require.Equal(t, "testVolume", resultVolumeMount.SubPath)
+	})
 }

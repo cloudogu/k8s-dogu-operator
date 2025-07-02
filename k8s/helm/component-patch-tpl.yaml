@@ -1,14 +1,16 @@
 apiVersion: v1
 values:
   images:
-    doguOperator: cloudogu/k8s-dogu-operator:3.6.0
+    doguOperator: cloudogu/k8s-dogu-operator:3.9.0
     chownInitImage: busybox:1.36
     exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.0.0
+    additionalMountsInitContainerImage: cloudogu/dogu-additional-mounts-init:0.1.2
 patches:
   values.yaml:
     additionalImages:
       chownInitImage: "{{ .images.chownInitImage }}"
       exporterImage: "{{ .images.exporterImage }}"
+      additionalMountsInitContainerImage: "{{ .images.additionalMountsInitContainerImage }}"
     controllerManager:
       image:
         registry: "{{ registryFrom .images.doguOperator }}"

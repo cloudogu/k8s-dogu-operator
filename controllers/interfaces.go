@@ -72,26 +72,17 @@ type securityContextManager interface {
 	UpdateDeploymentWithSecurityContext(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// startDoguManager includes functionality to start (stopped) dogus.
-type startDoguManager interface {
-	// StartDogu scales up a dogu to 1.
-	StartDogu(ctx context.Context, doguResource *v2.Dogu) error
-	// CheckStarted checks if the dogu has been successfully scaled to 1.
-	CheckStarted(ctx context.Context, doguResource *v2.Dogu) error
+type additionalMountsManager interface {
+	AdditionalMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error)
+	UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-// stopDoguManager includes functionality to stop running dogus.
-type stopDoguManager interface {
-	// StopDogu scales down a dogu to 0.
-	StopDogu(ctx context.Context, doguResource *v2.Dogu) error
-	// CheckStopped checks if the dogu has been successfully scaled to 0.
-	CheckStopped(ctx context.Context, doguResource *v2.Dogu) error
+type additionalMountsInitContainerGenerator interface {
+	BuildAdditionalMountInitContainer(ctx context.Context, dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
 }
 
-// DoguStartStopManager includes functionality to start and stop dogus.
-type DoguStartStopManager interface {
-	startDoguManager
-	stopDoguManager
+type startStopManager interface {
+	StartStopDogu(ctx context.Context, doguResource *v2.Dogu) error
 }
 
 // CombinedDoguManager abstracts the simple dogu operations in a k8s CES.
@@ -103,9 +94,9 @@ type CombinedDoguManager interface {
 	additionalIngressAnnotationsManager
 	exportManager
 	supportManager
-	startDoguManager
-	stopDoguManager
+	startStopManager
 	securityContextManager
+	additionalMountsManager
 }
 
 // requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
@@ -118,6 +109,10 @@ type securityValidator interface {
 	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
 }
 
+type doguAdditionalMountsValidator interface {
+	ValidateAdditionalMounts(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
+}
+
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
 //
 //nolint:unused
@@ -126,11 +121,32 @@ type requirementsGenerator interface {
 	Generate(ctx context.Context, dogu *cesappcore.Dogu) (coreV1.ResourceRequirements, error)
 }
 
+// DoguResourceGenerator handles resource generation for dogus.
+//
+//nolint:unused
+//goland:noinspection GoUnusedType
+type DoguResourceGenerator interface {
+	podTemplateResourceGenerator
+
+	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
+	CreateDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (*appsv1.Deployment, error)
+	// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
+	// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
+	// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides
+	// the service ports to the created service.
+	CreateDoguService(doguResource *v2.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile) (*coreV1.Service, error)
+	// CreateDoguPVC creates a persistent volume claim with a 5Gi storage for the given dogu.
+	CreateDoguPVC(doguResource *v2.Dogu) (*coreV1.PersistentVolumeClaim, error)
+}
+
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
 type localDoguFetcher interface {
 	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
 	// otherwise might be incompatible with K8s CES).
 	FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *cesappcore.Dogu, err error)
+	// Enabled checks is the given dogu is enabled.
+	// Returns false (without error), when the dogu is not installed
+	Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error)
 }
 
 // doguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
@@ -183,6 +199,18 @@ type appsV1Interface interface {
 
 type ClientSet interface {
 	kubernetes.Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type coreV1Interface interface {
+	v1.CoreV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type pvcInterface interface {
+	v1.PersistentVolumeClaimInterface
 }
 
 //nolint:unused

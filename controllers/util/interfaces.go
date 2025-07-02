@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -19,6 +20,19 @@ type dependencyValidator interface {
 type securityValidator interface {
 	// ValidateSecurity verifies the security fields of dogu descriptor and resource for correctness.
 	ValidateSecurity(doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
+}
+
+type doguAdditionalMountsValidator interface {
+	ValidateAdditionalMounts(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *k8sv2.Dogu) error
+}
+
+type additionalMountsInitContainerGenerator interface {
+	BuildAdditionalMountInitContainer(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
+}
+
+// requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
+type requirementsGenerator interface {
+	Generate(ctx context.Context, dogu *cesappcore.Dogu) (coreV1.ResourceRequirements, error)
 }
 
 //nolint:unused

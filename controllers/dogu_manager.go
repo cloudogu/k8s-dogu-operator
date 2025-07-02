@@ -38,8 +38,9 @@ type DoguManager struct {
 	ingressAnnotationsManager additionalIngressAnnotationsManager
 	supportManager            supportManager
 	exportManager             exportManager
-	startStopManager          DoguStartStopManager
+	startStopManager          startStopManager
 	securityContextManager    securityContextManager
+	additionalMountsManager   additionalMountsManager
 	recorder                  record.EventRecorder
 }
 
@@ -72,21 +73,29 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 
 	supportManager := NewDoguSupportManager(client, mgrSet, eventRecorder)
 
+	doguInterface := ecosystemClient.Dogus(operatorConfig.Namespace)
 	exportManager := NewDoguExportManager(
-		ecosystemClient.Dogus(operatorConfig.Namespace),
+		doguInterface,
 		clientSet.CoreV1().Pods(operatorConfig.Namespace),
 		mgrSet.ResourceUpserter,
 		mgrSet.LocalDoguFetcher,
 		eventRecorder,
 	)
 
-	volumeManager := NewDoguVolumeManager(client, eventRecorder)
+	volumeManager := NewDoguVolumeManager(client, eventRecorder, doguInterface)
 
 	ingressAnnotationsManager := NewDoguAdditionalIngressAnnotationsManager(client, eventRecorder)
 
 	securityContextManager := NewDoguSecurityContextManager(mgrSet, eventRecorder)
 
-	startStopManager := newDoguStartStopManager(ecosystemClient.Dogus(operatorConfig.Namespace), clientSet.AppsV1().Deployments(operatorConfig.Namespace), clientSet.CoreV1().Pods(operatorConfig.Namespace))
+	startStopManager := newDoguStartStopManager(
+		mgrSet.ResourceUpserter,
+		mgrSet.LocalDoguFetcher,
+		ecosystemClient.Dogus(operatorConfig.Namespace),
+		clientSet.AppsV1().Deployments(operatorConfig.Namespace),
+	)
+
+	additionalMountsManager := NewDoguAdditionalMountManager(clientSet.AppsV1().Deployments(operatorConfig.Namespace), mgrSet, doguInterface)
 
 	return &DoguManager{
 		scheme:                    client.Scheme(),
@@ -99,6 +108,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 		ingressAnnotationsManager: ingressAnnotationsManager,
 		startStopManager:          startStopManager,
 		securityContextManager:    securityContextManager,
+		additionalMountsManager:   additionalMountsManager,
 		recorder:                  eventRecorder,
 	}, nil
 }
@@ -115,8 +125,14 @@ func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Cl
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
 
+	additionalMountsContainer, err := imageGetter.imageForKey(ctx, config.AdditionalMountsInitContainerImageConfigmapNameKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	}
+
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
-		config.ExporterImageConfigmapNameKey: additionalExportModeContainer}
+		config.ExporterImageConfigmapNameKey:                      additionalExportModeContainer,
+		config.AdditionalMountsInitContainerImageConfigmapNameKey: additionalMountsContainer}
 
 	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
 	if err != nil {
@@ -171,34 +187,10 @@ func (m *DoguManager) UpdateDeploymentWithSecurityContext(ctx context.Context, d
 	return m.securityContextManager.UpdateDeploymentWithSecurityContext(ctx, doguResource)
 }
 
-// StartDogu scales a stopped dogu to 1.
-func (m *DoguManager) StartDogu(ctx context.Context, doguResource *doguv2.Dogu) error {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Starting dogu...")
-	return m.startStopManager.StartDogu(ctx, doguResource)
-}
-
-// StopDogu scales a running dogu to 0.
-func (m *DoguManager) StopDogu(ctx context.Context, doguResource *doguv2.Dogu) error {
-	m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Stopping dogu...")
-	return m.startStopManager.StopDogu(ctx, doguResource)
-}
-
-func (m *DoguManager) CheckStarted(ctx context.Context, doguResource *doguv2.Dogu) error {
-	err := m.startStopManager.CheckStarted(ctx, doguResource)
-	if err == nil {
-		m.recorder.Event(doguResource, corev1.EventTypeNormal, StartDoguEventReason, "Dogu started.")
-	}
-
-	return err
-}
-
-func (m *DoguManager) CheckStopped(ctx context.Context, doguResource *doguv2.Dogu) error {
-	err := m.startStopManager.CheckStopped(ctx, doguResource)
-	if err == nil {
-		m.recorder.Event(doguResource, corev1.EventTypeNormal, StopDoguEventReason, "Dogu stopped.")
-	}
-
-	return err
+// StartStopDogu starts or stops the dogu.
+func (m *DoguManager) StartStopDogu(ctx context.Context, doguResource *doguv2.Dogu) error {
+	m.recorder.Event(doguResource, corev1.EventTypeNormal, StartStopDoguEventReason, "Starting/Stopping dogu...")
+	return m.startStopManager.StartStopDogu(ctx, doguResource)
 }
 
 // UpdateExportMode activates/deactivates the export mode for the dogu
@@ -227,4 +219,12 @@ func createConfigRepositories(clientSet kubernetes.Interface, namespace string) 
 		DoguConfigRepository:    repository.NewDoguConfigRepository(configMapClient),
 		SensitiveDoguRepository: repository.NewSensitiveDoguConfigRepository(secretsClient),
 	}
+}
+
+func (m *DoguManager) AdditionalMountsChanged(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
+	return m.additionalMountsManager.AdditionalMountsChanged(ctx, doguResource)
+}
+
+func (m *DoguManager) UpdateAdditionalMounts(ctx context.Context, doguResource *doguv2.Dogu) error {
+	return m.additionalMountsManager.UpdateAdditionalMounts(ctx, doguResource)
 }

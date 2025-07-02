@@ -1,0 +1,90 @@
+{
+  "Name": "official/ldap",
+  "Version": "2.4.48-4",
+  "DisplayName": "OpenLDAP",
+  "Description": "OpenLDAP server for user and group management.",
+  "Url": "http://www.openldap.org",
+  "Category": "Base",
+  "Tags": [
+    "authentication",
+    "ldap",
+    "users",
+    "groups"
+  ],
+  "Logo": "https://cloudogu.com/images/dogus/openldap.png",
+  "Image": "registry.cloudogu.com/official/ldap",
+  "Configuration": [
+    {
+      "Name": "container_config/memory_limit",
+      "Description": "Limits the container's memory usage. Use a positive integer value followed by one of these units [b,k,m,g] (byte, kibibyte, mebibyte, gibibyte)",
+      "Optional": true,
+      "Validation": {
+        "Type": "BINARY_MEASUREMENT"
+      }
+    },
+    {
+      "Name": "container_config/swap_limit",
+      "Description": "Limits the container's swap memory usage. Use zero or a positive integer value followed by one of these units [b,k,m,g] (byte, kibibyte, mebibyte, gibibyte). 0 will disable swapping.",
+      "Optional": true,
+      "Validation": {
+        "Type": "BINARY_MEASUREMENT"
+      }
+    }
+  ],
+  "Volumes": [
+    {
+      "Name": "db",
+      "Path": "/var/lib/openldap",
+      "Owner": "100",
+      "Group": "101",
+      "NeedsBackup": true
+    },
+    {
+      "Name": "config",
+      "Path": "/etc/openldap/slapd.d",
+      "Owner": "100",
+      "Group": "101",
+      "NeedsBackup": true
+    },
+    {
+      "Name": "localConfig",
+      "Path": "/var/ces/config",
+      "Owner": "100",
+      "Group": "101",
+      "NeedsBackup": true
+    }
+  ],
+  "ExposedPorts": [
+    {
+      "Type": "tcp",
+      "Host": 2222,
+      "Container": 2222
+    },
+    {
+      "Type": "tcp",
+      "Host": 8888,
+      "Container": 8888
+    }
+  ],
+  "ExposedCommands": [
+    {
+      "Name": "service-account-create",
+      "Description": "Creates a new service account",
+      "Command": "/srv/openldap/create-sa.sh"
+    },
+    {
+      "Name": "service-account-remove",
+      "Description": "Removes a service account",
+      "Command": "/srv/openldap/remove-sa.sh"
+    }
+  ],
+  "HealthChecks": [
+    {
+      "Type": "tcp",
+      "Port": 389
+    },
+    {
+      "Type": "state"
+    }
+  ]
+}
