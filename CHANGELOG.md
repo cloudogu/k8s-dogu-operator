@@ -5,9 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Fixec
+### Fixed
 - [#251] Use dogu name as default pod for command execution. 
   - enable service account creation while export mode is active
+- [#148] Fix metadata file to use correct key
 
 ## [v3.10.0] - 2025-07-02
 ### Added
