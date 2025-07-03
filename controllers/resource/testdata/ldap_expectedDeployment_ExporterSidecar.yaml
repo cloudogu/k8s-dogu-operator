@@ -26,6 +26,8 @@ spec:
         app: ces
         dogu.name: ldap
         dogu.version: 2.4.48-4
+      annotations:
+        kubectl.kubernetes.io/default-container: ldap
     spec:
       automountServiceAccountToken: false
       InitContainers:

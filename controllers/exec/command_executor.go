@@ -231,11 +231,19 @@ func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command 
 		Namespace(pod.Namespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
-			Command: command.CommandWithArgs(),
-			Stdin:   hasStdin,
-			Stdout:  true,
-			Stderr:  true,
+			Container: ce.getDefaultContainer(pod),
+			Command:   command.CommandWithArgs(),
+			Stdin:     hasStdin,
+			Stdout:    true,
+			Stderr:    true,
 			// Note: if the TTY is set to true shell commands may emit ANSI codes into the stdout
 			TTY: false,
 		}, scheme.ParameterCodec)
+}
+
+func (ce *defaultCommandExecutor) getDefaultContainer(pod *corev1.Pod) string {
+	if container, ok := pod.Annotations["kubectl.kubernetes.io/default-container"]; ok {
+		return container
+	}
+	return ""
 }
