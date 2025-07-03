@@ -5,7 +5,7 @@ metavalues:
     name: Log-Level
     description: The central configuration value to set the log level for this component
     keys:
-      - path: controllerManager.env.loglevel
+      - path: controllerManager.env.logLevel
         mapping:
           debug: trace
           info: info
