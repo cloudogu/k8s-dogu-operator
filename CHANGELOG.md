@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.11.0] - 2025-07-04
+### Changed
+- [#255] updated exporter-sidecar to registry.cloudogu.com/k8s/rsync-sidecar:1.1.0
+
+### Added
+- [#255] dogu-name as environment-variable for exporter-sidecar-container
+
+### Fixed
+- [#251] Use dogu name as default pod for command execution. 
+  - enable service account creation while export mode is active
+
 ## [v3.10.0] - 2025-07-02
 ### Added
 - [#148] Metadata Mapping for log level

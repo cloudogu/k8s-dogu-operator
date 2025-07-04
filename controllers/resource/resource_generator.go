@@ -182,6 +182,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 
 	podTemplate := newPodSpecBuilder(doguResource, dogu).
 		labels(GetAppLabel().Add(doguResource.GetPodLabels())).
+		annotations(map[string]string{"kubectl.kubernetes.io/default-container": doguResource.Name}).
 		hostAliases(hostAliases).
 		volumes(volumes).
 		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
@@ -383,6 +384,12 @@ func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterIma
 		Name:         CreateExporterContainerName(doguResource.Name),
 		Image:        exporterImage,
 		VolumeMounts: createExporterSidecarVolumeMounts(doguResource, dogu),
+		Env: []corev1.EnvVar{
+			{
+				Name:  "DOGU_NAME",
+				Value: dogu.GetSimpleName(),
+			},
+		},
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{core.All},
