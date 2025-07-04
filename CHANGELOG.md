@@ -5,7 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Fixec
+### Changed
+- [#255] updated exporter-sidecar to registry.cloudogu.com/k8s/rsync-sidecar:1.1.0
+
+### Added
+- [#255] dogu-name as environment-variable for exporter-sidecar-container
+
+### Fixed
 - [#251] Use dogu name as default pod for command execution. 
   - enable service account creation while export mode is active
 

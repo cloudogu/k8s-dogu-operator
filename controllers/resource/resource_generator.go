@@ -384,6 +384,12 @@ func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterIma
 		Name:         CreateExporterContainerName(doguResource.Name),
 		Image:        exporterImage,
 		VolumeMounts: createExporterSidecarVolumeMounts(doguResource, dogu),
+		Env: []corev1.EnvVar{
+			{
+				Name:  "DOGU_NAME",
+				Value: dogu.GetSimpleName(),
+			},
+		},
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{core.All},
