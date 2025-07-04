@@ -182,6 +182,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 
 	podTemplate := newPodSpecBuilder(doguResource, dogu).
 		labels(GetAppLabel().Add(doguResource.GetPodLabels())).
+		annotations(map[string]string{"kubectl.kubernetes.io/default-container": doguResource.Name}).
 		hostAliases(hostAliases).
 		volumes(volumes).
 		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
