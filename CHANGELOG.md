@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.11.1] - 2025-07-07
+### Fixed
+- [#148] Fix metadata file to use correct key
+
 ## [v3.11.0] - 2025-07-04
 ### Changed
 - [#255] updated exporter-sidecar to registry.cloudogu.com/k8s/rsync-sidecar:1.1.0
