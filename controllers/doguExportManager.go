@@ -151,15 +151,23 @@ func (dem *doguExportManager) deploymentUpdateNeeded(ctx context.Context, doguRe
 		return false, fmt.Errorf("failed to list deployment: %w", err)
 	}
 
+	exporterContainerExists := false
+
 	for _, deployment := range deploymentList.Items {
 		for _, container := range deployment.Spec.Template.Spec.Containers {
 			if container.Name == resource.CreateExporterContainerName(doguName) {
-				return false, nil
+				exporterContainerExists = true
+				break
 			}
 		}
 	}
 
-	return true, nil
+	specExportMode := doguResource.Spec.ExportMode
+
+	// The statement checks an XOR condition
+	updateNeeded := (specExportMode || exporterContainerExists) && !(specExportMode && exporterContainerExists)
+
+	return updateNeeded, nil
 }
 
 func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguResource *doguv2.Dogu, phase string, activated bool) error {
