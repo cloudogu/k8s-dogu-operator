@@ -165,7 +165,7 @@ func (dem *doguExportManager) deploymentUpdateNeeded(ctx context.Context, doguRe
 	specExportMode := doguResource.Spec.ExportMode
 
 	// The statement checks an XOR condition
-	updateNeeded := (specExportMode || exporterContainerExists) && !(specExportMode && exporterContainerExists)
+	updateNeeded := specExportMode != exporterContainerExists
 
 	return updateNeeded, nil
 }
