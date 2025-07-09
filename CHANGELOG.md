@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.11.2] - 2025-07-09
+### Fixed
+- [#253] Only update deployment for export mode when needed
+- [#253] Sort capabilities in securityContext to prevent changes in the pod-template due to a different order of the capabilities
+
 ## [v3.11.1] - 2025-07-07
 ### Fixed
 - [#148] Fix metadata file to use correct key

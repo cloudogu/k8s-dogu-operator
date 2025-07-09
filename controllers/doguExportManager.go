@@ -51,6 +51,7 @@ func (e exportModeNotYetChangedError) GetRequeueTime() time.Duration {
 type doguExportManager struct {
 	doguClient       doguClient.DoguInterface
 	podClient        podInterface
+	deploymentClient deploymentInterface
 	resourceUpserter resource.ResourceUpserter
 	doguFetcher      localDoguFetcher
 	eventRecorder    record.EventRecorder
@@ -60,6 +61,7 @@ type doguExportManager struct {
 func NewDoguExportManager(
 	doguClient doguClient.DoguInterface,
 	podClient podInterface,
+	deploymentClient deploymentInterface,
 	resourceUpserter resource.ResourceUpserter,
 	doguFetcher localDoguFetcher,
 	eventRecorder record.EventRecorder,
@@ -67,6 +69,7 @@ func NewDoguExportManager(
 	return &doguExportManager{
 		doguClient:       doguClient,
 		podClient:        podClient,
+		deploymentClient: deploymentClient,
 		resourceUpserter: resourceUpserter,
 		doguFetcher:      doguFetcher,
 		eventRecorder:    eventRecorder,
@@ -89,24 +92,37 @@ func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource
 	logger := log.FromContext(ctx)
 
 	shouldUpdate, err := dem.shouldUpdateExportMode(ctx, doguResource)
-	if shouldUpdate || err != nil {
-		if err != nil {
-			logger.Error(err, "error while checking export-mode.")
-		}
-
-		if updateErr := dem.updateExportMode(ctx, doguResource); updateErr != nil {
-			return updateErr
-		}
-
+	if err != nil {
+		logger.Error(err, "error while checking export-mode.")
 		return exportModeNotYetChangedError{doguName: doguResource.Name, desiredExportModeState: doguResource.Spec.ExportMode, err: err}
 	}
 
-	logger.Info(fmt.Sprintf("The export-mode of dogu %q has changed to its desired state: %v", doguResource.Name, doguResource.Spec.ExportMode))
-	return dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
+	if !shouldUpdate {
+		logger.Info(fmt.Sprintf("The export-mode of dogu %q has changed to its desired state: %v", doguResource.Name, doguResource.Spec.ExportMode))
+		return dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
+	}
+
+	if updateErr := dem.updateExportMode(ctx, doguResource); updateErr != nil {
+		return exportModeNotYetChangedError{doguName: doguResource.Name, desiredExportModeState: doguResource.Spec.ExportMode, err: updateErr}
+	}
+
+	// Return an error to trigger a reconciling to watch whether the desired state is reached. There is no option to reconcile without error
+	// at the moment.
+	return exportModeNotYetChangedError{doguName: doguResource.Name, desiredExportModeState: doguResource.Spec.ExportMode}
 }
 
 func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource *doguv2.Dogu) error {
 	logger := log.FromContext(ctx)
+
+	updateNeeded, err := dem.deploymentUpdateNeeded(ctx, doguResource)
+	if err != nil {
+		return fmt.Errorf("failed to check if deployment update is needed for dogu %q: %w", doguResource.Name, err)
+	}
+
+	if !updateNeeded {
+		logger.Info("Deployment Spec for dogu is already set up for export-mode.", "dogu", doguResource.Name, "exportMode", doguResource.Spec.ExportMode)
+		return nil
+	}
 
 	if err := dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode); err != nil {
 		return err
@@ -125,6 +141,33 @@ func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource
 	}
 
 	return nil
+}
+
+func (dem *doguExportManager) deploymentUpdateNeeded(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
+	doguName := doguResource.GetObjectKey().Name
+
+	deploymentList, err := dem.deploymentClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", doguv2.DoguLabelName, doguName)})
+	if err != nil {
+		return false, fmt.Errorf("failed to list deployment: %w", err)
+	}
+
+	exporterContainerExists := false
+
+	for _, deployment := range deploymentList.Items {
+		for _, container := range deployment.Spec.Template.Spec.Containers {
+			if container.Name == resource.CreateExporterContainerName(doguName) {
+				exporterContainerExists = true
+				break
+			}
+		}
+	}
+
+	specExportMode := doguResource.Spec.ExportMode
+
+	// The statement checks an XOR condition
+	updateNeeded := specExportMode != exporterContainerExists
+
+	return updateNeeded, nil
 }
 
 func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguResource *doguv2.Dogu, phase string, activated bool) error {
@@ -147,10 +190,11 @@ func (dem *doguExportManager) isDeploymentInExportMode(ctx context.Context, dogu
 	}
 
 	exporterContainerName := resource.CreateExporterContainerName(doguName.Name)
+
 	for _, pod := range podList.Items {
 		for _, containerStatus := range pod.Status.ContainerStatuses {
-			if containerStatus.Name == exporterContainerName && containerStatus.Ready {
-				return true, nil
+			if containerStatus.Name == exporterContainerName {
+				return containerStatus.Ready, nil
 			}
 		}
 	}
