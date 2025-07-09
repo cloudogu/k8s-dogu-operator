@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+	"slices"
 )
 
 func NewSecurityContextGenerator() *SecurityContextGenerator {
@@ -111,5 +112,8 @@ func effectiveCapabilities(dogu *core.Dogu, doguResource *v2.Dogu) []corev1.Capa
 	for i, capability := range effectiveCapabilities {
 		effectiveK8sCapabilities[i] = corev1.Capability(capability)
 	}
+
+	slices.Sort(effectiveK8sCapabilities)
+
 	return effectiveK8sCapabilities
 }

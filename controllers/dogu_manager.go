@@ -77,6 +77,7 @@ func NewDoguManager(client client.Client, ecosystemClient doguClient.EcoSystemV2
 	exportManager := NewDoguExportManager(
 		doguInterface,
 		clientSet.CoreV1().Pods(operatorConfig.Namespace),
+		clientSet.AppsV1().Deployments(operatorConfig.Namespace),
 		mgrSet.ResourceUpserter,
 		mgrSet.LocalDoguFetcher,
 		eventRecorder,
