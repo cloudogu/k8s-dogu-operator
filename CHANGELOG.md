@@ -5,8 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.11.2] - 2025-07-09
 ### Fixed
-- [#253] Only update deployment for export mode when spec does not contain export container
+- [#253] Only update deployment for export mode when needed
+- [#253] Sort capabilities in securityContext to prevent changes in the pod-template due to a different order of the capabilities
 
 ## [v3.11.1] - 2025-07-07
 ### Fixed
