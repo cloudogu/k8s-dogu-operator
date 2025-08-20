@@ -14,7 +14,7 @@ import (
 const requeueAfterVolume = 10 * time.Second
 
 type VolumeStep struct {
-	doguVolumeManager doguVolumeManager
+	doguVolumeManager *doguVolumeManager
 	client            client.Client
 }
 
