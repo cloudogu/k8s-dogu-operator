@@ -42,17 +42,17 @@ func NewDoguChangeUseCase(
 	}
 }
 
-func (dcu *DoguChangeUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration) {
+func (dcu *DoguChangeUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, error) {
 	logger := log.FromContext(ctx).
 		WithName("DoguChangeUseCase.HandleUntilApplied").
 		WithValues("doguName", doguResource.Name)
 
 	for _, s := range dcu.steps {
 		requeueAfter, err := s.Run(ctx, doguResource)
-		if err != nil {
-			logger.Error(err, "reconcile step failed: %w", err)
-			return requeueAfter
+		if err != nil || requeueAfter != 0 {
+			logger.Error(err, "reconcile step has to requeue: %w", err)
+			return requeueAfter, err
 		}
 	}
-	return
+	return 0, nil
 }
