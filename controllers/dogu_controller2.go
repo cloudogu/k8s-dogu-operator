@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
@@ -16,6 +17,7 @@ import (
 type doguReconciler2 struct {
 	client            client.Client
 	doguChangeHandler DoguChangeHandler
+	doguDeleteHandler DoguChangeHandler
 }
 
 func NewDoguReconciler2(client client.Client, handler DoguChangeHandler) *doguReconciler2 {
@@ -31,7 +33,12 @@ func (r *doguReconciler2) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		logger.Info(fmt.Sprintf("failed to get doguResource: %s", err))
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	requeueAfter, err := r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
+	var requeueAfter time.Duration
+	if doguResource.GetDeletionTimestamp().IsZero() {
+		requeueAfter, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
+	} else {
+		requeueAfter, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
+	}
 	if err != nil {
 		return ctrl.Result{}, err
 	}
