@@ -36,7 +36,7 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) (reque
 	if err != nil {
 		return requeueAfterValidation, err
 	}
-	if fromDogu != nil && toDogu != nil {
+	if fromDogu != nil && toDogu != nil && fromDogu.Version != toDogu.Version {
 		err = vs.premisesChecker.Check(ctx, doguResource, toDogu, fromDogu)
 		if err != nil {
 			return requeueAfterValidation, fmt.Errorf("failed a premise check: %w", err)
