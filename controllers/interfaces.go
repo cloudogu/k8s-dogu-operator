@@ -293,6 +293,7 @@ type doguConfigRepository interface {
 	SaveOrMerge(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
 	Delete(ctx context.Context, name cescommons.SimpleName) error
 	Watch(ctx context.Context, dName cescommons.SimpleName, filters ...config.WatchFilter) (<-chan repository.DoguConfigWatchResult, error)
+	SetOwnerReference(ctx context.Context, dName cescommons.SimpleName, owners []metav1.OwnerReference) error
 }
 
 // dependencyValidator checks if all necessary dependencies for an upgrade are installed.
@@ -366,6 +367,18 @@ type ecosystemInterface interface {
 //goland:noinspection GoUnusedType
 type doguInterface interface {
 	doguClient.DoguInterface
+}
+
+type serviceGenerator interface {
+	CreateDoguService(doguResource *v2.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile) (*coreV1.Service, error)
+}
+
+type serviceInterface interface {
+	v1.ServiceInterface
+}
+
+type netPolUpserter interface {
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
 }
 
 //nolint:unused

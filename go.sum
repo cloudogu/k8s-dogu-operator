@@ -32,8 +32,12 @@ github.com/cloudogu/k8s-dogu-lib/v2 v2.8.0 h1:ae+LtiY+J2/qIX1AUJLcVxx/FQvlstq9Vi
 github.com/cloudogu/k8s-dogu-lib/v2 v2.8.0/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.9.0 h1:eMXorf00BBQq6kwFUsVOs9f0aPuQ6J/XuakiT9F24Q8=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.9.0/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
+github.com/cloudogu/k8s-host-change v0.7.0 h1:291ojIo64Z245xtBJdC3sa6H+eAPvbjb7cpvCr9kYP8=
+github.com/cloudogu/k8s-host-change v0.7.0/go.mod h1:vl0XIdCpvxXCZCcTRyfWYDgf+cmw8/fy6rZnmJ0oblo=
 github.com/cloudogu/k8s-host-change v0.7.2 h1:so4QkgZxYkMPVF39xNETVHlVpATWMwTuu4beE7laUbw=
 github.com/cloudogu/k8s-host-change v0.7.2/go.mod h1:2/mcqJkWBfrqTgWA70Bca+hL9ZtrIeyrUVsl8STD7Pg=
+github.com/cloudogu/k8s-registry-lib v0.2.2-0.20250820093844-35911299eda4 h1:Mlu7ehhxeTAfbnhncOR1NEW4YRXtVR5spXZpisDJCHk=
+github.com/cloudogu/k8s-registry-lib v0.2.2-0.20250820093844-35911299eda4/go.mod h1:NytbB2XBjc+gr5gOJFoPjCzyxs/TuhWpKSnDJzCLQ14=
 github.com/cloudogu/k8s-registry-lib v0.5.1 h1:gbdrhETUm53GP65LoljrS1kekDDl/onBPfrOQTQpt1s=
 github.com/cloudogu/k8s-registry-lib v0.5.1/go.mod h1:mdMOgknEOrGQH1zc/3K859iPhwpqwtzigK9QrjM3Vk0=
 github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1 h1:NWoBvBwiE8yO8HqSId0+nOTBMGSjzX0yM8m6fC7Ll6E=
@@ -75,6 +79,7 @@ github.com/emicklei/go-restful/v3 v3.12.2 h1:DhwDP0vY3k8ZzE0RunuJy8GhNpPL6zqLkDf
 github.com/emicklei/go-restful/v3 v3.12.2/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/evanphx/json-patch v0.5.2 h1:xVCHIVMUu1wtM/VkR9jVZ45N3FhZfYMMYGorLCR8P3k=
 github.com/evanphx/json-patch v0.5.2/go.mod h1:ZWS5hhDbVDyob71nXKNL0+PWn6ToqBHMikGIFbs31qQ=
+github.com/evanphx/json-patch v4.12.0+incompatible h1:4onqiflcdA9EOZ4RxV643DvftH5pOlLGNtQ5lPWQu84=
 github.com/evanphx/json-patch/v5 v5.9.11 h1:/8HVnzMq13/3x9TPvjG08wUGqBTmZBsCWzjTM0wiaDU=
 github.com/evanphx/json-patch/v5 v5.9.11/go.mod h1:3j+LviiESTElxA4p3EMKAB9HXj3/XEtnUf6OZxqIQTM=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=

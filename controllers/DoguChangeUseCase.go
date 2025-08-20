@@ -12,9 +12,33 @@ type DoguChangeUseCase struct {
 	steps []step
 }
 
-func NewDoguChangeUseCase() *DoguChangeUseCase {
+func NewDoguChangeUseCase(
+	validationStep *ValidationStep,
+	existsStep *FinalizerExistsStep,
+	configStep *DoguConfigStep,
+	doguReferenceStep *DoguConfigOwnerReferenceStep,
+	sensitiveConfigStep *SensitiveConfigStep,
+	sensitiveReferenceStep *SensitiveConfigOwnerReferenceStep,
+	serviceAccountStep *ServiceAccountStep,
+	volumeStep *VolumeStep,
+	serviceStep *ServiceStep,
+	customResourceStep *customK8sResourceStep,
+	netPolsStep *networkPoliciesStep,
+) *DoguChangeUseCase {
 	return &DoguChangeUseCase{
-		steps: []step{},
+		steps: []step{
+			validationStep,
+			existsStep,
+			configStep,
+			doguReferenceStep,
+			sensitiveConfigStep,
+			sensitiveReferenceStep,
+			serviceAccountStep,
+			volumeStep,
+			serviceStep,
+			customResourceStep,
+			netPolsStep,
+		},
 	}
 }
 
