@@ -26,7 +26,7 @@ func NewVolumeStep(client client.Client, eventRecorder record.EventRecorder, dog
 }
 
 func (vs *VolumeStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
-
+	// TODO Non blocking
 	pvc, err := doguResource.GetDataPVC(ctx, vs.client)
 	if err != nil {
 		return requeueAfterVolume, err
