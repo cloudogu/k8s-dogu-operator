@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"time"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-apply-lib/apply"
@@ -370,4 +372,11 @@ type doguInterface interface {
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
 	doguClient.DoguRestartInterface
+}
+
+type step interface {
+	Run(ctx context.Context, resource *v2.Dogu) (requeueAfter time.Duration, err error)
+}
+type DoguChangeHandler interface {
+	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration)
 }
