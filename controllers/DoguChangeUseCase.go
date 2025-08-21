@@ -19,11 +19,13 @@ func NewDoguChangeUseCase(
 	doguReferenceStep *DoguConfigOwnerReferenceStep,
 	sensitiveConfigStep *SensitiveConfigStep,
 	sensitiveReferenceStep *SensitiveConfigOwnerReferenceStep,
+	// TODO add register dogu step
 	serviceAccountStep *ServiceAccountStep,
 	volumeStep *VolumeStep,
 	serviceStep *ServiceStep,
 	customResourceStep *customK8sResourceStep,
 	netPolsStep *networkPoliciesStep,
+	deploymentStep *DeploymentStep,
 ) *DoguChangeUseCase {
 	return &DoguChangeUseCase{
 		steps: []step{
@@ -38,6 +40,7 @@ func NewDoguChangeUseCase(
 			serviceStep,
 			customResourceStep,
 			netPolsStep,
+			deploymentStep,
 		},
 	}
 }
