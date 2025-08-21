@@ -19,7 +19,7 @@ func NewDoguChangeUseCase(
 	doguReferenceStep *DoguConfigOwnerReferenceStep,
 	sensitiveConfigStep *SensitiveConfigStep,
 	sensitiveReferenceStep *SensitiveConfigOwnerReferenceStep,
-	// TODO add register dogu step
+	registerDoguVersionStep *RegisterDoguVersionStep,
 	serviceAccountStep *ServiceAccountStep,
 	volumeStep *VolumeStep,
 	serviceStep *ServiceStep,
@@ -35,6 +35,7 @@ func NewDoguChangeUseCase(
 			doguReferenceStep,
 			sensitiveConfigStep,
 			sensitiveReferenceStep,
+			registerDoguVersionStep,
 			serviceAccountStep,
 			volumeStep,
 			serviceStep,
