@@ -39,13 +39,7 @@ func (r *doguReconciler2) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	} else {
 		requeueAfter, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
 	}
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if requeueAfter != 0 {
-		return ctrl.Result{RequeueAfter: requeueAfter}, nil
-	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: requeueAfter}, err
 }
 
 // SetupWithManager sets up the controller with the manager.
