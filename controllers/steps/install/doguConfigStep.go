@@ -7,6 +7,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/ces-commons-lib/errors"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/config"
 )
@@ -23,20 +24,20 @@ func NewDoguConfigStep(configRepos util.ConfigRepositories) *DoguConfigStep {
 	}
 }
 
-func (dcs *DoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
-	_, err = dcs.doguConfigRepository.Get(ctx, cescommons.SimpleName(doguResource.Name))
+func (dcs *DoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	_, err := dcs.doguConfigRepository.Get(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
 		if !errors.IsNotFoundError(err) {
-			return 0, err
+			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 		}
 
 		err = dcs.createConfig(ctx, doguResource)
 		if err != nil {
-			return 0, err
+			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 		}
 	}
 
-	return 0, nil
+	return steps.StepResult{}
 }
 
 func (dcs *DoguConfigStep) createConfig(ctx context.Context, doguResource *v2.Dogu) error {

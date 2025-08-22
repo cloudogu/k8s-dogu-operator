@@ -3,9 +3,9 @@ package deletion
 import (
 	"context"
 	"fmt"
-	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
@@ -23,10 +23,10 @@ func NewUnregisterDoguVersionStep(mgrSet *util.ManagerSet) *UnregisterDoguVersio
 	}
 }
 
-func (udvs *UnregisterDoguVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
-	err = udvs.doguRegistrator.UnregisterDogu(ctx, doguResource.Name)
+func (udvs *UnregisterDoguVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	err := udvs.doguRegistrator.UnregisterDogu(ctx, doguResource.Name)
 	if err != nil {
-		return 0, fmt.Errorf("failed to register dogu: %w", err)
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to register dogu: %w", err))
 	}
-	return 0, err
+	return steps.StepResult{}
 }

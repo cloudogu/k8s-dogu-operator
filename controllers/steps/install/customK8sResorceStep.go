@@ -5,6 +5,7 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
@@ -17,7 +18,7 @@ func NewCustomK8sResourceStep(mgrSet util.ManagerSet) *CustomK8sResourceStep {
 	return &CustomK8sResourceStep{}
 }
 
-func (ses *CustomK8sResourceStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (ses *CustomK8sResourceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	// TODO
-	return 0, nil
+	return steps.StepResult{}
 }

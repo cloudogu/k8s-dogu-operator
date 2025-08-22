@@ -3,7 +3,6 @@ package install
 import (
 	"context"
 	"fmt"
-	"time"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -28,20 +27,20 @@ func NewVolumeGeneratorStep(mgrSet *util.ManagerSet, deploymentPatcher steps.Dep
 	}
 }
 
-func (vgs *VolumeGeneratorStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (vgs *VolumeGeneratorStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, err := vgs.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
-		return 0, fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err)
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err))
 	}
 
 	volumes, err := resource.CreateVolumes(doguResource, dogu, doguResource.Spec.ExportMode)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 
 	deployment, err := vgs.getDoguDeployment(ctx, doguResource)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 
 	patch := map[string]interface{}{
@@ -56,9 +55,9 @@ func (vgs *VolumeGeneratorStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 
 	_, err = vgs.deploymentPatcher.Execute(ctx, deployment.Name, patch)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
-	return 0, nil
+	return steps.StepResult{}
 }
 
 func (vgs *VolumeGeneratorStep) getDoguDeployment(ctx context.Context, doguResource *v2.Dogu) (*appsv1.Deployment, error) {

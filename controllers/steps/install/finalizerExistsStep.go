@@ -7,6 +7,7 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -25,7 +26,7 @@ func NewFinalizerExistsStep(client client.Client) *FinalizerExistsStep {
 	}
 }
 
-func (fs *FinalizerExistsStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (fs *FinalizerExistsStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	if !controllerutil.ContainsFinalizer(doguResource, finalizerName) {
 		finalizers := []string{finalizerName}
 		patch := map[string]interface{}{
@@ -35,12 +36,12 @@ func (fs *FinalizerExistsStep) Run(ctx context.Context, doguResource *v2.Dogu) (
 		}
 		patchBytes, err := json.Marshal(patch)
 		if err != nil {
-			return 0, fmt.Errorf("failed to marshal patch for finalizer: %w", err)
+			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to marshal patch for finalizer: %w", err))
 		}
 		err = fs.client.Patch(ctx, doguResource, client.RawPatch(types.MergePatchType, patchBytes))
 		if err != nil {
-			return 0, fmt.Errorf("failed to update dogu: %w", err)
+			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to update dogu: %w", err))
 		}
 	}
-	return 0, nil
+	return steps.StepResult{}
 }

@@ -387,9 +387,6 @@ type doguRestartInterface interface {
 	doguClient.DoguRestartInterface
 }
 
-type step interface {
-	Run(ctx context.Context, resource *v2.Dogu) (requeueAfter time.Duration, err error)
-}
 type DoguUsecase interface {
-	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error)
+	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, error)
 }

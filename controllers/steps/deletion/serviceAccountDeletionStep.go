@@ -3,12 +3,12 @@ package deletion
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,17 +30,17 @@ func NewServiceAccountRemoverStep(
 	}
 }
 
-func (sas *ServiceAccountRemoverStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (sas *ServiceAccountRemoverStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	doguDescriptor, err := sas.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 
 	err = sas.serviceAccountRemover.RemoveAll(ctx, doguDescriptor)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
-	return 0, nil
+	return steps.StepResult{}
 }
 
 func (sas *ServiceAccountRemoverStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {

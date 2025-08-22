@@ -8,6 +8,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,23 +30,23 @@ func NewVolumeExpanderStep(client client.Client, doguInterface doguClient.DoguIn
 	}
 }
 
-func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	// TODO Non blocking
 	pvc, err := doguResource.GetDataPVC(ctx, vs.client)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 	quantity, err := doguResource.GetMinDataVolumeSize()
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 	if vs.isPvcStorageResized(pvc, quantity) {
-		return 0, nil
+		return steps.StepResult{}
 	}
 	if !vs.isScaledDown(ctx, vs.client, doguResource) && !vs.isPvcResizeApplicable(pvc) {
 		_, err := vs.scaleDeployment(ctx, vs.client, doguResource, scaleDownReplicas)
 		if err != nil {
-			return 0, fmt.Errorf("failed to scale down replicas: %w", err)
+			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to scale down replicas: %w", err))
 		}
 	}
 
@@ -56,18 +57,18 @@ func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) (r
 		pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}
 		err = vs.client.Update(ctx, pvc)
 		if err != nil {
-			return 0, fmt.Errorf("failed to update PVC %s: %w", pvc.Name, err)
+			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to update PVC %s: %w", pvc.Name, err))
 		}
 	}
 
 	if vs.isScaledDown(ctx, vs.client, doguResource) && vs.isPvcResizeApplicable(pvc) {
 		_, err := vs.scaleDeployment(ctx, vs.client, doguResource, scaleUpReplicas)
 		if err != nil {
-			return 0, fmt.Errorf("failed to scale down replicas: %w", err)
+			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to scale down replicas: %w", err))
 		}
 	}
 
-	return 0, nil
+	return steps.StepResult{}
 }
 
 func (vs *VolumeExpanderStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {

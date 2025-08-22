@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
@@ -25,18 +26,18 @@ func NewDeploymentStep(mgrSet *util.ManagerSet, upserter resource.ResourceUpsert
 	}
 }
 
-func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, err := ds.getLocalDogu(ctx, doguResource)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 	// TODO Generate Resource-Limits
 	// TODO Already done in resource generator: https://github.com/cloudogu/k8s-dogu-operator/blob/d289f34b58294461aa7249ceb1402f484ffd183c/controllers/resource/resource_generator.go#L198
 	_, err = ds.upserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
-	return 0, nil
+	return steps.StepResult{}
 }
 
 func (ds *DeploymentStep) getLocalDogu(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {

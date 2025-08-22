@@ -64,10 +64,13 @@ func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, 
 		WithValues("doguName", doguResource.Name)
 
 	for _, s := range dicu.steps {
-		requeueAfter, err := s.Run(ctx, doguResource)
-		if err != nil || requeueAfter != 0 {
-			logger.Error(err, "reconcile step has to requeue: %w", err)
-			return requeueAfter, err
+		result := s.Run(ctx, doguResource)
+		if result.Err != nil || result.RequeueAfter != 0 {
+			logger.Error(result.Err, "reconcile step has to requeue: %w", result.Err)
+			return result.RequeueAfter, result.Err
+		}
+		if !result.Continue {
+			break
 		}
 	}
 	return 0, nil

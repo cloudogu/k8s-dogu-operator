@@ -2,9 +2,9 @@ package deletion
 
 import (
 	"context"
-	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,9 +19,10 @@ func NewDeleteOutOfHealthConfigMapStep(mgrSet *util.ManagerSet) *DeleteOutOfHeal
 	return &DeleteOutOfHealthConfigMapStep{}
 }
 
-func (dhc *DeleteOutOfHealthConfigMapStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
-	return 0, dhc.DeleteDoguOutOfHealthConfigMap(ctx, doguResource)
+func (dhc *DeleteOutOfHealthConfigMapStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(dhc.DeleteDoguOutOfHealthConfigMap(ctx, doguResource))
 }
+
 func (dhc *DeleteOutOfHealthConfigMapStep) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error {
 	namespace := dogu.Namespace
 	stateConfigMap := &corev1.ConfigMap{}

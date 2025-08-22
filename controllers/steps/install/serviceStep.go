@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,21 +29,21 @@ func NewServiceStep(mgrSet util.ManagerSet) *ServiceStep {
 	}
 }
 
-func (ses *ServiceStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (ses *ServiceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	doguDescriptor, err := ses.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 	imageConfig, err := ses.imageRegistry.PullImageConfig(ctx, doguDescriptor.Image+":"+doguResource.Spec.Version)
 	service, err := ses.serviceGenerator.CreateDoguService(doguResource, doguDescriptor, imageConfig)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 	err = ses.createOrUpdateService(ctx, service)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
-	return 0, nil
+	return steps.StepResult{}
 }
 
 func (ses *ServiceStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {

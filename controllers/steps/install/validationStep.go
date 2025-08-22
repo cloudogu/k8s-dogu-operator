@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,34 +32,34 @@ func NewValidationStep(mgrSet *util.ManagerSet, checker premisesChecker) *Valida
 	}
 }
 
-func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	fromDogu, toDogu, _, err := vs.getDogusForUpgrade(ctx, doguResource)
 	if err != nil {
-		return 0, err
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
 	if fromDogu != nil && toDogu != nil && fromDogu.Version != toDogu.Version {
 		err = vs.premisesChecker.Check(ctx, doguResource, toDogu, fromDogu)
 		if err != nil {
-			return requeueAfterValidation, fmt.Errorf("failed a premise check: %w", err)
+			return steps.NewStepResultContinueIsTrue(requeueAfterValidation, fmt.Errorf("failed a premise check: %w", err))
 		}
-		return 0, nil
+		return steps.StepResult{}
 	}
 
 	err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
 	if err != nil {
-		return requeueAfterValidation, err
+		return steps.NewStepResultContinueIsTrue(requeueAfterValidation, err)
 	}
 
 	err = vs.securityValidator.ValidateSecurity(toDogu, doguResource)
 	if err != nil {
-		return requeueAfterValidation, err
+		return steps.NewStepResultContinueIsTrue(requeueAfterValidation, err)
 	}
 
 	err = vs.doguAdditionalMountsValidator.ValidateAdditionalMounts(ctx, toDogu, doguResource)
 	if err != nil {
-		return requeueAfterValidation, err
+		return steps.NewStepResultContinueIsTrue(requeueAfterValidation, err)
 	}
-	return 0, nil
+	return steps.StepResult{}
 }
 
 func (vs *ValidationStep) getDogusForUpgrade(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, *core.Dogu, *v2.DevelopmentDoguMap, error) {
