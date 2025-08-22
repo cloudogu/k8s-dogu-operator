@@ -1,4 +1,4 @@
-package controllers
+package install
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func NewServiceStep(mgrSet util.ManagerSet) *ServiceStep {
 func (ses *ServiceStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	doguDescriptor, err := ses.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
-		return requeueAfterVolume, err
+		return requeueAfterService, err
 	}
 	imageConfig, err := ses.imageRegistry.PullImageConfig(ctx, doguDescriptor.Image+":"+doguResource.Spec.Version)
 	service, err := ses.serviceGenerator.CreateDoguService(doguResource, doguDescriptor, imageConfig)

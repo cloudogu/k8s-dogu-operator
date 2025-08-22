@@ -1,4 +1,4 @@
-package controllers
+package install
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 )
 
 const requeueAfterFinalizerExists = 5 * time.Second
+const finalizerName = "dogu-finalizer"
 
 type FinalizerExistsStep struct {
 	client client.Client

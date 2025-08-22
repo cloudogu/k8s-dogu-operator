@@ -1,4 +1,4 @@
-package controllers
+package install
 
 import (
 	"context"
@@ -10,19 +10,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const requeueAfterDoguConfigOwnerReference = 5 * time.Second
+const requeueAfterSensitiveConfigOwnerReference = 5 * time.Second
 
-type DoguConfigOwnerReferenceStep struct {
+type SensitiveConfigOwnerReferenceStep struct {
 	doguConfigRepository doguConfigRepository
 }
 
-func NewDoguConfigOwnerReferenceStep(configRepos util.ConfigRepositories) *DoguConfigOwnerReferenceStep {
-	return &DoguConfigOwnerReferenceStep{
-		doguConfigRepository: configRepos.DoguConfigRepository,
+func NewSensitiveConfigOwnerReferenceStep(configRepos util.ConfigRepositories) *SensitiveConfigOwnerReferenceStep {
+	return &SensitiveConfigOwnerReferenceStep{
+		doguConfigRepository: configRepos.SensitiveDoguRepository,
 	}
 }
 
-func (dcs *DoguConfigOwnerReferenceStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (dcs *SensitiveConfigOwnerReferenceStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	err = dcs.doguConfigRepository.SetOwnerReference(ctx, cescommons.SimpleName(doguResource.Name), []metav1.OwnerReference{
 		{
 			Name:       doguResource.Name,
@@ -32,7 +32,7 @@ func (dcs *DoguConfigOwnerReferenceStep) Run(ctx context.Context, doguResource *
 		},
 	})
 	if err != nil {
-		return requeueAfterDoguConfigOwnerReference, err
+		return requeueAfterSensitiveConfigOwnerReference, err
 	}
 
 	return 0, nil
