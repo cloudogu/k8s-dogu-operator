@@ -27,8 +27,10 @@ func NewDoguInstallOrChangeUseCase(
 	customResourceStep *install.CustomK8sResourceStep,
 	netPolsStep *install.NetworkPoliciesStep,
 	deploymentStep *install.DeploymentStep,
+	volumeGeneratorStep *install.VolumeGeneratorStep,
 	volumeExpanderStep *postinstall.VolumeExpanderStep,
-	ingressAnnotationsStep *postinstall.AdditionalIngressAnnotationsStep,
+	ingressAnnotationsStep *postinstall.SecurityContextStep,
+	securityContextStep *postinstall.SecurityContextStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
@@ -44,8 +46,10 @@ func NewDoguInstallOrChangeUseCase(
 			customResourceStep,
 			netPolsStep,
 			deploymentStep,
+			volumeGeneratorStep,
 			volumeExpanderStep,
 			ingressAnnotationsStep,
+			securityContextStep,
 		},
 	}
 }
