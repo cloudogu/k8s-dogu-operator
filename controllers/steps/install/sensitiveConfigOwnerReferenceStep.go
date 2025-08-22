@@ -32,7 +32,7 @@ func (dcs *SensitiveConfigOwnerReferenceStep) Run(ctx context.Context, doguResou
 		},
 	})
 	if err != nil {
-		return requeueAfterSensitiveConfigOwnerReference, err
+		return 0, err
 	}
 
 	return 0, nil

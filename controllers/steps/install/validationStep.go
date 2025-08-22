@@ -34,7 +34,7 @@ func NewValidationStep(mgrSet *util.ManagerSet, checker premisesChecker) *Valida
 func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	fromDogu, toDogu, _, err := vs.getDogusForUpgrade(ctx, doguResource)
 	if err != nil {
-		return requeueAfterValidation, err
+		return 0, err
 	}
 	if fromDogu != nil && toDogu != nil && fromDogu.Version != toDogu.Version {
 		err = vs.premisesChecker.Check(ctx, doguResource, toDogu, fromDogu)
@@ -56,7 +56,7 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) (reque
 
 	err = vs.doguAdditionalMountsValidator.ValidateAdditionalMounts(ctx, toDogu, doguResource)
 	if err != nil {
-		return requeueAfterValidation, nil
+		return requeueAfterValidation, err
 	}
 	return 0, nil
 }

@@ -31,16 +31,16 @@ func NewServiceStep(mgrSet util.ManagerSet) *ServiceStep {
 func (ses *ServiceStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	doguDescriptor, err := ses.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
-		return requeueAfterService, err
+		return 0, err
 	}
 	imageConfig, err := ses.imageRegistry.PullImageConfig(ctx, doguDescriptor.Image+":"+doguResource.Spec.Version)
 	service, err := ses.serviceGenerator.CreateDoguService(doguResource, doguDescriptor, imageConfig)
 	if err != nil {
-		return requeueAfterService, err
+		return 0, err
 	}
 	err = ses.createOrUpdateService(ctx, service)
 	if err != nil {
-		return requeueAfterService, err
+		return 0, err
 	}
 	return 0, nil
 }

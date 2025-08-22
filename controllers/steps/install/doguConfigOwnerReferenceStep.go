@@ -32,7 +32,7 @@ func (dcs *DoguConfigOwnerReferenceStep) Run(ctx context.Context, doguResource *
 		},
 	})
 	if err != nil {
-		return requeueAfterDoguConfigOwnerReference, err
+		return 0, err
 	}
 
 	return 0, nil

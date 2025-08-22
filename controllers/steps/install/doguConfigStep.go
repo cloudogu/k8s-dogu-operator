@@ -27,12 +27,12 @@ func (dcs *DoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) (requ
 	_, err = dcs.doguConfigRepository.Get(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
 		if !errors.IsNotFoundError(err) {
-			return requeueAfterDoguConfig, err
+			return 0, err
 		}
 
 		err = dcs.createConfig(ctx, doguResource)
 		if err != nil {
-			return requeueAfterDoguConfig, err
+			return 0, err
 		}
 	}
 

@@ -35,11 +35,11 @@ func (fs *FinalizerExistsStep) Run(ctx context.Context, doguResource *v2.Dogu) (
 		}
 		patchBytes, err := json.Marshal(patch)
 		if err != nil {
-			return requeueAfterFinalizerExists, fmt.Errorf("failed to marshal patch for finalizer: %w", err)
+			return 0, fmt.Errorf("failed to marshal patch for finalizer: %w", err)
 		}
 		err = fs.client.Patch(ctx, doguResource, client.RawPatch(types.MergePatchType, patchBytes))
 		if err != nil {
-			return requeueAfterFinalizerExists, fmt.Errorf("failed to update dogu: %w", err)
+			return 0, fmt.Errorf("failed to update dogu: %w", err)
 		}
 	}
 	return 0, nil
