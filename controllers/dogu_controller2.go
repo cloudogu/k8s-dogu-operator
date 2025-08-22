@@ -16,12 +16,16 @@ import (
 
 type doguReconciler2 struct {
 	client            client.Client
-	doguChangeHandler DoguChangeHandler
-	doguDeleteHandler DoguChangeHandler
+	doguChangeHandler DoguUsecase
+	doguDeleteHandler DoguUsecase
 }
 
-func NewDoguReconciler2(client client.Client, handler DoguChangeHandler) *doguReconciler2 {
-	return &doguReconciler2{}
+func NewDoguReconciler2(client client.Client, doguChangeHandler DoguUsecase, doguDeleteHandler DoguUsecase) *doguReconciler2 {
+	return &doguReconciler2{
+		client:            client,
+		doguChangeHandler: doguChangeHandler,
+		doguDeleteHandler: doguDeleteHandler,
+	}
 }
 
 func (r *doguReconciler2) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

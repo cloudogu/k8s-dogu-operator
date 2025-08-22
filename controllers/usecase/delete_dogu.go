@@ -1,4 +1,4 @@
-package controllers
+package usecase
 
 import (
 	"context"
@@ -13,21 +13,25 @@ type DoguDeleteUseCase struct {
 }
 
 func NewDoguDeleteUseCase(
-	serviceAccountRemoverStep *ServiceAccountRemoverStep,
-	unregisterVersionStep *UnregisterDoguVersionStep,
-	healthMapStep *DeleteOutOfHealthConfigMapStep,
-	removeDoguConfigStep *removeDoguConfigStep,
-	removeSensitiveDoguConfigStep *removeSensitiveDoguConfigStep,
-	removeFinalizerStep *removeFinalizerStep,
+/*
+serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
+unregisterVersionStep *deletion.UnregisterDoguVersionStep,
+healthMapStep *deletion.DeleteOutOfHealthConfigMapStep,
+removeDoguConfigStep *deletion.RemoveDoguConfigStep,
+removeSensitiveDoguConfigStep *deletion.RemoveSensitiveDoguConfigStep,
+removeFinalizerStep *deletion.RemoveFinalizerStep,
+*/
 ) *DoguDeleteUseCase {
 	return &DoguDeleteUseCase{
 		steps: []step{
-			serviceAccountRemoverStep,
-			unregisterVersionStep,
-			healthMapStep,
-			removeDoguConfigStep,
-			removeSensitiveDoguConfigStep,
-			removeFinalizerStep,
+			/*
+				serviceAccountRemoverStep,
+				unregisterVersionStep,
+				healthMapStep,
+				removeDoguConfigStep,
+				removeSensitiveDoguConfigStep,
+				removeFinalizerStep,
+			*/
 		},
 	}
 }

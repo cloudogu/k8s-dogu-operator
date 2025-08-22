@@ -1,4 +1,4 @@
-package controllers
+package deletion
 
 import (
 	"context"

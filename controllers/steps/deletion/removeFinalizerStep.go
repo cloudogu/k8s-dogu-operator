@@ -1,4 +1,4 @@
-package controllers
+package deletion
 
 import (
 	"context"
@@ -10,17 +10,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-type removeFinalizerStep struct {
+const finalizerName = "dogu-finalizer"
+
+type RemoveFinalizerStep struct {
 	client client.Client
 }
 
-func NewRemoveFinalizerStep(client client.Client) *removeFinalizerStep {
-	return &removeFinalizerStep{
+func NewRemoveFinalizerStep(client client.Client) *RemoveFinalizerStep {
+	return &RemoveFinalizerStep{
 		client: client,
 	}
 }
 
-func (rf *removeFinalizerStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (rf *RemoveFinalizerStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	controllerutil.RemoveFinalizer(doguResource, finalizerName)
 	err = rf.client.Update(ctx, doguResource)
 	if err != nil {

@@ -1,4 +1,4 @@
-package controllers
+package deletion
 
 import (
 	"context"
@@ -11,17 +11,17 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
-type removeDoguConfigStep struct {
+type RemoveDoguConfigStep struct {
 	doguConfigRepository doguConfigRepository
 }
 
-func NewRemoveDoguConfigStep(configRepos util.ConfigRepositories) *removeDoguConfigStep {
-	return &removeDoguConfigStep{
+func NewRemoveDoguConfigStep(configRepos util.ConfigRepositories) *RemoveDoguConfigStep {
+	return &RemoveDoguConfigStep{
 		doguConfigRepository: configRepos.DoguConfigRepository,
 	}
 }
 
-func (rdc *removeDoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (rdc *RemoveDoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	if err = rdc.doguConfigRepository.Delete(ctx, cescommons.SimpleName(doguResource.Name)); err != nil && !registryErrors.IsNotFoundError(err) {
 		return 0, fmt.Errorf("could not delete dogu config: %w", err)
 	}

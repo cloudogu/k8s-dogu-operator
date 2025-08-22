@@ -1,4 +1,4 @@
-package controllers
+package deletion
 
 import (
 	"context"
@@ -11,17 +11,17 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
-type removeSensitiveDoguConfigStep struct {
+type RemoveSensitiveDoguConfigStep struct {
 	sensitiveDoguRepository doguConfigRepository
 }
 
-func NewRemoveSensitiveDoguConfigStep(configRepos util.ConfigRepositories) *removeSensitiveDoguConfigStep {
-	return &removeSensitiveDoguConfigStep{
+func NewRemoveSensitiveDoguConfigStep(configRepos util.ConfigRepositories) *RemoveSensitiveDoguConfigStep {
+	return &RemoveSensitiveDoguConfigStep{
 		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
 	}
 }
 
-func (rdc *removeSensitiveDoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (rdc *RemoveSensitiveDoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	if err = rdc.sensitiveDoguRepository.Delete(ctx, cescommons.SimpleName(doguResource.Name)); err != nil && !registryErrors.IsNotFoundError(err) {
 		return 0, fmt.Errorf("could not delete snesitive dogu config: %w", err)
 	}
