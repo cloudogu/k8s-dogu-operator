@@ -29,8 +29,9 @@ func NewDoguInstallOrChangeUseCase(
 	deploymentStep *install.DeploymentStep,
 	volumeGeneratorStep *install.VolumeGeneratorStep,
 	volumeExpanderStep *postinstall.VolumeExpanderStep,
-	ingressAnnotationsStep *postinstall.SecurityContextStep,
+	ingressAnnotationsStep *postinstall.AdditionalIngressAnnotationsStep,
 	securityContextStep *postinstall.SecurityContextStep,
+	exportModeStep *postinstall.ExportModeStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
@@ -50,6 +51,7 @@ func NewDoguInstallOrChangeUseCase(
 			volumeExpanderStep,
 			ingressAnnotationsStep,
 			securityContextStep,
+			exportModeStep,
 		},
 	}
 }

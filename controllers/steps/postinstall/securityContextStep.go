@@ -16,8 +16,16 @@ type SecurityContextStep struct {
 	deploymentInterface      deploymentInterface
 }
 
-func NewSecurityContextStep() *SecurityContextStep {
-	return &SecurityContextStep{}
+func NewSecurityContextStep(
+	fetcher localDoguFetcher,
+	generator resource.SecurityContextGenerator,
+	deplInt deploymentInterface,
+) *SecurityContextStep {
+	return &SecurityContextStep{
+		localDoguFetcher:         fetcher,
+		securityContextGenerator: generator,
+		deploymentInterface:      deplInt,
+	}
 }
 
 func (scs *SecurityContextStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
