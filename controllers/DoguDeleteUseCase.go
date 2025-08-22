@@ -12,9 +12,23 @@ type DoguDeleteUseCase struct {
 	steps []step
 }
 
-func NewDoguDeleteUseCase() *DoguDeleteUseCase {
+func NewDoguDeleteUseCase(
+	serviceAccountRemoverStep *ServiceAccountRemoverStep,
+	unregisterVersionStep *UnregisterDoguVersionStep,
+	healthMapStep *DeleteOutOfHealthConfigMapStep,
+	removeDoguConfigStep *removeDoguConfigStep,
+	removeSensitiveDoguConfigStep *removeSensitiveDoguConfigStep,
+	removeFinalizerStep *removeFinalizerStep,
+) *DoguDeleteUseCase {
 	return &DoguDeleteUseCase{
-		steps: []step{},
+		steps: []step{
+			serviceAccountRemoverStep,
+			unregisterVersionStep,
+			healthMapStep,
+			removeDoguConfigStep,
+			removeSensitiveDoguConfigStep,
+			removeFinalizerStep,
+		},
 	}
 }
 
