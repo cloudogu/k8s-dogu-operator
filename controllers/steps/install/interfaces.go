@@ -75,3 +75,13 @@ type imageRegistry interface {
 type serviceInterface interface {
 	v1.ServiceInterface
 }
+
+// doguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
+type doguRegistrator interface {
+	// RegisterNewDogu registers a new dogu in the local dogu registry.
+	RegisterNewDogu(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+	// RegisterDoguVersion registers a new version for an existing dogu in the dogu registry.
+	RegisterDoguVersion(ctx context.Context, dogu *cesappcore.Dogu) error
+	// UnregisterDogu removes a registration of a dogu from the local dogu registry.
+	UnregisterDogu(ctx context.Context, dogu string) error
+}

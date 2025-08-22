@@ -28,7 +28,7 @@ func NewServiceAccountStep(mgrSet util.ManagerSet) *ServiceAccountStep {
 func (sas *ServiceAccountStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	doguDescriptor, err := sas.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
-		return requeueAfterVolume, err
+		return requeueAfterServiceAccount, err
 	}
 	// Existing service accounts will be skipped.
 	err = sas.serviceAccountCreator.CreateAll(ctx, doguDescriptor)
