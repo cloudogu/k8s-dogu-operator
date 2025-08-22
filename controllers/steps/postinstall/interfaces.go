@@ -35,3 +35,9 @@ type exportManager interface {
 	// UpdateExportMode activates/deactivates the export mode for the dogu
 	UpdateExportMode(ctx context.Context, doguResource *v2.Dogu) error
 }
+
+// supportManager includes functionality to handle the support flag for dogus in the cluster.
+type supportManager interface {
+	// HandleSupportMode handles the support flag in the dogu spec.
+	HandleSupportMode(ctx context.Context, doguResource *v2.Dogu) (bool, error)
+}
