@@ -7,6 +7,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -35,6 +36,8 @@ func NewDoguInstallOrChangeUseCase(
 	exportModeStep *postinstall.ExportModeStep,
 	supportModeStep *postinstall.SupportModeStep,
 	additionalMountsStep *postinstall.AdditionalMountsStep,
+	equalDescriptorsStep *upgrade.EqualDoguDescriptorsStep,
+	healthStep *upgrade.HealthStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
@@ -58,6 +61,8 @@ func NewDoguInstallOrChangeUseCase(
 			exportModeStep,
 			supportModeStep,
 			additionalMountsStep,
+			equalDescriptorsStep,
+			healthStep,
 		},
 	}
 }
