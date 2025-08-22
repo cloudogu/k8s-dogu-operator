@@ -1,4 +1,4 @@
-package controllers
+package postinstall
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -17,14 +16,12 @@ import (
 const requeueAfterAdditionalIngressAnnotations = 5 * time.Second
 
 type AdditionalIngressAnnotationsStep struct {
-	client                                  client.Client
-	doguAdditionalIngressAnnotationsManager doguAdditionalIngressAnnotationsManager
+	client client.Client
 }
 
-func NewAdditionalIngressAnnotationsStep(mgrSet *util.ManagerSet, client client.Client, additionalIngressManager doguAdditionalIngressAnnotationsManager) *AdditionalIngressAnnotationsStep {
+func NewAdditionalIngressAnnotationsStep(client client.Client) *AdditionalIngressAnnotationsStep {
 	return &AdditionalIngressAnnotationsStep{
-		client:                                  client,
-		doguAdditionalIngressAnnotationsManager: additionalIngressManager,
+		client: client,
 	}
 }
 
@@ -34,7 +31,7 @@ func (aias *AdditionalIngressAnnotationsStep) Run(ctx context.Context, doguResou
 		return 0, err
 	}
 	if ingressAnnotationsChanged {
-		err = aias.doguAdditionalIngressAnnotationsManager.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
+		err = aias.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
 	}
 	return 0, err
 }
@@ -60,4 +57,27 @@ func (aias *AdditionalIngressAnnotationsStep) checkForAdditionalIngressAnnotatio
 	} else {
 		return true, nil
 	}
+}
+
+// SetDoguAdditionalIngressAnnotations reads the additional ingress annotations from the dogu resource and appends them to the dogu service.
+// These annotations are then to be read by the service discovery and appended to the ingress object for the dogu.
+func (aias *AdditionalIngressAnnotationsStep) SetDoguAdditionalIngressAnnotations(ctx context.Context, doguResource *v2.Dogu) error {
+	doguService := &v1.Service{}
+	err := aias.client.Get(ctx, doguResource.GetObjectKey(), doguService)
+	if err != nil {
+		return fmt.Errorf("failed to fetch service for dogu '%s': %w", doguResource.Name, err)
+	}
+
+	annotator := &annotation.IngressAnnotator{}
+	err = annotator.AppendIngressAnnotationsToService(doguService, doguResource.Spec.AdditionalIngressAnnotations)
+	if err != nil {
+		return fmt.Errorf("failed to add additional ingress annotations to service of dogu '%s': %w", doguResource.Name, err)
+	}
+
+	err = aias.client.Update(ctx, doguService)
+	if err != nil {
+		return fmt.Errorf("failed to update dogu service '%s' with ingress annotations: %w", doguService.Name, err)
+	}
+
+	return nil
 }

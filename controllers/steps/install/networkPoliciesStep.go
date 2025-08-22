@@ -11,16 +11,16 @@ import (
 
 const requeueAfterNetworkPoliciesStep = 10 * time.Second
 
-type networkPoliciesStep struct {
+type NetworkPoliciesStep struct {
 	netPolUpserter      netPolUpserter
 	resourceDoguFetcher resourceDoguFetcher
 }
 
-func NewNetworkPoliciesStep(mgrSet util.ManagerSet) *networkPoliciesStep {
-	return &networkPoliciesStep{netPolUpserter: mgrSet.ResourceUpserter}
+func NewNetworkPoliciesStep(mgrSet util.ManagerSet) *NetworkPoliciesStep {
+	return &NetworkPoliciesStep{netPolUpserter: mgrSet.ResourceUpserter}
 }
 
-func (nps *networkPoliciesStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (nps *NetworkPoliciesStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	dogu, _, err := nps.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
 		return requeueAfterNetworkPoliciesStep, fmt.Errorf("failed to fetch dogu descriptor")

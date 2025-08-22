@@ -1,4 +1,4 @@
-package controllers
+package postinstall
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -19,15 +18,14 @@ const scaleDownReplicas = 0
 const scaleUpReplicas = 1
 
 type VolumeExpanderStep struct {
-	doguVolumeManager *doguVolumeManager
-	client            client.Client
-	doguInterface     doguInterface
+	client        client.Client
+	doguInterface doguInterface
 }
 
-func NewVolumeExpanderStep(client client.Client, eventRecorder record.EventRecorder, doguInterface doguClient.DoguInterface) *VolumeExpanderStep {
+func NewVolumeExpanderStep(client client.Client, doguInterface doguClient.DoguInterface) *VolumeExpanderStep {
 	return &VolumeExpanderStep{
-		client:            client,
-		doguVolumeManager: NewDoguVolumeManager(client, eventRecorder, doguInterface),
+		client:        client,
+		doguInterface: doguInterface,
 	}
 }
 
@@ -73,7 +71,7 @@ func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) (r
 }
 
 func (vs *VolumeExpanderStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
-	if isPvcResizeApplicable(pvc) {
+	if vs.isPvcResizeApplicable(pvc) {
 		return true
 	}
 
