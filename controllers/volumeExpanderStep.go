@@ -18,20 +18,20 @@ const requeueAfterVolume = 10 * time.Second
 const scaleDownReplicas = 0
 const scaleUpReplicas = 1
 
-type VolumeStep struct {
+type VolumeExpanderStep struct {
 	doguVolumeManager *doguVolumeManager
 	client            client.Client
 	doguInterface     doguInterface
 }
 
-func NewVolumeStep(client client.Client, eventRecorder record.EventRecorder, doguInterface doguClient.DoguInterface) *VolumeStep {
-	return &VolumeStep{
+func NewVolumeExpanderStep(client client.Client, eventRecorder record.EventRecorder, doguInterface doguClient.DoguInterface) *VolumeExpanderStep {
+	return &VolumeExpanderStep{
 		client:            client,
 		doguVolumeManager: NewDoguVolumeManager(client, eventRecorder, doguInterface),
 	}
 }
 
-func (vs *VolumeStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
+func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAfter time.Duration, err error) {
 	// TODO Non blocking
 	pvc, err := doguResource.GetDataPVC(ctx, vs.client)
 	if err != nil {
@@ -72,7 +72,7 @@ func (vs *VolumeStep) Run(ctx context.Context, doguResource *v2.Dogu) (requeueAf
 	return 0, nil
 }
 
-func (vs *VolumeStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
+func (vs *VolumeExpanderStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
 	if isPvcResizeApplicable(pvc) {
 		return true
 	}
@@ -85,7 +85,7 @@ func (vs *VolumeStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, qua
 
 // isPvcResizeApplicable checks if the filesystem resize is "pending", which means that the pod has to be (re)started to actually resize the volume.
 // see https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/#file-system-expansion
-func (vs *VolumeStep) isPvcResizeApplicable(pvc *corev1.PersistentVolumeClaim) bool {
+func (vs *VolumeExpanderStep) isPvcResizeApplicable(pvc *corev1.PersistentVolumeClaim) bool {
 	for _, condition := range pvc.Status.Conditions {
 		if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending && condition.Status == corev1.ConditionTrue {
 			return true
@@ -94,7 +94,8 @@ func (vs *VolumeStep) isPvcResizeApplicable(pvc *corev1.PersistentVolumeClaim) b
 	return false
 }
 
-func (vs *VolumeStep) scaleDeployment(ctx context.Context, client client.Client, doguResource *v2.Dogu, newReplicas int32) (oldReplicas int32, err error) {
+// TODO Must be outsourced to the previous step (check replicas)
+func (vs *VolumeExpanderStep) scaleDeployment(ctx context.Context, client client.Client, doguResource *v2.Dogu, newReplicas int32) (oldReplicas int32, err error) {
 	deployment, err := doguResource.GetDeployment(ctx, client)
 	if err != nil {
 		return 0, err
@@ -110,7 +111,8 @@ func (vs *VolumeStep) scaleDeployment(ctx context.Context, client client.Client,
 	return oldReplicas, err
 }
 
-func (vs *VolumeStep) isScaledDown(ctx context.Context, client client.Client, doguResource *v2.Dogu) bool {
+// TODO Must be outsourced to the previous step (check replicas)
+func (vs *VolumeExpanderStep) isScaledDown(ctx context.Context, client client.Client, doguResource *v2.Dogu) bool {
 	deployment, err := doguResource.GetDeployment(ctx, client)
 	if err != nil {
 		return false
