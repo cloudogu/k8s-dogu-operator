@@ -26,6 +26,7 @@ func NewDoguChangeUseCase(
 	customResourceStep *customK8sResourceStep,
 	netPolsStep *networkPoliciesStep,
 	deploymentStep *DeploymentStep,
+	ingressAnnotationsStep *AdditionalIngressAnnotationsStep,
 ) *DoguChangeUseCase {
 	return &DoguChangeUseCase{
 		steps: []step{
@@ -42,6 +43,7 @@ func NewDoguChangeUseCase(
 			customResourceStep,
 			netPolsStep,
 			deploymentStep,
+			ingressAnnotationsStep,
 		},
 	}
 }
