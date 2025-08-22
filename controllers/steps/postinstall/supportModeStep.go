@@ -2,13 +2,20 @@ package postinstall
 
 import (
 	"context"
+	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const SupportModeEnvVar = "SUPPORT_MODE"
 
 type SupportModeStep struct {
 	supportManager supportManager
+	client         client.Client
 }
 
 func NewSupportModeStep(manager supportManager) *SupportModeStep {
@@ -19,5 +26,27 @@ func NewSupportModeStep(manager supportManager) *SupportModeStep {
 
 func (sms *SupportModeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	_, err := sms.supportManager.HandleSupportMode(ctx, doguResource)
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+	deployment := &appsv1.Deployment{}
+	err = sms.client.Get(ctx, doguResource.GetObjectKey(), deployment)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return steps.StepResult{}
+		}
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err))
+	}
+
+	return steps.StepResult{Continue: isDeploymentInSupportMode(deployment)}
+}
+
+func isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		envVars := container.Env
+		for _, env := range envVars {
+			if env.Name == SupportModeEnvVar && env.Value == "true" {
+				return true
+			}
+		}
+	}
+
+	return false
 }
