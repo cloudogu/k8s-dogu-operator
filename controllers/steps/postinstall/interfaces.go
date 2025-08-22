@@ -41,3 +41,8 @@ type supportManager interface {
 	// HandleSupportMode handles the support flag in the dogu spec.
 	HandleSupportMode(ctx context.Context, doguResource *v2.Dogu) (bool, error)
 }
+
+type additionalMountManager interface {
+	AdditionalMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error)
+	UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error
+}

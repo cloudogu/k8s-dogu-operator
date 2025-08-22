@@ -28,11 +28,13 @@ func NewDoguInstallOrChangeUseCase(
 	netPolsStep *install.NetworkPoliciesStep,
 	deploymentStep *install.DeploymentStep,
 	volumeGeneratorStep *install.VolumeGeneratorStep,
+	replicasStep *postinstall.ReplicasStep,
 	volumeExpanderStep *postinstall.VolumeExpanderStep,
 	ingressAnnotationsStep *postinstall.AdditionalIngressAnnotationsStep,
 	securityContextStep *postinstall.SecurityContextStep,
 	exportModeStep *postinstall.ExportModeStep,
 	supportModeStep *postinstall.SupportModeStep,
+	additionalMountsStep *postinstall.AdditionalMountsStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
@@ -49,11 +51,13 @@ func NewDoguInstallOrChangeUseCase(
 			netPolsStep,
 			deploymentStep,
 			volumeGeneratorStep,
+			replicasStep,
 			volumeExpanderStep,
 			ingressAnnotationsStep,
 			securityContextStep,
 			exportModeStep,
 			supportModeStep,
+			additionalMountsStep,
 		},
 	}
 }
