@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"context"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -92,8 +93,8 @@ type doguRestartInterface interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type fileExtractor interface {
-	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
-	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod exec.ExecPod) (map[string]string, error)
+	// ExtractK8sResourcesFromExecPod copies files from a dogu's exec pod into map of strings.
+	ExtractK8sResourcesFromExecPod(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (map[string]string, error)
 }
 
 // collectApplier provides ways to collectedly apply unstructured Kubernetes resources against the API.
@@ -125,14 +126,6 @@ type commandExecutor interface {
 //goland:noinspection GoUnusedType
 type resourceUpserter interface {
 	resource.ResourceUpserter
-}
-
-// execPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
-//
-//nolint:unused
-//goland:noinspection GoUnusedType
-type execPod interface {
-	exec.ExecPod
 }
 
 // execPodFactory provides functionality to create ExecPods.

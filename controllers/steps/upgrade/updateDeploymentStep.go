@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,19 +51,13 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 	}
 	fromDoguVersion := deployment.Spec.Template.Labels[podTemplateVersionKey]
 
-	// Start exec pod
-	execPod, err := uds.execPodFactory.NewExecPod(doguResource, dogu)
+	err = uds.execPodFactory.CheckReady(ctx, doguResource, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to check if exec pod is ready: %w", err))
 	}
-	err = execPod.Create(ctx)
-	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
-	}
-	defer deleteExecPod(ctx, execPod)
 
 	// Apply pre upgrade
-	err = uds.applyPreUpgradeScript(ctx, doguResource, fromDoguVersion, dogu, execPod)
+	err = uds.applyPreUpgradeScript(ctx, doguResource, fromDoguVersion, dogu)
 	if err != nil {
 		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("pre-upgrade failed: %w", err))
 	}
@@ -108,14 +103,7 @@ func setPreviousDoguVersionInAnnotations(previousDoguVersion string, deployment 
 	deployment.Annotations[previousDoguVersionAnnotationKey] = previousDoguVersion
 }
 
-func deleteExecPod(ctx context.Context, execPod exec.ExecPod) {
-	err := execPod.Delete(ctx)
-	if err != nil {
-		return
-	}
-}
-
-func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, toDogu *core.Dogu, execPod exec.ExecPod) error {
+func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, toDogu *core.Dogu) error {
 	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
 		return nil
 	}
@@ -127,7 +115,7 @@ func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDo
 		return fmt.Errorf("failed to find pod for dogu %s:%s : %w", toDogu.GetSimpleName(), fromDoguVersion, err)
 	}
 
-	err = uds.copyPreUpgradeScriptFromPodToPod(ctx, execPod, fromDoguPod, preUpgradeScriptCmd)
+	err = uds.copyPreUpgradeScriptFromPodToPod(ctx, toDoguResource, toDogu, fromDoguPod, preUpgradeScriptCmd)
 	if err != nil {
 		return err
 	}
@@ -140,9 +128,9 @@ func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDo
 	return nil
 }
 
-func (uds *UpdateDeploymentStep) copyPreUpgradeScriptFromPodToPod(ctx context.Context, srcPod exec.ExecPod, destPod *corev1.Pod, preUpgradeScriptCmd *core.ExposedCommand) error {
+func (uds *UpdateDeploymentStep) copyPreUpgradeScriptFromPodToPod(ctx context.Context, toDoguResource *v2.Dogu, toDogu *core.Dogu, destPod *corev1.Pod, preUpgradeScriptCmd *core.ExposedCommand) error {
 	tarCommand := exec.NewShellCommand("/bin/tar", "cf", "-", preUpgradeScriptCmd.Command)
-	archive, err := srcPod.Exec(ctx, tarCommand)
+	archive, err := uds.execPodFactory.Exec(ctx, toDoguResource, toDogu, tarCommand)
 	if err != nil {
 		return fmt.Errorf("failed to get pre-upgrade script from execpod with command '%s', stdout: '%s':  %w", tarCommand.String(), archive, err)
 	}

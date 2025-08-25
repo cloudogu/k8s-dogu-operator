@@ -35,7 +35,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		}
 
 		// when
-		actual, err := sut.ExtractK8sResourcesFromContainer(testContext, execPod)
+		actual, err := sut.ExtractK8sResourcesFromExecPod(testContext, execPod)
 
 		// then
 		require.Error(t, err)
@@ -57,7 +57,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		}
 
 		// when
-		actual, err := sut.ExtractK8sResourcesFromContainer(testContext, execPod)
+		actual, err := sut.ExtractK8sResourcesFromExecPod(testContext, execPod)
 
 		// then
 		require.NoError(t, err)
@@ -79,7 +79,7 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		}
 
 		// when
-		actual, err := sut.ExtractK8sResourcesFromContainer(testContext, execPod)
+		actual, err := sut.ExtractK8sResourcesFromExecPod(testContext, execPod)
 
 		// then
 		require.NoError(t, err)

@@ -19,39 +19,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 )
 
 const testNamespace = "ecosystem"
-const podName = "test-execpod-123abc"
+const podName = "test-execpod"
 const containerName = "ldap"
 
 var testCtx = context.TODO()
-
-func Test_defaultSufficeGenerator_String(t *testing.T) {
-	actual := (&defaultSufficeGenerator{}).String(6)
-	assert.Len(t, actual, 6)
-}
-
-func TestExecPod_ObjectKey(t *testing.T) {
-	// given
-	inputResource := &k8sv2.Dogu{
-		ObjectMeta: metav1.ObjectMeta{Name: "le-dogu", Namespace: testNamespace},
-	}
-	sut := &execPod{podName: podName, doguResource: inputResource}
-
-	// when
-	actual := sut.ObjectKey()
-
-	// then
-	assert.NotEmpty(t, actual)
-	expected := &client.ObjectKey{
-		Namespace: testNamespace,
-		Name:      podName,
-	}
-	assert.Equal(t, expected, actual)
-}
 
 func Test_execPod_Create(t *testing.T) {
 	ldapDogu := readLdapDogu(t)
@@ -64,14 +39,14 @@ func Test_execPod_Create(t *testing.T) {
 
 		fakeClient := fake.NewClientBuilder().
 			Build()
-		sut := &execPod{client: fakeClient, podName: podName, dogu: ldapDogu, doguResource: failureLdapDoguResource}
+		sut := &execPodFactory{client: fakeClient, podName: podName, dogu: ldapDogu, doguResource: failureLdapDoguResource}
 
 		// when
-		err := sut.Create(context.Background())
+		err := sut.CreateBlocking(context.Background())
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to set controller reference to exec pod test-execpod-123abc")
+		assert.ErrorContains(t, err, "failed to set controller reference to exec pod test-execpod")
 	})
 	t.Run("should fail on resource creation", func(t *testing.T) {
 		// given
@@ -80,10 +55,10 @@ func Test_execPod_Create(t *testing.T) {
 			On("Create", context.Background(), mock.Anything).Once().Return(assert.AnError).
 			On("Scheme").Once().Return(getTestScheme())
 
-		sut := &execPod{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
+		sut := &execPodFactory{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
 
 		// when
-		err := sut.Create(context.Background())
+		err := sut.CreateBlocking(context.Background())
 
 		// then
 		require.Error(t, err)
@@ -102,15 +77,15 @@ func Test_execPod_Create(t *testing.T) {
 			On("Scheme").Once().Return(getTestScheme()).
 			On("Get", context.Background(), objectKey, mock.Anything).Run(clientGetFn).Return(nil)
 
-		sut := &execPod{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
+		sut := &execPodFactory{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
 
 		// when
-		err := sut.Create(context.Background())
+		err := sut.CreateBlocking(context.Background())
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to wait for exec pod test-execpod-123abc to spawn")
-		assert.ErrorContains(t, err, "quitting dogu installation because exec pod test-execpod-123abc failed with status Failed or did not come up in time")
+		assert.ErrorContains(t, err, "failed to wait for exec pod test-execpod to spawn")
+		assert.ErrorContains(t, err, "quitting dogu installation because exec pod test-execpod failed with status Failed or did not come up in time")
 	})
 	t.Run("should fail on other pod status", func(t *testing.T) {
 		// given
@@ -127,15 +102,15 @@ func Test_execPod_Create(t *testing.T) {
 			On("Scheme").Once().Return(getTestScheme()).
 			On("Get", context.Background(), objectKey, mock.Anything).Run(clientGetFn).Return(nil)
 
-		sut := &execPod{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
+		sut := &execPodFactory{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
 
 		// when
-		err := sut.Create(context.Background())
+		err := sut.CreateBlocking(context.Background())
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to wait for exec pod test-execpod-123abc to spawn")
-		assert.ErrorContains(t, err, "found exec pod test-execpod-123abc but with status phase Pending")
+		assert.ErrorContains(t, err, "failed to wait for exec pod test-execpod to spawn")
+		assert.ErrorContains(t, err, "found exec pod test-execpod but with status phase Pending")
 		maxWaitDuration = originalMaxWaitDuration
 	})
 	t.Run("should fail on unable to find pod", func(t *testing.T) {
@@ -149,14 +124,14 @@ func Test_execPod_Create(t *testing.T) {
 			On("Scheme").Once().Return(getTestScheme()).
 			On("Get", context.Background(), objectKey, mock.Anything).Return(assert.AnError)
 
-		sut := &execPod{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
+		sut := &execPodFactory{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
 
 		// when
-		err := sut.Create(context.Background())
+		err := sut.CreateBlocking(context.Background())
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to wait for exec pod test-execpod-123abc to spawn")
+		assert.ErrorContains(t, err, "failed to wait for exec pod test-execpod to spawn")
 		maxWaitDuration = originalMaxWaitDuration
 	})
 	t.Run("should succeed", func(t *testing.T) {
@@ -172,10 +147,10 @@ func Test_execPod_Create(t *testing.T) {
 			On("Scheme").Once().Return(getTestScheme()).
 			On("Get", context.Background(), objectKey, mock.Anything).Run(clientGetFn).Return(nil)
 
-		sut := &execPod{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
+		sut := &execPodFactory{client: mockClient, podName: podName, dogu: ldapDogu, doguResource: ldapDoguResource}
 
 		// when
-		err := sut.Create(context.Background())
+		err := sut.CreateBlocking(context.Background())
 
 		// then
 		require.NoError(t, err)
@@ -191,7 +166,7 @@ func Test_execPod_createPod(t *testing.T) {
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(getTestScheme()).
 		Build()
-	sut := &execPod{client: fakeClient, doguResource: ldapDoguResource, dogu: ldapDogu}
+	sut := &execPodFactory{client: fakeClient, doguResource: ldapDoguResource, dogu: ldapDogu}
 
 	t.Run("should create exec pod same name as container name", func(t *testing.T) {
 		// when
@@ -245,7 +220,7 @@ func Test_execPod_createPod(t *testing.T) {
 func Test_execPod_Exec(t *testing.T) {
 	runningExecPod := &corev1.Pod{
 		TypeMeta:   metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
-		ObjectMeta: metav1.ObjectMeta{Name: "test-execpod-123abc", Namespace: testNamespace},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-execpod", Namespace: testNamespace},
 		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
 	}
 	t.Run("should fail when getting pod", func(t *testing.T) {
@@ -257,7 +232,7 @@ func Test_execPod_Exec(t *testing.T) {
 			WithObjects().
 			Build()
 		cmd := &shellCommand{command: "/bin/ls", args: []string{"-lahF"}}
-		sut := &execPod{
+		sut := &execPodFactory{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
 			dogu:         ldapDogu,
@@ -284,7 +259,7 @@ func Test_execPod_Exec(t *testing.T) {
 		mockExec := NewMockCommandExecutor(t)
 		outBuf := bytes.NewBufferString("")
 		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, ContainersStarted).Return(outBuf, assert.AnError)
-		sut := &execPod{
+		sut := &execPodFactory{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
 			dogu:         ldapDogu,
@@ -312,7 +287,7 @@ func Test_execPod_Exec(t *testing.T) {
 		mockExec := NewMockCommandExecutor(t)
 		outBuf := bytes.NewBufferString("possibly some output goes here")
 		mockExec.On("ExecCommandForPod", testCtx, runningExecPod, cmd, ContainersStarted).Return(outBuf, nil)
-		sut := &execPod{
+		sut := &execPodFactory{
 			client:       fakeClient,
 			doguResource: ldapDoguResource,
 			dogu:         ldapDogu,
@@ -336,7 +311,7 @@ func Test_execPod_Delete(t *testing.T) {
 		mockClient.
 			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(assert.AnError)
 
-		sut := &execPod{podName: podName, client: mockClient, deleteSpec: &corev1.Pod{}}
+		sut := &execPodFactory{podName: podName, client: mockClient, deleteSpec: &corev1.Pod{}}
 
 		// when
 		err := sut.Delete(context.Background())
@@ -344,7 +319,7 @@ func Test_execPod_Delete(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to delete execPod "+podName)
+		assert.ErrorContains(t, err, "failed to delete execPodFactory "+podName)
 	})
 	t.Run("should succeed on not-found-error because target state is already reached", func(t *testing.T) {
 		// given
@@ -353,7 +328,7 @@ func Test_execPod_Delete(t *testing.T) {
 			&errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}},
 		)
 
-		sut := &execPod{podName: podName, client: mockClient, deleteSpec: &corev1.Pod{}}
+		sut := &execPodFactory{podName: podName, client: mockClient, deleteSpec: &corev1.Pod{}}
 
 		// when
 		err := sut.Delete(context.Background())
@@ -367,7 +342,7 @@ func Test_execPod_Delete(t *testing.T) {
 		mockClient.
 			On("Delete", context.Background(), &corev1.Pod{}).Once().Return(nil)
 
-		sut := &execPod{client: mockClient, deleteSpec: &corev1.Pod{}}
+		sut := &execPodFactory{client: mockClient, deleteSpec: &corev1.Pod{}}
 
 		// when
 		err := sut.Delete(context.Background())
@@ -380,7 +355,7 @@ func Test_execPod_Delete(t *testing.T) {
 func Test_execPod_PodName(t *testing.T) {
 	t.Run("should return podName", func(t *testing.T) {
 		// given
-		sut := &execPod{podName: podName}
+		sut := &execPodFactory{podName: podName}
 
 		// when
 		actual := sut.PodName()
@@ -388,16 +363,6 @@ func Test_execPod_PodName(t *testing.T) {
 		// then
 		assert.Equal(t, podName, actual)
 	})
-}
-
-func Test_generatePodName(t *testing.T) {
-	suffixGen := newMockSuffixGenerator(t)
-	suffixGen.On("String", 6).Return("abc123")
-	dogu := &core.Dogu{Name: "official/ldap"}
-
-	actual := generatePodName(dogu, suffixGen)
-
-	assert.Equal(t, "ldap-execpod-abc123", actual)
 }
 
 func TestNewExecPodFactory(t *testing.T) {
@@ -417,12 +382,10 @@ func Test_defaultExecPodFactory_NewExecPod(t *testing.T) {
 	dogu := &core.Dogu{Name: "official/ldap"}
 
 	sut := NewExecPodFactory(fakeClient, restConfig, commandExec)
-	sut.suffixGen = suffixGen
 
 	// when
-	pod, err := sut.NewExecPod(nil, dogu)
+	pod := sut.NewExecPod(nil, dogu)
 
 	// then
-	require.NoError(t, err)
 	assert.NotNil(t, pod)
 }

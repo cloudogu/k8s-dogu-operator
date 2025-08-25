@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	remotedogudescriptor "github.com/cloudogu/remote-dogu-descriptor-lib/repository"
@@ -33,6 +34,7 @@ type ConfigRepositories struct {
 type ManagerSet struct {
 	RestConfig                                 *rest.Config
 	CollectApplier                             resource.CollectApplier
+	ExecPodFactory                             exec.ExecPodFactory
 	FileExtractor                              exec.FileExtractor
 	CommandExecutor                            exec.CommandExecutor
 	ServiceAccountCreator                      serviceaccount.ServiceAccountCreator
@@ -55,8 +57,9 @@ type ManagerSet struct {
 // NewManagerSet creates a new ManagerSet.
 func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient doguClient.EcoSystemV2Interface, config *config.OperatorConfig, configRepos ConfigRepositories, applier resource.Applier, additionalImages map[string]string) (*ManagerSet, error) {
 	collectApplier := resource.NewCollectApplier(applier)
-	fileExtractor := exec.NewPodFileExtractor(client, restConfig, clientSet)
 	commandExecutor := exec.NewCommandExecutor(client, clientSet, clientSet.CoreV1().RESTClient())
+	execPodFactory := exec.NewExecPodFactory(client, commandExecutor)
+	fileExtractor := exec.NewPodFileExtractor(execPodFactory)
 	doguVersionReg := dogu.NewDoguVersionRegistry(clientSet.CoreV1().ConfigMaps(config.Namespace))
 	doguDescriptorRepo := dogu.NewLocalDoguDescriptorRepository(clientSet.CoreV1().ConfigMaps(config.Namespace))
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(doguVersionReg, doguDescriptorRepo)
@@ -89,6 +92,7 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	return &ManagerSet{
 		RestConfig:                   restConfig,
 		CollectApplier:               collectApplier,
+		ExecPodFactory:               execPodFactory,
 		FileExtractor:                fileExtractor,
 		CommandExecutor:              commandExecutor,
 		ServiceAccountCreator:        serviceAccountCreator,

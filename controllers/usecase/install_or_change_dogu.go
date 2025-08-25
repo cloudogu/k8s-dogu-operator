@@ -25,6 +25,7 @@ func NewDoguInstallOrChangeUseCase(
 	registerDoguVersionStep *install.RegisterDoguVersionStep,
 	serviceAccountStep *install.ServiceAccountStep,
 	serviceStep *install.ServiceStep,
+	execPodCreateStep *install.ExecPodCreateStep,
 	customResourceStep *install.CustomK8sResourceStep,
 	netPolsStep *install.NetworkPoliciesStep,
 	deploymentStep *install.DeploymentStep,
@@ -40,6 +41,7 @@ func NewDoguInstallOrChangeUseCase(
 	healthStep *upgrade.HealthStep,
 	registerNewDoguVersionStep *upgrade.RegisterDoguVersionStep,
 	updateDeploymentStep *upgrade.UpdateDeploymentStep,
+	deleteExecPodStep *upgrade.DeleteExecPodStep,
 	revertProbeStep *upgrade.RevertStartupProbeStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
@@ -53,6 +55,7 @@ func NewDoguInstallOrChangeUseCase(
 			registerDoguVersionStep,
 			serviceAccountStep,
 			serviceStep,
+			execPodCreateStep,
 			customResourceStep,
 			netPolsStep,
 			deploymentStep,
@@ -68,6 +71,7 @@ func NewDoguInstallOrChangeUseCase(
 			healthStep,
 			registerNewDoguVersionStep,
 			updateDeploymentStep,
+			deleteExecPodStep,
 			revertProbeStep,
 		},
 	}

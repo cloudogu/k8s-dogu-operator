@@ -3,13 +3,14 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -66,7 +67,7 @@ func NewUpgradeExecutor(
 		serviceAccountCreator: mgrSet.ServiceAccountCreator,
 		doguRegistrator:       mgrSet.DoguRegistrator,
 		resourceUpserter:      mgrSet.ResourceUpserter,
-		execPodFactory:        exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
+		execPodFactory:        mgrSet.ExecPodFactory,
 		doguCommandExecutor:   mgrSet.CommandExecutor,
 	}
 }
@@ -201,9 +202,9 @@ func pullUpgradeImage(ctx context.Context, imgRegistry imageRegistry, toDogu *co
 	return configFile, nil
 }
 
-func (ue *upgradeExecutor) applyCustomK8sScripts(ctx context.Context, toDoguResource *doguv2.Dogu, execPod exec.ExecPod) error {
+func (ue *upgradeExecutor) applyCustomK8sScripts(ctx context.Context, toDoguResource *doguv2.Dogu, toDogu *core.Dogu) error {
 	var customK8sResources map[string]string
-	customK8sResources, err := extractCustomK8sResources(ctx, ue.k8sFileExtractor, execPod)
+	customK8sResources, err := extractCustomK8sResources(ctx, ue.k8sFileExtractor, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
@@ -215,8 +216,8 @@ func (ue *upgradeExecutor) applyCustomK8sScripts(ctx context.Context, toDoguReso
 	return applyCustomK8sResources(ctx, ue.collectApplier, toDoguResource, customK8sResources)
 }
 
-func extractCustomK8sResources(ctx context.Context, extractor exec.FileExtractor, execPod exec.ExecPod) (map[string]string, error) {
-	resources, err := extractor.ExtractK8sResourcesFromContainer(ctx, execPod)
+func extractCustomK8sResources(ctx context.Context, extractor exec.FileExtractor, toDoguResource *doguv2.Dogu, toDogu *core.Dogu) (map[string]string, error) {
+	resources, err := extractor.ExtractK8sResourcesFromExecPod(ctx, toDoguResource, toDogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract custom K8s resources: %w", err)
 	}
@@ -233,7 +234,7 @@ func applyCustomK8sResources(ctx context.Context, collectApplier resource.Collec
 	return nil
 }
 
-func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguResource *doguv2.Dogu, fromDogu, toDogu *core.Dogu, execPod exec.ExecPod) error {
+func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguResource *doguv2.Dogu, fromDogu, toDogu *core.Dogu) error {
 	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
 		return nil
 	}
@@ -247,7 +248,7 @@ func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguReso
 		return fmt.Errorf("failed to find pod for dogu %s:%s : %w", fromDogu.GetSimpleName(), fromDogu.Version, err)
 	}
 
-	err = ue.copyPreUpgradeScriptFromPodToPod(ctx, execPod, fromDoguPod, preUpgradeScriptCmd)
+	err = ue.copyPreUpgradeScriptFromPodToPod(ctx, toDoguResource, toDogu, fromDoguPod, preUpgradeScriptCmd)
 	if err != nil {
 		return err
 	}
@@ -261,9 +262,9 @@ func (ue *upgradeExecutor) applyPreUpgradeScript(ctx context.Context, toDoguReso
 	return nil
 }
 
-func (ue *upgradeExecutor) copyPreUpgradeScriptFromPodToPod(ctx context.Context, srcPod exec.ExecPod, destPod *corev1.Pod, preUpgradeScriptCmd *core.ExposedCommand) error {
+func (ue *upgradeExecutor) copyPreUpgradeScriptFromPodToPod(ctx context.Context, toDoguResource *doguv2.Dogu, toDogu *core.Dogu, destPod *corev1.Pod, preUpgradeScriptCmd *core.ExposedCommand) error {
 	tarCommand := exec.NewShellCommand("/bin/tar", "cf", "-", preUpgradeScriptCmd.Command)
-	archive, err := srcPod.Exec(ctx, tarCommand)
+	archive, err := ue.execPodFactory.Exec(ctx, toDoguResource, toDogu, tarCommand)
 	if err != nil {
 		return fmt.Errorf("failed to get pre-upgrade script from execpod with command '%s', stdout: '%s':  %w", tarCommand.String(), archive, err)
 	}
@@ -359,22 +360,18 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter res
 	}
 
 	ue.normalEventf(toDoguResource, "Extracting optional custom K8s resources...")
-	execPod, err := ue.execPodFactory.NewExecPod(toDoguResource, toDogu)
+	err = ue.execPodFactory.CreateBlocking(ctx, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
-	err = execPod.Create(ctx)
-	if err != nil {
-		return err
-	}
-	defer deleteExecPod(ctx, execPod, ue.eventRecorder, toDoguResource)
+	defer ue.deleteExecPod(ctx, toDoguResource, toDogu, ue.eventRecorder)
 
-	err = ue.applyPreUpgradeScript(ctx, toDoguResource, fromDogu, toDogu, execPod)
+	err = ue.applyPreUpgradeScript(ctx, toDoguResource, fromDogu, toDogu)
 	if err != nil {
 		return fmt.Errorf("pre-upgrade failed: %w", err)
 	}
 
-	err = ue.applyCustomK8sScripts(ctx, toDoguResource, execPod)
+	err = ue.applyCustomK8sScripts(ctx, toDoguResource, toDogu)
 	if err != nil {
 		return err
 	}
@@ -430,9 +427,9 @@ func (ue *upgradeExecutor) normalEventf(doguResource *doguv2.Dogu, msg string, a
 	ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, msg, args...)
 }
 
-func deleteExecPod(ctx context.Context, execPod exec.ExecPod, recorder record.EventRecorder, doguResource *doguv2.Dogu) {
-	err := execPod.Delete(ctx)
+func (ue *upgradeExecutor) deleteExecPod(ctx context.Context, doguResource *doguv2.Dogu, dogu *core.Dogu, recorder record.EventRecorder) {
+	err := ue.execPodFactory.Delete(ctx, doguResource, dogu)
 	if err != nil {
-		recorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)
+		recorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, "Failed to delete execPod for dogu %q: %v", dogu.GetSimpleName(), err)
 	}
 }

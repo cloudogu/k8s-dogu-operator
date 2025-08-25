@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/ces-commons-lib/errors"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -40,15 +41,16 @@ type doguInstallManager struct {
 	fileExtractor                 exec.FileExtractor
 	collectApplier                resource.CollectApplier
 	resourceUpserter              resource.ResourceUpserter
-	execPodFactory                exec.ExecPodFactory
 	doguConfigRepository          doguConfigRepository
 	sensitiveDoguRepository       doguConfigRepository
 	securityValidator             securityValidator
 	doguAdditionalMountsValidator doguAdditionalMountsValidator
+	execPodFactory                exec.ExecPodFactory
 }
 
 // NewDoguInstallManager creates a new instance of doguInstallManager.
 func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, configRepos util.ConfigRepositories) *doguInstallManager {
+	execPodFactory := exec.NewExecPodFactory(client, mgrSet.CommandExecutor)
 	return &doguInstallManager{
 		client:                        client,
 		ecosystemClient:               mgrSet.EcosystemClient,
@@ -59,10 +61,10 @@ func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventR
 		doguRegistrator:               mgrSet.DoguRegistrator,
 		dependencyValidator:           mgrSet.DependencyValidator,
 		serviceAccountCreator:         mgrSet.ServiceAccountCreator,
-		fileExtractor:                 mgrSet.FileExtractor,
+		fileExtractor:                 exec.NewPodFileExtractor(execPodFactory),
 		collectApplier:                mgrSet.CollectApplier,
 		resourceUpserter:              mgrSet.ResourceUpserter,
-		execPodFactory:                exec.NewExecPodFactory(client, mgrSet.RestConfig, mgrSet.CommandExecutor),
+		execPodFactory:                execPodFactory,
 		doguConfigRepository:          configRepos.DoguConfigRepository,
 		sensitiveDoguRepository:       configRepos.SensitiveDoguRepository,
 		securityValidator:             mgrSet.SecurityValidator,
@@ -192,17 +194,13 @@ func (m *doguInstallManager) createDoguResources(ctx context.Context, doguResour
 	}
 
 	m.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
-	anExecPod, err := m.execPodFactory.NewExecPod(doguResource, dogu)
+	err = m.execPodFactory.CreateBlocking(ctx, doguResource, dogu)
 	if err != nil {
-		return fmt.Errorf("failed to create execPod resource %s: %w", anExecPod.ObjectKey().Name, err)
+		return fmt.Errorf("failed to create execPod for dogu %q: %w", dogu.GetSimpleName(), err)
 	}
-	err = anExecPod.Create(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create execPod %s: %w", anExecPod.ObjectKey().Name, err)
-	}
-	defer deleteExecPod(ctx, anExecPod, m.recorder, doguResource)
+	defer m.deleteExecPod(ctx, doguResource, dogu, m.recorder)
 
-	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromContainer(ctx, anExecPod)
+	customK8sResources, err := m.fileExtractor.ExtractK8sResourcesFromExecPod(ctx, doguResource, dogu)
 	if err != nil {
 		return fmt.Errorf("failed to pull customK8sResources: %w", err)
 	}
@@ -285,9 +283,9 @@ func (m *doguInstallManager) createConfigs(ctx context.Context, doguName string,
 	return cleanUp, nil
 }
 
-func deleteExecPod(ctx context.Context, execPod exec.ExecPod, recorder record.EventRecorder, doguResource *doguv2.Dogu) {
-	err := execPod.Delete(ctx)
+func (m *doguInstallManager) deleteExecPod(ctx context.Context, doguResource *doguv2.Dogu, dogu *cesappcore.Dogu, recorder record.EventRecorder) {
+	err := m.execPodFactory.Delete(ctx, doguResource, dogu)
 	if err != nil {
-		recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Failed to delete execPod %s: %w", execPod.PodName(), err)
+		recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Failed to delete execPod for dogu %q: %v", dogu.GetSimpleName(), err)
 	}
 }

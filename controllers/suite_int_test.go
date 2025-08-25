@@ -172,7 +172,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	yamlResult := make(map[string]string)
 	fileExtract := &mockFileExtractor{}
-	fileExtract.On("ExtractK8sResourcesFromContainer", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
+	fileExtract.On("ExtractK8sResourcesFromExecPod", mock.Anything, mock.Anything, mock.Anything).Return(yamlResult, nil)
 	applyClient := &mockApplier{}
 	applyClient.On("Apply", mock.Anything, mock.Anything).Return(nil)
 

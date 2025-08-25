@@ -136,7 +136,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := newMockFileExtractor(t)
-		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
+		k8sFileEx.On("ExtractK8sResourcesFromExecPod", testCtx, execPod).Return(customK8sResource, nil)
 		applier := newMockCollectApplier(t)
 		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(nil, nil)
 
@@ -240,7 +240,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Once().Return(mockCmdOutput, nil)
 
 		k8sFileEx := newMockFileExtractor(t)
-		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
+		k8sFileEx.On("ExtractK8sResourcesFromExecPod", testCtx, execPod).Return(customK8sResource, nil)
 		applier := newMockCollectApplier(t)
 		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(nil, nil)
 
@@ -339,7 +339,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
 
 		k8sFileEx := newMockFileExtractor(t)
-		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, assert.AnError)
+		k8sFileEx.On("ExtractK8sResourcesFromExecPod", testCtx, execPod).Return(nil, assert.AnError)
 		applier := newMockCollectApplier(t)
 
 		upserter := newMockResourceUpserter(t)
@@ -483,7 +483,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
 
 			k8sFileEx := newMockFileExtractor(t)
-			k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
+			k8sFileEx.On("ExtractK8sResourcesFromExecPod", testCtx, execPod).Return(nil, nil)
 			applier := newMockCollectApplier(t)
 			var emptyCustomK8sResource map[string]string
 			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, nil)
@@ -567,7 +567,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
 
 			k8sFileEx := newMockFileExtractor(t)
-			k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
+			k8sFileEx.On("ExtractK8sResourcesFromExecPod", testCtx, execPod).Return(nil, nil)
 			applier := newMockCollectApplier(t)
 			var emptyCustomK8sResource map[string]string
 			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, nil)
@@ -663,7 +663,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 				Once().Return(bytes.NewBufferString("pre upgrade successful"), nil)
 
 			k8sFileEx := newMockFileExtractor(t)
-			k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(nil, nil)
+			k8sFileEx.On("ExtractK8sResourcesFromExecPod", testCtx, execPod).Return(nil, nil)
 			applier := newMockCollectApplier(t)
 			var emptyCustomK8sResource map[string]string
 			applier.On("CollectApply", testCtx, emptyCustomK8sResource, toDoguResource).Return(nil, nil)
@@ -765,7 +765,7 @@ func Test_upgradeExecutor_Upgrade(t *testing.T) {
 			Once().Return(bytes.NewBufferString("ouch"), assert.AnError)
 
 		k8sFileEx := newMockFileExtractor(t)
-		k8sFileEx.On("ExtractK8sResourcesFromContainer", testCtx, execPod).Return(customK8sResource, nil)
+		k8sFileEx.On("ExtractK8sResourcesFromExecPod", testCtx, execPod).Return(customK8sResource, nil)
 		applier := newMockCollectApplier(t)
 		applier.On("CollectApply", testCtx, customK8sResource, toDoguResource).Return(nil, nil)
 
@@ -1287,7 +1287,7 @@ func Test_extractCustomK8sResources(t *testing.T) {
 		extractor := newMockFileExtractor(t)
 		fakeResources := make(map[string]string, 0)
 		fakeResources["lefile.yaml"] = "levalue"
-		extractor.On("ExtractK8sResourcesFromContainer", testCtx, mock.Anything).Return(fakeResources, nil)
+		extractor.On("ExtractK8sResourcesFromExecPod", testCtx, mock.Anything).Return(fakeResources, nil)
 
 		// when
 		resources, err := extractCustomK8sResources(testCtx, extractor, nil)
@@ -1304,7 +1304,7 @@ func Test_extractCustomK8sResources(t *testing.T) {
 		toDoguCr.Spec.Version = redmineUpgradeVersion
 		extractor := newMockFileExtractor(t)
 		var emptyResourcesAreValidToo map[string]string
-		extractor.On("ExtractK8sResourcesFromContainer", testCtx, mock.Anything).Return(emptyResourcesAreValidToo, nil)
+		extractor.On("ExtractK8sResourcesFromExecPod", testCtx, mock.Anything).Return(emptyResourcesAreValidToo, nil)
 
 		// when
 		resources, err := extractCustomK8sResources(testCtx, extractor, nil)
@@ -1321,7 +1321,7 @@ func Test_extractCustomK8sResources(t *testing.T) {
 		toDoguCr.Spec.Version = redmineUpgradeVersion
 		extractor := newMockFileExtractor(t)
 		var nilMap map[string]string
-		extractor.On("ExtractK8sResourcesFromContainer", testCtx, mock.Anything).Return(nilMap, assert.AnError)
+		extractor.On("ExtractK8sResourcesFromExecPod", testCtx, mock.Anything).Return(nilMap, assert.AnError)
 
 		// when
 		_, err := extractCustomK8sResources(testCtx, extractor, nil)

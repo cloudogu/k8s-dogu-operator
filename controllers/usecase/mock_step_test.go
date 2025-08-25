@@ -4,8 +4,8 @@ package usecase
 
 import (
 	context "context"
-	time "time"
 
+	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	mock "github.com/stretchr/testify/mock"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -25,31 +25,21 @@ func (_m *mockStep) EXPECT() *mockStep_Expecter {
 }
 
 // Run provides a mock function with given fields: ctx, resource
-func (_m *mockStep) Run(ctx context.Context, resource *v2.Dogu) (time.Duration, error) {
+func (_m *mockStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResult {
 	ret := _m.Called(ctx, resource)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
 	}
 
-	var r0 time.Duration
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) (time.Duration, error)); ok {
-		return rf(ctx, resource)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) time.Duration); ok {
+	var r0 steps.StepResult
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) steps.StepResult); ok {
 		r0 = rf(ctx, resource)
 	} else {
-		r0 = ret.Get(0).(time.Duration)
+		r0 = ret.Get(0).(steps.StepResult)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *v2.Dogu) error); ok {
-		r1 = rf(ctx, resource)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // mockStep_Run_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Run'
@@ -71,12 +61,12 @@ func (_c *mockStep_Run_Call) Run(run func(ctx context.Context, resource *v2.Dogu
 	return _c
 }
 
-func (_c *mockStep_Run_Call) Return(requeueAfter time.Duration, err error) *mockStep_Run_Call {
-	_c.Call.Return(requeueAfter, err)
+func (_c *mockStep_Run_Call) Return(_a0 steps.StepResult) *mockStep_Run_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockStep_Run_Call) RunAndReturn(run func(context.Context, *v2.Dogu) (time.Duration, error)) *mockStep_Run_Call {
+func (_c *mockStep_Run_Call) RunAndReturn(run func(context.Context, *v2.Dogu) steps.StepResult) *mockStep_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

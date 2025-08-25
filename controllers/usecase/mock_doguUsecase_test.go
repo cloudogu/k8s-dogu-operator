@@ -71,8 +71,8 @@ func (_c *mockDoguUsecase_HandleUntilApplied_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *mockDoguUsecase_HandleUntilApplied_Call) Return(requeueAfter time.Duration, err error) *mockDoguUsecase_HandleUntilApplied_Call {
-	_c.Call.Return(requeueAfter, err)
+func (_c *mockDoguUsecase_HandleUntilApplied_Call) Return(_a0 time.Duration, _a1 error) *mockDoguUsecase_HandleUntilApplied_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+
 	"k8s.io/client-go/tools/remotecommand"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,24 +23,19 @@ const (
 	PodReady PodStatusForExec = "ready"
 )
 
-// ExecPod provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
-type ExecPod interface {
-	// Create adds a new exec pod to the cluster.
-	Create(ctx context.Context) error
-	// Delete deletes the exec pod from the cluster.
-	Delete(ctx context.Context) error
-	// PodName returns the name of the pod.
-	PodName() string
-	// ObjectKey returns the ExecPod's K8s object key.
-	ObjectKey() *client.ObjectKey
-	// Exec runs the provided command in this execPod
-	Exec(ctx context.Context, cmd ShellCommand) (out *bytes.Buffer, err error)
-}
-
-// ExecPodFactory provides functionality to create ExecPods.
+// ExecPodFactory provides methods for instantiating and removing an intermediate pod based on a Dogu container image.
 type ExecPodFactory interface {
-	// NewExecPod creates a new ExecPod.
-	NewExecPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (ExecPod, error)
+	// CreateBlocking adds a new exec pod to the cluster and waits for its creation.
+	// Deprecated, as we don't want our code to block.
+	CreateBlocking(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
+	// Create adds a new exec pod to the cluster.
+	Create(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
+	Exists(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) bool
+	CheckReady(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
+	// Delete deletes the exec pod from the cluster.
+	Delete(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
+	// Exec runs the provided command in this execPodFactory
+	Exec(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, cmd ShellCommand) (out *bytes.Buffer, err error)
 }
 
 // CommandExecutor is used to execute commands in pods and dogus
@@ -61,16 +57,10 @@ type ShellCommand interface {
 // PodStatusForExec describes a state in the lifecycle of a pod.
 type PodStatusForExec string
 
-// FileExtractor provides functionality to get the contents of files from a container.
+// FileExtractor provides functionality to get the contents of files from an exec pod.
 type FileExtractor interface {
-	// ExtractK8sResourcesFromContainer copies a file from stdout into map of strings.
-	ExtractK8sResourcesFromContainer(ctx context.Context, k8sExecPod ExecPod) (map[string]string, error)
-}
-
-// suffixGenerator can generate random suffix strings, e.g. for ExecPods.
-type suffixGenerator interface {
-	// String returns a random suffix string with the given length
-	String(length int) string
+	// ExtractK8sResourcesFromExecPod copies files from an exec pod into map of strings.
+	ExtractK8sResourcesFromExecPod(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (map[string]string, error)
 }
 
 //nolint:unused
