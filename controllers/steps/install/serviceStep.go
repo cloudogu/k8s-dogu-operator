@@ -17,15 +17,15 @@ import (
 const requeueAfterService = 10 * time.Second
 
 type ServiceStep struct {
-	serviceGenerator    serviceGenerator
-	resourceDoguFetcher resourceDoguFetcher
-	imageRegistry       imageRegistry
-	serviceInterface    serviceInterface
+	serviceGenerator serviceGenerator
+	localDoguFetcher localDoguFetcher
+	imageRegistry    imageRegistry
+	serviceInterface serviceInterface
 }
 
 func NewServiceStep(mgrSet util.ManagerSet) *ServiceStep {
 	return &ServiceStep{
-		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
+		localDoguFetcher: mgrSet.LocalDoguFetcher,
 	}
 }
 
@@ -47,7 +47,7 @@ func (ses *ServiceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.St
 }
 
 func (ses *ServiceStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {
-	doguDescriptor, _, err := ses.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	doguDescriptor, err := ses.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch dogu descriptor: %w", err)
 	}

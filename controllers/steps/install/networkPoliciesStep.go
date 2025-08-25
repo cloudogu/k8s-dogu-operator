@@ -13,8 +13,8 @@ import (
 const requeueAfterNetworkPoliciesStep = 10 * time.Second
 
 type NetworkPoliciesStep struct {
-	netPolUpserter      netPolUpserter
-	resourceDoguFetcher resourceDoguFetcher
+	netPolUpserter   netPolUpserter
+	localDoguFetcher localDoguFetcher
 }
 
 func NewNetworkPoliciesStep(mgrSet util.ManagerSet) *NetworkPoliciesStep {
@@ -22,7 +22,7 @@ func NewNetworkPoliciesStep(mgrSet util.ManagerSet) *NetworkPoliciesStep {
 }
 
 func (nps *NetworkPoliciesStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	dogu, _, err := nps.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	dogu, err := nps.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to fetch dogu descriptor"))
 	}

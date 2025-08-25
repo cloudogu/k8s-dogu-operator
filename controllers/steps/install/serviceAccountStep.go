@@ -16,13 +16,13 @@ const requeueAfterServiceAccount = 5 * time.Second
 
 type ServiceAccountStep struct {
 	serviceAccountCreator serviceaccount.ServiceAccountCreator
-	resourceDoguFetcher   resourceDoguFetcher
+	localDoguFetcher      localDoguFetcher
 }
 
 func NewServiceAccountStep(mgrSet util.ManagerSet) *ServiceAccountStep {
 	return &ServiceAccountStep{
 		serviceAccountCreator: mgrSet.ServiceAccountCreator,
-		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
+		localDoguFetcher:      mgrSet.LocalDoguFetcher,
 	}
 }
 
@@ -40,7 +40,7 @@ func (sas *ServiceAccountStep) Run(ctx context.Context, doguResource *v2.Dogu) s
 }
 
 func (sas *ServiceAccountStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {
-	doguDescriptor, _, err := sas.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	doguDescriptor, err := sas.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch dogu descriptor: %w", err)
 	}
