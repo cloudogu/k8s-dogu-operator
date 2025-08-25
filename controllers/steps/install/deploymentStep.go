@@ -10,6 +10,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const requeueAfterDeployment = 5 * time.Second
@@ -17,6 +19,7 @@ const requeueAfterDeployment = 5 * time.Second
 type DeploymentStep struct {
 	upserter         resource.ResourceUpserter
 	localDoguFetcher localDoguFetcher
+	client           client.Client
 }
 
 func NewDeploymentStep(mgrSet *util.ManagerSet, upserter resource.ResourceUpserter) *DeploymentStep {
@@ -27,6 +30,13 @@ func NewDeploymentStep(mgrSet *util.ManagerSet, upserter resource.ResourceUpsert
 }
 
 func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	deployment, err := doguResource.GetDeployment(ctx, ds.client)
+	if err != nil && !errors.IsNotFound(err) {
+		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+	}
+	if deployment != nil {
+		return steps.StepResult{}
+	}
 	dogu, err := ds.getLocalDogu(ctx, doguResource)
 	if err != nil {
 		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
