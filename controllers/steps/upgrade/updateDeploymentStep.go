@@ -39,7 +39,7 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 	if err != nil {
 		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
 	}
-	updated := uds.isDeploymentStartupProbeIncreased(doguResource, deployment)
+	updated := uds.isDeploymentStartupProbeIncreased(doguResource, deployment) && uds.isDoguVersionUpdatedInDeployment(doguResource, deployment)
 	if updated {
 		return steps.StepResult{}
 	}
@@ -88,6 +88,11 @@ func (uds *UpdateDeploymentStep) isDeploymentStartupProbeIncreased(doguResource 
 	}
 	return false
 }
+
+func (uds *UpdateDeploymentStep) isDoguVersionUpdatedInDeployment(doguResource *v2.Dogu, deployment *v1.Deployment) bool {
+	return deployment.Spec.Template.Labels[podTemplateVersionKey] == doguResource.Spec.Version
+}
+
 func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *v1.Deployment) {
 	for i, container := range deployment.Spec.Template.Spec.Containers {
 		if container.Name == containerName && deployment.Spec.Template.Spec.Containers[i].StartupProbe != nil {
