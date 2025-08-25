@@ -3,7 +3,7 @@ ARTIFACT_ID=k8s-dogu-operator
 VERSION=3.11.2
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.24.3
+GOTAG=1.24.6
 MAKEFILES_VERSION=10.1.0
 
 PRE_COMPILE = generate-deepcopy
