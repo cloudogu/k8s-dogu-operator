@@ -39,6 +39,8 @@ func NewDoguInstallOrChangeUseCase(
 	equalDescriptorsStep *upgrade.EqualDoguDescriptorsStep,
 	healthStep *upgrade.HealthStep,
 	registerNewDoguVersionStep *upgrade.RegisterDoguVersionStep,
+	updateDeploymentStep *upgrade.UpdateDeploymentStep,
+	revertProbeStep *upgrade.RevertStartupProbeStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
@@ -65,6 +67,8 @@ func NewDoguInstallOrChangeUseCase(
 			equalDescriptorsStep,
 			healthStep,
 			registerNewDoguVersionStep,
+			updateDeploymentStep,
+			revertProbeStep,
 		},
 	}
 }
