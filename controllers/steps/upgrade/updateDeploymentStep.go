@@ -20,6 +20,7 @@ import (
 const podTemplateVersionKey = "dogu.version"
 const upgradeStartupProbeFailureThresholdRetries = int32(1080)
 const preUpgradeScriptDir = "/tmp/pre-upgrade"
+const previousDoguVersionAnnotationKey = "k8s.cloudogu.com/dogu-previous-version"
 
 type UpdateDeploymentStep struct {
 	client              client.Client
@@ -73,6 +74,7 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		dogu,
 		func(deployment *v1.Deployment) {
 			increaseStartupProbeTimeoutForUpdate(doguResource.Name, deployment)
+			setPreviousDoguVersionInAnnotations(fromDoguVersion, deployment)
 		},
 	)
 
@@ -100,6 +102,10 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *v1.D
 			break
 		}
 	}
+}
+
+func setPreviousDoguVersionInAnnotations(previousDoguVersion string, deployment *v1.Deployment) {
+	deployment.Annotations[previousDoguVersionAnnotationKey] = previousDoguVersion
 }
 
 func deleteExecPod(ctx context.Context, execPod exec.ExecPod) {
