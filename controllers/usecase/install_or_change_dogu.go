@@ -22,7 +22,7 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
 			install.NewValidationStep(mgrSet),
-			install.NewFinalizerExistsStep(client),
+			install.NewFinalizerExistsStep(),
 			install.NewDoguConfigStep(configRepos),
 			install.NewDoguConfigOwnerReferenceStep(configRepos),
 			install.NewSensitiveConfigStep(configRepos),
