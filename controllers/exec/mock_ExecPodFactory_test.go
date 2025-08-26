@@ -74,54 +74,6 @@ func (_c *MockExecPodFactory_CheckReady_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// Create provides a mock function with given fields: ctx, doguResource, dogu
-func (_m *MockExecPodFactory) Create(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) error {
-	ret := _m.Called(ctx, doguResource, dogu)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Create")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu) error); ok {
-		r0 = rf(ctx, doguResource, dogu)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockExecPodFactory_Create_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Create'
-type MockExecPodFactory_Create_Call struct {
-	*mock.Call
-}
-
-// Create is a helper method to define mock.On call
-//   - ctx context.Context
-//   - doguResource *v2.Dogu
-//   - dogu *core.Dogu
-func (_e *MockExecPodFactory_Expecter) Create(ctx interface{}, doguResource interface{}, dogu interface{}) *MockExecPodFactory_Create_Call {
-	return &MockExecPodFactory_Create_Call{Call: _e.mock.On("Create", ctx, doguResource, dogu)}
-}
-
-func (_c *MockExecPodFactory_Create_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu)) *MockExecPodFactory_Create_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu))
-	})
-	return _c
-}
-
-func (_c *MockExecPodFactory_Create_Call) Return(_a0 error) *MockExecPodFactory_Create_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockExecPodFactory_Create_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu) error) *MockExecPodFactory_Create_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CreateBlocking provides a mock function with given fields: ctx, doguResource, dogu
 func (_m *MockExecPodFactory) CreateBlocking(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) error {
 	ret := _m.Called(ctx, doguResource, dogu)
@@ -166,6 +118,54 @@ func (_c *MockExecPodFactory_CreateBlocking_Call) Return(_a0 error) *MockExecPod
 }
 
 func (_c *MockExecPodFactory_CreateBlocking_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu) error) *MockExecPodFactory_CreateBlocking_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateOrUpdate provides a mock function with given fields: ctx, doguResource, dogu
+func (_m *MockExecPodFactory) CreateOrUpdate(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) error {
+	ret := _m.Called(ctx, doguResource, dogu)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateOrUpdate")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu) error); ok {
+		r0 = rf(ctx, doguResource, dogu)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockExecPodFactory_CreateOrUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateOrUpdate'
+type MockExecPodFactory_CreateOrUpdate_Call struct {
+	*mock.Call
+}
+
+// CreateOrUpdate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguResource *v2.Dogu
+//   - dogu *core.Dogu
+func (_e *MockExecPodFactory_Expecter) CreateOrUpdate(ctx interface{}, doguResource interface{}, dogu interface{}) *MockExecPodFactory_CreateOrUpdate_Call {
+	return &MockExecPodFactory_CreateOrUpdate_Call{Call: _e.mock.On("CreateOrUpdate", ctx, doguResource, dogu)}
+}
+
+func (_c *MockExecPodFactory_CreateOrUpdate_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu)) *MockExecPodFactory_CreateOrUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu))
+	})
+	return _c
+}
+
+func (_c *MockExecPodFactory_CreateOrUpdate_Call) Return(_a0 error) *MockExecPodFactory_CreateOrUpdate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockExecPodFactory_CreateOrUpdate_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu) error) *MockExecPodFactory_CreateOrUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }

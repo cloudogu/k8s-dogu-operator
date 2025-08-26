@@ -29,7 +29,7 @@ type ExecPodFactory interface {
 	// Deprecated, as we don't want our code to block.
 	CreateBlocking(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
 	// Create adds a new exec pod to the cluster.
-	Create(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
+	CreateOrUpdate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
 	Exists(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) bool
 	CheckReady(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
 	// Delete deletes the exec pod from the cluster.

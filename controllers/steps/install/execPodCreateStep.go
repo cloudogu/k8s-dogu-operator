@@ -51,7 +51,7 @@ func (epcs *ExecPodCreateStep) Run(ctx context.Context, doguResource *v2.Dogu) s
 	}
 
 	epcs.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
-	err = epcs.execPodFactory.Create(ctx, doguResource, dogu)
+	err = epcs.execPodFactory.CreateOrUpdate(ctx, doguResource, dogu)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to create execPod for dogu %q: %w", dogu.GetSimpleName(), err))
 	}
