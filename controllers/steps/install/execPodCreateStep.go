@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
@@ -25,7 +25,7 @@ type ExecPodCreateStep struct {
 	execPodFactory   exec.ExecPodFactory
 }
 
-func NewExecPodCreateStep(client client.Client, mgrSet util.ManagerSet, eventRecorder record.EventRecorder) *ExecPodCreateStep {
+func NewExecPodCreateStep(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *ExecPodCreateStep {
 	return &ExecPodCreateStep{
 		client:           client,
 		recorder:         eventRecorder,

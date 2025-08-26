@@ -6,9 +6,9 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,10 +23,11 @@ type VolumeExpanderStep struct {
 	doguInterface doguInterface
 }
 
-func NewVolumeExpanderStep(client client.Client, doguInterface doguClient.DoguInterface) *VolumeExpanderStep {
+func NewVolumeExpanderStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *VolumeExpanderStep {
+	doguInt := mgrSet.EcosystemClient.Dogus(namespace)
 	return &VolumeExpanderStep{
 		client:        client,
-		doguInterface: doguInterface,
+		doguInterface: doguInt,
 	}
 }
 

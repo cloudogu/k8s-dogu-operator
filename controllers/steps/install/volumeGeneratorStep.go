@@ -13,17 +13,20 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const ecosystemNamespace = "ecosystem"
+
 type VolumeGeneratorStep struct {
 	localDoguFetcher    localDoguFetcher
-	deploymentPatcher   steps.DeploymentPatcher
+	deploymentPatcher   *steps.DeploymentPatcher
 	deploymentInterface deploymentInterface
 }
 
-func NewVolumeGeneratorStep(mgrSet *util.ManagerSet, deploymentPatcher steps.DeploymentPatcher, deploymentInterface deploymentInterface) *VolumeGeneratorStep {
+func NewVolumeGeneratorStep(mgrSet *util.ManagerSet) *VolumeGeneratorStep {
+	deploymentInt := mgrSet.ClientSet.AppsV1().Deployments(ecosystemNamespace)
 	return &VolumeGeneratorStep{
 		localDoguFetcher:    mgrSet.LocalDoguFetcher,
-		deploymentPatcher:   deploymentPatcher,
-		deploymentInterface: deploymentInterface,
+		deploymentPatcher:   steps.NewDeploymentPatcher(deploymentInt),
+		deploymentInterface: deploymentInt,
 	}
 }
 

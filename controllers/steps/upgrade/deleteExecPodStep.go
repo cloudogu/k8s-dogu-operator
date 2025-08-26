@@ -15,7 +15,7 @@ type DeleteExecPodStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func NewDeleteExecPodStep(mgrSet util.ManagerSet) *DeleteExecPodStep {
+func NewDeleteExecPodStep(mgrSet *util.ManagerSet) *DeleteExecPodStep {
 	return &DeleteExecPodStep{
 		localDoguFetcher: mgrSet.LocalDoguFetcher,
 		execPodFactory:   mgrSet.ExecPodFactory,

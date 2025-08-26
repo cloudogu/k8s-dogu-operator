@@ -5,9 +5,12 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -18,9 +21,10 @@ type SupportModeStep struct {
 	client         client.Client
 }
 
-func NewSupportModeStep(manager supportManager) *SupportModeStep {
+func NewSupportModeStep(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *SupportModeStep {
 	return &SupportModeStep{
-		supportManager: manager,
+		supportManager: manager.NewDoguSupportManager(client, mgrSet, eventRecorder),
+		client:         client,
 	}
 }
 

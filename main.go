@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	"os"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -232,6 +233,22 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 	}
 
 	err = doguReconciler.SetupWithManager(k8sManager)
+	if err != nil {
+		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
+	}
+
+	doguReconciler2, err := controllers.NewDoguReconciler2(
+		k8sManager.GetClient(),
+		ecosystemClientSet,
+		operatorConfig,
+		eventRecorder,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
+	}
+
+	err = doguReconciler2.SetupWithManager(k8sManager)
 	if err != nil {
 		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
 	}

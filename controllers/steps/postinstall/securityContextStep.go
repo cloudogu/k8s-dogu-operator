@@ -7,24 +7,24 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type SecurityContextStep struct {
 	localDoguFetcher         localDoguFetcher
-	securityContextGenerator resource.SecurityContextGenerator
+	securityContextGenerator *resource.SecurityContextGenerator
 	deploymentInterface      deploymentInterface
 }
 
 func NewSecurityContextStep(
-	fetcher localDoguFetcher,
-	generator resource.SecurityContextGenerator,
-	deplInt deploymentInterface,
+	mgrSet *util.ManagerSet,
+	namespace string,
 ) *SecurityContextStep {
 	return &SecurityContextStep{
-		localDoguFetcher:         fetcher,
-		securityContextGenerator: generator,
-		deploymentInterface:      deplInt,
+		localDoguFetcher:         mgrSet.LocalDoguFetcher,
+		securityContextGenerator: resource.NewSecurityContextGenerator(),
+		deploymentInterface:      mgrSet.ClientSet.AppsV1().Deployments(namespace),
 	}
 }
 

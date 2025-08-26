@@ -14,6 +14,12 @@ type DeploymentPatcher struct {
 	deploymentInterface deploymentInterface
 }
 
+func NewDeploymentPatcher(deploymentInterface deploymentInterface) *DeploymentPatcher {
+	return &DeploymentPatcher{
+		deploymentInterface: deploymentInterface,
+	}
+}
+
 func (dp *DeploymentPatcher) Execute(ctx context.Context, name string, patchData map[string]interface{}) (*v1.Deployment, error) {
 	patchBytes, err := json.Marshal(patchData)
 	if err != nil {

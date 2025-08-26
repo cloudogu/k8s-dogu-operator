@@ -17,8 +17,11 @@ type NetworkPoliciesStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func NewNetworkPoliciesStep(mgrSet util.ManagerSet) *NetworkPoliciesStep {
-	return &NetworkPoliciesStep{netPolUpserter: mgrSet.ResourceUpserter}
+func NewNetworkPoliciesStep(mgrSet *util.ManagerSet) *NetworkPoliciesStep {
+	return &NetworkPoliciesStep{
+		netPolUpserter:   mgrSet.ResourceUpserter,
+		localDoguFetcher: mgrSet.LocalDoguFetcher,
+	}
 }
 
 func (nps *NetworkPoliciesStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {

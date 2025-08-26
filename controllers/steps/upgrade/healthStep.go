@@ -7,7 +7,9 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 const requeueAfterHealthStep = 2 * time.Second
@@ -20,8 +22,15 @@ type HealthStep struct {
 	doguRecursiveHealthChecker doguRecursiveHealthChecker
 }
 
-func NewHealthStep() *HealthStep {
-	return &HealthStep{}
+func NewHealthStep(mgrSet *util.ManagerSet) *HealthStep {
+	doguChecker := health.NewDoguChecker(mgrSet.EcosystemClient, mgrSet.LocalDoguFetcher)
+	return &HealthStep{
+		resourceDoguFetcher:        mgrSet.ResourceDoguFetcher,
+		localDoguFetcher:           mgrSet.LocalDoguFetcher,
+		dependencyValidator:        mgrSet.DependencyValidator,
+		doguHealthChecker:          doguChecker,
+		doguRecursiveHealthChecker: doguChecker,
+	}
 }
 
 func (hs *HealthStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {

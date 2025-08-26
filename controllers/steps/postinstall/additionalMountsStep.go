@@ -4,16 +4,19 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type AdditionalMountsStep struct {
 	additionalMountManager
 }
 
-func NewAdditionalMountsStep(manager additionalMountManager) *AdditionalMountsStep {
+func NewAdditionalMountsStep(mgrSet *util.ManagerSet, namespace string) *AdditionalMountsStep {
+	doguInterface := mgrSet.EcosystemClient.Dogus(namespace)
 	return &AdditionalMountsStep{
-		additionalMountManager: manager,
+		additionalMountManager: manager.NewDoguAdditionalMountManager(mgrSet.ClientSet.AppsV1().Deployments(namespace), mgrSet, doguInterface),
 	}
 }
 

@@ -15,7 +15,7 @@ type DeleteDevelopmentDoguMapStep struct {
 	client              client.Client
 }
 
-func NewDeleteDevelopmentDoguMapStep(mgrSet util.ManagerSet, client client.Client) *DeleteDevelopmentDoguMapStep {
+func NewDeleteDevelopmentDoguMapStep(client client.Client, mgrSet *util.ManagerSet) *DeleteDevelopmentDoguMapStep {
 	return &DeleteDevelopmentDoguMapStep{
 		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
 		client:              client,

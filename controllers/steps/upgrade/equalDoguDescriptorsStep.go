@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 const requeueAfterEqualDoguDescriptorsStep = 2 * time.Second
@@ -17,8 +18,11 @@ type EqualDoguDescriptorsStep struct {
 	localDoguFetcher    localDoguFetcher
 }
 
-func NewEqualDoguDescriptorsStep() *EqualDoguDescriptorsStep {
-	return &EqualDoguDescriptorsStep{}
+func NewEqualDoguDescriptorsStep(mgrSet *util.ManagerSet) *EqualDoguDescriptorsStep {
+	return &EqualDoguDescriptorsStep{
+		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
+		localDoguFetcher:    mgrSet.LocalDoguFetcher,
+	}
 }
 
 func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {

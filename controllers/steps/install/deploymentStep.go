@@ -22,9 +22,10 @@ type DeploymentStep struct {
 	client           client.Client
 }
 
-func NewDeploymentStep(mgrSet *util.ManagerSet, upserter resource.ResourceUpserter) *DeploymentStep {
+func NewDeploymentStep(client client.Client, mgrSet *util.ManagerSet) *DeploymentStep {
 	return &DeploymentStep{
-		upserter:         upserter,
+		client:           client,
+		upserter:         mgrSet.ResourceUpserter,
 		localDoguFetcher: mgrSet.LocalDoguFetcher,
 	}
 }

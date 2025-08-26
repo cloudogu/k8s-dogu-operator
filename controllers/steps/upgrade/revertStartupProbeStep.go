@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,8 +24,13 @@ type RevertStartupProbeStep struct {
 	doguCommandExecutor exec.CommandExecutor
 }
 
-func NewRevertStartupProbeStep() *RevertStartupProbeStep {
-	return &RevertStartupProbeStep{}
+func NewRevertStartupProbeStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *RevertStartupProbeStep {
+	return &RevertStartupProbeStep{
+		client:              client,
+		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
+		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
+		doguCommandExecutor: mgrSet.CommandExecutor,
+	}
 }
 
 func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {

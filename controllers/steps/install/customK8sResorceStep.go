@@ -22,7 +22,7 @@ type CustomK8sResourceStep struct {
 	collectApplier   resource.CollectApplier
 }
 
-func NewCustomK8sResourceStep(mgrSet util.ManagerSet, eventRecorder record.EventRecorder) *CustomK8sResourceStep {
+func NewCustomK8sResourceStep(mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *CustomK8sResourceStep {
 	return &CustomK8sResourceStep{
 		recorder:         eventRecorder,
 		localDoguFetcher: mgrSet.LocalDoguFetcher,

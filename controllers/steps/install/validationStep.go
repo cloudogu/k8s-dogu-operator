@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
@@ -24,9 +25,11 @@ type ValidationStep struct {
 	dependencyValidator           upgrade.DependencyValidator
 }
 
-func NewValidationStep(mgrSet *util.ManagerSet, checker premisesChecker) *ValidationStep {
+func NewValidationStep(mgrSet *util.ManagerSet) *ValidationStep {
+	doguChecker := health.NewDoguChecker(mgrSet.EcosystemClient, mgrSet.LocalDoguFetcher)
+	premisesChecker := upgrade.NewPremisesChecker(mgrSet.DependencyValidator, doguChecker, doguChecker, mgrSet.SecurityValidator, mgrSet.DoguAdditionalMountValidator)
 	return &ValidationStep{
-		premisesChecker:     checker,
+		premisesChecker:     premisesChecker,
 		localDoguFetcher:    mgrSet.LocalDoguFetcher,
 		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
 	}

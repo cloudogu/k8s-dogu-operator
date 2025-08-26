@@ -19,7 +19,7 @@ type ServiceAccountStep struct {
 	localDoguFetcher      localDoguFetcher
 }
 
-func NewServiceAccountStep(mgrSet util.ManagerSet) *ServiceAccountStep {
+func NewServiceAccountStep(mgrSet *util.ManagerSet) *ServiceAccountStep {
 	return &ServiceAccountStep{
 		serviceAccountCreator: mgrSet.ServiceAccountCreator,
 		localDoguFetcher:      mgrSet.LocalDoguFetcher,

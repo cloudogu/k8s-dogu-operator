@@ -23,7 +23,7 @@ type ServiceStep struct {
 	serviceInterface serviceInterface
 }
 
-func NewServiceStep(mgrSet util.ManagerSet) *ServiceStep {
+func NewServiceStep(mgrSet *util.ManagerSet) *ServiceStep {
 	return &ServiceStep{
 		localDoguFetcher: mgrSet.LocalDoguFetcher,
 	}

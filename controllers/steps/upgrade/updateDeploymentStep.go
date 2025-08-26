@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,8 +33,15 @@ type UpdateDeploymentStep struct {
 	doguCommandExecutor exec.CommandExecutor
 }
 
-func NewUpdateDeploymentStep() *UpdateDeploymentStep {
-	return &UpdateDeploymentStep{}
+func NewUpdateDeploymentStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *UpdateDeploymentStep {
+	return &UpdateDeploymentStep{
+		client:              client,
+		upserter:            mgrSet.ResourceUpserter,
+		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
+		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
+		execPodFactory:      mgrSet.ExecPodFactory,
+		doguCommandExecutor: mgrSet.CommandExecutor,
+	}
 }
 
 func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {

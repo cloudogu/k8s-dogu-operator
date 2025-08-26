@@ -6,8 +6,12 @@ import (
 	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
 	"github.com/sirupsen/logrus"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -20,12 +24,30 @@ type doguReconciler2 struct {
 	doguDeleteHandler DoguUsecase
 }
 
-func NewDoguReconciler2(client client.Client, doguChangeHandler DoguUsecase, doguDeleteHandler DoguUsecase) *doguReconciler2 {
+func NewDoguReconciler2(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*doguReconciler2, error) {
+	ctx := context.Background()
+	restConfig, err := ctrl.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	clientSet, err := clientSetGetter(restConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	configRepos := createConfigRepositories(clientSet, operatorConfig.Namespace)
+	// At this point, the operator's client is only ready AFTER the operator's Start(...) was called.
+	// Instead we must use our own client to avoid an immediate cache error: "the cache is not started, can not read objects"
+	mgrSet, err := createMgrSet(ctx, restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos)
+	if err != nil {
+		return nil, err
+	}
 	return &doguReconciler2{
 		client:            client,
-		doguChangeHandler: doguChangeHandler,
-		doguDeleteHandler: doguDeleteHandler,
-	}
+		doguChangeHandler: usecase.NewDoguInstallOrChangeUseCaseEmpty(client, mgrSet, configRepos, eventRecorder, operatorConfig.Namespace),
+		doguDeleteHandler: nil,
+	}, nil
 }
 
 func (r *doguReconciler2) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

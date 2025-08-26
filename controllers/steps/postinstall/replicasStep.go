@@ -5,6 +5,7 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,15 +14,16 @@ import (
 
 type ReplicasStep struct {
 	deploymentInterface deploymentInterface
-	deploymentPatcher   steps.DeploymentPatcher
+	deploymentPatcher   *steps.DeploymentPatcher
 	client              client.Client
 }
 
-func NewReplicasStep(deploymentInterface deploymentInterface, client client.Client, deploymentPatcher steps.DeploymentPatcher) *ReplicasStep {
+func NewReplicasStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *ReplicasStep {
+	deploymentInt := mgrSet.ClientSet.AppsV1().Deployments(namespace)
 	return &ReplicasStep{
-		deploymentInterface: deploymentInterface,
+		deploymentInterface: deploymentInt,
 		client:              client,
-		deploymentPatcher:   deploymentPatcher,
+		deploymentPatcher:   steps.NewDeploymentPatcher(deploymentInt),
 	}
 }
 
