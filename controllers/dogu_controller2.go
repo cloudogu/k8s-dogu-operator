@@ -61,9 +61,9 @@ func (r *doguReconciler2) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 	var requeueAfter time.Duration
 	if doguResource.GetDeletionTimestamp().IsZero() {
-		requeueAfter, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
-	} else {
 		requeueAfter, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
+	} else {
+		requeueAfter, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
 	}
 	return ctrl.Result{RequeueAfter: requeueAfter}, err
 }
