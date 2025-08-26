@@ -5,7 +5,6 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -15,8 +14,8 @@ type DeleteOutOfHealthConfigMapStep struct {
 	client client.Client
 }
 
-func NewDeleteOutOfHealthConfigMapStep(mgrSet *util.ManagerSet) *DeleteOutOfHealthConfigMapStep {
-	return &DeleteOutOfHealthConfigMapStep{}
+func NewDeleteOutOfHealthConfigMapStep(client client.Client) *DeleteOutOfHealthConfigMapStep {
+	return &DeleteOutOfHealthConfigMapStep{client: client}
 }
 
 func (dhc *DeleteOutOfHealthConfigMapStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {

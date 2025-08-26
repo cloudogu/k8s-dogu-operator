@@ -19,9 +19,9 @@ type ServiceAccountRemoverStep struct {
 }
 
 func NewServiceAccountRemoverStep(
-	mgrSet util.ManagerSet,
-	configRepos util.ConfigRepositories,
 	client client.Client,
+	mgrSet *util.ManagerSet,
+	configRepos util.ConfigRepositories,
 	operatorConfig *config.OperatorConfig,
 ) *ServiceAccountRemoverStep {
 	return &ServiceAccountRemoverStep{
