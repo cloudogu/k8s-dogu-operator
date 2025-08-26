@@ -16,7 +16,7 @@ type DoguDeleteUseCase struct {
 	steps []step
 }
 
-func NewDoguDeleteUsecaseEmpty(client client.Client, mgrSet *util.ManagerSet, configRepos util.ConfigRepositories, operatorConfig *config.OperatorConfig) *DoguDeleteUseCase {
+func NewDoguDeleteUsecase(client client.Client, mgrSet *util.ManagerSet, configRepos util.ConfigRepositories, operatorConfig *config.OperatorConfig) *DoguDeleteUseCase {
 	return &DoguDeleteUseCase{
 		steps: []step{
 			deletion.NewServiceAccountRemoverStep(client, mgrSet, configRepos, operatorConfig),
@@ -25,26 +25,6 @@ func NewDoguDeleteUsecaseEmpty(client client.Client, mgrSet *util.ManagerSet, co
 			deletion.NewRemoveDoguConfigStep(configRepos),
 			deletion.NewRemoveSensitiveDoguConfigStep(configRepos),
 			deletion.NewRemoveFinalizerStep(client),
-		},
-	}
-}
-
-func NewDoguDeleteUseCase(
-	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
-	unregisterVersionStep *deletion.UnregisterDoguVersionStep,
-	healthMapStep *deletion.DeleteOutOfHealthConfigMapStep,
-	removeDoguConfigStep *deletion.RemoveDoguConfigStep,
-	removeSensitiveDoguConfigStep *deletion.RemoveSensitiveDoguConfigStep,
-	removeFinalizerStep *deletion.RemoveFinalizerStep,
-) *DoguDeleteUseCase {
-	return &DoguDeleteUseCase{
-		steps: []step{
-			serviceAccountRemoverStep,
-			unregisterVersionStep,
-			healthMapStep,
-			removeDoguConfigStep,
-			removeSensitiveDoguConfigStep,
-			removeFinalizerStep,
 		},
 	}
 }

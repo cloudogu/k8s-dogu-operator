@@ -18,7 +18,7 @@ type DoguInstallOrChangeUseCase struct {
 	steps []step
 }
 
-func NewDoguInstallOrChangeUseCaseEmpty(client client.Client, mgrSet *util.ManagerSet, configRepos util.ConfigRepositories, eventRecorder record.EventRecorder, namespace string) *DoguInstallOrChangeUseCase {
+func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet, configRepos util.ConfigRepositories, eventRecorder record.EventRecorder, namespace string) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
 			install.NewValidationStep(mgrSet),
@@ -49,70 +49,6 @@ func NewDoguInstallOrChangeUseCaseEmpty(client client.Client, mgrSet *util.Manag
 			upgrade.NewDeleteExecPodStep(mgrSet),
 			upgrade.NewRevertStartupProbeStep(client, mgrSet, namespace),
 			upgrade.NewDeleteDevelopmentDoguMapStep(client, mgrSet),
-		},
-	}
-}
-
-func NewDoguInstallOrChangeUseCase(
-	validationStep *install.ValidationStep,
-	existsStep *install.FinalizerExistsStep,
-	configStep *install.DoguConfigStep,
-	doguReferenceStep *install.DoguConfigOwnerReferenceStep,
-	sensitiveConfigStep *install.SensitiveConfigStep,
-	sensitiveReferenceStep *install.SensitiveConfigOwnerReferenceStep,
-	registerDoguVersionStep *install.RegisterDoguVersionStep,
-	serviceAccountStep *install.ServiceAccountStep,
-	serviceStep *install.ServiceStep,
-	execPodCreateStep *install.ExecPodCreateStep,
-	customResourceStep *install.CustomK8sResourceStep,
-	netPolsStep *install.NetworkPoliciesStep,
-	deploymentStep *install.DeploymentStep,
-	volumeGeneratorStep *install.VolumeGeneratorStep,
-	replicasStep *postinstall.ReplicasStep,
-	volumeExpanderStep *postinstall.VolumeExpanderStep,
-	ingressAnnotationsStep *postinstall.AdditionalIngressAnnotationsStep,
-	securityContextStep *postinstall.SecurityContextStep,
-	exportModeStep *postinstall.ExportModeStep,
-	supportModeStep *postinstall.SupportModeStep,
-	additionalMountsStep *postinstall.AdditionalMountsStep,
-	equalDescriptorsStep *upgrade.EqualDoguDescriptorsStep,
-	healthStep *upgrade.HealthStep,
-	registerNewDoguVersionStep *upgrade.RegisterDoguVersionStep,
-	updateDeploymentStep *upgrade.UpdateDeploymentStep,
-	deleteExecPodStep *upgrade.DeleteExecPodStep,
-	revertProbeStep *upgrade.RevertStartupProbeStep,
-	deleteMapStep *upgrade.DeleteDevelopmentDoguMapStep,
-) *DoguInstallOrChangeUseCase {
-	return &DoguInstallOrChangeUseCase{
-		steps: []step{
-			validationStep,
-			existsStep,
-			configStep,
-			doguReferenceStep,
-			sensitiveConfigStep,
-			sensitiveReferenceStep,
-			registerDoguVersionStep,
-			serviceAccountStep,
-			serviceStep,
-			execPodCreateStep,
-			customResourceStep,
-			netPolsStep,
-			deploymentStep,
-			volumeGeneratorStep,
-			replicasStep,
-			volumeExpanderStep,
-			ingressAnnotationsStep,
-			securityContextStep,
-			exportModeStep,
-			supportModeStep,
-			additionalMountsStep,
-			equalDescriptorsStep,
-			healthStep,
-			registerNewDoguVersionStep,
-			updateDeploymentStep,
-			deleteExecPodStep,
-			revertProbeStep,
-			deleteMapStep,
 		},
 	}
 }
