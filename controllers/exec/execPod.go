@@ -25,7 +25,7 @@ import (
 // deprecated
 var maxWaitDuration = time.Minute * 10
 
-const execPodLabel = "k8s.cloudogu.com/execPodFactory"
+const execPodLabel = "k8s.cloudogu.com/execPod"
 
 // execPodFactory provides features to handle files from a dogu image.
 type execPodFactory struct {
@@ -117,10 +117,11 @@ func (ep *execPodFactory) createPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (
 
 	automountServiceAccountToken := false
 
+	podName := execPodName(dogu)
 	podSpec := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        execPodName(dogu),
+			Name:        podName,
 			Namespace:   doguResource.Namespace,
 			Labels:      labels,
 			Annotations: make(map[string]string),
@@ -128,7 +129,7 @@ func (ep *execPodFactory) createPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:            execPodName(dogu),
+					Name:            podName,
 					Image:           image,
 					Command:         doNothingCommand,
 					ImagePullPolicy: pullPolicy,
@@ -152,7 +153,7 @@ func (ep *execPodFactory) createPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (
 
 	err := ctrl.SetControllerReference(doguResource, podSpec, ep.client.Scheme())
 	if err != nil {
-		return nil, fmt.Errorf("failed to set controller reference to exec pod %s: %w", execPodName, err)
+		return nil, fmt.Errorf("failed to set controller reference to exec pod %q: %w", podName, err)
 	}
 	return podSpec, nil
 }
@@ -199,7 +200,7 @@ func (ep *execPodFactory) getPod(ctx context.Context, doguResource *k8sv2.Dogu, 
 
 // Delete deletes the exec pod from the cluster.
 func (ep *execPodFactory) Delete(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
-	err := ep.client.DeleteAllOf(ctx, &corev1.Pod{}, client.MatchingLabels{execPodLabel: dogu.Name}, client.InNamespace(doguResource.Namespace))
+	err := ep.client.DeleteAllOf(ctx, &corev1.Pod{}, client.MatchingLabels{execPodLabel: dogu.GetSimpleName()}, client.InNamespace(doguResource.Namespace))
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete execPodFactory %s: %w", execPodName(dogu), err)

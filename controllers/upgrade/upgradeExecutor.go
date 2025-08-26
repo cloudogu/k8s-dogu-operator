@@ -364,7 +364,7 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter res
 	if err != nil {
 		return err
 	}
-	defer ue.deleteExecPod(ctx, toDoguResource, toDogu, ue.eventRecorder)
+	defer ue.deleteExecPod(ctx, toDoguResource, toDogu)
 
 	err = ue.applyPreUpgradeScript(ctx, toDoguResource, fromDogu, toDogu)
 	if err != nil {
@@ -427,9 +427,9 @@ func (ue *upgradeExecutor) normalEventf(doguResource *doguv2.Dogu, msg string, a
 	ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, msg, args...)
 }
 
-func (ue *upgradeExecutor) deleteExecPod(ctx context.Context, doguResource *doguv2.Dogu, dogu *core.Dogu, recorder record.EventRecorder) {
+func (ue *upgradeExecutor) deleteExecPod(ctx context.Context, doguResource *doguv2.Dogu, dogu *core.Dogu) {
 	err := ue.execPodFactory.Delete(ctx, doguResource, dogu)
 	if err != nil {
-		recorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, "Failed to delete execPod for dogu %q: %v", dogu.GetSimpleName(), err)
+		ue.eventRecorder.Eventf(doguResource, corev1.EventTypeNormal, EventReason, "Failed to delete execPod for dogu %q: %v", dogu.GetSimpleName(), err)
 	}
 }
