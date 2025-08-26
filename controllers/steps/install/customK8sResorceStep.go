@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -54,7 +53,7 @@ func (ses *CustomK8sResourceStep) Run(ctx context.Context, doguResource *v2.Dogu
 	}
 
 	if len(customK8sResources) > 0 {
-		ses.recorder.Eventf(doguResource, corev1.EventTypeNormal, controllers.InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
+		ses.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
 	}
 	err = ses.collectApplier.CollectApply(ctx, customK8sResources, doguResource)
 	if err != nil {

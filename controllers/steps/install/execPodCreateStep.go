@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
@@ -17,6 +16,7 @@ import (
 )
 
 const podTemplateVersionKey = "dogu.version"
+const InstallEventReason = "Installation"
 
 type ExecPodCreateStep struct {
 	client           client.Client
@@ -50,7 +50,7 @@ func (epcs *ExecPodCreateStep) Run(ctx context.Context, doguResource *v2.Dogu) s
 		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("dogu not found in local registry: %w", err))
 	}
 
-	epcs.recorder.Eventf(doguResource, corev1.EventTypeNormal, controllers.InstallEventReason, "Starting execPod...")
+	epcs.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
 	err = epcs.execPodFactory.Create(ctx, doguResource, dogu)
 	if err != nil {
 		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to create execPod for dogu %q: %w", dogu.GetSimpleName(), err))
