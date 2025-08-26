@@ -23,7 +23,7 @@ func NewRemoveSensitiveDoguConfigStep(configRepos util.ConfigRepositories) *Remo
 
 func (rdc *RemoveSensitiveDoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	if err := rdc.sensitiveDoguRepository.Delete(ctx, cescommons.SimpleName(doguResource.Name)); err != nil && !registryErrors.IsNotFoundError(err) {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("could not delete snesitive dogu config: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("could not delete snesitive dogu config: %w", err))
 	}
-	return steps.StepResult{}
+	return steps.Continue()
 }

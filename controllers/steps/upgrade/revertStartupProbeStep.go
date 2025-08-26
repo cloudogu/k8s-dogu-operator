@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -16,6 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const requeueAfterRevertStartupProbe = time.Second * 3
 
 type RevertStartupProbeStep struct {
 	client              client.Client
@@ -36,15 +39,17 @@ func NewRevertStartupProbeStep(client client.Client, mgrSet *util.ManagerSet, na
 func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, _, err := rsps.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
+
 	deployment, err := rsps.deploymentInterface.Get(ctx, doguResource.Spec.Name, metav1.GetOptions{})
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to fetch deployment: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch deployment: %w", err))
 	}
+
 	originalStartupProbe := resource.CreateStartupProbe(dogu)
 	if rsps.startupProbeHasDefaultValue(deployment, dogu.GetSimpleName(), originalStartupProbe) {
-		return steps.StepResult{}
+		return steps.Continue()
 	}
 
 	fromDoguVersion := deployment.Annotations[previousDoguVersionAnnotationKey]
@@ -52,15 +57,16 @@ func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Do
 	// Run Postupgrade Script
 	err = rsps.applyPostUpgradeScript(ctx, doguResource, fromDoguVersion, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("post-upgrade failed: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("post-upgrade failed: %w", err))
 	}
 
 	// Revert probe
 	err = rsps.revertStartupProbeAfterUpdate(ctx, doguResource, dogu, rsps.client)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
-	return steps.StepResult{}
+
+	return steps.RequeueAfter(requeueAfterRevertStartupProbe)
 }
 
 func (rsps *RevertStartupProbeStep) startupProbeHasDefaultValue(deployment *v1.Deployment, containerName string, probe *coreV1.Probe) bool {

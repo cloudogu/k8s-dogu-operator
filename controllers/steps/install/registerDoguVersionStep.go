@@ -27,18 +27,18 @@ func NewRegisterDoguVersionStep(mgrSet *util.ManagerSet) *RegisterDoguVersionSte
 func (rdvs *RegisterDoguVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	remoteDogu, _, err := rdvs.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
-	installed, err := rdvs.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
-	if installed != nil {
-		return steps.StepResult{}
-	}
+
+	_, err = rdvs.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil && cloudoguerrors.IsNotFoundError(err) {
 		err = rdvs.doguRegistrator.RegisterNewDogu(ctx, doguResource, remoteDogu)
 		if err != nil {
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to register dogu: %w", err))
+			return steps.RequeueWithError(fmt.Errorf("failed to register dogu: %w", err))
 		}
-		return steps.StepResult{}
+	} else if err != nil {
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch local dogu: %w", err))
 	}
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+
+	return steps.Continue()
 }

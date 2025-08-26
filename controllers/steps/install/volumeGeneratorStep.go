@@ -33,17 +33,17 @@ func NewVolumeGeneratorStep(mgrSet *util.ManagerSet) *VolumeGeneratorStep {
 func (vgs *VolumeGeneratorStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, err := vgs.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err))
+		return steps.RequeueWithError(fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err))
 	}
 
 	volumes, err := resource.CreateVolumes(doguResource, dogu, doguResource.Spec.ExportMode)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
 
 	deployment, err := vgs.getDoguDeployment(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
 
 	patch := map[string]interface{}{
@@ -58,9 +58,10 @@ func (vgs *VolumeGeneratorStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 
 	_, err = vgs.deploymentPatcher.Execute(ctx, deployment.Name, patch)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
-	return steps.StepResult{}
+
+	return steps.Continue()
 }
 
 func (vgs *VolumeGeneratorStep) getDoguDeployment(ctx context.Context, doguResource *v2.Dogu) (*appsv1.Deployment, error) {
@@ -68,6 +69,7 @@ func (vgs *VolumeGeneratorStep) getDoguDeployment(ctx context.Context, doguResou
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment for dogu %s: %w", doguResource.Name, err)
 	}
+
 	if len(list.Items) == 1 {
 		return &list.Items[0], nil
 	}

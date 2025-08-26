@@ -8,15 +8,25 @@ type StepResult struct {
 	Continue     bool
 }
 
-func NewStepResult(requeueAfter time.Duration, err error, cont bool) StepResult {
+func RequeueAfter(requeueAfter time.Duration) StepResult {
 	return StepResult{
 		RequeueAfter: requeueAfter,
-		Err:          err,
-		Continue:     cont,
 	}
 }
 
-func NewStepResultContinueIsTrue(requeueAfter time.Duration, err error) StepResult {
+func Continue() StepResult {
+	return StepResult{
+		Continue: true,
+	}
+}
+
+func Abort() StepResult {
+	return StepResult{
+		Continue: false,
+	}
+}
+
+func RequeueAfterWithError(requeueAfter time.Duration, err error) StepResult {
 	return StepResult{
 		RequeueAfter: requeueAfter,
 		Err:          err,
@@ -24,10 +34,9 @@ func NewStepResultContinueIsTrue(requeueAfter time.Duration, err error) StepResu
 	}
 }
 
-func NewStepResultContinueIsTrueAndRequeueIsZero(err error) StepResult {
+func RequeueWithError(err error) StepResult {
 	return StepResult{
-		RequeueAfter: 0,
-		Err:          err,
-		Continue:     true,
+		Err:      err,
+		Continue: true,
 	}
 }

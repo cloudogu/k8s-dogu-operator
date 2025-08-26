@@ -33,22 +33,24 @@ func NewDeploymentStep(client client.Client, mgrSet *util.ManagerSet) *Deploymen
 func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	deployment, err := doguResource.GetDeployment(ctx, ds.client)
 	if err != nil && !errors.IsNotFound(err) {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
+
 	if deployment != nil {
-		return steps.StepResult{}
+		return steps.Continue()
 	}
+
 	dogu, err := ds.getLocalDogu(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
-	// TODO Generate Resource-Limits
-	// TODO Already done in resource generator: https://github.com/cloudogu/k8s-dogu-operator/blob/d289f34b58294461aa7249ceb1402f484ffd183c/controllers/resource/resource_generator.go#L198
+
 	_, err = ds.upserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
-	return steps.StepResult{}
+
+	return steps.Continue()
 }
 
 func (ds *DeploymentStep) getLocalDogu(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {

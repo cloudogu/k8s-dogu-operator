@@ -29,14 +29,16 @@ func NewServiceAccountStep(mgrSet *util.ManagerSet) *ServiceAccountStep {
 func (sas *ServiceAccountStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	doguDescriptor, err := sas.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
+
 	// Existing service accounts will be skipped.
 	err = sas.serviceAccountCreator.CreateAll(ctx, doguDescriptor)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
-	return steps.StepResult{}
+
+	return steps.Continue()
 }
 
 func (sas *ServiceAccountStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {

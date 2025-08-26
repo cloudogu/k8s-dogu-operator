@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -19,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const requeueAfterUpdateDeployment = time.Second * 3
 const podTemplateVersionKey = "dogu.version"
 const upgradeStartupProbeFailureThresholdRetries = int32(1080)
 const preUpgradeScriptDir = "/tmp/pre-upgrade"
@@ -47,27 +49,30 @@ func NewUpdateDeploymentStep(client client.Client, mgrSet *util.ManagerSet, name
 func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	deployment, err := uds.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
+
 	updated := uds.isDeploymentStartupProbeIncreased(doguResource, deployment) && uds.isDoguVersionUpdatedInDeployment(doguResource, deployment)
 	if updated {
-		return steps.StepResult{}
+		return steps.Continue()
 	}
+
 	dogu, _, err := uds.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
+
 	fromDoguVersion := deployment.Spec.Template.Labels[podTemplateVersionKey]
 
 	err = uds.execPodFactory.CheckReady(ctx, doguResource, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to check if exec pod is ready: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to check if exec pod is ready: %w", err))
 	}
 
 	// Apply pre upgrade
 	err = uds.applyPreUpgradeScript(ctx, doguResource, fromDoguVersion, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("pre-upgrade failed: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("pre-upgrade failed: %w", err))
 	}
 
 	// update Deployment
@@ -81,7 +86,7 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		},
 	)
 
-	return steps.StepResult{}
+	return steps.RequeueAfter(requeueAfterUpdateDeployment)
 }
 
 func (uds *UpdateDeploymentStep) isDeploymentStartupProbeIncreased(doguResource *v2.Dogu, deployment *v1.Deployment) bool {

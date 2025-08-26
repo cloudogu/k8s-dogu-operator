@@ -3,15 +3,12 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
-
-const requeueAfterEqualDoguDescriptorsStep = 2 * time.Second
 
 type EqualDoguDescriptorsStep struct {
 	resourceDoguFetcher resourceDoguFetcher
@@ -29,23 +26,20 @@ func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.
 	changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
 	remoteDescriptor, err := edds.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
-		return steps.StepResult{}
+		return steps.RequeueWithError(err)
 	}
 
 	localDescriptor, err := edds.getLocalDogu(ctx, doguResource)
 	if err != nil {
-		return steps.StepResult{}
+		return steps.RequeueWithError(err)
 	}
 
 	err = edds.checkDoguIdentity(localDescriptor, remoteDescriptor, changeNamespace)
 	if err != nil {
-		return steps.StepResult{
-			Err:          err,
-			RequeueAfter: requeueAfterEqualDoguDescriptorsStep,
-		}
+		return steps.RequeueWithError(err)
 	}
 
-	return steps.StepResult{}
+	return steps.Continue()
 }
 
 func (edds *EqualDoguDescriptorsStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
@@ -13,8 +12,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-const requeueAfterAdditionalIngressAnnotations = 5 * time.Second
 
 type AdditionalIngressAnnotationsStep struct {
 	client client.Client
@@ -29,12 +26,15 @@ func NewAdditionalIngressAnnotationsStep(client client.Client) *AdditionalIngres
 func (aias *AdditionalIngressAnnotationsStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	ingressAnnotationsChanged, err := aias.checkForAdditionalIngressAnnotations(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
+
 	if ingressAnnotationsChanged {
 		err = aias.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
+		return steps.RequeueWithError(err)
 	}
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+
+	return steps.Continue()
 }
 
 func (aias *AdditionalIngressAnnotationsStep) checkForAdditionalIngressAnnotations(ctx context.Context, doguResource *v2.Dogu) (bool, error) {

@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const requeueAfterValidation = 5 * time.Second
+const requeueAfterValidation = 3 * time.Second
 
 type ValidationStep struct {
 	premisesChecker               premisesChecker
@@ -38,31 +38,34 @@ func NewValidationStep(mgrSet *util.ManagerSet) *ValidationStep {
 func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	fromDogu, toDogu, _, err := vs.getDogusForUpgrade(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
+
 	if fromDogu != nil && toDogu != nil && fromDogu.Version != toDogu.Version {
 		err = vs.premisesChecker.Check(ctx, doguResource, toDogu, fromDogu)
 		if err != nil {
-			return steps.NewStepResultContinueIsTrue(requeueAfterValidation, fmt.Errorf("failed a premise check: %w", err))
+			return steps.RequeueAfterWithError(requeueAfterValidation, fmt.Errorf("failed a premise check: %w", err))
 		}
-		return steps.StepResult{}
+
+		return steps.Continue()
 	}
 
 	err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrue(requeueAfterValidation, err)
+		return steps.RequeueAfterWithError(requeueAfterValidation, err)
 	}
 
 	err = vs.securityValidator.ValidateSecurity(toDogu, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrue(requeueAfterValidation, err)
+		return steps.RequeueAfterWithError(requeueAfterValidation, err)
 	}
 
 	err = vs.doguAdditionalMountsValidator.ValidateAdditionalMounts(ctx, toDogu, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrue(requeueAfterValidation, err)
+		return steps.RequeueAfterWithError(requeueAfterValidation, err)
 	}
-	return steps.StepResult{}
+
+	return steps.Continue()
 }
 
 func (vs *ValidationStep) getDogusForUpgrade(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, *core.Dogu, *v2.DevelopmentDoguMap, error) {

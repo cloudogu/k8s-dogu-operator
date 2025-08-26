@@ -27,11 +27,13 @@ func NewNetworkPoliciesStep(mgrSet *util.ManagerSet) *NetworkPoliciesStep {
 func (nps *NetworkPoliciesStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, err := nps.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to fetch dogu descriptor"))
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor"))
 	}
+
 	err = nps.netPolUpserter.UpsertDoguNetworkPolicies(ctx, doguResource, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to setup network policies for dogu %s: %w", doguResource.Name, err))
+		return steps.RequeueWithError(fmt.Errorf("failed to setup network policies for dogu %s: %w", doguResource.Name, err))
 	}
-	return steps.StepResult{}
+
+	return steps.Continue()
 }

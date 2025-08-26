@@ -28,16 +28,16 @@ func (dcs *DoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) steps
 	_, err := dcs.doguConfigRepository.Get(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
 		if !errors.IsNotFoundError(err) {
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+			return steps.RequeueWithError(err)
 		}
 
 		err = dcs.createConfig(ctx, doguResource)
 		if err != nil {
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+			return steps.RequeueWithError(err)
 		}
 	}
 
-	return steps.StepResult{}
+	return steps.Continue()
 }
 
 func (dcs *DoguConfigStep) createConfig(ctx context.Context, doguResource *v2.Dogu) error {

@@ -9,7 +9,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -33,10 +32,7 @@ func (sms *SupportModeStep) Run(ctx context.Context, doguResource *v2.Dogu) step
 	deployment := &appsv1.Deployment{}
 	err = sms.client.Get(ctx, doguResource.GetObjectKey(), deployment)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return steps.StepResult{}
-		}
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err))
+		return steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err))
 	}
 
 	return steps.StepResult{Continue: isDeploymentInSupportMode(deployment)}

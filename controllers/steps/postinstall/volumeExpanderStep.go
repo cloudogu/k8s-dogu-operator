@@ -15,8 +15,6 @@ import (
 )
 
 const requeueAfterVolume = 10 * time.Second
-const scaleDownReplicas = 0
-const scaleUpReplicas = 1
 
 type VolumeExpanderStep struct {
 	client        client.Client
@@ -32,44 +30,32 @@ func NewVolumeExpanderStep(client client.Client, mgrSet *util.ManagerSet, namesp
 }
 
 func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	// TODO Non blocking
 	pvc, err := doguResource.GetDataPVC(ctx, vs.client)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
-	}
-	quantity, err := doguResource.GetMinDataVolumeSize()
-	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
-	}
-	if vs.isPvcStorageResized(pvc, quantity) {
-		return steps.StepResult{}
-	}
-	if !vs.isScaledDown(ctx, vs.client, doguResource) && !vs.isPvcResizeApplicable(pvc) {
-		_, err := vs.scaleDeployment(ctx, vs.client, doguResource, scaleDownReplicas)
-		if err != nil {
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to scale down replicas: %w", err))
-		}
+		return steps.RequeueWithError(err)
 	}
 
-	if vs.isScaledDown(ctx, vs.client, doguResource) && !vs.isPvcResizeApplicable(pvc) {
+	quantity, err := doguResource.GetMinDataVolumeSize()
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+
+	if vs.isPvcStorageResized(pvc, quantity) {
+		return steps.Continue()
+	}
+
+	if !vs.isPvcResizeApplicable(pvc) {
 		_ = opresource.SetCurrentDataVolumeSize(ctx, vs.doguInterface, vs.client, doguResource, pvc)
 
 		// It is necessary to create a new map because just setting a new quantity results in an exception.
 		pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}
 		err = vs.client.Update(ctx, pvc)
 		if err != nil {
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to update PVC %s: %w", pvc.Name, err))
+			return steps.RequeueWithError(fmt.Errorf("failed to update PVC %s: %w", pvc.Name, err))
 		}
 	}
 
-	if vs.isScaledDown(ctx, vs.client, doguResource) && vs.isPvcResizeApplicable(pvc) {
-		_, err := vs.scaleDeployment(ctx, vs.client, doguResource, scaleUpReplicas)
-		if err != nil {
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to scale down replicas: %w", err))
-		}
-	}
-
-	return steps.StepResult{}
+	return steps.RequeueAfter(requeueAfterVolume)
 }
 
 func (vs *VolumeExpanderStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
@@ -92,30 +78,4 @@ func (vs *VolumeExpanderStep) isPvcResizeApplicable(pvc *corev1.PersistentVolume
 		}
 	}
 	return false
-}
-
-// TODO Must be outsourced to the previous step (check replicas)
-func (vs *VolumeExpanderStep) scaleDeployment(ctx context.Context, client client.Client, doguResource *v2.Dogu, newReplicas int32) (oldReplicas int32, err error) {
-	deployment, err := doguResource.GetDeployment(ctx, client)
-	if err != nil {
-		return 0, err
-	}
-
-	oldReplicas = *deployment.Spec.Replicas
-	*deployment.Spec.Replicas = newReplicas
-	err = client.Update(ctx, deployment)
-	if err != nil {
-		return 0, fmt.Errorf("failed to scale deployment for dogu %s: %w", doguResource.Name, err)
-	}
-
-	return oldReplicas, err
-}
-
-// TODO Must be outsourced to the previous step (check replicas)
-func (vs *VolumeExpanderStep) isScaledDown(ctx context.Context, client client.Client, doguResource *v2.Dogu) bool {
-	deployment, err := doguResource.GetDeployment(ctx, client)
-	if err != nil {
-		return false
-	}
-	return *deployment.Spec.Replicas == 0
 }

@@ -25,13 +25,13 @@ func NewDeleteExecPodStep(mgrSet *util.ManagerSet) *DeleteExecPodStep {
 func (deps *DeleteExecPodStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, err := deps.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("dogu not found in local registry: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("dogu not found in local registry: %w", err))
 	}
 
 	err = deps.execPodFactory.Delete(ctx, doguResource, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to delete exec pod for dogu %q: %w", dogu.GetSimpleName(), err))
+		return steps.RequeueWithError(fmt.Errorf("failed to delete exec pod for dogu %q: %w", dogu.GetSimpleName(), err))
 	}
 
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(nil)
+	return steps.Continue()
 }

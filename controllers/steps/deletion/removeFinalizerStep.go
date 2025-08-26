@@ -26,7 +26,7 @@ func (rf *RemoveFinalizerStep) Run(ctx context.Context, doguResource *v2.Dogu) s
 	controllerutil.RemoveFinalizer(doguResource, finalizerName)
 	err := rf.client.Update(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to update dogu: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to update dogu: %w", err))
 	}
-	return steps.StepResult{}
+	return steps.Continue()
 }

@@ -25,14 +25,15 @@ func NewDeleteDevelopmentDoguMapStep(client client.Client, mgrSet *util.ManagerS
 func (ddms *DeleteDevelopmentDoguMapStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	_, developmentDoguMap, err := ddms.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("dogu upgrade failed: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("dogu upgrade failed: %w", err))
 	}
+
 	if developmentDoguMap != nil {
 		err = developmentDoguMap.DeleteFromCluster(ctx, ddms.client)
 		if err != nil {
-			// an error during deleting the developmentDoguMap is not critical, so we change the dogu state as installed earlier
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("dogu upgrade %s:%s failed: %w", doguResource.Name, doguResource.Spec.Version, err))
+			return steps.RequeueWithError(fmt.Errorf("dogu upgrade %s:%s failed: %w", doguResource.Name, doguResource.Spec.Version, err))
 		}
 	}
-	return steps.StepResult{}
+
+	return steps.Continue()
 }

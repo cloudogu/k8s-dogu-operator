@@ -37,24 +37,24 @@ func NewExecPodCreateStep(client client.Client, mgrSet *util.ManagerSet, eventRe
 func (epcs *ExecPodCreateStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	deployment, err := doguResource.GetDeployment(ctx, epcs.client)
 	if client.IgnoreNotFound(err) != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
 
 	// only create the exec pod on installation or upgrade
 	if !(errors.IsNotFound(err) || deployment.Spec.Template.Labels[podTemplateVersionKey] == doguResource.Spec.Version) {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(nil)
+		return steps.Continue()
 	}
 
 	dogu, err := epcs.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("dogu not found in local registry: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("dogu not found in local registry: %w", err))
 	}
 
 	epcs.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Starting execPod...")
 	err = epcs.execPodFactory.Create(ctx, doguResource, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to create execPod for dogu %q: %w", dogu.GetSimpleName(), err))
+		return steps.RequeueWithError(fmt.Errorf("failed to create execPod for dogu %q: %w", dogu.GetSimpleName(), err))
 	}
 
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(nil)
+	return steps.Continue()
 }

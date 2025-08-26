@@ -23,7 +23,7 @@ func NewRemoveDoguConfigStep(configRepos util.ConfigRepositories) *RemoveDoguCon
 
 func (rdc *RemoveDoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	if err := rdc.doguConfigRepository.Delete(ctx, cescommons.SimpleName(doguResource.Name)); err != nil && !registryErrors.IsNotFoundError(err) {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("could not delete dogu config: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("could not delete dogu config: %w", err))
 	}
-	return steps.StepResult{}
+	return steps.Continue()
 }

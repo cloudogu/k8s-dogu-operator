@@ -33,14 +33,14 @@ func NewServiceAccountRemoverStep(
 func (sas *ServiceAccountRemoverStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	doguDescriptor, err := sas.getDoguDescriptor(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
 
 	err = sas.serviceAccountRemover.RemoveAll(ctx, doguDescriptor)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
-	return steps.StepResult{}
+	return steps.Continue()
 }
 
 func (sas *ServiceAccountRemoverStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {

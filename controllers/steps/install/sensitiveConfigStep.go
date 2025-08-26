@@ -28,16 +28,16 @@ func (scs *SensitiveConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 	_, err := scs.sensitiveDoguRepository.Get(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
 		if !errors.IsNotFoundError(err) {
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+			return steps.RequeueWithError(err)
 		}
 
 		err = scs.createConfig(ctx, doguResource)
 		if err != nil {
-			return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+			return steps.RequeueWithError(err)
 		}
 	}
 
-	return steps.StepResult{}
+	return steps.Continue()
 }
 
 func (scs *SensitiveConfigStep) createConfig(ctx context.Context, doguResource *v2.Dogu) error {

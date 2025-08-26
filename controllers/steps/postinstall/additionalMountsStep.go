@@ -23,10 +23,11 @@ func NewAdditionalMountsStep(mgrSet *util.ManagerSet, namespace string) *Additio
 func (ams *AdditionalMountsStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	changed, err := ams.AdditionalMountsChanged(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
+
 	if changed {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(ams.UpdateAdditionalMounts(ctx, doguResource))
+		return steps.RequeueWithError(ams.UpdateAdditionalMounts(ctx, doguResource))
 	}
-	return steps.StepResult{}
+	return steps.Continue()
 }

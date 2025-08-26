@@ -36,22 +36,19 @@ func NewHealthStep(mgrSet *util.ManagerSet) *HealthStep {
 func (hs *HealthStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	localDogu, err := hs.getLocalDogu(ctx, doguResource)
 	if err != nil {
-		return steps.StepResult{}
+		return steps.RequeueWithError(err)
 	}
 	err = hs.doguHealthChecker.CheckByName(ctx, doguResource.GetObjectKey())
 	if err != nil {
-		return steps.StepResult{
-			RequeueAfter: requeueAfterHealthStep,
-		}
+		return steps.RequeueAfterWithError(requeueAfterHealthStep, err)
 	}
 
 	err = hs.checkDependencyDogusHealthy(ctx, localDogu, doguResource.Namespace)
 	if err != nil {
-		return steps.StepResult{
-			RequeueAfter: requeueAfterHealthStep,
-		}
+		return steps.RequeueAfterWithError(requeueAfterHealthStep, err)
 	}
-	return steps.StepResult{}
+
+	return steps.Continue()
 }
 
 func (hs *HealthStep) getLocalDogu(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {

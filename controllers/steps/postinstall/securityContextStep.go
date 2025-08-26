@@ -31,12 +31,12 @@ func NewSecurityContextStep(
 func (scs *SecurityContextStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, err := scs.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to get local descriptor for dogu %q: %w", doguResource.Name, err))
+		return steps.RequeueWithError(fmt.Errorf("failed to get local descriptor for dogu %q: %w", doguResource.Name, err))
 	}
 
 	deployment, err := scs.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to get deployment of dogu %q: %w", doguResource.Name, err))
+		return steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %q: %w", doguResource.Name, err))
 	}
 
 	podSecurityContext, containerSecurityContext := scs.securityContextGenerator.Generate(ctx, dogu, doguResource)
@@ -47,5 +47,5 @@ func (scs *SecurityContextStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 	}
 
 	_, err = scs.deploymentInterface.Update(ctx, deployment, metav1.UpdateOptions{})
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+	return steps.RequeueWithError(err)
 }

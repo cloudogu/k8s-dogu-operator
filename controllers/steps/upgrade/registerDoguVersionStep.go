@@ -24,12 +24,13 @@ func NewRegisterDoguVersionStep(mgrSet *util.ManagerSet) *RegisterDoguVersionSte
 func (rdvs *RegisterDoguVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, _, err := rdvs.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
 
 	err = rdvs.doguRegistrator.RegisterDoguVersion(ctx, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to register dogu: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to register dogu: %w", err))
 	}
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+
+	return steps.Continue()
 }

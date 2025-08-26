@@ -3,6 +3,7 @@ package install
 import (
 	"context"
 	"fmt"
+	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
@@ -12,6 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 )
+
+const requeueAfterCustomK8sResourceStep = time.Second * 3
 
 type CustomK8sResourceStep struct {
 	recorder         record.EventRecorder
@@ -34,22 +37,22 @@ func NewCustomK8sResourceStep(mgrSet *util.ManagerSet, eventRecorder record.Even
 func (ses *CustomK8sResourceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, err := ses.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to fetch dogu descriptor"))
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor"))
 	}
 
 	execPodExists := ses.execPodFactory.Exists(ctx, doguResource, dogu)
 	if !execPodExists {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(nil)
+		return steps.Continue()
 	}
 
 	err = ses.execPodFactory.CheckReady(ctx, doguResource, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to check if exec pod is ready: %w", err))
+		return steps.RequeueAfterWithError(requeueAfterCustomK8sResourceStep, fmt.Errorf("failed to check if exec pod is ready: %w", err))
 	}
 
 	customK8sResources, err := ses.fileExtractor.ExtractK8sResourcesFromExecPod(ctx, doguResource, dogu)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to extract customK8sResources: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to extract customK8sResources: %w", err))
 	}
 
 	if len(customK8sResources) > 0 {
@@ -57,8 +60,8 @@ func (ses *CustomK8sResourceStep) Run(ctx context.Context, doguResource *v2.Dogu
 	}
 	err = ses.collectApplier.CollectApply(ctx, customK8sResources, doguResource)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to apply customK8sResources: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to apply customK8sResources: %w", err))
 	}
 
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(nil)
+	return steps.Continue()
 }

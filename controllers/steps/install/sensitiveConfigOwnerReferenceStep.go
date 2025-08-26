@@ -33,8 +33,8 @@ func (dcs *SensitiveConfigOwnerReferenceStep) Run(ctx context.Context, doguResou
 		},
 	})
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
 
-	return steps.StepResult{}
+	return steps.Continue()
 }

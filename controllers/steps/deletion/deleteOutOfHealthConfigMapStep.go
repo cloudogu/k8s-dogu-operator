@@ -19,7 +19,7 @@ func NewDeleteOutOfHealthConfigMapStep(client client.Client) *DeleteOutOfHealthC
 }
 
 func (dhc *DeleteOutOfHealthConfigMapStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	return steps.NewStepResultContinueIsTrueAndRequeueIsZero(dhc.DeleteDoguOutOfHealthConfigMap(ctx, doguResource))
+	return steps.RequeueWithError(dhc.DeleteDoguOutOfHealthConfigMap(ctx, doguResource))
 }
 
 func (dhc *DeleteOutOfHealthConfigMapStep) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error {

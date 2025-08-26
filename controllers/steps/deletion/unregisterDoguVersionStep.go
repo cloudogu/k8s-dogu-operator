@@ -26,7 +26,7 @@ func NewUnregisterDoguVersionStep(mgrSet *util.ManagerSet) *UnregisterDoguVersio
 func (udvs *UnregisterDoguVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	err := udvs.doguRegistrator.UnregisterDogu(ctx, doguResource.Name)
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(fmt.Errorf("failed to register dogu: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to register dogu: %w", err))
 	}
-	return steps.StepResult{}
+	return steps.Continue()
 }

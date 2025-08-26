@@ -33,8 +33,8 @@ func (dcs *DoguConfigOwnerReferenceStep) Run(ctx context.Context, doguResource *
 		},
 	})
 	if err != nil {
-		return steps.NewStepResultContinueIsTrueAndRequeueIsZero(err)
+		return steps.RequeueWithError(err)
 	}
 
-	return steps.StepResult{}
+	return steps.Continue()
 }
