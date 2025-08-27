@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
@@ -31,6 +32,7 @@ type UpdateDeploymentStep struct {
 	upserter            resource.ResourceUpserter
 	deploymentInterface deploymentInterface
 	resourceDoguFetcher resourceDoguFetcher
+	localDoguFetcher    localDoguFetcher
 	execPodFactory      exec.ExecPodFactory
 	doguCommandExecutor exec.CommandExecutor
 }
@@ -40,6 +42,7 @@ func NewUpdateDeploymentStep(client client.Client, mgrSet *util.ManagerSet, name
 		client:              client,
 		upserter:            mgrSet.ResourceUpserter,
 		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
+		localDoguFetcher:    mgrSet.LocalDoguFetcher,
 		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
 		execPodFactory:      mgrSet.ExecPodFactory,
 		doguCommandExecutor: mgrSet.CommandExecutor,
@@ -62,15 +65,18 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
 
-	fromDoguVersion := deployment.Spec.Template.Labels[podTemplateVersionKey]
-
 	err = uds.execPodFactory.CheckReady(ctx, doguResource, dogu)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to check if exec pod is ready: %w", err))
 	}
 
+	fromDogu, err := uds.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
+	if err != nil {
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
+	}
+
 	// Apply pre upgrade
-	err = uds.applyPreUpgradeScript(ctx, doguResource, fromDoguVersion, dogu)
+	err = uds.applyPreUpgradeScript(ctx, doguResource, fromDogu.Version, dogu)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("pre-upgrade failed: %w", err))
 	}
@@ -82,7 +88,7 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		dogu,
 		func(deployment *v1.Deployment) {
 			increaseStartupProbeTimeoutForUpdate(doguResource.Name, deployment)
-			setPreviousDoguVersionInAnnotations(fromDoguVersion, deployment)
+			setPreviousDoguVersionInAnnotations(fromDogu.Version, deployment)
 		},
 	)
 
@@ -113,6 +119,9 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *v1.D
 }
 
 func setPreviousDoguVersionInAnnotations(previousDoguVersion string, deployment *v1.Deployment) {
+	if deployment.Annotations == nil {
+		deployment.Annotations = map[string]string{}
+	}
 	deployment.Annotations[previousDoguVersionAnnotationKey] = previousDoguVersion
 }
 
