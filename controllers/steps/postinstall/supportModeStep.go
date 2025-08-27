@@ -35,7 +35,7 @@ func (sms *SupportModeStep) Run(ctx context.Context, doguResource *v2.Dogu) step
 		return steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err))
 	}
 
-	return steps.StepResult{Continue: isDeploymentInSupportMode(deployment)}
+	return steps.StepResult{Continue: !isDeploymentInSupportMode(deployment)}
 }
 
 func isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
