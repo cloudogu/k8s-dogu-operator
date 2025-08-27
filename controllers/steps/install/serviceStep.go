@@ -23,9 +23,11 @@ type ServiceStep struct {
 	serviceInterface serviceInterface
 }
 
-func NewServiceStep(mgrSet *util.ManagerSet) *ServiceStep {
+func NewServiceStep(mgrSet *util.ManagerSet, namespace string) *ServiceStep {
 	return &ServiceStep{
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
+		imageRegistry:    mgrSet.ImageRegistry,
+		serviceInterface: mgrSet.ClientSet.CoreV1().Services(namespace),
+		serviceGenerator: mgrSet.DoguResourceGenerator,
 	}
 }
 

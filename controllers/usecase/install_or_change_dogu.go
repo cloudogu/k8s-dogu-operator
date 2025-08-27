@@ -29,7 +29,7 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			install.NewSensitiveConfigOwnerReferenceStep(configRepos),
 			install.NewRegisterDoguVersionStep(mgrSet),
 			install.NewServiceAccountStep(mgrSet),
-			install.NewServiceStep(mgrSet),
+			install.NewServiceStep(mgrSet, namespace),
 			install.NewExecPodCreateStep(client, mgrSet, eventRecorder),
 			install.NewCustomK8sResourceStep(mgrSet, eventRecorder),
 			install.NewNetworkPoliciesStep(mgrSet),
