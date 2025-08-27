@@ -5,129 +5,132 @@ metadata:
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
-# for dogu reconciliation and updating with infos about the current state of processing the resource
-- apiGroups:
-  - k8s.cloudogu.com
-  resources:
-  - dogus
-  verbs:
-  - get
-  - list
-  - watch
-  - update
-- apiGroups:
-  - k8s.cloudogu.com
-  resources:
-  - dogus/status
-  verbs:
-  - update
-# for dogu restart reconciliation and updating with infos about the current state of processing the resource
-- apiGroups:
-  - k8s.cloudogu.com
-  resources:
-  - dogurestarts
-  verbs:
-  - get
-  - list
-  - watch
-  - update
-  - delete
-- apiGroups:
-  - k8s.cloudogu.com
-  resources:
-  - dogurestarts/status
-  verbs:
-  - update
-# configuration of operator, local dogu registry, dogu + global config, health states
-- apiGroups:
-    - ""
-  resources:
-    - configmaps
-  verbs:
-    - get
-    - list
-    - watch
-    - create
-    - update
-    - delete
-# sensitive configuration of operator, dogu config
-- apiGroups:
-    - ""
-  resources:
-    - secrets
-  verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-# managing dogu deployments
-- apiGroups:
-    - apps
-  resources:
-    - deployments
-  verbs:
-    - get
-    - list
-    - watch
-    - create
-    - update
-    - delete
-# starting + stopping of dogus
-- apiGroups:
-    - apps
-  resources:
-    - deployments/scale
-  verbs:
-    - update
-# managing dogu services
-- apiGroups:
-    - ""
-  resources:
-    - services
-  verbs:
-    - get
-    - list
-    - watch
-    - create
-    - update
-    - delete
-# managing dogu volumes
-- apiGroups:
-    - ""
-  resources:
-    - persistentvolumeclaims
-  verbs:
-    - get
-    - list
-    - watch
-    - create
-    - update
-    - delete
-# exec pods for extracting pre-upgrade scripts and additional k8s resources
-- apiGroups:
-    - ""
-  resources:
-    - pods
-  verbs:
-    - get
-    - list
-    - create
-    - delete
-- apiGroups:
-    - ""
-  resources:
-    - pods/exec
-  verbs:
-    - create
-- apiGroups:
-    - ""
-  resources:
-    - events
-  verbs:
-    # used to write events while reconciling CRs
-    - create
-    - patch
-    # we list and delete requeue events to avoid spam
-    - list
-    - delete
+  # for dogu reconciliation and updating with infos about the current state of processing the resource
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - dogus
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - dogus/status
+    verbs:
+      - update
+  # for dogu restart reconciliation and updating with infos about the current state of processing the resource
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - dogurestarts
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+      - delete
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - dogurestarts/status
+    verbs:
+      - update
+  # configuration of operator, local dogu registry, dogu + global config, health states
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  # sensitive configuration of operator, dogu config
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+  # managing dogu deployments
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+      - patch
+  # starting + stopping of dogus
+  - apiGroups:
+      - apps
+    resources:
+      - deployments/scale
+    verbs:
+      - update
+      - get
+  # managing dogu services
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  # managing dogu volumes
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  # exec pods for extracting pre-upgrade scripts and additional k8s resources
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - create
+      - delete
+      - deletecollection
+  - apiGroups:
+      - ""
+    resources:
+      - pods/exec
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      # used to write events while reconciling CRs
+      - create
+      - patch
+      # we list and delete requeue events to avoid spam
+      - list
+      - delete
