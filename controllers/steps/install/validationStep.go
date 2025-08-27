@@ -29,9 +29,12 @@ func NewValidationStep(mgrSet *util.ManagerSet) *ValidationStep {
 	doguChecker := health.NewDoguChecker(mgrSet.EcosystemClient, mgrSet.LocalDoguFetcher)
 	premisesChecker := upgrade.NewPremisesChecker(mgrSet.DependencyValidator, doguChecker, doguChecker, mgrSet.SecurityValidator, mgrSet.DoguAdditionalMountValidator)
 	return &ValidationStep{
-		premisesChecker:     premisesChecker,
-		localDoguFetcher:    mgrSet.LocalDoguFetcher,
-		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
+		premisesChecker:               premisesChecker,
+		localDoguFetcher:              mgrSet.LocalDoguFetcher,
+		resourceDoguFetcher:           mgrSet.ResourceDoguFetcher,
+		dependencyValidator:           mgrSet.DependencyValidator,
+		securityValidator:             mgrSet.SecurityValidator,
+		doguAdditionalMountsValidator: mgrSet.DoguAdditionalMountValidator,
 	}
 }
 
