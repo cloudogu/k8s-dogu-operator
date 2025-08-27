@@ -28,6 +28,7 @@ func NewServiceStep(mgrSet *util.ManagerSet, namespace string) *ServiceStep {
 		imageRegistry:    mgrSet.ImageRegistry,
 		serviceInterface: mgrSet.ClientSet.CoreV1().Services(namespace),
 		serviceGenerator: mgrSet.DoguResourceGenerator,
+		localDoguFetcher: mgrSet.LocalDoguFetcher,
 	}
 }
 
