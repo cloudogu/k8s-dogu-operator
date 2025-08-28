@@ -76,12 +76,7 @@ func (ep *execPodFactory) CreateOrUpdate(ctx context.Context, doguResource *k8sv
 		return err
 	}
 
-	if ep.Exists(ctx, doguResource, dogu) {
-		err = ep.client.Update(ctx, execPodSpec)
-		if err != nil {
-			return err
-		}
-	} else {
+	if !ep.Exists(ctx, doguResource, dogu) {
 		err = ep.client.Create(ctx, execPodSpec)
 		if err != nil {
 			return err

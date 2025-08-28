@@ -11,7 +11,6 @@ import (
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -85,8 +84,4 @@ type doguRegistrator interface {
 	RegisterDoguVersion(ctx context.Context, dogu *cesappcore.Dogu) error
 	// UnregisterDogu removes a registration of a dogu from the local dogu registry.
 	UnregisterDogu(ctx context.Context, dogu string) error
-}
-
-type deploymentInterface interface {
-	appsv1client.DeploymentInterface
 }

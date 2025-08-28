@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
@@ -19,6 +20,7 @@ type ReplicasStep struct {
 	deploymentInterface deploymentInterface
 	deploymentPatcher   *steps.DeploymentPatcher
 	client              client.Client
+	localDoguFetcher    localDoguFetcher
 }
 
 func NewReplicasStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *ReplicasStep {
@@ -27,6 +29,7 @@ func NewReplicasStep(client client.Client, mgrSet *util.ManagerSet, namespace st
 		deploymentInterface: deploymentInt,
 		client:              client,
 		deploymentPatcher:   steps.NewDeploymentPatcher(deploymentInt),
+		localDoguFetcher:    mgrSet.LocalDoguFetcher,
 	}
 }
 
@@ -70,15 +73,27 @@ func (rs *ReplicasStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, q
 }
 
 func (rs *ReplicasStep) shouldBeStopped(ctx context.Context, doguResource *v2.Dogu) (bool, error) {
-	pvc, err := doguResource.GetDataPVC(ctx, rs.client)
+	if doguResource.Spec.Stopped {
+		return true, nil
+	}
+
+	dogu, err := rs.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
 		return false, err
 	}
 
-	quantity, err := doguResource.GetMinDataVolumeSize()
-	if err != nil {
-		return false, err
+	if hasPvc(dogu) {
+		pvc, err := doguResource.GetDataPVC(ctx, rs.client)
+		if err != nil {
+			return false, err
+		}
+
+		quantity, err := doguResource.GetMinDataVolumeSize()
+		if err != nil {
+			return false, err
+		}
+		return !rs.isPvcStorageResized(pvc, quantity), nil
 	}
 
-	return !rs.isPvcStorageResized(pvc, quantity) || doguResource.Spec.Stopped, nil
+	return false, nil
 }

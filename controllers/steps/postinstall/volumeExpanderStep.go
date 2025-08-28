@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -17,19 +19,27 @@ import (
 const requeueAfterVolume = 10 * time.Second
 
 type VolumeExpanderStep struct {
-	client        client.Client
-	doguInterface doguInterface
+	client           client.Client
+	doguInterface    doguInterface
+	localDoguFetcher localDoguFetcher
 }
 
 func NewVolumeExpanderStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *VolumeExpanderStep {
-	doguInt := mgrSet.EcosystemClient.Dogus(namespace)
 	return &VolumeExpanderStep{
-		client:        client,
-		doguInterface: doguInt,
+		client:           client,
+		doguInterface:    mgrSet.EcosystemClient.Dogus(namespace),
+		localDoguFetcher: mgrSet.LocalDoguFetcher,
 	}
 }
 
 func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	dogu, err := vs.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+	if !hasPvc(dogu) {
+		return steps.Continue()
+	}
 	pvc, err := doguResource.GetDataPVC(ctx, vs.client)
 	if err != nil {
 		return steps.RequeueWithError(err)
@@ -74,6 +84,15 @@ func (vs *VolumeExpanderStep) isPvcStorageResized(pvc *corev1.PersistentVolumeCl
 func (vs *VolumeExpanderStep) isPvcResizeApplicable(pvc *corev1.PersistentVolumeClaim) bool {
 	for _, condition := range pvc.Status.Conditions {
 		if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPvc(dogu *core.Dogu) bool {
+	for _, volume := range dogu.Volumes {
+		if volume.NeedsBackup {
 			return true
 		}
 	}

@@ -4,16 +4,17 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	"github.com/sirupsen/logrus"
 	"io"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 	"strings"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
@@ -83,7 +84,7 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 				return fmt.Errorf("unable to create service account for component %s: %w", serviceAccount.Type, lErr)
 			}
 		default:
-			logger.Error(fmt.Errorf("unknown service account kind: %s", serviceAccount.Kind), "skipping service account creation")
+			logger.Info(fmt.Sprintf("unknown service account kind: %s", serviceAccount.Kind), "skipping service account creation")
 			continue
 		}
 	}

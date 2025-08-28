@@ -13,7 +13,6 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
@@ -205,38 +204,64 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 	ecosystemClientSet *doguClient.EcoSystemV2Client, healthStatusUpdater health.DoguHealthStatusUpdater,
 	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
 
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(
-		dogu.NewDoguVersionRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
-		dogu.NewLocalDoguDescriptorRepository(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
-	)
-	/* TODO
-	doguManager, err := controllers.NewManager(
-		k8sManager.GetClient(),
-		ecosystemClientSet,
-		operatorConfig,
-		eventRecorder,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create dogu manager: %w", err)
-	}
-
-
-		doguReconciler, err := controllers.NewDoguReconciler(
+	/*
+			localDoguFetcher := cesregistry.NewLocalDoguFetcher(
+			dogu.NewDoguVersionRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
+			dogu.NewLocalDoguDescriptorRepository(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
+		)
+		TODO
+		doguManager, err := controllers.NewManager(
 			k8sManager.GetClient(),
-			ecosystemClientSet.Dogus(operatorConfig.Namespace),
-			doguManager,
+			ecosystemClientSet,
+			operatorConfig,
 			eventRecorder,
-			operatorConfig.Namespace,
-			localDoguFetcher,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to create new dogu reconciler: %w", err)
+			return fmt.Errorf("failed to create dogu manager: %w", err)
 		}
 
-		err = doguReconciler.SetupWithManager(k8sManager)
+
+			doguReconciler, err := controllers.NewDoguReconciler(
+				k8sManager.GetClient(),
+				ecosystemClientSet.Dogus(operatorConfig.Namespace),
+				doguManager,
+				eventRecorder,
+				operatorConfig.Namespace,
+				localDoguFetcher,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create new dogu reconciler: %w", err)
+			}
+
+			err = doguReconciler.SetupWithManager(k8sManager)
+			if err != nil {
+				return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
+			}
+
+
+		deploymentReconciler := controllers.NewDeploymentReconciler(
+			k8sClientSet,
+			availabilityChecker,
+			healthStatusUpdater,
+			localDoguFetcher,
+		)
+		err = deploymentReconciler.SetupWithManager(k8sManager)
 		if err != nil {
-			return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
+			return fmt.Errorf("failed to setup deployment reconciler with manager: %w", err)
 		}
+
+		restartInterface := ecosystemClientSet.DoguRestarts(operatorConfig.Namespace)
+		if err = controllers.NewDoguRestartReconciler(restartInterface, ecosystemClientSet.Dogus(operatorConfig.Namespace), eventRecorder, garbagecollection.NewDoguRestartGarbageCollector(restartInterface)).
+			SetupWithManager(k8sManager); err != nil {
+			return fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
+		}
+
+		pvcReconciler := controllers.NewPvcReconciler(k8sManager.GetClient(), k8sClientSet, ecosystemClientSet)
+		err = pvcReconciler.SetupWithManager(k8sManager)
+		if err != nil {
+			return fmt.Errorf("failed to setup pvc reconciler with manager: %w", err)
+		}
+
 	*/
 
 	doguReconciler2, err := controllers.NewDoguReconciler2(
@@ -244,6 +269,8 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 		ecosystemClientSet,
 		operatorConfig,
 		eventRecorder,
+		healthStatusUpdater,
+		availabilityChecker,
 	)
 
 	if err != nil {
@@ -253,29 +280,6 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 	err = doguReconciler2.SetupWithManager(k8sManager)
 	if err != nil {
 		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
-	}
-
-	deploymentReconciler := controllers.NewDeploymentReconciler(
-		k8sClientSet,
-		availabilityChecker,
-		healthStatusUpdater,
-		localDoguFetcher,
-	)
-	err = deploymentReconciler.SetupWithManager(k8sManager)
-	if err != nil {
-		return fmt.Errorf("failed to setup deployment reconciler with manager: %w", err)
-	}
-
-	restartInterface := ecosystemClientSet.DoguRestarts(operatorConfig.Namespace)
-	if err = controllers.NewDoguRestartReconciler(restartInterface, ecosystemClientSet.Dogus(operatorConfig.Namespace), eventRecorder, garbagecollection.NewDoguRestartGarbageCollector(restartInterface)).
-		SetupWithManager(k8sManager); err != nil {
-		return fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
-	}
-
-	pvcReconciler := controllers.NewPvcReconciler(k8sManager.GetClient(), k8sClientSet, ecosystemClientSet)
-	err = pvcReconciler.SetupWithManager(k8sManager)
-	if err != nil {
-		return fmt.Errorf("failed to setup pvc reconciler with manager: %w", err)
 	}
 
 	// +kubebuilder:scaffold:builder

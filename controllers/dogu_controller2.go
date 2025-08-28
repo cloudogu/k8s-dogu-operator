@@ -8,6 +8,7 @@ import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
 	"github.com/sirupsen/logrus"
@@ -24,7 +25,7 @@ type doguReconciler2 struct {
 	doguDeleteHandler DoguUsecase
 }
 
-func NewDoguReconciler2(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) (*doguReconciler2, error) {
+func NewDoguReconciler2(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder, doguHealthStatusUpdater health.DoguHealthStatusUpdater, availabilityChecker *health.AvailabilityChecker) (*doguReconciler2, error) {
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
@@ -45,7 +46,7 @@ func NewDoguReconciler2(client client.Client, ecosystemClient doguClient.EcoSyst
 	}
 	return &doguReconciler2{
 		client:            client,
-		doguChangeHandler: usecase.NewDoguInstallOrChangeUseCase(client, mgrSet, configRepos, eventRecorder, operatorConfig.Namespace),
+		doguChangeHandler: usecase.NewDoguInstallOrChangeUseCase(client, mgrSet, configRepos, eventRecorder, operatorConfig.Namespace, doguHealthStatusUpdater, availabilityChecker),
 		doguDeleteHandler: usecase.NewDoguDeleteUsecase(client, mgrSet, configRepos, operatorConfig),
 	}, nil
 }

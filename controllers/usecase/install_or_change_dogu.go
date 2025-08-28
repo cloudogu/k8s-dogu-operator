@@ -2,9 +2,11 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
@@ -18,7 +20,7 @@ type DoguInstallOrChangeUseCase struct {
 	steps []step
 }
 
-func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet, configRepos util.ConfigRepositories, eventRecorder record.EventRecorder, namespace string) *DoguInstallOrChangeUseCase {
+func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet, configRepos util.ConfigRepositories, eventRecorder record.EventRecorder, namespace string, doguHealthStatusUpdater health.DoguHealthStatusUpdater, availabilityChecker *health.AvailabilityChecker) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
 			install.NewValidationStep(mgrSet),
@@ -32,9 +34,9 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			install.NewServiceStep(mgrSet, namespace),
 			install.NewExecPodCreateStep(client, mgrSet, eventRecorder),
 			install.NewCustomK8sResourceStep(mgrSet, eventRecorder),
+			install.NewVolumeGeneratorStep(mgrSet, namespace),
 			install.NewNetworkPoliciesStep(mgrSet),
-			install.NewDeploymentStep(client, mgrSet),
-			install.NewVolumeGeneratorStep(mgrSet),
+			install.NewDeploymentStep(client, mgrSet, doguHealthStatusUpdater),
 			postinstall.NewReplicasStep(client, mgrSet, namespace),
 			postinstall.NewVolumeExpanderStep(client, mgrSet, namespace),
 			postinstall.NewAdditionalIngressAnnotationsStep(client),
@@ -61,7 +63,11 @@ func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, 
 	for _, s := range dicu.steps {
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
-			logger.Error(result.Err, "reconcile step has to requeue: %w", result.Err)
+			if result.Err != nil {
+				logger.Error(result.Err, fmt.Sprintf("reconcile step has to requeue: %q", result.Err))
+			} else {
+				logger.Info(fmt.Sprintf("reconcile step has to requeue after %d", result.RequeueAfter))
+			}
 			return result.RequeueAfter, result.Err
 		}
 		if !result.Continue {

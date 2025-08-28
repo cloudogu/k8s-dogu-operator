@@ -26,6 +26,7 @@ func Abort() StepResult {
 	}
 }
 
+// TODO Has no effect. An error will be requeued with exponential backoff by the reconciler
 func RequeueAfterWithError(requeueAfter time.Duration, err error) StepResult {
 	return StepResult{
 		RequeueAfter: requeueAfter,

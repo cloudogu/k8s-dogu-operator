@@ -34,6 +34,10 @@ func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.
 		return steps.RequeueWithError(err)
 	}
 
+	if localDescriptor.Version == remoteDescriptor.Version {
+		return steps.Abort()
+	}
+
 	err = edds.checkDoguIdentity(localDescriptor, remoteDescriptor, changeNamespace)
 	if err != nil {
 		return steps.RequeueWithError(err)

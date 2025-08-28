@@ -115,6 +115,7 @@ rules:
       - get
       - list
       - create
+      - update
       - delete
       - deletecollection
   - apiGroups:

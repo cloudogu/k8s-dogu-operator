@@ -42,7 +42,7 @@ func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Do
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
 
-	deployment, err := rsps.deploymentInterface.Get(ctx, doguResource.Spec.Name, metav1.GetOptions{})
+	deployment, err := rsps.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch deployment: %w", err))
 	}

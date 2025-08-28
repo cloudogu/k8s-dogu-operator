@@ -9,70 +9,45 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-const ecosystemNamespace = "ecosystem"
-
 type VolumeGeneratorStep struct {
-	localDoguFetcher    localDoguFetcher
-	deploymentPatcher   *steps.DeploymentPatcher
-	deploymentInterface deploymentInterface
+	localDoguFetcher localDoguFetcher
+	resourceUpserter resource.ResourceUpserter
+	pvcGetter        v1.PersistentVolumeClaimInterface
 }
 
-func NewVolumeGeneratorStep(mgrSet *util.ManagerSet) *VolumeGeneratorStep {
-	deploymentInt := mgrSet.ClientSet.AppsV1().Deployments(ecosystemNamespace)
+func NewVolumeGeneratorStep(mgrSet *util.ManagerSet, namespace string) *VolumeGeneratorStep {
+
 	return &VolumeGeneratorStep{
-		localDoguFetcher:    mgrSet.LocalDoguFetcher,
-		deploymentPatcher:   steps.NewDeploymentPatcher(deploymentInt),
-		deploymentInterface: deploymentInt,
+		localDoguFetcher: mgrSet.LocalDoguFetcher,
+		resourceUpserter: mgrSet.ResourceUpserter,
+		pvcGetter:        mgrSet.ClientSet.CoreV1().PersistentVolumeClaims(namespace),
 	}
 }
 
 func (vgs *VolumeGeneratorStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	_, err := vgs.pvcGetter.Get(ctx, doguResource.Name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return steps.RequeueWithError(err)
+		}
+	} else {
+		return steps.Continue()
+	}
+
 	dogu, err := vgs.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to get dogu descriptor for dogu %s: %w", doguResource.Name, err))
 	}
 
-	volumes, err := resource.CreateVolumes(doguResource, dogu, doguResource.Spec.ExportMode)
-	if err != nil {
-		return steps.RequeueWithError(err)
-	}
-
-	deployment, err := vgs.getDoguDeployment(ctx, doguResource)
-	if err != nil {
-		return steps.RequeueWithError(err)
-	}
-
-	patch := map[string]interface{}{
-		"spec": map[string]interface{}{
-			"template": map[string]interface{}{
-				"spec": map[string]interface{}{
-					"volumes": volumes,
-				},
-			},
-		},
-	}
-
-	_, err = vgs.deploymentPatcher.Execute(ctx, deployment.Name, patch)
+	_, err = vgs.resourceUpserter.UpsertDoguPVCs(ctx, doguResource, dogu)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
 
 	return steps.Continue()
-}
-
-func (vgs *VolumeGeneratorStep) getDoguDeployment(ctx context.Context, doguResource *v2.Dogu) (*appsv1.Deployment, error) {
-	list, err := vgs.deploymentInterface.List(ctx, v1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", v2.DoguLabelName, doguResource.GetObjectKey().Name)})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get deployment for dogu %s: %w", doguResource.Name, err)
-	}
-
-	if len(list.Items) == 1 {
-		return &list.Items[0], nil
-	}
-
-	return nil, fmt.Errorf("dogu %s has more than one or zero deployments", doguResource.GetObjectKey().Name)
 }
