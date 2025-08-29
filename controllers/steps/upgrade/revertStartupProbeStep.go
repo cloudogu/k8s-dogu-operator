@@ -71,7 +71,7 @@ func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Do
 
 func (rsps *RevertStartupProbeStep) startupProbeHasDefaultValue(deployment *v1.Deployment, containerName string, probe *coreV1.Probe) bool {
 	for i, container := range deployment.Spec.Template.Spec.Containers {
-		if container.Name == containerName && deployment.Spec.Template.Spec.Containers[i].StartupProbe != nil {
+		if container.Name == containerName {
 			return reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[i].StartupProbe, probe)
 		}
 	}
