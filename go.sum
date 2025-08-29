@@ -20,6 +20,8 @@ github.com/cloudogu/cesapp-lib v0.18.1 h1:LMdGktIefm/PuhdPqpLTPvjY1smO06EEGBbRSA
 github.com/cloudogu/cesapp-lib v0.18.1/go.mod h1:J05eXFxnz4enZblABlmiVTZaUtJ+LIhlJ2UF6l9jpDw=
 github.com/cloudogu/k8s-apply-lib v0.5.0 h1:XeQKwTgT8FIozpqyPO/b09LAenPswBilmatw/+1L4fI=
 github.com/cloudogu/k8s-apply-lib v0.5.0/go.mod h1:jR/+7q47O5gb++4gVsmEElT8/EJoi+Msw2dVzArTPW0=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250829092246-e87033a5fdb9 h1:RRbE431bEn9J5iioBB2/FBx5RhO318zCmK3Evnhx9FE=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250829092246-e87033a5fdb9/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.9.0 h1:eMXorf00BBQq6kwFUsVOs9f0aPuQ6J/XuakiT9F24Q8=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.9.0/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
 github.com/cloudogu/k8s-host-change v0.7.0 h1:291ojIo64Z245xtBJdC3sa6H+eAPvbjb7cpvCr9kYP8=
