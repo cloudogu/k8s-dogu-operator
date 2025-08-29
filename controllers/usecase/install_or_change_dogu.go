@@ -45,7 +45,7 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			postinstall.NewSupportModeStep(client, mgrSet, eventRecorder),
 			postinstall.NewAdditionalMountsStep(mgrSet, namespace),
 			upgrade.NewEqualDoguDescriptorsStep(mgrSet),
-			upgrade.NewHealthStep(mgrSet),
+			//upgrade.NewHealthStep(mgrSet),
 			upgrade.NewRegisterDoguVersionStep(mgrSet),
 			upgrade.NewUpdateDeploymentStep(client, mgrSet, namespace),
 			upgrade.NewDeleteExecPodStep(mgrSet),
@@ -74,5 +74,6 @@ func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, 
 			break
 		}
 	}
+	logger.Info(fmt.Sprintf("Successfully went through all steps!"))
 	return 0, nil
 }
