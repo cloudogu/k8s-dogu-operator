@@ -55,8 +55,7 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		return steps.RequeueWithError(err)
 	}
 
-	updated := uds.isDeploymentStartupProbeIncreased(doguResource, deployment) && uds.isDoguVersionUpdatedInDeployment(doguResource, deployment)
-	if updated {
+	if uds.isDoguVersionUpdatedInDeployment(doguResource, deployment) {
 		return steps.Continue()
 	}
 
