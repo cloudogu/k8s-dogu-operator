@@ -3,7 +3,6 @@ package install
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -13,8 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-const requeueAfterService = 10 * time.Second
 
 type ServiceStep struct {
 	serviceGenerator serviceGenerator

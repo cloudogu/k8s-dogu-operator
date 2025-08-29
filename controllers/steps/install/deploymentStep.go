@@ -3,7 +3,6 @@ package install
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -15,8 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-const requeueAfterDeployment = 5 * time.Second
 
 type DeploymentStep struct {
 	upserter                resource.ResourceUpserter

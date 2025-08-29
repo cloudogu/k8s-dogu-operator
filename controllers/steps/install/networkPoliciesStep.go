@@ -3,14 +3,11 @@ package install
 import (
 	"context"
 	"fmt"
-	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
-
-const requeueAfterNetworkPoliciesStep = 10 * time.Second
 
 type NetworkPoliciesStep struct {
 	netPolUpserter   netPolUpserter
