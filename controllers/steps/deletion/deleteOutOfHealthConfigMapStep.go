@@ -37,7 +37,6 @@ func (dhc *DeleteOutOfHealthConfigMapStep) DeleteDoguOutOfHealthConfigMap(ctx co
 	stateConfigMap.Data = newData
 
 	// Update the ConfigMap
-	// _, err = m.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
 	err = dhc.client.Update(ctx, stateConfigMap, &client.UpdateOptions{})
 	return err
 }
