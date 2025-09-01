@@ -114,12 +114,13 @@ func getDoguInstallManagerWithMocks(t *testing.T, scheme *runtime.Scheme) doguIn
 	}
 }
 
-func getDoguInstallManagerTestData(t *testing.T) (*doguv2.Dogu, *core.Dogu, *corev1.ConfigMap, *imagev1.ConfigFile) {
+func getDoguInstallManagerTestData(t *testing.T) (*doguv2.Dogu, *core.Dogu, *corev1.ConfigMap, *imagev1.ConfigFile, *corev1.Service) {
 	ldapCr := readDoguCr(t, ldapCrBytes)
+	ldapService := readService(t, ldapServiceBytes)
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorBytes)
 	ldapDoguDescriptor := readDoguDevelopmentMap(t, ldapDoguDevelopmentMapBytes)
 	imageConfig := readImageConfig(t, imageConfigBytes)
-	return ldapCr, ldapDogu, ldapDoguDescriptor.ToConfigMap(), imageConfig
+	return ldapCr, ldapDogu, ldapDoguDescriptor.ToConfigMap(), imageConfig, ldapService
 }
 
 func TestNewDoguInstallManager(t *testing.T) {
@@ -154,7 +155,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("successfully install a dogu", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, imageConfig, _ := getDoguInstallManagerTestData(t)
 		assert.Empty(t, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
@@ -182,7 +183,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		var service *corev1.Service
+		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu, service).Once().Return(nil, nil)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -211,7 +213,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("successfully install dogu with custom descriptor", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, ldapDevelopmentDoguMap, imageConfig := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, ldapDevelopmentDoguMap, imageConfig, _ := getDoguInstallManagerTestData(t)
 		developmentDoguMap := doguv2.DevelopmentDoguMap(*ldapDevelopmentDoguMap)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, &developmentDoguMap, nil)
@@ -245,7 +247,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpect.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
 		upserterExpect.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpect.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
-		upserterExpect.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		var service *corev1.Service
+		upserterExpect.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu, service).Once().Return(nil, nil)
 
 		execPod := newMockExecPod(t)
 		execPod.EXPECT().Create(testCtx).Return(nil)
@@ -267,7 +270,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("successfully install a dogu when configs already exists", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, imageConfig, _ := getDoguInstallManagerTestData(t)
 		assert.Empty(t, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
@@ -295,7 +298,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		var service *corev1.Service
+		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu, service).Once().Return(nil, nil)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -324,7 +328,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to validate dependencies", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(assert.AnError)
 		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
@@ -342,7 +346,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to validate security", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
 		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(assert.AnError)
@@ -362,7 +366,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to validate dogu data additional mounts", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.dependencyValidatorMock.EXPECT().ValidateDependencies(testCtx, mock.Anything).Return(nil)
 		managerWithMocks.securityValidator.EXPECT().ValidateSecurity(ldapDogu, ldapCr).Return(nil)
@@ -384,7 +388,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to create dogu config", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		assert.Empty(t, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
@@ -413,7 +417,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to create sensitive dogu config", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		assert.Empty(t, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
@@ -443,8 +447,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("dont delete configs when they have already existed", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, _, _, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resErrors.NewAlreadyExistsError(assert.AnError))
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, resErrors.NewAlreadyExistsError(assert.AnError))
@@ -471,8 +475,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to register dogu", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, _, _, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -502,7 +506,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to handle update installed version", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, imageConfig, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -524,7 +528,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+		var service *corev1.Service
+		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu, service).Once().Return(nil, nil)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -556,8 +561,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("failed to create service accounts", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, _, _, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -592,7 +597,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("fail to create network policies", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, imageConfig, _ := getDoguInstallManagerTestData(t)
 		assert.Empty(t, ldapCr.Status.InstalledVersion)
 
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
@@ -613,7 +618,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 		upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
-		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(assert.AnError)
+		var service *corev1.Service
+		upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu, service).Once().Return(assert.AnError)
 
 		recorderExpecter := managerWithMocks.recorder.EXPECT()
 		recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -647,7 +653,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("dogu resource not found", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, _, _, _, _ := getDoguInstallManagerTestData(t)
 
 		// when
 		err := managerWithMocks.installManager.Install(testCtx, ldapCr)
@@ -660,7 +666,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("error get dogu", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, _, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, _, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(nil, nil, assert.AnError)
 
 		_ = managerWithMocks.installManager.client.Create(testCtx, ldapCr)
@@ -676,7 +682,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 	t.Run("error on pull image", func(t *testing.T) {
 		// given
 		managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-		ldapCr, ldapDogu, _, _ := getDoguInstallManagerTestData(t)
+		ldapCr, ldapDogu, _, _, _ := getDoguInstallManagerTestData(t)
 		managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 		managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 		managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -713,7 +719,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		t.Run("succeeds", func(t *testing.T) {
 			// given
 			managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+			ldapCr, ldapDogu, _, imageConfig, _ := getDoguInstallManagerTestData(t)
 			managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 			managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 			managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -734,7 +740,8 @@ func Test_doguInstallManager_Install(t *testing.T) {
 			upserterExpecter.UpsertDoguDeployment(testCtx, ldapCr, ldapDogu, mock.Anything).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguService(testCtx, ldapCr, ldapDogu, imageConfig).Once().Return(nil, nil)
 			upserterExpecter.UpsertDoguPVCs(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
-			upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu).Once().Return(nil, nil)
+			var service *corev1.Service
+			upserterExpecter.UpsertDoguNetworkPolicies(testCtx, ldapCr, ldapDogu, service).Once().Return(nil, nil)
 
 			recorderExpecter := managerWithMocks.recorder.EXPECT()
 			recorderExpecter.Event(mock.Anything, corev1.EventTypeNormal, InstallEventReason, "Checking dependencies...")
@@ -762,7 +769,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		t.Run("fails when upserting deployment", func(t *testing.T) {
 			// given
 			managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+			ldapCr, ldapDogu, _, imageConfig, _ := getDoguInstallManagerTestData(t)
 			managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 			managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 			managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -812,7 +819,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		t.Run("fails when upserting service", func(t *testing.T) {
 			// given
 			managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+			ldapCr, ldapDogu, _, imageConfig, _ := getDoguInstallManagerTestData(t)
 			managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 			managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 			managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
@@ -851,7 +858,7 @@ func Test_doguInstallManager_Install(t *testing.T) {
 		t.Run("fails when upserting pvcs", func(t *testing.T) {
 			// given
 			managerWithMocks := getDoguInstallManagerWithMocks(t, getTestScheme())
-			ldapCr, ldapDogu, _, imageConfig := getDoguInstallManagerTestData(t)
+			ldapCr, ldapDogu, _, imageConfig, _ := getDoguInstallManagerTestData(t)
 			managerWithMocks.resourceDoguFetcher.EXPECT().FetchWithResource(testCtx, ldapCr).Return(ldapDogu, nil, nil)
 			managerWithMocks.doguConfigRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)
 			managerWithMocks.sensitiveDoguRepository.EXPECT().Create(mock.Anything, mock.Anything).Return(resConfig.DoguConfig{}, nil)

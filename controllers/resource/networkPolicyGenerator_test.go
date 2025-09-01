@@ -84,7 +84,7 @@ func Test_generateIngressNetPol(t *testing.T) {
 		assert.Equal(t, netv1.PolicyTypeIngress, result.Spec.PolicyTypes[0])
 		assert.Len(t, result.Spec.Ingress, 1)
 		assert.Len(t, result.Spec.Ingress[0].From, 1)
-		assert.Equal(t, "nginx-ingress", result.Spec.Ingress[0].From[0].PodSelector.MatchLabels["dogu.name"])
+		assert.Equal(t, "k8s-ces-gateway", result.Spec.Ingress[0].From[0].PodSelector.MatchLabels["k8s.cloudogu.com/component.name"])
 		assert.Equal(t, "testNamespace", result.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"])
 	})
 }

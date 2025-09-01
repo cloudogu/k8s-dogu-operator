@@ -26,6 +26,9 @@ var redmineDoguDescriptorBytes []byte
 //go:embed testdata/ldap-cr.yaml
 var ldapCrBytes []byte
 
+//go:embed testdata/ldap-service.yaml
+var ldapServiceBytes []byte
+
 //go:embed testdata/ldap-dogu.json
 var ldapDoguDescriptorBytes []byte
 
@@ -48,6 +51,18 @@ func readDoguCr(t *testing.T, bytes []byte) *doguv2.Dogu {
 	}
 
 	return doguCr
+}
+
+func readService(t *testing.T, bytes []byte) *v1.Service {
+	t.Helper()
+
+	service := &v1.Service{}
+	err := yaml.Unmarshal(bytes, service)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return service
 }
 
 func readImageConfig(t *testing.T, bytes []byte) *imagev1.ConfigFile {

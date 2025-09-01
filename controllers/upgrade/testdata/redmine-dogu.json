@@ -25,10 +25,6 @@
     },
     {
       "type": "dogu",
-      "name": "nginx"
-    },
-    {
-      "type": "dogu",
       "name": "postfix"
     }
   ],
