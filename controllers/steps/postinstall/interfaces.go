@@ -46,3 +46,8 @@ type additionalMountManager interface {
 	AdditionalMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error)
 	UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error
 }
+
+type doguRestartManager interface {
+	RestartAllDogus(ctx context.Context) error
+	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
+}

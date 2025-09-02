@@ -282,6 +282,16 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
 	}
 
+	globalConfigReconciler, err := controllers.NewGlobalConfigReconciler(ecosystemClientSet, k8sManager.GetClient(), operatorConfig.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to create new global config reconciler: %w", err)
+	}
+
+	err = globalConfigReconciler.SetupWithManager(k8sManager)
+	if err != nil {
+		return fmt.Errorf("failed to setup global config reconciler with manager: %w", err)
+	}
+
 	// +kubebuilder:scaffold:builder
 
 	return nil

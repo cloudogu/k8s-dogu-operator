@@ -382,3 +382,8 @@ type doguRestartInterface interface {
 type DoguUsecase interface {
 	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, error)
 }
+
+type DoguRestartManager interface {
+	RestartAllDogus(ctx context.Context) error
+	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
+}
