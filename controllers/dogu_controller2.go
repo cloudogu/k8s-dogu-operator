@@ -82,6 +82,7 @@ func (r *doguReconciler2) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}).
 		Owns(&coreV1.ConfigMap{}).
+		Owns(&coreV1.Secret{}).
 		// Since we don't want to process dogus with same spec we use a generation change predicate
 		// as a filter to reduce the reconcile calls.
 		// The predicate implements a function that will be invoked of every update event that
