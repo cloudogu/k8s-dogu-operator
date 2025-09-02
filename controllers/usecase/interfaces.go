@@ -15,3 +15,8 @@ type step interface {
 type doguUsecase interface {
 	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, error)
 }
+
+type doguRestartManager interface {
+	RestartAllDogus(ctx context.Context) error
+	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
+}

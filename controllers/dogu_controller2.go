@@ -45,9 +45,12 @@ func NewDoguReconciler2(client client.Client, ecosystemClient doguClient.EcoSyst
 	if err != nil {
 		return nil, err
 	}
+
+	doguRestartMgr := NewDoguRestartManager(mgrSet.EcosystemClient, clientSet, client, operatorConfig.Namespace)
+
 	return &doguReconciler2{
 		client:            client,
-		doguChangeHandler: usecase.NewDoguInstallOrChangeUseCase(client, mgrSet, configRepos, eventRecorder, operatorConfig.Namespace, doguHealthStatusUpdater, availabilityChecker),
+		doguChangeHandler: usecase.NewDoguInstallOrChangeUseCase(client, mgrSet, configRepos, eventRecorder, operatorConfig.Namespace, doguHealthStatusUpdater, doguRestartMgr),
 		doguDeleteHandler: usecase.NewDoguDeleteUsecase(client, mgrSet, configRepos, operatorConfig),
 	}, nil
 }

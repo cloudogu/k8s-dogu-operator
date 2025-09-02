@@ -7,6 +7,9 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-registry-lib/config"
+	"github.com/cloudogu/k8s-registry-lib/repository"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
@@ -40,6 +43,16 @@ type exportManager interface {
 type supportManager interface {
 	// HandleSupportMode handles the support flag in the dogu spec.
 	HandleSupportMode(ctx context.Context, doguResource *v2.Dogu) (bool, error)
+}
+
+type doguConfigRepository interface {
+	Get(ctx context.Context, name cescommons.SimpleName) (config.DoguConfig, error)
+	Create(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	Update(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	SaveOrMerge(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	Delete(ctx context.Context, name cescommons.SimpleName) error
+	Watch(ctx context.Context, dName cescommons.SimpleName, filters ...config.WatchFilter) (<-chan repository.DoguConfigWatchResult, error)
+	SetOwnerReference(ctx context.Context, dName cescommons.SimpleName, owners []metav1.OwnerReference) error
 }
 
 type additionalMountManager interface {
