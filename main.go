@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 
@@ -263,6 +264,11 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 		}
 
 	*/
+	restartInterface := ecosystemClientSet.DoguRestarts(operatorConfig.Namespace)
+	if err := controllers.NewDoguRestartReconciler(restartInterface, ecosystemClientSet.Dogus(operatorConfig.Namespace), eventRecorder, garbagecollection.NewDoguRestartGarbageCollector(restartInterface)).
+		SetupWithManager(k8sManager); err != nil {
+		return fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
+	}
 
 	doguReconciler2, err := controllers.NewDoguReconciler2(
 		k8sManager.GetClient(),
