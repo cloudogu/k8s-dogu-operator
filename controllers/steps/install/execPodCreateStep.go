@@ -41,7 +41,7 @@ func (epcs *ExecPodCreateStep) Run(ctx context.Context, doguResource *v2.Dogu) s
 	}
 
 	// only create the exec pod on installation or upgrade
-	if !(errors.IsNotFound(err) || deployment.Spec.Template.Labels[podTemplateVersionKey] == doguResource.Spec.Version) {
+	if doguResource.Spec.Stopped || (!errors.IsNotFound(err) && deployment.Spec.Template.Labels[podTemplateVersionKey] == doguResource.Spec.Version) {
 		return steps.Continue()
 	}
 
