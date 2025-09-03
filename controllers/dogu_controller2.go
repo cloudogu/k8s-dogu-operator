@@ -12,7 +12,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
 	"github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,6 +88,11 @@ func (r *doguReconciler2) SetupWithManager(mgr ctrl.Manager) error {
 		For(&doguv2.Dogu{}).
 		Owns(&coreV1.ConfigMap{}).
 		Owns(&coreV1.Secret{}).
+		Owns(&coreV1.Service{}).
+		Owns(&appsv1.Deployment{}).
+		Owns(&coreV1.PersistentVolumeClaim{}).
+		Owns(&coreV1.ServiceAccount{}).
+		Owns(&netv1.NetworkPolicy{}).
 		// Since we don't want to process dogus with same spec we use a generation change predicate
 		// as a filter to reduce the reconcile calls.
 		// The predicate implements a function that will be invoked of every update event that
