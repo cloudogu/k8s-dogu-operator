@@ -27,6 +27,7 @@ func (dcs *DoguConfigOwnerReferenceStep) Run(ctx context.Context, doguResource *
 			Kind:       doguResource.Kind,
 			APIVersion: doguResource.APIVersion,
 			UID:        doguResource.UID,
+			Controller: &[]bool{true}[0],
 		},
 	})
 	if err != nil {
