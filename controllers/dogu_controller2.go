@@ -19,8 +19,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -100,7 +103,7 @@ func (r *doguReconciler2) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 }
 
 // SetupWithManager sets up the controller with the manager.
-func (r *doguReconciler2) SetupWithManager(mgr ctrl.Manager) error {
+func (r *doguReconciler2) SetupWithManager(mgr ctrl.Manager, externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu]) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&coreV1.ConfigMap{}).
@@ -109,6 +112,7 @@ func (r *doguReconciler2) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
+		WatchesRawSource(source.Channel(externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{})).
 		Complete(r)
 }
 

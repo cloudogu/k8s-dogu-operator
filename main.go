@@ -36,6 +36,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	// +kubebuilder:scaffold:imports
 )
@@ -283,12 +284,13 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
 	}
 
-	err = doguReconciler2.SetupWithManager(k8sManager)
+	externalDoguEvents := make(chan event.TypedGenericEvent[*doguv2.Dogu])
+	err = doguReconciler2.SetupWithManager(k8sManager, externalDoguEvents)
 	if err != nil {
 		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
 	}
 
-	globalConfigReconciler, err := controllers.NewGlobalConfigReconciler(ecosystemClientSet, k8sManager.GetClient(), operatorConfig.Namespace)
+	globalConfigReconciler, err := controllers.NewGlobalConfigReconciler(ecosystemClientSet, k8sManager.GetClient(), operatorConfig.Namespace, externalDoguEvents)
 	if err != nil {
 		return fmt.Errorf("failed to create new global config reconciler: %w", err)
 	}

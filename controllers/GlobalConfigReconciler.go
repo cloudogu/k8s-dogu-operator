@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,9 +24,10 @@ type globalConfigReconciler struct {
 	doguInterface      doguInterface
 	podInterface       podInterface
 	client             client.Client
+	doguEvents         chan<- event.TypedGenericEvent[*v2.Dogu]
 }
 
-func NewGlobalConfigReconciler(ecosystemClient ecosystemInterface, client client.Client, namespace string) (*globalConfigReconciler, error) {
+func NewGlobalConfigReconciler(ecosystemClient ecosystemInterface, client client.Client, namespace string, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (*globalConfigReconciler, error) {
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
 		return nil, err
@@ -41,6 +43,7 @@ func NewGlobalConfigReconciler(ecosystemClient ecosystemInterface, client client
 		doguInterface:      ecosystemClient.Dogus(namespace),
 		podInterface:       clientSet.CoreV1().Pods(namespace),
 		client:             client,
+		doguEvents:         doguEvents,
 	}, nil
 }
 
@@ -73,6 +76,8 @@ func (r *globalConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				return ctrl.Result{}, err
 			}
 		}
+
+		r.doguEvents <- event.TypedGenericEvent[*v2.Dogu]{Object: &dogu}
 	}
 	return ctrl.Result{}, nil
 }
