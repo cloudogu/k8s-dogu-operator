@@ -10,6 +10,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const restartedAtAnnotationKey = "k8s.cloudogu.com/restartedAt"
+
 type doguRestartManager struct {
 	doguInterface       doguInterface
 	client              client.Client
@@ -51,7 +53,7 @@ func (drm *doguRestartManager) RestartDogu(ctx context.Context, dogu *v2.Dogu) e
 		deployment.Spec.Template.Annotations = make(map[string]string)
 	}
 
-	deployment.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+	deployment.Spec.Template.Annotations[restartedAtAnnotationKey] = time.Now().Format(time.RFC3339)
 
 	_, err = drm.deploymentInterface.Update(ctx, deployment, metav1.UpdateOptions{})
 	if err != nil {
