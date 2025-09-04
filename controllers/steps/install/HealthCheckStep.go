@@ -69,10 +69,11 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 
 	status := metav1.ConditionFalse
 	reason := ReasonDoguNotHealthy
-	message := ""
+	message := "Not all replicas are available"
 	if doguAvailable {
 		status = metav1.ConditionTrue
 		reason = ReasonDoguHealthy
+		message = "All replicas are available"
 	}
 	log.FromContext(ctx).Info(fmt.Sprintf("dogu deployment %q is %s", doguDeployment.Name, (map[bool]string{true: "available", false: "unavailable"})[doguAvailable]))
 	condition := metav1.Condition{
