@@ -60,7 +60,7 @@ func NewDoguReconciler2(client client.Client, ecosystemClient doguClient.EcoSyst
 
 	return &doguReconciler2{
 		client:            client,
-		doguChangeHandler: usecase.NewDoguInstallOrChangeUseCase(client, mgrSet, configRepos, eventRecorder, operatorConfig.Namespace, doguHealthStatusUpdater, doguRestartMgr),
+		doguChangeHandler: usecase.NewDoguInstallOrChangeUseCase(client, mgrSet, configRepos, eventRecorder, operatorConfig.Namespace, doguHealthStatusUpdater, doguRestartMgr, availabilityChecker),
 		doguDeleteHandler: usecase.NewDoguDeleteUsecase(client, mgrSet, configRepos, operatorConfig),
 		doguInterface:     ecosystemClient.Dogus(operatorConfig.Namespace),
 	}, nil
