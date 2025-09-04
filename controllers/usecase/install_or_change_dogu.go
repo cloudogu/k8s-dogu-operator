@@ -23,6 +23,7 @@ type DoguInstallOrChangeUseCase struct {
 func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet, configRepos util.ConfigRepositories, eventRecorder record.EventRecorder, namespace string, doguHealthStatusUpdater health.DoguHealthStatusUpdater, doguRestartManager doguRestartManager, availabilityChecker *health.AvailabilityChecker) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []step{
+			install.NewHealthCheckStep(client, availabilityChecker, doguHealthStatusUpdater, mgrSet, namespace),
 			install.NewValidationStep(mgrSet),
 			install.NewFinalizerExistsStep(),
 			install.NewDoguConfigStep(configRepos),
@@ -45,7 +46,6 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			postinstall.NewSupportModeStep(client, mgrSet, eventRecorder),
 			postinstall.NewAdditionalMountsStep(mgrSet, namespace),
 			postinstall.NewRestartDoguStep(client, mgrSet, namespace, configRepos, doguRestartManager),
-			postinstall.NewHealthCheckStep(client, availabilityChecker, doguHealthStatusUpdater, mgrSet, namespace),
 			upgrade.NewEqualDoguDescriptorsStep(mgrSet),
 			//upgrade.NewHealthStep(mgrSet),
 			upgrade.NewRegisterDoguVersionStep(mgrSet),

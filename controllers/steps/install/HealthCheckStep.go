@@ -1,4 +1,4 @@
-package postinstall
+package install
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,6 +44,9 @@ func NewHealthCheckStep(client client.Client, availabilityChecker *health.Availa
 func (hcs *HealthCheckStep) Run(ctx context.Context, doguResource *doguv2.Dogu) steps.StepResult {
 	deployment, err := doguResource.GetDeployment(ctx, hcs.client)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			steps.Continue()
+		}
 		return steps.RequeueWithError(err)
 	}
 	err = hcs.updateDoguHealth(ctx, deployment, doguResource)
@@ -85,7 +89,7 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 	}
 
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
-	_, err = hcs.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+	doguResource, err = hcs.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}

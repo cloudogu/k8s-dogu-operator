@@ -6,6 +6,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -84,4 +85,10 @@ type doguRegistrator interface {
 	RegisterDoguVersion(ctx context.Context, dogu *cesappcore.Dogu) error
 	// UnregisterDogu removes a registration of a dogu from the local dogu registry.
 	UnregisterDogu(ctx context.Context, dogu string) error
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguInterface interface {
+	doguClient.DoguInterface
 }
