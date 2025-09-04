@@ -61,7 +61,7 @@ func (rds *RestartDoguStep) Run(ctx context.Context, doguResource *v2.Dogu) step
 
 	return steps.Continue()
 }
-func (rds RestartDoguStep) getDeploymentLastStartingTime(ctx context.Context, deployment *v1.Deployment) (*time.Time, error) {
+func (rds *RestartDoguStep) getDeploymentLastStartingTime(ctx context.Context, deployment *v1.Deployment) (*time.Time, error) {
 	labelSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
 
 	pods, err := rds.podInterface.List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
