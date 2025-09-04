@@ -387,3 +387,7 @@ type DoguRestartManager interface {
 	RestartAllDogus(ctx context.Context) error
 	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
 }
+
+type configMapInterface interface {
+	v1.ConfigMapInterface
+}
