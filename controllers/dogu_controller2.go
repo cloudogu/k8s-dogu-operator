@@ -108,7 +108,6 @@ func (r *doguReconciler2) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&coreV1.Service{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&coreV1.PersistentVolumeClaim{}).
-		Owns(&coreV1.ServiceAccount{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Complete(r)
 }
