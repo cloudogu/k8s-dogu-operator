@@ -115,6 +115,7 @@ func (r *doguReconciler2) SetupWithManager(mgr ctrl.Manager, externalEvents <-ch
 		Owns(&appsv1.Deployment{}).
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
+		Owns(&coreV1.Pod{}).
 		WatchesRawSource(source.Channel(externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{})).
 		Complete(r)
 }
