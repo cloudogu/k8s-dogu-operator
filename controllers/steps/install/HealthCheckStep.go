@@ -45,7 +45,7 @@ func (hcs *HealthCheckStep) Run(ctx context.Context, doguResource *doguv2.Dogu) 
 	deployment, err := doguResource.GetDeployment(ctx, hcs.client)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			steps.Continue()
+			return steps.Continue()
 		}
 		return steps.RequeueWithError(err)
 	}
