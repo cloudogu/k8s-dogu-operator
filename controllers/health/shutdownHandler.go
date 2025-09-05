@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +39,40 @@ func (s *ShutdownHandler) handle(ctx context.Context) error {
 	for _, dogu := range dogus.Items {
 		_, updateErr := s.doguInterface.UpdateStatusWithRetry(ctx, &dogu, func(status v2.DoguStatus) v2.DoguStatus {
 			status.Health = v2.UnknownHealthStatus
+			reason := "StoppingOperator"
+			message := "The operator is shutting down"
+			conditions := []metav1.Condition{
+				{
+					Type:               v2.ConditionReady,
+					Status:             metav1.ConditionUnknown,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: metav1.Now(),
+				},
+				{
+					Type:               v2.ConditionHealthy,
+					Status:             metav1.ConditionUnknown,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: metav1.Now(),
+				},
+				{
+					Type:               v2.ConditionSupportMode,
+					Status:             metav1.ConditionUnknown,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: metav1.Now(),
+				},
+				{
+					Type:               v2.ConditionMeetsMinVolumeSize,
+					Status:             metav1.ConditionUnknown,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: metav1.Now(),
+				},
+			}
+
+			status.Conditions = conditions
 			return status
 		}, metav1.UpdateOptions{})
 		if updateErr != nil {
