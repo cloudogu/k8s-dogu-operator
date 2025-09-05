@@ -8,6 +8,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -64,6 +65,9 @@ func (r *globalConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	for _, dogu := range doguList.Items {
 		deployment, err := dogu.GetDeployment(ctx, r.client)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
 			return ctrl.Result{}, err
 		}
 		doguLastStartingTime, err := r.getDeploymentLastStartingTime(ctx, deployment)
