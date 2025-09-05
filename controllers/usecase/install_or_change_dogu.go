@@ -53,6 +53,7 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			upgrade.NewDeleteExecPodStep(mgrSet),
 			upgrade.NewRevertStartupProbeStep(client, mgrSet, namespace),
 			upgrade.NewDeleteDevelopmentDoguMapStep(client, mgrSet),
+			upgrade.NewDeploymentUpdaterStep(client, mgrSet, namespace),
 		},
 	}
 }

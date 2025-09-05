@@ -54,13 +54,6 @@ func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 		return steps.RequeueWithError(err)
 	}
 
-	doguResource.Status.InstalledVersion = doguResource.Spec.Version
-	doguResource.Status.Health = v2.AvailableHealthStatus
-	err = doguResource.Update(ctx, ds.client)
-	if err != nil {
-		return steps.RequeueWithError(fmt.Errorf("failed to update dogu status: %w", err))
-	}
-
 	return steps.Continue()
 }
 
