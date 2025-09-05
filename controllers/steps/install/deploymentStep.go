@@ -11,9 +11,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const previousDoguVersionAnnotationKey = "k8s.cloudogu.com/dogu-previous-version"
 
 type DeploymentStep struct {
 	upserter                resource.ResourceUpserter
@@ -49,7 +52,9 @@ func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 		return steps.Continue()
 	}
 
-	_, err = ds.upserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
+	_, err = ds.upserter.UpsertDoguDeployment(ctx, doguResource, dogu, func(deployment *v1.Deployment) {
+		setPreviousDoguVersionInAnnotations(dogu.Version, deployment)
+	})
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
@@ -64,4 +69,11 @@ func (ds *DeploymentStep) getLocalDogu(ctx context.Context, doguResource *v2.Dog
 	}
 
 	return dogu, nil
+}
+
+func setPreviousDoguVersionInAnnotations(previousDoguVersion string, deployment *v1.Deployment) {
+	if deployment.Annotations == nil {
+		deployment.Annotations = map[string]string{}
+	}
+	deployment.Annotations[previousDoguVersionAnnotationKey] = previousDoguVersion
 }

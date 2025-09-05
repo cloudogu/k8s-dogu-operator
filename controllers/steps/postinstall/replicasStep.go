@@ -18,7 +18,6 @@ const requeueAfterReplicasStep = 5 * time.Second
 
 type ReplicasStep struct {
 	deploymentInterface deploymentInterface
-	deploymentPatcher   *steps.DeploymentPatcher
 	client              client.Client
 	localDoguFetcher    localDoguFetcher
 }
@@ -28,7 +27,6 @@ func NewReplicasStep(client client.Client, mgrSet *util.ManagerSet, namespace st
 	return &ReplicasStep{
 		deploymentInterface: deploymentInt,
 		client:              client,
-		deploymentPatcher:   steps.NewDeploymentPatcher(deploymentInt),
 		localDoguFetcher:    mgrSet.LocalDoguFetcher,
 	}
 }
