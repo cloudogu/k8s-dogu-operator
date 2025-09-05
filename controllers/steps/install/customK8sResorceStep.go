@@ -47,7 +47,7 @@ func (ses *CustomK8sResourceStep) Run(ctx context.Context, doguResource *v2.Dogu
 
 	err = ses.execPodFactory.CheckReady(ctx, doguResource, dogu)
 	if err != nil {
-		return steps.RequeueAfterWithError(requeueAfterCustomK8sResourceStep, fmt.Errorf("failed to check if exec pod is ready: %w", err))
+		return steps.RequeueWithError(fmt.Errorf("failed to check if exec pod is ready: %w", err))
 	}
 
 	customK8sResources, err := ses.fileExtractor.ExtractK8sResourcesFromExecPod(ctx, doguResource, dogu)

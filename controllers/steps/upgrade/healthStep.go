@@ -40,12 +40,12 @@ func (hs *HealthStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.Step
 	}
 	err = hs.doguHealthChecker.CheckByName(ctx, doguResource.GetObjectKey())
 	if err != nil {
-		return steps.RequeueAfterWithError(requeueAfterHealthStep, err)
+		return steps.RequeueWithError(err)
 	}
 
 	err = hs.checkDependencyDogusHealthy(ctx, localDogu, doguResource.Namespace)
 	if err != nil {
-		return steps.RequeueAfterWithError(requeueAfterHealthStep, err)
+		return steps.RequeueWithError(err)
 	}
 
 	return steps.Continue()

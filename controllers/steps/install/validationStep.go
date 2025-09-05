@@ -47,7 +47,7 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 	if fromDogu != nil && toDogu != nil && fromDogu.Version != toDogu.Version {
 		err = vs.premisesChecker.Check(ctx, doguResource, toDogu, fromDogu)
 		if err != nil {
-			return steps.RequeueAfterWithError(requeueAfterValidation, fmt.Errorf("failed a premise check: %w", err))
+			return steps.RequeueWithError(fmt.Errorf("failed a premise check: %w", err))
 		}
 
 		return steps.Continue()
@@ -55,17 +55,17 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 
 	err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
 	if err != nil {
-		return steps.RequeueAfterWithError(requeueAfterValidation, err)
+		return steps.RequeueWithError(err)
 	}
 
 	err = vs.securityValidator.ValidateSecurity(toDogu, doguResource)
 	if err != nil {
-		return steps.RequeueAfterWithError(requeueAfterValidation, err)
+		return steps.RequeueWithError(err)
 	}
 
 	err = vs.doguAdditionalMountsValidator.ValidateAdditionalMounts(ctx, toDogu, doguResource)
 	if err != nil {
-		return steps.RequeueAfterWithError(requeueAfterValidation, err)
+		return steps.RequeueWithError(err)
 	}
 
 	return steps.Continue()
