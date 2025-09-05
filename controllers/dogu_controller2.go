@@ -80,10 +80,11 @@ func (r *doguReconciler2) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	var requeueAfter time.Duration
+	var cont bool
 	if doguResource.GetDeletionTimestamp().IsZero() {
-		requeueAfter, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
+		requeueAfter, cont, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
 	} else {
-		requeueAfter, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
+		requeueAfter, cont, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
 	}
 
 	if err2 := r.client.Get(ctx, req.NamespacedName, doguResource); err2 != nil {
@@ -95,6 +96,8 @@ func (r *doguReconciler2) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		err = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonHasToReconcile, fmt.Sprintf("The dogu resource has to be requeued after %d seconds.", requeueAfter))
 	} else if err != nil {
 		err = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonReconcileFail, fmt.Sprintf("The dogu resource has to be requeued because of an error: %q.", err))
+	} else if !cont {
+		err = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonReconcileFail, "The reconcile has been aborted")
 	} else {
 		err = r.setReadyCondition(ctx, doguResource, metav1.ConditionTrue, ReasonReconcileSuccess, "The dogu resource has been reconciled successfully and is ready.")
 	}

@@ -380,7 +380,7 @@ type doguRestartInterface interface {
 }
 
 type DoguUsecase interface {
-	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, error)
+	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error)
 }
 
 type DoguRestartManager interface {

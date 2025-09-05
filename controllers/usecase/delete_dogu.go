@@ -29,7 +29,7 @@ func NewDoguDeleteUsecase(client client.Client, mgrSet *util.ManagerSet, configR
 	}
 }
 
-func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, error) {
+func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error) {
 	logger := log.FromContext(ctx).
 		WithName("DoguDeleteUseCase.HandleUntilApplied").
 		WithValues("doguName", doguResource.Name)
@@ -38,11 +38,11 @@ func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResour
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
 			logger.Error(result.Err, "reconcile step has to requeue: %w", result.Err)
-			return result.RequeueAfter, result.Err
+			return result.RequeueAfter, true, result.Err
 		}
 		if !result.Continue {
-			break
+			return 0, false, nil
 		}
 	}
-	return 0, nil
+	return 0, true, nil
 }

@@ -43,7 +43,7 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			postinstall.NewAdditionalIngressAnnotationsStep(client),
 			postinstall.NewSecurityContextStep(mgrSet, namespace),
 			postinstall.NewExportModeStep(mgrSet, namespace, eventRecorder),
-			postinstall.NewSupportModeStep(client, mgrSet, eventRecorder),
+			postinstall.NewSupportModeStep(client, mgrSet, eventRecorder, namespace),
 			postinstall.NewAdditionalMountsStep(mgrSet, namespace),
 			postinstall.NewRestartDoguStep(client, mgrSet, namespace, configRepos, doguRestartManager),
 			upgrade.NewEqualDoguDescriptorsStep(mgrSet),
@@ -58,7 +58,7 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 	}
 }
 
-func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, error) {
+func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error) {
 	logger := log.FromContext(ctx).
 		WithName("DoguChangeUseCase.HandleUntilApplied").
 		WithValues("doguName", doguResource.Name)
@@ -71,12 +71,12 @@ func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, 
 			} else {
 				logger.Info(fmt.Sprintf("reconcile step has to requeue after %d", result.RequeueAfter))
 			}
-			return result.RequeueAfter, result.Err
+			return result.RequeueAfter, true, result.Err
 		}
 		if !result.Continue {
-			break
+			return 0, false, nil
 		}
 	}
 	logger.Info(fmt.Sprintf("Successfully went through all steps!"))
-	return 0, nil
+	return 0, true, nil
 }
