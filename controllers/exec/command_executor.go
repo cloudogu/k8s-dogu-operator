@@ -109,7 +109,7 @@ func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resour
 		return nil, fmt.Errorf("failed to get dogu %q: %w", resource.Name, err)
 	}
 
-	if conditions.IsTrue(updatedDogu, v2.ConditionHealthy) {
+	if conditions.IsFalse(updatedDogu, v2.ConditionHealthy) {
 		return nil, fmt.Errorf("dogu %q is not available", resource.Name)
 	}
 
