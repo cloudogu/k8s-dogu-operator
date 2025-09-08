@@ -64,6 +64,11 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
 
+	execPodExists := uds.execPodFactory.Exists(ctx, doguResource, dogu)
+	if !execPodExists {
+		return steps.RequeueAfter(requeueAfterUpdateDeployment)
+	}
+
 	err = uds.execPodFactory.CheckReady(ctx, doguResource, dogu)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to check if exec pod is ready: %w", err))

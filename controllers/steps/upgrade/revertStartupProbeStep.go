@@ -25,6 +25,7 @@ type RevertStartupProbeStep struct {
 	resourceDoguFetcher resourceDoguFetcher
 	deploymentInterface deploymentInterface
 	doguCommandExecutor exec.CommandExecutor
+	execPodFactory      exec.ExecPodFactory
 }
 
 func NewRevertStartupProbeStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *RevertStartupProbeStep {
@@ -33,6 +34,7 @@ func NewRevertStartupProbeStep(client client.Client, mgrSet *util.ManagerSet, na
 		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
 		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
 		doguCommandExecutor: mgrSet.CommandExecutor,
+		execPodFactory:      mgrSet.ExecPodFactory,
 	}
 }
 
@@ -50,6 +52,11 @@ func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Do
 	originalStartupProbe := resource.CreateStartupProbe(dogu)
 	if rsps.startupProbeHasDefaultValue(deployment, dogu.GetSimpleName(), originalStartupProbe) {
 		return steps.Continue()
+	}
+
+	execPodExists := rsps.execPodFactory.Exists(ctx, doguResource, dogu)
+	if !execPodExists {
+		return steps.RequeueAfter(requeueAfterRevertStartupProbe)
 	}
 
 	fromDoguVersion := deployment.Annotations[previousDoguVersionAnnotationKey]

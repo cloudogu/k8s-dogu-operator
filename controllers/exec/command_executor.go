@@ -123,11 +123,6 @@ func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resour
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
 // identified by its pod name.
 func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand, expectedStatus PodStatusForExec) (*bytes.Buffer, error) {
-	err := ce.waitForPodToHaveExpectedStatus(ctx, pod, expectedStatus)
-	if err != nil {
-		return nil, fmt.Errorf("an error occurred while waiting for pod %s to have status %s: %w", pod.Name, expectedStatus, err)
-	}
-
 	req := ce.getCreateExecRequest(pod, command)
 	exec, err := ce.commandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {
@@ -177,38 +172,6 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	}
 
 	return buffer, nil
-}
-
-func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(ctx context.Context, pod *corev1.Pod, expected PodStatusForExec) error {
-	var err error
-	err = retry.OnError(maxTries, retry.TestableRetryFunc, func() error {
-		pod, err = ce.clientSet.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		return podHasStatus(pod, expected)
-	})
-
-	return err
-}
-
-func podHasStatus(pod *corev1.Pod, expected PodStatusForExec) error {
-	switch expected {
-	case ContainersStarted:
-		if pod.Status.Phase == corev1.PodRunning {
-			return nil
-		}
-	case PodReady:
-		for _, condition := range pod.Status.Conditions {
-			if condition.Type == corev1.ContainersReady && condition.Status == corev1.ConditionTrue {
-				return nil
-			}
-		}
-	default:
-		return fmt.Errorf("unsupported pod status: %s", expected)
-	}
-
-	return &retry.TestableRetrierError{Err: fmt.Errorf("expected status %s not fulfilled", expected)}
 }
 
 func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command ShellCommand) *rest.Request {
