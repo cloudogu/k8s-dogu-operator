@@ -2,30 +2,23 @@ package health
 
 import (
 	"context"
-	"errors"
-	"fmt"
+
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type StartupHandler struct {
-	doguInterface           doguClient.DoguInterface
-	deploymentInterface     v1.DeploymentInterface
-	availabilityChecker     DeploymentAvailabilityChecker
-	doguHealthStatusUpdater DoguHealthStatusUpdater
+	doguInterface doguClient.DoguInterface
+	doguEvents    chan<- event.TypedGenericEvent[*v2.Dogu]
 }
 
-func NewStartupHandler(doguInterface doguClient.DoguInterface, deploymentInterface v1.DeploymentInterface,
-	availabilityChecker DeploymentAvailabilityChecker, healthUpdater DoguHealthStatusUpdater) *StartupHandler {
+func NewStartupHandler(doguInterface doguClient.DoguInterface, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) *StartupHandler {
 	return &StartupHandler{
-		doguInterface:           doguInterface,
-		deploymentInterface:     deploymentInterface,
-		availabilityChecker:     availabilityChecker,
-		doguHealthStatusUpdater: healthUpdater,
+		doguInterface: doguInterface,
+		doguEvents:    doguEvents,
 	}
 }
 
@@ -37,25 +30,8 @@ func (s *StartupHandler) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	var errs []error
 	for _, dogu := range list.Items {
-		var statusErr error
-		deployment, deployErr := s.deploymentInterface.Get(ctx, dogu.Name, metav1.GetOptions{})
-		if deployErr != nil {
-			if apierrors.IsNotFound(deployErr) {
-				logger.Error(deployErr, fmt.Sprintf("no deployment found for dogu: %s", dogu.Name))
-			} else {
-				errs = append(errs, fmt.Errorf("failed to get deployment %q: %w", dogu.Name, deployErr))
-			}
-			statusErr = s.doguHealthStatusUpdater.UpdateStatus(ctx, types.NamespacedName{Name: dogu.Name, Namespace: dogu.Namespace}, false)
-		} else {
-			doguAvailable := s.availabilityChecker.IsAvailable(deployment)
-			statusErr = s.doguHealthStatusUpdater.UpdateStatus(ctx, types.NamespacedName{Name: dogu.Name, Namespace: dogu.Namespace}, doguAvailable)
-		}
-		if statusErr != nil {
-			errs = append(errs, fmt.Errorf("failed to refresh health status of %q: %w", dogu.Name, statusErr))
-		}
+		s.doguEvents <- event.TypedGenericEvent[*v2.Dogu]{Object: &dogu}
 	}
-	return errors.Join(errs...)
+	return nil
 }
