@@ -12,11 +12,14 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const requeueAfterVolume = 10 * time.Second
+const ActualVolumeSizeMeetsMinDataSize = "ActualVolumeSizeMeetsMinDataSize"
 
 type VolumeExpanderStep struct {
 	client           client.Client
@@ -38,6 +41,10 @@ func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) st
 		return steps.RequeueWithError(err)
 	}
 	if !hasPvc(dogu) {
+		err = vs.setSuccessCondition(ctx, doguResource)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 		return steps.Continue()
 	}
 	pvc, err := doguResource.GetDataPVC(ctx, vs.client)
@@ -51,6 +58,10 @@ func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) st
 	}
 
 	if vs.isPvcStorageResized(pvc, quantity) {
+		err = vs.setSuccessCondition(ctx, doguResource)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 		return steps.Continue()
 	}
 
@@ -97,4 +108,25 @@ func hasPvc(dogu *core.Dogu) bool {
 		}
 	}
 	return false
+}
+
+func (vs *VolumeExpanderStep) setSuccessCondition(ctx context.Context, doguResource *v2.Dogu) error {
+	condition := v1.Condition{
+		Type:               v2.ConditionMeetsMinVolumeSize,
+		Status:             v1.ConditionTrue,
+		Reason:             ActualVolumeSizeMeetsMinDataSize,
+		Message:            "Current VolumeSize meets the configured minimum VolumeSize",
+		LastTransitionTime: v1.Now(),
+	}
+	doguResource, err := vs.doguInterface.Get(ctx, doguResource.Name, v1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
+	doguResource, err = vs.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }
