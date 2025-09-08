@@ -92,3 +92,8 @@ type doguRegistrator interface {
 type doguInterface interface {
 	doguClient.DoguInterface
 }
+
+type conditionUpdater interface {
+	UpdateCondition(ctx context.Context, doguResource *v2.Dogu, condition metav1.Condition) error
+	UpdateConditions(ctx context.Context, doguResource *v2.Dogu, conditions []metav1.Condition) error
+}

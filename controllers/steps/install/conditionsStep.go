@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,12 +26,15 @@ var expectedConditions = []string{
 }
 
 type ConditionsStep struct {
-	doguInterface doguInterface
+	doguInterface    doguInterface
+	conditionUpdater conditionUpdater
 }
 
 func NewConditionsStep(mgrSet *util.ManagerSet, namespace string) *ConditionsStep {
+	doguInt := mgrSet.EcosystemClient.Dogus(namespace)
 	return &ConditionsStep{
-		doguInterface: mgrSet.EcosystemClient.Dogus(namespace),
+		doguInterface:    doguInt,
+		conditionUpdater: health.NewDoguConditionUpdater(doguInt),
 	}
 }
 
@@ -61,9 +65,7 @@ func (cs *ConditionsStep) Run(ctx context.Context, doguResource *doguv2.Dogu) st
 			})
 		}
 	}
-	doguResource.Status.Conditions = conditions
-
-	_, err := cs.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
+	err := cs.conditionUpdater.UpdateConditions(ctx, doguResource, conditions)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
