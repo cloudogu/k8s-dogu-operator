@@ -20,6 +20,7 @@ type ReplicasStep struct {
 	deploymentInterface deploymentInterface
 	client              client.Client
 	localDoguFetcher    localDoguFetcher
+	doguInterface       doguInterface
 }
 
 func NewReplicasStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *ReplicasStep {
@@ -28,6 +29,7 @@ func NewReplicasStep(client client.Client, mgrSet *util.ManagerSet, namespace st
 		deploymentInterface: deploymentInt,
 		client:              client,
 		localDoguFetcher:    mgrSet.LocalDoguFetcher,
+		doguInterface:       mgrSet.EcosystemClient.Dogus(namespace),
 	}
 }
 
@@ -56,6 +58,12 @@ func (rs *ReplicasStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.St
 	}
 
 	_, err = rs.deploymentInterface.UpdateScale(ctx, doguResource.Name, scale, metav1.UpdateOptions{})
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+
+	doguResource.Status.Stopped = shouldBeStopped
+	_, err = rs.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
