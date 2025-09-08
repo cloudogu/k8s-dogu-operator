@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
+
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/retry-lib/retry"
@@ -59,6 +60,7 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 	condition := metav1.Condition{
 		Type:               doguv2.ConditionMeetsMinVolumeSize,
 		Status:             metav1.ConditionTrue,
+		Message:            "Current VolumeSize meets the configured minimum VolumeSize",
 		LastTransitionTime: metav1.Now(),
 	}
 	minDataSize, err := doguResource.GetMinDataVolumeSize()
