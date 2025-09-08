@@ -135,12 +135,14 @@ func configureManager(k8sManager manager.Manager, operatorConfig *config.Operato
 		return fmt.Errorf("failed to create resource requirements updater: %w", err)
 	}
 
-	err = configureReconciler(k8sManager, k8sClientSet, ecosystemClientSet, healthStatusUpdater, availabilityChecker, operatorConfig, eventRecorder)
+	externalDoguEvents := make(chan event.TypedGenericEvent[*doguv2.Dogu])
+
+	err = configureReconciler(k8sManager, k8sClientSet, ecosystemClientSet, healthStatusUpdater, availabilityChecker, operatorConfig, eventRecorder, externalDoguEvents)
 	if err != nil {
 		return fmt.Errorf("failed to configure reconciler: %w", err)
 	}
 
-	err = addRunners(k8sManager, k8sClientSet, ecosystemClientSet, healthStatusUpdater, availabilityChecker, operatorConfig.Namespace)
+	err = addRunners(k8sManager, ecosystemClientSet, operatorConfig.Namespace, externalDoguEvents)
 	if err != nil {
 		return fmt.Errorf("failed to add runners: %w", err)
 	}
@@ -204,7 +206,7 @@ func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, c
 
 func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
 	ecosystemClientSet *doguClient.EcoSystemV2Client, healthStatusUpdater health.DoguHealthStatusUpdater,
-	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
+	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder, externalDoguEvents chan event.TypedGenericEvent[*doguv2.Dogu]) error {
 
 	/*
 			localDoguFetcher := cesregistry.NewLocalDoguFetcher(
@@ -284,7 +286,6 @@ func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.Cl
 		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
 	}
 
-	externalDoguEvents := make(chan event.TypedGenericEvent[*doguv2.Dogu])
 	err = doguReconciler2.SetupWithManager(k8sManager, externalDoguEvents)
 	if err != nil {
 		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
@@ -319,11 +320,9 @@ func addChecks(mgr manager.Manager) error {
 	return nil
 }
 
-func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
-	ecosystemClientSet doguClient.EcoSystemV2Interface, updater health.DoguHealthStatusUpdater,
-	availabilityChecker *health.AvailabilityChecker, namespace string) error {
+func addRunners(k8sManager manager.Manager, ecosystemClientSet doguClient.EcoSystemV2Interface,
+	namespace string, externalDoguEvents chan event.TypedGenericEvent[*doguv2.Dogu]) error {
 	doguInterface := ecosystemClientSet.Dogus(namespace)
-	deploymentInterface := k8sClientSet.AppsV1().Deployments(namespace)
 
 	volumesizeStartupHandler := resource.NewVolumeStartupHandler(k8sManager.GetClient(), doguInterface)
 	err := k8sManager.Add(volumesizeStartupHandler)
@@ -331,7 +330,7 @@ func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
 		return err
 	}
 
-	healthStartupHandler := health.NewStartupHandler(doguInterface, deploymentInterface, availabilityChecker, updater)
+	healthStartupHandler := health.NewStartupHandler(doguInterface, externalDoguEvents)
 	err = k8sManager.Add(healthStartupHandler)
 	if err != nil {
 		return err
