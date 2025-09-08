@@ -87,6 +87,11 @@ type doguRegistrator interface {
 	UnregisterDogu(ctx context.Context, dogu string) error
 }
 
+type localDoguDescriptorRepository interface {
+	cescommons.LocalDoguDescriptorRepository
+	SetOwnerReference(ctx context.Context, dName cescommons.SimpleName, owners []metav1.OwnerReference) error
+}
+
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguInterface interface {

@@ -52,6 +52,7 @@ type ManagerSet struct {
 	RequirementsGenerator                      requirementsGenerator
 	DoguAdditionalMountsInitContainerGenerator additionalMountsInitContainerGenerator
 	AdditionalImages                           map[string]string
+	LocalDoguDescriptorRepository              localDoguDescriptorRepository
 }
 
 // NewManagerSet creates a new ManagerSet.
@@ -90,25 +91,26 @@ func NewManagerSet(restConfig *rest.Config, client client.Client, clientSet kube
 	imageRegistry := imageregistry.NewCraneContainerImageRegistry()
 
 	return &ManagerSet{
-		RestConfig:                   restConfig,
-		CollectApplier:               collectApplier,
-		ExecPodFactory:               execPodFactory,
-		FileExtractor:                fileExtractor,
-		CommandExecutor:              commandExecutor,
-		ServiceAccountCreator:        serviceAccountCreator,
-		LocalDoguFetcher:             localDoguFetcher,
-		ResourceDoguFetcher:          resourceDoguFetcher,
-		DoguResourceGenerator:        doguResourceGenerator,
-		ResourceUpserter:             upserter,
-		DoguRegistrator:              doguRegistrator,
-		ImageRegistry:                imageRegistry,
-		EcosystemClient:              ecosystemClient,
-		ClientSet:                    clientSet,
-		DependencyValidator:          dependencyValidator,
-		SecurityValidator:            securityValidator,
-		DoguAdditionalMountValidator: doguAdditionalMountsValidator,
-		AdditionalImages:             additionalImages,
-		RequirementsGenerator:        requirementsGenerator,
+		RestConfig:                    restConfig,
+		CollectApplier:                collectApplier,
+		ExecPodFactory:                execPodFactory,
+		FileExtractor:                 fileExtractor,
+		CommandExecutor:               commandExecutor,
+		ServiceAccountCreator:         serviceAccountCreator,
+		LocalDoguFetcher:              localDoguFetcher,
+		ResourceDoguFetcher:           resourceDoguFetcher,
+		DoguResourceGenerator:         doguResourceGenerator,
+		ResourceUpserter:              upserter,
+		DoguRegistrator:               doguRegistrator,
+		LocalDoguDescriptorRepository: doguDescriptorRepo,
+		ImageRegistry:                 imageRegistry,
+		EcosystemClient:               ecosystemClient,
+		ClientSet:                     clientSet,
+		DependencyValidator:           dependencyValidator,
+		SecurityValidator:             securityValidator,
+		DoguAdditionalMountValidator:  doguAdditionalMountsValidator,
+		AdditionalImages:              additionalImages,
+		RequirementsGenerator:         requirementsGenerator,
 		DoguAdditionalMountsInitContainerGenerator: doguResourceGenerator,
 	}, nil
 }

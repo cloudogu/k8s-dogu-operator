@@ -32,6 +32,8 @@ github.com/cloudogu/k8s-host-change v0.8.0 h1:a1Xil1I1wJ5yDX6flLSDwHeIKCcP3WvlIL
 github.com/cloudogu/k8s-host-change v0.8.0/go.mod h1:2/mcqJkWBfrqTgWA70Bca+hL9ZtrIeyrUVsl8STD7Pg=
 github.com/cloudogu/k8s-registry-lib v0.2.2-0.20250820093844-35911299eda4 h1:Mlu7ehhxeTAfbnhncOR1NEW4YRXtVR5spXZpisDJCHk=
 github.com/cloudogu/k8s-registry-lib v0.2.2-0.20250820093844-35911299eda4/go.mod h1:NytbB2XBjc+gr5gOJFoPjCzyxs/TuhWpKSnDJzCLQ14=
+github.com/cloudogu/k8s-registry-lib v0.2.2-0.20250908131505-273c358e439b h1:s0N0UXj0YGnxKvbCQwxiYRvsWhCZ6iCPTdiKIsGO1N8=
+github.com/cloudogu/k8s-registry-lib v0.2.2-0.20250908131505-273c358e439b/go.mod h1:NytbB2XBjc+gr5gOJFoPjCzyxs/TuhWpKSnDJzCLQ14=
 github.com/cloudogu/k8s-registry-lib v0.5.1 h1:gbdrhETUm53GP65LoljrS1kekDDl/onBPfrOQTQpt1s=
 github.com/cloudogu/k8s-registry-lib v0.5.1/go.mod h1:mdMOgknEOrGQH1zc/3K859iPhwpqwtzigK9QrjM3Vk0=
 github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1 h1:NWoBvBwiE8yO8HqSId0+nOTBMGSjzX0yM8m6fC7Ll6E=

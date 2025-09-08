@@ -32,6 +32,7 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			install.NewSensitiveConfigStep(configRepos),
 			install.NewSensitiveConfigOwnerReferenceStep(configRepos),
 			install.NewRegisterDoguVersionStep(mgrSet),
+			install.NewDoguDescriptorOwnerReferenceStep(mgrSet.LocalDoguDescriptorRepository),
 			install.NewServiceAccountStep(mgrSet),
 			install.NewServiceStep(mgrSet, namespace),
 			install.NewExecPodCreateStep(client, mgrSet, eventRecorder),

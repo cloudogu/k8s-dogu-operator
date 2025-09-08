@@ -2,6 +2,8 @@ package util
 
 import (
 	"context"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -33,6 +35,11 @@ type additionalMountsInitContainerGenerator interface {
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
 type requirementsGenerator interface {
 	Generate(ctx context.Context, dogu *cesappcore.Dogu) (coreV1.ResourceRequirements, error)
+}
+
+type localDoguDescriptorRepository interface {
+	cescommons.LocalDoguDescriptorRepository
+	SetOwnerReference(ctx context.Context, dName cescommons.SimpleName, owners []metav1.OwnerReference) error
 }
 
 //nolint:unused
