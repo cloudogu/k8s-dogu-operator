@@ -70,10 +70,12 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 	status := metav1.ConditionFalse
 	reason := ReasonDoguNotHealthy
 	message := "Not all replicas are available"
+	desiredHealthStatus := doguv2.UnavailableHealthStatus
 	if doguAvailable {
 		status = metav1.ConditionTrue
 		reason = ReasonDoguHealthy
 		message = "All replicas are available"
+		desiredHealthStatus = doguv2.AvailableHealthStatus
 	}
 	log.FromContext(ctx).Info(fmt.Sprintf("dogu deployment %q is %s", doguDeployment.Name, (map[bool]string{true: "available", false: "unavailable"})[doguAvailable]))
 	condition := metav1.Condition{
@@ -89,6 +91,7 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 		return err
 	}
 
+	doguResource.Status.Health = desiredHealthStatus
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
 	doguResource, err = hcs.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
