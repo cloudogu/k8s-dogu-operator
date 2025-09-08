@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -108,7 +109,7 @@ func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resour
 		return nil, fmt.Errorf("failed to get dogu %q: %w", resource.Name, err)
 	}
 
-	if updatedDogu.Status.Health != v2.AvailableHealthStatus {
+	if conditions.IsTrue(updatedDogu, v2.ConditionHealthy) {
 		return nil, fmt.Errorf("dogu %q is not available", resource.Name)
 	}
 

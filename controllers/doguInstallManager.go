@@ -77,11 +77,6 @@ func NewDoguInstallManager(client client.Client, mgrSet *util.ManagerSet, eventR
 func (m *doguInstallManager) Install(ctx context.Context, doguResource *doguv2.Dogu) (err error) {
 	logger := log.FromContext(ctx)
 
-	err = doguResource.ChangeStateWithRetry(ctx, m.client, doguv2.DoguStatusInstalling)
-	if err != nil {
-		return fmt.Errorf("failed to update dogu status: %w", err)
-	}
-
 	// Set the finalizer at the beginning of the install procedure.
 	// This is required because an error during installation would leave a dogu resource with its
 	// k8s resources in the cluster. A delete would tidy up those resources but would not start the
@@ -156,11 +151,6 @@ func (m *doguInstallManager) Install(ctx context.Context, doguResource *doguv2.D
 	err = m.createDoguResources(ctx, doguResource, dogu, imageConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create dogu resources: %w", err)
-	}
-
-	err = doguResource.ChangeStateWithRetry(ctx, m.client, doguv2.DoguStatusInstalled)
-	if err != nil {
-		return fmt.Errorf("failed to update dogu status: %w", err)
 	}
 
 	updateInstalledVersionFn := func(status doguv2.DoguStatus) doguv2.DoguStatus {

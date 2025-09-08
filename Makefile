@@ -3,8 +3,10 @@ ARTIFACT_ID=k8s-dogu-operator
 VERSION=3.11.2
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.24.6
-MAKEFILES_VERSION=10.1.0
+GOTAG=1.25.1
+MOCKERY_VERSION=v2.53.5
+LINT_VERSION=v2.4.0
+MAKEFILES_VERSION=10.2.1
 
 PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
@@ -13,8 +15,6 @@ HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
 HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo template-stage template-log-level template-image-pull-policy
 IMAGE_IMPORT_TARGET=image-import
 CHECK_VAR_TARGETS=check-all-vars
-
-MOCKERY_VERSION=v2.53.3
 
 include build/make/variables.mk
 include build/make/self-update.mk

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	registryErrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
@@ -54,10 +55,6 @@ func NewDoguDeleteManager(
 // Delete deletes the given dogu along with all those Kubernetes resources that the dogu operator initially created.
 func (m *doguDeleteManager) Delete(ctx context.Context, doguResource *doguv2.Dogu) error {
 	logger := log.FromContext(ctx)
-	err := doguResource.ChangeStateWithRetry(ctx, m.client, doguv2.DoguStatusDeleting)
-	if err != nil {
-		return err
-	}
 
 	logger.Info("Fetching dogu...")
 	dogu, err := m.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())

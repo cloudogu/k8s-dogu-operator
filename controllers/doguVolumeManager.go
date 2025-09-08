@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -94,17 +95,7 @@ func createAsyncSteps(executor async.AsyncExecutor, client client.Client, record
 
 // SetDoguDataVolumeSize sets the quantity from the doguResource in the dogu data PVC.
 func (d *doguVolumeManager) SetDoguDataVolumeSize(ctx context.Context, doguResource *doguv2.Dogu) error {
-	err := doguResource.ChangeStateWithRetry(ctx, d.client, doguv2.DoguStatusPVCResizing)
-	if err != nil {
-		return err
-	}
-
-	err = d.asyncExecutor.Execute(ctx, doguResource, doguResource.Status.RequeuePhase)
-	if err != nil {
-		return err
-	}
-
-	return doguResource.ChangeStateWithRetry(ctx, d.client, doguv2.DoguStatusInstalled)
+	return d.asyncExecutor.Execute(ctx, doguResource, doguResource.Status.RequeuePhase)
 }
 
 type editPVCStep struct {
@@ -193,11 +184,6 @@ func (s *scaleUpStep) Execute(ctx context.Context, dogu *doguv2.Dogu) (string, e
 	_, err := scaleDeployment(ctx, s.client, s.eventRecorder, dogu, s.replicas)
 	if err != nil {
 		return s.GetStartCondition(), err
-	}
-
-	err = dogu.ChangeRequeuePhaseWithRetry(ctx, s.client, "")
-	if err != nil {
-		return "", err
 	}
 
 	return async.FinishedState, nil

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,10 +49,6 @@ type doguUpgradeManager struct {
 }
 
 func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *doguv2.Dogu) error {
-	err := doguResource.ChangeStateWithRetry(ctx, dum.client, doguv2.DoguStatusUpgrading)
-	if err != nil {
-		return err
-	}
 
 	upgradeDoguName := doguResource.Spec.Name
 	upgradeDoguVersion := doguResource.Spec.Version
@@ -73,11 +70,6 @@ func (dum *doguUpgradeManager) Upgrade(ctx context.Context, doguResource *doguv2
 		return fmt.Errorf("dogu upgrade %s:%s failed: %w", upgradeDoguName, upgradeDoguVersion, err)
 	}
 	// note: there won't exist a purgeOldContainerImage step: that is the subject of Kubernetes's cluster configuration
-
-	err = doguResource.ChangeStateWithRetry(ctx, dum.client, doguv2.DoguStatusInstalled)
-	if err != nil {
-		return err
-	}
 
 	updateInstalledVersionFn := func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		status.InstalledVersion = doguResource.Spec.Version

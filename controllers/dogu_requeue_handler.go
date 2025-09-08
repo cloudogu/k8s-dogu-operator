@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"time"
+
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 
@@ -75,10 +76,6 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 		return ctrl.Result{}, nil
 	}
 
-	requeueTime, timeErr := getRequeueTime(ctx, doguResource, d.doguInterface, originalErr)
-	if timeErr != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get requeue time: %w", timeErr)
-	}
 	if onRequeue != nil {
 		onRequeueErr := onRequeue(doguResource)
 		if onRequeueErr != nil {
@@ -94,13 +91,13 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, 
 		return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
 	}
 
-	result := ctrl.Result{Requeue: true, RequeueAfter: requeueTime}
+	result := ctrl.Result{Requeue: true, RequeueAfter: time.Second * 5}
 	err := d.fireRequeueEvent(ctx, doguResource, result)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	log.FromContext(ctx).Error(err, fmt.Sprintf("%s: requeue in %s seconds because of: %s", contextMessage, requeueTime, originalErr.Error()))
+	log.FromContext(ctx).Error(err, fmt.Sprintf("%s: requeue in %s seconds because of: %s", contextMessage, time.Second*5, originalErr.Error()))
 
 	return result, nil
 
@@ -113,25 +110,6 @@ func getRequeuePhase(err error) string {
 	}
 
 	return ""
-}
-
-func getRequeueTime(ctx context.Context, dogu *doguv2.Dogu, doguInterface doguClient.DoguInterface, err error) (time.Duration, error) {
-	var errorWithTime requeuableErrorWithTime
-	if errors.As(err, &errorWithTime) {
-		return errorWithTime.GetRequeueTime(), nil
-	}
-
-	var requeueTime time.Duration
-	_, timeErr := doguInterface.UpdateStatusWithRetry(ctx, dogu, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-		requeueTime = dogu.Status.NextRequeue()
-		status.RequeueTime = requeueTime
-		return status
-	}, metav1.UpdateOptions{})
-	if timeErr != nil {
-		return 0, timeErr
-	}
-
-	return requeueTime, nil
 }
 
 func shouldRequeue(err error) bool {
