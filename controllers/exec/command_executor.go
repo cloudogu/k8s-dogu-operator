@@ -3,15 +3,15 @@ package exec
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"io"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"net/url"
 	"strings"
 	"time"
+
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/cloudogu/retry-lib/retry"
 
@@ -102,31 +102,19 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
 func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command ShellCommand, expectedStatus PodStatusForExec) (*bytes.Buffer, error) {
-	logger := log.FromContext(ctx)
-	pod := &corev1.Pod{}
-	err := retry.OnErrorWithLimit(waitLimit, retry.AlwaysRetryFunc, func() error {
-		updatedDogu := &v2.Dogu{}
-		err := ce.client.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, updatedDogu)
-		if err != nil {
-			logger.Info(fmt.Sprintf("Failed to get dogu %s. Trying again: %s", resource.Name, err.Error()))
-			return err
-		}
-
-		if updatedDogu.Status.Health != v2.AvailableHealthStatus {
-			unavailableErrMsg := fmt.Sprintf("Dogu %s is not available. Trying again", resource.Name)
-			logger.Info(unavailableErrMsg)
-			return errors.New(unavailableErrMsg)
-		}
-
-		pod, err = v2.GetPodForLabels(ctx, ce.client, updatedDogu.GetPodLabelsWithStatusVersion())
-		if err != nil {
-			logger.Info(fmt.Sprintf("Failed to get pod from dogu %s. Trying again: %s", resource.Name, err.Error()))
-			return err
-		}
-		return nil
-	})
+	updatedDogu := &v2.Dogu{}
+	err := ce.client.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, updatedDogu)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", resource.Name, err)
+		return nil, fmt.Errorf("failed to get dogu %q: %w", resource.Name, err)
+	}
+
+	if updatedDogu.Status.Health != v2.AvailableHealthStatus {
+		return nil, fmt.Errorf("dogu %q is not available", resource.Name)
+	}
+
+	pod, err := v2.GetPodForLabels(ctx, ce.client, updatedDogu.GetPodLabelsWithStatusVersion())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod from dogu %q: %w", resource.Name, err)
 	}
 
 	return ce.ExecCommandForPod(ctx, pod, command, expectedStatus)
