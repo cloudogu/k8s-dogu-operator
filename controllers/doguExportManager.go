@@ -99,7 +99,7 @@ func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource
 
 	if !shouldUpdate {
 		logger.Info(fmt.Sprintf("The export-mode of dogu %q has changed to its desired state: %v", doguResource.Name, doguResource.Spec.ExportMode))
-		return dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
+		return dem.updateStatus(ctx, doguResource, doguv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
 	}
 
 	if updateErr := dem.updateExportMode(ctx, doguResource); updateErr != nil {
@@ -124,7 +124,7 @@ func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource
 		return nil
 	}
 
-	if err := dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode); err != nil {
+	if err := dem.updateStatus(ctx, doguResource, doguv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode); err != nil {
 		return err
 	}
 
@@ -170,12 +170,10 @@ func (dem *doguExportManager) deploymentUpdateNeeded(ctx context.Context, doguRe
 	return updateNeeded, nil
 }
 
-func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguResource *doguv2.Dogu, phase string, activated bool) error {
-	_, err := dem.doguClient.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-		status.Status = phase
-		status.ExportMode = activated
-		return status
-	}, metav1.UpdateOptions{})
+func (dem *doguExportManager) updateStatus(ctx context.Context, doguResource *doguv2.Dogu, phase string, activated bool) error {
+	doguResource.Status.Status = phase
+	doguResource.Status.ExportMode = activated
+	_, err := dem.doguClient.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %q to %q: %w", doguResource.Name, phase, err)
 	}

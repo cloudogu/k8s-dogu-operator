@@ -6,7 +6,6 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	"github.com/cloudogu/retry-lib/retry"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -88,9 +87,7 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 			specrequests := make(map[corev1.ResourceName]resource.Quantity)
 			specrequests[corev1.ResourceStorage] = *currentSize
 			pvc.Spec.Resources.Requests = specrequests
-			err = retry.OnConflict(func() error {
-				return client.Update(ctx, pvc)
-			})
+			err = client.Update(ctx, pvc)
 			if err != nil {
 				logger.Error(err, "failed to update pvc size")
 				return err
@@ -98,12 +95,10 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 		}
 	}
 
-	_, err = doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-		meta.SetStatusCondition(&status.Conditions, condition)
-		logger.Info(fmt.Sprintf("set data volume size %v for dogu %s", currentSize, doguResource.Name))
-		status.DataVolumeSize = currentSize
-		return status
-	}, metav1.UpdateOptions{})
+	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
+	logger.Info(fmt.Sprintf("set data volume size %v for dogu %s", currentSize, doguResource.Name))
+	doguResource.Status.DataVolumeSize = currentSize
+	_, err = doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 
 	if err != nil {
 		logger.Error(err, "failed to update data volume size")

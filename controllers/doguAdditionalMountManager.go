@@ -3,17 +3,17 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"github.com/cloudogu/retry-lib/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -140,42 +140,26 @@ func (m *doguAdditionalMountManager) UpdateAdditionalMounts(ctx context.Context,
 		return err
 	}
 
-	err = retry.OnConflict(func() error {
-		deployment, retryErr := m.getDoguDeployment(ctx, doguResource)
-		if retryErr != nil {
-			return retryErr
+	deployment, err := m.getDoguDeployment(ctx, doguResource)
+	if err != nil {
+		return err
+	}
+
+	var updatedInitContainers []corev1.Container
+	for _, c := range deployment.Spec.Template.Spec.InitContainers {
+		if c.Name != additionalMountsInitContainerName {
+			updatedInitContainers = append(updatedInitContainers, c)
 		}
+	}
+	updatedInitContainers = append(updatedInitContainers, *container)
+	deployment.Spec.Template.Spec.InitContainers = updatedInitContainers
+	deployment.Spec.Template.Spec.Volumes = volumes
 
-		var updatedInitContainers []corev1.Container
-		for _, c := range deployment.Spec.Template.Spec.InitContainers {
-			if c.Name != additionalMountsInitContainerName {
-				updatedInitContainers = append(updatedInitContainers, c)
-			}
-		}
-		updatedInitContainers = append(updatedInitContainers, *container)
-		deployment.Spec.Template.Spec.InitContainers = updatedInitContainers
-		deployment.Spec.Template.Spec.Volumes = volumes
-
-		_, retryErr = m.deploymentInterface.Update(ctx, deployment, v1.UpdateOptions{})
-
-		return retryErr
-	})
-
+	_, err = m.deploymentInterface.Update(ctx, deployment, v1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update deployment additional mounts for dogu %s: %w", doguResource.Name, err)
 	}
 
 	logger.Info(fmt.Sprintf("Successfully updated additional mounts for dogu resource %s", doguResource.Name))
-
-	installedStatus := v2.DoguStatusInstalled
-	_, err = m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
-		doguResource.Status.Status = installedStatus
-		return doguResource.Status
-	}, v1.UpdateOptions{})
-
-	if err != nil {
-		return fmt.Errorf("failed to update status of dogu %s to %s", doguResource.Name, installedStatus)
-	}
-
-	return err
+	return nil
 }

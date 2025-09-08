@@ -3,6 +3,7 @@ package health
 import (
 	"context"
 	"fmt"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -45,10 +46,8 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.N
 		desiredHealthStatus = doguv2.AvailableHealthStatus
 	}
 
-	_, err = doguEcosystemClient.UpdateStatusWithRetry(ctx, dogu, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-		status.Health = desiredHealthStatus
-		return status
-	}, metav1api.UpdateOptions{})
+	dogu.Status.Health = desiredHealthStatus
+	_, err = doguEcosystemClient.UpdateStatus(ctx, dogu, metav1api.UpdateOptions{})
 
 	if err != nil {
 		message := fmt.Sprintf("failed to update dogu %q with current health status [%q] to desired health status [%q]", doguName, dogu.Status.Health, desiredHealthStatus)
