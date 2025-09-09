@@ -7,7 +7,6 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
@@ -59,11 +58,6 @@ type doguRegistrator interface {
 
 type deploymentInterface interface {
 	appsv1client.DeploymentInterface
-}
-
-// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
-type deploymentGenerator interface {
-	CreateDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (*appsv1.Deployment, error)
 }
 
 //nolint:unused

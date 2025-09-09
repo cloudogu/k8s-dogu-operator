@@ -3,6 +3,7 @@ package serviceaccount
 import (
 	"bytes"
 	"context"
+
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -77,5 +78,5 @@ type localDoguFetcher interface {
 //goland:noinspection GoUnusedType
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command exec.ShellCommand, expected exec.PodStatusForExec) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command exec.ShellCommand) (*bytes.Buffer, error)
 }

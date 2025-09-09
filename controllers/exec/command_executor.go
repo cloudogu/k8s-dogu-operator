@@ -102,7 +102,7 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
-func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command ShellCommand, expectedStatus PodStatusForExec) (*bytes.Buffer, error) {
+func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command ShellCommand) (*bytes.Buffer, error) {
 	updatedDogu := &v2.Dogu{}
 	err := ce.client.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, updatedDogu)
 	if err != nil {
@@ -118,12 +118,12 @@ func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resour
 		return nil, fmt.Errorf("failed to get pod from dogu %q: %w", resource.Name, err)
 	}
 
-	return ce.ExecCommandForPod(ctx, pod, command, expectedStatus)
+	return ce.ExecCommandForPod(ctx, pod, command)
 }
 
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
 // identified by its pod name.
-func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand, expectedStatus PodStatusForExec) (*bytes.Buffer, error) {
+func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand) (*bytes.Buffer, error) {
 	req := ce.getCreateExecRequest(pod, command)
 	exec, err := ce.commandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
 	if err != nil {

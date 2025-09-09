@@ -2,7 +2,6 @@ package install
 
 import (
 	"context"
-	"time"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
@@ -11,8 +10,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/config"
 )
-
-const requeueAfterDoguConfig = 5 * time.Second
 
 type DoguConfigStep struct {
 	doguConfigRepository doguConfigRepository

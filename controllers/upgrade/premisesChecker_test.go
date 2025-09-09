@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testCtx = context.Background()
+
 func Test_checkDoguIdentity(t *testing.T) {
 	t.Run("should succeed for dogus when forceUpgrade is off and remote dogu has a higher version", func(t *testing.T) {
 		localDogu := readTestDataLdapDogu(t)

@@ -1,13 +1,14 @@
 package health
 
 import (
+	"testing"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"testing"
 )
 
 func TestNewStartupHandler(t *testing.T) {
@@ -23,9 +24,6 @@ func TestNewStartupHandler(t *testing.T) {
 
 		// then
 		assert.Equal(t, doguInterfaceMock, handler.doguInterface)
-		assert.Equal(t, deploymentInterfaceMock, handler.deploymentInterface)
-		assert.Equal(t, availabilityCheckerMock, handler.availabilityChecker)
-		assert.Equal(t, healthUpdaterMock, handler.doguHealthStatusUpdater)
 	})
 }
 

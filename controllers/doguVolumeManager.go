@@ -22,8 +22,6 @@ import (
 const (
 	// VolumeExpansionEventReason is the reason string for firing volume expansion events.
 	VolumeExpansionEventReason = "VolumeExpansion"
-	// ErrorOnVolumeExpansionEventReason is the error string for firing volume expansion error events.
-	ErrorOnVolumeExpansionEventReason = "ErrVolumeExpansion"
 )
 
 const (

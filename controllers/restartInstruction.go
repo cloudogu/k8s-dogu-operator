@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	v1 "k8s.io/api/core/v1"
@@ -31,6 +33,8 @@ const (
 const (
 	updateStatusErrorMessage = "failed to update status of dogu restart"
 )
+
+const requeueWaitTimeout = 5 * time.Second
 
 func RestartOperationFromRestartStatusPhase(phase doguv2.RestartStatusPhase) RestartOperation {
 	switch phase {

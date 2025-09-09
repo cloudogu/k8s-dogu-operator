@@ -162,13 +162,13 @@ func (uds *UpdateDeploymentStep) copyPreUpgradeScriptFromPodToPod(ctx context.Co
 	}
 
 	createPathCommand := exec.NewShellCommand("/bin/mkdir", "-p", preUpgradeScriptDir)
-	out, err := uds.doguCommandExecutor.ExecCommandForPod(ctx, destPod, createPathCommand, exec.ContainersStarted)
+	out, err := uds.doguCommandExecutor.ExecCommandForPod(ctx, destPod, createPathCommand)
 	if err != nil {
 		return fmt.Errorf("failed to create pre-upgrade target dir with command '%s', stdout: '%s': %w", createPathCommand.String(), out, err)
 	}
 
 	untarCommand := exec.NewShellCommandWithStdin(archive, "/bin/tar", "xf", "-", "-C", preUpgradeScriptDir)
-	out, err = uds.doguCommandExecutor.ExecCommandForPod(ctx, destPod, untarCommand, exec.ContainersStarted)
+	out, err = uds.doguCommandExecutor.ExecCommandForPod(ctx, destPod, untarCommand)
 	if err != nil {
 		return fmt.Errorf("failed to extract pre-upgrade script to dogu pod with command '%s', stdout: '%s': %w", untarCommand.String(), out, err)
 	}
@@ -191,7 +191,7 @@ func (uds *UpdateDeploymentStep) applyPreUpgradeScriptToOlderDogu(
 	preUpgradeShellCmd := exec.NewShellCommand(preUpgradeScriptPath, fromDoguVersion, toDoguResource.Spec.Version)
 
 	logger.Info("Executing pre-upgrade command " + preUpgradeShellCmd.String())
-	outBuf, err := uds.doguCommandExecutor.ExecCommandForPod(ctx, fromDoguPod, preUpgradeShellCmd, exec.PodReady)
+	outBuf, err := uds.doguCommandExecutor.ExecCommandForPod(ctx, fromDoguPod, preUpgradeShellCmd)
 	if err != nil {
 		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeShellCmd, outBuf, err)
 	}

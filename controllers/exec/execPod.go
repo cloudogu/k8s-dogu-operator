@@ -219,5 +219,5 @@ func (ep *execPodFactory) Exec(ctx context.Context, doguResource *k8sv2.Dogu, do
 		return nil, fmt.Errorf("could not get pod: %w", err)
 	}
 
-	return ep.executor.ExecCommandForPod(ctx, pod, cmd, ContainersStarted)
+	return ep.executor.ExecCommandForPod(ctx, pod, cmd)
 }

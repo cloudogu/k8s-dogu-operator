@@ -3,12 +3,12 @@ package exec
 import (
 	"bytes"
 	"context"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/stretchr/testify/mock"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/mock"
 
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -37,10 +37,6 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
 		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionFalse}}},
 	}
-	runningPod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
-		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
-	}
 	notRunningPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
 		Status:     corev1.PodStatus{Phase: corev1.PodPending},
@@ -60,59 +56,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		ctrl.GetConfigOrDie = oldConfigFunc
 	}()
 
-	t.Run("success with expected status ContainersStarted", func(t *testing.T) {
-		// given
-		cli := fake2.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(doguResource, runningPod).
-			Build()
-		clientSet := testclient.NewSimpleClientset(runningPod)
-		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
-		expectedBuffer := bytes.NewBufferString(commandOutput)
-
-		// when
-		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, ContainersStarted)
-
-		// then
-		require.NoError(t, err)
-		require.NotNil(t, buffer)
-		assert.Equal(t, expectedBuffer, buffer)
-	})
-
-	t.Run("success with retry if dogu was unavailable", func(t *testing.T) {
-		// given
-		doguResource := readLdapDoguResource(t)
-		doguResource.Status.Health = k8sv2.UnavailableHealthStatus
-		cli := fake2.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(doguResource, runningPod).
-			Build()
-		err := cli.Update(ctx, doguResource)
-		require.NoError(t, err)
-		clientSet := testclient.NewSimpleClientset(runningPod)
-		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
-		expectedBuffer := bytes.NewBufferString(commandOutput)
-
-		timer := time.NewTimer(time.Second * 3)
-		go func() {
-			<-timer.C
-			doguResource.Status.Health = k8sv2.AvailableHealthStatus
-			err := cli.Update(ctx, doguResource)
-			require.NoError(t, err)
-		}()
-
-		// when
-		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, ContainersStarted)
-
-		// then
-		require.NoError(t, err)
-		require.NotNil(t, buffer)
-		assert.Equal(t, expectedBuffer, buffer)
-	})
-
-	t.Run("success with expected status PodReady", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
@@ -124,7 +68,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		buffer, err := sut.ExecCommandForDogu(ctx, doguResource, command)
 
 		// then
 		require.NoError(t, err)
@@ -144,7 +88,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, "")
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil)
 
 		// then
 		require.Error(t, err)
@@ -163,7 +107,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, "")
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil)
 
 		// then
 		require.Error(t, err)
@@ -181,7 +125,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil)
 
 		// then
 		require.Error(t, err)
@@ -201,7 +145,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil, ContainersStarted)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil)
 
 		// then
 		require.Error(t, err)
@@ -221,7 +165,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, command)
 
 		// then
 		require.Error(t, err)
@@ -239,7 +183,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, command, PodReady)
+		_, err := sut.ExecCommandForDogu(ctx, doguResource, command)
 
 		// then
 		require.Error(t, err)
@@ -287,7 +231,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
-		buffer, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		buffer, err := sut.ExecCommandForPod(ctx, readyPod, command)
 
 		// then
 		require.NoError(t, err)
@@ -322,7 +266,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		stdinCmd := NewShellCommandWithStdin(reader, "base64")
 
 		// when
-		buffer, err := sut.ExecCommandForPod(ctx, readyPod, stdinCmd, PodReady)
+		buffer, err := sut.ExecCommandForPod(ctx, readyPod, stdinCmd)
 
 		// then
 		require.NoError(t, err)
@@ -337,7 +281,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, &shellCommand{}, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, &shellCommand{})
 
 		// then
 		require.Error(t, err)
@@ -354,7 +298,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, unreadyPod, nil, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, unreadyPod, nil)
 
 		// then
 		require.Error(t, err)
@@ -368,7 +312,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, command)
 
 		// then
 		require.Error(t, err)
@@ -383,7 +327,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, command, PodReady)
+		_, err := sut.ExecCommandForPod(ctx, readyPod, command)
 
 		// then
 		require.Error(t, err)

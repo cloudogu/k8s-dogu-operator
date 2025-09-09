@@ -26,9 +26,9 @@ func (_m *MockCommandExecutor) EXPECT() *MockCommandExecutor_Expecter {
 	return &MockCommandExecutor_Expecter{mock: &_m.Mock}
 }
 
-// ExecCommandForDogu provides a mock function with given fields: ctx, resource, command, expected
-func (_m *MockCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command ShellCommand, expected PodStatusForExec) (*bytes.Buffer, error) {
-	ret := _m.Called(ctx, resource, command, expected)
+// ExecCommandForDogu provides a mock function with given fields: ctx, resource, command
+func (_m *MockCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command ShellCommand) (*bytes.Buffer, error) {
+	ret := _m.Called(ctx, resource, command)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ExecCommandForDogu")
@@ -36,19 +36,19 @@ func (_m *MockCommandExecutor) ExecCommandForDogu(ctx context.Context, resource 
 
 	var r0 *bytes.Buffer
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, ShellCommand, PodStatusForExec) (*bytes.Buffer, error)); ok {
-		return rf(ctx, resource, command, expected)
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, ShellCommand) (*bytes.Buffer, error)); ok {
+		return rf(ctx, resource, command)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, ShellCommand, PodStatusForExec) *bytes.Buffer); ok {
-		r0 = rf(ctx, resource, command, expected)
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, ShellCommand) *bytes.Buffer); ok {
+		r0 = rf(ctx, resource, command)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*bytes.Buffer)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *v2.Dogu, ShellCommand, PodStatusForExec) error); ok {
-		r1 = rf(ctx, resource, command, expected)
+	if rf, ok := ret.Get(1).(func(context.Context, *v2.Dogu, ShellCommand) error); ok {
+		r1 = rf(ctx, resource, command)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -65,14 +65,13 @@ type MockCommandExecutor_ExecCommandForDogu_Call struct {
 //   - ctx context.Context
 //   - resource *v2.Dogu
 //   - command ShellCommand
-//   - expected PodStatusForExec
-func (_e *MockCommandExecutor_Expecter) ExecCommandForDogu(ctx interface{}, resource interface{}, command interface{}, expected interface{}) *MockCommandExecutor_ExecCommandForDogu_Call {
-	return &MockCommandExecutor_ExecCommandForDogu_Call{Call: _e.mock.On("ExecCommandForDogu", ctx, resource, command, expected)}
+func (_e *MockCommandExecutor_Expecter) ExecCommandForDogu(ctx interface{}, resource interface{}, command interface{}) *MockCommandExecutor_ExecCommandForDogu_Call {
+	return &MockCommandExecutor_ExecCommandForDogu_Call{Call: _e.mock.On("ExecCommandForDogu", ctx, resource, command)}
 }
 
-func (_c *MockCommandExecutor_ExecCommandForDogu_Call) Run(run func(ctx context.Context, resource *v2.Dogu, command ShellCommand, expected PodStatusForExec)) *MockCommandExecutor_ExecCommandForDogu_Call {
+func (_c *MockCommandExecutor_ExecCommandForDogu_Call) Run(run func(ctx context.Context, resource *v2.Dogu, command ShellCommand)) *MockCommandExecutor_ExecCommandForDogu_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(ShellCommand), args[3].(PodStatusForExec))
+		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(ShellCommand))
 	})
 	return _c
 }
@@ -82,14 +81,14 @@ func (_c *MockCommandExecutor_ExecCommandForDogu_Call) Return(_a0 *bytes.Buffer,
 	return _c
 }
 
-func (_c *MockCommandExecutor_ExecCommandForDogu_Call) RunAndReturn(run func(context.Context, *v2.Dogu, ShellCommand, PodStatusForExec) (*bytes.Buffer, error)) *MockCommandExecutor_ExecCommandForDogu_Call {
+func (_c *MockCommandExecutor_ExecCommandForDogu_Call) RunAndReturn(run func(context.Context, *v2.Dogu, ShellCommand) (*bytes.Buffer, error)) *MockCommandExecutor_ExecCommandForDogu_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ExecCommandForPod provides a mock function with given fields: ctx, pod, command, expected
-func (_m *MockCommandExecutor) ExecCommandForPod(ctx context.Context, pod *v1.Pod, command ShellCommand, expected PodStatusForExec) (*bytes.Buffer, error) {
-	ret := _m.Called(ctx, pod, command, expected)
+// ExecCommandForPod provides a mock function with given fields: ctx, pod, command
+func (_m *MockCommandExecutor) ExecCommandForPod(ctx context.Context, pod *v1.Pod, command ShellCommand) (*bytes.Buffer, error) {
+	ret := _m.Called(ctx, pod, command)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ExecCommandForPod")
@@ -97,19 +96,19 @@ func (_m *MockCommandExecutor) ExecCommandForPod(ctx context.Context, pod *v1.Po
 
 	var r0 *bytes.Buffer
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.Pod, ShellCommand, PodStatusForExec) (*bytes.Buffer, error)); ok {
-		return rf(ctx, pod, command, expected)
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Pod, ShellCommand) (*bytes.Buffer, error)); ok {
+		return rf(ctx, pod, command)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.Pod, ShellCommand, PodStatusForExec) *bytes.Buffer); ok {
-		r0 = rf(ctx, pod, command, expected)
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.Pod, ShellCommand) *bytes.Buffer); ok {
+		r0 = rf(ctx, pod, command)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*bytes.Buffer)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *v1.Pod, ShellCommand, PodStatusForExec) error); ok {
-		r1 = rf(ctx, pod, command, expected)
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.Pod, ShellCommand) error); ok {
+		r1 = rf(ctx, pod, command)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -126,14 +125,13 @@ type MockCommandExecutor_ExecCommandForPod_Call struct {
 //   - ctx context.Context
 //   - pod *v1.Pod
 //   - command ShellCommand
-//   - expected PodStatusForExec
-func (_e *MockCommandExecutor_Expecter) ExecCommandForPod(ctx interface{}, pod interface{}, command interface{}, expected interface{}) *MockCommandExecutor_ExecCommandForPod_Call {
-	return &MockCommandExecutor_ExecCommandForPod_Call{Call: _e.mock.On("ExecCommandForPod", ctx, pod, command, expected)}
+func (_e *MockCommandExecutor_Expecter) ExecCommandForPod(ctx interface{}, pod interface{}, command interface{}) *MockCommandExecutor_ExecCommandForPod_Call {
+	return &MockCommandExecutor_ExecCommandForPod_Call{Call: _e.mock.On("ExecCommandForPod", ctx, pod, command)}
 }
 
-func (_c *MockCommandExecutor_ExecCommandForPod_Call) Run(run func(ctx context.Context, pod *v1.Pod, command ShellCommand, expected PodStatusForExec)) *MockCommandExecutor_ExecCommandForPod_Call {
+func (_c *MockCommandExecutor_ExecCommandForPod_Call) Run(run func(ctx context.Context, pod *v1.Pod, command ShellCommand)) *MockCommandExecutor_ExecCommandForPod_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v1.Pod), args[2].(ShellCommand), args[3].(PodStatusForExec))
+		run(args[0].(context.Context), args[1].(*v1.Pod), args[2].(ShellCommand))
 	})
 	return _c
 }
@@ -143,7 +141,7 @@ func (_c *MockCommandExecutor_ExecCommandForPod_Call) Return(_a0 *bytes.Buffer, 
 	return _c
 }
 
-func (_c *MockCommandExecutor_ExecCommandForPod_Call) RunAndReturn(run func(context.Context, *v1.Pod, ShellCommand, PodStatusForExec) (*bytes.Buffer, error)) *MockCommandExecutor_ExecCommandForPod_Call {
+func (_c *MockCommandExecutor_ExecCommandForPod_Call) RunAndReturn(run func(context.Context, *v1.Pod, ShellCommand) (*bytes.Buffer, error)) *MockCommandExecutor_ExecCommandForPod_Call {
 	_c.Call.Return(run)
 	return _c
 }

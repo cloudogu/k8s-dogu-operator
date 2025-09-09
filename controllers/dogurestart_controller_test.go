@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"context"
+	"testing"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -9,13 +12,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
 )
 
 const (
 	testCasRestartName = "cas-1234"
 	testCasDoguName    = "cas"
 )
+
+var testCtx = context.Background()
 
 var testCasRestartRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: testCasRestartName}}
 

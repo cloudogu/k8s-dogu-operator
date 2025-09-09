@@ -180,7 +180,7 @@ func (c *creator) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 	}
 
 	// We use ExecCommandForDogu because it uses a health check for the dogu resource.
-	buffer, err := c.executor.ExecCommandForDogu(ctx, doguResource, command, exec.PodReady)
+	buffer, err := c.executor.ExecCommandForDogu(ctx, doguResource, command)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute command: %w", err)
 	}

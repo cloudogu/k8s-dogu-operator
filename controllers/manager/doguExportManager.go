@@ -16,11 +16,7 @@ import (
 )
 
 const (
-	// ChangeExportModeEventReason is the reason string for firing events for activating/deactivating the export mode.
-	ChangeExportModeEventReason = "ChangeExportMode"
-	// ErrorOnChangeExportModeEventReason is the error string for firing change export mode error events.
-	ErrorOnChangeExportModeEventReason = "ErrChangeExportMode"
-	requeueWaitTimeout                 = 5 * time.Second
+	requeueWaitTimeout = 5 * time.Second
 )
 
 type exportModeNotYetChangedError struct {

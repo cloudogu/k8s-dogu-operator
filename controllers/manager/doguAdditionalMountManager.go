@@ -20,10 +20,6 @@ import (
 
 const (
 	additionalMountsInitContainerName = "dogu-additional-mounts-init"
-	// ChangeDoguAdditionalMountsEventReason is the reason string for firing events for changing additional mounts in the dogu cr.
-	ChangeDoguAdditionalMountsEventReason = "ChangeDoguAdditionalMounts"
-	// ErrorOnChangeDoguAdditionalMountsEventReason is the error string for firing change dogu additional mounts.
-	ErrorOnChangeDoguAdditionalMountsEventReason = "ErrChangeDoguAdditionalMounts"
 )
 
 type doguAdditionalMountManager struct {

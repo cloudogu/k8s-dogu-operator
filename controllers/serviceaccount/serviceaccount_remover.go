@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/config"
 
@@ -143,7 +144,7 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 		return err
 	}
 
-	_, err = r.executor.ExecCommandForDogu(ctx, doguResource, command, exec.PodReady)
+	_, err = r.executor.ExecCommandForDogu(ctx, doguResource, command)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
