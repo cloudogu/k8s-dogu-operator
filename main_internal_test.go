@@ -3,20 +3,20 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/go-logr/logr"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -27,6 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	runtimeconf "sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -35,24 +37,12 @@ type mockDefinition struct {
 	ReturnValue interface{}
 }
 
-func getCopyMap(definitions map[string]mockDefinition) map[string]mockDefinition {
-	newCopyMap := map[string]mockDefinition{}
-	for k, v := range definitions {
-		newCopyMap[k] = v
-	}
-	return newCopyMap
-}
-
-func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) manager.Manager {
-	k8sManager := &MockControllerManager{}
+func getNewMockManager(t *testing.T, expectedErrorOnNewManager error) *MockControllerManager {
+	k8sManager := NewMockControllerManager(t)
 	ctrl.NewManager = func(config *rest.Config, options manager.Options) (manager.Manager, error) {
-		for key, value := range definitions {
-			k8sManager.On(key, value.Arguments...).Return(value.ReturnValue)
-		}
 		return k8sManager, expectedErrorOnNewManager
 	}
 	ctrl.SetLogger = func(l logr.Logger) {
-		k8sManager.Mock.On("GetLogger").Return(l)
 	}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
@@ -84,13 +74,12 @@ func Test_noAggregationKey(t *testing.T) {
 
 func Test_startDoguOperator(t *testing.T) {
 
-	t.Run("Error on missing namespace environment variable", func(t *testing.T) {
+	t.Run("should fail on missing namespace environment variable", func(t *testing.T) {
 		// given
-		resetFunc := setupOverrides()
+		resetFunc := setupOverrides(t, nil, nil, nil, nil, nil)
 		defer resetFunc()
 
 		_ = os.Unsetenv("NAMESPACE")
-		getNewMockManager(nil, createMockDefinitions())
 
 		// when
 		err := startDoguOperator()
@@ -100,70 +89,227 @@ func Test_startDoguOperator(t *testing.T) {
 		require.Contains(t, err.Error(), "failed to read namespace: failed to get env var [NAMESPACE]")
 	})
 
-	t.Run("Test without logger environment variables", func(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
 		// given
-		resetFunc := setupOverrides()
+		resetFunc := setupOverrides(t, nil, nil, nil, nil, nil)
 		defer resetFunc()
 
 		setupEnvironment(t)
 
-		k8sManager := getNewMockManager(nil, createMockDefinitions())
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
+		mockManager.EXPECT().AddHealthzCheck("healthz", mock.Anything).Return(nil)
+		mockManager.EXPECT().AddReadyzCheck("readyz", mock.Anything).Return(nil)
+		mockManager.EXPECT().Start(mock.Anything).Return(nil)
 
 		// when
 		err := startDoguOperator()
 
 		// then
 		require.NoError(t, err)
-		mock.AssertExpectationsForObjects(t, k8sManager)
 	})
 
-	expectedError := fmt.Errorf("this is my expected error")
-
-	t.Run("Test with error on manager creation", func(t *testing.T) {
+	t.Run("should fail on creating dogu reconciler", func(t *testing.T) {
 		// given
-		resetFunc := setupOverrides()
+		resetFunc := setupOverrides(t, assert.AnError, nil, nil, nil, nil)
 		defer resetFunc()
 
 		setupEnvironment(t)
 
-		getNewMockManager(expectedError, createMockDefinitions())
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
 
 		// when
 		err := startDoguOperator()
 
 		// then
-		require.ErrorIs(t, err, expectedError)
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 
-	mockDefinitionsThatCanFail := []string{
-		"Add",
-		"AddHealthzCheck",
-		"AddReadyzCheck",
-		"Start",
-	}
+	t.Run("should fail on setting up dogu reconciler", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, nil, assert.AnError, nil, nil)
+		defer resetFunc()
 
-	for _, mockDefinitionName := range mockDefinitionsThatCanFail {
-		t.Run(fmt.Sprintf("fail setup when error on %s", mockDefinitionName), func(t *testing.T) {
-			// given
-			resetFunc := setupOverrides()
-			t.Cleanup(resetFunc)
+		setupEnvironment(t)
 
-			setupEnvironment(t)
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
 
-			adaptedMockDefinitions := getCopyMap(createMockDefinitions())
-			adaptedMockDefinitions[mockDefinitionName] = mockDefinition{
-				Arguments:   adaptedMockDefinitions[mockDefinitionName].Arguments,
-				ReturnValue: expectedError,
-			}
-			getNewMockManager(nil, adaptedMockDefinitions)
+		// when
+		err := startDoguOperator()
 
-			// when
-			startErr := startDoguOperator()
+		// then
+		assert.ErrorIs(t, err, assert.AnError)
+	})
 
-			// then
-			require.ErrorIs(t, startErr, expectedError)
-		})
-	}
+	t.Run("should fail on creating global config reconciler", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, assert.AnError, nil, nil, nil)
+		defer resetFunc()
+
+		setupEnvironment(t)
+
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
+
+		// when
+		err := startDoguOperator()
+
+		// then
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("should fail on setting up global config reconciler", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, nil, nil, nil, assert.AnError)
+		defer resetFunc()
+
+		setupEnvironment(t)
+
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
+
+		// when
+		err := startDoguOperator()
+
+		// then
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("should fail on setting up dogu restart reconciler", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, nil, nil, assert.AnError, nil)
+		defer resetFunc()
+
+		setupEnvironment(t)
+
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
+
+		// when
+		err := startDoguOperator()
+
+		// then
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("should fail with error on manager creation", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, nil, nil, nil, nil)
+		defer resetFunc()
+
+		setupEnvironment(t)
+
+		_ = getNewMockManager(t, assert.AnError)
+
+		// when
+		err := startDoguOperator()
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to create manager")
+	})
+	t.Run("fail setup when error on Add", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, nil, nil, nil, nil)
+		t.Cleanup(resetFunc)
+
+		setupEnvironment(t)
+
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(assert.AnError)
+
+		// when
+		err := startDoguOperator()
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+	})
+	t.Run("fail setup when error on AddHealthzCheck", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, nil, nil, nil, nil)
+		t.Cleanup(resetFunc)
+
+		setupEnvironment(t)
+
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
+		mockManager.EXPECT().AddHealthzCheck("healthz", mock.Anything).Return(assert.AnError)
+
+		// when
+		err := startDoguOperator()
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+	})
+	t.Run("fail setup when error on AddReadyzCheck", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, nil, nil, nil, nil)
+		t.Cleanup(resetFunc)
+
+		setupEnvironment(t)
+
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
+		mockManager.EXPECT().AddHealthzCheck("healthz", mock.Anything).Return(nil)
+		mockManager.EXPECT().AddReadyzCheck("readyz", mock.Anything).Return(assert.AnError)
+
+		// when
+		err := startDoguOperator()
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+	})
+	t.Run("fail setup when error on Start", func(t *testing.T) {
+		// given
+		resetFunc := setupOverrides(t, nil, nil, nil, nil, nil)
+		t.Cleanup(resetFunc)
+
+		setupEnvironment(t)
+
+		mockManager := getNewMockManager(t, nil)
+		mockManager.EXPECT().GetConfig().Return(&rest.Config{})
+		mockManager.EXPECT().GetEventRecorderFor(mock.Anything).Return(record.NewFakeRecorder(10))
+		mockManager.EXPECT().GetClient().Return(fake.NewClientBuilder().WithScheme(getTestScheme()).Build())
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
+		mockManager.EXPECT().AddHealthzCheck("healthz", mock.Anything).Return(nil)
+		mockManager.EXPECT().AddReadyzCheck("readyz", mock.Anything).Return(nil)
+		mockManager.EXPECT().Start(mock.Anything).Return(assert.AnError)
+
+		// when
+		err := startDoguOperator()
+
+		// then
+		require.ErrorIs(t, err, assert.AnError)
+	})
 }
 
 func setupEnvironment(t *testing.T) {
@@ -174,7 +320,7 @@ func setupEnvironment(t *testing.T) {
 	t.Setenv("NETWORK_POLICIES_ENABLED", "true")
 }
 
-func setupOverrides() func() {
+func setupOverrides(t *testing.T, doguRecErr, globalConfigRecErr, doguRecSetupErr, doguRestartRecSetupErr, globalConfigRecSetupErr error) func() {
 	// override default controller method to create a new manager
 	oldNewManagerDelegate := ctrl.NewManager
 
@@ -209,9 +355,29 @@ func setupOverrides() func() {
 	// override default controller method to retrieve a kube config
 	oldSetLoggerDelegate := ctrl.SetLogger
 
-	oldDoguManager := controllers.NewManager
-	controllers.NewManager = func(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
-		return &controllers.DoguManager{}, nil
+	oldDoguReconciler := NewDoguReconciler
+	NewDoguReconciler = func(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder, doguHealthStatusUpdater health.DoguHealthStatusUpdater, availabilityChecker *health.AvailabilityChecker) (controllers.DoguReconciler, error) {
+		reconciler := NewMockDoguReconciler(t)
+		if doguRecErr == nil {
+			reconciler.EXPECT().SetupWithManager(mock.Anything, mock.Anything).Times(1).Return(doguRecSetupErr)
+		}
+		return reconciler, doguRecErr
+	}
+
+	oldGlobalConfigReconciler := NewGlobalConfigReconciler
+	NewGlobalConfigReconciler = func(ecosystemClient doguClient.EcoSystemV2Interface, client client.Client, namespace string, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (controllers.GenericReconciler, error) {
+		reconciler := NewMockGenericReconciler(t)
+		if globalConfigRecErr == nil {
+			reconciler.EXPECT().SetupWithManager(mock.Anything).Times(1).Return(globalConfigRecSetupErr)
+		}
+		return reconciler, globalConfigRecErr
+	}
+
+	oldDoguRestartReconciler := NewDoguRestartReconciler
+	NewDoguRestartReconciler = func(doguRestartInterface doguClient.DoguRestartInterface, doguInterface doguClient.DoguInterface, recorder record.EventRecorder, gc controllers.DoguRestartGarbageCollector) controllers.GenericReconciler {
+		reconciler := NewMockGenericReconciler(t)
+		reconciler.EXPECT().SetupWithManager(mock.Anything).Times(1).Return(doguRestartRecSetupErr)
+		return reconciler
 	}
 
 	return func() {
@@ -221,8 +387,26 @@ func setupOverrides() func() {
 		ctrl.SetupSignalHandler = oldHandler
 		ctrl.SetLogger = oldSetLoggerDelegate
 		ctrl.NewControllerManagedBy = oldCtrlBuilder
-		controllers.NewManager = oldDoguManager
+		NewDoguReconciler = oldDoguReconciler
+		NewDoguRestartReconciler = oldDoguRestartReconciler
+		NewGlobalConfigReconciler = oldGlobalConfigReconciler
 	}
+}
+
+func getTestScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v2",
+		Kind:    "dogu",
+	}, &v2.Dogu{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v2",
+		Kind:    "dogurestart",
+	}, &v2.DoguRestart{})
+	return scheme
 }
 
 func createMockDefinitions() map[string]mockDefinition {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	client2 "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,7 +35,7 @@ type globalConfigReconciler struct {
 	doguEvents         chan<- event.TypedGenericEvent[*v2.Dogu]
 }
 
-func NewGlobalConfigReconciler(ecosystemClient ecosystemInterface, client client.Client, namespace string, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (*globalConfigReconciler, error) {
+func NewGlobalConfigReconciler(ecosystemClient client2.EcoSystemV2Interface, client client.Client, namespace string, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (GenericReconciler, error) {
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
 		return nil, err

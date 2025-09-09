@@ -7,10 +7,8 @@ import (
 	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -59,9 +57,9 @@ type restartInstruction struct {
 	req                  ctrl.Request
 	restart              *doguv2.DoguRestart
 	dogu                 *doguv2.Dogu
-	doguRestartInterface doguClient.DoguRestartInterface
-	doguInterface        doguClient.DoguInterface
-	recorder             record.EventRecorder
+	doguRestartInterface doguRestartInterface
+	doguInterface        doguInterface
+	recorder             eventRecorder
 }
 
 func (r *restartInstruction) execute(ctx context.Context) (ctrl.Result, error) {

@@ -2,8 +2,9 @@ package controllers
 
 import (
 	"fmt"
-	"k8s.io/client-go/kubernetes/fake"
 	"testing"
+
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 )
+
+const testNamespace = "ecosystem"
 
 func Test_additionalImageGetter_ImageForKey(t *testing.T) {
 	t.Run("should fail on non-existing configmap", func(t *testing.T) {

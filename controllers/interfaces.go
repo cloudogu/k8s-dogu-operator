@@ -9,7 +9,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 //nolint:unused
@@ -46,6 +50,20 @@ type ecosystemInterface interface {
 
 type doguInterface interface {
 	doguClient.DoguInterface
+}
+
+type eventRecorder interface {
+	record.EventRecorder
+}
+
+type DoguReconciler interface {
+	reconcile.Reconciler
+	SetupWithManager(mgr ctrl.Manager, externalEvents <-chan event.TypedGenericEvent[*v2.Dogu]) error
+}
+
+type GenericReconciler interface {
+	reconcile.Reconciler
+	SetupWithManager(mgr ctrl.Manager) error
 }
 
 //nolint:unused

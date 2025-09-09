@@ -26,7 +26,7 @@ type DoguRestartGarbageCollector interface {
 	DoGarbageCollection(ctx context.Context, doguName string) error
 }
 
-func NewDoguRestartReconciler(doguRestartInterface doguClient.DoguRestartInterface, doguInterface doguClient.DoguInterface, recorder record.EventRecorder, gc DoguRestartGarbageCollector) *DoguRestartReconciler {
+func NewDoguRestartReconciler(doguRestartInterface doguClient.DoguRestartInterface, doguInterface doguClient.DoguInterface, recorder record.EventRecorder, gc DoguRestartGarbageCollector) GenericReconciler {
 	return &DoguRestartReconciler{doguRestartInterface: doguRestartInterface, doguInterface: doguInterface, recorder: recorder, garbageCollector: gc}
 }
 

@@ -251,7 +251,7 @@ func Test_execPod_Exec(t *testing.T) {
 		cmd := &shellCommand{command: "/bin/ls", args: []string{"-lahF"}}
 		mockExec := NewMockCommandExecutor(t)
 		outBuf := bytes.NewBufferString("")
-		mockExec.EXPECT().ExecCommandForPod(testCtx, runningExecPod, cmd, ContainersStarted).Return(outBuf, assert.AnError)
+		mockExec.EXPECT().ExecCommandForPod(testCtx, runningExecPod, cmd).Return(outBuf, assert.AnError)
 		sut := &execPodFactory{
 			client:   fakeClient,
 			executor: mockExec,
@@ -276,7 +276,7 @@ func Test_execPod_Exec(t *testing.T) {
 		cmd := &shellCommand{command: "/bin/ls", args: []string{"-lahF"}}
 		mockExec := NewMockCommandExecutor(t)
 		outBuf := bytes.NewBufferString("possibly some output goes here")
-		mockExec.EXPECT().ExecCommandForPod(testCtx, runningExecPod, cmd, ContainersStarted).Return(outBuf, nil)
+		mockExec.EXPECT().ExecCommandForPod(testCtx, runningExecPod, cmd).Return(outBuf, nil)
 		sut := &execPodFactory{
 			client:   fakeClient,
 			executor: mockExec,

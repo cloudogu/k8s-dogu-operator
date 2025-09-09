@@ -46,7 +46,14 @@ type doguReconciler struct {
 	doguInterface     doguInterface
 }
 
-func DoguReconciler(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder, doguHealthStatusUpdater health.DoguHealthStatusUpdater, availabilityChecker *health.AvailabilityChecker) (*doguReconciler, error) {
+func NewDoguReconciler(
+	client client.Client,
+	ecosystemClient doguClient.EcoSystemV2Interface,
+	operatorConfig *config.OperatorConfig,
+	eventRecorder record.EventRecorder,
+	doguHealthStatusUpdater health.DoguHealthStatusUpdater,
+	availabilityChecker *health.AvailabilityChecker,
+) (DoguReconciler, error) {
 	ctx := context.Background()
 	restConfig, err := ctrl.GetConfig()
 	if err != nil {
