@@ -2,6 +2,7 @@ package health
 
 import (
 	"testing"
+	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
@@ -40,7 +41,23 @@ func TestStartupHandler_Start(t *testing.T) {
 		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
 		doguInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(doguList, nil)
 
-		sut := StartupHandler{doguInterface: doguInterfaceMock, doguEvents: make(chan<- event.TypedGenericEvent[*v2.Dogu])}
+		doguEvents := make(chan event.TypedGenericEvent[*v2.Dogu])
+		sut := StartupHandler{doguInterface: doguInterfaceMock, doguEvents: doguEvents}
+
+		go func() {
+			expectedEvents := []event.TypedGenericEvent[*v2.Dogu]{
+				{Object: casDogu}, {Object: ldapDogu},
+			}
+			for i, want := range expectedEvents {
+				select {
+				case got := <-doguEvents:
+					assert.Equalf(t, want, got, "mismatch at index %d", i)
+				case <-time.After(1 * time.Second):
+					t.Errorf("timed out waiting for event %d; wanted %#v", i, want)
+					return
+				}
+			}
+		}()
 
 		// when
 		err := sut.Start(testCtx)
@@ -55,7 +72,7 @@ func TestStartupHandler_Start(t *testing.T) {
 
 		doguInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(nil, assert.AnError)
 
-		sut := StartupHandler{doguInterface: doguInterfaceMock, doguEvents: make(chan<- event.TypedGenericEvent[*v2.Dogu])}
+		sut := StartupHandler{doguInterface: doguInterfaceMock, doguEvents: nil}
 
 		// when
 		err := sut.Start(testCtx)
