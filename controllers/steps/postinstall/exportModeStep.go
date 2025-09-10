@@ -30,5 +30,9 @@ func NewExportModeStep(mgrSet *util.ManagerSet, namespace string, eventRecorder 
 }
 
 func (ems *ExportModeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	return steps.RequeueWithError(ems.exportManager.UpdateExportMode(ctx, doguResource))
+	err := ems.exportManager.UpdateExportMode(ctx, doguResource)
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+	return steps.Continue()
 }

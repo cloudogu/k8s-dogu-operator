@@ -27,7 +27,10 @@ func (ams *AdditionalMountsStep) Run(ctx context.Context, doguResource *v2.Dogu)
 	}
 
 	if changed {
-		return steps.RequeueWithError(ams.UpdateAdditionalMounts(ctx, doguResource))
+		err = ams.UpdateAdditionalMounts(ctx, doguResource)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 	}
 	return steps.Continue()
 }
