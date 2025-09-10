@@ -1,9 +1,10 @@
 package serviceaccount
 
 import (
+	"testing"
+
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -79,7 +80,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mockCommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).Return(nil, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
@@ -119,8 +120,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		casRemoveSAShellCmd := exec.NewShellCommand(casRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mockCommandExecutor{}
-		commandExecutorMock.Mock.
-			On("ExecCommandForDogu", testCtx, availableCasDoguResource, casRemoveSAShellCmd, exec.PodReady).Return(nil, nil)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availableCasDoguResource, casRemoveSAShellCmd).Return(nil, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("cas")).Return(true, nil)
@@ -304,8 +304,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		postgresRemoveSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mockCommandExecutor{}
-		commandExecutorMock.Mock.
-			On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresRemoveSAShellCmd, exec.PodReady).Return(nil, assert.AnError)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresRemoveSAShellCmd).Return(nil, assert.AnError)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
@@ -340,7 +339,7 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
 
 		commandExecutorMock := &mockCommandExecutor{}
-		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(nil, nil)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).Return(nil, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)

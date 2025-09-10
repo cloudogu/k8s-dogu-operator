@@ -5,8 +5,9 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -175,7 +176,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 		commandExecutorMock := newMockCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
@@ -202,7 +203,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 		commandExecutorMock := newMockCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
@@ -373,7 +374,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 
 		commandExecutorMock := newMockCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(nil, assert.AnError)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).Return(nil, assert.AnError)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
@@ -403,7 +404,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := newMockCommandExecutor(t)
 		invalidBuffer := bytes.NewBufferString("username:user:invalid\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(invalidBuffer, nil)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).Return(invalidBuffer, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
@@ -432,7 +433,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		commandExecutorMock := newMockCommandExecutor(t)
 		buf := bytes.NewBufferString("username/username:user\nusername:user\npassword:password\ndatabase:dbname")
-		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
@@ -485,7 +486,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 
 		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
 		commandExecutorMock := newMockCommandExecutor(t)
-		commandExecutorMock.Mock.On("ExecCommandForDogu", testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd, exec.PodReady).Return(buf, nil)
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).Return(buf, nil)
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
