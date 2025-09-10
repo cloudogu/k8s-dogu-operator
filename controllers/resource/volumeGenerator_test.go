@@ -1,9 +1,13 @@
 package resource
 
 import (
+	"context"
+	"testing"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -11,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"testing"
 )
 
 func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
@@ -602,5 +605,77 @@ func Test_createExporterSidecarVolumeMounts(t *testing.T) {
 		assert.Equal(t, "test-data", mounts[1].Name)
 		assert.Equal(t, "/data", mounts[1].MountPath)
 		assert.Equal(t, "", mounts[1].SubPath)
+	})
+}
+
+func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
+	t.Run("error no pvc", func(t *testing.T) {
+		dogu := &k8sv2.Dogu{}
+		doguClient := newMockDoguClientInterface(t)
+		doguClient.EXPECT().UpdateStatus(context.TODO(), dogu, mock.Anything).Return(nil, nil)
+
+		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
+
+		require.NoError(t, err)
+	})
+	t.Run("error getting mindatasize", func(t *testing.T) {
+		dogu := &k8sv2.Dogu{
+			Spec: k8sv2.DoguSpec{
+				Resources: k8sv2.DoguResources{
+					DataVolumeSize: "invalid",
+				},
+			},
+		}
+		doguClient := newMockDoguClientInterface(t)
+
+		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
+
+		require.Error(t, err)
+	})
+	t.Run("error update status", func(t *testing.T) {
+		dogu := &k8sv2.Dogu{}
+		doguClient := newMockDoguClientInterface(t)
+		doguClient.EXPECT().UpdateStatus(context.TODO(), dogu, mock.Anything).Return(nil, assert.AnError)
+
+		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
+
+		require.Error(t, err)
+	})
+	t.Run("run inline function", func(t *testing.T) {
+		dogu := &k8sv2.Dogu{}
+		doguClient := newMockDoguClientInterface(t)
+		doguClient.EXPECT().UpdateStatus(context.TODO(), dogu, mock.Anything).Return(nil, nil)
+
+		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
+
+		require.NoError(t, err)
+	})
+	t.Run("update status pvc as well", func(t *testing.T) {
+		dvs := resource.MustParse("2Gi")
+		dogu := &k8sv2.Dogu{
+			Status: k8sv2.DoguStatus{
+				DataVolumeSize: &dvs,
+			},
+		}
+		clientMock := newMockK8sClient(t)
+
+		doguClient := newMockDoguClientInterface(t)
+		doguClient.EXPECT().UpdateStatus(context.TODO(), dogu, mock.Anything).Return(dogu, nil)
+		specrequests := make(map[corev1.ResourceName]resource.Quantity)
+		specrequests[corev1.ResourceStorage] = resource.MustParse("10Mi")
+		statrequests := make(map[corev1.ResourceName]resource.Quantity)
+		statrequests[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		doguPvc := &corev1.PersistentVolumeClaim{ObjectMeta: *dogu.GetObjectMeta(),
+			Spec:   corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: specrequests}},
+			Status: corev1.PersistentVolumeClaimStatus{Capacity: statrequests}}
+
+		clientMock.EXPECT().Update(context.TODO(), doguPvc).Return(nil)
+
+		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, clientMock, dogu, doguPvc)
+
+		require.NoError(t, err)
+		dvs = resource.MustParse("1Gi")
+		assert.Equal(t, doguPvc.Spec.Resources.Requests.Storage().Value(), dvs.Value())
+
 	})
 }
