@@ -28,7 +28,6 @@ func Abort() StepResult {
 
 func RequeueWithError(err error) StepResult {
 	return StepResult{
-		Err:      err,
-		Continue: true,
+		Err: err,
 	}
 }

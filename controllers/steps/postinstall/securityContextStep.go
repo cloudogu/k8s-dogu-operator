@@ -47,5 +47,8 @@ func (scs *SecurityContextStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 	}
 
 	_, err = scs.deploymentInterface.Update(ctx, deployment, metav1.UpdateOptions{})
-	return steps.RequeueWithError(err)
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+	return steps.Continue()
 }

@@ -31,7 +31,9 @@ func (aias *AdditionalIngressAnnotationsStep) Run(ctx context.Context, doguResou
 
 	if ingressAnnotationsChanged {
 		err = aias.SetDoguAdditionalIngressAnnotations(ctx, doguResource)
-		return steps.RequeueWithError(err)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 	}
 
 	return steps.Continue()
