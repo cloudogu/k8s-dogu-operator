@@ -6,20 +6,15 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type UnregisterDoguVersionStep struct {
-	resourceDoguFetcher resourceDoguFetcher
-	doguRegistrator     doguRegistrator
-	localDoguFetcher    localDoguFetcher
+	doguRegistrator doguRegistrator
 }
 
-func NewUnregisterDoguVersionStep(mgrSet *util.ManagerSet) *UnregisterDoguVersionStep {
+func NewUnregisterDoguVersionStep(registrator doguRegistrator) *UnregisterDoguVersionStep {
 	return &UnregisterDoguVersionStep{
-		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
-		localDoguFetcher:    mgrSet.LocalDoguFetcher,
-		doguRegistrator:     mgrSet.DoguRegistrator,
+		doguRegistrator: registrator,
 	}
 }
 

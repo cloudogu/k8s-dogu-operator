@@ -20,7 +20,7 @@ func TestRequeueAfter(t *testing.T) {
 }
 
 func TestContinue(t *testing.T) {
-	t.Run("should return requeue after time", func(t *testing.T) {
+	t.Run("should return continue true", func(t *testing.T) {
 
 		result := Continue()
 
@@ -31,7 +31,7 @@ func TestContinue(t *testing.T) {
 }
 
 func TestAbort(t *testing.T) {
-	t.Run("should return requeue after time", func(t *testing.T) {
+	t.Run("should return continue false", func(t *testing.T) {
 
 		result := Abort()
 
@@ -40,8 +40,9 @@ func TestAbort(t *testing.T) {
 		assert.Equal(t, false, result.Continue)
 	})
 }
+
 func TestRequeueWithError(t *testing.T) {
-	t.Run("should return requeue after time", func(t *testing.T) {
+	t.Run("should return error", func(t *testing.T) {
 		err := errors.New("test error")
 		result := RequeueWithError(err)
 

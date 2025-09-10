@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // resourceDoguFetcher includes functionality to get a dogu either from the remote dogu registry or from a local development dogu map.
@@ -55,4 +56,8 @@ type doguConfigRepository interface {
 	Delete(ctx context.Context, name cescommons.SimpleName) error
 	Watch(ctx context.Context, dName cescommons.SimpleName, filters ...config.WatchFilter) (<-chan repository.DoguConfigWatchResult, error)
 	SetOwnerReference(ctx context.Context, dName cescommons.SimpleName, owners []metav1.OwnerReference) error
+}
+
+type k8sClient interface {
+	client.Client
 }

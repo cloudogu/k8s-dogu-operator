@@ -10,26 +10,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const configMapName = "k8s-dogu-operator-dogu-health"
+
 type DeleteOutOfHealthConfigMapStep struct {
-	client client.Client
+	client k8sClient
 }
 
-func NewDeleteOutOfHealthConfigMapStep(client client.Client) *DeleteOutOfHealthConfigMapStep {
+func NewDeleteOutOfHealthConfigMapStep(client k8sClient) *DeleteOutOfHealthConfigMapStep {
 	return &DeleteOutOfHealthConfigMapStep{client: client}
 }
 
 func (dhc *DeleteOutOfHealthConfigMapStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	err := dhc.DeleteDoguOutOfHealthConfigMap(ctx, doguResource)
+	err := dhc.deleteDoguOutOfHealthConfigMap(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
 	return steps.Continue()
 }
 
-func (dhc *DeleteOutOfHealthConfigMapStep) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error {
+func (dhc *DeleteOutOfHealthConfigMapStep) deleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error {
 	namespace := dogu.Namespace
 	stateConfigMap := &corev1.ConfigMap{}
-	cmKey := types.NamespacedName{Namespace: namespace, Name: "k8s-dogu-operator-dogu-health"}
+	cmKey := types.NamespacedName{Namespace: namespace, Name: configMapName}
 	err := dhc.client.Get(ctx, cmKey, stateConfigMap, &client.GetOptions{})
 
 	newData := stateConfigMap.Data

@@ -6,17 +6,16 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const finalizerName = "dogu-finalizer"
 
 type RemoveFinalizerStep struct {
-	client client.Client
+	client k8sClient
 }
 
-func NewRemoveFinalizerStep(client client.Client) *RemoveFinalizerStep {
+func NewRemoveFinalizerStep(client k8sClient) *RemoveFinalizerStep {
 	return &RemoveFinalizerStep{
 		client: client,
 	}

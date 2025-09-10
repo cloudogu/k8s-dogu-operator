@@ -8,16 +8,15 @@ import (
 	registryErrors "github.com/cloudogu/ces-commons-lib/errors"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type RemoveDoguConfigStep struct {
 	doguConfigRepository doguConfigRepository
 }
 
-func NewRemoveDoguConfigStep(configRepos util.ConfigRepositories) *RemoveDoguConfigStep {
+func NewRemoveDoguConfigStep(doguConfigRepository doguConfigRepository) *RemoveDoguConfigStep {
 	return &RemoveDoguConfigStep{
-		doguConfigRepository: configRepos.DoguConfigRepository,
+		doguConfigRepository: doguConfigRepository,
 	}
 }
 
