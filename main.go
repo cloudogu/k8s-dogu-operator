@@ -266,14 +266,8 @@ func addRunners(k8sManager manager.Manager, ecosystemClientSet doguClient.EcoSys
 	namespace string, externalDoguEvents chan event.TypedGenericEvent[*doguv2.Dogu]) error {
 	doguInterface := ecosystemClientSet.Dogus(namespace)
 
-	volumesizeStartupHandler := resource.NewVolumeStartupHandler(k8sManager.GetClient(), doguInterface)
-	err := k8sManager.Add(volumesizeStartupHandler)
-	if err != nil {
-		return err
-	}
-
 	healthStartupHandler := health.NewStartupHandler(doguInterface, externalDoguEvents)
-	err = k8sManager.Add(healthStartupHandler)
+	err := k8sManager.Add(healthStartupHandler)
 	if err != nil {
 		return err
 	}
