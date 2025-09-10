@@ -3,7 +3,6 @@ package manager
 import (
 	"context"
 	"fmt"
-	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -13,10 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-)
-
-const (
-	requeueWaitTimeout = 5 * time.Second
 )
 
 type exportModeNotYetChangedError struct {
@@ -33,16 +28,6 @@ func (e exportModeNotYetChangedError) Error() string {
 	}
 
 	return fmt.Sprintf("the export-mode of dogu %q has not yet been changed to its desired state: %v", e.doguName, e.desiredExportModeState)
-}
-
-// Requeue returns true when the error should produce a requeue for the current dogu resource operation.
-func (e exportModeNotYetChangedError) Requeue() bool {
-	return true
-}
-
-// GetRequeueTime return the time to wait before the next reconciliation.
-func (e exportModeNotYetChangedError) GetRequeueTime() time.Duration {
-	return requeueWaitTimeout
 }
 
 type doguExportManager struct {
@@ -96,7 +81,7 @@ func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource
 
 	if !shouldUpdate {
 		logger.Info(fmt.Sprintf("The export-mode of dogu %q has changed to its desired state: %v", doguResource.Name, doguResource.Spec.ExportMode))
-		return dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
+		return dem.updateStatus(ctx, doguResource, doguv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
 	}
 
 	if updateErr := dem.updateExportMode(ctx, doguResource); updateErr != nil {
@@ -121,7 +106,7 @@ func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource
 		return nil
 	}
 
-	if err := dem.updateStatusWithRetry(ctx, doguResource, doguv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode); err != nil {
+	if err := dem.updateStatus(ctx, doguResource, doguv2.DoguStatusChangingExportMode, doguResource.Status.ExportMode); err != nil {
 		return err
 	}
 
@@ -167,12 +152,10 @@ func (dem *doguExportManager) deploymentUpdateNeeded(ctx context.Context, doguRe
 	return updateNeeded, nil
 }
 
-func (dem *doguExportManager) updateStatusWithRetry(ctx context.Context, doguResource *doguv2.Dogu, phase string, activated bool) error {
-	_, err := dem.doguClient.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-		status.Status = phase
-		status.ExportMode = activated
-		return status
-	}, metav1.UpdateOptions{})
+func (dem *doguExportManager) updateStatus(ctx context.Context, doguResource *doguv2.Dogu, phase string, activated bool) error {
+	doguResource.Status.Status = phase
+	doguResource.Status.ExportMode = activated
+	_, err := dem.doguClient.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %q to %q: %w", doguResource.Name, phase, err)
 	}
