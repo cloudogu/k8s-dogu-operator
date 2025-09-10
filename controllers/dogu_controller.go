@@ -101,19 +101,24 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		requeueAfter, cont, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
 	}
 
-	if err2 := r.client.Get(ctx, req.NamespacedName, doguResource); err2 != nil {
-		logger.Error(err, fmt.Sprintf("failed to get doguResource: %s", err2))
+	getDoguResourceErr := r.client.Get(ctx, req.NamespacedName, doguResource)
+	if getDoguResourceErr != nil {
+		logger.Error(err, fmt.Sprintf("failed to get doguResource: %s", getDoguResourceErr))
 		return ctrl.Result{}, err
 	}
 
 	if requeueAfter != 0 {
-		err = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonHasToReconcile, fmt.Sprintf("The dogu resource has to be requeued after %d seconds.", requeueAfter))
+		getDoguResourceErr = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonHasToReconcile, fmt.Sprintf("The dogu resource has to be requeued after %d seconds.", requeueAfter))
 	} else if err != nil {
-		err = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonReconcileFail, fmt.Sprintf("The dogu resource has to be requeued because of an error: %q.", err))
+		getDoguResourceErr = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonReconcileFail, fmt.Sprintf("The dogu resource has to be requeued because of an error: %q.", err))
 	} else if !cont {
-		err = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonReconcileFail, "The reconcile has been aborted")
+		getDoguResourceErr = r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonReconcileFail, "The reconcile has been aborted")
 	} else {
-		err = r.setReadyCondition(ctx, doguResource, metav1.ConditionTrue, ReasonReconcileSuccess, "The dogu resource has been reconciled successfully and is ready.")
+		getDoguResourceErr = r.setReadyCondition(ctx, doguResource, metav1.ConditionTrue, ReasonReconcileSuccess, "The dogu resource has been reconciled successfully and is ready.")
+	}
+
+	if getDoguResourceErr != nil {
+		return ctrl.Result{RequeueAfter: requeueAfter}, getDoguResourceErr
 	}
 
 	return ctrl.Result{RequeueAfter: requeueAfter}, err
