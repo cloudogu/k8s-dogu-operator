@@ -102,3 +102,9 @@ type conditionUpdater interface {
 	UpdateCondition(ctx context.Context, doguResource *v2.Dogu, condition metav1.Condition) error
 	UpdateConditions(ctx context.Context, doguResource *v2.Dogu, conditions []metav1.Condition) error
 }
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ecoSystemV2Interface interface {
+	doguClient.EcoSystemV2Interface
+}

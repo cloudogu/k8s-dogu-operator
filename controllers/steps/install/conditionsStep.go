@@ -26,21 +26,19 @@ var expectedConditions = []string{
 }
 
 type ConditionsStep struct {
-	doguInterface    doguInterface
 	conditionUpdater conditionUpdater
 }
 
 func NewConditionsStep(mgrSet *util.ManagerSet, namespace string) *ConditionsStep {
 	doguInt := mgrSet.EcosystemClient.Dogus(namespace)
 	return &ConditionsStep{
-		doguInterface:    doguInt,
 		conditionUpdater: health.NewDoguConditionUpdater(doguInt),
 	}
 }
 
 func (cs *ConditionsStep) Run(ctx context.Context, doguResource *doguv2.Dogu) steps.StepResult {
 	logger := log.FromContext(ctx)
-	if doguResource.Status.Conditions != nil {
+	if doguResource.Status.Conditions == nil {
 		doguResource.Status.Conditions = make([]v1.Condition, 0)
 	}
 	if len(doguResource.Status.Conditions) == len(expectedConditions) {
