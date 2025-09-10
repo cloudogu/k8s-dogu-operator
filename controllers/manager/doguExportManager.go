@@ -31,12 +31,12 @@ func (e exportModeNotYetChangedError) Error() string {
 }
 
 type doguExportManager struct {
-	doguClient       doguClient.DoguInterface
+	doguClient       doguInterface
 	podClient        podInterface
 	deploymentClient deploymentInterface
-	resourceUpserter resource.ResourceUpserter
+	resourceUpserter resourceUpserter
 	doguFetcher      localDoguFetcher
-	eventRecorder    record.EventRecorder
+	eventRecorder    eventRecorder
 }
 
 // NewDoguExportManager creates a new doguExportManager

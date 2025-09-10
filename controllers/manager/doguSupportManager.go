@@ -31,7 +31,7 @@ type doguSupportManager struct {
 	client                       client.Client
 	doguFetcher                  localDoguFetcher
 	podTemplateResourceGenerator podTemplateResourceGenerator
-	eventRecorder                record.EventRecorder
+	eventRecorder                eventRecorder
 }
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.

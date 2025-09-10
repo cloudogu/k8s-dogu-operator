@@ -28,7 +28,7 @@ type doguAdditionalMountManager struct {
 	localDoguFetcher             localDoguFetcher
 	requirementsGenerator        requirementsGenerator
 	doguAdditionalMountValidator doguAdditionalMountsValidator
-	doguInterface                doguClient.DoguInterface
+	doguInterface                doguInterface
 	image                        string
 }
 
