@@ -216,7 +216,6 @@ func Test_execPod_createPod(t *testing.T) {
 
 func Test_execPod_Exec(t *testing.T) {
 	runningExecPod := &corev1.Pod{
-		TypeMeta:   metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap-execpod", Namespace: testNamespace},
 		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
 	}

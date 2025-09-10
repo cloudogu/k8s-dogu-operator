@@ -13,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/cloudogu/retry-lib/retry"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -23,7 +21,6 @@ import (
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // ShellCommand represents all necessary arguments to execute a command inside a container.
@@ -142,28 +139,14 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	command ShellCommand,
 	pod *corev1.Pod,
 ) (*bytes.Buffer, error) {
-	logger := log.FromContext(ctx)
-
-	var err error
 	stdin := command.Stdin()
 	buffer := bytes.NewBuffer([]byte{})
 	bufferErr := bytes.NewBuffer([]byte{})
-	err = retry.OnError(maxTries, func(err error) bool {
-		return strings.Contains(err.Error(), "error dialing backend: EOF")
-	}, func() error {
-		err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
-			Stdin:  stdin,
-			Stdout: buffer,
-			Stderr: bufferErr,
-			Tty:    false,
-		})
-		if err != nil {
-			// ignore this error and retry again instead since the container did not receive the command
-			if strings.Contains(err.Error(), "error dialing backend: EOF") {
-				logger.Error(err, fmt.Sprintf("Error executing '%s' in pod %s. Trying again.", command, pod.Name))
-			}
-		}
-		return err
+	err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  stdin,
+		Stdout: buffer,
+		Stderr: bufferErr,
+		Tty:    false,
 	})
 	if err != nil {
 		return nil, &stateError{

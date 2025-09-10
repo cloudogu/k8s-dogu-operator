@@ -33,14 +33,6 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
 		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
 	}
-	unreadyPod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
-		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionFalse}}},
-	}
-	notRunningPod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
-		Status:     corev1.PodStatus{Phase: corev1.PodPending},
-	}
 	command := NewShellCommand("ls", "-l")
 	originalMaxTries := maxTries
 	defer func() { maxTries = originalMaxTries }()
@@ -92,7 +84,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to get pod for dogu ldap")
+		assert.ErrorContains(t, err, "failed to get dogu \"ldap\": dogus.k8s.cloudogu.com \"ldap\" not found")
 	})
 
 	t.Run("found no dogu pod", func(t *testing.T) {
@@ -111,47 +103,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to get pod for dogu ldap")
-	})
-
-	t.Run("pod is not ready", func(t *testing.T) {
-		// given
-		cli := fake2.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(doguResource, unreadyPod).
-			Build()
-		client := testclient.NewSimpleClientset(unreadyPod)
-		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
-
-		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "an error occurred while waiting for pod ldap-xyz to have status ready")
-		assert.ErrorContains(t, err, "the maximum number of retries was reached")
-		assert.ErrorContains(t, err, "expected status ready not fulfilled")
-	})
-
-	t.Run("pod is not running", func(t *testing.T) {
-		// given
-		cli := fake2.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(doguResource, notRunningPod).
-			Build()
-		client := testclient.NewSimpleClientset(notRunningPod)
-		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
-
-		// when
-		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "an error occurred while waiting for pod ldap-xyz to have status started")
-		assert.ErrorContains(t, err, "the maximum number of retries was reached")
-		assert.ErrorContains(t, err, "expected status started not fulfilled")
+		assert.ErrorContains(t, err, "failed to get pod from dogu \"ldap\": found no pods for labels map[dogu.name:ldap dogu.version:2.4.48-4]")
 	})
 
 	t.Run("failed to create spdy", func(t *testing.T) {
@@ -201,10 +153,6 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 	readyPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
 		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
-	}
-	unreadyPod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},
-		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionFalse}}},
 	}
 
 	command := NewShellCommand("ls", "-l")
@@ -273,37 +221,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		require.NotNil(t, buffer)
 		assert.Equal(t, expectedBuffer, buffer)
 	})
-	t.Run("found no pods", func(t *testing.T) {
-		// given
-		cli := fake2.NewClientBuilder().Build()
-		client := testclient.NewSimpleClientset()
-		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
 
-		// when
-		_, err := sut.ExecCommandForPod(ctx, readyPod, &shellCommand{})
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, `pods "ldap-xyz" not found`)
-	})
-	t.Run("pod is not ready", func(t *testing.T) {
-		// given
-		cli := fake2.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			WithObjects(doguResource, unreadyPod).
-			Build()
-		client := testclient.NewSimpleClientset(unreadyPod)
-		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
-
-		// when
-		_, err := sut.ExecCommandForPod(ctx, unreadyPod, nil)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "an error occurred while waiting for pod ldap-xyz to have status ready")
-	})
 	t.Run("failed to create spdy", func(t *testing.T) {
 		// given
 		cli := fake2.NewClientBuilder().Build()
