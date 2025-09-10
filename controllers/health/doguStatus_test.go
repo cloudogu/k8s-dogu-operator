@@ -1,14 +1,13 @@
 package health
 
 import (
-	"context"
+	"testing"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/stretchr/testify/mock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,16 +51,12 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 
 		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-		doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1api.UpdateOptions{}).Return(nil, assert.AnError).
-			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1api.UpdateOptions) {
-				status := modifyStatusFn(dogu.Status)
-				assert.Equal(t, v2.DoguStatus{Status: "", RequeueTime: 0, RequeuePhase: "", Health: "available", Stopped: false}, status)
-			})
+		doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(nil, assert.AnError)
 		ecosystemClientMock := newMockEcosystemInterface(t)
 		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
 		recorderMock := newMockEventRecorder(t)
-		recorderMock.EXPECT().Event(dogu, "Warning", "HealthStatusUpdate", "failed to update dogu \"test-namespace/my-dogu\" with current health status [\"\"] to desired health status [\"available\"]")
+		recorderMock.EXPECT().Event(dogu, "Warning", "HealthStatusUpdate", "failed to update dogu \"test-namespace/my-dogu\" to desired health status \"available\"")
 
 		sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
 
@@ -71,7 +66,7 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to update dogu \"test-namespace/my-dogu\" with current health status [\"\"] to desired health status [\"available\"]")
+		assert.ErrorContains(t, err, "failed to update dogu \"test-namespace/my-dogu\" to desired health status \"available\"")
 	})
 	t.Run("should succeed to update health status of dogu", func(t *testing.T) {
 		t.Run("available", func(t *testing.T) {
@@ -80,11 +75,7 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 
 			doguClientMock := newMockDoguInterface(t)
 			doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-			doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1api.UpdateOptions{}).Return(nil, nil).
-				Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1api.UpdateOptions) {
-					status := modifyStatusFn(dogu.Status)
-					assert.Equal(t, v2.DoguStatus{Status: "", RequeueTime: 0, RequeuePhase: "", Health: "available", Stopped: false}, status)
-				})
+			doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(nil, nil)
 			ecosystemClientMock := newMockEcosystemInterface(t)
 			ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
@@ -105,11 +96,7 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 
 			doguClientMock := newMockDoguInterface(t)
 			doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-			doguClientMock.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, metav1api.UpdateOptions{}).Return(nil, nil).
-				Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1api.UpdateOptions) {
-					status := modifyStatusFn(dogu.Status)
-					assert.Equal(t, v2.DoguStatus{Status: "", RequeueTime: 0, RequeuePhase: "", Health: "unavailable", Stopped: false}, status)
-				})
+			doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(nil, nil)
 			ecosystemClientMock := newMockEcosystemInterface(t)
 			ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 

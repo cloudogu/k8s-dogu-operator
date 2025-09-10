@@ -48,9 +48,8 @@ func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.N
 
 	dogu.Status.Health = desiredHealthStatus
 	_, err = doguEcosystemClient.UpdateStatus(ctx, dogu, metav1api.UpdateOptions{})
-
 	if err != nil {
-		message := fmt.Sprintf("failed to update dogu %q with current health status [%q] to desired health status [%q]", doguName, dogu.Status.Health, desiredHealthStatus)
+		message := fmt.Sprintf("failed to update dogu %q to desired health status %q", doguName, desiredHealthStatus)
 		dsw.recorder.Event(dogu, v1.EventTypeWarning, statusUpdateEventReason, message)
 		return fmt.Errorf("%s: %w", message, err)
 	}
