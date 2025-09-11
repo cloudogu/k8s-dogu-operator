@@ -52,7 +52,6 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			postinstall.NewAdditionalMountsStep(mgrSet, namespace),
 			postinstall.NewRestartDoguStep(client, mgrSet, namespace, configRepos, doguRestartManager),
 			upgrade.NewEqualDoguDescriptorsStep(mgrSet),
-			//upgrade.NewHealthStep(mgrSet),
 			upgrade.NewRegisterDoguVersionStep(mgrSet),
 			upgrade.NewUpdateDeploymentStep(client, mgrSet, namespace),
 			upgrade.NewDeleteExecPodStep(mgrSet),

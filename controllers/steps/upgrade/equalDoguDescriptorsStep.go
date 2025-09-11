@@ -8,6 +8,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
+	semver "golang.org/x/mod/semver"
 )
 
 type EqualDoguDescriptorsStep struct {
@@ -36,6 +37,10 @@ func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.
 
 	if localDescriptor.Version == remoteDescriptor.Version {
 		return steps.Continue()
+	}
+
+	if isOlder(remoteDescriptor.Version, localDescriptor.Version) {
+		return steps.Abort()
 	}
 
 	err = edds.checkDoguIdentity(localDescriptor, remoteDescriptor, changeNamespace)
@@ -73,4 +78,14 @@ func (edds *EqualDoguDescriptorsStep) checkDoguIdentity(localDogu *core.Dogu, re
 	}
 
 	return nil
+}
+
+func isOlder(version1, version2 string) bool {
+	if version1[0] != 'v' {
+		version1 = "v" + version1
+	}
+	if version2[0] != 'v' {
+		version2 = "v" + version2
+	}
+	return semver.Compare(version1, version2) < 0
 }
