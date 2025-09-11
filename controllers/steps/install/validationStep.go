@@ -19,7 +19,7 @@ type ValidationStep struct {
 	resourceDoguFetcher           resourceDoguFetcher
 	securityValidator             securityValidator
 	doguAdditionalMountsValidator doguAdditionalMountsValidator
-	dependencyValidator           upgrade.DependencyValidator
+	dependencyValidator           dependencyValidator
 }
 
 func NewValidationStep(mgrSet *util.ManagerSet) *ValidationStep {

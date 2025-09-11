@@ -14,6 +14,7 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -139,4 +140,28 @@ type deploymentAvailabilityChecker interface {
 type doguHealthStatusUpdater interface {
 	UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error
 	UpdateHealthConfigMap(ctx context.Context, deployment *apps.Deployment, doguJson *cesappcore.Dogu) error
+}
+
+type serviceAccountCreator interface {
+	CreateAll(ctx context.Context, dogu *cesappcore.Dogu) error
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type clientSet interface {
+	kubernetes.Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type coreV1Interface interface {
+	v1.CoreV1Interface
+}
+
+type dependencyValidator interface {
+	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
+}
+
+type persistentVolumeClaimInterface interface {
+	v1.PersistentVolumeClaimInterface
 }

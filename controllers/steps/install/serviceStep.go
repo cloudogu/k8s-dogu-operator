@@ -2,9 +2,7 @@ package install
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
@@ -30,7 +28,7 @@ func NewServiceStep(mgrSet *util.ManagerSet, namespace string) *ServiceStep {
 }
 
 func (ses *ServiceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	doguDescriptor, err := ses.getDoguDescriptor(ctx, doguResource)
+	doguDescriptor, err := ses.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
@@ -51,15 +49,6 @@ func (ses *ServiceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.St
 	}
 
 	return steps.Continue()
-}
-
-func (ses *ServiceStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {
-	doguDescriptor, err := ses.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch dogu descriptor: %w", err)
-	}
-
-	return doguDescriptor, nil
 }
 
 func (ses *ServiceStep) createOrUpdateService(ctx context.Context, service *corev1.Service) error {

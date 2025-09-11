@@ -2,17 +2,14 @@ package install
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type ServiceAccountStep struct {
-	serviceAccountCreator serviceaccount.ServiceAccountCreator
+	serviceAccountCreator serviceAccountCreator
 	localDoguFetcher      localDoguFetcher
 }
 
@@ -24,7 +21,7 @@ func NewServiceAccountStep(mgrSet *util.ManagerSet) *ServiceAccountStep {
 }
 
 func (sas *ServiceAccountStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	doguDescriptor, err := sas.getDoguDescriptor(ctx, doguResource)
+	doguDescriptor, err := sas.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
@@ -36,13 +33,4 @@ func (sas *ServiceAccountStep) Run(ctx context.Context, doguResource *v2.Dogu) s
 	}
 
 	return steps.Continue()
-}
-
-func (sas *ServiceAccountStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {
-	doguDescriptor, err := sas.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch dogu descriptor: %w", err)
-	}
-
-	return doguDescriptor, nil
 }

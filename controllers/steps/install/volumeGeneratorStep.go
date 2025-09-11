@@ -6,22 +6,19 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type VolumeGeneratorStep struct {
 	localDoguFetcher localDoguFetcher
-	resourceUpserter resource.ResourceUpserter
-	pvcGetter        v1.PersistentVolumeClaimInterface
+	resourceUpserter resourceUpserter
+	pvcGetter        persistentVolumeClaimInterface
 }
 
 func NewVolumeGeneratorStep(mgrSet *util.ManagerSet, namespace string) *VolumeGeneratorStep {
-
 	return &VolumeGeneratorStep{
 		localDoguFetcher: mgrSet.LocalDoguFetcher,
 		resourceUpserter: mgrSet.ResourceUpserter,
