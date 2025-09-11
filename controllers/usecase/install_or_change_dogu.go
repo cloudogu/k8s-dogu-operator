@@ -27,11 +27,14 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			install.NewHealthCheckStep(client, availabilityChecker, doguHealthStatusUpdater, mgrSet, namespace),
 			install.NewValidationStep(mgrSet),
 			install.NewFinalizerExistsStep(),
-			install.NewDoguConfigStep(configRepos),
+			// Dogu config steps
+			install.NewCreateConfigStep(configRepos.DoguConfigRepository),
 			install.NewOwnerReferenceStep(configRepos.DoguConfigRepository),
-			install.NewSensitiveConfigStep(configRepos),
+			// Sensitive dogu config steps
+			install.NewCreateConfigStep(configRepos.SensitiveDoguRepository),
 			install.NewOwnerReferenceStep(configRepos.SensitiveDoguRepository),
 			install.NewRegisterDoguVersionStep(mgrSet),
+			// Set owner reference for local dogu descriptor
 			install.NewOwnerReferenceStep(mgrSet.LocalDoguDescriptorRepository),
 			install.NewServiceAccountStep(mgrSet),
 			install.NewServiceStep(mgrSet, namespace),
