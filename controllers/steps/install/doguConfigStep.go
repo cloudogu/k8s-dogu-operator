@@ -28,21 +28,12 @@ func (dcs *DoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) steps
 			return steps.RequeueWithError(err)
 		}
 
-		err = dcs.createConfig(ctx, doguResource)
+		emptyCfg := config.CreateDoguConfig(cescommons.SimpleName(doguResource.Name), make(config.Entries))
+		_, err = dcs.doguConfigRepository.Create(ctx, emptyCfg)
 		if err != nil {
 			return steps.RequeueWithError(err)
 		}
 	}
 
 	return steps.Continue()
-}
-
-func (dcs *DoguConfigStep) createConfig(ctx context.Context, doguResource *v2.Dogu) error {
-	emptyCfg := config.CreateDoguConfig(cescommons.SimpleName(doguResource.Name), make(config.Entries))
-
-	_, err := dcs.doguConfigRepository.Create(ctx, emptyCfg)
-	if err != nil {
-		return err
-	}
-	return nil
 }

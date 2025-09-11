@@ -92,7 +92,7 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		dogu,
 		func(deployment *v1.Deployment) {
 			increaseStartupProbeTimeoutForUpdate(doguResource.Name, deployment)
-			setPreviousDoguVersionInAnnotations(fromDogu.Version, deployment)
+			util.SetPreviousDoguVersionInAnnotations(dogu.Version, deployment)
 		},
 	)
 
@@ -120,13 +120,6 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *v1.D
 			break
 		}
 	}
-}
-
-func setPreviousDoguVersionInAnnotations(previousDoguVersion string, deployment *v1.Deployment) {
-	if deployment.Annotations == nil {
-		deployment.Annotations = map[string]string{}
-	}
-	deployment.Annotations[previousDoguVersionAnnotationKey] = previousDoguVersion
 }
 
 func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, toDogu *core.Dogu) error {

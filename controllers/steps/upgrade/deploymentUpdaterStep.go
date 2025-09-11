@@ -46,7 +46,7 @@ func (dus *DeploymentUpdaterStep) Run(ctx context.Context, doguResource *v2.Dogu
 	}
 
 	_, err = dus.upserter.UpsertDoguDeployment(ctx, doguResource, dogu, func(deployment *v1.Deployment) {
-		setPreviousDoguVersionInAnnotations(dogu.Version, deployment)
+		util.SetPreviousDoguVersionInAnnotations(dogu.Version, deployment)
 	})
 	if err != nil {
 		return steps.RequeueWithError(err)

@@ -10,9 +10,11 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	apps "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // premisesChecker includes functionality to check if the premises for an upgrade are met.
@@ -107,4 +109,20 @@ type conditionUpdater interface {
 //goland:noinspection GoUnusedType
 type ecoSystemV2Interface interface {
 	doguClient.EcoSystemV2Interface
+}
+
+type k8sClient interface {
+	client.Client
+}
+
+type resourceUpserter interface {
+	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
+	// All parameters are mandatory except deploymentPatch which may be nil.
+	// The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
+	UpsertDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
+	// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
+	UpsertDoguService(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, image *imagev1.ConfigFile) (*coreV1.Service, error)
+	// UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
+	UpsertDoguPVCs(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (*coreV1.PersistentVolumeClaim, error)
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
 }

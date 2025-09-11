@@ -39,7 +39,7 @@ func NewDoguInstallOrChangeUseCase(client client.Client, mgrSet *util.ManagerSet
 			install.NewCustomK8sResourceStep(mgrSet, eventRecorder),
 			install.NewVolumeGeneratorStep(mgrSet, namespace),
 			install.NewNetworkPoliciesStep(mgrSet),
-			install.NewDeploymentStep(client, mgrSet, doguHealthStatusUpdater),
+			install.NewDeploymentStep(client, mgrSet),
 			postinstall.NewReplicasStep(client, mgrSet, namespace),
 			postinstall.NewVolumeExpanderStep(client, mgrSet, namespace),
 			postinstall.NewAdditionalIngressAnnotationsStep(client),
