@@ -13,7 +13,7 @@ import (
 
 type SecurityContextStep struct {
 	localDoguFetcher         localDoguFetcher
-	securityContextGenerator *resource.SecurityContextGenerator
+	securityContextGenerator securityContextGenerator
 	deploymentInterface      deploymentInterface
 }
 

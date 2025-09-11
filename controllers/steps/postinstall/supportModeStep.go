@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -25,11 +24,11 @@ const (
 
 type SupportModeStep struct {
 	supportManager supportManager
-	client         client.Client
+	client         k8sClient
 	doguInterface  doguInterface
 }
 
-func NewSupportModeStep(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, namespace string) *SupportModeStep {
+func NewSupportModeStep(client k8sClient, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, namespace string) *SupportModeStep {
 	return &SupportModeStep{
 		supportManager: manager.NewDoguSupportManager(client, mgrSet, eventRecorder),
 		client:         client,

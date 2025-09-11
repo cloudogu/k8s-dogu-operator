@@ -11,19 +11,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const requeueAfterReplicasStep = 5 * time.Second
 
 type ReplicasStep struct {
 	deploymentInterface deploymentInterface
-	client              client.Client
+	client              k8sClient
 	localDoguFetcher    localDoguFetcher
 	doguInterface       doguInterface
 }
 
-func NewReplicasStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *ReplicasStep {
+func NewReplicasStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *ReplicasStep {
 	deploymentInt := mgrSet.ClientSet.AppsV1().Deployments(namespace)
 	return &ReplicasStep{
 		deploymentInterface: deploymentInt,

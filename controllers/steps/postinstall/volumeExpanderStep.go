@@ -15,19 +15,18 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const requeueAfterVolume = 10 * time.Second
 const ActualVolumeSizeMeetsMinDataSize = "ActualVolumeSizeMeetsMinDataSize"
 
 type VolumeExpanderStep struct {
-	client           client.Client
+	client           k8sClient
 	doguInterface    doguInterface
 	localDoguFetcher localDoguFetcher
 }
 
-func NewVolumeExpanderStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *VolumeExpanderStep {
+func NewVolumeExpanderStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *VolumeExpanderStep {
 	return &VolumeExpanderStep{
 		client:           client,
 		doguInterface:    mgrSet.EcosystemClient.Dogus(namespace),

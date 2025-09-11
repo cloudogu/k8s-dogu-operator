@@ -9,19 +9,17 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v4 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type RestartDoguStep struct {
-	client                  client.Client
+	client                  k8sClient
 	doguConfigRepository    doguConfigRepository
 	sensitiveDoguRepository doguConfigRepository
-	podInterface            v4.PodInterface
+	podInterface            podInterface
 	doguRestartManager      doguRestartManager
 }
 
-func NewRestartDoguStep(client client.Client, mgrSet *util.ManagerSet, namespace string, configRepos util.ConfigRepositories, manager doguRestartManager) *RestartDoguStep {
+func NewRestartDoguStep(client k8sClient, mgrSet *util.ManagerSet, namespace string, configRepos util.ConfigRepositories, manager doguRestartManager) *RestartDoguStep {
 	return &RestartDoguStep{
 		client:                  client,
 		podInterface:            mgrSet.ClientSet.CoreV1().Pods(namespace),
