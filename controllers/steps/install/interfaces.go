@@ -13,6 +13,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -125,4 +126,17 @@ type resourceUpserter interface {
 	// UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
 	UpsertDoguPVCs(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (*coreV1.PersistentVolumeClaim, error)
 	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+}
+
+type ownerReferenceSetter interface {
+	SetOwnerReference(ctx context.Context, dName cescommons.SimpleName, owners []metav1.OwnerReference) error
+}
+
+type deploymentAvailabilityChecker interface {
+	IsAvailable(deployment *apps.Deployment) bool
+}
+
+type doguHealthStatusUpdater interface {
+	UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error
+	UpdateHealthConfigMap(ctx context.Context, deployment *apps.Deployment, doguJson *cesappcore.Dogu) error
 }

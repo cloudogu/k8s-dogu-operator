@@ -6,15 +6,12 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -23,15 +20,15 @@ const (
 )
 
 type HealthCheckStep struct {
-	client                  client.Client
-	availabilityChecker     health.DeploymentAvailabilityChecker
-	doguHealthStatusUpdater health.DoguHealthStatusUpdater
+	client                  k8sClient
+	availabilityChecker     deploymentAvailabilityChecker
+	doguHealthStatusUpdater doguHealthStatusUpdater
 	doguFetcher             localDoguFetcher
 	doguInterface           doguInterface
 }
 
-func NewHealthCheckStep(client client.Client, availabilityChecker *health.AvailabilityChecker,
-	doguHealthStatusUpdater health.DoguHealthStatusUpdater, mgrSet *util.ManagerSet, namespace string) *HealthCheckStep {
+func NewHealthCheckStep(client k8sClient, availabilityChecker deploymentAvailabilityChecker,
+	doguHealthStatusUpdater doguHealthStatusUpdater, mgrSet *util.ManagerSet, namespace string) *HealthCheckStep {
 	return &HealthCheckStep{
 		client:                  client,
 		availabilityChecker:     availabilityChecker,
@@ -77,13 +74,13 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 		message = "All replicas are available"
 		desiredHealthStatus = doguv2.AvailableHealthStatus
 	}
-	log.FromContext(ctx).Info(fmt.Sprintf("dogu deployment %q is %s", doguDeployment.Name, (map[bool]string{true: "available", false: "unavailable"})[doguAvailable]))
+
 	condition := metav1.Condition{
 		Type:               doguv2.ConditionHealthy,
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
-		LastTransitionTime: metav1.Now(),
+		LastTransitionTime: metav1.Now().Rfc3339Copy(),
 	}
 
 	doguResource, err = hcs.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
