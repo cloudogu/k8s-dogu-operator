@@ -21,14 +21,14 @@ import (
 const requeueAfterRevertStartupProbe = time.Second * 3
 
 type RevertStartupProbeStep struct {
-	client              client.Client
+	client              k8sClient
 	resourceDoguFetcher resourceDoguFetcher
 	deploymentInterface deploymentInterface
-	doguCommandExecutor exec.CommandExecutor
-	execPodFactory      exec.ExecPodFactory
+	doguCommandExecutor commandExecutor
+	execPodFactory      execPodFactory
 }
 
-func NewRevertStartupProbeStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *RevertStartupProbeStep {
+func NewRevertStartupProbeStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *RevertStartupProbeStep {
 	return &RevertStartupProbeStep{
 		client:              client,
 		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),

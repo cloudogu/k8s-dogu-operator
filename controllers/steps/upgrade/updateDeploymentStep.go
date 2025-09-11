@@ -10,7 +10,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 
@@ -28,16 +27,16 @@ const preUpgradeScriptDir = "/tmp/pre-upgrade"
 const previousDoguVersionAnnotationKey = "k8s.cloudogu.com/dogu-previous-version"
 
 type UpdateDeploymentStep struct {
-	client              client.Client
-	upserter            resource.ResourceUpserter
+	client              k8sClient
+	upserter            resourceUpserter
 	deploymentInterface deploymentInterface
 	resourceDoguFetcher resourceDoguFetcher
 	localDoguFetcher    localDoguFetcher
-	execPodFactory      exec.ExecPodFactory
-	doguCommandExecutor exec.CommandExecutor
+	execPodFactory      execPodFactory
+	doguCommandExecutor commandExecutor
 }
 
-func NewUpdateDeploymentStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *UpdateDeploymentStep {
+func NewUpdateDeploymentStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *UpdateDeploymentStep {
 	return &UpdateDeploymentStep{
 		client:              client,
 		upserter:            mgrSet.ResourceUpserter,

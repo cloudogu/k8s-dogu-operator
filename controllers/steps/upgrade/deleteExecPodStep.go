@@ -5,13 +5,12 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type DeleteExecPodStep struct {
-	execPodFactory   exec.ExecPodFactory
+	execPodFactory   execPodFactory
 	localDoguFetcher localDoguFetcher
 }
 

@@ -7,15 +7,14 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeleteDevelopmentDoguMapStep struct {
 	resourceDoguFetcher resourceDoguFetcher
-	client              client.Client
+	client              k8sClient
 }
 
-func NewDeleteDevelopmentDoguMapStep(client client.Client, mgrSet *util.ManagerSet) *DeleteDevelopmentDoguMapStep {
+func NewDeleteDevelopmentDoguMapStep(client k8sClient, mgrSet *util.ManagerSet) *DeleteDevelopmentDoguMapStep {
 	return &DeleteDevelopmentDoguMapStep{
 		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
 		client:              client,

@@ -7,8 +7,12 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
@@ -64,4 +68,27 @@ type deploymentInterface interface {
 //goland:noinspection GoUnusedType
 type doguInterface interface {
 	doguClient.DoguInterface
+}
+
+type k8sClient interface {
+	client.Client
+}
+
+type execPodFactory interface {
+	exec.ExecPodFactory
+}
+
+type resourceUpserter interface {
+	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
+	// All parameters are mandatory except deploymentPatch which may be nil.
+	// The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
+	UpsertDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
+}
+
+type securityContextGenerator interface {
+	Generate(ctx context.Context, dogu *cesappcore.Dogu, doguResource *v2.Dogu) (*corev1.PodSecurityContext, *corev1.SecurityContext)
+}
+
+type commandExecutor interface {
+	exec.CommandExecutor
 }

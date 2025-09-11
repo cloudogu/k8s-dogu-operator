@@ -9,18 +9,17 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeploymentUpdaterStep struct {
-	upserter                 resource.ResourceUpserter
+	upserter                 resourceUpserter
 	localDoguFetcher         localDoguFetcher
-	client                   client.Client
+	client                   k8sClient
 	deploymentInterface      deploymentInterface
-	securityContextGenerator *resource.SecurityContextGenerator
+	securityContextGenerator securityContextGenerator
 }
 
-func NewDeploymentUpdaterStep(client client.Client, mgrSet *util.ManagerSet, namespace string) *DeploymentUpdaterStep {
+func NewDeploymentUpdaterStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *DeploymentUpdaterStep {
 	return &DeploymentUpdaterStep{
 		upserter:                 mgrSet.ResourceUpserter,
 		localDoguFetcher:         mgrSet.LocalDoguFetcher,
