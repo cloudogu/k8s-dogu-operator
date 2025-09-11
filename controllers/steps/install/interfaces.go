@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -164,4 +165,24 @@ type dependencyValidator interface {
 
 type persistentVolumeClaimInterface interface {
 	v1.PersistentVolumeClaimInterface
+}
+
+type execPodFactory interface {
+	CreateOrUpdate(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+	Exists(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) bool
+	CheckReady(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+}
+
+type eventRecorder interface {
+	record.EventRecorder
+}
+
+type fileExtractor interface {
+	// ExtractK8sResourcesFromExecPod copies files from an exec pod into map of strings.
+	ExtractK8sResourcesFromExecPod(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (map[string]string, error)
+}
+
+type collectApplier interface {
+	// CollectApply applies the given resources to the K8s cluster
+	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *v2.Dogu) error
 }

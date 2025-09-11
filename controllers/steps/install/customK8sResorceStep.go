@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
@@ -14,11 +12,11 @@ import (
 )
 
 type CustomK8sResourceStep struct {
-	recorder         record.EventRecorder
+	recorder         eventRecorder
 	localDoguFetcher localDoguFetcher
-	execPodFactory   exec.ExecPodFactory
-	fileExtractor    exec.FileExtractor
-	collectApplier   resource.CollectApplier
+	execPodFactory   execPodFactory
+	fileExtractor    fileExtractor
+	collectApplier   collectApplier
 }
 
 func NewCustomK8sResourceStep(mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *CustomK8sResourceStep {
@@ -34,7 +32,7 @@ func NewCustomK8sResourceStep(mgrSet *util.ManagerSet, eventRecorder record.Even
 func (ses *CustomK8sResourceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	dogu, err := ses.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
-		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor"))
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
 
 	execPodExists := ses.execPodFactory.Exists(ctx, doguResource, dogu)

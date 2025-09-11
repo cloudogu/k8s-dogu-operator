@@ -10,7 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
@@ -19,10 +18,10 @@ const podTemplateVersionKey = "dogu.version"
 const InstallEventReason = "Installation"
 
 type ExecPodCreateStep struct {
-	client           client.Client
-	recorder         record.EventRecorder
+	client           k8sClient
+	recorder         eventRecorder
 	localDoguFetcher localDoguFetcher
-	execPodFactory   exec.ExecPodFactory
+	execPodFactory   execPodFactory
 }
 
 func NewExecPodCreateStep(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *ExecPodCreateStep {
