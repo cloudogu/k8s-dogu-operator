@@ -26,8 +26,6 @@ import (
 
 const (
 	errMsgFailedToGetPVC        = "failed to get pvc"
-	k8sNginxIngressDoguName     = "nginx-ingress"
-	k8sNginxStaticDoguName      = "nginx-static"
 	k8sCesGatewayComponentLabel = "k8s.cloudogu.com/component.name"
 	k8sCesGatewayComponentName  = "k8s-ces-gateway"
 	dependencyTypeDogu          = "dogu"
@@ -206,10 +204,6 @@ func (u *upserter) upsertServiceAnnotationNetworkPolicy(ctx context.Context, dog
 }
 
 func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
-	if dependencyName == k8sNginxStaticDoguName || dependencyName == k8sNginxIngressDoguName {
-		return nil
-	}
-
 	dependencyNetworkPolicy := generateDoguDepNetPol(doguResource, dogu, dependencyName)
 
 	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
