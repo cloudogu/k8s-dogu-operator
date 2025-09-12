@@ -51,7 +51,7 @@ func (rds *RestartDoguStep) Run(ctx context.Context, doguResource *v2.Dogu) step
 	}
 
 	if startingTime != nil && (startingTime.Before(sensConfig.LastUpdated.Time) || startingTime.Before(doguConfig.LastUpdated.Time)) {
-		err := rds.doguRestartManager.RestartDogu(ctx, doguResource)
+		err = rds.doguRestartManager.RestartDogu(ctx, doguResource)
 		if err != nil {
 			return steps.RequeueWithError(err)
 		}

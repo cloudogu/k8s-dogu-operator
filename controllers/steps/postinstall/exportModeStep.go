@@ -15,9 +15,9 @@ type ExportModeStep struct {
 }
 
 func NewExportModeStep(mgrSet *util.ManagerSet, namespace string, eventRecorder record.EventRecorder) *ExportModeStep {
-	doguInterface := mgrSet.EcosystemClient.Dogus(namespace)
-	exportManager := manager.NewDoguExportManager(
-		doguInterface,
+	doguInt := mgrSet.EcosystemClient.Dogus(namespace)
+	expManager := manager.NewDoguExportManager(
+		doguInt,
 		mgrSet.ClientSet.CoreV1().Pods(namespace),
 		mgrSet.ClientSet.AppsV1().Deployments(namespace),
 		mgrSet.ResourceUpserter,
@@ -25,7 +25,7 @@ func NewExportModeStep(mgrSet *util.ManagerSet, namespace string, eventRecorder 
 		eventRecorder,
 	)
 	return &ExportModeStep{
-		exportManager: exportManager,
+		exportManager: expManager,
 	}
 }
 

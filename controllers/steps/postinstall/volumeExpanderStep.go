@@ -110,16 +110,17 @@ func hasPvc(dogu *core.Dogu) bool {
 }
 
 func (vs *VolumeExpanderStep) setSuccessCondition(ctx context.Context, doguResource *v2.Dogu) error {
+	doguResource, err := vs.doguInterface.Get(ctx, doguResource.Name, v1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
 	condition := v1.Condition{
 		Type:               v2.ConditionMeetsMinVolumeSize,
 		Status:             v1.ConditionTrue,
 		Reason:             ActualVolumeSizeMeetsMinDataSize,
 		Message:            "Current VolumeSize meets the configured minimum VolumeSize",
-		LastTransitionTime: v1.Now(),
-	}
-	doguResource, err := vs.doguInterface.Get(ctx, doguResource.Name, v1.GetOptions{})
-	if err != nil {
-		return err
+		LastTransitionTime: v1.Now().Rfc3339Copy(),
 	}
 
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)

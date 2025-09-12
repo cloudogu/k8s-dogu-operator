@@ -7,12 +7,17 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
+	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -78,4 +83,58 @@ type podInterface interface {
 
 type securityContextGenerator interface {
 	Generate(ctx context.Context, dogu *cesappcore.Dogu, doguResource *v2.Dogu) (*corev1.PodSecurityContext, *corev1.SecurityContext)
+}
+
+type ingressAnnotator interface {
+	AppendIngressAnnotationsToService(service *corev1.Service, additionalIngressAnnotations v2.IngressAnnotations) error
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type appV1Interface interface {
+	appsv1client.AppsV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type clientSet interface {
+	kubernetes.Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ecosystemInterface interface {
+	doguClient.EcoSystemV2Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type eventRecorder interface {
+	record.EventRecorder
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type coreV1Interface interface {
+	v1.CoreV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type resourceUpserter interface {
+	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
+	// All parameters are mandatory except deploymentPatch which may be nil.
+	// The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
+	UpsertDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
+	// UpsertDoguService generates a service for a given dogu and applies it to the cluster.
+	UpsertDoguService(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, image *imagev1.ConfigFile) (*corev1.Service, error)
+	// UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
+	UpsertDoguPVCs(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (*corev1.PersistentVolumeClaim, error)
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguResourceGenerator interface {
+	resource.DoguResourceGenerator
 }

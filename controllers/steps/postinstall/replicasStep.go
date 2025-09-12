@@ -23,9 +23,8 @@ type ReplicasStep struct {
 }
 
 func NewReplicasStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *ReplicasStep {
-	deploymentInt := mgrSet.ClientSet.AppsV1().Deployments(namespace)
 	return &ReplicasStep{
-		deploymentInterface: deploymentInt,
+		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
 		client:              client,
 		localDoguFetcher:    mgrSet.LocalDoguFetcher,
 		doguInterface:       mgrSet.EcosystemClient.Dogus(namespace),

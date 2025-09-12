@@ -23,25 +23,28 @@ const (
 )
 
 type SupportModeStep struct {
-	supportManager supportManager
-	client         k8sClient
-	doguInterface  doguInterface
+	supportManager      supportManager
+	doguInterface       doguInterface
+	deploymentInterface deploymentInterface
 }
 
 func NewSupportModeStep(client k8sClient, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, namespace string) *SupportModeStep {
 	return &SupportModeStep{
-		supportManager: manager.NewDoguSupportManager(client, mgrSet, eventRecorder),
-		client:         client,
-		doguInterface:  mgrSet.EcosystemClient.Dogus(namespace),
+		supportManager:      manager.NewDoguSupportManager(client, mgrSet, eventRecorder),
+		doguInterface:       mgrSet.EcosystemClient.Dogus(namespace),
+		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
 	}
 }
 
 func (sms *SupportModeStep) Run(ctx context.Context, doguResource *doguv2.Dogu) steps.StepResult {
 	_, err := sms.supportManager.HandleSupportMode(ctx, doguResource)
-	deployment := &appsv1.Deployment{}
-	err = sms.client.Get(ctx, doguResource.GetObjectKey(), deployment)
 	if err != nil {
-		return steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err))
+		return steps.RequeueWithError(fmt.Errorf("failed to handle support mode: %w", err))
+	}
+
+	deployment, err := sms.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
+	if err != nil {
+		return steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %q: %w", doguResource.Name, err))
 	}
 
 	doguResource, err = sms.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
@@ -51,9 +54,15 @@ func (sms *SupportModeStep) Run(ctx context.Context, doguResource *doguv2.Dogu) 
 
 	if isDeploymentInSupportMode(deployment) {
 		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionTrue, ReasonSupportModeActive, "The Support mode is active")
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 		return steps.Abort()
 	} else {
 		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionFalse, ReasonSupportModeInactive, "The Support mode is inactive")
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 		return steps.Continue()
 	}
 }
@@ -78,7 +87,7 @@ func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguRes
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
-		LastTransitionTime: metav1.Now(),
+		LastTransitionTime: metav1.Now().Rfc3339Copy(),
 	}
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
 	doguResource, err := sms.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})

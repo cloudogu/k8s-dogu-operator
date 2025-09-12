@@ -14,9 +14,12 @@ type AdditionalMountsStep struct {
 }
 
 func NewAdditionalMountsStep(mgrSet *util.ManagerSet, namespace string) *AdditionalMountsStep {
-	doguInterface := mgrSet.EcosystemClient.Dogus(namespace)
 	return &AdditionalMountsStep{
-		additionalMountManager: manager.NewDoguAdditionalMountManager(mgrSet.ClientSet.AppsV1().Deployments(namespace), mgrSet, doguInterface),
+		additionalMountManager: manager.NewDoguAdditionalMountManager(
+			mgrSet.ClientSet.AppsV1().Deployments(namespace),
+			mgrSet,
+			mgrSet.EcosystemClient.Dogus(namespace),
+		),
 	}
 }
 
