@@ -353,7 +353,7 @@ func (ue *upgradeExecutor) executePostUpgradeScript(ctx context.Context, toDoguR
 }
 
 func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter resource.ResourceUpserter, toDoguResource *doguv2.Dogu, toDogu *core.Dogu, fromDogu *core.Dogu, image *imagev1.ConfigFile) error {
-	_, err := upserter.UpsertDoguService(ctx, toDoguResource, toDogu, image)
+	svc, err := upserter.UpsertDoguService(ctx, toDoguResource, toDogu, image)
 	if err != nil {
 		return err
 	}
@@ -403,7 +403,7 @@ func (ue *upgradeExecutor) updateDoguResources(ctx context.Context, upserter res
 		return err
 	}
 
-	err = upserter.UpsertDoguNetworkPolicies(ctx, toDoguResource, toDogu)
+	err = upserter.UpsertDoguNetworkPolicies(ctx, toDoguResource, toDogu, svc)
 	if err != nil {
 		return err
 	}

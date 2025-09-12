@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	"reflect"
 	"slices"
 	"strings"
@@ -24,11 +25,11 @@ import (
 )
 
 const (
-	errMsgFailedToGetPVC    = "failed to get pvc"
-	k8sNginxIngressDoguName = "nginx-ingress"
-	k8sNginxStaticDoguName  = "nginx-static"
-	dependencyTypeDogu      = "dogu"
-	dependencyTypeComponent = "component"
+	errMsgFailedToGetPVC        = "failed to get pvc"
+	k8sCesGatewayComponentLabel = "k8s.cloudogu.com/component.name"
+	k8sCesGatewayComponentName  = "k8s-ces-gateway"
+	dependencyTypeDogu          = "dogu"
+	dependencyTypeComponent     = "component"
 )
 
 var (
@@ -114,7 +115,7 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu,
 }
 
 // UpsertDoguNetworkPolicies generates the network policies for a dogu
-func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
+func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, service *v1.Service) error {
 	logger := log.FromContext(ctx)
 	if !u.networkPoliciesEnabled {
 		logger.Info("Do not create network policies as they are disabled by configuration")
@@ -141,6 +142,10 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 				multiErr = errors.Join(multiErr, err)
 			}
 		}
+	}
+
+	if err := u.upsertServiceAnnotationNetworkPolicy(ctx, doguResource, dogu, service); err != nil {
+		multiErr = errors.Join(multiErr, err)
 	}
 
 	if err := u.deleteNonExistentDependencyPolicies(ctx, dogu, allDependencies); err != nil {
@@ -186,17 +191,20 @@ func (u *upserter) deleteNonExistentDependencyPolicies(ctx context.Context, dogu
 	return multiErr
 }
 
-func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
-	if dependencyName == k8sNginxStaticDoguName {
+func (u *upserter) upsertServiceAnnotationNetworkPolicy(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, service *v1.Service) error {
+	if _, ok := service.Annotations[annotation.CesServicesAnnotation]; !ok {
 		return nil
 	}
-
 	var dependencyNetworkPolicy *netv1.NetworkPolicy
-	if dependencyName == k8sNginxIngressDoguName {
-		dependencyNetworkPolicy = generateIngressNetPol(doguResource, dogu)
-	} else {
-		dependencyNetworkPolicy = generateDoguDepNetPol(doguResource, dogu, dependencyName)
+	dependencyNetworkPolicy = generateIngressNetPol(doguResource, dogu)
+	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
+		return fmt.Errorf("failed to create or update network policy allow rule for ingress of dogu %s: %w", dogu.GetSimpleName(), err)
 	}
+	return nil
+}
+
+func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
+	dependencyNetworkPolicy := generateDoguDepNetPol(doguResource, dogu, dependencyName)
 
 	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
 		return fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err)

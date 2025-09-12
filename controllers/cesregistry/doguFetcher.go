@@ -170,27 +170,16 @@ func replaceK8sIncompatibleDoguDependencies(dogu *core.Dogu) *core.Dogu {
 func patchDependencies(deps []core.Dependency) []core.Dependency {
 	patchedDependencies := make([]core.Dependency, 0)
 
+	skippedDogus := map[string]struct{}{
+		"registrator": {},
+		"nginx":       {},
+	}
+
 	for _, doguDep := range deps {
 		name := doguDep.Name
-		if name == "registrator" {
+		if _, ok := skippedDogus[name]; ok {
 			continue
 		}
-
-		if name == "nginx" {
-			ingress := core.Dependency{
-				Name: "nginx-ingress",
-				Type: core.DependencyTypeDogu,
-			}
-			staticNginx := core.Dependency{
-				Name: "nginx-static",
-				Type: core.DependencyTypeDogu,
-			}
-			patchedDependencies = append(patchedDependencies, ingress)
-			patchedDependencies = append(patchedDependencies, staticNginx)
-
-			continue
-		}
-
 		patchedDependencies = append(patchedDependencies, doguDep)
 	}
 	return patchedDependencies

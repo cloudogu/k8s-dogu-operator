@@ -71,52 +71,6 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to get local dogu descriptor for redmine")
 	})
-	t.Run("should return a dogu with K8s-CES compatible substitutes for an nginx dependency", func(t *testing.T) {
-		// given
-		doguCr := readTestDataRedmineCr(t)
-		dogu := readTestDataDogu(t, redmineBytes)
-		expectedIncompatibleDepNginx := core.Dependency{
-			Name:    "nginx",
-			Version: "",
-			Type:    core.DependencyTypeDogu,
-		}
-		require.Contains(t, dogu.Dependencies, expectedIncompatibleDepNginx)
-		coreDoguVersion, lerr := dogu.GetVersion()
-		require.NoError(t, lerr)
-		simpleDoguName := cescommons.SimpleName(dogu.GetSimpleName())
-		doguVersion := cescommons.SimpleNameVersion{
-			Name:    simpleDoguName,
-			Version: coreDoguVersion,
-		}
-
-		mockDoguVersionRegistry := newMockDoguVersionRegistry(t)
-		mockDoguVersionRegistry.EXPECT().GetCurrent(testCtx, simpleDoguName).Return(doguVersion, nil)
-		mockLocalDoguDescriptorRepository := newMockLocalDoguDescriptorRepository(t)
-		mockLocalDoguDescriptorRepository.EXPECT().Get(testCtx, doguVersion).Return(dogu, nil)
-
-		sut := NewLocalDoguFetcher(mockDoguVersionRegistry, mockLocalDoguDescriptorRepository)
-
-		// when
-		installedDogu, err := sut.FetchInstalled(testCtx, doguCr.GetSimpleDoguName())
-
-		// then
-		require.NoError(t, err)
-		expectedNginxPatch1 := core.Dependency{
-			Name:    "nginx-ingress",
-			Version: "",
-			Type:    core.DependencyTypeDogu,
-		}
-		expectedNginxPatch2 := core.Dependency{
-			Name:    "nginx-static",
-			Version: "",
-			Type:    core.DependencyTypeDogu,
-		}
-
-		unexpectedAfterPatch := expectedIncompatibleDepNginx
-		assert.Contains(t, installedDogu.Dependencies, expectedNginxPatch1)
-		assert.Contains(t, installedDogu.Dependencies, expectedNginxPatch2)
-		assert.NotContains(t, installedDogu.Dependencies, unexpectedAfterPatch)
-	})
 	t.Run("should return a dogu that misses a no-substitute dependency", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
@@ -204,21 +158,10 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		expectedDogu := readTestDataDogu(t, redmineBytes)
-		expectedNginxPatch1 := core.Dependency{
-			Name:    "nginx-ingress",
-			Version: "",
-			Type:    core.DependencyTypeDogu,
-		}
-		expectedNginxPatch2 := core.Dependency{
-			Name:    "nginx-static",
-			Version: "",
-			Type:    core.DependencyTypeDogu,
-		}
+
 		for idx, dep := range expectedDogu.Dependencies {
 			if dep.Name == "nginx" {
 				expectedDogu.Dependencies = append(expectedDogu.Dependencies[:idx], expectedDogu.Dependencies[idx+1:]...)
-				expectedDogu.Dependencies = append(expectedDogu.Dependencies, expectedNginxPatch1)
-				expectedDogu.Dependencies = append(expectedDogu.Dependencies, expectedNginxPatch2)
 			}
 		}
 		// save the dependencies for later
@@ -257,42 +200,6 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		assert.Equal(t, testDogu, fetchedDogu)
 		assert.Nil(t, cleanup)
 		mock.AssertExpectationsForObjects(t, remoteDoguRepo)
-	})
-	t.Run("should return a dogu with K8s-CES compatible substitutes for an nginx dependency", func(t *testing.T) {
-		// given
-		doguCr := readTestDataRedmineCr(t)
-		dogu := readTestDataDogu(t, redmineBytes)
-		expectedIncompatibleDepNginx := core.Dependency{
-			Name:    "nginx",
-			Version: "",
-			Type:    core.DependencyTypeDogu,
-		}
-		require.Contains(t, dogu.Dependencies, expectedIncompatibleDepNginx)
-
-		redmineDevelopmentDoguMap := readDoguDescriptorConfigMap(t, redmineCrConfigMapBytes)
-		client := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(redmineDevelopmentDoguMap.ToConfigMap()).Build()
-		sut := NewResourceDoguFetcher(client, nil)
-
-		// when
-		fetchedDogu, _, err := sut.FetchWithResource(testCtx, doguCr)
-
-		// then
-		require.NoError(t, err)
-		expectedNginxPatch1 := core.Dependency{
-			Name:    "nginx-ingress",
-			Version: "",
-			Type:    core.DependencyTypeDogu,
-		}
-		expectedNginxPatch2 := core.Dependency{
-			Name:    "nginx-static",
-			Version: "",
-			Type:    core.DependencyTypeDogu,
-		}
-
-		unexpectedAfterPatch := expectedIncompatibleDepNginx
-		assert.Contains(t, fetchedDogu.Dependencies, expectedNginxPatch1)
-		assert.Contains(t, fetchedDogu.Dependencies, expectedNginxPatch2)
-		assert.NotContains(t, fetchedDogu.Dependencies, unexpectedAfterPatch)
 	})
 	t.Run("should return a dogu that misses a no-substitute dependency", func(t *testing.T) {
 		// given
