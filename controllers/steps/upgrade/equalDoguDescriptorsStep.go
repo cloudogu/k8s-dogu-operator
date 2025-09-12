@@ -25,12 +25,12 @@ func NewEqualDoguDescriptorsStep(mgrSet *util.ManagerSet) *EqualDoguDescriptorsS
 
 func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
-	remoteDescriptor, err := edds.getDoguDescriptor(ctx, doguResource)
+	remoteDescriptor, _, err := edds.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
 
-	localDescriptor, err := edds.getLocalDogu(ctx, doguResource)
+	localDescriptor, err := edds.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
@@ -49,23 +49,6 @@ func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.
 	}
 
 	return steps.Continue()
-}
-
-func (edds *EqualDoguDescriptorsStep) getDoguDescriptor(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {
-	doguDescriptor, _, err := edds.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch dogu descriptor: %w", err)
-	}
-
-	return doguDescriptor, nil
-}
-func (edds *EqualDoguDescriptorsStep) getLocalDogu(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, error) {
-	dogu, err := edds.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
-	if err != nil {
-		return nil, fmt.Errorf("dogu not found in local registry: %w", err)
-	}
-
-	return dogu, nil
 }
 
 func (edds *EqualDoguDescriptorsStep) checkDoguIdentity(localDogu *core.Dogu, remoteDogu *core.Dogu, namespaceChange bool) error {
