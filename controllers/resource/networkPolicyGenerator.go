@@ -59,7 +59,7 @@ func getSelectors(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName 
 	case netPolTypeIngress:
 		netPolName = fmt.Sprintf("%s-ingress", coreDogu.GetSimpleName())
 		podSelector = map[string]string{
-			k8sv2.DoguLabelName: k8sNginxIngressDoguName,
+			k8sCesGatewayComponentLabel: k8sCesGatewayComponentName,
 		}
 		namespaceSelector = map[string]string{
 			"kubernetes.io/metadata.name": doguResource.Namespace,
