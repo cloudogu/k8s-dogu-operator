@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 type StartupHandler struct {
@@ -15,11 +16,17 @@ type StartupHandler struct {
 	doguEvents    chan<- event.TypedGenericEvent[*v2.Dogu]
 }
 
-func NewStartupHandler(doguInterface doguClient.DoguInterface, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) *StartupHandler {
-	return &StartupHandler{
+func NewStartupHandler(manager manager.Manager, doguInterface doguClient.DoguInterface, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (*StartupHandler, error) {
+	sh := &StartupHandler{
 		doguInterface: doguInterface,
 		doguEvents:    doguEvents,
 	}
+	err := manager.Add(sh)
+	if err != nil {
+		return nil, err
+	}
+
+	return sh, nil
 }
 
 func (s *StartupHandler) Start(ctx context.Context) error {

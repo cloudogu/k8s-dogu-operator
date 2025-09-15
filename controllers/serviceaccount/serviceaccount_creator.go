@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -37,7 +39,7 @@ const getServiceAccountPodMaxRetriesEnv = "GET_SERVICE_ACCOUNT_POD_MAX_RETRIES"
 // creator is the unit to handle the creation of service accounts
 type creator struct {
 	client            client.Client
-	sensitiveDoguRepo sensitiveDoguConfigRepository
+	sensitiveDoguRepo SensitiveDoguConfigRepository
 	doguFetcher       localDoguFetcher
 	executor          commandExecutor
 	clientSet         kubernetes.Interface
@@ -46,7 +48,7 @@ type creator struct {
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(repo sensitiveDoguConfigRepository, localDoguFetcher localDoguFetcher, commandExecutor commandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *creator {
+func NewCreator(repo SensitiveDoguConfigRepository, localDoguFetcher cesregistry.LocalDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, operatorConfig opConfig.OperatorConfig) ServiceAccountCreator {
 	return &creator{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -54,7 +56,7 @@ func NewCreator(repo sensitiveDoguConfigRepository, localDoguFetcher localDoguFe
 		executor:          commandExecutor,
 		clientSet:         clientSet,
 		apiClient:         &apiClient{},
-		namespace:         namespace,
+		namespace:         operatorConfig.Namespace,
 	}
 }
 
@@ -212,7 +214,7 @@ func (c *creator) writeServiceAccounts(ctx context.Context, senDoguCfg *config.D
 	return nil
 }
 
-func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo sensitiveDoguConfigRepository) error {
+func writeConfig(ctx context.Context, senDoguCfg *config.DoguConfig, cfgRepo SensitiveDoguConfigRepository) error {
 	update, err := cfgRepo.Update(ctx, *senDoguCfg)
 	if err != nil {
 		if regLibErr.IsConflictError(err) {

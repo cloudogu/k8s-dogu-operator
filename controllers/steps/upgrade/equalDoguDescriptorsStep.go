@@ -6,9 +6,8 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	semver "golang.org/x/mod/semver"
 )
 
 type EqualDoguDescriptorsStep struct {
@@ -16,10 +15,14 @@ type EqualDoguDescriptorsStep struct {
 	localDoguFetcher    localDoguFetcher
 }
 
-func NewEqualDoguDescriptorsStep(mgrSet *util.ManagerSet) *EqualDoguDescriptorsStep {
+func (edds *EqualDoguDescriptorsStep) Priority() int {
+	return 3100
+}
+
+func NewEqualDoguDescriptorsStep(resourceFetcher cesregistry.ResourceDoguFetcher, localFetcher cesregistry.LocalDoguFetcher) *EqualDoguDescriptorsStep {
 	return &EqualDoguDescriptorsStep{
-		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
-		localDoguFetcher:    mgrSet.LocalDoguFetcher,
+		resourceDoguFetcher: resourceFetcher,
+		localDoguFetcher:    localFetcher,
 	}
 }
 
@@ -39,7 +42,9 @@ func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.
 		return steps.Continue()
 	}
 
-	if isOlder(remoteDescriptor.Version, localDescriptor.Version) {
+	if older, err := isOlder(remoteDescriptor.Version, localDescriptor.Version); err != nil {
+		return steps.RequeueWithError(err)
+	} else if older {
 		return steps.Abort()
 	}
 
@@ -63,12 +68,16 @@ func (edds *EqualDoguDescriptorsStep) checkDoguIdentity(localDogu *core.Dogu, re
 	return nil
 }
 
-func isOlder(version1, version2 string) bool {
-	if version1[0] != 'v' {
-		version1 = "v" + version1
+func isOlder(version1Raw, version2Raw string) (bool, error) {
+	version1, err := core.ParseVersion(version1Raw)
+	if err != nil {
+		return false, err
 	}
-	if version2[0] != 'v' {
-		version2 = "v" + version2
+
+	version2, err := core.ParseVersion(version2Raw)
+	if err != nil {
+		return false, err
 	}
-	return semver.Compare(version1, version2) < 0
+
+	return version1.IsOlderThan(version2), nil
 }

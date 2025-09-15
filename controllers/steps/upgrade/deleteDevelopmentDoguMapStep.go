@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeleteDevelopmentDoguMapStep struct {
@@ -14,9 +15,13 @@ type DeleteDevelopmentDoguMapStep struct {
 	client              k8sClient
 }
 
-func NewDeleteDevelopmentDoguMapStep(client k8sClient, mgrSet *util.ManagerSet) *DeleteDevelopmentDoguMapStep {
+func (ddms *DeleteDevelopmentDoguMapStep) Priority() int {
+	return 2600
+}
+
+func NewDeleteDevelopmentDoguMapStep(client client.Client, fetcher cesregistry.ResourceDoguFetcher) *DeleteDevelopmentDoguMapStep {
 	return &DeleteDevelopmentDoguMapStep{
-		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
+		resourceDoguFetcher: fetcher,
 		client:              client,
 	}
 }

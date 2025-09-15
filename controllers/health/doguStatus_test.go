@@ -35,7 +35,7 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 		ecosystemClientMock := newMockEcosystemInterface(t)
 		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock}
+		sut := &DoguStatusUpdater{doguClient: ecosystemClientMock}
 
 		// when
 		err := sut.UpdateStatus(testCtx, types.NamespacedName{Name: "my-dogu", Namespace: testNamespace}, true)
@@ -58,7 +58,7 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 		recorderMock := newMockEventRecorder(t)
 		recorderMock.EXPECT().Event(dogu, "Warning", "HealthStatusUpdate", "failed to update dogu \"test-namespace/my-dogu\" to desired health status \"available\"")
 
-		sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
+		sut := &DoguStatusUpdater{doguClient: ecosystemClientMock, recorder: recorderMock}
 
 		// when
 		err := sut.UpdateStatus(testCtx, dogu.GetObjectKey(), true)
@@ -82,7 +82,7 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 			recorderMock := newMockEventRecorder(t)
 			recorderMock.EXPECT().Eventf(dogu, "Normal", "HealthStatusUpdate", "successfully updated health status to %q", v2.AvailableHealthStatus)
 
-			sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
+			sut := &DoguStatusUpdater{doguClient: ecosystemClientMock, recorder: recorderMock}
 
 			// when
 			err := sut.UpdateStatus(testCtx, dogu.GetObjectKey(), true)
@@ -103,7 +103,7 @@ func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
 			recorderMock := newMockEventRecorder(t)
 			recorderMock.EXPECT().Eventf(dogu, "Normal", "HealthStatusUpdate", "successfully updated health status to %q", v2.UnavailableHealthStatus)
 
-			sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
+			sut := &DoguStatusUpdater{doguClient: ecosystemClientMock, recorder: recorderMock}
 
 			// when
 			err := sut.UpdateStatus(testCtx, dogu.GetObjectKey(), false)

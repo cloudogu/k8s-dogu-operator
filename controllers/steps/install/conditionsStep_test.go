@@ -33,13 +33,13 @@ func TestConditionsStep_Run(t *testing.T) {
 	tests := []struct {
 		name               string
 		doguInterfaceFn    func(t *testing.T) doguInterface
-		conditionUpdaterFn func(t *testing.T) conditionUpdater
+		conditionUpdaterFn func(t *testing.T) ConditionUpdater
 		doguResource       *doguv2.Dogu
 		want               steps.StepResult
 	}{
 		{
 			name: "no conditions are set",
-			conditionUpdaterFn: func(t *testing.T) conditionUpdater {
+			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
 				updaterMock := newMockConditionUpdater(t)
 				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(nil)
 				return updaterMock
@@ -51,7 +51,7 @@ func TestConditionsStep_Run(t *testing.T) {
 		},
 		{
 			name: "all conditions are set",
-			conditionUpdaterFn: func(t *testing.T) conditionUpdater {
+			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
 				return newMockConditionUpdater(t)
 			},
 			doguResource: &doguv2.Dogu{
@@ -91,7 +91,7 @@ func TestConditionsStep_Run(t *testing.T) {
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				return newMockDoguInterface(t)
 			},
-			conditionUpdaterFn: func(t *testing.T) conditionUpdater {
+			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
 				updaterMock := newMockConditionUpdater(t)
 				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(nil)
 				return updaterMock
@@ -127,7 +127,7 @@ func TestConditionsStep_Run(t *testing.T) {
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				return newMockDoguInterface(t)
 			},
-			conditionUpdaterFn: func(t *testing.T) conditionUpdater {
+			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
 				updaterMock := newMockConditionUpdater(t)
 				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
 				return updaterMock

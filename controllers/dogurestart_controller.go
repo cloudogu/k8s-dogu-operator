@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -16,18 +17,30 @@ import (
 
 // DoguRestartReconciler reconciles a DoguRestart object
 type DoguRestartReconciler struct {
-	doguInterface        doguClient.DoguInterface
-	doguRestartInterface doguClient.DoguRestartInterface
+	doguInterface        doguInterface
+	doguRestartInterface doguRestartInterface
 	garbageCollector     DoguRestartGarbageCollector
-	recorder             record.EventRecorder
+	recorder             eventRecorder
 }
 
 type DoguRestartGarbageCollector interface {
 	DoGarbageCollection(ctx context.Context, doguName string) error
 }
 
-func NewDoguRestartReconciler(doguRestartInterface doguClient.DoguRestartInterface, doguInterface doguClient.DoguInterface, recorder record.EventRecorder, gc DoguRestartGarbageCollector) GenericReconciler {
-	return &DoguRestartReconciler{doguRestartInterface: doguRestartInterface, doguInterface: doguInterface, recorder: recorder, garbageCollector: gc}
+func NewDoguRestartReconciler(
+	doguRestartInterface doguClient.DoguRestartInterface,
+	doguInterface doguClient.DoguInterface,
+	recorder record.EventRecorder,
+	gc DoguRestartGarbageCollector,
+	manager manager.Manager,
+) (*DoguRestartReconciler, error) {
+	r := &DoguRestartReconciler{doguRestartInterface: doguRestartInterface, doguInterface: doguInterface, recorder: recorder, garbageCollector: gc}
+	err := r.setupWithManager(manager)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
 // +kubebuilder:rbac:groups=k8s.cloudogu.com,resources=dogurestarts,verbs=get;list;watch;create;update;patch;delete
@@ -101,7 +114,7 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *DoguRestartReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *DoguRestartReconciler) setupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.DoguRestart{}).
 		Complete(r)

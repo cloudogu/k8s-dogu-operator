@@ -4,8 +4,8 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -13,9 +13,13 @@ type InstalledVersionStep struct {
 	doguInterface doguInterface
 }
 
-func NewInstalledVersionStep(mgrSet *util.ManagerSet, namespace string) *InstalledVersionStep {
+func (ivs *InstalledVersionStep) Priority() int {
+	return 2500
+}
+
+func NewInstalledVersionStep(doguInterface doguClient.DoguInterface) *InstalledVersionStep {
 	return &InstalledVersionStep{
-		doguInterface: mgrSet.EcosystemClient.Dogus(namespace),
+		doguInterface: doguInterface,
 	}
 }
 

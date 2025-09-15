@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type DeleteExecPodStep struct {
@@ -14,10 +15,14 @@ type DeleteExecPodStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func NewDeleteExecPodStep(mgrSet *util.ManagerSet) *DeleteExecPodStep {
+func (deps *DeleteExecPodStep) Priority() int {
+	return 2800
+}
+
+func NewDeleteExecPodStep(fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory) *DeleteExecPodStep {
 	return &DeleteExecPodStep{
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
-		execPodFactory:   mgrSet.ExecPodFactory,
+		localDoguFetcher: fetcher,
+		execPodFactory:   factory,
 	}
 }
 

@@ -56,7 +56,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		clientSet := testclient.NewSimpleClientset(readyPod)
 		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
+		sut.(*defaultCommandExecutor).commandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
@@ -77,7 +77,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		cli := fake2.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		client := testclient.NewSimpleClientset()
 		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
+		sut.(*defaultCommandExecutor).commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
 		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil)
@@ -96,7 +96,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		cli := fake2.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
 		client := testclient.NewSimpleClientset()
 		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
+		sut.(*defaultCommandExecutor).commandExecutorCreator = fakeNewSPDYExecutor
 
 		// when
 		_, err := sut.ExecCommandForDogu(ctx, doguResource, nil)
@@ -114,7 +114,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		client := testclient.NewSimpleClientset(readyPod)
 		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
+		sut.(*defaultCommandExecutor).commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
 		_, err := sut.ExecCommandForDogu(ctx, doguResource, command)
@@ -132,7 +132,7 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 			Build()
 		client := testclient.NewSimpleClientset(readyPod)
 		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
+		sut.(*defaultCommandExecutor).commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
 		_, err := sut.ExecCommandForDogu(ctx, doguResource, command)
@@ -175,7 +175,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 			Build()
 		clientSet := testclient.NewSimpleClientset(readyPod)
 		sut := NewCommandExecutor(cli, clientSet, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeNewSPDYExecutor
+		sut.(*defaultCommandExecutor).commandExecutorCreator = fakeNewSPDYExecutor
 		expectedBuffer := bytes.NewBufferString("username:user")
 
 		// when
@@ -198,7 +198,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		buffer := bytes.NewBuffer([]byte{})
 		bufferErr := bytes.NewBuffer([]byte{})
 
-		sut.commandExecutorCreator = func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+		sut.(*defaultCommandExecutor).commandExecutorCreator = func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 			mockExecutor := newMockRemoteExecutor(t)
 			mockExecutor.EXPECT().StreamWithContext(mock.Anything, remotecommand.StreamOptions{
 				// expects the reader as stream option in the mocked call to verify the stdin command
@@ -227,7 +227,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(readyPod)
 		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeErrorInitNewSPDYExecutor
+		sut.(*defaultCommandExecutor).commandExecutorCreator = fakeErrorInitNewSPDYExecutor
 
 		// when
 		_, err := sut.ExecCommandForPod(ctx, readyPod, command)
@@ -242,7 +242,7 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		cli := fake2.NewClientBuilder().Build()
 		client := testclient.NewSimpleClientset(readyPod)
 		sut := NewCommandExecutor(cli, client, &fake.RESTClient{})
-		sut.commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
+		sut.(*defaultCommandExecutor).commandExecutorCreator = fakeErrorStreamNewSPDYExecutor
 
 		// when
 		_, err := sut.ExecCommandForPod(ctx, readyPod, command)

@@ -5,17 +5,18 @@ package controllers
 import (
 	"context"
 	_ "embed"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	registryRepo "github.com/cloudogu/k8s-registry-lib/repository"
 	"k8s.io/client-go/kubernetes/scheme"
-	"os"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"testing"
-	"time"
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/onsi/ginkgo"
@@ -148,8 +149,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	securityValidator := &security.Validator{}
 	securityGenerator := &resource.SecurityContextGenerator{}
 
-	configMapClient := k8sClientSet.CoreV1().ConfigMaps(testNamespace)
-	secretClient := k8sClientSet.CoreV1().Secrets(testNamespace)
+	configMapClient := k8sClientSet.CoreV1().ConfigMaps(util.testNamespace)
+	secretClient := k8sClientSet.CoreV1().Secrets(util.testNamespace)
 	doguAdditionalMountsValidator := additionalMount.NewValidator(configMapClient, secretClient)
 
 	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: "image:tag", config.AdditionalMountsInitContainerImageConfigmapNameKey: "test:tag"}
@@ -158,8 +159,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	version, err := core.ParseVersion("0.0.0")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	doguVersionRegistry := dogu.NewDoguVersionRegistry(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
-	localDoguDescriptorRepository := dogu.NewLocalDoguDescriptorRepository(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
+	doguVersionRegistry := dogu.NewDoguVersionRegistry(k8sClientSet.CoreV1().ConfigMaps(util.testNamespace))
+	localDoguDescriptorRepository := dogu.NewLocalDoguDescriptorRepository(k8sClientSet.CoreV1().ConfigMaps(util.testNamespace))
 	localDoguFetcher := cesregistry.NewLocalDoguFetcher(doguVersionRegistry, localDoguDescriptorRepository)
 
 	dependencyValidator := dependency.NewCompositeDependencyValidator(&version, localDoguFetcher)
@@ -183,8 +184,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	remoteDoguFetcher := cesregistry.NewResourceDoguFetcher(k8sClient, DoguRemoteRegistryMock)
 	execPodFactory := exec.NewExecPodFactory(k8sClient, cfg, CommandExecutorMock)
 
-	sensitiveConfigRepo := registryRepo.NewSensitiveDoguConfigRepository(k8sClientSet.CoreV1().Secrets(testNamespace))
-	doguConfigRepo := registryRepo.NewDoguConfigRepository(k8sClientSet.CoreV1().ConfigMaps(testNamespace))
+	sensitiveConfigRepo := registryRepo.NewSensitiveDoguConfigRepository(k8sClientSet.CoreV1().Secrets(util.testNamespace))
+	doguConfigRepo := registryRepo.NewDoguConfigRepository(k8sClientSet.CoreV1().ConfigMaps(util.testNamespace))
 
 	installManager := &doguInstallManager{
 		client:                        k8sClient,
@@ -273,7 +274,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		recorder:          eventRecorder,
 	}
 
-	additionalMountsManager := NewDoguAdditionalMountManager(k8sClientSet.AppsV1().Deployments(testNamespace), mgrSet, DoguInterfaceMock)
+	additionalMountsManager := NewDoguAdditionalMountManager(k8sClientSet.AppsV1().Deployments(util.testNamespace), mgrSet, DoguInterfaceMock)
 
 	doguManager := &DoguManager{
 		scheme:                    k8sManager.GetScheme(),
@@ -288,10 +289,10 @@ var _ = ginkgo.BeforeSuite(func() {
 		additionalMountsManager:   additionalMountsManager,
 	}
 
-	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, testNamespace, localDoguFetcher)
+	doguReconciler, err := NewDoguReconciler(k8sClient, DoguInterfaceMock, doguManager, eventRecorder, util.testNamespace, localDoguFetcher)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	err = doguReconciler.SetupWithManager(k8sManager)
+	err = doguReconciler.setupWithManager(k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	updater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder, k8sClientSet)

@@ -2,12 +2,13 @@ package config
 
 import (
 	"fmt"
-	"github.com/cloudogu/cesapp-lib/core"
 	"net/url"
 	"os"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"strconv"
 	"strings"
+
+	"github.com/cloudogu/cesapp-lib/core"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -61,8 +62,10 @@ type OperatorConfig struct {
 	NetworkPoliciesEnabled bool `json:"network_policies_enabled"`
 }
 
+type Version string
+
 // NewOperatorConfig creates a new operator config by reading values from the environment variables
-func NewOperatorConfig(version string) (*OperatorConfig, error) {
+func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	stage, err := getEnvVar(StageEnvironmentVariable)
 	if err != nil {
 		log.Error(err, "Error reading stage environment variable. Use Stage production")
@@ -73,7 +76,7 @@ func NewOperatorConfig(version string) (*OperatorConfig, error) {
 		log.Info("Starting in development mode! This is not recommended for production!")
 	}
 
-	parsedVersion, err := core.ParseVersion(version)
+	parsedVersion, err := core.ParseVersion(string(version))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse version: %w", err)
 	}

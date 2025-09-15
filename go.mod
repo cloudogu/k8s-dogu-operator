@@ -20,6 +20,7 @@ require (
 	github.com/onsi/gomega v1.38.2
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
+	go.uber.org/fx v1.24.0
 	golang.org/x/mod v0.27.0
 	k8s.io/api v0.34.0
 	k8s.io/apimachinery v0.34.0
@@ -89,6 +90,9 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/vbatts/tar-split v0.12.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	go.uber.org/dig v1.19.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.43.0 // indirect

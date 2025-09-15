@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-registry-lib/config"
 
 	"k8s.io/client-go/kubernetes"
@@ -19,7 +21,7 @@ import (
 // Remover removes a dogu's service account.
 type remover struct {
 	client            client.Client
-	sensitiveDoguRepo sensitiveDoguConfigRepository
+	sensitiveDoguRepo SensitiveDoguConfigRepository
 	doguFetcher       localDoguFetcher
 	executor          commandExecutor
 	clientSet         kubernetes.Interface
@@ -28,7 +30,7 @@ type remover struct {
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(repo sensitiveDoguConfigRepository, localFetcher localDoguFetcher, commandExecutor commandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
+func NewRemover(repo SensitiveDoguConfigRepository, localFetcher cesregistry.LocalDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, operatorConfig opConfig.OperatorConfig) *remover {
 	return &remover{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -36,7 +38,7 @@ func NewRemover(repo sensitiveDoguConfigRepository, localFetcher localDoguFetche
 		executor:          commandExecutor,
 		clientSet:         clientSet,
 		apiClient:         &apiClient{},
-		namespace:         namespace,
+		namespace:         operatorConfig.Namespace,
 	}
 }
 

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type ServiceAccountStep struct {
@@ -13,10 +13,14 @@ type ServiceAccountStep struct {
 	localDoguFetcher      localDoguFetcher
 }
 
-func NewServiceAccountStep(mgrSet *util.ManagerSet) *ServiceAccountStep {
+func (sas *ServiceAccountStep) Priority() int {
+	return 4600
+}
+
+func NewServiceAccountStep(creator serviceAccountCreator, fetcher cesregistry.LocalDoguFetcher) *ServiceAccountStep {
 	return &ServiceAccountStep{
-		serviceAccountCreator: mgrSet.ServiceAccountCreator,
-		localDoguFetcher:      mgrSet.LocalDoguFetcher,
+		serviceAccountCreator: creator,
+		localDoguFetcher:      fetcher,
 	}
 }
 

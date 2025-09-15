@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
@@ -11,7 +13,6 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 const podTemplateVersionKey = "dogu.version"
@@ -24,12 +25,16 @@ type ExecPodCreateStep struct {
 	execPodFactory   execPodFactory
 }
 
-func NewExecPodCreateStep(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *ExecPodCreateStep {
+func (epcs *ExecPodCreateStep) Priority() int {
+	return 4400
+}
+
+func NewExecPodCreateStep(client client.Client, eventRecorder record.EventRecorder, fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory) *ExecPodCreateStep {
 	return &ExecPodCreateStep{
 		client:           client,
 		recorder:         eventRecorder,
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
-		execPodFactory:   mgrSet.ExecPodFactory,
+		localDoguFetcher: fetcher,
+		execPodFactory:   factory,
 	}
 }
 

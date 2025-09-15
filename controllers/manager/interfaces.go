@@ -24,6 +24,21 @@ type localDoguFetcher interface {
 	Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error)
 }
 
+type DoguRestartManager interface {
+	RestartAllDogus(ctx context.Context) error
+	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
+}
+
+type DoguExportManager interface {
+	UpdateExportMode(ctx context.Context, doguResource *v2.Dogu) error
+}
+
+// SupportManager includes functionality to handle the support flag for dogus in the cluster.
+type SupportManager interface {
+	// HandleSupportMode handles the support flag in the dogu spec.
+	HandleSupportMode(ctx context.Context, doguResource *v2.Dogu) (bool, error)
+}
+
 type podInterface interface {
 	v1.PodInterface
 }
@@ -43,6 +58,12 @@ type eventRecorder interface {
 type deploymentInterface interface {
 	appsv1client.DeploymentInterface
 }
+
+type AdditionalMountManager interface {
+	AdditionalMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error)
+	UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error
+}
+
 type additionalMountsInitContainerGenerator interface {
 	BuildAdditionalMountInitContainer(ctx context.Context, dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
 }

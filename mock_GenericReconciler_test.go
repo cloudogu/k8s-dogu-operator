@@ -81,12 +81,12 @@ func (_c *MockGenericReconciler_Reconcile_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// SetupWithManager provides a mock function with given fields: mgr
-func (_m *MockGenericReconciler) SetupWithManager(mgr manager.Manager) error {
+// setupWithManager provides a mock function with given fields: mgr
+func (_m *MockGenericReconciler) setupWithManager(mgr manager.Manager) error {
 	ret := _m.Called(mgr)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetupWithManager")
+		panic("no return value specified for setupWithManager")
 	}
 
 	var r0 error
@@ -99,30 +99,30 @@ func (_m *MockGenericReconciler) SetupWithManager(mgr manager.Manager) error {
 	return r0
 }
 
-// MockGenericReconciler_SetupWithManager_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetupWithManager'
-type MockGenericReconciler_SetupWithManager_Call struct {
+// MockGenericReconciler_setupWithManager_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'setupWithManager'
+type MockGenericReconciler_setupWithManager_Call struct {
 	*mock.Call
 }
 
-// SetupWithManager is a helper method to define mock.On call
+// setupWithManager is a helper method to define mock.On call
 //   - mgr manager.Manager
-func (_e *MockGenericReconciler_Expecter) SetupWithManager(mgr interface{}) *MockGenericReconciler_SetupWithManager_Call {
-	return &MockGenericReconciler_SetupWithManager_Call{Call: _e.mock.On("SetupWithManager", mgr)}
+func (_e *MockGenericReconciler_Expecter) setupWithManager(mgr interface{}) *MockGenericReconciler_setupWithManager_Call {
+	return &MockGenericReconciler_setupWithManager_Call{Call: _e.mock.On("setupWithManager", mgr)}
 }
 
-func (_c *MockGenericReconciler_SetupWithManager_Call) Run(run func(mgr manager.Manager)) *MockGenericReconciler_SetupWithManager_Call {
+func (_c *MockGenericReconciler_setupWithManager_Call) Run(run func(mgr manager.Manager)) *MockGenericReconciler_setupWithManager_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(manager.Manager))
 	})
 	return _c
 }
 
-func (_c *MockGenericReconciler_SetupWithManager_Call) Return(_a0 error) *MockGenericReconciler_SetupWithManager_Call {
+func (_c *MockGenericReconciler_setupWithManager_Call) Return(_a0 error) *MockGenericReconciler_setupWithManager_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockGenericReconciler_SetupWithManager_Call) RunAndReturn(run func(manager.Manager) error) *MockGenericReconciler_SetupWithManager_Call {
+func (_c *MockGenericReconciler_setupWithManager_Call) RunAndReturn(run func(manager.Manager) error) *MockGenericReconciler_setupWithManager_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -34,8 +34,8 @@ type doguDependencyValidator struct {
 	fetcher localDoguFetcher
 }
 
-// NewDoguDependencyValidator creates a new dogu dependencies checker
-func NewDoguDependencyValidator(doguFetcher localDoguFetcher) *doguDependencyValidator {
+// newDoguDependencyValidator creates a new dogu dependencies checker
+func newDoguDependencyValidator(doguFetcher localDoguFetcher) *doguDependencyValidator {
 	return &doguDependencyValidator{
 		fetcher: doguFetcher,
 	}

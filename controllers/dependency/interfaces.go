@@ -13,3 +13,9 @@ type localDoguFetcher interface {
 	// otherwise might be incompatible with K8s CES).
 	FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *cesappcore.Dogu, err error)
 }
+
+// Validator checks if all necessary dependencies for an upgrade are installed.
+type Validator interface {
+	// ValidateDependencies is used to check if dogu dependencies are installed.
+	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
+}

@@ -8,8 +8,6 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -427,13 +425,6 @@ func TestNewdoguAdditionalMountsManager(t *testing.T) {
 		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 		requirementsGeneratorMock := newMockRequirementsGenerator(t)
 		doguInterfaceMock := newMockDoguInterface(t)
-
-		mgrSet := &util.ManagerSet{
-			DoguAdditionalMountsInitContainerGenerator: resourceGeneratorMock,
-			RequirementsGenerator:                      requirementsGeneratorMock,
-			LocalDoguFetcher:                           localDoguFetcherMock,
-			AdditionalImages:                           map[string]string{config.AdditionalMountsInitContainerImageConfigmapNameKey: "image"},
-		}
 
 		// when
 		sut := NewDoguAdditionalMountManager(deploymentMock, mgrSet, doguInterfaceMock)

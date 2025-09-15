@@ -6,7 +6,10 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,12 +45,12 @@ type doguExportManager struct {
 // NewDoguExportManager creates a new doguExportManager
 func NewDoguExportManager(
 	doguClient doguClient.DoguInterface,
-	podClient podInterface,
-	deploymentClient deploymentInterface,
+	podClient v1.PodInterface,
+	deploymentClient appsv1.DeploymentInterface,
 	resourceUpserter resource.ResourceUpserter,
-	doguFetcher localDoguFetcher,
+	doguFetcher cesregistry.LocalDoguFetcher,
 	eventRecorder record.EventRecorder,
-) *doguExportManager {
+) DoguExportManager {
 	return &doguExportManager{
 		doguClient:       doguClient,
 		podClient:        podClient,

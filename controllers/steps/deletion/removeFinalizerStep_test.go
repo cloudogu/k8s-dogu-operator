@@ -38,7 +38,7 @@ func TestRemoveFinalizerStep_Run(t *testing.T) {
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{
-					Finalizers: []string{finalizerName},
+					Finalizers: []string{legacyFinalizerName},
 				},
 			},
 			want: steps.StepResult{
@@ -58,7 +58,7 @@ func TestRemoveFinalizerStep_Run(t *testing.T) {
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{
-					Finalizers: []string{finalizerName},
+					Finalizers: []string{legacyFinalizerName},
 				},
 			},
 			want: steps.StepResult{

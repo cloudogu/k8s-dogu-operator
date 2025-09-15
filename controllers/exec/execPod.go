@@ -37,7 +37,7 @@ type execPodFactory struct {
 func NewExecPodFactory(
 	client client.Client,
 	executor CommandExecutor,
-) *execPodFactory {
+) ExecPodFactory {
 	return &execPodFactory{
 		client:   client,
 		executor: executor,

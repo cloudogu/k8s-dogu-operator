@@ -6,11 +6,14 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const requeueAfterReplicasStep = 5 * time.Second
@@ -22,12 +25,16 @@ type ReplicasStep struct {
 	doguInterface       doguInterface
 }
 
-func NewReplicasStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *ReplicasStep {
+func (rs *ReplicasStep) Priority() int {
+	return 3900
+}
+
+func NewReplicasStep(client client.Client, deploymentInterface v1.DeploymentInterface, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *ReplicasStep {
 	return &ReplicasStep{
-		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
 		client:              client,
-		localDoguFetcher:    mgrSet.LocalDoguFetcher,
-		doguInterface:       mgrSet.EcosystemClient.Dogus(namespace),
+		deploymentInterface: deploymentInterface,
+		localDoguFetcher:    fetcher,
+		doguInterface:       doguInterface,
 	}
 }
 

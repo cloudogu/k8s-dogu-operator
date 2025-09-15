@@ -9,14 +9,21 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 type ShutdownHandler struct {
 	doguInterface doguClient.DoguInterface
 }
 
-func NewShutdownHandler(doguInterface doguClient.DoguInterface) *ShutdownHandler {
-	return &ShutdownHandler{doguInterface: doguInterface}
+func NewShutdownHandler(manager manager.Manager, doguInterface doguClient.DoguInterface) (*ShutdownHandler, error) {
+	sh := &ShutdownHandler{doguInterface: doguInterface}
+	err := manager.Add(sh)
+	if err != nil {
+		return nil, err
+	}
+
+	return sh, nil
 }
 
 func (s *ShutdownHandler) Start(ctx context.Context) error {

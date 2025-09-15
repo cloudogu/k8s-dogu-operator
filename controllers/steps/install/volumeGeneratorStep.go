@@ -6,10 +6,12 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type VolumeGeneratorStep struct {
@@ -18,11 +20,15 @@ type VolumeGeneratorStep struct {
 	pvcGetter        persistentVolumeClaimInterface
 }
 
-func NewVolumeGeneratorStep(mgrSet *util.ManagerSet, namespace string) *VolumeGeneratorStep {
+func (vgs *VolumeGeneratorStep) Priority() int {
+	return 4200
+}
+
+func NewVolumeGeneratorStep(fetcher cesregistry.LocalDoguFetcher, upserter resource.ResourceUpserter, pvcInterface v1.PersistentVolumeClaimInterface) *VolumeGeneratorStep {
 	return &VolumeGeneratorStep{
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
-		resourceUpserter: mgrSet.ResourceUpserter,
-		pvcGetter:        mgrSet.ClientSet.CoreV1().PersistentVolumeClaims(namespace),
+		localDoguFetcher: fetcher,
+		resourceUpserter: upserter,
+		pvcGetter:        pvcInterface,
 	}
 }
 

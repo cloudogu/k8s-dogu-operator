@@ -71,7 +71,7 @@ func TestValidator_ValidateSecurity(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := &Validator{}
+			v := &validator{}
 			err := v.ValidateSecurity(tt.doguDescriptor, tt.doguResource)
 			if tt.wantErr {
 				assert.Error(t, err)

@@ -7,6 +7,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	registryErrors "github.com/cloudogu/ces-commons-lib/errors"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
@@ -14,7 +15,11 @@ type RemoveDoguConfigStep struct {
 	doguConfigRepository doguConfigRepository
 }
 
-func NewRemoveDoguConfigStep(doguConfigRepository doguConfigRepository) *RemoveDoguConfigStep {
+func (rdc *RemoveDoguConfigStep) Priority() int {
+	return 5700
+}
+
+func NewRemoveDoguConfigStep(doguConfigRepository initfx.DoguConfigRepository) *RemoveDoguConfigStep {
 	return &RemoveDoguConfigStep{
 		doguConfigRepository: doguConfigRepository,
 	}

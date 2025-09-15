@@ -9,9 +9,12 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
+	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,15 +39,27 @@ type UpdateDeploymentStep struct {
 	doguCommandExecutor commandExecutor
 }
 
-func NewUpdateDeploymentStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *UpdateDeploymentStep {
+func (uds *UpdateDeploymentStep) Priority() int {
+	return 2900
+}
+
+func NewUpdateDeploymentStep(
+	client client.Client,
+	upserter resource.ResourceUpserter,
+	deploymentInterface appsv1.DeploymentInterface,
+	localFetcher cesregistry.LocalDoguFetcher,
+	resourceFetcher cesregistry.ResourceDoguFetcher,
+	factory exec.ExecPodFactory,
+	executor exec.CommandExecutor,
+) *UpdateDeploymentStep {
 	return &UpdateDeploymentStep{
 		client:              client,
-		upserter:            mgrSet.ResourceUpserter,
-		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
-		localDoguFetcher:    mgrSet.LocalDoguFetcher,
-		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
-		execPodFactory:      mgrSet.ExecPodFactory,
-		doguCommandExecutor: mgrSet.CommandExecutor,
+		upserter:            upserter,
+		deploymentInterface: deploymentInterface,
+		localDoguFetcher:    localFetcher,
+		resourceDoguFetcher: resourceFetcher,
+		execPodFactory:      factory,
+		doguCommandExecutor: executor,
 	}
 }
 

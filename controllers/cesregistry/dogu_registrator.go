@@ -3,6 +3,7 @@ package cesregistry
 import (
 	"context"
 	"fmt"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,7 +20,7 @@ type CesDoguRegistrator struct {
 
 // NewCESDoguRegistrator creates a new instance of the dogu registrator. It registers dogus in the dogu registry and
 // generates keypairs
-func NewCESDoguRegistrator(doguVersionRegistry doguVersionRegistry, doguDescriptorRepo localDoguDescriptorRepository) *CesDoguRegistrator {
+func NewCESDoguRegistrator(doguVersionRegistry cescommons.VersionRegistry, doguDescriptorRepo cescommons.LocalDoguDescriptorRepository) *CesDoguRegistrator {
 	return &CesDoguRegistrator{
 		versionRegistry: doguVersionRegistry,
 		doguRepository:  doguDescriptorRepo,

@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
 type SecurityContextStep struct {
@@ -17,14 +18,15 @@ type SecurityContextStep struct {
 	deploymentInterface      deploymentInterface
 }
 
-func NewSecurityContextStep(
-	mgrSet *util.ManagerSet,
-	namespace string,
-) *SecurityContextStep {
+func (scs *SecurityContextStep) Priority() int {
+	return 3600
+}
+
+func NewSecurityContextStep(fetcher cesregistry.LocalDoguFetcher, generator resource.SecurityContextGenerator, deploymentInterface v1.DeploymentInterface) *SecurityContextStep {
 	return &SecurityContextStep{
-		localDoguFetcher:         mgrSet.LocalDoguFetcher,
-		securityContextGenerator: resource.NewSecurityContextGenerator(),
-		deploymentInterface:      mgrSet.ClientSet.AppsV1().Deployments(namespace),
+		localDoguFetcher:         fetcher,
+		securityContextGenerator: generator,
+		deploymentInterface:      deploymentInterface,
 	}
 }
 

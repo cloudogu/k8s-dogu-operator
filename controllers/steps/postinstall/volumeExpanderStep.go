@@ -8,13 +8,15 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const requeueAfterVolume = 10 * time.Second
@@ -26,11 +28,15 @@ type VolumeExpanderStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func NewVolumeExpanderStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *VolumeExpanderStep {
+func (vs *VolumeExpanderStep) Priority() int {
+	return 3800
+}
+
+func NewVolumeExpanderStep(client client.Client, doguInterface doguClient.DoguInterface, fetcher cesregistry.LocalDoguFetcher) *VolumeExpanderStep {
 	return &VolumeExpanderStep{
 		client:           client,
-		doguInterface:    mgrSet.EcosystemClient.Dogus(namespace),
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
+		doguInterface:    doguInterface,
+		localDoguFetcher: fetcher,
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -13,7 +14,11 @@ type OwnerReferenceStep struct {
 	ownerReferenceSetter ownerReferenceSetter
 }
 
-func NewOwnerReferenceStep(setter ownerReferenceSetter) *OwnerReferenceStep {
+func (ors *OwnerReferenceStep) Priority() int {
+	return 4700
+}
+
+func NewOwnerReferenceStep(setter initfx.OwnerReferenceSetter) *OwnerReferenceStep {
 	return &OwnerReferenceStep{
 		ownerReferenceSetter: setter,
 	}

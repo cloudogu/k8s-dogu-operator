@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -76,15 +77,12 @@ func TestNewCompositeDependencyValidator(t *testing.T) {
 		version, err := core.ParseVersion("0.0.0")
 		require.NoError(t, err)
 
-		localDoguFetcherMock := newMockLocalDoguFetcher(t)
+		config := opConfig.OperatorConfig{Version: &version}
 
 		// when
-		compositeValidator := NewCompositeDependencyValidator(&version, localDoguFetcherMock)
+		compositeValidator := NewCompositeDependencyValidator(config, nil)
 
 		// then
-		assert.NotNil(t, compositeValidator)
-		assert.NotNil(t, compositeValidator.Validators)
-		assert.NotNil(t, compositeValidator.Validators[0])
-		assert.NotNil(t, compositeValidator.Validators[1])
+		assert.NotEmpty(t, compositeValidator)
 	})
 }

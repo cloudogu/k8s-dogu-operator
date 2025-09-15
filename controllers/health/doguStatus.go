@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -24,7 +25,7 @@ type DoguStatusUpdater struct {
 	k8sClientSet    clientSet
 }
 
-func NewDoguStatusUpdater(ecosystemClient doguClient.EcoSystemV2Interface, recorder record.EventRecorder, k8sClientSet clientSet) *DoguStatusUpdater {
+func NewDoguStatusUpdater(ecosystemClient doguClient.EcoSystemV2Interface, recorder record.EventRecorder, k8sClientSet kubernetes.Interface) *DoguStatusUpdater {
 	return &DoguStatusUpdater{
 		ecosystemClient: ecosystemClient,
 		recorder:        recorder,

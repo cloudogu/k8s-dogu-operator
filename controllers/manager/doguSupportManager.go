@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -13,7 +15,6 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 const (
@@ -35,11 +36,11 @@ type doguSupportManager struct {
 }
 
 // NewDoguSupportManager creates a new instance of doguSupportManager.
-func NewDoguSupportManager(client client.Client, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *doguSupportManager {
+func NewDoguSupportManager(client client.Client, fetcher cesregistry.LocalDoguFetcher, generator resource.DoguResourceGenerator, eventRecorder record.EventRecorder) SupportManager {
 	return &doguSupportManager{
 		client:                       client,
-		doguFetcher:                  mgrSet.LocalDoguFetcher,
-		podTemplateResourceGenerator: mgrSet.DoguResourceGenerator,
+		doguFetcher:                  fetcher,
+		podTemplateResourceGenerator: generator,
 		eventRecorder:                eventRecorder,
 	}
 }

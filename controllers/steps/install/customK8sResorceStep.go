@@ -5,6 +5,9 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
@@ -19,13 +22,17 @@ type CustomK8sResourceStep struct {
 	collectApplier   collectApplier
 }
 
-func NewCustomK8sResourceStep(mgrSet *util.ManagerSet, eventRecorder record.EventRecorder) *CustomK8sResourceStep {
+func (ses *CustomK8sResourceStep) Priority() int {
+	return 4300
+}
+
+func NewCustomK8sResourceStep(eventRecorder record.EventRecorder, fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory, extractor exec.FileExtractor, applier resource.CollectApplier) *CustomK8sResourceStep {
 	return &CustomK8sResourceStep{
 		recorder:         eventRecorder,
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
-		execPodFactory:   mgrSet.ExecPodFactory,
-		fileExtractor:    mgrSet.FileExtractor,
-		collectApplier:   mgrSet.CollectApplier,
+		localDoguFetcher: fetcher,
+		execPodFactory:   factory,
+		fileExtractor:    extractor,
+		collectApplier:   applier,
 	}
 }
 

@@ -4,12 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
@@ -20,22 +24,26 @@ const (
 type RequirementsUpdater struct {
 	client              client.Client
 	namespace           string
-	globalConfigWatcher globalConfigurationWatcher
+	globalConfigWatcher GlobalConfigurationWatcher
 	doguFetcher         localDoguFetcher
-	requirementsGen     requirementsGenerator
+	requirementsGen     resourceRequirementsGenerator
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(client client.Client, namespace string, doguConfigGetter doguConfigGetter, doguFetcher localDoguFetcher, globalWatcher globalConfigurationWatcher) (*RequirementsUpdater, error) {
-	requirementsGen := NewRequirementsGenerator(doguConfigGetter)
-
-	return &RequirementsUpdater{
+func NewRequirementsUpdater(manager manager.Manager, client client.Client, operatorConfig opConfig.OperatorConfig, requirementsGen RequirementsGenerator, doguFetcher cesregistry.LocalDoguFetcher, globalWatcher GlobalConfigurationWatcher) (*RequirementsUpdater, error) {
+	u := &RequirementsUpdater{
 		client:              client,
-		namespace:           namespace,
+		namespace:           operatorConfig.Namespace,
 		globalConfigWatcher: globalWatcher,
 		doguFetcher:         doguFetcher,
 		requirementsGen:     requirementsGen,
-	}, nil
+	}
+	err := manager.Add(u)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 }
 
 // Start is the entry point for the updater.

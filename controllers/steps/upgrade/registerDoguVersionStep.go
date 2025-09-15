@@ -6,8 +6,8 @@ import (
 
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type RegisterDoguVersionStep struct {
@@ -15,10 +15,14 @@ type RegisterDoguVersionStep struct {
 	doguRegistrator     doguRegistrator
 }
 
-func NewRegisterDoguVersionStep(mgrSet *util.ManagerSet) *RegisterDoguVersionStep {
+func (rdvs *RegisterDoguVersionStep) Priority() int {
+	return 3000
+}
+
+func NewRegisterDoguVersionStep(fetcher cesregistry.ResourceDoguFetcher, registrator cesregistry.DoguRegistrator) *RegisterDoguVersionStep {
 	return &RegisterDoguVersionStep{
-		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
-		doguRegistrator:     mgrSet.DoguRegistrator,
+		resourceDoguFetcher: fetcher,
+		doguRegistrator:     registrator,
 	}
 }
 

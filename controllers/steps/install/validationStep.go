@@ -6,10 +6,12 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -22,16 +24,25 @@ type ValidationStep struct {
 	dependencyValidator           dependencyValidator
 }
 
-func NewValidationStep(mgrSet *util.ManagerSet) *ValidationStep {
-	doguChecker := health.NewDoguChecker(mgrSet.EcosystemClient, mgrSet.LocalDoguFetcher)
-	premisesChecker := upgrade.NewPremisesChecker(mgrSet.DependencyValidator, doguChecker, doguChecker, mgrSet.SecurityValidator, mgrSet.DoguAdditionalMountValidator)
+func (vs *ValidationStep) Priority() int {
+	return 5200
+}
+
+func NewValidationStep(
+	checker upgrade.PremisesChecker,
+	localDoguFetcher cesregistry.LocalDoguFetcher,
+	resourceDoguFetcher cesregistry.ResourceDoguFetcher,
+	dependencyValidator dependency.Validator,
+	securityValidator security.Validator,
+	doguAdditionalMountsValidator additionalMount.Validator,
+) *ValidationStep {
 	return &ValidationStep{
-		premisesChecker:               premisesChecker,
-		localDoguFetcher:              mgrSet.LocalDoguFetcher,
-		resourceDoguFetcher:           mgrSet.ResourceDoguFetcher,
-		dependencyValidator:           mgrSet.DependencyValidator,
-		securityValidator:             mgrSet.SecurityValidator,
-		doguAdditionalMountsValidator: mgrSet.DoguAdditionalMountValidator,
+		premisesChecker:               checker,
+		localDoguFetcher:              localDoguFetcher,
+		resourceDoguFetcher:           resourceDoguFetcher,
+		dependencyValidator:           dependencyValidator,
+		securityValidator:             securityValidator,
+		doguAdditionalMountsValidator: doguAdditionalMountsValidator,
 	}
 }
 

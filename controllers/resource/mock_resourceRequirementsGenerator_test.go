@@ -3,6 +3,8 @@
 package resource
 
 import (
+	context "context"
+
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 
@@ -22,9 +24,9 @@ func (_m *mockResourceRequirementsGenerator) EXPECT() *mockResourceRequirementsG
 	return &mockResourceRequirementsGenerator_Expecter{mock: &_m.Mock}
 }
 
-// Generate provides a mock function with given fields: dogu
-func (_m *mockResourceRequirementsGenerator) Generate(dogu *core.Dogu) (v1.ResourceRequirements, error) {
-	ret := _m.Called(dogu)
+// Generate provides a mock function with given fields: ctx, dogu
+func (_m *mockResourceRequirementsGenerator) Generate(ctx context.Context, dogu *core.Dogu) (v1.ResourceRequirements, error) {
+	ret := _m.Called(ctx, dogu)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Generate")
@@ -32,17 +34,17 @@ func (_m *mockResourceRequirementsGenerator) Generate(dogu *core.Dogu) (v1.Resou
 
 	var r0 v1.ResourceRequirements
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*core.Dogu) (v1.ResourceRequirements, error)); ok {
-		return rf(dogu)
+	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu) (v1.ResourceRequirements, error)); ok {
+		return rf(ctx, dogu)
 	}
-	if rf, ok := ret.Get(0).(func(*core.Dogu) v1.ResourceRequirements); ok {
-		r0 = rf(dogu)
+	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu) v1.ResourceRequirements); ok {
+		r0 = rf(ctx, dogu)
 	} else {
 		r0 = ret.Get(0).(v1.ResourceRequirements)
 	}
 
-	if rf, ok := ret.Get(1).(func(*core.Dogu) error); ok {
-		r1 = rf(dogu)
+	if rf, ok := ret.Get(1).(func(context.Context, *core.Dogu) error); ok {
+		r1 = rf(ctx, dogu)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,14 +58,15 @@ type mockResourceRequirementsGenerator_Generate_Call struct {
 }
 
 // Generate is a helper method to define mock.On call
+//   - ctx context.Context
 //   - dogu *core.Dogu
-func (_e *mockResourceRequirementsGenerator_Expecter) Generate(dogu interface{}) *mockResourceRequirementsGenerator_Generate_Call {
-	return &mockResourceRequirementsGenerator_Generate_Call{Call: _e.mock.On("Generate", dogu)}
+func (_e *mockResourceRequirementsGenerator_Expecter) Generate(ctx interface{}, dogu interface{}) *mockResourceRequirementsGenerator_Generate_Call {
+	return &mockResourceRequirementsGenerator_Generate_Call{Call: _e.mock.On("Generate", ctx, dogu)}
 }
 
-func (_c *mockResourceRequirementsGenerator_Generate_Call) Run(run func(dogu *core.Dogu)) *mockResourceRequirementsGenerator_Generate_Call {
+func (_c *mockResourceRequirementsGenerator_Generate_Call) Run(run func(ctx context.Context, dogu *core.Dogu)) *mockResourceRequirementsGenerator_Generate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*core.Dogu))
+		run(args[0].(context.Context), args[1].(*core.Dogu))
 	})
 	return _c
 }
@@ -73,7 +76,7 @@ func (_c *mockResourceRequirementsGenerator_Generate_Call) Return(_a0 v1.Resourc
 	return _c
 }
 
-func (_c *mockResourceRequirementsGenerator_Generate_Call) RunAndReturn(run func(*core.Dogu) (v1.ResourceRequirements, error)) *mockResourceRequirementsGenerator_Generate_Call {
+func (_c *mockResourceRequirementsGenerator_Generate_Call) RunAndReturn(run func(context.Context, *core.Dogu) (v1.ResourceRequirements, error)) *mockResourceRequirementsGenerator_Generate_Call {
 	_c.Call.Return(run)
 	return _c
 }

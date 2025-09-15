@@ -5,9 +5,7 @@ import (
 	"fmt"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,13 +24,16 @@ var expectedConditions = []string{
 }
 
 type ConditionsStep struct {
-	conditionUpdater conditionUpdater
+	conditionUpdater ConditionUpdater
 }
 
-func NewConditionsStep(mgrSet *util.ManagerSet, namespace string) *ConditionsStep {
-	doguInt := mgrSet.EcosystemClient.Dogus(namespace)
+func (cs *ConditionsStep) Priority() int {
+	return 5400
+}
+
+func NewConditionsStep(updater ConditionUpdater) *ConditionsStep {
 	return &ConditionsStep{
-		conditionUpdater: health.NewDoguConditionUpdater(doguInt),
+		conditionUpdater: updater,
 	}
 }
 

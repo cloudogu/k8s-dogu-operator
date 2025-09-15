@@ -4,11 +4,14 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type ServiceStep struct {
@@ -18,12 +21,16 @@ type ServiceStep struct {
 	serviceInterface serviceInterface
 }
 
-func NewServiceStep(mgrSet *util.ManagerSet, namespace string) *ServiceStep {
+func (ses *ServiceStep) Priority() int {
+	return 4500
+}
+
+func NewServiceStep(registry imageregistry.ImageRegistry, serviceInterface v1.ServiceInterface, generator resource.DoguResourceGenerator, fetcher cesregistry.LocalDoguFetcher) *ServiceStep {
 	return &ServiceStep{
-		imageRegistry:    mgrSet.ImageRegistry,
-		serviceInterface: mgrSet.ClientSet.CoreV1().Services(namespace),
-		serviceGenerator: mgrSet.DoguResourceGenerator,
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
+		imageRegistry:    registry,
+		serviceInterface: serviceInterface,
+		serviceGenerator: generator,
+		localDoguFetcher: fetcher,
 	}
 }
 

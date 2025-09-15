@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
 )
@@ -27,15 +28,15 @@ var resourceTypeMapping = map[resourceType]corev1.ResourceName{
 	storageType: corev1.ResourceEphemeralStorage,
 }
 
-type RequirementsGenerator struct {
-	doguConfigGetter doguConfigGetter
+type requirementsGenerator struct {
+	doguConfigGetter DoguConfigRepository
 }
 
-func NewRequirementsGenerator(doguConfigGetter doguConfigGetter) *RequirementsGenerator {
-	return &RequirementsGenerator{doguConfigGetter: doguConfigGetter}
+func NewRequirementsGenerator(doguConfigGetter DoguConfigRepository) RequirementsGenerator {
+	return &requirementsGenerator{doguConfigGetter: doguConfigGetter}
 }
 
-func (r RequirementsGenerator) Generate(ctx context.Context, dogu *core.Dogu) (corev1.ResourceRequirements, error) {
+func (r requirementsGenerator) Generate(ctx context.Context, dogu *core.Dogu) (corev1.ResourceRequirements, error) {
 	doguConfig, err := r.doguConfigGetter.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		return corev1.ResourceRequirements{}, fmt.Errorf("unable to get config for dogu %s: %w", dogu.GetSimpleName(), err)

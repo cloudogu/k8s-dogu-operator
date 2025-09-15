@@ -8,13 +8,15 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/retry-lib/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -32,14 +34,22 @@ type doguAdditionalMountManager struct {
 	image                        string
 }
 
-func NewDoguAdditionalMountManager(deploymentInterface deploymentInterface, mgrSet *util.ManagerSet, doguInterface doguClient.DoguInterface) *doguAdditionalMountManager {
+func NewDoguAdditionalMountManager(
+	deploymentInterface appsv1client.DeploymentInterface,
+	resourceGenerator resource.DoguResourceGenerator,
+	fetcher cesregistry.LocalDoguFetcher,
+	requirementsGenerator resource.RequirementsGenerator,
+	additionalMountValidator additionalMount.Validator,
+	images resource.AdditionalImages,
+	doguInterface doguClient.DoguInterface,
+) AdditionalMountManager {
 	return &doguAdditionalMountManager{
 		deploymentInterface:          deploymentInterface,
-		resourceGenerator:            mgrSet.DoguAdditionalMountsInitContainerGenerator,
-		localDoguFetcher:             mgrSet.LocalDoguFetcher,
-		requirementsGenerator:        mgrSet.RequirementsGenerator,
-		doguAdditionalMountValidator: mgrSet.DoguAdditionalMountValidator,
-		image:                        mgrSet.AdditionalImages[config.AdditionalMountsInitContainerImageConfigmapNameKey],
+		resourceGenerator:            resourceGenerator,
+		localDoguFetcher:             fetcher,
+		requirementsGenerator:        requirementsGenerator,
+		doguAdditionalMountValidator: additionalMountValidator,
+		image:                        images[config.AdditionalMountsInitContainerImageConfigmapNameKey],
 		doguInterface:                doguInterface,
 	}
 }

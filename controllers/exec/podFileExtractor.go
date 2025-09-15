@@ -17,7 +17,7 @@ type podFileExtractor struct {
 }
 
 // NewPodFileExtractor creates a new pod file extractor that fetches files from a pod's container.
-func NewPodFileExtractor(factory ExecPodFactory) *podFileExtractor {
+func NewPodFileExtractor(factory ExecPodFactory) FileExtractor {
 	return &podFileExtractor{factory: factory}
 }
 

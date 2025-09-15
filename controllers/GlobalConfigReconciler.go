@@ -6,28 +6,26 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	client2 "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	managers "github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const globalConfigMapName = "global-config"
 
-var clientSetGetter = func(c *rest.Config) (kubernetes.Interface, error) {
-	return kubernetes.NewForConfig(c)
-}
-
-type globalConfigReconciler struct {
-	doguRestartManager *doguRestartManager
+type GlobalConfigReconciler struct {
+	doguRestartManager restartManager
 	configMapInterface configMapInterface
 	doguInterface      doguInterface
 	podInterface       podInterface
@@ -35,27 +33,32 @@ type globalConfigReconciler struct {
 	doguEvents         chan<- event.TypedGenericEvent[*v2.Dogu]
 }
 
-func NewGlobalConfigReconciler(ecosystemClient client2.EcoSystemV2Interface, client client.Client, namespace string, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (GenericReconciler, error) {
-	restConfig, err := ctrl.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	clientSet, err := clientSetGetter(restConfig)
-	if err != nil {
-		return nil, err
-	}
-	return &globalConfigReconciler{
-		doguRestartManager: NewDoguRestartManager(ecosystemClient, clientSet, client, namespace),
-		configMapInterface: clientSet.CoreV1().ConfigMaps(namespace),
-		doguInterface:      ecosystemClient.Dogus(namespace),
-		podInterface:       clientSet.CoreV1().Pods(namespace),
+func NewGlobalConfigReconciler(
+	doguRestartManager managers.DoguRestartManager,
+	configMapInterface v1.ConfigMapInterface,
+	doguInterface doguClient.DoguInterface,
+	podInterface v1.PodInterface,
+	client client.Client,
+	doguEvents chan<- event.TypedGenericEvent[*v2.Dogu],
+	manager manager.Manager,
+) (*GlobalConfigReconciler, error) {
+	r := &GlobalConfigReconciler{
+		doguRestartManager: doguRestartManager,
+		configMapInterface: configMapInterface,
+		doguInterface:      doguInterface,
+		podInterface:       podInterface,
 		client:             client,
 		doguEvents:         doguEvents,
-	}, nil
+	}
+	err := r.setupWithManager(manager)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
-func (r *globalConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	cm, err := r.configMapInterface.Get(ctx, req.Name, metav1.GetOptions{})
@@ -94,7 +97,7 @@ func (r *globalConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *globalConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *GlobalConfigReconciler) setupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.ConfigMap{}).
 		WithEventFilter(globalConfigPredicate()).
@@ -118,7 +121,7 @@ func globalConfigPredicate() predicate.Predicate {
 	}
 }
 
-func (r *globalConfigReconciler) getDeploymentLastStartingTime(ctx context.Context, deployment *appsv1.Deployment) (*time.Time, error) {
+func (r *GlobalConfigReconciler) getDeploymentLastStartingTime(ctx context.Context, deployment *appsv1.Deployment) (*time.Time, error) {
 	labelSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
 
 	pods, err := r.podInterface.List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
@@ -138,7 +141,7 @@ func (r *globalConfigReconciler) getDeploymentLastStartingTime(ctx context.Conte
 	return lastTimeStarted, nil
 }
 
-func (r *globalConfigReconciler) getConfigMapLastUpdatedTime(cm *corev1.ConfigMap) *metav1.Time {
+func (r *GlobalConfigReconciler) getConfigMapLastUpdatedTime(cm *corev1.ConfigMap) *metav1.Time {
 	timestamp := cm.GetCreationTimestamp()
 	latest := &timestamp
 

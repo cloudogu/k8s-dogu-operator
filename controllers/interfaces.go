@@ -12,7 +12,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -36,6 +35,10 @@ type K8sClient interface {
 	client.Client
 }
 
+type restartManager interface {
+	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
+}
+
 type podInterface interface {
 	v1.PodInterface
 }
@@ -56,14 +59,9 @@ type eventRecorder interface {
 	record.EventRecorder
 }
 
-type DoguReconciler interface {
-	reconcile.Reconciler
-	SetupWithManager(mgr ctrl.Manager, externalEvents <-chan event.TypedGenericEvent[*v2.Dogu]) error
-}
-
 type GenericReconciler interface {
 	reconcile.Reconciler
-	SetupWithManager(mgr ctrl.Manager) error
+	setupWithManager(mgr ctrl.Manager) error
 }
 
 //nolint:unused
@@ -76,7 +74,7 @@ type DoguUsecase interface {
 	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error)
 }
 
-type DoguRestartManager interface {
+type doguRestartManager interface {
 	RestartAllDogus(ctx context.Context) error
 	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
 }

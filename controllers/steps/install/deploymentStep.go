@@ -4,10 +4,13 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeploymentStep struct {
@@ -16,11 +19,15 @@ type DeploymentStep struct {
 	client           k8sClient
 }
 
-func NewDeploymentStep(client k8sClient, mgrSet *util.ManagerSet) *DeploymentStep {
+func (ds *DeploymentStep) Priority() int {
+	return 4000
+}
+
+func NewDeploymentStep(client client.Client, upserter resource.ResourceUpserter, fetcher cesregistry.LocalDoguFetcher) *DeploymentStep {
 	return &DeploymentStep{
 		client:           client,
-		upserter:         mgrSet.ResourceUpserter,
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
+		upserter:         upserter,
+		localDoguFetcher: fetcher,
 	}
 }
 

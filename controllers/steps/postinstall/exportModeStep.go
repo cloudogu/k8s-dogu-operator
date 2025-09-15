@@ -6,26 +6,19 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"k8s.io/client-go/tools/record"
 )
 
 type ExportModeStep struct {
 	exportManager exportManager
 }
 
-func NewExportModeStep(mgrSet *util.ManagerSet, namespace string, eventRecorder record.EventRecorder) *ExportModeStep {
-	doguInt := mgrSet.EcosystemClient.Dogus(namespace)
-	expManager := manager.NewDoguExportManager(
-		doguInt,
-		mgrSet.ClientSet.CoreV1().Pods(namespace),
-		mgrSet.ClientSet.AppsV1().Deployments(namespace),
-		mgrSet.ResourceUpserter,
-		mgrSet.LocalDoguFetcher,
-		eventRecorder,
-	)
+func (ems *ExportModeStep) Priority() int {
+	return 3500
+}
+
+func NewExportModeStep(doguExportManager manager.DoguExportManager) *ExportModeStep {
 	return &ExportModeStep{
-		exportManager: expManager,
+		exportManager: doguExportManager,
 	}
 }
 

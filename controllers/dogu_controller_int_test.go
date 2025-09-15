@@ -6,16 +6,18 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"slices"
+	"strings"
+	"testing"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
-	"slices"
-	"strings"
-	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -56,13 +58,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorWithLocalConfigVolumeBytes)
 	redmineDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 
-	ldapCr.Namespace = testNamespace
+	ldapCr.Namespace = util.testNamespace
 	ldapCr.ResourceVersion = ""
 	ldapDoguLookupKey := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
-	cesLoadbalancerLookupKey := types.NamespacedName{Name: "ces-loadbalancer", Namespace: testNamespace}
-	tcpExposedPortsLookupKey := types.NamespacedName{Name: "tcp-services", Namespace: testNamespace}
+	cesLoadbalancerLookupKey := types.NamespacedName{Name: "ces-loadbalancer", Namespace: util.testNamespace}
+	tcpExposedPortsLookupKey := types.NamespacedName{Name: "tcp-services", Namespace: util.testNamespace}
 
-	redmineCr.Namespace = testNamespace
+	redmineCr.Namespace = util.testNamespace
 	redmineCr.ResourceVersion = ""
 
 	ctx := context.TODO()
@@ -92,7 +94,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Should install dogu in cluster", func() {
 			By("Creating namespace")
-			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace, Namespace: testNamespace}}
+			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: util.testNamespace, Namespace: util.testNamespace}}
 			err := k8sClient.Create(ctx, namespace)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -100,10 +102,10 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			healthCM := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "k8s-dogu-operator-dogu-health",
-					Namespace: testNamespace,
+					Namespace: util.testNamespace,
 				},
 			}
-			_, err = k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(ctx, healthCM, metav1.CreateOptions{})
+			_, err = k8sClientSet.CoreV1().ConfigMaps(util.testNamespace).Create(ctx, healthCM, metav1.CreateOptions{})
 			if err != nil {
 				panic(err)
 			}
@@ -246,8 +248,8 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				return k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
 
-			sourceCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "sourcecm", Namespace: testNamespace}}
-			_, err := k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(ctx, sourceCm, metav1.CreateOptions{})
+			sourceCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "sourcecm", Namespace: util.testNamespace}}
+			_, err := k8sClientSet.CoreV1().ConfigMaps(util.testNamespace).Create(ctx, sourceCm, metav1.CreateOptions{})
 			if err != nil {
 				panic(err)
 			}
@@ -592,7 +594,7 @@ func setExecPodRunning(ctx context.Context, doguName string) {
 func setDeploymentAvailable(ctx context.Context, doguName string) {
 	By("Set Deployment to be available")
 	Eventually(func() error {
-		deployment, err := k8sClientSet.AppsV1().Deployments(testNamespace).Get(ctx, doguName, metav1.GetOptions{})
+		deployment, err := k8sClientSet.AppsV1().Deployments(util.testNamespace).Get(ctx, doguName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -606,7 +608,7 @@ func setDeploymentAvailable(ctx context.Context, doguName string) {
 		deployment.Status.ReadyReplicas = replicas
 		deployment.Status.AvailableReplicas = replicas
 
-		_, err = k8sClientSet.AppsV1().Deployments(testNamespace).UpdateStatus(ctx, deployment, metav1.UpdateOptions{})
+		_, err = k8sClientSet.AppsV1().Deployments(util.testNamespace).UpdateStatus(ctx, deployment, metav1.UpdateOptions{})
 		return err
 	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
 }
@@ -614,7 +616,7 @@ func setDeploymentAvailable(ctx context.Context, doguName string) {
 func checkDoguAvailable(ctx context.Context, doguName string) {
 	By("Expect dogu to be available")
 	Eventually(func() bool {
-		dogu, err := ecosystemClientSet.Dogus(testNamespace).Get(ctx, doguName, metav1.GetOptions{})
+		dogu, err := ecosystemClientSet.Dogus(util.testNamespace).Get(ctx, doguName, metav1.GetOptions{})
 		if err != nil {
 			return false
 		}

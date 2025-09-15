@@ -3,10 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	"k8s.io/utils/ptr"
 	"os"
 	"path"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 	"strings"
 
@@ -14,7 +12,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -69,20 +69,22 @@ const (
 // as controller
 type resourceGenerator struct {
 	scheme                   *runtime.Scheme
-	requirementsGenerator    requirementsGenerator
-	hostAliasGenerator       hostAliasGenerator
-	securityContextGenerator securityContextGenerator
-	additionalImages         map[string]string
+	requirementsGenerator    RequirementsGenerator
+	hostAliasGenerator       HostAliasGenerator
+	securityContextGenerator SecurityContextGenerator
+	additionalImages         AdditionalImages
 }
+
+type AdditionalImages map[string]string
 
 // NewResourceGenerator creates a new generator for k8s resources
 func NewResourceGenerator(
 	scheme *runtime.Scheme,
-	requirementsGenerator requirementsGenerator,
-	hostAliasGenerator hostAliasGenerator,
-	securityContextGenerator securityContextGenerator,
-	additionalImages map[string]string,
-) *resourceGenerator {
+	requirementsGenerator RequirementsGenerator,
+	hostAliasGenerator HostAliasGenerator,
+	securityContextGenerator SecurityContextGenerator,
+	additionalImages AdditionalImages,
+) DoguResourceGenerator {
 	return &resourceGenerator{
 		scheme:                   scheme,
 		requirementsGenerator:    requirementsGenerator,

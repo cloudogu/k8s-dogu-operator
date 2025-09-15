@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type RegisterDoguVersionStep struct {
@@ -15,11 +15,15 @@ type RegisterDoguVersionStep struct {
 	localDoguFetcher    localDoguFetcher
 }
 
-func NewRegisterDoguVersionStep(mgrSet *util.ManagerSet) *RegisterDoguVersionStep {
+func (rdvs *RegisterDoguVersionStep) Priority() int {
+	return 4800
+}
+
+func NewRegisterDoguVersionStep(resourceDoguFetcher cesregistry.ResourceDoguFetcher, localDoguFetcher cesregistry.LocalDoguFetcher, registrator cesregistry.DoguRegistrator) *RegisterDoguVersionStep {
 	return &RegisterDoguVersionStep{
-		resourceDoguFetcher: mgrSet.ResourceDoguFetcher,
-		localDoguFetcher:    mgrSet.LocalDoguFetcher,
-		doguRegistrator:     mgrSet.DoguRegistrator,
+		resourceDoguFetcher: resourceDoguFetcher,
+		localDoguFetcher:    localDoguFetcher,
+		doguRegistrator:     registrator,
 	}
 }
 

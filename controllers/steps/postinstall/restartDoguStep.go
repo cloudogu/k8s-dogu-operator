@@ -5,10 +5,13 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type RestartDoguStep struct {
@@ -19,12 +22,22 @@ type RestartDoguStep struct {
 	doguRestartManager      doguRestartManager
 }
 
-func NewRestartDoguStep(client k8sClient, mgrSet *util.ManagerSet, namespace string, configRepos util.ConfigRepositories, manager doguRestartManager) *RestartDoguStep {
+func (rds *RestartDoguStep) Priority() int {
+	return 3200
+}
+
+func NewRestartDoguStep(
+	client client.Client,
+	podInterface corev1.PodInterface,
+	doguConfigRepo initfx.DoguConfigRepository,
+	sensitiveDoguConfigRepo initfx.DoguConfigRepository,
+	manager manager.DoguRestartManager,
+) *RestartDoguStep {
 	return &RestartDoguStep{
 		client:                  client,
-		podInterface:            mgrSet.ClientSet.CoreV1().Pods(namespace),
-		doguConfigRepository:    configRepos.DoguConfigRepository,
-		sensitiveDoguRepository: configRepos.SensitiveDoguRepository,
+		podInterface:            podInterface,
+		doguConfigRepository:    doguConfigRepo,
+		sensitiveDoguRepository: sensitiveDoguConfigRepo,
 		doguRestartManager:      manager,
 	}
 }

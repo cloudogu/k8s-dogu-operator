@@ -7,11 +7,7 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -19,22 +15,17 @@ import (
 var testCtx = context.Background()
 
 func TestNewDoguDeleteUsecase(t *testing.T) {
-	t.Run("Successfully created delete usacase", func(t *testing.T) {
-		usecase := NewDoguDeleteUsecase(newMockK8sClient(t), &util.ManagerSet{
-			DoguRegistrator: &cesregistry.CesDoguRegistrator{},
-		}, util.ConfigRepositories{
-			DoguConfigRepository:    &repository.DoguConfigRepository{},
-			SensitiveDoguRepository: &repository.DoguConfigRepository{},
-		}, &config.OperatorConfig{})
+	t.Run("Successfully created delete usecase", func(t *testing.T) {
+		usecase := NewDoguDeleteUseCase(make([]Step, 5))
 
-		assert.NotNil(t, usecase)
+		assert.NotEmpty(t, usecase)
 	})
 }
 
 func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 	tests := []struct {
 		name             string
-		stepsFn          func(t *testing.T) []step
+		stepsFn          func(t *testing.T) []Step
 		doguResource     *v2.Dogu
 		wantRequeueAfter time.Duration
 		wantContinue     bool
@@ -42,12 +33,12 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 	}{
 		{
 			name: "should return requeue after time duration",
-			stepsFn: func(t *testing.T) []step {
+			stepsFn: func(t *testing.T) []Step {
 				firstStep := newMockStep(t)
 				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
 					ObjectMeta: v1.ObjectMeta{Name: "test"},
 				}).Return(steps.RequeueAfter(time.Second * 3))
-				return []step{firstStep}
+				return []Step{firstStep}
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
@@ -58,12 +49,12 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		},
 		{
 			name: "should return error",
-			stepsFn: func(t *testing.T) []step {
+			stepsFn: func(t *testing.T) []Step {
 				firstStep := newMockStep(t)
 				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
 					ObjectMeta: v1.ObjectMeta{Name: "test"},
 				}).Return(steps.RequeueWithError(assert.AnError))
-				return []step{firstStep}
+				return []Step{firstStep}
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
@@ -73,13 +64,13 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 			wantErr:          assert.Error,
 		},
 		{
-			name: "should abort step loop",
-			stepsFn: func(t *testing.T) []step {
+			name: "should abort Step loop",
+			stepsFn: func(t *testing.T) []Step {
 				firstStep := newMockStep(t)
 				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
 					ObjectMeta: v1.ObjectMeta{Name: "test"},
 				}).Return(steps.Abort())
-				return []step{firstStep}
+				return []Step{firstStep}
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
@@ -90,8 +81,8 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		},
 		{
 			name: "should loop through all steps",
-			stepsFn: func(t *testing.T) []step {
-				stepLoop := []step{}
+			stepsFn: func(t *testing.T) []Step {
+				stepLoop := []Step{}
 				for i := 0; i < 10; i++ {
 					s := newMockStep(t)
 					s.EXPECT().Run(testCtx, &v2.Dogu{

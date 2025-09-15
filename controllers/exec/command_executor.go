@@ -87,7 +87,7 @@ type defaultCommandExecutor struct {
 }
 
 // NewCommandExecutor creates a new instance of NewCommandExecutor
-func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) *defaultCommandExecutor {
+func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) CommandExecutor {
 	return &defaultCommandExecutor{
 		client:    cli,
 		clientSet: clientSet,

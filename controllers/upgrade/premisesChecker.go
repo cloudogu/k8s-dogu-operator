@@ -6,6 +6,10 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 )
 
 type requeueablePremisesError struct {
@@ -39,12 +43,12 @@ type premisesChecker struct {
 
 // NewPremisesChecker creates a new upgrade premises checker.
 func NewPremisesChecker(
-	depValidator DependencyValidator,
-	healthChecker doguHealthChecker,
-	recursiveHealthChecker doguRecursiveHealthChecker,
-	securityValidator securityValidator,
-	doguAdditionalMountsValidator doguAdditionalMountsValidator,
-) *premisesChecker {
+	depValidator dependency.Validator,
+	healthChecker health.DoguHealthChecker,
+	recursiveHealthChecker health.DoguHealthChecker,
+	securityValidator security.Validator,
+	doguAdditionalMountsValidator additionalMount.Validator,
+) PremisesChecker {
 	return &premisesChecker{
 		dependencyValidator:           depValidator,
 		doguHealthChecker:             healthChecker,

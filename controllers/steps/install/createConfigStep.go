@@ -6,6 +6,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-registry-lib/config"
 )
@@ -14,7 +15,11 @@ type CreateConfigStep struct {
 	configRepository doguConfigRepository
 }
 
-func NewCreateConfigStep(configRepo doguConfigRepository) *CreateConfigStep {
+func (ccs *CreateConfigStep) Priority() int {
+	return 5000
+}
+
+func NewCreateConfigStep(configRepo initfx.DoguConfigRepository) *CreateConfigStep {
 	return &CreateConfigStep{
 		configRepository: configRepo,
 	}

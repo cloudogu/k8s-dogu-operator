@@ -10,7 +10,6 @@ import (
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	"github.com/go-logr/logr"
 	"github.com/sirupsen/logrus"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const logLevelEnvVar = "LOG_LEVEL"
@@ -21,8 +20,6 @@ const (
 	infoLevel
 	debugLevel
 )
-
-var CurrentLogLevel = logrus.ErrorLevel
 
 type libraryLogger struct {
 	logger logr.LogSink
@@ -83,10 +80,10 @@ func getLogLevelFromEnv() (logrus.Level, error) {
 	return level, nil
 }
 
-func ConfigureLogger() error {
+func NewLogger() (logr.Logger, error) {
 	level, err := getLogLevelFromEnv()
 	if err != nil {
-		return err
+		return logr.Logger{}, err
 	}
 
 	// create logrus logger that can be styled and formatted
@@ -94,13 +91,8 @@ func ConfigureLogger() error {
 	logrusLog.SetFormatter(&logrus.TextFormatter{})
 	logrusLog.SetLevel(level)
 
-	CurrentLogLevel = level
-
 	// convert logrus logger to logr logger
 	logrusLogrLogger := logrusr.New(logrusLog)
-
-	// set logr logger as controller logger
-	ctrl.SetLogger(logrusLogrLogger)
 
 	// set custom logger implementation to cesapp-lib logger
 	cesappLibLogger := libraryLogger{name: "cesapp-lib", logger: logrusLogrLogger.GetSink()}
@@ -114,5 +106,5 @@ func ConfigureLogger() error {
 		return &k8sApplyLibLogger
 	}
 
-	return nil
+	return logrusLogrLogger, nil
 }

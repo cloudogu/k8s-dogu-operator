@@ -6,12 +6,15 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -27,14 +30,18 @@ type HealthCheckStep struct {
 	doguInterface           doguInterface
 }
 
-func NewHealthCheckStep(client k8sClient, availabilityChecker deploymentAvailabilityChecker,
-	doguHealthStatusUpdater doguHealthStatusUpdater, mgrSet *util.ManagerSet, namespace string) *HealthCheckStep {
+func (hcs *HealthCheckStep) Priority() int {
+	return 5300
+}
+
+func NewHealthCheckStep(client client.Client, availabilityChecker health.DeploymentAvailabilityChecker,
+	doguHealthStatusUpdater health.DoguHealthStatusUpdater, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *HealthCheckStep {
 	return &HealthCheckStep{
 		client:                  client,
 		availabilityChecker:     availabilityChecker,
 		doguHealthStatusUpdater: doguHealthStatusUpdater,
-		doguFetcher:             mgrSet.LocalDoguFetcher,
-		doguInterface:           mgrSet.EcosystemClient.Dogus(namespace),
+		doguFetcher:             fetcher,
+		doguInterface:           doguInterface,
 	}
 }
 

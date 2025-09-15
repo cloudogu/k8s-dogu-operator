@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -28,11 +28,15 @@ type SupportModeStep struct {
 	deploymentInterface deploymentInterface
 }
 
-func NewSupportModeStep(client k8sClient, mgrSet *util.ManagerSet, eventRecorder record.EventRecorder, namespace string) *SupportModeStep {
+func (sms *SupportModeStep) Priority() int {
+	return 3400
+}
+
+func NewSupportModeStep(supportManager manager.SupportManager, doguInterface doguClient.DoguInterface, deploymentInterface v1.DeploymentInterface) *SupportModeStep {
 	return &SupportModeStep{
-		supportManager:      manager.NewDoguSupportManager(client, mgrSet, eventRecorder),
-		doguInterface:       mgrSet.EcosystemClient.Dogus(namespace),
-		deploymentInterface: mgrSet.ClientSet.AppsV1().Deployments(namespace),
+		supportManager:      supportManager,
+		doguInterface:       doguInterface,
+		deploymentInterface: deploymentInterface,
 	}
 }
 

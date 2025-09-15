@@ -4,8 +4,9 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type NetworkPoliciesStep struct {
@@ -13,10 +14,14 @@ type NetworkPoliciesStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func NewNetworkPoliciesStep(mgrSet *util.ManagerSet) *NetworkPoliciesStep {
+func (nps *NetworkPoliciesStep) Priority() int {
+	return 4100
+}
+
+func NewNetworkPoliciesStep(upserter resource.ResourceUpserter, fetcher cesregistry.LocalDoguFetcher) *NetworkPoliciesStep {
 	return &NetworkPoliciesStep{
-		netPolUpserter:   mgrSet.ResourceUpserter,
-		localDoguFetcher: mgrSet.LocalDoguFetcher,
+		netPolUpserter:   upserter,
+		localDoguFetcher: fetcher,
 	}
 }
 

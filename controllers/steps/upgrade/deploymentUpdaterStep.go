@@ -4,11 +4,14 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeploymentUpdaterStep struct {
@@ -19,13 +22,23 @@ type DeploymentUpdaterStep struct {
 	securityContextGenerator securityContextGenerator
 }
 
-func NewDeploymentUpdaterStep(client k8sClient, mgrSet *util.ManagerSet, namespace string) *DeploymentUpdaterStep {
+func (dus *DeploymentUpdaterStep) Priority() int {
+	return 2400
+}
+
+func NewDeploymentUpdaterStep(
+	client client.Client,
+	upserter resource.ResourceUpserter,
+	fetcher cesregistry.LocalDoguFetcher,
+	deploymentInterface appsv1.DeploymentInterface,
+	generator resource.SecurityContextGenerator,
+) *DeploymentUpdaterStep {
 	return &DeploymentUpdaterStep{
-		upserter:                 mgrSet.ResourceUpserter,
-		localDoguFetcher:         mgrSet.LocalDoguFetcher,
+		upserter:                 upserter,
+		localDoguFetcher:         fetcher,
 		client:                   client,
-		deploymentInterface:      mgrSet.ClientSet.AppsV1().Deployments(namespace),
-		securityContextGenerator: resource.NewSecurityContextGenerator(),
+		deploymentInterface:      deploymentInterface,
+		securityContextGenerator: generator,
 	}
 }
 

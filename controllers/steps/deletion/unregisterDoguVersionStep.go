@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
@@ -12,7 +13,11 @@ type UnregisterDoguVersionStep struct {
 	doguRegistrator doguRegistrator
 }
 
-func NewUnregisterDoguVersionStep(registrator doguRegistrator) *UnregisterDoguVersionStep {
+func (udvs *UnregisterDoguVersionStep) Priority() int {
+	return 5900
+}
+
+func NewUnregisterDoguVersionStep(registrator cesregistry.DoguRegistrator) *UnregisterDoguVersionStep {
 	return &UnregisterDoguVersionStep{
 		doguRegistrator: registrator,
 	}

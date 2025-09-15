@@ -5,22 +5,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudogu/k8s-apply-lib/apply"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"github.com/cloudogu/k8s-registry-lib/repository"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,53 +31,50 @@ const (
 	ReasonHasToReconcile   = "HasToReconcile"
 )
 
-const k8sDoguOperatorFieldManagerName = "k8s-dogu-operator"
-
-type doguReconciler struct {
+type DoguReconciler struct {
 	client            client.Client
 	doguChangeHandler DoguUsecase
 	doguDeleteHandler DoguUsecase
 	doguInterface     doguInterface
+	externalEvents    <-chan event.TypedGenericEvent[*doguv2.Dogu]
+}
+
+func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
+	return make(chan event.TypedGenericEvent[*doguv2.Dogu])
+}
+
+func NewDoguEventsIn(channel chan event.TypedGenericEvent[*doguv2.Dogu]) chan<- event.TypedGenericEvent[*doguv2.Dogu] {
+	return channel
+}
+
+func NewDoguEventsOut(channel chan event.TypedGenericEvent[*doguv2.Dogu]) <-chan event.TypedGenericEvent[*doguv2.Dogu] {
+	return channel
 }
 
 func NewDoguReconciler(
-	client client.Client,
-	ecosystemClient doguClient.EcoSystemV2Interface,
-	operatorConfig *config.OperatorConfig,
-	eventRecorder record.EventRecorder,
-	doguHealthStatusUpdater health.DoguHealthStatusUpdater,
-	availabilityChecker *health.AvailabilityChecker,
-) (DoguReconciler, error) {
-	ctx := context.Background()
-	restConfig, err := ctrl.GetConfig()
+	k8sClient client.Client,
+	doguChangeHandler *usecase.DoguInstallOrChangeUseCase,
+	doguDeleteHandler *usecase.DoguDeleteUseCase,
+	doguInterface doguClient.DoguInterface,
+	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
+	manager manager.Manager,
+) (*DoguReconciler, error) {
+	r := &DoguReconciler{
+		client:            k8sClient,
+		doguChangeHandler: doguChangeHandler,
+		doguDeleteHandler: doguDeleteHandler,
+		doguInterface:     doguInterface,
+		externalEvents:    externalEvents,
+	}
+	err := r.setupWithManager(manager)
 	if err != nil {
 		return nil, err
 	}
 
-	clientSet, err := clientSetGetter(restConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	configRepos := createConfigRepositories(clientSet, operatorConfig.Namespace)
-	// At this point, the operator's client is only ready AFTER the operator's Start(...) was called.
-	// Instead we must use our own client to avoid an immediate cache error: "the cache is not started, can not read objects"
-	mgrSet, err := createMgrSet(ctx, restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos)
-	if err != nil {
-		return nil, err
-	}
-
-	doguRestartMgr := NewDoguRestartManager(mgrSet.EcosystemClient, clientSet, client, operatorConfig.Namespace)
-
-	return &doguReconciler{
-		client:            client,
-		doguChangeHandler: usecase.NewDoguInstallOrChangeUseCase(client, mgrSet, configRepos, eventRecorder, operatorConfig.Namespace, doguHealthStatusUpdater, doguRestartMgr, availabilityChecker),
-		doguDeleteHandler: usecase.NewDoguDeleteUsecase(client, mgrSet, configRepos, operatorConfig),
-		doguInterface:     ecosystemClient.Dogus(operatorConfig.Namespace),
-	}, nil
+	return r, nil
 }
 
-func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	doguResource := &doguv2.Dogu{}
@@ -125,7 +116,7 @@ func (r *doguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 }
 
 // SetupWithManager sets up the controller with the manager.
-func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager, externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu]) error {
+func (r *DoguReconciler) setupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&coreV1.ConfigMap{}).
@@ -135,11 +126,11 @@ func (r *doguReconciler) SetupWithManager(mgr ctrl.Manager, externalEvents <-cha
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
-		WatchesRawSource(source.Channel(externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{})).
+		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{})).
 		Complete(r)
 }
 
-func (r *doguReconciler) setReadyCondition(ctx context.Context, doguResource *doguv2.Dogu, status metav1.ConditionStatus, reason, message string) error {
+func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *doguv2.Dogu, status metav1.ConditionStatus, reason, message string) error {
 	logger := log.FromContext(ctx)
 	condition := metav1.Condition{
 		Type:               doguv2.ConditionReady,
@@ -156,55 +147,4 @@ func (r *doguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 	}
 	logger.Info(fmt.Sprintf("Updated dogu resource successfully!"))
 	return nil
-}
-
-func createMgrSet(ctx context.Context, restConfig *rest.Config, client client.Client, clientSet kubernetes.Interface, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, configRepos util.ConfigRepositories) (*util.ManagerSet, error) {
-	imageGetter := newAdditionalImageGetter(clientSet, operatorConfig.Namespace)
-	additionalImageChownInitContainer, err := imageGetter.imageForKey(ctx, config.ChownInitImageConfigmapNameKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get additional images: %w", err)
-	}
-
-	additionalExportModeContainer, err := imageGetter.imageForKey(ctx, config.ExporterImageConfigmapNameKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get additional images: %w", err)
-	}
-
-	additionalMountsContainer, err := imageGetter.imageForKey(ctx, config.AdditionalMountsInitContainerImageConfigmapNameKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get additional images: %w", err)
-	}
-
-	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
-		config.ExporterImageConfigmapNameKey:                      additionalExportModeContainer,
-		config.AdditionalMountsInitContainerImageConfigmapNameKey: additionalMountsContainer}
-
-	applier, scheme, err := apply.New(restConfig, k8sDoguOperatorFieldManagerName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create K8s applier: %w", err)
-	}
-	// we need this as we add dogu resource owner-references to every custom object.
-	err = doguv2.AddToScheme(scheme)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add apply scheme: %w", err)
-	}
-
-	mgrSet, err := util.NewManagerSet(restConfig, client, clientSet, ecosystemClient, operatorConfig, configRepos, applier, additionalImages)
-	if err != nil {
-		return nil, fmt.Errorf("could not create manager set: %w", err)
-	}
-	return mgrSet, err
-}
-
-// createConfigRepositories creates the repositories for global, dogu and sensitive dogu configs that are based on
-// k8s resources (configmaps / secrets)
-func createConfigRepositories(clientSet kubernetes.Interface, namespace string) util.ConfigRepositories {
-	configMapClient := clientSet.CoreV1().ConfigMaps(namespace)
-	secretsClient := clientSet.CoreV1().Secrets(namespace)
-
-	return util.ConfigRepositories{
-		GlobalConfigRepository:  repository.NewGlobalConfigRepository(configMapClient),
-		DoguConfigRepository:    repository.NewDoguConfigRepository(configMapClient),
-		SensitiveDoguRepository: repository.NewSensitiveDoguConfigRepository(secretsClient),
-	}
 }

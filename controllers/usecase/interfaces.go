@@ -8,8 +8,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type step interface {
+type Step interface {
 	Run(ctx context.Context, resource *v2.Dogu) steps.StepResult
+	// Priority for execution of the step. Higher priority means earlier execution.
+	Priority() int
 }
 
 type doguRestartManager interface {

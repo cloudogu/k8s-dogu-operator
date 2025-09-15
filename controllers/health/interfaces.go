@@ -26,20 +26,9 @@ type DoguHealthStatusUpdater interface {
 	UpdateHealthConfigMap(ctx context.Context, deployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error
 }
 
-// doguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
-//
-//nolint:unused
-//goland:noinspection GoUnusedType
-type doguHealthChecker interface {
+type DoguHealthChecker interface {
 	// CheckByName returns nil if the dogu described by the resource is up and running.
 	CheckByName(ctx context.Context, doguName types.NamespacedName) error
-}
-
-// doguRecursiveHealthChecker includes functionality to check if a dogus dependencies are up and running.
-//
-//nolint:unused
-//goland:noinspection GoUnusedType
-type doguRecursiveHealthChecker interface {
 	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
 	CheckDependenciesRecursive(ctx context.Context, fromDogu *cesappcore.Dogu, namespace string) error
 }

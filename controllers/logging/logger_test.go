@@ -12,7 +12,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 )
 
-func TestConfigureLogger(t *testing.T) {
+func TestNewLogger(t *testing.T) {
 	originalControllerLogger := ctrl.Log
 	originalLibraryLogger := core.GetLogger()
 	defer func() {
@@ -27,21 +27,22 @@ func TestConfigureLogger(t *testing.T) {
 		_ = os.Unsetenv(logLevelEnvVar)
 
 		// when
-		err := ConfigureLogger()
+		logger, err := NewLogger()
 
 		// then
 		assert.NoError(t, err)
+		assert.Equal(t, logrus.ErrorLevel, logger.GetV())
 	})
 	t.Run("should not fail with empty string log level and return error level", func(t *testing.T) {
 		// given
 		t.Setenv(logLevelEnvVar, "")
 
 		// when
-		err := ConfigureLogger()
+		logger, err := NewLogger()
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, logrus.ErrorLevel, CurrentLogLevel)
+		assert.Equal(t, logrus.ErrorLevel, logger.GetV())
 	})
 
 	t.Run("create logger with log level INFO", func(t *testing.T) {
@@ -49,11 +50,11 @@ func TestConfigureLogger(t *testing.T) {
 		_ = os.Setenv(logLevelEnvVar, "INFO")
 
 		// when
-		err := ConfigureLogger()
+		logger, err := NewLogger()
 
 		// then
-		core.GetLogger().Info("test")
 		assert.NoError(t, err)
+		assert.Equal(t, logrus.InfoLevel, logger.GetV())
 	})
 
 	t.Run("create logger with invalid log level TEST_LEVEL", func(t *testing.T) {
@@ -61,7 +62,7 @@ func TestConfigureLogger(t *testing.T) {
 		_ = os.Setenv(logLevelEnvVar, "TEST_LEVEL")
 
 		// when
-		err := ConfigureLogger()
+		_, err := NewLogger()
 
 		// then
 		assert.Error(t, err)

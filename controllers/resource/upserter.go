@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -42,11 +43,11 @@ type upserter struct {
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, generator DoguResourceGenerator, networkPoliciesEnabled bool) *upserter {
+func NewUpserter(client client.Client, generator DoguResourceGenerator, config opConfig.OperatorConfig) ResourceUpserter {
 	return &upserter{
 		client:                 client,
 		generator:              generator,
-		networkPoliciesEnabled: networkPoliciesEnabled,
+		networkPoliciesEnabled: config.NetworkPoliciesEnabled,
 	}
 }
 

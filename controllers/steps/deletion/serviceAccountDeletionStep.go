@@ -4,10 +4,9 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 type ServiceAccountRemoverStep struct {
@@ -15,15 +14,17 @@ type ServiceAccountRemoverStep struct {
 	resourceDoguFetcher   resourceDoguFetcher
 }
 
+func (sas *ServiceAccountRemoverStep) Priority() int {
+	return 6000
+}
+
 func NewServiceAccountRemoverStep(
-	client k8sClient,
-	mgrSet *util.ManagerSet,
-	configRepos util.ConfigRepositories,
-	operatorConfig *config.OperatorConfig,
+	serviceAccountRemover serviceaccount.ServiceAccountRemover,
+	resourceDoguFetcher cesregistry.ResourceDoguFetcher,
 ) *ServiceAccountRemoverStep {
 	return &ServiceAccountRemoverStep{
-		serviceAccountRemover: serviceaccount.NewRemover(configRepos.SensitiveDoguRepository, mgrSet.LocalDoguFetcher, mgrSet.CommandExecutor, client, mgrSet.ClientSet, operatorConfig.Namespace),
-		resourceDoguFetcher:   mgrSet.ResourceDoguFetcher,
+		serviceAccountRemover: serviceAccountRemover,
+		resourceDoguFetcher:   resourceDoguFetcher,
 	}
 }
 

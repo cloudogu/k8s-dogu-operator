@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type AdditionalIngressAnnotationsStep struct {
@@ -17,7 +18,11 @@ type AdditionalIngressAnnotationsStep struct {
 	annotator ingressAnnotator
 }
 
-func NewAdditionalIngressAnnotationsStep(client k8sClient) *AdditionalIngressAnnotationsStep {
+func (aias *AdditionalIngressAnnotationsStep) Priority() int {
+	return 3700
+}
+
+func NewAdditionalIngressAnnotationsStep(client client.Client) *AdditionalIngressAnnotationsStep {
 	return &AdditionalIngressAnnotationsStep{
 		client:    client,
 		annotator: annotation.IngressAnnotator{},
