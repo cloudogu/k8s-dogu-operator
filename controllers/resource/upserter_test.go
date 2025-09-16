@@ -31,7 +31,7 @@ func TestNewUpserter(t *testing.T) {
 	mockResourceGenerator := NewMockDoguResourceGenerator(t)
 
 	// when
-	resourceUpserter := NewUpserter(mockClient, mockResourceGenerator, opConfig.OperatorConfig{NetworkPoliciesEnabled: true})
+	resourceUpserter := NewUpserter(mockClient, mockResourceGenerator, &opConfig.OperatorConfig{NetworkPoliciesEnabled: true})
 
 	// then
 	require.NotNil(t, resourceUpserter)

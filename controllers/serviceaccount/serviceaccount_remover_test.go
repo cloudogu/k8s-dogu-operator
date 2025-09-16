@@ -25,7 +25,7 @@ import (
 func TestNewRemover(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// when
-		result := NewRemover(nil, nil, nil, nil, nil, opConfig.OperatorConfig{})
+		result := NewRemover(nil, nil, nil, nil, nil, &opConfig.OperatorConfig{})
 
 		// then
 		require.NotNil(t, result)

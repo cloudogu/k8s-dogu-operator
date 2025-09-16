@@ -77,7 +77,7 @@ func TestNewCompositeDependencyValidator(t *testing.T) {
 		version, err := core.ParseVersion("0.0.0")
 		require.NoError(t, err)
 
-		config := opConfig.OperatorConfig{Version: &version}
+		config := &opConfig.OperatorConfig{Version: &version}
 
 		// when
 		compositeValidator := NewCompositeDependencyValidator(config, nil)

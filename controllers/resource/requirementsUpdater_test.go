@@ -41,7 +41,7 @@ func TestNewRequirementsUpdater(t *testing.T) {
 		mockReqGen := NewMockRequirementsGenerator(t)
 
 		// when
-		updater, err := NewRequirementsUpdater(mockManager, clientMock, opConfig.OperatorConfig{Namespace: "myNamespace"}, mockReqGen, mockFetcher, watcherMock)
+		updater, err := NewRequirementsUpdater(mockManager, clientMock, &opConfig.OperatorConfig{Namespace: "myNamespace"}, mockReqGen, mockFetcher, watcherMock)
 
 		// then
 		require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestNewRequirementsUpdater(t *testing.T) {
 		mockReqGen := NewMockRequirementsGenerator(t)
 
 		// when
-		_, err := NewRequirementsUpdater(mockManager, clientMock, opConfig.OperatorConfig{Namespace: "myNamespace"}, mockReqGen, mockFetcher, watcherMock)
+		_, err := NewRequirementsUpdater(mockManager, clientMock, &opConfig.OperatorConfig{Namespace: "myNamespace"}, mockReqGen, mockFetcher, watcherMock)
 
 		// then
 		assert.ErrorIs(t, err, assert.AnError)

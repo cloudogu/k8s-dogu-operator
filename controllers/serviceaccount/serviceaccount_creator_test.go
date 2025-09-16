@@ -134,7 +134,7 @@ func TestNewCreator(t *testing.T) {
 		repo := NewMockSensitiveDoguConfigRepository(t)
 
 		// when
-		result := NewCreator(repo, nil, nil, nil, nil, opConfig.OperatorConfig{})
+		result := NewCreator(repo, nil, nil, nil, nil, &opConfig.OperatorConfig{})
 
 		// then
 		assert.NotNil(t, result)

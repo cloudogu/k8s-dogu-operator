@@ -13,6 +13,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const testNamespace = "ecosystem"
@@ -59,10 +60,13 @@ func Test_newApp(t *testing.T) {
 	initfx.NewKubernetesClientSet = newTestKubernetesInterfaceFn(kubernetesInterfaceMock)
 	oldEcoSystemClientSet := initfx.NewEcoSystemClientSet
 	initfx.NewEcoSystemClientSet = newTestEcoSystemInterfaceFn(ecoSystemInterfaceMock)
+	oldGetRestConfig := ctrl.GetConfig
+	ctrl.GetConfig = newTestGetConfig()
 	t.Cleanup(func() {
 		initfx.NewOperatorConfig = oldOperatorConfigFn
 		initfx.NewKubernetesClientSet = oldKubernetesClientSet
 		initfx.NewEcoSystemClientSet = oldEcoSystemClientSet
+		ctrl.GetConfig = oldGetRestConfig
 	})
 
 	// when
@@ -70,6 +74,12 @@ func Test_newApp(t *testing.T) {
 
 	// then
 	assert.NoError(t, newApp.Err())
+}
+
+func newTestGetConfig() func() (*rest.Config, error) {
+	return func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	}
 }
 
 func newTestKubernetesInterfaceFn(p kubernetes.Interface) func(c *rest.Config) (kubernetes.Interface, error) {
