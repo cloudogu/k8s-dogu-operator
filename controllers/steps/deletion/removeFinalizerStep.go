@@ -11,7 +11,7 @@ import (
 )
 
 const legacyFinalizerName = "dogu-finalizer"
-const finalizerName = "k8s.cloudogu.com/finalizer/dogu-cleanup"
+const finalizerName = "k8s.cloudogu.com/dogu-cleanup"
 
 type RemoveFinalizerStep struct {
 	client k8sClient
