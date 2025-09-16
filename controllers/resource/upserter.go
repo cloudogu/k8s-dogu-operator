@@ -43,7 +43,7 @@ type upserter struct {
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, generator DoguResourceGenerator, config opConfig.OperatorConfig) ResourceUpserter {
+func NewUpserter(client client.Client, generator DoguResourceGenerator, config *opConfig.OperatorConfig) ResourceUpserter {
 	return &upserter{
 		client:                 client,
 		generator:              generator,

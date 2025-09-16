@@ -30,7 +30,14 @@ type remover struct {
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(repo SensitiveDoguConfigRepository, localFetcher cesregistry.LocalDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, operatorConfig opConfig.OperatorConfig) *remover {
+func NewRemover(
+	repo SensitiveDoguConfigRepository,
+	localFetcher cesregistry.LocalDoguFetcher,
+	commandExecutor exec.CommandExecutor,
+	client client.Client,
+	clientSet kubernetes.Interface,
+	operatorConfig *opConfig.OperatorConfig,
+) *remover {
 	return &remover{
 		client:            client,
 		sensitiveDoguRepo: repo,

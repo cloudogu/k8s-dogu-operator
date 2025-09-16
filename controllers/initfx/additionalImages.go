@@ -6,26 +6,32 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+
 	"github.com/dlclark/regexp2"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-func GetAdditionalImages(operatorConfig *config.OperatorConfig, clientSet kubernetes.Interface) (resource.AdditionalImages, error) {
+func GetAdditionalImages(configMapClient corev1.ConfigMapInterface) (resource.AdditionalImages, error) {
 	ctx := context.Background()
 
-	imageGetter := newAdditionalImageGetter(clientSet, operatorConfig.Namespace)
-	additionalImageChownInitContainer, err := imageGetter.imageForKey(ctx, config.ChownInitImageConfigmapNameKey)
+	configMap, err := configMapClient.Get(ctx, config.OperatorAdditionalImagesConfigmapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("error while getting configmap '%s': %w", config.OperatorAdditionalImagesConfigmapName, err)
+	}
+
+	additionalImageChownInitContainer, err := imageForKey(config.ChownInitImageConfigmapNameKey, configMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
 
-	additionalExportModeContainer, err := imageGetter.imageForKey(ctx, config.ExporterImageConfigmapNameKey)
+	additionalExportModeContainer, err := imageForKey(config.ExporterImageConfigmapNameKey, configMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
 
-	additionalMountsContainer, err := imageGetter.imageForKey(ctx, config.AdditionalMountsInitContainerImageConfigmapNameKey)
+	additionalMountsContainer, err := imageForKey(config.AdditionalMountsInitContainerImageConfigmapNameKey, configMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get additional images: %w", err)
 	}
@@ -44,30 +50,14 @@ func GetAdditionalImages(operatorConfig *config.OperatorConfig, clientSet kubern
 var imageTagValidationString = "^(?:(?=[^:\\/]{1,253})(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(?:\\.(?!-)[a-zA-Z0-9-]{1,63}(?<!-))*(?::[0-9]{1,5})?/)?((?![._-])(?:[a-z0-9._-]*)(?<![._-])(?:/(?![._-])[a-z0-9._-]*(?<![._-]))*)(?::(?![.-])[a-zA-Z0-9_.-]{1,128})?$"
 var imageTagValidationRegexp, _ = regexp2.Compile(imageTagValidationString, regexp2.None)
 
-type additionalImageGetter struct {
-	configmapClient kubernetes.Interface
-	namespace       string
-}
-
-func newAdditionalImageGetter(client kubernetes.Interface, namespace string) *additionalImageGetter {
-	return &additionalImageGetter{configmapClient: client, namespace: namespace}
-}
-
 // imageForKey returns a container image reference as found in OperatorAdditionalImagesConfigmapName.
-func (adig *additionalImageGetter) imageForKey(ctx context.Context, key string) (string, error) {
-	configMap, err := adig.configmapClient.CoreV1().
-		ConfigMaps(adig.namespace).
-		Get(ctx, config.OperatorAdditionalImagesConfigmapName, metav1.GetOptions{})
-	if err != nil {
-		return "", fmt.Errorf("error while getting configmap '%s': %w", config.OperatorAdditionalImagesConfigmapName, err)
-	}
-
+func imageForKey(key string, configMap *v1.ConfigMap) (string, error) {
 	imageTag := configMap.Data[key]
 	if imageTag == "" {
 		return "", fmt.Errorf("configmap '%s' must not contain empty image name for key %s", config.OperatorAdditionalImagesConfigmapName, key)
 	}
 
-	err = verifyImageTag(imageTag)
+	err := verifyImageTag(imageTag)
 	if err != nil {
 		return "", fmt.Errorf("configmap '%s' contains an invalid image tag: %w", config.OperatorAdditionalImagesConfigmapName, err)
 	}

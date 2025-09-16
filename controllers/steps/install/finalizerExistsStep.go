@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const finalizerName = "k8s.cloudogu.com/dogu-finalizer"
+const finalizerName = "k8s.cloudogu.com/finalizer/dogu-cleanup"
 
 type FinalizerExistsStep struct {
 	client k8sClient

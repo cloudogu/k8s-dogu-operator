@@ -30,7 +30,14 @@ type RequirementsUpdater struct {
 }
 
 // NewRequirementsUpdater creates a new runnable responsible to detect changes in the container configuration of dogus.
-func NewRequirementsUpdater(manager manager.Manager, client client.Client, operatorConfig opConfig.OperatorConfig, requirementsGen RequirementsGenerator, doguFetcher cesregistry.LocalDoguFetcher, globalWatcher GlobalConfigurationWatcher) (*RequirementsUpdater, error) {
+func NewRequirementsUpdater(
+	manager manager.Manager,
+	client client.Client,
+	operatorConfig *opConfig.OperatorConfig,
+	requirementsGen RequirementsGenerator,
+	doguFetcher cesregistry.LocalDoguFetcher,
+	globalWatcher GlobalConfigurationWatcher,
+) (*RequirementsUpdater, error) {
 	u := &RequirementsUpdater{
 		client:              client,
 		namespace:           operatorConfig.Namespace,

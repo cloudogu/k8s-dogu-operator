@@ -48,7 +48,14 @@ type creator struct {
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
-func NewCreator(repo SensitiveDoguConfigRepository, localDoguFetcher cesregistry.LocalDoguFetcher, commandExecutor exec.CommandExecutor, client client.Client, clientSet kubernetes.Interface, operatorConfig opConfig.OperatorConfig) ServiceAccountCreator {
+func NewCreator(
+	repo SensitiveDoguConfigRepository,
+	localDoguFetcher cesregistry.LocalDoguFetcher,
+	commandExecutor exec.CommandExecutor,
+	client client.Client,
+	clientSet kubernetes.Interface,
+	operatorConfig *opConfig.OperatorConfig,
+) ServiceAccountCreator {
 	return &creator{
 		client:            client,
 		sensitiveDoguRepo: repo,

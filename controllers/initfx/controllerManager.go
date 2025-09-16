@@ -73,10 +73,9 @@ func NewControllerManager(
 	return k8sManager, nil
 }
 
-var NewManagerOptions = newManagerOptions
 var NewOperatorConfig = config.NewOperatorConfig
 
-func newManagerOptions(operatorConfig *config.OperatorConfig) manager.Options {
+func NewManagerOptions(operatorConfig *config.OperatorConfig) manager.Options {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,

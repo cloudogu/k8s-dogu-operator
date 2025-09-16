@@ -14,42 +14,51 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-var NewKubernetesClientSet = kubernetes.NewForConfig
-var NewEcoSystemClientSet = doguClient.NewForConfig
+var NewKubernetesClientSet = newKubernetesClientSet
+
+func newKubernetesClientSet(config *rest.Config) (kubernetes.Interface, error) {
+	return kubernetes.NewForConfig(config)
+}
+
+var NewEcoSystemClientSet = newEcoSystemClientSet
+
+func newEcoSystemClientSet(config *rest.Config) (doguClient.EcoSystemV2Interface, error) {
+	return doguClient.NewForConfig(config)
+}
 
 func NewK8sClient(mgr manager.Manager) client.Client {
 	return mgr.GetClient()
 }
 
-func NewDoguInterface(ecosystemClientSet doguClient.EcoSystemV2Interface, config config.OperatorConfig) doguClient.DoguInterface {
+func NewDoguInterface(ecosystemClientSet doguClient.EcoSystemV2Interface, config *config.OperatorConfig) doguClient.DoguInterface {
 	return ecosystemClientSet.Dogus(config.Namespace)
 }
 
-func NewDoguRestartInterface(ecosystemClientSet doguClient.EcoSystemV2Interface, config config.OperatorConfig) doguClient.DoguRestartInterface {
+func NewDoguRestartInterface(ecosystemClientSet doguClient.EcoSystemV2Interface, config *config.OperatorConfig) doguClient.DoguRestartInterface {
 	return ecosystemClientSet.DoguRestarts(config.Namespace)
 }
 
-func NewConfigMapInterface(clientSet kubernetes.Interface, operatorConfig config.OperatorConfig) v1.ConfigMapInterface {
+func NewConfigMapInterface(clientSet kubernetes.Interface, operatorConfig *config.OperatorConfig) v1.ConfigMapInterface {
 	return clientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)
 }
 
-func NewSecretInterface(clientSet kubernetes.Interface, operatorConfig config.OperatorConfig) v1.SecretInterface {
+func NewSecretInterface(clientSet kubernetes.Interface, operatorConfig *config.OperatorConfig) v1.SecretInterface {
 	return clientSet.CoreV1().Secrets(operatorConfig.Namespace)
 }
 
-func NewDeploymentInterface(clientSet kubernetes.Interface, operatorConfig config.OperatorConfig) appsv1.DeploymentInterface {
+func NewDeploymentInterface(clientSet kubernetes.Interface, operatorConfig *config.OperatorConfig) appsv1.DeploymentInterface {
 	return clientSet.AppsV1().Deployments(operatorConfig.Namespace)
 }
 
-func NewPodInterface(clientSet kubernetes.Interface, operatorConfig config.OperatorConfig) v1.PodInterface {
+func NewPodInterface(clientSet kubernetes.Interface, operatorConfig *config.OperatorConfig) v1.PodInterface {
 	return clientSet.CoreV1().Pods(operatorConfig.Namespace)
 }
 
-func NewServiceInterface(clientSet kubernetes.Interface, operatorConfig config.OperatorConfig) v1.ServiceInterface {
+func NewServiceInterface(clientSet kubernetes.Interface, operatorConfig *config.OperatorConfig) v1.ServiceInterface {
 	return clientSet.CoreV1().Services(operatorConfig.Namespace)
 }
 
-func NewPersistentVolumeClaimInterface(clientSet kubernetes.Interface, operatorConfig config.OperatorConfig) v1.PersistentVolumeClaimInterface {
+func NewPersistentVolumeClaimInterface(clientSet kubernetes.Interface, operatorConfig *config.OperatorConfig) v1.PersistentVolumeClaimInterface {
 	return clientSet.CoreV1().PersistentVolumeClaims(operatorConfig.Namespace)
 }
 

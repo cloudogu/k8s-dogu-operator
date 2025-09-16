@@ -84,31 +84,43 @@ func newApp() *fx.App {
 			// our own dependencies
 			fx.Annotate(health.NewAvailabilityChecker, fx.As(new(health.DeploymentAvailabilityChecker))),
 			fx.Annotate(health.NewDoguStatusUpdater, fx.As(new(health.DoguHealthStatusUpdater))),
-			fx.Annotate(initfx.NewCollectApplier, fx.As(new(initfx.CollectApplier))),
+			fx.Annotate(initfx.NewCollectApplier, fx.As(new(initfx.CollectApplier)), fx.As(new(resource.CollectApplier))),
 			initfx.GetAdditionalImages,
 			fx.Annotate(exec.NewCommandExecutor, fx.As(new(exec.CommandExecutor))),
 			fx.Annotate(exec.NewExecPodFactory, fx.As(new(exec.ExecPodFactory))),
 			fx.Annotate(exec.NewPodFileExtractor, fx.As(new(exec.FileExtractor))),
 			fx.Annotate(initfx.NewDoguVersionRegistry, fx.As(new(dogu.VersionRegistry))),
+			// provide twice, tagged as well as untagged
 			fx.Annotate(
 				initfx.NewLocalDoguDescriptorRepository,
 				fx.As(new(dogu.LocalDoguDescriptorRepository)),
 				fx.As(new(initfx.LocalDoguDescriptorRepository)),
+			),
+			fx.Annotate(
+				initfx.NewLocalDoguDescriptorRepository,
 				fx.As(new(initfx.OwnerReferenceSetter)),
 				fx.ResultTags(`name:"localDoguDescriptorRepository"`),
 			),
 			fx.Annotate(initfx.NewLocalDoguFetcher, fx.As(new(cesregistry.LocalDoguFetcher))),
 			fx.Annotate(repository.NewGlobalConfigRepository, fx.As(new(resource.GlobalConfigRepository)), fx.As(new(resource.GlobalConfigurationWatcher))),
+			// provide twice, tagged as well as untagged
 			fx.Annotate(
 				repository.NewDoguConfigRepository,
 				fx.As(new(resource.DoguConfigRepository)),
+			),
+			fx.Annotate(
+				repository.NewDoguConfigRepository,
 				fx.As(new(initfx.DoguConfigRepository)),
 				fx.As(new(initfx.OwnerReferenceSetter)),
 				fx.ResultTags(`name:"normalDoguConfig"`),
 			),
+			// provide twice, tagged as well as untagged
 			fx.Annotate(
 				repository.NewSensitiveDoguConfigRepository,
 				fx.As(new(serviceaccount.SensitiveDoguConfigRepository)),
+			),
+			fx.Annotate(
+				repository.NewSensitiveDoguConfigRepository,
 				fx.As(new(initfx.DoguConfigRepository)),
 				fx.As(new(initfx.OwnerReferenceSetter)),
 				fx.ResultTags(`name:"sensitiveDoguConfig"`),
@@ -116,7 +128,7 @@ func newApp() *fx.App {
 			fx.Annotate(serviceaccount.NewCreator, fx.As(new(serviceaccount.ServiceAccountCreator))),
 			fx.Annotate(serviceaccount.NewRemover, fx.As(new(serviceaccount.ServiceAccountRemover))),
 			fx.Annotate(dependency.NewCompositeDependencyValidator, fx.As(new(dependency.Validator))),
-			fx.Annotate(security.NewValidator(), fx.As(new(security.Validator))),
+			fx.Annotate(security.NewValidator, fx.As(new(security.Validator))),
 			fx.Annotate(additionalMount.NewValidator, fx.As(new(additionalMount.Validator))),
 			fx.Annotate(initfx.NewResourceDoguFetcher, fx.As(new(cesregistry.ResourceDoguFetcher))),
 			fx.Annotate(resource.NewRequirementsGenerator, fx.As(new(resource.RequirementsGenerator))),
