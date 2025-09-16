@@ -8,19 +8,13 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewDeleteExecPodStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewDeleteExecPodStep(
-			&util.ManagerSet{
-				LocalDoguFetcher: newMockLocalDoguFetcher(t),
-				ExecPodFactory:   newMockExecPodFactory(t),
-			},
-		)
+		step := NewDeleteExecPodStep(nil, nil)
 
 		assert.NotNil(t, step)
 	})

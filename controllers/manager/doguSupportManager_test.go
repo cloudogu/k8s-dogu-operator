@@ -16,7 +16,6 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 )
 
 const namespace = "test"
@@ -61,11 +60,12 @@ func TestNewDoguSupportManager(t *testing.T) {
 	ctrl.GetConfig = createTestRestConfig
 
 	k8sClient := fake.NewClientBuilder().Build()
+	fetcher := newMockLocalDoguFetcher(t)
+	generator := newMockResourceGenerator(t)
 	recorder := newMockEventRecorder(t)
-	mgrSet := &util.ManagerSet{}
 
 	// when
-	manager := NewDoguSupportManager(k8sClient, mgrSet, recorder)
+	manager := NewDoguSupportManager(k8sClient, fetcher, generator, recorder)
 
 	// then
 	require.NotNil(t, manager)

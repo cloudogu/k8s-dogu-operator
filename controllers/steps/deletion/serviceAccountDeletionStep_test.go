@@ -5,34 +5,21 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewServiceAccountRemoverStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewServiceAccountRemoverStep(
-			newMockK8sClient(t),
-			&util.ManagerSet{
-				LocalDoguFetcher:    cesregistry.NewLocalDoguFetcher(nil, nil),
-				CommandExecutor:     exec.NewCommandExecutor(nil, nil, nil),
-				ResourceDoguFetcher: cesregistry.NewResourceDoguFetcher(nil, nil),
-				ClientSet:           nil,
-			},
-			util.ConfigRepositories{
-				SensitiveDoguRepository: &repository.DoguConfigRepository{},
-			},
-			&config.OperatorConfig{
-				Namespace: namespace,
-			},
-		)
+		// given
+		remover := newMockServiceAccountRemover(t)
+		fetcher := newMockResourceDoguFetcher(t)
 
-		assert.NotNil(t, step)
+		// when
+		step := NewServiceAccountRemoverStep(remover, fetcher)
+
+		// then
+		assert.NotEmpty(t, step)
 	})
 }
 

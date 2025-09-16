@@ -14,6 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
+var NewKubernetesClientSet = kubernetes.NewForConfig
+var NewEcoSystemClientSet = doguClient.NewForConfig
+
 func NewK8sClient(mgr manager.Manager) client.Client {
 	return mgr.GetClient()
 }

@@ -5,7 +5,7 @@ import (
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 )
 
 // PremisesChecker includes functionality to check if the premises for an upgrade are met.
@@ -31,12 +31,5 @@ type doguAdditionalMountsValidator interface {
 
 // doguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
 type doguHealthChecker interface {
-	// CheckByName returns nil if the dogu described by the resource is up and running.
-	CheckByName(ctx context.Context, doguName types.NamespacedName) error
-}
-
-// doguRecursiveHealthChecker includes functionality to check if a dogus dependencies are up and running.
-type doguRecursiveHealthChecker interface {
-	// CheckDependenciesRecursive returns nil if the dogu's mandatory dependencies are up and running.
-	CheckDependenciesRecursive(ctx context.Context, fromDogu *cesappcore.Dogu, namespace string) error
+	health.DoguHealthChecker
 }

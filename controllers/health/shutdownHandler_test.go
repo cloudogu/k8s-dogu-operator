@@ -2,12 +2,13 @@ package health
 
 import (
 	"context"
+	"testing"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func TestShutdownHandler_Start(t *testing.T) {
@@ -113,15 +114,30 @@ func TestShutdownHandler_Start(t *testing.T) {
 }
 
 func TestNewShutdownHandler(t *testing.T) {
-	t.Run("should set properties", func(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
 		// given
 		doguInterfaceMock := newMockDoguInterface(t)
+		managerMock := newMockCtrlManager(t)
+		managerMock.EXPECT().Add(mock.Anything).Return(nil)
 
 		// when
-		handler := NewShutdownHandler(doguInterfaceMock)
+		handler, err := NewShutdownHandler(managerMock, doguInterfaceMock)
 
 		// then
 		assert.Equal(t, doguInterfaceMock, handler.doguInterface)
+		assert.NoError(t, err)
+	})
+	t.Run("should fail to add handler", func(t *testing.T) {
+		// given
+		doguInterfaceMock := newMockDoguInterface(t)
+		managerMock := newMockCtrlManager(t)
+		managerMock.EXPECT().Add(mock.Anything).Return(assert.AnError)
+
+		// when
+		_, err := NewShutdownHandler(managerMock, doguInterfaceMock)
+
+		// then
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 
 }

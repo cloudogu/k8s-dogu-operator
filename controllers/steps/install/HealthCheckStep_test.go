@@ -8,7 +8,6 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,17 +19,12 @@ import (
 func TestNewHealthCheckStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		doguInterfaceMock := newMockDoguInterface(t)
-		ecoSystemV2InterfaceMock := newMockEcoSystemV2Interface(t)
-		ecoSystemV2InterfaceMock.EXPECT().Dogus(namespace).Return(doguInterfaceMock)
 		step := NewHealthCheckStep(
 			newMockK8sClient(t),
 			newMockDeploymentAvailabilityChecker(t),
 			newMockDoguHealthStatusUpdater(t),
-			&util.ManagerSet{
-				LocalDoguFetcher: newMockLocalDoguFetcher(t),
-				EcosystemClient:  ecoSystemV2InterfaceMock,
-			},
-			namespace,
+			newMockLocalDoguFetcher(t),
+			doguInterfaceMock,
 		)
 
 		assert.NotNil(t, step)

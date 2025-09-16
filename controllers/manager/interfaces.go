@@ -64,8 +64,8 @@ type AdditionalMountManager interface {
 	UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error
 }
 
-type additionalMountsInitContainerGenerator interface {
-	BuildAdditionalMountInitContainer(ctx context.Context, dogu *cesappcore.Dogu, doguResource *v2.Dogu, image string, requirements coreV1.ResourceRequirements) (*coreV1.Container, error)
+type resourceGenerator interface {
+	resource.DoguResourceGenerator
 }
 
 // requirementsGenerator handles resource requirements (limits and requests) for dogu deployments.

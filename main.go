@@ -52,18 +52,22 @@ func NewVersion() config.Version {
 }
 
 func main() {
-	fx.New(
+	newApp().Run()
+}
+
+func newApp() *fx.App {
+	return fx.New(
 		fx.Provide(
 			NewVersion,
 			logging.NewLogger,
-			config.NewOperatorConfig,
+			initfx.NewOperatorConfig,
 
 			// k8s dependencies
 			initfx.NewManagerOptions,
 			ctrl.GetConfig,
 			initfx.NewScheme,
 			fx.Annotate(initfx.NewK8sClient, fx.As(new(client.Client))),
-			fx.Annotate(kubernetes.NewForConfig, fx.As(new(kubernetes.Interface))),
+			fx.Annotate(initfx.NewKubernetesClientSet, fx.As(new(kubernetes.Interface))),
 			fx.Annotate(initfx.NewRestClient, fx.As(new(rest.Interface))),
 			fx.Annotate(initfx.NewConfigMapInterface, fx.As(new(v1.ConfigMapInterface)), fx.As(new(repository.ConfigMapClient))),
 			fx.Annotate(initfx.NewSecretInterface, fx.As(new(v1.SecretInterface)), fx.As(new(repository.SecretClient))),
@@ -71,7 +75,7 @@ func main() {
 			fx.Annotate(initfx.NewPodInterface, fx.As(new(v1.PodInterface))),
 			fx.Annotate(initfx.NewServiceInterface, fx.As(new(v1.ServiceInterface))),
 			fx.Annotate(initfx.NewPersistentVolumeClaimInterface, fx.As(new(v1.PersistentVolumeClaimInterface))),
-			fx.Annotate(doguClient.NewForConfig, fx.As(new(doguClient.EcoSystemV2Interface))),
+			fx.Annotate(initfx.NewEcoSystemClientSet, fx.As(new(doguClient.EcoSystemV2Interface))),
 			fx.Annotate(initfx.NewDoguInterface, fx.As(new(doguClient.DoguInterface))),
 			fx.Annotate(initfx.NewDoguRestartInterface, fx.As(new(doguClient.DoguRestartInterface))),
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
@@ -205,5 +209,5 @@ func main() {
 			func(_ *health.StartupHandler) {},
 			func(_ *health.ShutdownHandler) {},
 		),
-	).Run()
+	)
 }

@@ -7,6 +7,7 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -69,7 +70,7 @@ type netPolUpserter interface {
 }
 
 type serviceGenerator interface {
-	CreateDoguService(doguResource *v2.Dogu, dogu *cesappcore.Dogu, imageConfig *imagev1.ConfigFile) (*coreV1.Service, error)
+	resource.DoguResourceGenerator
 }
 
 // imageRegistry abstracts the use of a container registry and includes functionality to pull container images.

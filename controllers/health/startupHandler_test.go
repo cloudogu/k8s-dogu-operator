@@ -6,21 +6,37 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
 func TestNewStartupHandler(t *testing.T) {
-	t.Run("should set properties", func(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
 		// given
 		doguInterfaceMock := newMockDoguInterface(t)
+		managerMock := newMockCtrlManager(t)
+		managerMock.EXPECT().Add(mock.Anything).Return(nil)
 
 		// when
-		handler := NewStartupHandler(doguInterfaceMock, make(chan<- event.TypedGenericEvent[*v2.Dogu]))
+		handler, err := NewStartupHandler(managerMock, doguInterfaceMock, make(chan<- event.TypedGenericEvent[*v2.Dogu]))
 
 		// then
 		assert.Same(t, doguInterfaceMock, handler.doguInterface)
+		assert.NoError(t, err)
+	})
+	t.Run("should fail to add handler", func(t *testing.T) {
+		// given
+		doguInterfaceMock := newMockDoguInterface(t)
+		managerMock := newMockCtrlManager(t)
+		managerMock.EXPECT().Add(mock.Anything).Return(assert.AnError)
+
+		// when
+		_, err := NewStartupHandler(managerMock, doguInterfaceMock, make(chan<- event.TypedGenericEvent[*v2.Dogu]))
+
+		// then
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 }
 

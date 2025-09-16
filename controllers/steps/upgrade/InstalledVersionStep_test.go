@@ -5,7 +5,6 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -13,15 +12,8 @@ import (
 func TestNewInstalledVersionStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		doguInterfaceMock := newMockDoguInterface(t)
-		ecosystemInterfaceMock := newMockEcosystemInterface(t)
-		ecosystemInterfaceMock.EXPECT().Dogus(namespace).Return(doguInterfaceMock)
 
-		step := NewInstalledVersionStep(
-			&util.ManagerSet{
-				EcosystemClient: ecosystemInterfaceMock,
-			},
-			namespace,
-		)
+		step := NewInstalledVersionStep(doguInterfaceMock)
 
 		assert.NotNil(t, step)
 	})

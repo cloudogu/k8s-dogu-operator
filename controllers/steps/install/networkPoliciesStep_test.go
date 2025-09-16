@@ -7,19 +7,13 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewNetworkPoliciesStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewNetworkPoliciesStep(
-			&util.ManagerSet{
-				ResourceUpserter: newMockResourceUpserter(t),
-				LocalDoguFetcher: newMockLocalDoguFetcher(t),
-			},
-		)
+		step := NewNetworkPoliciesStep(newMockResourceUpserter(t), newMockLocalDoguFetcher(t))
 
 		assert.NotNil(t, step)
 	})

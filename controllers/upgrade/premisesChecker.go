@@ -36,7 +36,6 @@ func (r *requeueablePremisesError) Requeue() bool {
 type premisesChecker struct {
 	dependencyValidator           DependencyValidator
 	doguHealthChecker             doguHealthChecker
-	doguRecursiveHealthChecker    doguRecursiveHealthChecker
 	securityValidator             securityValidator
 	doguAdditionalMountsValidator doguAdditionalMountsValidator
 }
@@ -45,14 +44,12 @@ type premisesChecker struct {
 func NewPremisesChecker(
 	depValidator dependency.Validator,
 	healthChecker health.DoguHealthChecker,
-	recursiveHealthChecker health.DoguHealthChecker,
 	securityValidator security.Validator,
 	doguAdditionalMountsValidator additionalMount.Validator,
 ) PremisesChecker {
 	return &premisesChecker{
 		dependencyValidator:           depValidator,
 		doguHealthChecker:             healthChecker,
-		doguRecursiveHealthChecker:    recursiveHealthChecker,
 		securityValidator:             securityValidator,
 		doguAdditionalMountsValidator: doguAdditionalMountsValidator,
 	}
@@ -107,7 +104,7 @@ func (pc *premisesChecker) checkDependencyDogusHealthy(
 		return err
 	}
 
-	return pc.doguRecursiveHealthChecker.CheckDependenciesRecursive(ctx, localDogu, namespace)
+	return pc.doguHealthChecker.CheckDependenciesRecursive(ctx, localDogu, namespace)
 
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,18 +16,7 @@ import (
 
 func TestNewVolumeGeneratorStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		coreV1Mock := newMockCoreV1Interface(t)
-		coreV1Mock.EXPECT().PersistentVolumeClaims("ecosystem").Return(newMockPersistentVolumeClaimInterface(t))
-		clientSetMock := newMockClientSet(t)
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Mock)
-		step := NewVolumeGeneratorStep(
-			&util.ManagerSet{
-				LocalDoguFetcher: newMockLocalDoguFetcher(t),
-				ClientSet:        clientSetMock,
-				ResourceUpserter: newMockResourceUpserter(t),
-			},
-			namespace,
-		)
+		step := NewVolumeGeneratorStep(newMockLocalDoguFetcher(t), newMockResourceUpserter(t), newMockPersistentVolumeClaimInterface(t))
 
 		assert.NotNil(t, step)
 	})

@@ -15,10 +15,19 @@ import (
 var testCtx = context.Background()
 
 func TestNewDoguDeleteUsecase(t *testing.T) {
-	t.Run("Successfully created delete usecase", func(t *testing.T) {
-		usecase := NewDoguDeleteUseCase(make([]Step, 5))
+	t.Run("Successfully created delete usecase with correct order", func(t *testing.T) {
+		step1 := NewMockStep(t)
+		step1.EXPECT().Priority().Return(2)
+		step2 := NewMockStep(t)
+		step2.EXPECT().Priority().Return(1)
+		step3 := NewMockStep(t)
+		step3.EXPECT().Priority().Return(3)
+		usecase := NewDoguDeleteUseCase([]Step{step1, step2, step3})
 
 		assert.NotEmpty(t, usecase)
+		assert.Equal(t, step3, usecase.steps[0])
+		assert.Equal(t, step1, usecase.steps[1])
+		assert.Equal(t, step2, usecase.steps[2])
 	})
 }
 
@@ -34,7 +43,7 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		{
 			name: "should return requeue after time duration",
 			stepsFn: func(t *testing.T) []Step {
-				firstStep := newMockStep(t)
+				firstStep := NewMockStep(t)
 				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
 					ObjectMeta: v1.ObjectMeta{Name: "test"},
 				}).Return(steps.RequeueAfter(time.Second * 3))
@@ -50,7 +59,7 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		{
 			name: "should return error",
 			stepsFn: func(t *testing.T) []Step {
-				firstStep := newMockStep(t)
+				firstStep := NewMockStep(t)
 				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
 					ObjectMeta: v1.ObjectMeta{Name: "test"},
 				}).Return(steps.RequeueWithError(assert.AnError))
@@ -66,7 +75,7 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		{
 			name: "should abort Step loop",
 			stepsFn: func(t *testing.T) []Step {
-				firstStep := newMockStep(t)
+				firstStep := NewMockStep(t)
 				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
 					ObjectMeta: v1.ObjectMeta{Name: "test"},
 				}).Return(steps.Abort())
@@ -84,7 +93,7 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 			stepsFn: func(t *testing.T) []Step {
 				stepLoop := []Step{}
 				for i := 0; i < 10; i++ {
-					s := newMockStep(t)
+					s := NewMockStep(t)
 					s.EXPECT().Run(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 					}).Return(steps.Continue())

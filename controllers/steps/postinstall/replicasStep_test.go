@@ -8,7 +8,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v3 "k8s.io/api/autoscaling/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,23 +16,14 @@ import (
 func TestNewReplicasStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		appV1InterfaceMock := newMockAppV1Interface(t)
-		appV1InterfaceMock.EXPECT().Deployments(namespace).Return(deploymentInterfaceMock)
-		clientSetMock := newMockClientSet(t)
-		clientSetMock.EXPECT().AppsV1().Return(appV1InterfaceMock)
-
+		fetcher := newMockLocalDoguFetcher(t)
 		doguInterfaceMock := newMockDoguInterface(t)
-		ecosystemInterfaceMock := newMockEcosystemInterface(t)
-		ecosystemInterfaceMock.EXPECT().Dogus(namespace).Return(doguInterfaceMock)
 
 		step := NewReplicasStep(
 			newMockK8sClient(t),
-			&util.ManagerSet{
-				ClientSet:        clientSetMock,
-				EcosystemClient:  ecosystemInterfaceMock,
-				LocalDoguFetcher: newMockLocalDoguFetcher(t),
-			},
-			namespace,
+			deploymentInterfaceMock,
+			fetcher,
+			doguInterfaceMock,
 		)
 
 		assert.NotNil(t, step)

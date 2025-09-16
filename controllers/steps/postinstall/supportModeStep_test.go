@@ -6,7 +6,6 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/apps/v1"
 	v3 "k8s.io/api/core/v1"
@@ -15,27 +14,11 @@ import (
 
 func TestNewSupportModeStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
+		manager := newMockSupportManager(t)
 		doguInterfaceMock := newMockDoguInterface(t)
-		ecosystemInterfaceMock := newMockEcosystemInterface(t)
-		ecosystemInterfaceMock.EXPECT().Dogus(namespace).Return(doguInterfaceMock)
-
 		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		appV1InterfaceMock := newMockAppV1Interface(t)
-		appV1InterfaceMock.EXPECT().Deployments(namespace).Return(deploymentInterfaceMock)
-		clientSetMock := newMockClientSet(t)
-		clientSetMock.EXPECT().AppsV1().Return(appV1InterfaceMock)
 
-		step := NewSupportModeStep(
-			newMockK8sClient(t),
-			&util.ManagerSet{
-				LocalDoguFetcher:      newMockLocalDoguFetcher(t),
-				DoguResourceGenerator: newMockDoguResourceGenerator(t),
-				EcosystemClient:       ecosystemInterfaceMock,
-				ClientSet:             clientSetMock,
-			},
-			newMockEventRecorder(t),
-			namespace,
-		)
+		step := NewSupportModeStep(manager, doguInterfaceMock, deploymentInterfaceMock)
 
 		assert.NotNil(t, step)
 	})

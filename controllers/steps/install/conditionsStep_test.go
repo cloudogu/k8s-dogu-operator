@@ -6,7 +6,6 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,12 +17,7 @@ var testCtx = context.Background()
 
 func TestNewConditionsStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		doguIntMock := newMockDoguInterface(t)
-		ecoSystemV2InterfaceMock := newMockEcoSystemV2Interface(t)
-		ecoSystemV2InterfaceMock.EXPECT().Dogus(namespace).Return(doguIntMock)
-		step := NewConditionsStep(&util.ManagerSet{
-			EcosystemClient: ecoSystemV2InterfaceMock,
-		}, namespace)
+		step := NewConditionsStep(nil)
 
 		assert.NotNil(t, step)
 	})
@@ -40,7 +34,7 @@ func TestConditionsStep_Run(t *testing.T) {
 		{
 			name: "no conditions are set",
 			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
-				updaterMock := newMockConditionUpdater(t)
+				updaterMock := NewMockConditionUpdater(t)
 				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(nil)
 				return updaterMock
 			},
@@ -52,7 +46,7 @@ func TestConditionsStep_Run(t *testing.T) {
 		{
 			name: "all conditions are set",
 			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
-				return newMockConditionUpdater(t)
+				return NewMockConditionUpdater(t)
 			},
 			doguResource: &doguv2.Dogu{
 				Status: doguv2.DoguStatus{
@@ -92,7 +86,7 @@ func TestConditionsStep_Run(t *testing.T) {
 				return newMockDoguInterface(t)
 			},
 			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
-				updaterMock := newMockConditionUpdater(t)
+				updaterMock := NewMockConditionUpdater(t)
 				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(nil)
 				return updaterMock
 			},
@@ -128,7 +122,7 @@ func TestConditionsStep_Run(t *testing.T) {
 				return newMockDoguInterface(t)
 			},
 			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
-				updaterMock := newMockConditionUpdater(t)
+				updaterMock := NewMockConditionUpdater(t)
 				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(assert.AnError)
 				return updaterMock
 			},

@@ -3,16 +3,18 @@ package resource
 import (
 	"context"
 	"fmt"
-	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/stretchr/testify/mock"
-	netv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/stretchr/testify/mock"
+	netv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,13 +31,13 @@ func TestNewUpserter(t *testing.T) {
 	mockResourceGenerator := NewMockDoguResourceGenerator(t)
 
 	// when
-	upserter := NewUpserter(mockClient, mockResourceGenerator, true)
+	resourceUpserter := NewUpserter(mockClient, mockResourceGenerator, opConfig.OperatorConfig{NetworkPoliciesEnabled: true})
 
 	// then
-	require.NotNil(t, upserter)
-	assert.Equal(t, mockClient, upserter.client)
-	assert.Equal(t, upserter.networkPoliciesEnabled, true)
-	require.NotNil(t, upserter.generator)
+	require.NotNil(t, resourceUpserter)
+	assert.Equal(t, mockClient, resourceUpserter.(*upserter).client)
+	assert.Equal(t, resourceUpserter.(*upserter).networkPoliciesEnabled, true)
+	require.NotNil(t, resourceUpserter.(*upserter).generator)
 }
 
 func Test_upserter_updateOrInsert(t *testing.T) {

@@ -8,6 +8,8 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -140,7 +142,7 @@ func Test_doguAdditionalMountsManager_AdditionalMountsChanged(t *testing.T) {
 
 	type fields struct {
 		deploymentInterface   func() deploymentInterface
-		resourceGenerator     func() additionalMountsInitContainerGenerator
+		resourceGenerator     func() resourceGenerator
 		localDoguFetcher      func() localDoguFetcher
 		requirementsGenerator func() requirementsGenerator
 	}
@@ -168,8 +170,8 @@ func Test_doguAdditionalMountsManager_AdditionalMountsChanged(t *testing.T) {
 					mock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(nginxDoguResourceWithAdditionalMounts.Name)).Return(nginxDogu, nil)
 					return mock
 				},
-				resourceGenerator: func() additionalMountsInitContainerGenerator {
-					mock := newMockAdditionalMountsInitContainerGenerator(t)
+				resourceGenerator: func() resourceGenerator {
+					mock := newMockResourceGenerator(t)
 					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithAdditionalMounts, nil)
 					return mock
 				},
@@ -215,8 +217,8 @@ func Test_doguAdditionalMountsManager_AdditionalMountsChanged(t *testing.T) {
 					mock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(nginxDoguResourceWithAdditionalMounts.Name)).Return(nginxDogu, nil)
 					return mock
 				},
-				resourceGenerator: func() additionalMountsInitContainerGenerator {
-					mock := newMockAdditionalMountsInitContainerGenerator(t)
+				resourceGenerator: func() resourceGenerator {
+					mock := newMockResourceGenerator(t)
 					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(expectedInitContainerWithAdditionalMounts, nil)
 					return mock
 				},
@@ -332,7 +334,7 @@ func Test_doguAdditionalMountsManager_createDataMountInitContainer(t *testing.T)
 	nginxDogu := &core.Dogu{Name: "nginx"}
 
 	type fields struct {
-		resourceGenerator     func() additionalMountsInitContainerGenerator
+		resourceGenerator     func() resourceGenerator
 		localDoguFetcher      func() localDoguFetcher
 		requirementsGenerator func() requirementsGenerator
 	}
@@ -374,8 +376,8 @@ func Test_doguAdditionalMountsManager_createDataMountInitContainer(t *testing.T)
 					mock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(nginxDoguResource.Name)).Return(nginxDogu, nil)
 					return mock
 				},
-				resourceGenerator: func() additionalMountsInitContainerGenerator {
-					mock := newMockAdditionalMountsInitContainerGenerator(t)
+				resourceGenerator: func() resourceGenerator {
+					mock := newMockResourceGenerator(t)
 					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResource, "", corev1.ResourceRequirements{}).Return(nil, assert.AnError)
 					return mock
 				},
@@ -421,20 +423,22 @@ func TestNewdoguAdditionalMountsManager(t *testing.T) {
 	t.Run("should set attributes", func(t *testing.T) {
 		// given
 		deploymentMock := newMockDeploymentInterface(t)
-		resourceGeneratorMock := newMockAdditionalMountsInitContainerGenerator(t)
+		resourceGeneratorMock := newMockResourceGenerator(t)
 		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 		requirementsGeneratorMock := newMockRequirementsGenerator(t)
+		mountsValidatorMock := newMockDoguAdditionalMountsValidator(t)
+		images := resource.AdditionalImages{config.AdditionalMountsInitContainerImageConfigmapNameKey: "image"}
 		doguInterfaceMock := newMockDoguInterface(t)
 
 		// when
-		sut := NewDoguAdditionalMountManager(deploymentMock, mgrSet, doguInterfaceMock)
+		sut := NewDoguAdditionalMountManager(deploymentMock, resourceGeneratorMock, localDoguFetcherMock, requirementsGeneratorMock, mountsValidatorMock, images, doguInterfaceMock)
 
 		// then
 		require.NotNil(t, sut)
-		assert.Equal(t, deploymentMock, sut.deploymentInterface)
-		assert.Equal(t, resourceGeneratorMock, sut.resourceGenerator)
-		assert.Equal(t, localDoguFetcherMock, sut.localDoguFetcher)
-		assert.Equal(t, "image", sut.image)
+		assert.Equal(t, deploymentMock, sut.(*doguAdditionalMountManager).deploymentInterface)
+		assert.Equal(t, resourceGeneratorMock, sut.(*doguAdditionalMountManager).resourceGenerator)
+		assert.Equal(t, localDoguFetcherMock, sut.(*doguAdditionalMountManager).localDoguFetcher)
+		assert.Equal(t, "image", sut.(*doguAdditionalMountManager).image)
 	})
 }
 
@@ -522,7 +526,7 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 
 	type fields struct {
 		deploymentInterface       func() deploymentInterface
-		resourceGenerator         func() additionalMountsInitContainerGenerator
+		resourceGenerator         func() resourceGenerator
 		localDoguFetcher          func() localDoguFetcher
 		requirementsGenerator     func() requirementsGenerator
 		additionalMountsValidator func() doguAdditionalMountsValidator
@@ -552,8 +556,8 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 					mock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(nginxDoguResourceWithAdditionalMounts.Name)).Return(nginxDogu, nil)
 					return mock
 				},
-				resourceGenerator: func() additionalMountsInitContainerGenerator {
-					mock := newMockAdditionalMountsInitContainerGenerator(t)
+				resourceGenerator: func() resourceGenerator {
+					mock := newMockResourceGenerator(t)
 					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
@@ -594,8 +598,8 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 					mock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(nginxDoguResourceWithAdditionalMounts.Name)).Return(nginxDogu, nil)
 					return mock
 				},
-				resourceGenerator: func() additionalMountsInitContainerGenerator {
-					mock := newMockAdditionalMountsInitContainerGenerator(t)
+				resourceGenerator: func() resourceGenerator {
+					mock := newMockResourceGenerator(t)
 					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
@@ -634,8 +638,8 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 					mock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(nginxDoguResourceWithAdditionalMounts.Name)).Return(nginxDogu, nil)
 					return mock
 				},
-				resourceGenerator: func() additionalMountsInitContainerGenerator {
-					mock := newMockAdditionalMountsInitContainerGenerator(t)
+				resourceGenerator: func() resourceGenerator {
+					mock := newMockResourceGenerator(t)
 					mock.EXPECT().BuildAdditionalMountInitContainer(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts, "", corev1.ResourceRequirements{}).Return(updatedInitContainer, nil)
 					return mock
 				},
@@ -672,8 +676,8 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 					mock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(nginxDoguResourceWithAdditionalMounts.Name)).Return(nginxDogu, nil)
 					return mock
 				},
-				resourceGenerator: func() additionalMountsInitContainerGenerator {
-					mock := newMockAdditionalMountsInitContainerGenerator(t)
+				resourceGenerator: func() resourceGenerator {
+					mock := newMockResourceGenerator(t)
 					return mock
 				},
 				requirementsGenerator: func() requirementsGenerator {

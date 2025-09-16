@@ -3,9 +3,10 @@ package health
 import (
 	"context"
 
-	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,15 +36,19 @@ type DoguHealthChecker interface {
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
 type localDoguFetcher interface {
-	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
-	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *cesappcore.Dogu, err error)
+	cesregistry.LocalDoguFetcher
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
 type ecosystemInterface interface {
 	doguClient.EcoSystemV2Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ctrlManager interface {
+	manager.Manager
 }
 
 //nolint:unused

@@ -8,7 +8,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -16,14 +15,12 @@ import (
 func TestNewValidationStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		step := NewValidationStep(
-			&util.ManagerSet{
-				LocalDoguFetcher:             newMockLocalDoguFetcher(t),
-				ResourceDoguFetcher:          newMockResourceDoguFetcher(t),
-				DependencyValidator:          newMockDependencyValidator(t),
-				SecurityValidator:            newMockSecurityValidator(t),
-				DoguAdditionalMountValidator: newMockDoguAdditionalMountsValidator(t),
-				EcosystemClient:              newMockEcoSystemV2Interface(t),
-			},
+			newMockPremisesChecker(t),
+			newMockLocalDoguFetcher(t),
+			newMockResourceDoguFetcher(t),
+			newMockDependencyValidator(t),
+			newMockSecurityValidator(t),
+			newMockDoguAdditionalMountsValidator(t),
 		)
 
 		assert.NotNil(t, step)

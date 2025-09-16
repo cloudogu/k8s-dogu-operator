@@ -6,7 +6,6 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,16 +13,12 @@ import (
 func TestNewVolumeExpanderStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		doguInterfaceMock := newMockDoguInterface(t)
-		ecosystemInterfaceMock := newMockEcosystemInterface(t)
-		ecosystemInterfaceMock.EXPECT().Dogus(namespace).Return(doguInterfaceMock)
+		fetcher := newMockLocalDoguFetcher(t)
 
 		step := NewVolumeExpanderStep(
 			newMockK8sClient(t),
-			&util.ManagerSet{
-				LocalDoguFetcher: newMockLocalDoguFetcher(t),
-				EcosystemClient:  ecosystemInterfaceMock,
-			},
-			namespace,
+			doguInterfaceMock,
+			fetcher,
 		)
 
 		assert.NotNil(t, step)

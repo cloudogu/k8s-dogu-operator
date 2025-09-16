@@ -8,7 +8,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -20,12 +19,8 @@ const name = "test"
 
 func TestNewDeleteDevelopmentDoguMapStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewDeleteDevelopmentDoguMapStep(
-			newMockK8sClient(t),
-			&util.ManagerSet{
-				ResourceDoguFetcher: newMockResourceDoguFetcher(t),
-			},
-		)
+		fetcher := newMockResourceDoguFetcher(t)
+		step := NewDeleteDevelopmentDoguMapStep(newMockK8sClient(t), fetcher)
 
 		assert.NotNil(t, step)
 	})

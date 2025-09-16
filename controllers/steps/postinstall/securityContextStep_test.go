@@ -8,7 +8,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 	v4 "k8s.io/api/apps/v1"
 	v3 "k8s.io/api/core/v1"
@@ -17,18 +16,11 @@ import (
 
 func TestNewSecurityContextStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		generator := newMockSecurityContextGenerator(t)
 		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		appV1InterfaceMock := newMockAppV1Interface(t)
-		clientSetMock := newMockClientSet(t)
-		appV1InterfaceMock.EXPECT().Deployments(namespace).Return(deploymentInterfaceMock)
-		clientSetMock.EXPECT().AppsV1().Return(appV1InterfaceMock)
 
-		step := NewSecurityContextStep(
-			&util.ManagerSet{
-				ClientSet:        clientSetMock,
-				LocalDoguFetcher: newMockLocalDoguFetcher(t)},
-			namespace,
-		)
+		step := NewSecurityContextStep(fetcher, generator, deploymentInterfaceMock)
 
 		assert.NotNil(t, step)
 	})

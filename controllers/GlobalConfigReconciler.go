@@ -25,7 +25,7 @@ import (
 const globalConfigMapName = "global-config"
 
 type GlobalConfigReconciler struct {
-	doguRestartManager restartManager
+	doguRestartManager doguRestartManager
 	configMapInterface configMapInterface
 	doguInterface      doguInterface
 	podInterface       podInterface

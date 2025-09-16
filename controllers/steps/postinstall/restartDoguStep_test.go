@@ -8,9 +8,7 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/cloudogu/k8s-registry-lib/config"
-	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v3 "k8s.io/api/apps/v1"
@@ -22,23 +20,13 @@ import (
 func TestNewRestartDoguStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		podInterfaceMock := newMockPodInterface(t)
-		coreV1InterfaceMock := newMockCoreV1Interface(t)
-		coreV1InterfaceMock.EXPECT().Pods(namespace).Return(podInterfaceMock)
-		clientSetMock := newMockClientSet(t)
-		clientSetMock.EXPECT().CoreV1().Return(coreV1InterfaceMock)
+		doguConfigRepo := newMockDoguConfigRepository(t)
 
 		step := NewRestartDoguStep(
 			newMockK8sClient(t),
-			&util.ManagerSet{
-				ClientSet:        clientSetMock,
-				LocalDoguFetcher: newMockLocalDoguFetcher(t),
-				ResourceUpserter: newMockResourceUpserter(t),
-			},
-			namespace,
-			util.ConfigRepositories{
-				DoguConfigRepository:    &repository.DoguConfigRepository{},
-				SensitiveDoguRepository: &repository.DoguConfigRepository{},
-			},
+			podInterfaceMock,
+			doguConfigRepo,
+			doguConfigRepo,
 			newMockDoguRestartManager(t),
 		)
 

@@ -9,6 +9,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 
@@ -33,16 +34,33 @@ func TestNewRequirementsUpdater(t *testing.T) {
 	t.Run("create with success", func(t *testing.T) {
 		// given
 		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
-		doguRepoMock := newMockDoguConfigGetter(t)
 		mockFetcher := newMockLocalDoguFetcher(t)
-		watcherMock := newMockGlobalConfigurationWatcher(t)
+		watcherMock := NewMockGlobalConfigurationWatcher(t)
+		mockManager := newMockCtrlManager(t)
+		mockManager.EXPECT().Add(mock.Anything).Return(nil)
+		mockReqGen := NewMockRequirementsGenerator(t)
 
 		// when
-		updater, err := NewRequirementsUpdater(clientMock, "myNamespace", doguRepoMock, mockFetcher, watcherMock)
+		updater, err := NewRequirementsUpdater(mockManager, clientMock, opConfig.OperatorConfig{Namespace: "myNamespace"}, mockReqGen, mockFetcher, watcherMock)
 
 		// then
 		require.NoError(t, err)
 		assert.NotNil(t, updater)
+	})
+	t.Run("fail to add to manager", func(t *testing.T) {
+		// given
+		clientMock := testclient.NewClientBuilder().WithScheme(getScheme()).Build()
+		mockFetcher := newMockLocalDoguFetcher(t)
+		watcherMock := NewMockGlobalConfigurationWatcher(t)
+		mockManager := newMockCtrlManager(t)
+		mockManager.EXPECT().Add(mock.Anything).Return(assert.AnError)
+		mockReqGen := NewMockRequirementsGenerator(t)
+
+		// when
+		_, err := NewRequirementsUpdater(mockManager, clientMock, opConfig.OperatorConfig{Namespace: "myNamespace"}, mockReqGen, mockFetcher, watcherMock)
+
+		// then
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 }
 
@@ -132,7 +150,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 	t.Run("run start and send done to context", func(t *testing.T) { // given
 		resultChan := make(chan repository.GlobalConfigWatchResult)
 
-		globalConfigWatcherMock := newMockGlobalConfigurationWatcher(t)
+		globalConfigWatcherMock := NewMockGlobalConfigurationWatcher(t)
 		globalConfigWatcherMock.EXPECT().Watch(mock.Anything, mock.Anything).Return(resultChan, nil)
 
 		sut := &RequirementsUpdater{
@@ -175,7 +193,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 
 		resultChan := make(chan repository.GlobalConfigWatchResult)
 
-		globalConfigWatcher := newMockGlobalConfigurationWatcher(t)
+		globalConfigWatcher := NewMockGlobalConfigurationWatcher(t)
 		globalConfigWatcher.EXPECT().Watch(mock.Anything, mock.Anything).Return(resultChan, nil)
 
 		d1, d2, d3 := getTestDogus()
@@ -186,7 +204,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		generator := newMockRequirementsGenerator(t)
+		generator := NewMockRequirementsGenerator(t)
 		generator.EXPECT().Generate(mock.Anything, dj1).Return(v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceMemory: resource.MustParse("500Mi")}}, nil)
 		generator.EXPECT().Generate(mock.Anything, dj2).Return(v1.ResourceRequirements{Requests: v1.ResourceList{v1.ResourceEphemeralStorage: resource.MustParse("2Gi")}}, nil)
 		generator.EXPECT().Generate(mock.Anything, dj3).Return(v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceCPU: resource.MustParse("500m")}}, nil)
@@ -249,7 +267,7 @@ func Test_requirementsUpdater_Start(t *testing.T) {
 		// given
 		resultChan := make(chan repository.GlobalConfigWatchResult)
 
-		globalConfigWatcher := newMockGlobalConfigurationWatcher(t)
+		globalConfigWatcher := NewMockGlobalConfigurationWatcher(t)
 		globalConfigWatcher.EXPECT().Watch(mock.Anything, mock.Anything).Return(resultChan, nil)
 
 		clientMock := testclient.NewClientBuilder().
@@ -323,7 +341,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			WithObjects(d1, d2, d3).
 			Build()
 
-		generator := newMockRequirementsGenerator(t)
+		generator := NewMockRequirementsGenerator(t)
 		mockFetcher := newMockLocalDoguFetcher(t)
 		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d1.GetSimpleDoguName()).Return(nil, assert.AnError)
 		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d2.GetSimpleDoguName()).Return(nil, assert.AnError)
@@ -352,7 +370,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			WithObjects(d1, d2, d3).
 			Build()
 
-		generator := newMockRequirementsGenerator(t)
+		generator := NewMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
 		mockFetcher := newMockLocalDoguFetcher(t)
 		mockFetcher.EXPECT().FetchInstalled(mock.Anything, d1.GetSimpleDoguName()).Return(dj1, nil)
@@ -384,7 +402,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		generator := newMockRequirementsGenerator(t)
+		generator := NewMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
 		testErr1 := errors.New("error1 occurred: wrong bitsize")
 		testErr2 := errors.New("error2 occurred: out of entropy")
@@ -430,7 +448,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			}}).
 			Build()
 
-		generator := newMockRequirementsGenerator(t)
+		generator := NewMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
 		generator.EXPECT().Generate(testCtx, dj1).Return(v1.ResourceRequirements{}, nil)
 		generator.EXPECT().Generate(testCtx, dj2).Return(v1.ResourceRequirements{}, nil)
@@ -467,7 +485,7 @@ func Test_requirementsUpdater_triggerSync(t *testing.T) {
 			WithObjects(dd1, dd2, dd3).
 			Build()
 
-		generator := newMockRequirementsGenerator(t)
+		generator := NewMockRequirementsGenerator(t)
 		dj1, dj2, dj3 := getTestDoguJsons()
 		generator.EXPECT().Generate(testCtx, dj1).Return(v1.ResourceRequirements{}, nil)
 		generator.EXPECT().Generate(testCtx, dj2).Return(v1.ResourceRequirements{}, nil)

@@ -26,7 +26,7 @@ const (
 
 type doguAdditionalMountManager struct {
 	deploymentInterface          deploymentInterface
-	resourceGenerator            additionalMountsInitContainerGenerator
+	resourceGenerator            resourceGenerator
 	localDoguFetcher             localDoguFetcher
 	requirementsGenerator        requirementsGenerator
 	doguAdditionalMountValidator doguAdditionalMountsValidator

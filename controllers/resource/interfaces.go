@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	image "github.com/google/go-containerregistry/pkg/v1"
@@ -15,6 +16,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 type GlobalConfigurationWatcher interface {
@@ -68,6 +70,12 @@ type doguSecretHandler interface {
 	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv2.Dogu) error
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ctrlManager interface {
+	manager.Manager
+}
+
 // Applier provides ways to apply unstructured Kubernetes resources against the API.
 type Applier interface {
 	// ApplyWithOwner provides a testable method for applying generic, unstructured K8s resources to the API
@@ -112,9 +120,7 @@ type resourceRequirementsGenerator interface {
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
 type localDoguFetcher interface {
-	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
-	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName dogu.SimpleName) (installedDogu *cesappcore.Dogu, err error)
+	cesregistry.LocalDoguFetcher
 }
 
 type k8sClient interface {

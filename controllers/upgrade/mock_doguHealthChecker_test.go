@@ -5,7 +5,9 @@ package upgrade
 import (
 	context "context"
 
+	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
+
 	types "k8s.io/apimachinery/pkg/types"
 )
 
@@ -65,6 +67,54 @@ func (_c *mockDoguHealthChecker_CheckByName_Call) Return(_a0 error) *mockDoguHea
 }
 
 func (_c *mockDoguHealthChecker_CheckByName_Call) RunAndReturn(run func(context.Context, types.NamespacedName) error) *mockDoguHealthChecker_CheckByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CheckDependenciesRecursive provides a mock function with given fields: ctx, fromDogu, namespace
+func (_m *mockDoguHealthChecker) CheckDependenciesRecursive(ctx context.Context, fromDogu *core.Dogu, namespace string) error {
+	ret := _m.Called(ctx, fromDogu, namespace)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CheckDependenciesRecursive")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu, string) error); ok {
+		r0 = rf(ctx, fromDogu, namespace)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockDoguHealthChecker_CheckDependenciesRecursive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckDependenciesRecursive'
+type mockDoguHealthChecker_CheckDependenciesRecursive_Call struct {
+	*mock.Call
+}
+
+// CheckDependenciesRecursive is a helper method to define mock.On call
+//   - ctx context.Context
+//   - fromDogu *core.Dogu
+//   - namespace string
+func (_e *mockDoguHealthChecker_Expecter) CheckDependenciesRecursive(ctx interface{}, fromDogu interface{}, namespace interface{}) *mockDoguHealthChecker_CheckDependenciesRecursive_Call {
+	return &mockDoguHealthChecker_CheckDependenciesRecursive_Call{Call: _e.mock.On("CheckDependenciesRecursive", ctx, fromDogu, namespace)}
+}
+
+func (_c *mockDoguHealthChecker_CheckDependenciesRecursive_Call) Run(run func(ctx context.Context, fromDogu *core.Dogu, namespace string)) *mockDoguHealthChecker_CheckDependenciesRecursive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*core.Dogu), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *mockDoguHealthChecker_CheckDependenciesRecursive_Call) Return(_a0 error) *mockDoguHealthChecker_CheckDependenciesRecursive_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockDoguHealthChecker_CheckDependenciesRecursive_Call) RunAndReturn(run func(context.Context, *core.Dogu, string) error) *mockDoguHealthChecker_CheckDependenciesRecursive_Call {
 	_c.Call.Return(run)
 	return _c
 }

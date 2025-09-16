@@ -5,7 +5,6 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,23 +60,9 @@ func TestAdditionalMountsStep_Run(t *testing.T) {
 
 func TestNewAdditionalMountsStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		deploymentInterfaceMock := newMockDeploymentInterface(t)
-		appV1InterfaceMock := newMockAppV1Interface(t)
-		clientSetMock := newMockClientSet(t)
-		appV1InterfaceMock.EXPECT().Deployments(namespace).Return(deploymentInterfaceMock)
-		clientSetMock.EXPECT().AppsV1().Return(appV1InterfaceMock)
+		manager := newMockAdditionalMountManager(t)
 
-		doguInterfaceMock := newMockDoguInterface(t)
-		ecosystemInterfaceMock := newMockEcosystemInterface(t)
-		ecosystemInterfaceMock.EXPECT().Dogus(namespace).Return(doguInterfaceMock)
-
-		step := NewAdditionalMountsStep(
-			&util.ManagerSet{
-				ClientSet:       clientSetMock,
-				EcosystemClient: ecosystemInterfaceMock,
-			},
-			namespace,
-		)
+		step := NewAdditionalMountsStep(manager)
 
 		assert.NotNil(t, step)
 	})
