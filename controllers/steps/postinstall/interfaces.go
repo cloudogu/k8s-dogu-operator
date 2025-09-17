@@ -69,7 +69,6 @@ type additionalMountManager interface {
 }
 
 type doguRestartManager interface {
-	RestartAllDogus(ctx context.Context) error
 	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
 }
 
