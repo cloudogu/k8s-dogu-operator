@@ -109,16 +109,6 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 	return steps.RequeueAfter(requeueAfterUpdateDeployment)
 }
 
-func (uds *UpdateDeploymentStep) isDeploymentStartupProbeIncreased(doguResource *v2.Dogu, deployment *v1.Deployment) bool {
-	for i, container := range deployment.Spec.Template.Spec.Containers {
-		startupProbe := deployment.Spec.Template.Spec.Containers[i].StartupProbe
-		if container.Name == doguResource.Name && startupProbe != nil && startupProbe.FailureThreshold == upgradeStartupProbeFailureThresholdRetries {
-			return true
-		}
-	}
-	return false
-}
-
 func (uds *UpdateDeploymentStep) isDoguVersionUpdatedInDeployment(doguResource *v2.Dogu, deployment *v1.Deployment) bool {
 	return deployment.Spec.Template.Labels[podTemplateVersionKey] == doguResource.Spec.Version
 }
@@ -139,7 +129,7 @@ func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDo
 
 	preUpgradeScriptCmd := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
 
-	fromDoguPod, err := getPodForDogu(ctx, uds.client, toDogu.GetSimpleName(), fromDoguVersion)
+	fromDoguPod, err := toDoguResource.GetPod(ctx, uds.client)
 	if err != nil {
 		return fmt.Errorf("failed to find pod for dogu %s:%s : %w", toDogu.GetSimpleName(), fromDoguVersion, err)
 	}
@@ -200,13 +190,4 @@ func (uds *UpdateDeploymentStep) applyPreUpgradeScriptToOlderDogu(
 	}
 
 	return nil
-}
-
-func getPodForDogu(ctx context.Context, cli client.Client, fromDoguName string, fromDoguVersion string) (*corev1.Pod, error) {
-	fromDoguLabels := map[string]string{
-		v2.DoguLabelName:    fromDoguName,
-		v2.DoguLabelVersion: fromDoguVersion,
-	}
-
-	return v2.GetPodForLabels(ctx, cli, fromDoguLabels)
 }

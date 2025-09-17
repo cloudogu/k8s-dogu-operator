@@ -75,7 +75,7 @@ func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Do
 	}
 
 	// Revert probe
-	err = rsps.revertStartupProbeAfterUpdate(ctx, doguResource, dogu, rsps.client)
+	err = rsps.revertStartupProbeAfterUpdate(ctx, doguResource, dogu, deployment)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
@@ -119,18 +119,14 @@ func (rsps *RevertStartupProbeStep) executePostUpgradeScript(ctx context.Context
 	return nil
 }
 
-func (rsps *RevertStartupProbeStep) revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *v2.Dogu, toDogu *core.Dogu, client client.Client) error {
+func (rsps *RevertStartupProbeStep) revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *v2.Dogu, toDogu *core.Dogu, deployment *v1.Deployment) error {
 	originalStartupProbe := resource.CreateStartupProbe(toDogu)
-
-	deployment, err := toDoguResource.GetDeployment(ctx, client)
-	if err != nil {
-		return err
-	}
 
 	for i, container := range deployment.Spec.Template.Spec.Containers {
 		if container.Name == toDoguResource.Name && container.StartupProbe != nil {
 			deployment.Spec.Template.Spec.Containers[i].StartupProbe = originalStartupProbe
-			return client.Update(ctx, deployment)
+			_, err := rsps.deploymentInterface.Update(ctx, deployment, metav1.UpdateOptions{})
+			return err
 		}
 	}
 
