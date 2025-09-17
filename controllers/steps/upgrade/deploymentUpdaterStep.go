@@ -10,8 +10,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeploymentUpdaterStep struct {
@@ -27,23 +27,19 @@ func (dus *DeploymentUpdaterStep) Priority() int {
 }
 
 func NewDeploymentUpdaterStep(
-	client client.Client,
 	upserter resource.ResourceUpserter,
 	fetcher cesregistry.LocalDoguFetcher,
 	deploymentInterface appsv1.DeploymentInterface,
-	generator resource.SecurityContextGenerator,
 ) *DeploymentUpdaterStep {
 	return &DeploymentUpdaterStep{
-		upserter:                 upserter,
-		localDoguFetcher:         fetcher,
-		client:                   client,
-		deploymentInterface:      deploymentInterface,
-		securityContextGenerator: generator,
+		upserter:            upserter,
+		localDoguFetcher:    fetcher,
+		deploymentInterface: deploymentInterface,
 	}
 }
 
 func (dus *DeploymentUpdaterStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	deployment, err := doguResource.GetDeployment(ctx, dus.client)
+	deployment, err := dus.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return steps.RequeueWithError(err)
 	}
