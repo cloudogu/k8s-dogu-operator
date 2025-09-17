@@ -13,7 +13,7 @@ import (
 )
 
 func TestNewDoguRestartManager(t *testing.T) {
-	t.Run("Successfully created step", func(t *testing.T) {
+	t.Run("Successfully created restart manager", func(t *testing.T) {
 		step := NewDoguRestartManager(
 			newMockDoguInterface(t),
 			newMockDeploymentInterface(t),

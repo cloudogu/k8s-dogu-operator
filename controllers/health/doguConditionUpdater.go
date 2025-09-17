@@ -25,8 +25,8 @@ func (dcu *DoguConditionUpdater) UpdateCondition(ctx context.Context, doguResour
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
 
-	dcu.setCondition(doguResource, condition)
-	newDoguResource, err = dcu.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+	dcu.setCondition(newDoguResource, condition)
+	newDoguResource, err = dcu.doguInterface.UpdateStatus(ctx, newDoguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %s: %w", doguResource.Name, err)
 	}
@@ -40,10 +40,10 @@ func (dcu *DoguConditionUpdater) UpdateConditions(ctx context.Context, doguResou
 	}
 
 	for _, condition := range conditions {
-		dcu.setCondition(doguResource, condition)
+		dcu.setCondition(newDoguResource, condition)
 	}
 
-	newDoguResource, err = dcu.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+	newDoguResource, err = dcu.doguInterface.UpdateStatus(ctx, newDoguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %s: %w", doguResource.Name, err)
 	}
