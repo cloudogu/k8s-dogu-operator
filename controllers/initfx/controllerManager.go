@@ -59,7 +59,8 @@ func NewControllerManager(
 		return nil, fmt.Errorf("failed to add checks to the manager: %w", err)
 	}
 
-	lc.Append(fx.StartHook(func(ctx context.Context) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	lc.Append(fx.StartHook(func() {
 		go func() {
 			startupLog.Info("starting manager")
 			err := k8sManager.Start(ctx)
@@ -67,6 +68,9 @@ func NewControllerManager(
 				startupLog.Error(err, "failed to start manager")
 			}
 		}()
+	}))
+	lc.Append(fx.StopHook(func() {
+		cancelFunc()
 	}))
 
 	return k8sManager, nil
