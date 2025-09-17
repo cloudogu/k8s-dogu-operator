@@ -28,10 +28,6 @@ type SupportModeStep struct {
 	deploymentInterface deploymentInterface
 }
 
-func (sms *SupportModeStep) Priority() int {
-	return 3400
-}
-
 func NewSupportModeStep(supportManager manager.SupportManager, doguInterface doguClient.DoguInterface, deploymentInterface v1.DeploymentInterface) *SupportModeStep {
 	return &SupportModeStep{
 		supportManager:      supportManager,

@@ -16,10 +16,6 @@ type FinalizerExistsStep struct {
 	client k8sClient
 }
 
-func (fs *FinalizerExistsStep) Priority() int {
-	return 5100
-}
-
 func NewFinalizerExistsStep(client client.Client) *FinalizerExistsStep {
 	return &FinalizerExistsStep{
 		client: client,

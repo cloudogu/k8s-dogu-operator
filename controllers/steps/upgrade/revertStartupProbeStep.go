@@ -29,10 +29,6 @@ type RevertStartupProbeStep struct {
 	execPodFactory      execPodFactory
 }
 
-func (rsps *RevertStartupProbeStep) Priority() int {
-	return 2700
-}
-
 func NewRevertStartupProbeStep(
 	client client.Client,
 	deploymentInterface appsv1.DeploymentInterface,

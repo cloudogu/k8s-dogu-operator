@@ -8,6 +8,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -20,6 +21,26 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type CreateDoguConfigStep interface {
+	steps.Step
+}
+
+type CreateSensitiveDoguConfigStep interface {
+	steps.Step
+}
+
+type DoguConfigOwnerReferenceStep interface {
+	steps.Step
+}
+
+type SensitiveDoguConfigOwnerReferenceStep interface {
+	steps.Step
+}
+
+type LocalDoguDescriptorOwnerReferenceStep interface {
+	steps.Step
+}
 
 // premisesChecker includes functionality to check if the premises for an upgrade are met.
 //

@@ -15,10 +15,6 @@ type EqualDoguDescriptorsStep struct {
 	localDoguFetcher    localDoguFetcher
 }
 
-func (edds *EqualDoguDescriptorsStep) Priority() int {
-	return 3100
-}
-
 func NewEqualDoguDescriptorsStep(resourceFetcher cesregistry.ResourceDoguFetcher, localFetcher cesregistry.LocalDoguFetcher) *EqualDoguDescriptorsStep {
 	return &EqualDoguDescriptorsStep{
 		resourceDoguFetcher: resourceFetcher,

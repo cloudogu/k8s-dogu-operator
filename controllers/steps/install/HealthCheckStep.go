@@ -30,10 +30,6 @@ type HealthCheckStep struct {
 	doguInterface           doguInterface
 }
 
-func (hcs *HealthCheckStep) Priority() int {
-	return 5300
-}
-
 func NewHealthCheckStep(client client.Client, availabilityChecker health.DeploymentAvailabilityChecker,
 	doguHealthStatusUpdater health.DoguHealthStatusUpdater, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *HealthCheckStep {
 	return &HealthCheckStep{

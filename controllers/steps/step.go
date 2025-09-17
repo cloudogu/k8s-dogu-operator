@@ -1,6 +1,15 @@
 package steps
 
-import "time"
+import (
+	"context"
+	"time"
+
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+)
+
+type Step interface {
+	Run(ctx context.Context, resource *v2.Dogu) StepResult
+}
 
 type StepResult struct {
 	RequeueAfter time.Duration

@@ -14,10 +14,6 @@ type NetworkPoliciesStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func (nps *NetworkPoliciesStep) Priority() int {
-	return 4100
-}
-
 func NewNetworkPoliciesStep(upserter resource.ResourceUpserter, fetcher cesregistry.LocalDoguFetcher) *NetworkPoliciesStep {
 	return &NetworkPoliciesStep{
 		netPolUpserter:   upserter,

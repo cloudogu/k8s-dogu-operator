@@ -3,10 +3,12 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"slices"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -14,19 +16,81 @@ type DoguInstallOrChangeUseCase struct {
 	steps []Step
 }
 
-func NewDoguInstallOrChangeUseCase(steps []Step) *DoguInstallOrChangeUseCase {
-	// sort descending because higher priority means earlier execution
-	slices.SortFunc(steps, func(a, b Step) int {
-		if a.Priority() < b.Priority() {
-			return 1
-		}
-		if a.Priority() > b.Priority() {
-			return -1
-		}
-		return 0
-	})
+func NewDoguInstallOrChangeUseCase(
+	conditionsStep *install.ConditionsStep,
+	healthCheckStep *install.HealthCheckStep,
+	validationStep *install.ValidationStep,
+	finalizerExistsStep *install.FinalizerExistsStep,
+	createDoguConfigStep install.CreateDoguConfigStep,
+	doguConfigOwnerReferenceStep install.DoguConfigOwnerReferenceStep,
+	createSensitiveDoguConfigStep install.CreateSensitiveDoguConfigStep,
+	sensitiveDoguConfigOwnerReferenceStep install.SensitiveDoguConfigOwnerReferenceStep,
+	registerDoguVersionStep *install.RegisterDoguVersionStep,
+	localDoguDescriptorOwnerReferenceStep install.LocalDoguDescriptorOwnerReferenceStep,
+	serviceAccountStep *install.ServiceAccountStep,
+	serviceStep *install.ServiceStep,
+	execPodCreateStep *install.ExecPodCreateStep,
+	customK8sResourceStep *install.CustomK8sResourceStep,
+	volumeGeneratorStep *install.VolumeGeneratorStep,
+	networkPoliciesStep *install.NetworkPoliciesStep,
+	deploymentStep *install.DeploymentStep,
+
+	replicasStep *postinstall.ReplicasStep,
+	volumeExpanderStep *postinstall.VolumeExpanderStep,
+	additionalIngressAnnotationsStep *postinstall.AdditionalIngressAnnotationsStep,
+	securityContextStep *postinstall.SecurityContextStep,
+	exportModeStep *postinstall.ExportModeStep,
+	supportModeStep *postinstall.SupportModeStep,
+	additionalMountsStep *postinstall.AdditionalMountsStep,
+	restartDoguStep *postinstall.RestartDoguStep,
+
+	equalDoguDescriptorStep *upgrade.EqualDoguDescriptorsStep,
+	upgradeRegisterDoguVersionStep *upgrade.RegisterDoguVersionStep,
+	updateDeploymentStep *upgrade.UpdateDeploymentStep,
+	deleteExecPodStep *upgrade.DeleteExecPodStep,
+	revertStartupProbeStep *upgrade.RevertStartupProbeStep,
+	deleteDevelopmentDoguMapStep *upgrade.DeleteDevelopmentDoguMapStep,
+	installedVersionStep *upgrade.InstalledVersionStep,
+	deploymentUpdaterStep *upgrade.DeploymentUpdaterStep,
+) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
-		steps: steps,
+		steps: []Step{
+			conditionsStep,
+			healthCheckStep,
+			validationStep,
+			finalizerExistsStep,
+			createDoguConfigStep,
+			doguConfigOwnerReferenceStep,
+			createSensitiveDoguConfigStep,
+			sensitiveDoguConfigOwnerReferenceStep,
+			registerDoguVersionStep,
+			localDoguDescriptorOwnerReferenceStep,
+			serviceAccountStep,
+			serviceStep,
+			execPodCreateStep,
+			customK8sResourceStep,
+			volumeGeneratorStep,
+			networkPoliciesStep,
+
+			deploymentStep,
+			replicasStep,
+			volumeExpanderStep,
+			additionalIngressAnnotationsStep,
+			securityContextStep,
+			exportModeStep,
+			supportModeStep,
+			additionalMountsStep,
+			restartDoguStep,
+
+			equalDoguDescriptorStep,
+			upgradeRegisterDoguVersionStep,
+			updateDeploymentStep,
+			deleteExecPodStep,
+			revertStartupProbeStep,
+			deleteDevelopmentDoguMapStep,
+			installedVersionStep,
+			deploymentUpdaterStep,
+		},
 	}
 }
 

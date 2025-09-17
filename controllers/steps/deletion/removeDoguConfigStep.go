@@ -11,21 +11,17 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
-type RemoveDoguConfigStep struct {
+type removeDoguConfigStep struct {
 	doguConfigRepository doguConfigRepository
 }
 
-func (rdc *RemoveDoguConfigStep) Priority() int {
-	return 5700
-}
-
-func NewRemoveDoguConfigStep(doguConfigRepository initfx.DoguConfigRepository) *RemoveDoguConfigStep {
-	return &RemoveDoguConfigStep{
+func NewRemoveDoguConfigStep(doguConfigRepository initfx.DoguConfigRepository) *removeDoguConfigStep {
+	return &removeDoguConfigStep{
 		doguConfigRepository: doguConfigRepository,
 	}
 }
 
-func (rdc *RemoveDoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (rdc *removeDoguConfigStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	if err := rdc.doguConfigRepository.Delete(ctx, cescommons.SimpleName(doguResource.Name)); err != nil && !registryErrors.IsNotFoundError(err) {
 		return steps.RequeueWithError(fmt.Errorf("could not delete dogu config: %w", err))
 	}

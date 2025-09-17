@@ -20,7 +20,7 @@ func TestNewRemoveDoguConfigStep(t *testing.T) {
 	})
 }
 
-func TestRemoveDoguConfigStep_Run(t *testing.T) {
+func Test_removeDoguConfigStep_Run(t *testing.T) {
 	tests := []struct {
 		name                   string
 		doguConfigRepositoryFn func(t *testing.T) doguConfigRepository
@@ -83,7 +83,7 @@ func TestRemoveDoguConfigStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rdc := &RemoveDoguConfigStep{
+			rdc := &removeDoguConfigStep{
 				doguConfigRepository: tt.doguConfigRepositoryFn(t),
 			}
 			assert.Equalf(t, tt.want, rdc.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)

@@ -22,10 +22,6 @@ type RestartDoguStep struct {
 	doguRestartManager      doguRestartManager
 }
 
-func (rds *RestartDoguStep) Priority() int {
-	return 3200
-}
-
 func NewRestartDoguStep(
 	client client.Client,
 	podInterface corev1.PodInterface,

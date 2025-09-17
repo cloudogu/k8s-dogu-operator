@@ -12,10 +12,6 @@ type AdditionalMountsStep struct {
 	additionalMountManager
 }
 
-func (ams *AdditionalMountsStep) Priority() int {
-	return 3300
-}
-
 func NewAdditionalMountsStep(mountManager manager.AdditionalMountManager) *AdditionalMountsStep {
 	return &AdditionalMountsStep{
 		additionalMountManager: mountManager,

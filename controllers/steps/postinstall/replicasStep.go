@@ -25,10 +25,6 @@ type ReplicasStep struct {
 	doguInterface       doguInterface
 }
 
-func (rs *ReplicasStep) Priority() int {
-	return 3900
-}
-
 func NewReplicasStep(client client.Client, deploymentInterface v1.DeploymentInterface, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *ReplicasStep {
 	return &ReplicasStep{
 		client:              client,

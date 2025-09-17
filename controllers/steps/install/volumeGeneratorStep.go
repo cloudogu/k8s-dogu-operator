@@ -20,10 +20,6 @@ type VolumeGeneratorStep struct {
 	pvcGetter        persistentVolumeClaimInterface
 }
 
-func (vgs *VolumeGeneratorStep) Priority() int {
-	return 4200
-}
-
 func NewVolumeGeneratorStep(fetcher cesregistry.LocalDoguFetcher, upserter resource.ResourceUpserter, pvcInterface v1.PersistentVolumeClaimInterface) *VolumeGeneratorStep {
 	return &VolumeGeneratorStep{
 		localDoguFetcher: fetcher,

@@ -24,10 +24,6 @@ type ValidationStep struct {
 	dependencyValidator           dependencyValidator
 }
 
-func (vs *ValidationStep) Priority() int {
-	return 5200
-}
-
 func NewValidationStep(
 	checker upgrade.PremisesChecker,
 	localDoguFetcher cesregistry.LocalDoguFetcher,

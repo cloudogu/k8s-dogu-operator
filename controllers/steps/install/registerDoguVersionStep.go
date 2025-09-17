@@ -15,10 +15,6 @@ type RegisterDoguVersionStep struct {
 	localDoguFetcher    localDoguFetcher
 }
 
-func (rdvs *RegisterDoguVersionStep) Priority() int {
-	return 4800
-}
-
 func NewRegisterDoguVersionStep(resourceDoguFetcher cesregistry.ResourceDoguFetcher, localDoguFetcher cesregistry.LocalDoguFetcher, registrator cesregistry.DoguRegistrator) *RegisterDoguVersionStep {
 	return &RegisterDoguVersionStep{
 		resourceDoguFetcher: resourceDoguFetcher,

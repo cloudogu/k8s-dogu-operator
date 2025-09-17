@@ -14,10 +14,6 @@ type ServiceAccountRemoverStep struct {
 	resourceDoguFetcher   resourceDoguFetcher
 }
 
-func (sas *ServiceAccountRemoverStep) Priority() int {
-	return 6000
-}
-
 func NewServiceAccountRemoverStep(
 	serviceAccountRemover serviceaccount.ServiceAccountRemover,
 	resourceDoguFetcher cesregistry.ResourceDoguFetcher,

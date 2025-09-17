@@ -22,10 +22,6 @@ type CustomK8sResourceStep struct {
 	collectApplier   collectApplier
 }
 
-func (ses *CustomK8sResourceStep) Priority() int {
-	return 4300
-}
-
 func NewCustomK8sResourceStep(eventRecorder record.EventRecorder, fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory, extractor exec.FileExtractor, applier resource.CollectApplier) *CustomK8sResourceStep {
 	return &CustomK8sResourceStep{
 		recorder:         eventRecorder,

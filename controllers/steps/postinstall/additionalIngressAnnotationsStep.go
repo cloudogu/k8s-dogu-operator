@@ -18,10 +18,6 @@ type AdditionalIngressAnnotationsStep struct {
 	annotator ingressAnnotator
 }
 
-func (aias *AdditionalIngressAnnotationsStep) Priority() int {
-	return 3700
-}
-
 func NewAdditionalIngressAnnotationsStep(client client.Client) *AdditionalIngressAnnotationsStep {
 	return &AdditionalIngressAnnotationsStep{
 		client:    client,

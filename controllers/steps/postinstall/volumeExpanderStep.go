@@ -28,10 +28,6 @@ type VolumeExpanderStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func (vs *VolumeExpanderStep) Priority() int {
-	return 3800
-}
-
 func NewVolumeExpanderStep(client client.Client, doguInterface doguClient.DoguInterface, fetcher cesregistry.LocalDoguFetcher) *VolumeExpanderStep {
 	return &VolumeExpanderStep{
 		client:           client,

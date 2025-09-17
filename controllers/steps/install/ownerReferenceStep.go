@@ -14,10 +14,6 @@ type OwnerReferenceStep struct {
 	ownerReferenceSetter ownerReferenceSetter
 }
 
-func (ors *OwnerReferenceStep) Priority() int {
-	return 4700
-}
-
 func NewOwnerReferenceStep(setter initfx.OwnerReferenceSetter) *OwnerReferenceStep {
 	return &OwnerReferenceStep{
 		ownerReferenceSetter: setter,

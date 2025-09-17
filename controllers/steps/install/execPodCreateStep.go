@@ -25,10 +25,6 @@ type ExecPodCreateStep struct {
 	execPodFactory   execPodFactory
 }
 
-func (epcs *ExecPodCreateStep) Priority() int {
-	return 4400
-}
-
 func NewExecPodCreateStep(client client.Client, eventRecorder record.EventRecorder, fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory) *ExecPodCreateStep {
 	return &ExecPodCreateStep{
 		client:           client,

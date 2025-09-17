@@ -39,10 +39,6 @@ type UpdateDeploymentStep struct {
 	doguCommandExecutor commandExecutor
 }
 
-func (uds *UpdateDeploymentStep) Priority() int {
-	return 2900
-}
-
 func NewUpdateDeploymentStep(
 	client client.Client,
 	upserter resource.ResourceUpserter,

@@ -16,18 +16,16 @@ var testCtx = context.Background()
 
 func TestNewDoguDeleteUsecase(t *testing.T) {
 	t.Run("Successfully created delete usecase with correct order", func(t *testing.T) {
-		step1 := NewMockStep(t)
-		step1.EXPECT().Priority().Return(2)
-		step2 := NewMockStep(t)
-		step2.EXPECT().Priority().Return(1)
-		step3 := NewMockStep(t)
-		step3.EXPECT().Priority().Return(3)
-		usecase := NewDoguDeleteUseCase([]Step{step1, step2, step3})
+		usecase := NewDoguDeleteUseCase(
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+		)
 
-		assert.NotEmpty(t, usecase)
-		assert.Equal(t, step3, usecase.steps[0])
-		assert.Equal(t, step1, usecase.steps[1])
-		assert.Equal(t, step2, usecase.steps[2])
+		assert.NotNil(t, usecase)
 	})
 }
 

@@ -19,10 +19,6 @@ type DeploymentStep struct {
 	client           k8sClient
 }
 
-func (ds *DeploymentStep) Priority() int {
-	return 4000
-}
-
 func NewDeploymentStep(client client.Client, upserter resource.ResourceUpserter, fetcher cesregistry.LocalDoguFetcher) *DeploymentStep {
 	return &DeploymentStep{
 		client:           client,

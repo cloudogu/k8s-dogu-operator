@@ -13,10 +13,6 @@ type InstalledVersionStep struct {
 	doguInterface doguInterface
 }
 
-func (ivs *InstalledVersionStep) Priority() int {
-	return 2500
-}
-
 func NewInstalledVersionStep(doguInterface doguClient.DoguInterface) *InstalledVersionStep {
 	return &InstalledVersionStep{
 		doguInterface: doguInterface,

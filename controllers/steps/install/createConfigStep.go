@@ -15,10 +15,6 @@ type CreateConfigStep struct {
 	configRepository doguConfigRepository
 }
 
-func (ccs *CreateConfigStep) Priority() int {
-	return 5000
-}
-
 func NewCreateConfigStep(configRepo initfx.DoguConfigRepository) *CreateConfigStep {
 	return &CreateConfigStep{
 		configRepository: configRepo,

@@ -21,10 +21,6 @@ type ServiceStep struct {
 	serviceInterface serviceInterface
 }
 
-func (ses *ServiceStep) Priority() int {
-	return 4500
-}
-
 func NewServiceStep(registry imageregistry.ImageRegistry, serviceInterface v1.ServiceInterface, generator resource.DoguResourceGenerator, fetcher cesregistry.LocalDoguFetcher) *ServiceStep {
 	return &ServiceStep{
 		imageRegistry:    registry,

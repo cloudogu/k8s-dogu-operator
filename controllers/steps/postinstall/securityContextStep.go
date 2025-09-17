@@ -18,10 +18,6 @@ type SecurityContextStep struct {
 	deploymentInterface      deploymentInterface
 }
 
-func (scs *SecurityContextStep) Priority() int {
-	return 3600
-}
-
 func NewSecurityContextStep(fetcher cesregistry.LocalDoguFetcher, generator resource.SecurityContextGenerator, deploymentInterface v1.DeploymentInterface) *SecurityContextStep {
 	return &SecurityContextStep{
 		localDoguFetcher:         fetcher,

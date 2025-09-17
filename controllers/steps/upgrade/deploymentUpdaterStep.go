@@ -22,10 +22,6 @@ type DeploymentUpdaterStep struct {
 	securityContextGenerator securityContextGenerator
 }
 
-func (dus *DeploymentUpdaterStep) Priority() int {
-	return 2400
-}
-
 func NewDeploymentUpdaterStep(
 	upserter resource.ResourceUpserter,
 	fetcher cesregistry.LocalDoguFetcher,

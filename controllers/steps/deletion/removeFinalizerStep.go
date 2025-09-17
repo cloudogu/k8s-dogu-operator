@@ -17,10 +17,6 @@ type RemoveFinalizerStep struct {
 	client k8sClient
 }
 
-func (rf *RemoveFinalizerStep) Priority() int {
-	return 5500
-}
-
 func NewRemoveFinalizerStep(client client.Client) *RemoveFinalizerStep {
 	return &RemoveFinalizerStep{
 		client: client,

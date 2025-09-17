@@ -15,10 +15,6 @@ type DeleteExecPodStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func (deps *DeleteExecPodStep) Priority() int {
-	return 2800
-}
-
 func NewDeleteExecPodStep(fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory) *DeleteExecPodStep {
 	return &DeleteExecPodStep{
 		localDoguFetcher: fetcher,

@@ -14,10 +14,6 @@ type ServiceAccountStep struct {
 	localDoguFetcher      localDoguFetcher
 }
 
-func (sas *ServiceAccountStep) Priority() int {
-	return 4600
-}
-
 func NewServiceAccountStep(creator serviceaccount.ServiceAccountCreator, fetcher cesregistry.LocalDoguFetcher) *ServiceAccountStep {
 	return &ServiceAccountStep{
 		serviceAccountCreator: creator,

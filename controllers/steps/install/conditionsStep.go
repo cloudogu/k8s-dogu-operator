@@ -27,10 +27,6 @@ type ConditionsStep struct {
 	conditionUpdater ConditionUpdater
 }
 
-func (cs *ConditionsStep) Priority() int {
-	return 5400
-}
-
 func NewConditionsStep(updater ConditionUpdater) *ConditionsStep {
 	return &ConditionsStep{
 		conditionUpdater: updater,

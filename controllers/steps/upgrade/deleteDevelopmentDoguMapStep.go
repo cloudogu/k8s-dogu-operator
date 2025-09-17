@@ -15,10 +15,6 @@ type DeleteDevelopmentDoguMapStep struct {
 	client              k8sClient
 }
 
-func (ddms *DeleteDevelopmentDoguMapStep) Priority() int {
-	return 2600
-}
-
 func NewDeleteDevelopmentDoguMapStep(client client.Client, fetcher cesregistry.ResourceDoguFetcher) *DeleteDevelopmentDoguMapStep {
 	return &DeleteDevelopmentDoguMapStep{
 		resourceDoguFetcher: fetcher,

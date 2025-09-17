@@ -12,10 +12,6 @@ type ExportModeStep struct {
 	exportManager exportManager
 }
 
-func (ems *ExportModeStep) Priority() int {
-	return 3500
-}
-
 func NewExportModeStep(doguExportManager manager.DoguExportManager) *ExportModeStep {
 	return &ExportModeStep{
 		exportManager: doguExportManager,

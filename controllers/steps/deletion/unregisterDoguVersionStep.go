@@ -13,10 +13,6 @@ type UnregisterDoguVersionStep struct {
 	doguRegistrator doguRegistrator
 }
 
-func (udvs *UnregisterDoguVersionStep) Priority() int {
-	return 5900
-}
-
 func NewUnregisterDoguVersionStep(registrator cesregistry.DoguRegistrator) *UnregisterDoguVersionStep {
 	return &UnregisterDoguVersionStep{
 		doguRegistrator: registrator,

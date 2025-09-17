@@ -6,11 +6,20 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type RemoveDoguConfigStep interface {
+	steps.Step
+}
+
+type RemoveSensitiveDoguConfigStep interface {
+	steps.Step
+}
 
 // resourceDoguFetcher includes functionality to get a dogu either from the remote dogu registry or from a local development dogu map.
 type resourceDoguFetcher interface {
@@ -27,16 +36,6 @@ type doguRegistrator interface {
 	RegisterDoguVersion(ctx context.Context, dogu *cesappcore.Dogu) error
 	// UnregisterDogu removes a registration of a dogu from the local dogu registry.
 	UnregisterDogu(ctx context.Context, dogu string) error
-}
-
-// localDoguFetcher includes functionality to search the local dogu registry for a dogu.
-type localDoguFetcher interface {
-	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
-	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *cesappcore.Dogu, err error)
-	// Enabled checks is the given dogu is enabled.
-	// Returns false (without error), when the dogu is not installed
-	Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error)
 }
 
 // serviceAccountRemover includes functionality to remove existing service accounts for a dogu.

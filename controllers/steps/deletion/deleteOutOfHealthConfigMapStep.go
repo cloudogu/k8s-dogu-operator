@@ -16,10 +16,6 @@ type DeleteOutOfHealthConfigMapStep struct {
 	client k8sClient
 }
 
-func (dhc *DeleteOutOfHealthConfigMapStep) Priority() int {
-	return 5800
-}
-
 func NewDeleteOutOfHealthConfigMapStep(client client.Client) *DeleteOutOfHealthConfigMapStep {
 	return &DeleteOutOfHealthConfigMapStep{client: client}
 }
