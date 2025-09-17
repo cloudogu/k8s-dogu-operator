@@ -8,9 +8,7 @@ import (
 	"github.com/cloudogu/k8s-apply-lib/apply"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-registry-lib/config"
-	"github.com/cloudogu/k8s-registry-lib/repository"
 	image "github.com/google/go-containerregistry/pkg/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -18,11 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
-
-type GlobalConfigurationWatcher interface {
-	// Watch watches for changes of the provided config-key and sends the event through the channel
-	Watch(ctx context.Context, filters ...config.WatchFilter) (<-chan repository.GlobalConfigWatchResult, error)
-}
 
 // RequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
 type RequirementsGenerator interface {
@@ -110,23 +103,12 @@ type DoguResourceGenerator interface {
 	BuildAdditionalMountInitContainer(ctx context.Context, dogu *cesappcore.Dogu, doguResource *k8sv2.Dogu, image string, requirements v1.ResourceRequirements) (*v1.Container, error)
 }
 
-// resourceRequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
-type resourceRequirementsGenerator interface {
-	// Generate creates resource limits and requests for dogu deployments.
-	// It tries to retrieve them from the dogu config registry. If not set, defaults from the dogu.json are used.
-	// If there is no default, the requirement will be omitted.
-	Generate(ctx context.Context, dogu *cesappcore.Dogu) (v1.ResourceRequirements, error)
-}
-
-// localDoguFetcher includes functionality to search the local dogu registry for a dogu.
-type localDoguFetcher interface {
-	cesregistry.LocalDoguFetcher
-}
-
 type k8sClient interface {
 	client.Client
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
 type doguClientInterface interface {
 	doguClient.DoguInterface
 }

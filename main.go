@@ -1,10 +1,6 @@
 package main
 
 import (
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
-	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 	"go.uber.org/fx"
 
 	"k8s.io/client-go/kubernetes"
@@ -15,6 +11,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlMan "sigs.k8s.io/controller-runtime/pkg/manager"
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// to ensure that exec-entrypoint and run can make use of them.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -34,11 +33,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
+	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 var (
@@ -46,8 +46,8 @@ var (
 	Version = "0.0.0"
 )
 
-// NewVersion is a constructor to inject the version without import cycles
-func NewVersion() config.Version {
+// newVersion is a constructor to inject the version without import cycles
+func newVersion() config.Version {
 	return config.Version(Version)
 }
 
@@ -58,7 +58,7 @@ func main() {
 func newApp() *fx.App {
 	return fx.New(
 		fx.Provide(
-			NewVersion,
+			newVersion,
 			logging.NewLogger,
 			initfx.NewOperatorConfig,
 
@@ -102,7 +102,7 @@ func newApp() *fx.App {
 				fx.ResultTags(`name:"localDoguDescriptorRepository"`),
 			),
 			fx.Annotate(initfx.NewLocalDoguFetcher, fx.As(new(cesregistry.LocalDoguFetcher))),
-			fx.Annotate(repository.NewGlobalConfigRepository, fx.As(new(resource.GlobalConfigRepository)), fx.As(new(resource.GlobalConfigurationWatcher))),
+			fx.Annotate(repository.NewGlobalConfigRepository, fx.As(new(resource.GlobalConfigRepository))),
 			// provide twice, tagged as well as untagged
 			fx.Annotate(
 				repository.NewDoguConfigRepository,
@@ -120,8 +120,7 @@ func newApp() *fx.App {
 				fx.As(new(serviceaccount.SensitiveDoguConfigRepository)),
 			),
 			fx.Annotate(
-				repository.NewSensitiveDoguConfigRepository,
-				fx.As(new(initfx.DoguConfigRepository)),
+				repository.NewSensitiveDoguConfigRepository, fx.As(new(initfx.DoguConfigRepository)),
 				fx.As(new(initfx.OwnerReferenceSetter)),
 				fx.ResultTags(`name:"sensitiveDoguConfig"`),
 			),
@@ -206,20 +205,18 @@ func newApp() *fx.App {
 			controllers.NewDoguRestartReconciler,
 
 			// runners
-			resource.NewRequirementsUpdater,
 			health.NewStartupHandler,
 			health.NewShutdownHandler,
 		),
 		// the empty invoke functions tell fx to instantiate these structs even if nothing depends on them.
 		// reconcilers and runners are the last in the dependency chain so we have to invoke them here.
 		fx.Invoke(
-			func(_ *controllers.DoguReconciler) {},
-			func(_ *controllers.DoguRestartReconciler) {},
-			func(_ *controllers.GlobalConfigReconciler) {},
+			func(*controllers.DoguReconciler) {},
+			func(*controllers.DoguRestartReconciler) {},
+			func(*controllers.GlobalConfigReconciler) {},
 
-			func(_ *resource.RequirementsUpdater) {},
-			func(_ *health.StartupHandler) {},
-			func(_ *health.ShutdownHandler) {},
+			func(*health.StartupHandler) {},
+			func(*health.ShutdownHandler) {},
 		),
 	)
 }

@@ -7,7 +7,6 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"k8s.io/client-go/rest"
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
@@ -17,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -61,7 +61,6 @@ func NewControllerManager(
 
 	lc.Append(fx.StartHook(func(ctx context.Context) {
 		go func() {
-			// TODO if start happens before everything is instantiated, wait for all the reconcilers and runners to be added
 			startupLog.Info("starting manager")
 			err := k8sManager.Start(ctx)
 			if err != nil {
