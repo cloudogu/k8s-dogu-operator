@@ -52,11 +52,11 @@ func newVersion() config.Version {
 }
 
 func main() {
-	newApp().Run()
+	fx.New(options()...).Run()
 }
 
-func newApp() *fx.App {
-	return fx.New(
+func options() []fx.Option {
+	return []fx.Option{
 		fx.Provide(
 			newVersion,
 			logging.NewLogger,
@@ -238,5 +238,5 @@ func newApp() *fx.App {
 			func(*health.StartupHandler) {},
 			func(*health.ShutdownHandler) {},
 		),
-	)
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/fx/fxtest"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -18,7 +19,7 @@ import (
 
 const testNamespace = "ecosystem"
 
-func Test_newApp(t *testing.T) {
+func Test_options(t *testing.T) {
 	// given
 	restInterfaceMock := newMockRestInterface(t)
 	serviceInterfaceMock := newMockServiceInterface(t)
@@ -70,10 +71,7 @@ func Test_newApp(t *testing.T) {
 	})
 
 	// when
-	newApp := newApp()
-
-	// then
-	assert.NoError(t, newApp.Err())
+	_ = fxtest.New(t, options()...)
 }
 
 func newTestGetConfig() func() (*rest.Config, error) {
