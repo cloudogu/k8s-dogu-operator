@@ -22,52 +22,6 @@ func (_m *mockDoguRestartManager) EXPECT() *mockDoguRestartManager_Expecter {
 	return &mockDoguRestartManager_Expecter{mock: &_m.Mock}
 }
 
-// RestartAllDogus provides a mock function with given fields: ctx
-func (_m *mockDoguRestartManager) RestartAllDogus(ctx context.Context) error {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RestartAllDogus")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockDoguRestartManager_RestartAllDogus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RestartAllDogus'
-type mockDoguRestartManager_RestartAllDogus_Call struct {
-	*mock.Call
-}
-
-// RestartAllDogus is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *mockDoguRestartManager_Expecter) RestartAllDogus(ctx interface{}) *mockDoguRestartManager_RestartAllDogus_Call {
-	return &mockDoguRestartManager_RestartAllDogus_Call{Call: _e.mock.On("RestartAllDogus", ctx)}
-}
-
-func (_c *mockDoguRestartManager_RestartAllDogus_Call) Run(run func(ctx context.Context)) *mockDoguRestartManager_RestartAllDogus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *mockDoguRestartManager_RestartAllDogus_Call) Return(_a0 error) *mockDoguRestartManager_RestartAllDogus_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockDoguRestartManager_RestartAllDogus_Call) RunAndReturn(run func(context.Context) error) *mockDoguRestartManager_RestartAllDogus_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // RestartDogu provides a mock function with given fields: ctx, dogu
 func (_m *mockDoguRestartManager) RestartDogu(ctx context.Context, dogu *v2.Dogu) error {
 	ret := _m.Called(ctx, dogu)

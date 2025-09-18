@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"context"
+	"time"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -86,4 +87,8 @@ type resourceGenerator interface {
 //goland:noinspection GoUnusedType
 type ecosystemInterface interface {
 	doguClient.EcoSystemV2Interface
+}
+
+type deploymentManager interface {
+	GetLastStartingTime(ctx context.Context, deploymentName string) (*time.Time, error)
 }

@@ -145,6 +145,7 @@ func options() []fx.Option {
 			fx.Annotate(manager.NewDoguExportManager, fx.As(new(manager.DoguExportManager))),
 			fx.Annotate(manager.NewDoguSupportManager, fx.As(new(manager.SupportManager))),
 			fx.Annotate(manager.NewDoguAdditionalMountManager, fx.As(new(manager.AdditionalMountManager))),
+			fx.Annotate(manager.NewDeploymentManager, fx.As(new(manager.DeploymentManager))),
 			controllers.NewDoguEvents,
 			controllers.NewDoguEventsIn,
 			controllers.NewDoguEventsOut,
@@ -205,7 +206,7 @@ func options() []fx.Option {
 			postinstall.NewExportModeStep,
 			postinstall.NewSupportModeStep,
 			postinstall.NewAdditionalMountsStep,
-			fx.Annotate(postinstall.NewRestartDoguStep, fx.ParamTags("", "", `name:"normalDoguConfig"`, `name:"sensitiveDoguConfig"`, "")),
+			fx.Annotate(postinstall.NewRestartDoguStep, fx.ParamTags(`name:"normalDoguConfig"`, `name:"sensitiveDoguConfig"`, "", "")),
 			upgradeSteps.NewEqualDoguDescriptorsStep,
 			upgradeSteps.NewRegisterDoguVersionStep,
 			upgradeSteps.NewUpdateDeploymentStep,
@@ -214,6 +215,7 @@ func options() []fx.Option {
 			upgradeSteps.NewDeleteDevelopmentDoguMapStep,
 			upgradeSteps.NewInstalledVersionStep,
 			upgradeSteps.NewDeploymentUpdaterStep,
+			upgradeSteps.NewUpdateStartedAtStep,
 
 			// use-cases
 			usecase.NewDoguDeleteUseCase,

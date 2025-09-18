@@ -2,49 +2,36 @@ package postinstall
 
 import (
 	"context"
-	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	v1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type RestartDoguStep struct {
-	client                  k8sClient
 	doguConfigRepository    doguConfigRepository
 	sensitiveDoguRepository doguConfigRepository
-	podInterface            podInterface
 	doguRestartManager      doguRestartManager
+	deploymentManager       deploymentManager
 }
 
 func NewRestartDoguStep(
-	client client.Client,
-	podInterface corev1.PodInterface,
 	doguConfigRepo initfx.DoguConfigRepository,
 	sensitiveDoguConfigRepo initfx.DoguConfigRepository,
-	manager manager.DoguRestartManager,
+	restartManager manager.DoguRestartManager,
+	deploymentManager manager.DeploymentManager,
 ) *RestartDoguStep {
 	return &RestartDoguStep{
-		client:                  client,
-		podInterface:            podInterface,
 		doguConfigRepository:    doguConfigRepo,
 		sensitiveDoguRepository: sensitiveDoguConfigRepo,
-		doguRestartManager:      manager,
+		doguRestartManager:      restartManager,
+		deploymentManager:       deploymentManager,
 	}
 }
 
 func (rds *RestartDoguStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	deployment, err := doguResource.GetDeployment(ctx, rds.client)
-	if err != nil {
-		return steps.RequeueWithError(err)
-	}
-
-	startingTime, err := rds.getDeploymentLastStartingTime(ctx, deployment)
+	startingTime, err := rds.deploymentManager.GetLastStartingTime(ctx, doguResource.Name)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
@@ -67,23 +54,4 @@ func (rds *RestartDoguStep) Run(ctx context.Context, doguResource *v2.Dogu) step
 	}
 
 	return steps.Continue()
-}
-func (rds *RestartDoguStep) getDeploymentLastStartingTime(ctx context.Context, deployment *v1.Deployment) (*time.Time, error) {
-	labelSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
-
-	pods, err := rds.podInterface.List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
-	if err != nil {
-		return nil, err
-	}
-
-	var lastTimeStarted *time.Time
-	for _, pod := range pods.Items {
-		if pod.Status.StartTime != nil {
-			startTime := pod.Status.StartTime.Time
-			if lastTimeStarted == nil || startTime.After(*lastTimeStarted) {
-				lastTimeStarted = &startTime
-			}
-		}
-	}
-	return lastTimeStarted, nil
 }

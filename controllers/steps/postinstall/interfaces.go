@@ -2,6 +2,7 @@ package postinstall
 
 import (
 	"context"
+	"time"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
@@ -136,4 +137,8 @@ type resourceUpserter interface {
 //goland:noinspection GoUnusedType
 type doguResourceGenerator interface {
 	resource.DoguResourceGenerator
+}
+
+type deploymentManager interface {
+	GetLastStartingTime(ctx context.Context, deploymentName string) (*time.Time, error)
 }

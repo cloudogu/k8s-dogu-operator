@@ -52,6 +52,7 @@ func NewDoguInstallOrChangeUseCase(
 	deleteDevelopmentDoguMapStep *upgrade.DeleteDevelopmentDoguMapStep,
 	installedVersionStep *upgrade.InstalledVersionStep,
 	deploymentUpdaterStep *upgrade.DeploymentUpdaterStep,
+	updateStartedAtStep *upgrade.UpdateStartedAtStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		steps: []Step{
@@ -90,6 +91,7 @@ func NewDoguInstallOrChangeUseCase(
 			deleteDevelopmentDoguMapStep,
 			installedVersionStep,
 			deploymentUpdaterStep,
+			updateStartedAtStep,
 		},
 	}
 }

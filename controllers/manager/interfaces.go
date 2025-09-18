@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"time"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
@@ -82,4 +83,8 @@ type doguAdditionalMountsValidator interface {
 
 type k8sClient interface {
 	client.Client
+}
+
+type DeploymentManager interface {
+	GetLastStartingTime(ctx context.Context, deploymentName string) (*time.Time, error)
 }
