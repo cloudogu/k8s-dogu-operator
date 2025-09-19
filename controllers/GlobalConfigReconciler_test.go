@@ -6,7 +6,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 )
 
@@ -15,17 +14,16 @@ func TestNewGlobalConfigReconciler(t *testing.T) {
 	restartManagerMock := newMockDoguRestartManager(t)
 	configMapMock := newMockConfigMapInterface(t)
 	doguInterfaceMock := newMockDoguInterface(t)
-	podInterfaceMock := newMockPodInterface(t)
-	client := fake.NewClientBuilder().Build()
 	managerMock := newMockCtrlManager(t)
 	managerMock.EXPECT().GetControllerOptions().Return(config.Controller{})
 	managerMock.EXPECT().GetScheme().Return(getTestScheme())
 	managerMock.EXPECT().GetLogger().Return(logr.Logger{})
 	managerMock.EXPECT().Add(mock.Anything).Return(nil)
 	managerMock.EXPECT().GetCache().Return(nil)
+	deploymentManagerMock := newMockDeploymentManager(t)
 
 	// when
-	reconciler, err := NewGlobalConfigReconciler(restartManagerMock, configMapMock, doguInterfaceMock, podInterfaceMock, client, nil, managerMock)
+	reconciler, err := NewGlobalConfigReconciler(restartManagerMock, configMapMock, doguInterfaceMock, nil, managerMock, deploymentManagerMock)
 
 	// then
 	assert.NoError(t, err)

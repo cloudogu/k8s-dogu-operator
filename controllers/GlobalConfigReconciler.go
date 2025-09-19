@@ -9,7 +9,7 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	managers "github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 
-	appsv1 "k8s.io/api/apps/v1"
+	mgr "github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,27 +28,24 @@ type GlobalConfigReconciler struct {
 	doguRestartManager doguRestartManager
 	configMapInterface configMapInterface
 	doguInterface      doguInterface
-	podInterface       podInterface
-	client             client.Client
 	doguEvents         chan<- event.TypedGenericEvent[*v2.Dogu]
+	deploymentManager  deploymentManager
 }
 
 func NewGlobalConfigReconciler(
 	doguRestartManager managers.DoguRestartManager,
 	configMapInterface v1.ConfigMapInterface,
 	doguInterface doguClient.DoguInterface,
-	podInterface v1.PodInterface,
-	client client.Client,
 	doguEvents chan<- event.TypedGenericEvent[*v2.Dogu],
 	manager manager.Manager,
+	deploymentManager mgr.DeploymentManager,
 ) (*GlobalConfigReconciler, error) {
 	r := &GlobalConfigReconciler{
 		doguRestartManager: doguRestartManager,
 		configMapInterface: configMapInterface,
 		doguInterface:      doguInterface,
-		podInterface:       podInterface,
-		client:             client,
 		doguEvents:         doguEvents,
+		deploymentManager:  deploymentManager,
 	}
 	err := r.setupWithManager(manager)
 	if err != nil {
@@ -73,19 +70,16 @@ func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 	for _, dogu := range doguList.Items {
-		deployment, err := dogu.GetDeployment(ctx, r.client)
+		var doguLastStartingTime *time.Time
+		doguLastStartingTime, err = r.deploymentManager.GetLastStartingTime(ctx, dogu.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
 			}
 			return ctrl.Result{}, err
 		}
-		doguLastStartingTime, err := r.getDeploymentLastStartingTime(ctx, deployment)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
 		if doguLastStartingTime != nil && doguLastStartingTime.Before(cmLastUpdateTime.Time) {
-			err := r.doguRestartManager.RestartDogu(ctx, &dogu)
+			err = r.doguRestartManager.RestartDogu(ctx, &dogu)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -119,26 +113,6 @@ func globalConfigPredicate() predicate.Predicate {
 			return e.Object.GetName() == globalConfigMapName
 		},
 	}
-}
-
-func (r *GlobalConfigReconciler) getDeploymentLastStartingTime(ctx context.Context, deployment *appsv1.Deployment) (*time.Time, error) {
-	labelSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
-
-	pods, err := r.podInterface.List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
-	if err != nil {
-		return nil, err
-	}
-
-	var lastTimeStarted *time.Time
-	for _, pod := range pods.Items {
-		if pod.Status.StartTime != nil {
-			startTime := pod.Status.StartTime.Time
-			if lastTimeStarted == nil || startTime.After(*lastTimeStarted) {
-				lastTimeStarted = &startTime
-			}
-		}
-	}
-	return lastTimeStarted, nil
 }
 
 func (r *GlobalConfigReconciler) getConfigMapLastUpdatedTime(cm *corev1.ConfigMap) *metav1.Time {

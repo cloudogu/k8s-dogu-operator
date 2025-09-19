@@ -77,3 +77,7 @@ type doguRestartManager interface {
 type configMapInterface interface {
 	v1.ConfigMapInterface
 }
+
+type deploymentManager interface {
+	GetLastStartingTime(ctx context.Context, deploymentName string) (*time.Time, error)
+}
