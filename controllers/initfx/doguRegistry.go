@@ -29,7 +29,9 @@ func NewLocalDoguFetcher(registry dogu.VersionRegistry, repository dogu.LocalDog
 	return cesregistry.NewLocalDoguFetcher(registry, repository)
 }
 
-func NewResourceDoguFetcher(client client.Client, operatorConfig *config.OperatorConfig) (cesregistry.ResourceDoguFetcher, error) {
+var NewRemoteDoguDescriptorRepository = newRemoteDoguDescriptorRepository
+
+func newRemoteDoguDescriptorRepository(operatorConfig config.OperatorConfig) (dogu.RemoteDoguDescriptorRepository, error) {
 	remoteConfig, err := operatorConfig.GetRemoteConfiguration()
 	if err != nil {
 		return nil, err
@@ -40,6 +42,9 @@ func NewResourceDoguFetcher(client client.Client, operatorConfig *config.Operato
 		return nil, fmt.Errorf("failed to create new remote dogu repository: %w", err)
 	}
 
-	resourceDoguFetcher := cesregistry.NewResourceDoguFetcher(client, doguRemoteRepository)
-	return resourceDoguFetcher, nil
+	return doguRemoteRepository, nil
+}
+
+func NewResourceDoguFetcher(client client.Client, repo dogu.RemoteDoguDescriptorRepository) cesregistry.ResourceDoguFetcher {
+	return cesregistry.NewResourceDoguFetcher(client, repo)
 }
