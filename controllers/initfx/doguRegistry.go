@@ -31,7 +31,7 @@ func NewLocalDoguFetcher(registry dogu.VersionRegistry, repository dogu.LocalDog
 
 var NewRemoteDoguDescriptorRepository = newRemoteDoguDescriptorRepository
 
-func newRemoteDoguDescriptorRepository(operatorConfig config.OperatorConfig) (dogu.RemoteDoguDescriptorRepository, error) {
+func newRemoteDoguDescriptorRepository(operatorConfig *config.OperatorConfig) (dogu.RemoteDoguDescriptorRepository, error) {
 	remoteConfig, err := operatorConfig.GetRemoteConfiguration()
 	if err != nil {
 		return nil, err
