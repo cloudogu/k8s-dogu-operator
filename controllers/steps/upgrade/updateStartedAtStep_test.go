@@ -60,7 +60,7 @@ func TestUpdateStartedAtStep_Run(t *testing.T) {
 					dogu := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 						Status: v2.DoguStatus{
-							StartedAt: time.Time{},
+							StartedAt: v1.Time{Time: time.Time{}},
 						},
 					}
 					mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(nil, assert.AnError)
@@ -83,13 +83,13 @@ func TestUpdateStartedAtStep_Run(t *testing.T) {
 					dogu := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 						Status: v2.DoguStatus{
-							StartedAt: time.Time{},
+							StartedAt: v1.Time{Time: time.Time{}},
 						},
 					}
 					mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(&v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 						Status: v2.DoguStatus{
-							StartedAt: time.Time{},
+							StartedAt: v1.Time{Time: time.Time{}},
 						},
 					}, nil)
 					return mck

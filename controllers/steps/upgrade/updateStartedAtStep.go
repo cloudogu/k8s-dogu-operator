@@ -31,7 +31,7 @@ func (usas *UpdateStartedAtStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		return steps.RequeueWithError(err)
 	}
 
-	doguResource.Status.StartedAt = *startingTime
+	doguResource.Status.StartedAt = metav1.Time{Time: *startingTime}
 	doguResource, err = usas.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
