@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.13.0] - 2025-09-23
+- [#262] Update Dependency to k8s-ces-gateway 1.x.x
+
 ## [v3.12.0] - 2025-09-12
 ### Changed
 - [#260] Remove special treatment of nginx-dogu
