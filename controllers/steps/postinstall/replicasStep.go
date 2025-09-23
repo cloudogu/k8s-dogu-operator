@@ -64,7 +64,7 @@ func (rs *ReplicasStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.St
 	}
 
 	doguResource.Status.Stopped = shouldBeStopped
-	_, err = rs.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+	doguResource, err = rs.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}

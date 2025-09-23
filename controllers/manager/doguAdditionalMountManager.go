@@ -176,7 +176,7 @@ func (m *doguAdditionalMountManager) UpdateAdditionalMounts(ctx context.Context,
 
 	installedStatus := v2.DoguStatusInstalled
 	doguResource.Status.Status = installedStatus
-	_, err = m.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
+	doguResource, err = m.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
 
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %s to %s", doguResource.Name, installedStatus)
