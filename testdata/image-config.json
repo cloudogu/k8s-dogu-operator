@@ -1,0 +1,10 @@
+{
+  "config": {
+    "Env": [
+      "SERVICE_TAGS=unusedTag,webapp"
+    ],
+    "ExposedPorts": {
+      "80/tcp": {}
+    }
+  }
+}

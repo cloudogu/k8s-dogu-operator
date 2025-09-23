@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -30,10 +31,7 @@ var (
 	scheme = runtime.NewScheme()
 	// set up the logger before the actual logger is instantiated
 	// the logger will be replaced later-on with a more sophisticated instance
-	startupLog           = ctrl.Log.WithName("k8s-dogu-operator")
-	metricsAddr          string
-	enableLeaderElection bool
-	probeAddr            string
+	startupLog = ctrl.Log.WithName("k8s-dogu-operator")
 )
 
 func init() {
@@ -76,24 +74,39 @@ func NewControllerManager(
 	return k8sManager, nil
 }
 
+type Args []string
+
+var GetArgs = getArgs
+
+func getArgs() Args {
+	return os.Args
+}
+
 var NewOperatorConfig = config.NewOperatorConfig
 
-func NewManagerOptions(operatorConfig *config.OperatorConfig) manager.Options {
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+func NewManagerOptions(args Args, operatorConfig *config.OperatorConfig) (manager.Options, error) {
+	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
+
+	metricsAddr := flags.String("metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	probeAddr := flags.String("health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	enableLeaderElection := flags.Bool("leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 
+	err := flags.Parse(args[1:])
+	if err != nil {
+		return manager.Options{}, fmt.Errorf("failed to parse command line flags: %w", err)
+	}
+
 	return ctrl.Options{
 		Scheme:  scheme,
-		Metrics: server.Options{BindAddress: metricsAddr},
+		Metrics: server.Options{BindAddress: *metricsAddr},
 		Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{
 			operatorConfig.Namespace: {},
 		}},
 		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
+		HealthProbeBindAddress: *probeAddr,
+		LeaderElection:         *enableLeaderElection,
 		LeaderElectionID:       "951e217a.cloudogu.com",
 		EventBroadcaster: record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{
 			// This fixes the problem that different events with the same reason get aggregated.
@@ -102,7 +115,7 @@ func NewManagerOptions(operatorConfig *config.OperatorConfig) manager.Options {
 			// This will prevent any events of the dogu operator from being dropped by the spam filter.
 			SpamKeyFunc: noSpamKey,
 		}),
-	}
+	}, nil
 }
 
 func noAggregationKey(_ *v1.Event) (string, string) {

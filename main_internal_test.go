@@ -63,11 +63,16 @@ func Test_options(t *testing.T) {
 	initfx.NewEcoSystemClientSet = newTestEcoSystemInterfaceFn(ecoSystemInterfaceMock)
 	oldGetRestConfig := ctrl.GetConfig
 	ctrl.GetConfig = newTestGetConfig()
+	oldGetArgs := initfx.GetArgs
+	initfx.GetArgs = func() initfx.Args {
+		return initfx.Args{"k8s-dogu-operator"}
+	}
 	t.Cleanup(func() {
 		initfx.NewOperatorConfig = oldOperatorConfigFn
 		initfx.NewKubernetesClientSet = oldKubernetesClientSet
 		initfx.NewEcoSystemClientSet = oldEcoSystemClientSet
 		ctrl.GetConfig = oldGetRestConfig
+		initfx.GetArgs = oldGetArgs
 	})
 
 	// when

@@ -1,6 +1,6 @@
 //go:build k8s_integration
 
-package controllers
+package main
 
 import (
 	"context"
@@ -10,9 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -26,7 +23,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 )
 
 type mockeryGinkgoLogger struct {
@@ -58,16 +58,14 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorWithLocalConfigVolumeBytes)
 	redmineDogu := readDoguDescriptor(t, redmineDoguDescriptorBytes)
 
-	ldapCr.Namespace = util.testNamespace
+	ldapCr.Namespace = testNamespace
 	ldapCr.ResourceVersion = ""
 	ldapDoguLookupKey := types.NamespacedName{Name: ldapCr.Name, Namespace: ldapCr.Namespace}
-	cesLoadbalancerLookupKey := types.NamespacedName{Name: "ces-loadbalancer", Namespace: util.testNamespace}
-	tcpExposedPortsLookupKey := types.NamespacedName{Name: "tcp-services", Namespace: util.testNamespace}
+	cesLoadbalancerLookupKey := types.NamespacedName{Name: "ces-loadbalancer", Namespace: testNamespace}
+	tcpExposedPortsLookupKey := types.NamespacedName{Name: "tcp-services", Namespace: testNamespace}
 
-	redmineCr.Namespace = util.testNamespace
+	redmineCr.Namespace = testNamespace
 	redmineCr.ResourceVersion = ""
-
-	ctx := context.TODO()
 
 	// Upgrade testdata
 	upgradeLdapToDoguDescriptor := readDoguDescriptor(t, ldapDoguDescriptorWithLocalConfigVolumeBytes)
@@ -76,48 +74,43 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 	Context("Handle dogu resource", func() {
 		It("Setup mocks and test data", func() {
-			*DoguInterfaceMock = mockDoguInterface{}
-			DoguInterfaceMock.EXPECT().UpdateStatusWithRetry(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(
-				func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
-					modifyStatusFn(dogu.Status)
-				}).Once()
 			*ImageRegistryMock = mockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, mock.Anything).Return(imageConfig, nil).Once()
-			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
+			*RemoteDoguDescriptorRepositoryMock = mockRemoteDoguDescriptorRepository{}
 			ldapVersion, _ := core.ParseVersion("2.4.48-4")
 			ldapQualifiedVersion, _ := cescommons.NewQualifiedVersion(ldapQualifiedName, ldapVersion)
-			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(ldapDogu, nil).Times(6)
+			RemoteDoguDescriptorRepositoryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(ldapDogu, nil).Times(6)
 			redmineVersion, _ := core.ParseVersion("4.2.3-10")
 			redmineQualifiedVersion, _ := cescommons.NewQualifiedVersion(redmineQualifiedName, redmineVersion)
-			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, redmineQualifiedVersion).Return(redmineDogu, nil).Once()
+			RemoteDoguDescriptorRepositoryMock.EXPECT().Get(mock.Anything, redmineQualifiedVersion).Return(redmineDogu, nil).Once()
 		})
 
 		It("Should install dogu in cluster", func() {
 			By("Creating namespace")
-			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: util.testNamespace, Namespace: util.testNamespace}}
-			err := k8sClient.Create(ctx, namespace)
+			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace, Namespace: testNamespace}}
+			err := k8sClient.Create(testCtx, namespace)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Create dogu health state config map")
 			healthCM := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "k8s-dogu-operator-dogu-health",
-					Namespace: util.testNamespace,
+					Namespace: testNamespace,
 				},
 			}
-			_, err = k8sClientSet.CoreV1().ConfigMaps(util.testNamespace).Create(ctx, healthCM, metav1.CreateOptions{})
+			_, err = k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(testCtx, healthCM, metav1.CreateOptions{})
 			if err != nil {
 				panic(err)
 			}
 
 			By("Creating dogu resource")
-			installDoguCr(ctx, ldapCr)
+			installDoguCr(testCtx, ldapCr)
 
 			By("Expect created dogu")
 			createdDogu := &doguv2.Dogu{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, createdDogu)
 				if err != nil {
 					return false
 				}
@@ -128,13 +121,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				return false
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
-			setExecPodRunning(ctx, "ldap")
+			setExecPodRunning(testCtx, "ldap")
 
 			By("Expect created deployment")
 			deployment := &appsv1.Deployment{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, deployment)
 				if err != nil {
 					return false
 				}
@@ -147,7 +140,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			service := &corev1.Service{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, service)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, service)
 				if err != nil {
 					return false
 				}
@@ -160,7 +153,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			doguPvc := &corev1.PersistentVolumeClaim{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, doguPvc)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, doguPvc)
 				if err != nil {
 					return false
 				}
@@ -174,7 +167,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			dogu := &doguv2.Dogu{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, dogu)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, dogu)
 				if err != nil {
 					return false
 				}
@@ -182,28 +175,28 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				return status == doguv2.DoguStatusInstalled
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
-			setDeploymentAvailable(ctx, ldapDoguLookupKey.Name)
-			checkDoguAvailable(ctx, ldapDoguLookupKey.Name)
+			setDeploymentAvailable(testCtx, ldapDoguLookupKey.Name)
+			checkDoguAvailable(testCtx, ldapDoguLookupKey.Name)
 		})
 
 		It("Update dogus additional ingress annotations", func() {
 			By("Update dogu resource with ingress annotations")
 			createdDogu := &doguv2.Dogu{}
 			Eventually(func() error {
-				return k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				return k8sClient.Get(testCtx, ldapDoguLookupKey, createdDogu)
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
 
 			if createdDogu.Spec.AdditionalIngressAnnotations == nil {
 				createdDogu.Spec.AdditionalIngressAnnotations = map[string]string{}
 			}
 			createdDogu.Spec.AdditionalIngressAnnotations["new"] = "new"
-			updateDoguCr(ctx, createdDogu)
+			updateDoguCr(testCtx, createdDogu)
 
 			By("Expect service with additional ingress annotations")
 			service := &corev1.Service{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, service)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, service)
 				if err != nil {
 					return false
 				}
@@ -221,17 +214,17 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			By("Update dogu resource with ingress annotations")
 			createdDogu := &doguv2.Dogu{}
 			Eventually(func() error {
-				return k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				return k8sClient.Get(testCtx, ldapDoguLookupKey, createdDogu)
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
 
 			createdDogu.Spec.Security = doguv2.Security{RunAsNonRoot: ptr.To(true)}
-			updateDoguCr(ctx, createdDogu)
+			updateDoguCr(testCtx, createdDogu)
 
 			By("Expect security context to be updated")
 			deployment := &appsv1.Deployment{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, deployment)
 				if err != nil {
 					return false
 				}
@@ -245,11 +238,11 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			By("Update dogu resource with additional mounts")
 			createdDogu := &doguv2.Dogu{}
 			Eventually(func() error {
-				return k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				return k8sClient.Get(testCtx, ldapDoguLookupKey, createdDogu)
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
 
-			sourceCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "sourcecm", Namespace: util.testNamespace}}
-			_, err := k8sClientSet.CoreV1().ConfigMaps(util.testNamespace).Create(ctx, sourceCm, metav1.CreateOptions{})
+			sourceCm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "sourcecm", Namespace: testNamespace}}
+			_, err := k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(testCtx, sourceCm, metav1.CreateOptions{})
 			if err != nil {
 				panic(err)
 			}
@@ -263,13 +256,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				},
 			}
 
-			updateDoguCr(ctx, createdDogu)
+			updateDoguCr(testCtx, createdDogu)
 
 			By("Expect volume and volume mounts in init container")
 			deployment := &appsv1.Deployment{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, deployment)
 				if err != nil {
 					return false
 				}
@@ -340,18 +333,18 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			By("Update dogu resource with support mode true")
 			createdDogu := &doguv2.Dogu{}
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, createdDogu)
 				return err == nil
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			createdDogu.Spec.SupportMode = true
-			updateDoguCr(ctx, createdDogu)
+			updateDoguCr(testCtx, createdDogu)
 
 			By("Expect deployment in support mode")
 			deployment := &appsv1.Deployment{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, deployment)
 				if err != nil {
 					return false
 				}
@@ -366,18 +359,18 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			By("Update dogu resource with support mode false")
 			createdDogu := &doguv2.Dogu{}
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, createdDogu)
 				return err == nil
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			createdDogu.Spec.SupportMode = false
-			updateDoguCr(ctx, createdDogu)
+			updateDoguCr(testCtx, createdDogu)
 
 			By("Expect deployment in normal mode")
 			deployment := &appsv1.Deployment{}
 
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, ldapDoguLookupKey, deployment)
+				err := k8sClient.Get(testCtx, ldapDoguLookupKey, deployment)
 				if err != nil {
 					return false
 				}
@@ -392,20 +385,20 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 		// 	By("Update dogu resource with dataVolumeSize")
 		// 	createdDogu := &doguv2.Dogu{}
 		// 	Eventually(func() bool {
-		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, createdDogu)
+		// 		err := k8sClient.Get(testCtx, ldapDoguLookupKey, createdDogu)
 		// 		return err == nil
 		// 	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 		//
 		// 	newVolumeSize := "10Gi"
 		// 	newVolumeQuantity := resource.MustParse(newVolumeSize)
 		// 	createdDogu.Spec.Resources.DataVolumeSize = newVolumeSize
-		// 	updateDoguCr(ctx, createdDogu)
+		// 	updateDoguCr(testCtx, createdDogu)
 		//
 		// 	By("Expect expanded pvc")
 		// 	pvc := &corev1.PersistentVolumeClaim{}
 		//
 		// 	Eventually(func() bool {
-		// 		err := k8sClient.Get(ctx, ldapDoguLookupKey, pvc)
+		// 		err := k8sClient.Get(testCtx, ldapDoguLookupKey, pvc)
 		// 		if err != nil {
 		// 			return false
 		// 		}
@@ -425,24 +418,24 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 
 		It("Setup mocks and test data for upgrade", func() {
 			// create mocks
-			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
+			*RemoteDoguDescriptorRepositoryMock = mockRemoteDoguDescriptorRepository{}
 			ldapVersion, _ := core.ParseVersion("2.4.49-1")
 			ldapQualifiedVersion, _ := cescommons.NewQualifiedVersion(ldapQualifiedName, ldapVersion)
-			DoguRemoteRegistryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(upgradeLdapToDoguDescriptor, nil).Once()
+			RemoteDoguDescriptorRepositoryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(upgradeLdapToDoguDescriptor, nil).Once()
 
 			*ImageRegistryMock = mockImageRegistry{}
 			ImageRegistryMock.Mock.On("PullImageConfig", mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil).Once()
 		})
 
 		It("Should upgrade dogu in cluster", func() {
-			setDeploymentAvailable(ctx, ldapDoguLookupKey.Name)
-			checkDoguAvailable(ctx, ldapDoguLookupKey.Name)
+			setDeploymentAvailable(testCtx, ldapDoguLookupKey.Name)
+			checkDoguAvailable(testCtx, ldapDoguLookupKey.Name)
 
 			createdDogu := &doguv2.Dogu{}
 
 			By("Update dogu resource with new version")
 			Expect(func() bool {
-				return getObjectFromCluster(ctx, createdDogu, ldapDoguLookupKey)
+				return getObjectFromCluster(testCtx, createdDogu, ldapDoguLookupKey)
 			}()).To(BeTrue())
 
 			upgradedLdapDoguCr := createdDogu
@@ -454,40 +447,40 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}()).To(BeTrue())
 
 			// key take away: We must take all unmocked pod interactions in our own hands because here is no deployment controller
-			setExecPodRunning(ctx, "ldap")
-			createDoguPod(ctx, upgradedLdapDoguCr, oldPodLabels)
+			setExecPodRunning(testCtx, "ldap")
+			createDoguPod(testCtx, upgradedLdapDoguCr, oldPodLabels)
 
 			// create updated dogu pod because the upgrade routine waits for it
-			createDoguPod(ctx, upgradedLdapDoguCr, upgradedLdapDoguCr.GetPodLabels())
+			createDoguPod(testCtx, upgradedLdapDoguCr, upgradedLdapDoguCr.GetPodLabels())
 			assertNewDeploymentVersionWithStartupProbe(ldapDoguLookupKey, ldapToVersion, 180)
 
 			assertRessourceStatus(ldapDoguLookupKey, "installed")
 
 			Expect(CommandExecutorMock.AssertExpectations(mockeryT)).To(BeTrue())
-			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(RemoteDoguDescriptorRepositoryMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		})
 
 		It("Setup mocks and test data for delete", func() {
 			// create mocks
-			*DoguRemoteRegistryMock = mockRemoteDoguDescriptorRepository{}
+			*RemoteDoguDescriptorRepositoryMock = mockRemoteDoguDescriptorRepository{}
 			*ImageRegistryMock = mockImageRegistry{}
 		})
 
 		It("Should delete dogu", func() {
-			deleteDoguCr(ctx, ldapCr, true)
+			deleteDoguCr(testCtx, ldapCr, true)
 
 			By("LoadBalancer service should be deleted")
 			lbService := &corev1.Service{}
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, cesLoadbalancerLookupKey, lbService)
+				err := k8sClient.Get(testCtx, cesLoadbalancerLookupKey, lbService)
 				return apierrors.IsNotFound(err)
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
 			By("Expected deleted entries in tcp/udp configmap")
 			cm := &corev1.ConfigMap{}
 			Eventually(func() bool {
-				err := k8sClient.Get(ctx, tcpExposedPortsLookupKey, cm)
+				err := k8sClient.Get(testCtx, tcpExposedPortsLookupKey, cm)
 				if err != nil && len(cm.Data) != 0 {
 					return false
 				}
@@ -495,7 +488,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				return true
 			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 
-			Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+			Expect(RemoteDoguDescriptorRepositoryMock.AssertExpectations(mockeryT)).To(BeTrue())
 			Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 		})
 	})
@@ -505,13 +498,13 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	//
 	// It("Should fail dogu installation as dependency is missing", func() {
 	//	By("Creating redmine dogu resource")
-	//	installDoguCr(ctx, redmineCr)
+	//	installDoguCr(testCtx, redmineCr)
 	//
 	//	By("Check for failed installation and check events of dogu resource")
 	//	createdDogu := &doguv2.Dogu{}
 	//
 	//	Eventually(func() bool {
-	//		err := k8sClient.Get(ctx, redmineCr.GetObjectKey(), createdDogu)
+	//		err := k8sClient.Get(testCtx, redmineCr.GetObjectKey(), createdDogu)
 	//		if err != nil {
 	//			return false
 	//		}
@@ -520,7 +513,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	//		}
 	//
 	//		eventList := &corev1.EventList{}
-	//		err = k8sClient.List(ctx, eventList, &client.ListOptions{})
+	//		err = k8sClient.List(testCtx, eventList, &client.ListOptions{})
 	//		if err != nil {
 	//			return false
 	//		}
@@ -536,12 +529,25 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	//	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
 	//
 	//	By("Delete redmine dogu crd")
-	//	deleteDoguCr(ctx, redmineCr, false)
+	//	deleteDoguCr(testCtx, redmineCr, false)
 	//
-	//	Expect(DoguRemoteRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
+	//	Expect(RemoteDoguDescriptorRepositoryMock.AssertExpectations(mockeryT)).To(BeTrue())
 	//	Expect(ImageRegistryMock.AssertExpectations(mockeryT)).To(BeTrue())
 	//	Expect(EtcdDoguRegistry.AssertExpectations(mockeryT)).To(BeTrue())
 })
+
+func isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		envVars := container.Env
+		for _, env := range envVars {
+			if env.Name == manager.SupportModeEnvVar && env.Value == "true" {
+				return true
+			}
+		}
+	}
+
+	return false
+}
 
 func assertRessourceStatus(ressourceLookupKey types.NamespacedName, expectedStatus string) {
 	By("Verify dogu ressource is " + expectedStatus)
@@ -594,7 +600,7 @@ func setExecPodRunning(ctx context.Context, doguName string) {
 func setDeploymentAvailable(ctx context.Context, doguName string) {
 	By("Set Deployment to be available")
 	Eventually(func() error {
-		deployment, err := k8sClientSet.AppsV1().Deployments(util.testNamespace).Get(ctx, doguName, metav1.GetOptions{})
+		deployment, err := k8sClientSet.AppsV1().Deployments(testNamespace).Get(ctx, doguName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -608,7 +614,7 @@ func setDeploymentAvailable(ctx context.Context, doguName string) {
 		deployment.Status.ReadyReplicas = replicas
 		deployment.Status.AvailableReplicas = replicas
 
-		_, err = k8sClientSet.AppsV1().Deployments(util.testNamespace).UpdateStatus(ctx, deployment, metav1.UpdateOptions{})
+		_, err = k8sClientSet.AppsV1().Deployments(testNamespace).UpdateStatus(ctx, deployment, metav1.UpdateOptions{})
 		return err
 	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
 }
@@ -616,7 +622,7 @@ func setDeploymentAvailable(ctx context.Context, doguName string) {
 func checkDoguAvailable(ctx context.Context, doguName string) {
 	By("Expect dogu to be available")
 	Eventually(func() bool {
-		dogu, err := ecosystemClientSet.Dogus(util.testNamespace).Get(ctx, doguName, metav1.GetOptions{})
+		dogu, err := ecosystemClientSet.Dogus(testNamespace).Get(ctx, doguName, metav1.GetOptions{})
 		if err != nil {
 			return false
 		}

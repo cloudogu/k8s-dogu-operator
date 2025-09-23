@@ -61,6 +61,7 @@ func options() []fx.Option {
 			newVersion,
 			logging.NewLogger,
 			initfx.NewOperatorConfig,
+			initfx.GetArgs,
 
 			// k8s dependencies
 			initfx.NewManagerOptions,

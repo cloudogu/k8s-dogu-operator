@@ -28,7 +28,7 @@ type ExecPodFactory interface {
 	// CreateBlocking adds a new exec pod to the cluster and waits for its creation.
 	// Deprecated, as we don't want our code to block.
 	CreateBlocking(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
-	// Create adds a new exec pod to the cluster.
+	// CreateOrUpdate adds a new exec pod to the cluster.
 	CreateOrUpdate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error
 	Exists(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) bool
 	CheckReady(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error

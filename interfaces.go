@@ -1,7 +1,10 @@
 package main
 
 import (
+	"github.com/cloudogu/ces-commons-lib/dogu"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	"k8s.io/client-go/kubernetes"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -84,4 +87,24 @@ type doguInterface interface {
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
 	doguClient.DoguRestartInterface
+}
+
+// mocks for integration tests
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type commandExecutor interface {
+	exec.CommandExecutor
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type remoteDoguDescriptorRepository interface {
+	dogu.RemoteDoguDescriptorRepository
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type imageRegistry interface {
+	imageregistry.ImageRegistry
 }
