@@ -69,6 +69,7 @@ func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
 	for _, dogu := range doguList.Items {
 		var doguLastStartingTime *time.Time
 		doguLastStartingTime, err = r.deploymentManager.GetLastStartingTime(ctx, dogu.Name)
