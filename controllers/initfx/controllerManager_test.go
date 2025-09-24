@@ -8,6 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -84,17 +85,18 @@ func TestNewManagerOptions(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 
 		// when
-		options := NewManagerOptions(operatorConfig)
+		managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{})
+		require.NoError(t, err)
 
 		// then
-		assert.Equal(t, server.Options{BindAddress: ":8080"}, options.Metrics)
+		assert.Equal(t, server.Options{BindAddress: ":8080"}, managerOptions.Metrics)
 		assert.Equal(t, cache.Options{DefaultNamespaces: map[string]cache.Config{
 			operatorConfig.Namespace: {},
-		}}, options.Cache)
-		assert.Equal(t, webhook.NewServer(webhook.Options{Port: 9443}), options.WebhookServer)
-		assert.Equal(t, ":8081", options.HealthProbeBindAddress)
-		assert.Equal(t, false, options.LeaderElection)
-		assert.Equal(t, "951e217a.cloudogu.com", options.LeaderElectionID)
+		}}, managerOptions.Cache)
+		assert.Equal(t, webhook.NewServer(webhook.Options{Port: 9443}), managerOptions.WebhookServer)
+		assert.Equal(t, ":8081", managerOptions.HealthProbeBindAddress)
+		assert.Equal(t, false, managerOptions.LeaderElection)
+		assert.Equal(t, "951e217a.cloudogu.com", managerOptions.LeaderElectionID)
 	})
 }
 
@@ -124,7 +126,9 @@ func TestNewControllerManager(t *testing.T) {
 					return logr.Logger{}
 				},
 				optionsFn: func(t *testing.T) manager.Options {
-					return NewManagerOptions(&config.OperatorConfig{})
+					managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{})
+					require.NoError(t, err)
+					return managerOptions
 				},
 			},
 			want:    nil,

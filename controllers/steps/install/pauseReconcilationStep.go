@@ -31,7 +31,7 @@ func (prs *PauseReconcilationStep) Run(ctx context.Context, doguResource *v2.Dog
 		Status:             v1.ConditionTrue,
 		Reason:             conditionReasonPaused,
 		Message:            conditionMessagePaused,
-		LastTransitionTime: v1.Now(),
+		LastTransitionTime: v1.Now().Rfc3339Copy(),
 	}
 
 	if !doguResource.Spec.PauseReconcilation {

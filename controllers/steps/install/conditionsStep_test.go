@@ -75,6 +75,12 @@ func TestConditionsStep_Run(t *testing.T) {
 							Reason:  "TestReason",
 							Message: "TestMessage",
 						},
+						{
+							Type:    doguv2.ConditionPauseReconcilation,
+							Status:  v1.ConditionTrue,
+							Reason:  "TestReason",
+							Message: "TestMessage",
+						},
 					},
 				},
 			},
