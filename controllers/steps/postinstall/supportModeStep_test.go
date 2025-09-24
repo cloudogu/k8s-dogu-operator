@@ -75,28 +75,6 @@ func TestSupportModeStep_Run(t *testing.T) {
 			want:         steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %q: %w", "test", assert.AnError)),
 		},
 		{
-			name: "should fail to get dogu Resource",
-			fields: fields{
-				supportManagerFn: func(t *testing.T) supportManager {
-					mck := newMockSupportManager(t)
-					mck.EXPECT().HandleSupportMode(testCtx, &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}).Return(false, nil)
-					return mck
-				},
-				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
-					mck := newMockDeploymentInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&v2.Deployment{}, nil)
-					return mck
-				},
-				doguInterfaceFn: func(t *testing.T) doguInterface {
-					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(nil, assert.AnError)
-					return mck
-				},
-			},
-			doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
-			want:         steps.RequeueWithError(assert.AnError),
-		},
-		{
 			name: "should fail to set support mode condition",
 			fields: fields{
 				supportManagerFn: func(t *testing.T) supportManager {
@@ -111,7 +89,6 @@ func TestSupportModeStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
 					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 						Status: doguv2.DoguStatus{
@@ -165,7 +142,6 @@ func TestSupportModeStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
 					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 						Status: doguv2.DoguStatus{

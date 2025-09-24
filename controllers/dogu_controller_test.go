@@ -3,7 +3,6 @@ package controllers
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/go-logr/logr"
@@ -199,41 +198,6 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				doguDeleteHandlerFn: func(t *testing.T) DoguUsecase {
 					return NewMockDoguUsecase(t)
-				},
-				doguInterfaceFn: func(t *testing.T) doguInterface {
-					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, mock.Anything, v1.UpdateOptions{}).Return(nil, nil)
-					return mck
-				},
-			},
-			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testDoguName}},
-			want:    controllerruntime.Result{RequeueAfter: 0},
-			wantErr: assert.NoError,
-		},
-		{
-			name: "should succeed to update dogu resource on continue after handle delete",
-			fields: fields{
-				clientFn: func(t *testing.T) client.Client {
-					scheme := runtime.NewScheme()
-					err := v2.AddToScheme(scheme)
-					require.NoError(t, err)
-					doguResource := &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Now()}}}
-					mck := fake.NewClientBuilder().
-						WithScheme(scheme).
-						WithObjects(doguResource).
-						Build()
-
-					return mck
-				},
-				doguChangeHandlerFn: func(t *testing.T) DoguUsecase {
-					mck := NewMockDoguUsecase(t)
-					mck.EXPECT().HandleUntilApplied(testCtx, mock.Anything).Return(0, false, nil)
-					return mck
-				},
-				doguDeleteHandlerFn: func(t *testing.T) DoguUsecase {
-					mck := NewMockDoguUsecase(t)
-					mck.EXPECT().HandleUntilApplied(testCtx, mock.Anything).Return(0, false, nil)
-					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)

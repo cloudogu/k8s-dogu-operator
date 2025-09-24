@@ -30,26 +30,10 @@ func TestInstalledVersionStep_Run(t *testing.T) {
 		want         steps.StepResult
 	}{
 		{
-			name: "should fail to get dogu resource",
-			fields: fields{
-				doguInterfaceFn: func(t *testing.T) doguInterface {
-					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, name, v1.GetOptions{}).Return(nil, assert.AnError)
-					return mck
-				},
-			},
-			doguResource: &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: name}},
-			want:         steps.RequeueWithError(assert.AnError),
-		},
-		{
 			name: "should fail to update status of dogu resource",
 			fields: fields{
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, name, v1.GetOptions{}).Return(&v2.Dogu{
-						ObjectMeta: v1.ObjectMeta{Name: name},
-						Spec:       v2.DoguSpec{Version: "1.0.0"},
-					}, nil)
 					dogu := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: name},
 						Spec:       v2.DoguSpec{Version: "1.0.0"},
@@ -73,10 +57,6 @@ func TestInstalledVersionStep_Run(t *testing.T) {
 			fields: fields{
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, name, v1.GetOptions{}).Return(&v2.Dogu{
-						ObjectMeta: v1.ObjectMeta{Name: name},
-						Spec:       v2.DoguSpec{Version: "1.0.0"},
-					}, nil)
 					dogu := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: name},
 						Spec:       v2.DoguSpec{Version: "1.0.0"},

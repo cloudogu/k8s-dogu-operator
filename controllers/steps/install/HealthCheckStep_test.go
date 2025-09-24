@@ -172,43 +172,6 @@ func TestHealthCheckStep_Run(t *testing.T) {
 			want: steps.RequeueWithError(fmt.Errorf("failed to update health state configMap: %w", assert.AnError)),
 		},
 		{
-			name: "should fail to get dogu resource",
-			fields: fields{
-				clientFn: func(t *testing.T) k8sClient {
-					mck := newMockK8sClient(t)
-					mck.EXPECT().Get(testCtx, types.NamespacedName{Namespace: namespace, Name: "test"}, &v2.Deployment{}).Return(nil)
-					return mck
-				},
-				availabilityCheckerFn: func(t *testing.T) deploymentAvailabilityChecker {
-					mck := newMockDeploymentAvailabilityChecker(t)
-					mck.EXPECT().IsAvailable(&v2.Deployment{}).Return(true)
-					return mck
-				},
-				doguHealthStatusUpdaterFn: func(t *testing.T) doguHealthStatusUpdater {
-					mck := newMockDoguHealthStatusUpdater(t)
-					mck.EXPECT().UpdateHealthConfigMap(testCtx, &v2.Deployment{}, &cesappcore.Dogu{}).Return(nil)
-					return mck
-				},
-				doguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("")).Return(&cesappcore.Dogu{}, nil)
-					return mck
-				},
-				doguInterfaceFn: func(t *testing.T) doguInterface {
-					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(nil, assert.AnError)
-					return mck
-				},
-			},
-			doguResource: &doguv2.Dogu{
-				ObjectMeta: v1.ObjectMeta{
-					Namespace: namespace,
-					Name:      "test",
-				},
-			},
-			want: steps.RequeueWithError(assert.AnError),
-		},
-		{
 			name: "should fail to update dogu resource",
 			fields: fields{
 				clientFn: func(t *testing.T) k8sClient {
@@ -233,12 +196,6 @@ func TestHealthCheckStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&doguv2.Dogu{
-						ObjectMeta: v1.ObjectMeta{
-							Namespace: namespace,
-							Name:      "test",
-						},
-					}, nil)
 					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
 						ObjectMeta: v1.ObjectMeta{
 							Namespace: namespace,
@@ -293,12 +250,6 @@ func TestHealthCheckStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&doguv2.Dogu{
-						ObjectMeta: v1.ObjectMeta{
-							Namespace: namespace,
-							Name:      "test",
-						},
-					}, nil)
 					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
 						ObjectMeta: v1.ObjectMeta{
 							Namespace: namespace,
