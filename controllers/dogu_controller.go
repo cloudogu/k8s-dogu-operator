@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -94,8 +95,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	getDoguResourceErr := r.client.Get(ctx, req.NamespacedName, doguResource)
 	if getDoguResourceErr != nil {
-		logger.Error(err, fmt.Sprintf("failed to get doguResource: %s", getDoguResourceErr))
-		return ctrl.Result{}, err
+		return ctrl.Result{}, errors.Join(fmt.Errorf("failed to get doguResource %q: %w", req.NamespacedName, getDoguResourceErr), err)
 	}
 
 	if requeueAfter != 0 {
@@ -108,11 +108,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		getDoguResourceErr = r.setReadyCondition(ctx, doguResource, metav1.ConditionTrue, ReasonReconcileSuccess, "The dogu resource has been reconciled successfully and is ready.")
 	}
 
-	if getDoguResourceErr != nil {
-		return ctrl.Result{RequeueAfter: requeueAfter}, getDoguResourceErr
-	}
-
-	return ctrl.Result{RequeueAfter: requeueAfter}, err
+	return ctrl.Result{RequeueAfter: requeueAfter}, errors.Join(getDoguResourceErr, err)
 }
 
 // SetupWithManager sets up the controller with the manager.
