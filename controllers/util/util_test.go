@@ -3,6 +3,9 @@ package util
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/apps/v1"
 )
 
 func TestGetMapKeysAsString(t *testing.T) {
@@ -46,4 +49,13 @@ func containsInSlice(slice []string, s string) bool {
 	}
 
 	return false
+}
+
+func TestSetPreviousDoguVersionInAnnotations(t *testing.T) {
+	t.Run("Successfully set dogu version in annotation", func(t *testing.T) {
+		deployment := &v1.Deployment{}
+		SetPreviousDoguVersionInAnnotations("1.0.0", deployment)
+
+		assert.Equal(t, "1.0.0", deployment.Annotations[PreviousDoguVersionAnnotationKey])
+	})
 }

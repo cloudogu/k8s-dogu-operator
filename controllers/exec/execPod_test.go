@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -340,4 +342,48 @@ func Test_execPod_Delete(t *testing.T) {
 func TestNewExecPodFactory(t *testing.T) {
 	actual := NewExecPodFactory(nil, nil)
 	assert.NotNil(t, actual)
+}
+
+func Test_execPodFactory_Exists(t *testing.T) {
+	ldapDogu := readLdapDogu(t)
+	ldapDoguResource := readLdapDoguResource(t)
+	t.Run("exec pod does not exist", func(t *testing.T) {
+		// given
+		mockClient := newMockK8sClient(t)
+		pod := &corev1.Pod{}
+		mockClient.EXPECT().Get(context.Background(), types.NamespacedName{
+			Namespace: ldapDoguResource.Namespace,
+			Name:      execPodName(ldapDogu),
+		}, pod).Return(errors.NewNotFound(schema.GroupResource{}, ""))
+
+		sut := &execPodFactory{client: mockClient}
+
+		// when
+		exists := sut.Exists(context.Background(), ldapDoguResource, ldapDogu)
+
+		// then
+		require.Equal(t, false, exists)
+	})
+}
+
+func Test_execPodFactory_CheckReady(t *testing.T) {
+	ldapDogu := readLdapDogu(t)
+	ldapDoguResource := readLdapDoguResource(t)
+	t.Run("exec pod does not exist", func(t *testing.T) {
+		// given
+		mockClient := newMockK8sClient(t)
+		pod := &corev1.Pod{}
+		mockClient.EXPECT().Get(context.Background(), types.NamespacedName{
+			Namespace: ldapDoguResource.Namespace,
+			Name:      execPodName(ldapDogu),
+		}, pod).Return(errors.NewNotFound(schema.GroupResource{}, ""))
+
+		sut := &execPodFactory{client: mockClient}
+
+		// when
+		err := sut.CheckReady(context.Background(), ldapDoguResource, ldapDogu)
+
+		// then
+		assert.Error(t, err)
+	})
 }
