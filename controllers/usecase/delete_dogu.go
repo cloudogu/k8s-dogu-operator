@@ -6,14 +6,18 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type DoguDeleteUseCase struct {
-	steps []Step
+	client client.Client
+	steps  []Step
 }
 
 func NewDoguDeleteUseCase(
+	k8sClient client.Client,
 	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
 	unregisterDoguVersionStep *deletion.UnregisterDoguVersionStep,
 	deleteOutOfHealthConfigMapStep *deletion.DeleteOutOfHealthConfigMapStep,
@@ -21,14 +25,16 @@ func NewDoguDeleteUseCase(
 	removeSensitiveDoguConfigStep deletion.RemoveSensitiveDoguConfigStep,
 	removeFinalizerStep *deletion.RemoveFinalizerStep,
 ) *DoguDeleteUseCase {
-	return &DoguDeleteUseCase{steps: []Step{
-		serviceAccountRemoverStep,
-		unregisterDoguVersionStep,
-		deleteOutOfHealthConfigMapStep,
-		removeDoguConfigStep,
-		removeSensitiveDoguConfigStep,
-		removeFinalizerStep,
-	}}
+	return &DoguDeleteUseCase{
+		client: k8sClient,
+		steps: []Step{
+			serviceAccountRemoverStep,
+			unregisterDoguVersionStep,
+			deleteOutOfHealthConfigMapStep,
+			removeDoguConfigStep,
+			removeSensitiveDoguConfigStep,
+			removeFinalizerStep,
+		}}
 }
 
 func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error) {
@@ -37,6 +43,10 @@ func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResour
 		WithValues("doguName", doguResource.Name)
 
 	for _, s := range ddu.steps {
+		err := ddu.client.Get(ctx, types.NamespacedName{Name: doguResource.Name, Namespace: doguResource.Namespace}, doguResource)
+		if err != nil {
+			return 0, false, err
+		}
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
 			logger.Error(result.Err, "reconcile Step has to requeue: %w", result.Err)
