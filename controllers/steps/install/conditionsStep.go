@@ -21,6 +21,7 @@ var expectedConditions = []string{
 	doguv2.ConditionMeetsMinVolumeSize,
 	doguv2.ConditionReady,
 	doguv2.ConditionSupportMode,
+	doguv2.ConditionPauseReconcilation,
 }
 
 type ConditionsStep struct {
