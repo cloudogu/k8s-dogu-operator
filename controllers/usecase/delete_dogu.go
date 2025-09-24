@@ -47,6 +47,7 @@ func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResour
 		if err != nil {
 			return 0, false, err
 		}
+
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
 			logger.Error(result.Err, "reconcile Step has to requeue: %w", result.Err)

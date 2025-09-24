@@ -9,7 +9,12 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var testCtx = context.Background()
@@ -17,6 +22,7 @@ var testCtx = context.Background()
 func TestNewDoguDeleteUsecase(t *testing.T) {
 	t.Run("Successfully created delete usecase with correct order", func(t *testing.T) {
 		usecase := NewDoguDeleteUseCase(
+			NewMockK8sClient(t),
 			nil,
 			nil,
 			nil,
@@ -32,6 +38,7 @@ func TestNewDoguDeleteUsecase(t *testing.T) {
 func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 	tests := []struct {
 		name             string
+		clientFn         func(t *testing.T) client.Client
 		stepsFn          func(t *testing.T) []Step
 		doguResource     *v2.Dogu
 		wantRequeueAfter time.Duration
@@ -39,79 +46,145 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		wantErr          assert.ErrorAssertionFunc
 	}{
 		{
-			name: "should return requeue after time duration",
+			name: "should fail to get dogu resource",
+			clientFn: func(t *testing.T) client.Client {
+				scheme := runtime.NewScheme()
+				err := v2.AddToScheme(scheme)
+				require.NoError(t, err)
+				mck := fake.NewClientBuilder().
+					WithScheme(scheme).
+					Build()
+
+				return mck
+			},
 			stepsFn: func(t *testing.T) []Step {
-				firstStep := NewMockStep(t)
-				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
-					ObjectMeta: v1.ObjectMeta{Name: "test"},
-				}).Return(steps.RequeueAfter(time.Second * 3))
-				return []Step{firstStep}
+				return []Step{NewMockStep(t)}
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
 			},
-			wantRequeueAfter: time.Second * 3,
+			wantRequeueAfter: 0,
+			wantContinue:     false,
+			wantErr:          assert.Error,
+		},
+		{
+			name: "should requeue run on requeueAfter time",
+			clientFn: func(t *testing.T) client.Client {
+				scheme := runtime.NewScheme()
+				err := v2.AddToScheme(scheme)
+				require.NoError(t, err)
+				dogu := &v2.Dogu{
+					ObjectMeta: v1.ObjectMeta{Name: "test"},
+				}
+				mck := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(dogu).
+					Build()
+
+				return mck
+			},
+			stepsFn: func(t *testing.T) []Step {
+				step := NewMockStep(t)
+				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.RequeueAfter(2))
+				return []Step{step}
+			},
+			doguResource: &v2.Dogu{
+				ObjectMeta: v1.ObjectMeta{Name: "test"},
+			},
+			wantRequeueAfter: 2,
 			wantContinue:     true,
 			wantErr:          assert.NoError,
 		},
 		{
-			name: "should return error",
-			stepsFn: func(t *testing.T) []Step {
-				firstStep := NewMockStep(t)
-				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
+			name: "should requeue run on error",
+			clientFn: func(t *testing.T) client.Client {
+				scheme := runtime.NewScheme()
+				err := v2.AddToScheme(scheme)
+				require.NoError(t, err)
+				dogu := &v2.Dogu{
 					ObjectMeta: v1.ObjectMeta{Name: "test"},
-				}).Return(steps.RequeueWithError(assert.AnError))
-				return []Step{firstStep}
+				}
+				mck := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(dogu).
+					Build()
+
+				return mck
+			},
+			stepsFn: func(t *testing.T) []Step {
+				step := NewMockStep(t)
+				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.RequeueWithError(assert.AnError))
+				return []Step{step}
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
 			},
-			wantRequeueAfter: time.Duration(0),
+			wantRequeueAfter: 0,
 			wantContinue:     true,
 			wantErr:          assert.Error,
 		},
 		{
-			name: "should abort Step loop",
-			stepsFn: func(t *testing.T) []Step {
-				firstStep := NewMockStep(t)
-				firstStep.EXPECT().Run(testCtx, &v2.Dogu{
+			name: "should continue after step",
+			clientFn: func(t *testing.T) client.Client {
+				scheme := runtime.NewScheme()
+				err := v2.AddToScheme(scheme)
+				require.NoError(t, err)
+				dogu := &v2.Dogu{
 					ObjectMeta: v1.ObjectMeta{Name: "test"},
-				}).Return(steps.Abort())
-				return []Step{firstStep}
+				}
+				mck := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(dogu).
+					Build()
+
+				return mck
+			},
+			stepsFn: func(t *testing.T) []Step {
+				step := NewMockStep(t)
+				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.Continue())
+				return []Step{step}
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
 			},
-			wantRequeueAfter: time.Duration(0),
-			wantContinue:     false,
+			wantRequeueAfter: 0,
+			wantContinue:     true,
 			wantErr:          assert.NoError,
 		},
 		{
-			name: "should loop through all steps",
-			stepsFn: func(t *testing.T) []Step {
-				stepLoop := []Step{}
-				for i := 0; i < 10; i++ {
-					s := NewMockStep(t)
-					s.EXPECT().Run(testCtx, &v2.Dogu{
-						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}).Return(steps.Continue())
-					stepLoop = append(stepLoop, s)
+			name: "should abort after step",
+			clientFn: func(t *testing.T) client.Client {
+				scheme := runtime.NewScheme()
+				err := v2.AddToScheme(scheme)
+				require.NoError(t, err)
+				dogu := &v2.Dogu{
+					ObjectMeta: v1.ObjectMeta{Name: "test"},
 				}
+				mck := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(dogu).
+					Build()
 
-				return stepLoop
+				return mck
+			},
+			stepsFn: func(t *testing.T) []Step {
+				step := NewMockStep(t)
+				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.Abort())
+				return []Step{step}
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
 			},
-			wantRequeueAfter: time.Duration(0),
-			wantContinue:     true,
+			wantRequeueAfter: 0,
+			wantContinue:     false,
 			wantErr:          assert.NoError,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ddu := &DoguDeleteUseCase{
-				steps: tt.stepsFn(t),
+				client: tt.clientFn(t),
+				steps:  tt.stepsFn(t),
 			}
 			got, got1, err := ddu.HandleUntilApplied(testCtx, tt.doguResource)
 			if !tt.wantErr(t, err, fmt.Sprintf("HandleUntilApplied(%v, %v)", testCtx, tt.doguResource)) {
