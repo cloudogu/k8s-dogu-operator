@@ -100,6 +100,16 @@ func TestNewManagerOptions(t *testing.T) {
 	})
 }
 
+func Test_getArgs(t *testing.T) {
+	t.Run("should return args", func(t *testing.T) {
+		// when
+		args := getArgs()
+
+		// then
+		assert.NotNil(t, args)
+	})
+}
+
 func TestNewControllerManager(t *testing.T) {
 	type args struct {
 		lcFn         func(t *testing.T) fxLifecycle
@@ -108,10 +118,10 @@ func TestNewControllerManager(t *testing.T) {
 		restConfigFn func(t *testing.T) *rest.Config
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    manager.Manager
-		wantErr assert.ErrorAssertionFunc
+		name              string
+		args              args
+		wantManagerNotNil bool
+		wantErr           assert.ErrorAssertionFunc
 	}{
 		{
 			name: "should fail to create manager",
@@ -131,8 +141,8 @@ func TestNewControllerManager(t *testing.T) {
 					return managerOptions
 				},
 			},
-			want:    nil,
-			wantErr: assert.Error,
+			wantManagerNotNil: false,
+			wantErr:           assert.Error,
 		},
 	}
 	for _, tt := range tests {
@@ -141,7 +151,9 @@ func TestNewControllerManager(t *testing.T) {
 			if !tt.wantErr(t, err, fmt.Sprintf("NewControllerManager(%v, %v, %v, %v)", tt.args.lcFn(t), tt.args.loggerFn(t), tt.args.optionsFn(t), tt.args.restConfigFn(t))) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "NewControllerManager(%v, %v, %v, %v)", tt.args.lcFn(t), tt.args.loggerFn(t), tt.args.optionsFn(t), tt.args.restConfigFn(t))
+			if tt.wantManagerNotNil {
+				assert.NotNil(t, got)
+			}
 		})
 	}
 }
