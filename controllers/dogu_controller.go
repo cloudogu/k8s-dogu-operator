@@ -82,7 +82,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	err := r.client.Get(ctx, req.NamespacedName, doguResource)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("failed to get doguResource: %s", err))
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	var requeueAfter time.Duration
