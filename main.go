@@ -164,7 +164,7 @@ func options() []fx.Option {
 			install.NewConditionsStep,
 			install.NewHealthCheckStep,
 			install.NewValidationStep,
-			install.NewPauseReconcilationStep,
+			install.NewPauseReconciliationStep,
 			install.NewFinalizerExistsStep,
 			// Dogu config steps
 			fx.Annotate(

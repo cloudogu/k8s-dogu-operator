@@ -15,26 +15,26 @@ const conditionReasonNotPaused = "ReconcilationIsRunning"
 const conditionMessagePaused = "Reconcilation is paused because of spec change"
 const conditionMessageNotPaused = "Reconcilation is currently running"
 
-type PauseReconcilationStep struct {
+type PauseReconciliationStep struct {
 	doguInterface doguInterface
 }
 
-func NewPauseReconcilationStep(doguInterface doguClient.DoguInterface) *PauseReconcilationStep {
-	return &PauseReconcilationStep{
+func NewPauseReconciliationStep(doguInterface doguClient.DoguInterface) *PauseReconciliationStep {
+	return &PauseReconciliationStep{
 		doguInterface: doguInterface,
 	}
 }
 
-func (prs *PauseReconcilationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (prs *PauseReconciliationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	condition := v1.Condition{
-		Type:               v2.ConditionPauseReconcilation,
+		Type:               v2.ConditionPauseReconciliation,
 		Status:             v1.ConditionTrue,
 		Reason:             conditionReasonPaused,
 		Message:            conditionMessagePaused,
 		LastTransitionTime: v1.Now().Rfc3339Copy(),
 	}
 
-	if !doguResource.Spec.PauseReconcilation {
+	if !doguResource.Spec.PauseReconciliation {
 		condition.Status = v1.ConditionFalse
 		condition.Reason = conditionReasonNotPaused
 		condition.Message = conditionMessageNotPaused
@@ -46,7 +46,7 @@ func (prs *PauseReconcilationStep) Run(ctx context.Context, doguResource *v2.Dog
 		return steps.RequeueWithError(err)
 	}
 
-	if doguResource.Spec.PauseReconcilation {
+	if doguResource.Spec.PauseReconciliation {
 		return steps.Abort()
 	}
 

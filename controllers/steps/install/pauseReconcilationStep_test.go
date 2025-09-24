@@ -11,13 +11,13 @@ import (
 
 func TestNewPauseReconcilationStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewPauseReconcilationStep(newMockDoguInterface(t))
+		step := NewPauseReconciliationStep(newMockDoguInterface(t))
 
 		assert.NotNil(t, step)
 	})
 }
 
-func TestPauseReconcilationStep_Run(t *testing.T) {
+func TestPauseReconciliationStep_Run(t *testing.T) {
 	tests := []struct {
 		name            string
 		doguResource    *v2.Dogu
@@ -28,13 +28,13 @@ func TestPauseReconcilationStep_Run(t *testing.T) {
 			name: "should fail to set condition",
 			doguResource: &v2.Dogu{
 				Spec: v2.DoguSpec{
-					PauseReconcilation: true,
+					PauseReconciliation: true,
 				},
 			},
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
 				condition := v1.Condition{
-					Type:               v2.ConditionPauseReconcilation,
+					Type:               v2.ConditionPauseReconciliation,
 					Status:             v1.ConditionTrue,
 					Reason:             conditionReasonPaused,
 					Message:            conditionMessagePaused,
@@ -42,7 +42,7 @@ func TestPauseReconcilationStep_Run(t *testing.T) {
 				}
 				dogu := &v2.Dogu{
 					Spec: v2.DoguSpec{
-						PauseReconcilation: true,
+						PauseReconciliation: true,
 					},
 					Status: v2.DoguStatus{
 						Conditions: []v1.Condition{condition},
@@ -57,13 +57,13 @@ func TestPauseReconcilationStep_Run(t *testing.T) {
 			name: "should abort because of active pause reconcilation",
 			doguResource: &v2.Dogu{
 				Spec: v2.DoguSpec{
-					PauseReconcilation: true,
+					PauseReconciliation: true,
 				},
 			},
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
 				condition := v1.Condition{
-					Type:               v2.ConditionPauseReconcilation,
+					Type:               v2.ConditionPauseReconciliation,
 					Status:             v1.ConditionTrue,
 					Reason:             conditionReasonPaused,
 					Message:            conditionMessagePaused,
@@ -71,7 +71,7 @@ func TestPauseReconcilationStep_Run(t *testing.T) {
 				}
 				dogu := &v2.Dogu{
 					Spec: v2.DoguSpec{
-						PauseReconcilation: true,
+						PauseReconciliation: true,
 					},
 					Status: v2.DoguStatus{
 						Conditions: []v1.Condition{condition},
@@ -86,13 +86,13 @@ func TestPauseReconcilationStep_Run(t *testing.T) {
 			name: "should continue because of inactive pause reconcilation",
 			doguResource: &v2.Dogu{
 				Spec: v2.DoguSpec{
-					PauseReconcilation: false,
+					PauseReconciliation: false,
 				},
 			},
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
 				condition := v1.Condition{
-					Type:               v2.ConditionPauseReconcilation,
+					Type:               v2.ConditionPauseReconciliation,
 					Status:             v1.ConditionFalse,
 					Reason:             conditionReasonNotPaused,
 					Message:            conditionMessageNotPaused,
@@ -100,7 +100,7 @@ func TestPauseReconcilationStep_Run(t *testing.T) {
 				}
 				dogu := &v2.Dogu{
 					Spec: v2.DoguSpec{
-						PauseReconcilation: false,
+						PauseReconciliation: false,
 					},
 					Status: v2.DoguStatus{
 						Conditions: []v1.Condition{condition},
@@ -114,7 +114,7 @@ func TestPauseReconcilationStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prs := &PauseReconcilationStep{
+			prs := &PauseReconciliationStep{
 				doguInterface: tt.doguInterfaceFn(t),
 			}
 			assert.Equalf(t, tt.want, prs.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)

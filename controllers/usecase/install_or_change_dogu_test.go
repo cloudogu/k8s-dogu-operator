@@ -14,6 +14,7 @@ import (
 func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	t.Run("Successfully created install or change usecase with correct order", func(t *testing.T) {
 		usecase := NewDoguInstallOrChangeUseCase(
+			NewMockK8sClient(t),
 			nil,
 			nil,
 			nil,
