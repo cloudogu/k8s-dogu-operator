@@ -20,13 +20,9 @@ func NewInstalledVersionStep(doguInterface doguClient.DoguInterface) *InstalledV
 }
 
 func (ivs *InstalledVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	doguResource, err := ivs.doguInterface.Get(ctx, doguResource.Name, v1.GetOptions{})
-	if err != nil {
-		return steps.RequeueWithError(err)
-	}
 	doguResource.Status.InstalledVersion = doguResource.Spec.Version
 	doguResource.Status.Status = v2.DoguStatusInstalled
-	doguResource, err = ivs.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
+	doguResource, err := ivs.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}

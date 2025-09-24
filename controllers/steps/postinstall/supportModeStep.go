@@ -47,11 +47,6 @@ func (sms *SupportModeStep) Run(ctx context.Context, doguResource *doguv2.Dogu) 
 		return steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %q: %w", doguResource.Name, err))
 	}
 
-	doguResource, err = sms.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
-	if err != nil {
-		return steps.RequeueWithError(err)
-	}
-
 	if isDeploymentInSupportMode(deployment) {
 		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionTrue, ReasonSupportModeActive, "The Support mode is active")
 		if err != nil {

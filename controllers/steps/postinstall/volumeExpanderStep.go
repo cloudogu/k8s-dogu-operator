@@ -112,11 +112,6 @@ func hasPvc(dogu *core.Dogu) bool {
 }
 
 func (vs *VolumeExpanderStep) setSuccessCondition(ctx context.Context, doguResource *v2.Dogu) error {
-	doguResource, err := vs.doguInterface.Get(ctx, doguResource.Name, v1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
 	condition := v1.Condition{
 		Type:               v2.ConditionMeetsMinVolumeSize,
 		Status:             v1.ConditionTrue,
@@ -126,7 +121,7 @@ func (vs *VolumeExpanderStep) setSuccessCondition(ctx context.Context, doguResou
 	}
 
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
-	doguResource, err = vs.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
+	doguResource, err := vs.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
