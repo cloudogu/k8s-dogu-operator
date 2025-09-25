@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -62,7 +63,7 @@ func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core
 
 func (c *CesDoguRegistrator) registerAndEnableDoguInRegistry(ctx context.Context, dogu *core.Dogu) error {
 	err := c.registerDoguInRegistry(ctx, dogu)
-	if err != nil {
+	if err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
