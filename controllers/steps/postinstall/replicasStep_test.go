@@ -1,6 +1,7 @@
 package postinstall
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,7 +11,10 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
 	v3 "k8s.io/api/autoscaling/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestNewReplicasStep(t *testing.T) {
@@ -86,6 +90,77 @@ func TestReplicasStep_Run(t *testing.T) {
 			},
 			doguResource: &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
 			want:         steps.RequeueWithError(assert.AnError),
+		},
+		{
+			name: "should fail to get data pvc",
+			fields: fields{
+				clientFn: func(t *testing.T) k8sClient {
+					mck := newMockK8sClient(t)
+					pvc := &corev1.PersistentVolumeClaim{}
+					mck.EXPECT().Get(testCtx, types.NamespacedName{Name: "test"}, pvc).Return(assert.AnError)
+					return mck
+				},
+				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
+					mck := newMockDeploymentInterface(t)
+					mck.EXPECT().GetScale(testCtx, "test", v1.GetOptions{}).Return(&v3.Scale{}, nil)
+					return mck
+				},
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{
+						Volumes: []core.Volume{
+							{
+								NeedsBackup: true,
+							},
+						},
+					}, nil)
+					return mck
+				},
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					return newMockDoguInterface(t)
+				},
+			},
+			doguResource: &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
+			want:         steps.RequeueWithError(fmt.Errorf("failed to get data pvc for dogu test: %w", assert.AnError)),
+		},
+		{
+			name: "should check if pvc is resized and continue",
+			fields: fields{
+				clientFn: func(t *testing.T) k8sClient {
+					mck := newMockK8sClient(t)
+					pvc := &corev1.PersistentVolumeClaim{}
+					mck.EXPECT().Get(testCtx, types.NamespacedName{Name: "test"}, pvc).Return(nil)
+					return mck
+				},
+				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
+					mck := newMockDeploymentInterface(t)
+					mck.EXPECT().GetScale(testCtx, "test", v1.GetOptions{}).Return(&v3.Scale{}, nil)
+					return mck
+				},
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{
+						Volumes: []core.Volume{
+							{
+								NeedsBackup: true,
+							},
+						},
+					}, nil)
+					return mck
+				},
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					return newMockDoguInterface(t)
+				},
+			},
+			doguResource: &v2.Dogu{
+				ObjectMeta: v1.ObjectMeta{Name: "test"},
+				Spec: v2.DoguSpec{
+					Resources: v2.DoguResources{
+						MinDataVolumeSize: *resource.NewQuantity(1, "DecimalSI"),
+					},
+				},
+			},
+			want: steps.Continue(),
 		},
 		{
 			name: "should abort if dogu is stopped",
