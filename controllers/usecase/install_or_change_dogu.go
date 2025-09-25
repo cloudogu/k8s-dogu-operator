@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -116,12 +117,13 @@ func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, 
 
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
+			stepType := getType(s)
 			if result.Err != nil {
-				logger.Error(result.Err, fmt.Sprintf("reconcile Step has to requeue: %q", result.Err))
+				logger.Error(result.Err, fmt.Sprintf("reconcile step %s has to requeue: %q", stepType, result.Err))
 			} else {
-				logger.Info(fmt.Sprintf("reconcile Step has to requeue after %d", result.RequeueAfter))
+				logger.Info(fmt.Sprintf("reconcile step %s has to requeue after %d", stepType, result.RequeueAfter))
 			}
-			return result.RequeueAfter, true, result.Err
+			return result.RequeueAfter, false, result.Err
 		}
 		if !result.Continue {
 			return 0, false, nil
@@ -129,4 +131,12 @@ func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, 
 	}
 	logger.Info(fmt.Sprintf("Successfully went through all steps!"))
 	return 0, true, nil
+}
+
+func getType(val interface{}) string {
+	if t := reflect.TypeOf(val); t.Kind() == reflect.Ptr {
+		return "*" + t.Elem().Name()
+	} else {
+		return t.Name()
+	}
 }

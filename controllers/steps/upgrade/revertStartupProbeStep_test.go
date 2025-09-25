@@ -21,7 +21,6 @@ func TestNewRevertStartupProbeStep(t *testing.T) {
 			nil,
 			nil,
 			newMockCommandExecutor(t),
-			newMockExecPodFactory(t),
 		)
 
 		assert.NotNil(t, step)
@@ -34,7 +33,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 		resourceDoguFetcherFn func(t *testing.T) resourceDoguFetcher
 		deploymentInterfaceFn func(t *testing.T) deploymentInterface
 		doguCommandExecutorFn func(t *testing.T) commandExecutor
-		execPodFactoryFn      func(t *testing.T) execPodFactory
 	}
 	tests := []struct {
 		name         string
@@ -59,9 +57,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
 				},
-				execPodFactoryFn: func(t *testing.T) execPodFactory {
-					return newMockExecPodFactory(t)
-				},
 			},
 			doguResource: &v2.Dogu{},
 			want:         steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", assert.AnError)),
@@ -84,9 +79,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				},
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
-				},
-				execPodFactoryFn: func(t *testing.T) execPodFactory {
-					return newMockExecPodFactory(t)
 				},
 			},
 			doguResource: &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
@@ -123,40 +115,9 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
 				},
-				execPodFactoryFn: func(t *testing.T) execPodFactory {
-					return newMockExecPodFactory(t)
-				},
 			},
 			doguResource: &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 			want:         steps.Continue(),
-		},
-		{
-			name: "should requeue if exec pod does not exist",
-			fields: fields{
-				clientFn: func(t *testing.T) k8sClient {
-					return newMockK8sClient(t)
-				},
-				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
-					mck := newMockDeploymentInterface(t)
-					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(&appsv1.Deployment{}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{Name: "official/test"}, nil, nil)
-					return mck
-				},
-				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
-					return newMockCommandExecutor(t)
-				},
-				execPodFactoryFn: func(t *testing.T) execPodFactory {
-					mck := newMockExecPodFactory(t)
-					mck.EXPECT().Exists(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{Name: "official/test"}).Return(false)
-					return mck
-				},
-			},
-			doguResource: &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
-			want:         steps.RequeueAfter(requeueAfterRevertStartupProbe),
 		},
 		{
 			name: "should fail to revert startup probe",
@@ -203,11 +164,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				},
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
-				},
-				execPodFactoryFn: func(t *testing.T) execPodFactory {
-					mck := newMockExecPodFactory(t)
-					mck.EXPECT().Exists(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{Name: "official/test"}).Return(true)
-					return mck
 				},
 			},
 			doguResource: &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
@@ -259,11 +215,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
 				},
-				execPodFactoryFn: func(t *testing.T) execPodFactory {
-					mck := newMockExecPodFactory(t)
-					mck.EXPECT().Exists(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{Name: "official/test"}).Return(true)
-					return mck
-				},
 			},
 			doguResource: &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 			want:         steps.RequeueAfter(requeueAfterRevertStartupProbe),
@@ -303,20 +254,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
 				},
-				execPodFactoryFn: func(t *testing.T) execPodFactory {
-					mck := newMockExecPodFactory(t)
-					mck.EXPECT().Exists(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{
-						Name: "official/test",
-						ExposedCommands: []core.ExposedCommand{
-							{
-								Name:        core.ExposedCommandPostUpgrade,
-								Command:     "",
-								Description: "",
-							},
-						},
-					}).Return(true)
-					return mck
-				},
 			},
 			doguResource: &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 			want:         steps.RequeueWithError(fmt.Errorf("post-upgrade failed: %w", fmt.Errorf("failed to get new %s pod for post upgrade: %w", "test", fmt.Errorf("failed to get pods: %w", assert.AnError)))),
@@ -329,7 +266,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				resourceDoguFetcher: tt.fields.resourceDoguFetcherFn(t),
 				deploymentInterface: tt.fields.deploymentInterfaceFn(t),
 				doguCommandExecutor: tt.fields.doguCommandExecutorFn(t),
-				execPodFactory:      tt.fields.execPodFactoryFn(t),
 			}
 			assert.Equalf(t, tt.want, rsps.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)
 		})

@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,5 +47,10 @@ func (dm *deploymentManager) GetLastStartingTime(ctx context.Context, deployment
 			}
 		}
 	}
+
+	if lastTimeStarted == nil {
+		return nil, fmt.Errorf("no last starting time found for deployment %s", deploymentName)
+	}
+
 	return lastTimeStarted, nil
 }

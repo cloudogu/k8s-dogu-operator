@@ -2,13 +2,11 @@ package install
 
 import (
 	"context"
-	"fmt"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -35,13 +33,8 @@ func NewConditionsStep(updater ConditionUpdater) *ConditionsStep {
 }
 
 func (cs *ConditionsStep) Run(ctx context.Context, doguResource *doguv2.Dogu) steps.StepResult {
-	logger := log.FromContext(ctx)
 	if doguResource.Status.Conditions == nil {
 		doguResource.Status.Conditions = make([]v1.Condition, 0)
-	}
-	if len(doguResource.Status.Conditions) == len(expectedConditions) {
-		logger.Info(fmt.Sprintf("All Conditions for dogu %s are set", doguResource.GetSimpleDoguName()))
-		return steps.Continue()
 	}
 
 	existingConditions := sets.NewString()
@@ -50,8 +43,10 @@ func (cs *ConditionsStep) Run(ctx context.Context, doguResource *doguv2.Dogu) st
 		existingConditions.Insert(condition.Type)
 	}
 
+	updateConditions := false
 	for _, condition := range expectedConditions {
 		if !existingConditions.Has(condition) {
+			updateConditions = true
 			conditions = append(conditions, v1.Condition{
 				Type:               condition,
 				Status:             v1.ConditionUnknown,
@@ -61,9 +56,12 @@ func (cs *ConditionsStep) Run(ctx context.Context, doguResource *doguv2.Dogu) st
 			})
 		}
 	}
-	err := cs.conditionUpdater.UpdateConditions(ctx, doguResource, conditions)
-	if err != nil {
-		return steps.RequeueWithError(err)
+
+	if updateConditions {
+		err := cs.conditionUpdater.UpdateConditions(ctx, doguResource, conditions)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 	}
 
 	return steps.Continue()

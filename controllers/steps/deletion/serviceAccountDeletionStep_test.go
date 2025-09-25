@@ -3,6 +3,7 @@ package deletion
 import (
 	"testing"
 
+	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -13,7 +14,7 @@ func TestNewServiceAccountRemoverStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		// given
 		remover := newMockServiceAccountRemover(t)
-		fetcher := newMockResourceDoguFetcher(t)
+		fetcher := newMockLocalDoguFetcher(t)
 
 		// when
 		step := NewServiceAccountRemoverStep(remover, fetcher)
@@ -26,7 +27,7 @@ func TestNewServiceAccountRemoverStep(t *testing.T) {
 func TestServiceAccountRemoverStep_Run(t *testing.T) {
 	tests := []struct {
 		serviceAccountRemoverFn func(t *testing.T) serviceAccountRemover
-		resourceDoguFetcherFn   func(t *testing.T) resourceDoguFetcher
+		localDoguFetcherFn      func(t *testing.T) localDoguFetcher
 		name                    string
 		doguResource            *v2.Dogu
 		want                    steps.StepResult
@@ -36,10 +37,10 @@ func TestServiceAccountRemoverStep_Run(t *testing.T) {
 			serviceAccountRemoverFn: func(t *testing.T) serviceAccountRemover {
 				return newMockServiceAccountRemover(t)
 			},
-			resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-				resourceDoguFetcherMock := newMockResourceDoguFetcher(t)
-				resourceDoguFetcherMock.EXPECT().FetchWithResource(testCtx, &v2.Dogu{}).Return(nil, nil, assert.AnError)
-				return resourceDoguFetcherMock
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherMock := newMockLocalDoguFetcher(t)
+				localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("")).Return(nil, assert.AnError)
+				return localDoguFetcherMock
 			},
 			doguResource: &v2.Dogu{},
 			want:         steps.StepResult{Err: assert.AnError},
@@ -51,10 +52,10 @@ func TestServiceAccountRemoverStep_Run(t *testing.T) {
 				serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, &core.Dogu{}).Return(assert.AnError)
 				return serviceAccountRemoverMock
 			},
-			resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-				resourceDoguFetcherMock := newMockResourceDoguFetcher(t)
-				resourceDoguFetcherMock.EXPECT().FetchWithResource(testCtx, &v2.Dogu{}).Return(&core.Dogu{}, nil, nil)
-				return resourceDoguFetcherMock
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherMock := newMockLocalDoguFetcher(t)
+				localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("")).Return(&core.Dogu{}, nil)
+				return localDoguFetcherMock
 			},
 			doguResource: &v2.Dogu{},
 			want:         steps.StepResult{Err: assert.AnError},
@@ -66,10 +67,10 @@ func TestServiceAccountRemoverStep_Run(t *testing.T) {
 				serviceAccountRemoverMock.EXPECT().RemoveAll(testCtx, &core.Dogu{}).Return(nil)
 				return serviceAccountRemoverMock
 			},
-			resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-				resourceDoguFetcherMock := newMockResourceDoguFetcher(t)
-				resourceDoguFetcherMock.EXPECT().FetchWithResource(testCtx, &v2.Dogu{}).Return(&core.Dogu{}, nil, nil)
-				return resourceDoguFetcherMock
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherMock := newMockLocalDoguFetcher(t)
+				localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("")).Return(&core.Dogu{}, nil)
+				return localDoguFetcherMock
 			},
 			doguResource: &v2.Dogu{},
 			want:         steps.StepResult{Continue: true},
@@ -79,7 +80,7 @@ func TestServiceAccountRemoverStep_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sas := &ServiceAccountRemoverStep{
 				serviceAccountRemover: tt.serviceAccountRemoverFn(t),
-				resourceDoguFetcher:   tt.resourceDoguFetcherFn(t),
+				doguFetcher:           tt.localDoguFetcherFn(t),
 			}
 			assert.Equalf(t, tt.want, sas.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)
 		})

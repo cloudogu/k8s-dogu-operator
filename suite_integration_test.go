@@ -18,6 +18,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/fx/fxtest"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -148,6 +150,19 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClient, err = client.New(cfg, client.Options{})
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
+	ginkgo.By("creating operator config")
+	namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace, Namespace: testNamespace}}
+	err = k8sClient.Create(testCtx, namespace)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	additionalImagesCm := readConfigMap(ginkgo.GinkgoT(), additionalImagesCmBytes)
+	_, err = k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(testCtx, additionalImagesCm, metav1.CreateOptions{})
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+	globalConfig := readConfigMap(ginkgo.GinkgoT(), globalConfigBytes)
+	_, err = k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(testCtx, globalConfig, metav1.CreateOptions{})
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
 	ginkgo.By("starting application")
 	go func() {
 		defer ginkgo.GinkgoRecover()
@@ -157,10 +172,9 @@ var _ = ginkgo.BeforeSuite(func() {
 
 var _ = ginkgo.AfterSuite(func() {
 	ginkgo.By("tearing down the test environment")
+	fxApp.RequireStop()
 	err := testEnv.Stop()
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	fxApp.RequireStop()
 
 	initfx.NewCommandExecutor = oldNewCommandExecutor
 	initfx.NewRemoteDoguDescriptorRepository = oldNewRemoteDoguDescriptorRepository

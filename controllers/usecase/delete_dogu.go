@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -50,8 +51,13 @@ func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResour
 
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
-			logger.Error(result.Err, "reconcile Step has to requeue: %w", result.Err)
-			return result.RequeueAfter, true, result.Err
+			stepType := getType(s)
+			if result.Err != nil {
+				logger.Error(result.Err, fmt.Sprintf("reconcile step %s has to requeue: %q", stepType, result.Err))
+			} else {
+				logger.Info(fmt.Sprintf("reconcile step %s has to requeue after %d", stepType, result.RequeueAfter))
+			}
+			return result.RequeueAfter, false, result.Err
 		}
 		if !result.Continue {
 			return 0, false, nil

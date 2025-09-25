@@ -118,7 +118,7 @@ func TestDoguInstallOrChangeUseCase_HandleUntilApplied(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
 			},
 			wantRequeueAfter: 2,
-			wantContinue:     true,
+			wantContinue:     false,
 			wantErr:          assert.NoError,
 		},
 		{
@@ -146,7 +146,7 @@ func TestDoguInstallOrChangeUseCase_HandleUntilApplied(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
 			},
 			wantRequeueAfter: 0,
-			wantContinue:     true,
+			wantContinue:     false,
 			wantErr:          assert.Error,
 		},
 		{

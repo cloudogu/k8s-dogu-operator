@@ -35,7 +35,7 @@ func TestConditionsStep_Run(t *testing.T) {
 			name: "no conditions are set",
 			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
 				updaterMock := NewMockConditionUpdater(t)
-				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(nil)
+				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(nil).Once()
 				return updaterMock
 			},
 			doguResource: &doguv2.Dogu{

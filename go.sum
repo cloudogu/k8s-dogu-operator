@@ -34,6 +34,8 @@ github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250923124722-b9569070ec13 h1:8/rEus
 github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250923124722-b9569070ec13/go.mod h1:2xkJ1TI7fuBRcqIpHUlmQ6CJAtzlOvyUbwPktIVq6K8=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250924122244-01339f784cd0 h1:ohitXnpL655pmZOO0LVjW/weVi1ftFKSXG7jllbRQag=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250924122244-01339f784cd0/go.mod h1:2xkJ1TI7fuBRcqIpHUlmQ6CJAtzlOvyUbwPktIVq6K8=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250925082249-81ac0a8cd819 h1:rdmACEbg/NzxJm8XHZ9H9jwMutTILUqQeLDzUQof8DU=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250925082249-81ac0a8cd819/go.mod h1:2xkJ1TI7fuBRcqIpHUlmQ6CJAtzlOvyUbwPktIVq6K8=
 github.com/cloudogu/k8s-host-change v0.7.0 h1:291ojIo64Z245xtBJdC3sa6H+eAPvbjb7cpvCr9kYP8=
 github.com/cloudogu/k8s-host-change v0.7.0/go.mod h1:vl0XIdCpvxXCZCcTRyfWYDgf+cmw8/fy6rZnmJ0oblo=
 github.com/cloudogu/k8s-registry-lib v0.2.2-0.20250908131505-273c358e439b h1:s0N0UXj0YGnxKvbCQwxiYRvsWhCZ6iCPTdiKIsGO1N8=
