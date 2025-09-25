@@ -142,3 +142,7 @@ type doguResourceGenerator interface {
 type deploymentManager interface {
 	GetLastStartingTime(ctx context.Context, deploymentName string) (*time.Time, error)
 }
+
+type configMapInterface interface {
+	v1.ConfigMapInterface
+}

@@ -10,10 +10,10 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const conditionReasonPaused = "ReconcilationIsPaused"
-const conditionReasonNotPaused = "ReconcilationIsRunning"
-const conditionMessagePaused = "Reconcilation is paused because of spec change"
-const conditionMessageNotPaused = "Reconcilation is currently running"
+const conditionReasonPaused = "ReconciliationIsPaused"
+const conditionReasonNotPaused = "ReconciliationIsEnabled"
+const conditionMessagePaused = "Reconciliation is paused because of spec change"
+const conditionMessageNotPaused = "Reconciliation of this resource is currently enabled"
 
 type PauseReconciliationStep struct {
 	doguInterface doguInterface
