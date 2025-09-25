@@ -38,7 +38,7 @@ func NewGlobalConfigReconciler(
 	return r, nil
 }
 
-func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.Result, error) {
 	doguList, err := r.doguInterface.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return ctrl.Result{}, err

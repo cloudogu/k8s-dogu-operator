@@ -1,8 +1,14 @@
 package initfx
 
 import (
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"go.uber.org/fx"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes"
+	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -19,5 +25,89 @@ type fxLifecycle interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type configMapInterface interface {
-	v1.ConfigMapInterface
+	corev1.ConfigMapInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type k8sClient interface {
+	client.Client
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type clientSet interface {
+	kubernetes.Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type ecosystemClient interface {
+	doguClient.EcoSystemV2Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type coreV1Interface interface {
+	corev1.CoreV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type appsV1Interface interface {
+	appsv1.AppsV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type deploymentInterface interface {
+	appsv1.DeploymentInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type secretInterface interface {
+	corev1.SecretInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type podInterface interface {
+	corev1.PodInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type serviceInterface interface {
+	corev1.ServiceInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type pvcInterface interface {
+	corev1.PersistentVolumeClaimInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguInterface interface {
+	doguClient.DoguInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguRestartInterface interface {
+	doguClient.DoguRestartInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type eventRecorder interface {
+	record.EventRecorder
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type restInterface interface {
+	rest.Interface
 }
