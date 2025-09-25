@@ -5,12 +5,13 @@ import (
 	"fmt"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 )
 
 // CesDoguRegistrator is responsible for register dogus in the cluster
@@ -63,7 +64,7 @@ func (c *CesDoguRegistrator) RegisterDoguVersion(ctx context.Context, dogu *core
 
 func (c *CesDoguRegistrator) registerAndEnableDoguInRegistry(ctx context.Context, dogu *core.Dogu) error {
 	err := c.registerDoguInRegistry(ctx, dogu)
-	if err != nil && !errors.IsAlreadyExists(err) {
+	if err != nil && !cloudoguerrors.IsAlreadyExistsError(err) {
 		return err
 	}
 
