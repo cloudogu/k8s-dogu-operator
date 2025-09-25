@@ -48,7 +48,6 @@ func NewDoguInstallOrChangeUseCase(
 	exportModeStep *postinstall.ExportModeStep,
 	supportModeStep *postinstall.SupportModeStep,
 	additionalMountsStep *postinstall.AdditionalMountsStep,
-	restartDoguStep *postinstall.RestartDoguStep,
 
 	equalDoguDescriptorStep *upgrade.EqualDoguDescriptorsStep,
 	upgradeRegisterDoguVersionStep *upgrade.RegisterDoguVersionStep,
@@ -58,6 +57,7 @@ func NewDoguInstallOrChangeUseCase(
 	deleteDevelopmentDoguMapStep *upgrade.DeleteDevelopmentDoguMapStep,
 	installedVersionStep *upgrade.InstalledVersionStep,
 	deploymentUpdaterStep *upgrade.DeploymentUpdaterStep,
+	restartDoguStep *upgrade.RestartDoguStep,
 	updateStartedAtStep *upgrade.UpdateStartedAtStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{

@@ -1,4 +1,4 @@
-package postinstall
+package upgrade
 
 import (
 	"context"

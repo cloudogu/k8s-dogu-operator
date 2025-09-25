@@ -4,15 +4,20 @@ import (
 	"context"
 	"time"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-registry-lib/config"
+	"github.com/cloudogu/k8s-registry-lib/repository"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -65,6 +70,24 @@ type resourceUpserter interface {
 	// All parameters are mandatory except deploymentPatch which may be nil.
 	// The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.
 	UpsertDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, deploymentPatch func(*apps.Deployment)) (*apps.Deployment, error)
+}
+
+type doguConfigRepository interface {
+	Get(ctx context.Context, name cescommons.SimpleName) (config.DoguConfig, error)
+	Create(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	Update(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	SaveOrMerge(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
+	Delete(ctx context.Context, name cescommons.SimpleName) error
+	Watch(ctx context.Context, dName cescommons.SimpleName, filters ...config.WatchFilter) (<-chan repository.DoguConfigWatchResult, error)
+	SetOwnerReference(ctx context.Context, dName cescommons.SimpleName, owners []metav1.OwnerReference) error
+}
+
+type doguRestartManager interface {
+	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
+}
+
+type configMapInterface interface {
+	v1.ConfigMapInterface
 }
 
 //nolint:unused
