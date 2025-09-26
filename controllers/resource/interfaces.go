@@ -50,7 +50,7 @@ type ResourceUpserter interface {
 	UpsertDoguService(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, image *image.ConfigFile) (*v1.Service, error)
 	// UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
 	UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PersistentVolumeClaim, error)
-	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) error
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, service *v1.Service) error
 }
 
 // doguSecretHandler includes functionality to associate secrets from setup with a dogu.

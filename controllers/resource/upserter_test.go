@@ -10,6 +10,7 @@ import (
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/mock"
 	netv1 "k8s.io/api/networking/v1"
@@ -407,19 +408,10 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 		networkPoliciesEnabled            bool
 	}{
 		{
-			name:                    "creates deny all policy for dogu without dependencies",
-			doguName:                "postgresql",
-			doguDependencies:        []string{},
-			expectedNetworkPolicies: []string{"postgresql-deny-all"},
-			networkPoliciesEnabled:  true,
-		},
-		{
 			name:     "creates all dependencies for a dogu with ui (nginx included)",
 			doguName: "redmine",
 			doguDependencies: []string{
 				"postgresql",
-				"nginx-ingress",
-				"nginx-static",
 				"cas",
 				"postfix",
 			},
@@ -446,6 +438,7 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			},
 			expectedNetworkPolicies: []string{
 				"redmine-deny-all",
+				"redmine-ingress",
 				"redmine-dependency-dogu-cas",
 				"redmine-dependency-dogu-postfix",
 				"redmine-dependency-dogu-postgresql",
@@ -457,8 +450,6 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			doguName: "redmine",
 			doguDependencies: []string{
 				"postgresql",
-				"nginx-ingress",
-				"nginx-static",
 				"cas",
 				"postfix",
 			},
@@ -478,8 +469,6 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			doguName: "redmine",
 			doguDependencies: []string{
 				"postgresql",
-				"nginx-ingress",
-				"nginx-static",
 				"cas",
 				"postfix",
 			},
@@ -501,8 +490,6 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			doguName: "redmine",
 			doguDependencies: []string{
 				"postgresql",
-				"nginx-ingress",
-				"nginx-static",
 				"cas",
 				"postfix",
 			},
@@ -541,7 +528,16 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				mockClient.EXPECT().Get(context.Background(), mock.Anything, mock.AnythingOfType("*v1.NetworkPolicy")).Return(nil).Times(times)
 			}
 
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			}
+
 			if test.networkPoliciesEnabled {
+
+				service.Annotations[annotation.CesServicesAnnotation] = "smthing"
+
 				mockClient.EXPECT().List(context.Background(), mock.Anything, client.MatchingLabels{"dogu.name": dogu.GetSimpleName()}).Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
 					newList := list.(*netv1.NetworkPolicyList)
 					allExpectedPolicies := append(test.expectedNetworkPolicies, test.additionalExistingNetworkPolicies...)
@@ -595,7 +591,7 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				networkPoliciesEnabled: test.networkPoliciesEnabled,
 			}
 
-			err := ups.UpsertDoguNetworkPolicies(context.Background(), doguResource, dogu)
+			err := ups.UpsertDoguNetworkPolicies(context.Background(), doguResource, dogu, &service)
 			if !test.expectError {
 				assert.NoError(t, err)
 			} else {
