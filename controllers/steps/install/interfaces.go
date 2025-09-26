@@ -15,7 +15,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -156,7 +155,6 @@ type deploymentAvailabilityChecker interface {
 }
 
 type doguHealthStatusUpdater interface {
-	UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error
 	UpdateHealthConfigMap(ctx context.Context, deployment *apps.Deployment, doguJson *cesappcore.Dogu) error
 }
 

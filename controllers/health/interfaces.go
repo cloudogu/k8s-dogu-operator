@@ -22,8 +22,6 @@ type DeploymentAvailabilityChecker interface {
 }
 
 type DoguHealthStatusUpdater interface {
-	// UpdateStatus sets the health status of the dogu according to whether if it's available or not.
-	UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error
 	UpdateHealthConfigMap(ctx context.Context, deployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error
 }
 

@@ -8,11 +8,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 )
 
@@ -31,32 +29,6 @@ func NewDoguStatusUpdater(ecosystemClient doguClient.EcoSystemV2Interface, recor
 		recorder:        recorder,
 		k8sClientSet:    k8sClientSet,
 	}
-}
-
-// UpdateStatus sets the health status of the dogu according to whether if it's available or not.
-func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.NamespacedName, isAvailable bool) error {
-	doguEcosystemClient := dsw.ecosystemClient.Dogus(doguName.Namespace)
-
-	dogu, err := doguEcosystemClient.Get(ctx, doguName.Name, metav1api.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
-	}
-
-	desiredHealthStatus := doguv2.UnavailableHealthStatus
-	if isAvailable {
-		desiredHealthStatus = doguv2.AvailableHealthStatus
-	}
-
-	dogu.Status.Health = desiredHealthStatus
-	_, err = doguEcosystemClient.UpdateStatus(ctx, dogu, metav1api.UpdateOptions{})
-	if err != nil {
-		message := fmt.Sprintf("failed to update dogu %q to desired health status %q", doguName, desiredHealthStatus)
-		dsw.recorder.Event(dogu, v1.EventTypeWarning, statusUpdateEventReason, message)
-		return fmt.Errorf("%s: %w", message, err)
-	}
-
-	dsw.recorder.Eventf(dogu, v1.EventTypeNormal, statusUpdateEventReason, "successfully updated health status to %q", desiredHealthStatus)
-	return nil
 }
 
 func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDeployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error {
