@@ -1,0 +1,104 @@
+package upgrade
+
+import (
+	"fmt"
+	"testing"
+
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+func TestNewPreUpgradeStatusStep(t *testing.T) {
+	step := NewPreUpgradeStatusStep(newMockUpgradeChecker(t), newMockDoguInterface(t))
+	assert.NotEmpty(t, step)
+}
+
+func TestPreUpgradeStatusStep_Run(t *testing.T) {
+	type fields struct {
+		upgradeCheckerFn func(t *testing.T) upgradeChecker
+		doguInterfaceFn  func(t *testing.T) doguInterface
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		resource *v2.Dogu
+		want     steps.StepResult
+	}{
+		{
+			name: "should fail to check for upgrade",
+			fields: fields{
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					return newMockDoguInterface(t)
+				},
+				upgradeCheckerFn: func(t *testing.T) upgradeChecker {
+					mck := newMockUpgradeChecker(t)
+					mck.EXPECT().IsUpgrade(testCtx, &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}}).Return(false, assert.AnError)
+					return mck
+				},
+			},
+			resource: &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}},
+			want:     steps.StepResult{Err: fmt.Errorf("failed to check if dogu is upgrading: %w", assert.AnError)},
+		},
+		{
+			name: "should do nothing and continue if not upgrade",
+			fields: fields{
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					return newMockDoguInterface(t)
+				},
+				upgradeCheckerFn: func(t *testing.T) upgradeChecker {
+					mck := newMockUpgradeChecker(t)
+					mck.EXPECT().IsUpgrade(testCtx, &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}}).Return(false, nil)
+					return mck
+				},
+			},
+			resource: &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}},
+			want:     steps.StepResult{Continue: true},
+		},
+		{
+			name: "should fail on updating status on upgrade",
+			fields: fields{
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					mck := newMockDoguInterface(t)
+					mck.EXPECT().UpdateStatus(testCtx, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
+					return mck
+				},
+				upgradeCheckerFn: func(t *testing.T) upgradeChecker {
+					mck := newMockUpgradeChecker(t)
+					mck.EXPECT().IsUpgrade(testCtx, &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}}).Return(true, nil)
+					return mck
+				},
+			},
+			resource: &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}},
+			want:     steps.StepResult{Err: fmt.Errorf("failed to update dogu status before upgrade: %w", assert.AnError)},
+		},
+		{
+			name: "should succeed on updating status on upgrade",
+			fields: fields{
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					mck := newMockDoguInterface(t)
+					mck.EXPECT().UpdateStatus(testCtx, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil)
+					return mck
+				},
+				upgradeCheckerFn: func(t *testing.T) upgradeChecker {
+					mck := newMockUpgradeChecker(t)
+					mck.EXPECT().IsUpgrade(testCtx, &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}}).Return(true, nil)
+					return mck
+				},
+			},
+			resource: &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}},
+			want:     steps.StepResult{Continue: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &PreUpgradeStatusStep{
+				upgradeChecker: tt.fields.upgradeCheckerFn(t),
+				doguInterface:  tt.fields.doguInterfaceFn(t),
+			}
+			assert.Equalf(t, tt.want, p.Run(testCtx, tt.resource), "Run(%v, %v)", testCtx, tt.resource)
+		})
+	}
+}

@@ -5,6 +5,7 @@ import (
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 )
 
@@ -12,6 +13,16 @@ import (
 type PremisesChecker interface {
 	// Check checks if dogu premises are met before a dogu upgrade.
 	Check(ctx context.Context, toDoguResource *k8sv2.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
+}
+
+type localDoguFetcher interface {
+	cesregistry.LocalDoguFetcher
+}
+
+// Checker includes functionality to check for upgrades
+type Checker interface {
+	// IsUpgrade returns if a dogu needs to be upgraded
+	IsUpgrade(ctx context.Context, doguResource *k8sv2.Dogu) (bool, error)
 }
 
 // DependencyValidator checks if all necessary dependencies for an upgrade are installed.

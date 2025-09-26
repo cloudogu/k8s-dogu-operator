@@ -13,7 +13,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 
 	v1 "k8s.io/api/apps/v1"
@@ -27,7 +26,6 @@ const requeueAfterUpdateDeployment = time.Second * 3
 const podTemplateVersionKey = "dogu.version"
 const upgradeStartupProbeFailureThresholdRetries = int32(1080)
 const preUpgradeScriptDir = "/tmp/pre-upgrade"
-const previousDoguVersionAnnotationKey = "k8s.cloudogu.com/dogu-previous-version"
 
 type UpdateDeploymentStep struct {
 	client              k8sClient
@@ -102,7 +100,6 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		dogu,
 		func(deployment *v1.Deployment) {
 			increaseStartupProbeTimeoutForUpdate(doguResource.Name, deployment)
-			util.SetPreviousDoguVersionInAnnotations(dogu.Version, deployment)
 		},
 	)
 

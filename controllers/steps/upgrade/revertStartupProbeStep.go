@@ -23,6 +23,7 @@ const requeueAfterRevertStartupProbe = time.Second * 3
 
 type RevertStartupProbeStep struct {
 	client              k8sClient
+	localDoguFetcher    localDoguFetcher
 	resourceDoguFetcher resourceDoguFetcher
 	deploymentInterface deploymentInterface
 	doguCommandExecutor commandExecutor
@@ -31,19 +32,21 @@ type RevertStartupProbeStep struct {
 func NewRevertStartupProbeStep(
 	client client.Client,
 	deploymentInterface appsv1.DeploymentInterface,
-	fetcher cesregistry.ResourceDoguFetcher,
+	localFetcher cesregistry.LocalDoguFetcher,
+	resourceFetcher cesregistry.ResourceDoguFetcher,
 	executor exec.CommandExecutor,
 ) *RevertStartupProbeStep {
 	return &RevertStartupProbeStep{
 		client:              client,
 		deploymentInterface: deploymentInterface,
-		resourceDoguFetcher: fetcher,
+		localDoguFetcher:    localFetcher,
+		resourceDoguFetcher: resourceFetcher,
 		doguCommandExecutor: executor,
 	}
 }
 
 func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	dogu, _, err := rsps.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	toDogu, _, err := rsps.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
@@ -53,21 +56,24 @@ func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Do
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch deployment: %w", err))
 	}
 
-	originalStartupProbe := resource.CreateStartupProbe(dogu)
-	if rsps.startupProbeHasDefaultValue(deployment, dogu.GetSimpleName(), originalStartupProbe) {
+	originalStartupProbe := resource.CreateStartupProbe(toDogu)
+	if rsps.startupProbeHasDefaultValue(deployment, toDogu.GetSimpleName(), originalStartupProbe) {
 		return steps.Continue()
 	}
 
-	fromDoguVersion := deployment.Annotations[previousDoguVersionAnnotationKey]
+	fromDogu, err := rsps.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
+	if err != nil {
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch installed dogu: %w", err))
+	}
 
 	// Run Postupgrade Script
-	err = rsps.applyPostUpgradeScript(ctx, doguResource, fromDoguVersion, dogu)
+	err = rsps.applyPostUpgradeScript(ctx, doguResource, fromDogu.Version, toDogu)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("post-upgrade failed: %w", err))
 	}
 
 	// Revert probe
-	err = rsps.revertStartupProbeAfterUpdate(ctx, doguResource, dogu, deployment)
+	err = rsps.revertStartupProbeAfterUpdate(ctx, doguResource, toDogu, deployment)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}

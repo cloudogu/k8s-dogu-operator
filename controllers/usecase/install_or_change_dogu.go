@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
+
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -50,15 +51,16 @@ func NewDoguInstallOrChangeUseCase(
 	additionalMountsStep *postinstall.AdditionalMountsStep,
 
 	equalDoguDescriptorStep *upgrade.EqualDoguDescriptorsStep,
-	upgradeRegisterDoguVersionStep *upgrade.RegisterDoguVersionStep,
+	preUpgradeStatusStep *upgrade.PreUpgradeStatusStep,
 	updateDeploymentStep *upgrade.UpdateDeploymentStep,
 	deleteExecPodStep *upgrade.DeleteExecPodStep,
 	revertStartupProbeStep *upgrade.RevertStartupProbeStep,
 	deleteDevelopmentDoguMapStep *upgrade.DeleteDevelopmentDoguMapStep,
-	installedVersionStep *upgrade.InstalledVersionStep,
 	deploymentUpdaterStep *upgrade.DeploymentUpdaterStep,
-	restartDoguStep *upgrade.RestartDoguStep,
+	upgradeRegisterDoguVersionStep *upgrade.RegisterDoguVersionStep,
+	installedVersionStep *upgrade.InstalledVersionStep,
 	updateStartedAtStep *upgrade.UpdateStartedAtStep,
+	restartDoguStep *upgrade.RestartDoguStep,
 ) *DoguInstallOrChangeUseCase {
 	return &DoguInstallOrChangeUseCase{
 		client: k8sClient,
@@ -89,17 +91,18 @@ func NewDoguInstallOrChangeUseCase(
 			exportModeStep,
 			supportModeStep,
 			additionalMountsStep,
-			restartDoguStep,
 
 			equalDoguDescriptorStep,
-			upgradeRegisterDoguVersionStep,
+			preUpgradeStatusStep,
 			updateDeploymentStep,
 			deleteExecPodStep,
 			revertStartupProbeStep,
 			deleteDevelopmentDoguMapStep,
 			installedVersionStep,
 			deploymentUpdaterStep,
+			upgradeRegisterDoguVersionStep,
 			updateStartedAtStep,
+			restartDoguStep,
 		},
 	}
 }

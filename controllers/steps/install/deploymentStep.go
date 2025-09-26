@@ -7,8 +7,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/util"
-	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -42,9 +40,7 @@ func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 		return steps.Continue()
 	}
 
-	_, err = ds.upserter.UpsertDoguDeployment(ctx, doguResource, dogu, func(deployment *v1.Deployment) {
-		util.SetPreviousDoguVersionInAnnotations(dogu.Version, deployment)
-	})
+	_, err = ds.upserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}

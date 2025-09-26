@@ -55,6 +55,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			nil,
 			nil,
 			nil,
+			nil,
 		)
 
 		assert.NotNil(t, usecase)

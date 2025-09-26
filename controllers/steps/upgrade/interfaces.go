@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	apps "k8s.io/api/apps/v1"
@@ -49,6 +50,10 @@ type doguRegistrator interface {
 
 type deploymentInterface interface {
 	appsv1client.DeploymentInterface
+}
+
+type upgradeChecker interface {
+	upgrade.Checker
 }
 
 //nolint:unused
