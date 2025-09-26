@@ -158,11 +158,11 @@ func (dem *doguExportManager) deploymentUpdateNeeded(ctx context.Context, doguRe
 func (dem *doguExportManager) updateStatus(ctx context.Context, doguResource *doguv2.Dogu, phase string, activated bool) error {
 	doguResource.Status.Status = phase
 	doguResource.Status.ExportMode = activated
-	_, err := dem.doguClient.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+	newDoguResource, err := dem.doguClient.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %q to %q: %w", doguResource.Name, phase, err)
 	}
-
+	doguResource = newDoguResource
 	return nil
 }
 
