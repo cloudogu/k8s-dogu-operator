@@ -27,22 +27,23 @@ func NewShutdownHandler(manager manager.Manager, doguInterface doguClient.DoguIn
 }
 
 func (s *ShutdownHandler) Start(ctx context.Context) error {
-	logger := log.FromContext(ctx).WithName("health shutdown handler")
 	<-ctx.Done()
-	logger.Info("shutdown detected, handling health status")
 
 	// context is done, we need a new one
 	ctx = context.WithoutCancel(ctx)
+
 	return s.handle(ctx)
 }
 
 func (s *ShutdownHandler) handle(ctx context.Context) error {
+	logger := log.FromContext(ctx).WithName("health shutdown handler")
+	logger.Info("shutdown detected, handling health status")
+
 	dogus, err := s.doguInterface.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 
-	logger := log.FromContext(ctx)
 	logger.Error(nil, fmt.Sprintf("Dogu count: %d", len(dogus.Items)))
 	var errs []error
 	for _, dogu := range dogus.Items {
