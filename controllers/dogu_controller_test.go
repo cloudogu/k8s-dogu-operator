@@ -54,6 +54,28 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 			name: "should fail to get dogu resource",
 			fields: fields{
 				clientFn: func(t *testing.T) client.Client {
+					mck := NewMockK8sClient(t)
+					mck.EXPECT().Get(testCtx, types.NamespacedName{}, &v2.Dogu{}).Return(assert.AnError)
+					return mck
+				},
+				doguChangeHandlerFn: func(t *testing.T) DoguUsecase {
+					return NewMockDoguUsecase(t)
+				},
+				doguDeleteHandlerFn: func(t *testing.T) DoguUsecase {
+					return NewMockDoguUsecase(t)
+				},
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					return newMockDoguInterface(t)
+				},
+			},
+			req:     controllerruntime.Request{},
+			want:    controllerruntime.Result{},
+			wantErr: assert.Error,
+		},
+		{
+			name: "should stop if dogu resource not found",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
 					scheme := runtime.NewScheme()
 					err := v2.AddToScheme(scheme)
 					require.NoError(t, err)
@@ -75,7 +97,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 			},
 			req:     controllerruntime.Request{},
 			want:    controllerruntime.Result{},
-			wantErr: assert.Error,
+			wantErr: assert.NoError,
 		},
 		{
 			name: "should fail to update dogu resource",

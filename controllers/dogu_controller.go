@@ -76,13 +76,10 @@ func NewDoguReconciler(
 }
 
 func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
 	doguResource := &doguv2.Dogu{}
 	err := r.client.Get(ctx, req.NamespacedName, doguResource)
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("failed to get doguResource: %s", err))
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	var requeueAfter time.Duration
@@ -91,6 +88,9 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		requeueAfter, cont, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
 	} else {
 		requeueAfter, cont, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
+		if cont {
+			return ctrl.Result{}, nil
+		}
 	}
 
 	getDoguResourceErr := r.client.Get(ctx, req.NamespacedName, doguResource)

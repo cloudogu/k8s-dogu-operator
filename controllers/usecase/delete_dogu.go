@@ -7,32 +7,22 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type DoguDeleteUseCase struct {
-	client client.Client
-	steps  []Step
+	steps []Step
 }
 
 func NewDoguDeleteUseCase(
-	k8sClient client.Client,
 	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
-	unregisterDoguVersionStep *deletion.UnregisterDoguVersionStep,
 	deleteOutOfHealthConfigMapStep *deletion.DeleteOutOfHealthConfigMapStep,
-	removeDoguConfigStep deletion.RemoveDoguConfigStep,
-	removeSensitiveDoguConfigStep deletion.RemoveSensitiveDoguConfigStep,
 	removeFinalizerStep *deletion.RemoveFinalizerStep,
 ) *DoguDeleteUseCase {
 	return &DoguDeleteUseCase{
-		client: k8sClient,
 		steps: []Step{
 			serviceAccountRemoverStep,
-			unregisterDoguVersionStep,
 			deleteOutOfHealthConfigMapStep,
-			removeDoguConfigStep,
-			removeSensitiveDoguConfigStep,
 			removeFinalizerStep,
 		}}
 }

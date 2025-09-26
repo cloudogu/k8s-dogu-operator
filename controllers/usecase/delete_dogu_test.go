@@ -10,11 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var testCtx = context.Background()
@@ -22,10 +18,6 @@ var testCtx = context.Background()
 func TestNewDoguDeleteUsecase(t *testing.T) {
 	t.Run("Successfully created delete usecase with correct order", func(t *testing.T) {
 		usecase := NewDoguDeleteUseCase(
-			NewMockK8sClient(t),
-			nil,
-			nil,
-			nil,
 			nil,
 			nil,
 			nil,
@@ -38,7 +30,6 @@ func TestNewDoguDeleteUsecase(t *testing.T) {
 func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 	tests := []struct {
 		name             string
-		clientFn         func(t *testing.T) client.Client
 		stepsFn          func(t *testing.T) []Step
 		doguResource     *v2.Dogu
 		wantRequeueAfter time.Duration
@@ -46,43 +37,7 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		wantErr          assert.ErrorAssertionFunc
 	}{
 		{
-			name: "should fail to get dogu resource",
-			clientFn: func(t *testing.T) client.Client {
-				scheme := runtime.NewScheme()
-				err := v2.AddToScheme(scheme)
-				require.NoError(t, err)
-				mck := fake.NewClientBuilder().
-					WithScheme(scheme).
-					Build()
-
-				return mck
-			},
-			stepsFn: func(t *testing.T) []Step {
-				return []Step{NewMockStep(t)}
-			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{Name: "test"},
-			},
-			wantRequeueAfter: 0,
-			wantContinue:     false,
-			wantErr:          assert.Error,
-		},
-		{
 			name: "should requeue run on requeueAfter time",
-			clientFn: func(t *testing.T) client.Client {
-				scheme := runtime.NewScheme()
-				err := v2.AddToScheme(scheme)
-				require.NoError(t, err)
-				dogu := &v2.Dogu{
-					ObjectMeta: v1.ObjectMeta{Name: "test"},
-				}
-				mck := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dogu).
-					Build()
-
-				return mck
-			},
 			stepsFn: func(t *testing.T) []Step {
 				step := NewMockStep(t)
 				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.RequeueAfter(2))
@@ -97,20 +52,6 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		},
 		{
 			name: "should requeue run on error",
-			clientFn: func(t *testing.T) client.Client {
-				scheme := runtime.NewScheme()
-				err := v2.AddToScheme(scheme)
-				require.NoError(t, err)
-				dogu := &v2.Dogu{
-					ObjectMeta: v1.ObjectMeta{Name: "test"},
-				}
-				mck := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dogu).
-					Build()
-
-				return mck
-			},
 			stepsFn: func(t *testing.T) []Step {
 				step := NewMockStep(t)
 				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.RequeueWithError(assert.AnError))
@@ -125,20 +66,6 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		},
 		{
 			name: "should continue after step",
-			clientFn: func(t *testing.T) client.Client {
-				scheme := runtime.NewScheme()
-				err := v2.AddToScheme(scheme)
-				require.NoError(t, err)
-				dogu := &v2.Dogu{
-					ObjectMeta: v1.ObjectMeta{Name: "test"},
-				}
-				mck := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dogu).
-					Build()
-
-				return mck
-			},
 			stepsFn: func(t *testing.T) []Step {
 				step := NewMockStep(t)
 				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.Continue())
@@ -153,20 +80,6 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 		},
 		{
 			name: "should abort after step",
-			clientFn: func(t *testing.T) client.Client {
-				scheme := runtime.NewScheme()
-				err := v2.AddToScheme(scheme)
-				require.NoError(t, err)
-				dogu := &v2.Dogu{
-					ObjectMeta: v1.ObjectMeta{Name: "test"},
-				}
-				mck := fake.NewClientBuilder().
-					WithScheme(scheme).
-					WithObjects(dogu).
-					Build()
-
-				return mck
-			},
 			stepsFn: func(t *testing.T) []Step {
 				step := NewMockStep(t)
 				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.Abort())
@@ -183,8 +96,7 @@ func TestDoguDeleteUseCase_HandleUntilApplied(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ddu := &DoguDeleteUseCase{
-				client: tt.clientFn(t),
-				steps:  tt.stepsFn(t),
+				steps: tt.stepsFn(t),
 			}
 			got, got1, err := ddu.HandleUntilApplied(testCtx, tt.doguResource)
 			if !tt.wantErr(t, err, fmt.Sprintf("HandleUntilApplied(%v, %v)", testCtx, tt.doguResource)) {

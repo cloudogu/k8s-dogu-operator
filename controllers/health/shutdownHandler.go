@@ -42,6 +42,8 @@ func (s *ShutdownHandler) handle(ctx context.Context) error {
 		return err
 	}
 
+	logger := log.FromContext(ctx)
+	logger.Error(nil, fmt.Sprintf("Dogu count: %d", len(dogus.Items)))
 	var errs []error
 	for _, dogu := range dogus.Items {
 		_, updateErr := s.doguInterface.UpdateStatusWithRetry(ctx, &dogu, func(status v2.DoguStatus) v2.DoguStatus {

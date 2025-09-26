@@ -154,10 +154,7 @@ func options() []fx.Option {
 
 			// delete steps
 			deletion.NewServiceAccountRemoverStep,
-			deletion.NewUnregisterDoguVersionStep,
 			deletion.NewDeleteOutOfHealthConfigMapStep,
-			fx.Annotate(deletion.NewRemoveDoguConfigStep, fx.ParamTags(`name:"normalDoguConfig"`), fx.As(new(deletion.RemoveDoguConfigStep))),
-			fx.Annotate(deletion.NewRemoveDoguConfigStep, fx.ParamTags(`name:"sensitiveDoguConfig"`), fx.As(new(deletion.RemoveSensitiveDoguConfigStep))),
 			deletion.NewRemoveFinalizerStep,
 
 			// install or change steps
