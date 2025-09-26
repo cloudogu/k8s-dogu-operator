@@ -4,15 +4,12 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestNewDoguStatusUpdater(t *testing.T) {
@@ -25,93 +22,6 @@ func TestNewDoguStatusUpdater(t *testing.T) {
 
 	// then
 	assert.NotEmpty(t, actual)
-}
-
-func TestDoguStatusUpdater_UpdateStatus(t *testing.T) {
-	t.Run("should fail to get dogu resource", func(t *testing.T) {
-		// given
-		doguClientMock := newMockDoguInterface(t)
-		doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(nil, assert.AnError)
-		ecosystemClientMock := newMockEcosystemInterface(t)
-		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
-
-		sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock}
-
-		// when
-		err := sut.UpdateStatus(testCtx, types.NamespacedName{Name: "my-dogu", Namespace: testNamespace}, true)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to get dogu resource \"test-namespace/my-dogu\"")
-	})
-	t.Run("should fail to update health status of dogu", func(t *testing.T) {
-		// given
-		dogu := &v2.Dogu{ObjectMeta: metav1api.ObjectMeta{Name: "my-dogu", Namespace: testNamespace}}
-
-		doguClientMock := newMockDoguInterface(t)
-		doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-		doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(nil, assert.AnError)
-		ecosystemClientMock := newMockEcosystemInterface(t)
-		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
-
-		recorderMock := newMockEventRecorder(t)
-		recorderMock.EXPECT().Event(dogu, "Warning", "HealthStatusUpdate", "failed to update dogu \"test-namespace/my-dogu\" to desired health status \"available\"")
-
-		sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
-
-		// when
-		err := sut.UpdateStatus(testCtx, dogu.GetObjectKey(), true)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, "failed to update dogu \"test-namespace/my-dogu\" to desired health status \"available\"")
-	})
-	t.Run("should succeed to update health status of dogu", func(t *testing.T) {
-		t.Run("available", func(t *testing.T) {
-			// given
-			dogu := &v2.Dogu{ObjectMeta: metav1api.ObjectMeta{Name: "my-dogu", Namespace: testNamespace}}
-
-			doguClientMock := newMockDoguInterface(t)
-			doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-			doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(nil, nil)
-			ecosystemClientMock := newMockEcosystemInterface(t)
-			ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
-
-			recorderMock := newMockEventRecorder(t)
-			recorderMock.EXPECT().Eventf(dogu, "Normal", "HealthStatusUpdate", "successfully updated health status to %q", v2.AvailableHealthStatus)
-
-			sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
-
-			// when
-			err := sut.UpdateStatus(testCtx, dogu.GetObjectKey(), true)
-
-			// then
-			require.NoError(t, err)
-		})
-		t.Run("unavailable", func(t *testing.T) {
-			// given
-			dogu := &v2.Dogu{ObjectMeta: metav1api.ObjectMeta{Name: "my-dogu", Namespace: testNamespace}}
-
-			doguClientMock := newMockDoguInterface(t)
-			doguClientMock.EXPECT().Get(testCtx, "my-dogu", metav1api.GetOptions{}).Return(dogu, nil)
-			doguClientMock.EXPECT().UpdateStatus(testCtx, dogu, metav1api.UpdateOptions{}).Return(nil, nil)
-			ecosystemClientMock := newMockEcosystemInterface(t)
-			ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
-
-			recorderMock := newMockEventRecorder(t)
-			recorderMock.EXPECT().Eventf(dogu, "Normal", "HealthStatusUpdate", "successfully updated health status to %q", v2.UnavailableHealthStatus)
-
-			sut := &DoguStatusUpdater{ecosystemClient: ecosystemClientMock, recorder: recorderMock}
-
-			// when
-			err := sut.UpdateStatus(testCtx, dogu.GetObjectKey(), false)
-
-			// then
-			require.NoError(t, err)
-		})
-	})
 }
 
 func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
