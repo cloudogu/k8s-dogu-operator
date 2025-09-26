@@ -8,6 +8,8 @@ import (
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 
+	v1 "k8s.io/api/core/v1"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
@@ -24,17 +26,17 @@ func (_m *mockNetPolUpserter) EXPECT() *mockNetPolUpserter_Expecter {
 	return &mockNetPolUpserter_Expecter{mock: &_m.Mock}
 }
 
-// UpsertDoguNetworkPolicies provides a mock function with given fields: ctx, doguResource, dogu
-func (_m *mockNetPolUpserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) error {
-	ret := _m.Called(ctx, doguResource, dogu)
+// UpsertDoguNetworkPolicies provides a mock function with given fields: ctx, doguResource, dogu, doguService
+func (_m *mockNetPolUpserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, doguService *v1.Service) error {
+	ret := _m.Called(ctx, doguResource, dogu, doguService)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpsertDoguNetworkPolicies")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu) error); ok {
-		r0 = rf(ctx, doguResource, dogu)
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *v1.Service) error); ok {
+		r0 = rf(ctx, doguResource, dogu, doguService)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -51,13 +53,14 @@ type mockNetPolUpserter_UpsertDoguNetworkPolicies_Call struct {
 //   - ctx context.Context
 //   - doguResource *v2.Dogu
 //   - dogu *core.Dogu
-func (_e *mockNetPolUpserter_Expecter) UpsertDoguNetworkPolicies(ctx interface{}, doguResource interface{}, dogu interface{}) *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call {
-	return &mockNetPolUpserter_UpsertDoguNetworkPolicies_Call{Call: _e.mock.On("UpsertDoguNetworkPolicies", ctx, doguResource, dogu)}
+//   - doguService *v1.Service
+func (_e *mockNetPolUpserter_Expecter) UpsertDoguNetworkPolicies(ctx interface{}, doguResource interface{}, dogu interface{}, doguService interface{}) *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call {
+	return &mockNetPolUpserter_UpsertDoguNetworkPolicies_Call{Call: _e.mock.On("UpsertDoguNetworkPolicies", ctx, doguResource, dogu, doguService)}
 }
 
-func (_c *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu)) *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call {
+func (_c *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, doguService *v1.Service)) *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu))
+		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu), args[3].(*v1.Service))
 	})
 	return _c
 }
@@ -67,7 +70,7 @@ func (_c *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call) Return(_a0 error) *
 	return _c
 }
 
-func (_c *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu) error) *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call {
+func (_c *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu, *v1.Service) error) *mockNetPolUpserter_UpsertDoguNetworkPolicies_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -91,9 +91,9 @@ func (_c *mockResourceUpserter_UpsertDoguDeployment_Call) RunAndReturn(run func(
 	return _c
 }
 
-// UpsertDoguNetworkPolicies provides a mock function with given fields: ctx, doguResource, dogu, service
-func (_m *mockResourceUpserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, service *corev1.Service) error {
-	ret := _m.Called(ctx, doguResource, dogu, service)
+// UpsertDoguNetworkPolicies provides a mock function with given fields: ctx, doguResource, dogu, doguService
+func (_m *mockResourceUpserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, doguService *corev1.Service) error {
+	ret := _m.Called(ctx, doguResource, dogu, doguService)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpsertDoguNetworkPolicies")
@@ -101,7 +101,7 @@ func (_m *mockResourceUpserter) UpsertDoguNetworkPolicies(ctx context.Context, d
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *corev1.Service) error); ok {
-		r0 = rf(ctx, doguResource, dogu, service)
+		r0 = rf(ctx, doguResource, dogu, doguService)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -118,12 +118,12 @@ type mockResourceUpserter_UpsertDoguNetworkPolicies_Call struct {
 //   - ctx context.Context
 //   - doguResource *v2.Dogu
 //   - dogu *core.Dogu
-//   - service *corev1.Service
-func (_e *mockResourceUpserter_Expecter) UpsertDoguNetworkPolicies(ctx interface{}, doguResource interface{}, dogu interface{}, service interface{}) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
-	return &mockResourceUpserter_UpsertDoguNetworkPolicies_Call{Call: _e.mock.On("UpsertDoguNetworkPolicies", ctx, doguResource, dogu, service)}
+//   - doguService *corev1.Service
+func (_e *mockResourceUpserter_Expecter) UpsertDoguNetworkPolicies(ctx interface{}, doguResource interface{}, dogu interface{}, doguService interface{}) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
+	return &mockResourceUpserter_UpsertDoguNetworkPolicies_Call{Call: _e.mock.On("UpsertDoguNetworkPolicies", ctx, doguResource, dogu, doguService)}
 }
 
-func (_c *mockResourceUpserter_UpsertDoguNetworkPolicies_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, service *corev1.Service)) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
+func (_c *mockResourceUpserter_UpsertDoguNetworkPolicies_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, doguService *corev1.Service)) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu), args[3].(*corev1.Service))
 	})

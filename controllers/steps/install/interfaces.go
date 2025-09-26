@@ -86,7 +86,7 @@ type doguConfigRepository interface {
 }
 
 type netPolUpserter interface {
-	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, doguService *coreV1.Service) error
 }
 
 type serviceGenerator interface {
@@ -143,7 +143,7 @@ type resourceUpserter interface {
 	UpsertDoguService(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, image *imagev1.ConfigFile) (*coreV1.Service, error)
 	// UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
 	UpsertDoguPVCs(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (*coreV1.PersistentVolumeClaim, error)
-	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, doguService *coreV1.Service) error
 }
 
 type ownerReferenceSetter interface {
