@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
@@ -49,8 +50,12 @@ func (hcs *HealthCheckStep) Run(ctx context.Context, doguResource *doguv2.Dogu) 
 		}
 		return steps.RequeueWithError(err)
 	}
+
 	err = hcs.updateDoguHealth(ctx, deployment, doguResource)
 	if err != nil {
+		if cloudoguerrors.IsNotFoundError(err) {
+			return steps.Continue()
+		}
 		return steps.RequeueWithError(err)
 	}
 	return steps.Continue()
