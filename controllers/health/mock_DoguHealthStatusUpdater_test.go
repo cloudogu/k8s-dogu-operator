@@ -8,8 +8,6 @@ import (
 	core "github.com/cloudogu/cesapp-lib/core"
 	mock "github.com/stretchr/testify/mock"
 
-	types "k8s.io/apimachinery/pkg/types"
-
 	v1 "k8s.io/api/apps/v1"
 )
 
@@ -70,54 +68,6 @@ func (_c *MockDoguHealthStatusUpdater_UpdateHealthConfigMap_Call) Return(_a0 err
 }
 
 func (_c *MockDoguHealthStatusUpdater_UpdateHealthConfigMap_Call) RunAndReturn(run func(context.Context, *v1.Deployment, *core.Dogu) error) *MockDoguHealthStatusUpdater_UpdateHealthConfigMap_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateStatus provides a mock function with given fields: ctx, doguName, available
-func (_m *MockDoguHealthStatusUpdater) UpdateStatus(ctx context.Context, doguName types.NamespacedName, available bool) error {
-	ret := _m.Called(ctx, doguName, available)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateStatus")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, bool) error); ok {
-		r0 = rf(ctx, doguName, available)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockDoguHealthStatusUpdater_UpdateStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateStatus'
-type MockDoguHealthStatusUpdater_UpdateStatus_Call struct {
-	*mock.Call
-}
-
-// UpdateStatus is a helper method to define mock.On call
-//   - ctx context.Context
-//   - doguName types.NamespacedName
-//   - available bool
-func (_e *MockDoguHealthStatusUpdater_Expecter) UpdateStatus(ctx interface{}, doguName interface{}, available interface{}) *MockDoguHealthStatusUpdater_UpdateStatus_Call {
-	return &MockDoguHealthStatusUpdater_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, doguName, available)}
-}
-
-func (_c *MockDoguHealthStatusUpdater_UpdateStatus_Call) Run(run func(ctx context.Context, doguName types.NamespacedName, available bool)) *MockDoguHealthStatusUpdater_UpdateStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(types.NamespacedName), args[2].(bool))
-	})
-	return _c
-}
-
-func (_c *MockDoguHealthStatusUpdater_UpdateStatus_Call) Return(_a0 error) *MockDoguHealthStatusUpdater_UpdateStatus_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockDoguHealthStatusUpdater_UpdateStatus_Call) RunAndReturn(run func(context.Context, types.NamespacedName, bool) error) *MockDoguHealthStatusUpdater_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

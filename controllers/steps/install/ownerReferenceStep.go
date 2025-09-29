@@ -23,11 +23,12 @@ func NewOwnerReferenceStep(setter initfx.OwnerReferenceSetter) *OwnerReferenceSt
 func (ors *OwnerReferenceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	err := ors.ownerReferenceSetter.SetOwnerReference(ctx, cescommons.SimpleName(doguResource.Name), []metav1.OwnerReference{
 		{
-			Name:       doguResource.Name,
-			Kind:       doguResource.Kind,
-			APIVersion: doguResource.APIVersion,
-			UID:        doguResource.UID,
-			Controller: &[]bool{true}[0],
+			Name:               doguResource.Name,
+			Kind:               doguResource.Kind,
+			APIVersion:         doguResource.APIVersion,
+			UID:                doguResource.UID,
+			Controller:         &[]bool{true}[0],
+			BlockOwnerDeletion: &[]bool{true}[0],
 		},
 	})
 	if err != nil {

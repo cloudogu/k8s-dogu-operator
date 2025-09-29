@@ -31,11 +31,12 @@ func TestOwnerReferenceStep_Run(t *testing.T) {
 				mck := newMockOwnerReferenceSetter(t)
 				mck.EXPECT().SetOwnerReference(testCtx, cescommons.SimpleName("test"), []metav1.OwnerReference{
 					{
-						Name:       "test",
-						Kind:       "Dogu",
-						APIVersion: "v1",
-						UID:        "uid",
-						Controller: &[]bool{true}[0],
+						Name:               "test",
+						Kind:               "Dogu",
+						APIVersion:         "v1",
+						UID:                "uid",
+						Controller:         &[]bool{true}[0],
+						BlockOwnerDeletion: &[]bool{true}[0],
 					},
 				}).Return(assert.AnError)
 				return mck
@@ -58,11 +59,12 @@ func TestOwnerReferenceStep_Run(t *testing.T) {
 				mck := newMockOwnerReferenceSetter(t)
 				mck.EXPECT().SetOwnerReference(testCtx, cescommons.SimpleName("test"), []metav1.OwnerReference{
 					{
-						Name:       "test",
-						Kind:       "Dogu",
-						APIVersion: "v1",
-						UID:        "uid",
-						Controller: &[]bool{true}[0],
+						Name:               "test",
+						Kind:               "Dogu",
+						APIVersion:         "v1",
+						UID:                "uid",
+						Controller:         &[]bool{true}[0],
+						BlockOwnerDeletion: &[]bool{true}[0],
 					},
 				}).Return(nil)
 				return mck

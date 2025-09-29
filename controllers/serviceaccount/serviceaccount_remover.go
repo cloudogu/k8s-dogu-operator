@@ -9,7 +9,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-registry-lib/config"
-
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -55,7 +54,7 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 
 	sensitiveConfig, err := r.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
-		return fmt.Errorf("unbale to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
+		return fmt.Errorf("unable to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
 	}
 
 	var allProblems error
