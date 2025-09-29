@@ -240,7 +240,6 @@ func options() []fx.Option {
 			func(*controllers.GlobalConfigReconciler) {},
 
 			func(*health.StartupHandler) {},
-			func(*health.ShutdownHandler) {},
 		),
 	}
 }
