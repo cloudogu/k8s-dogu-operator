@@ -59,7 +59,7 @@ var (
 	oldGetConfig                         func() (*rest.Config, error)
 	oldGetConfigOrDie                    func() *rest.Config
 	oldCtrlBuilder                       func(m manager.Manager) *ctrl.Builder
-	oldNewCommandExecutor                func(cli client.Client, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) exec.CommandExecutor
+	oldNewCommandExecutor                func(cli client.Client, restConfig *rest.Config, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) exec.CommandExecutor
 	oldNewRemoteDoguDescriptorRepository func(operatorConfig *config.OperatorConfig) (dogu.RemoteDoguDescriptorRepository, error)
 	oldNewImageRegistry                  func() imageregistry.ImageRegistry
 	oldGetArgs                           func() initfx.Args
@@ -107,7 +107,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	ginkgo.By("overriding functions")
 	oldNewCommandExecutor = initfx.NewCommandExecutor
-	initfx.NewCommandExecutor = func(client.Client, kubernetes.Interface, rest.Interface) exec.CommandExecutor {
+	initfx.NewCommandExecutor = func(client.Client, *rest.Config, kubernetes.Interface, rest.Interface) exec.CommandExecutor {
 		return CommandExecutorMock
 	}
 

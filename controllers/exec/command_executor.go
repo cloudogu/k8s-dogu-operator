@@ -81,16 +81,18 @@ var (
 // commandExecutor is the unit to execute commands in a dogu
 type defaultCommandExecutor struct {
 	client                 client.Client
+	restConfig             *rest.Config
 	clientSet              kubernetes.Interface
 	coreV1RestClient       rest.Interface
 	commandExecutorCreator func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error)
 }
 
 // NewCommandExecutor creates a new instance of NewCommandExecutor
-func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) CommandExecutor {
+func NewCommandExecutor(cli client.Client, restConfig *rest.Config, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) CommandExecutor {
 	return &defaultCommandExecutor{
-		client:    cli,
-		clientSet: clientSet,
+		client:     cli,
+		restConfig: restConfig,
+		clientSet:  clientSet,
 		// the rest clientSet COULD be generated from the clientSet but makes harder to test, so we source it additionally
 		coreV1RestClient:       coreV1RestClient,
 		commandExecutorCreator: remotecommand.NewSPDYExecutor,
