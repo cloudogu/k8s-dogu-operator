@@ -9,8 +9,6 @@ import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -22,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -30,6 +29,7 @@ const (
 	ReasonReconcileSuccess = "ReconcileSuccess"
 	ReasonReconcileFail    = "ReconcileFail"
 	ReasonHasToReconcile   = "HasToReconcile"
+	requeueTime            = 5 * time.Second
 )
 
 type DoguReconciler struct {
@@ -108,7 +108,12 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		getDoguResourceErr = r.setReadyCondition(ctx, doguResource, metav1.ConditionTrue, ReasonReconcileSuccess, "The dogu resource has been reconciled successfully and is ready.")
 	}
 
-	return ctrl.Result{RequeueAfter: requeueAfter}, errors.Join(getDoguResourceErr, err)
+	errs := errors.Join(getDoguResourceErr, err)
+	if errs != nil {
+		return ctrl.Result{RequeueAfter: requeueTime}, nil
+	}
+
+	return ctrl.Result{RequeueAfter: requeueAfter}, errs
 }
 
 // SetupWithManager sets up the controller with the manager.
