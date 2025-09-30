@@ -591,7 +591,14 @@ func assertNewDeploymentVersionWithStartupProbe(doguLookupKey types.NamespacedNa
 	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(ContainSubstring(doguVersion))
 
 	By("Check startup probe failure threshold in deployment")
-	Expect(int32(expectedStartupProbe)).To(Equal(deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold))
+	Eventually(func() int32 {
+		ok := getObjectFromCluster(testCtx, deploymentAfterUpgrading, doguLookupKey)
+		if ok {
+			return deploymentAfterUpgrading.Spec.Template.Spec.Containers[0].StartupProbe.FailureThreshold
+		}
+		return 0
+	}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).
+		Should(Equal(int32(expectedStartupProbe)))
 }
 
 // setExecPodRunning can be necessary because the environment has no controllers to really start the pods,
