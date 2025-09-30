@@ -126,7 +126,10 @@ func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDo
 
 	preUpgradeScriptCmd := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
 
-	fromDoguPod, err := toDoguResource.GetPod(ctx, uds.client)
+	labels := toDoguResource.GetLabels()
+	labels[v2.DoguLabelVersion] = fromDoguVersion
+	fromDoguPod, err := v2.GetPodForLabels(ctx, uds.client, labels)
+
 	if err != nil {
 		return fmt.Errorf("failed to find pod for dogu %s:%s : %w", toDogu.GetSimpleName(), fromDoguVersion, err)
 	}
