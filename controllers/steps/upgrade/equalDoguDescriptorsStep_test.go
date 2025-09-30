@@ -81,23 +81,6 @@ func TestEqualDoguDescriptorsStep_Run(t *testing.T) {
 			want:         steps.Continue(),
 		},
 		{
-			name: "should abort if dogu is downgrade",
-			fields: fields{
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: name}}).Return(&core.Dogu{Version: "1.0.0"}, nil, nil)
-					return mck
-				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(name)).Return(&core.Dogu{Version: "1.0.1"}, nil)
-					return mck
-				},
-			},
-			doguResource: &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: name}},
-			want:         steps.Abort(),
-		},
-		{
 			name: "should fail identity check because of different names",
 			fields: fields{
 				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {

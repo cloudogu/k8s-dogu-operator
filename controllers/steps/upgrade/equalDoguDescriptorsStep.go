@@ -38,12 +38,6 @@ func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.
 		return steps.Continue()
 	}
 
-	if older, err := isOlder(remoteDescriptor.Version, localDescriptor.Version); err != nil {
-		return steps.RequeueWithError(err)
-	} else if older {
-		return steps.Abort()
-	}
-
 	err = edds.checkDoguIdentity(localDescriptor, remoteDescriptor, changeNamespace)
 	if err != nil {
 		return steps.RequeueWithError(err)
@@ -62,18 +56,4 @@ func (edds *EqualDoguDescriptorsStep) checkDoguIdentity(localDogu *core.Dogu, re
 	}
 
 	return nil
-}
-
-func isOlder(version1Raw, version2Raw string) (bool, error) {
-	version1, err := core.ParseVersion(version1Raw)
-	if err != nil {
-		return false, err
-	}
-
-	version2, err := core.ParseVersion(version2Raw)
-	if err != nil {
-		return false, err
-	}
-
-	return version1.IsOlderThan(version2), nil
 }
