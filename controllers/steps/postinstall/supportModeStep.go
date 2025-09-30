@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const SupportModeEnvVar = "SUPPORT_MODE"
@@ -48,7 +47,18 @@ func (sms *SupportModeStep) Run(ctx context.Context, doguResource *doguv2.Dogu) 
 	}
 
 	if isDeploymentInSupportMode(deployment) {
-		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionTrue, ReasonSupportModeActive, "The Support mode is active")
+		doguResource.Status.Health = doguv2.UnavailableHealthStatus
+
+		const message = "The Support mode is active"
+		meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+			Type:               doguv2.ConditionHealthy,
+			Status:             metav1.ConditionFalse,
+			Reason:             ReasonSupportModeActive,
+			Message:            message,
+			LastTransitionTime: steps.Now().Rfc3339Copy(),
+		})
+
+		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionTrue, ReasonSupportModeActive, message)
 		if err != nil {
 			return steps.RequeueWithError(err)
 		}
@@ -76,20 +86,18 @@ func isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
 }
 
 func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguResource *doguv2.Dogu, status metav1.ConditionStatus, reason, message string) error {
-	logger := log.FromContext(ctx)
 	condition := metav1.Condition{
 		Type:               doguv2.ConditionSupportMode,
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
-		LastTransitionTime: metav1.Now().Rfc3339Copy(),
+		LastTransitionTime: steps.Now().Rfc3339Copy(),
 	}
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
 	doguResource, err := sms.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Failed to update dogu resource"))
 		return err
 	}
-	logger.Info(fmt.Sprintf("Updated dogu resource successfully!"))
+
 	return nil
 }

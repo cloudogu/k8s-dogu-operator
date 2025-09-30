@@ -22,6 +22,7 @@ func TestNewDoguDeleteUsecase(t *testing.T) {
 			nil,
 			nil,
 			nil,
+			nil,
 		)
 
 		assert.NotNil(t, usecase)

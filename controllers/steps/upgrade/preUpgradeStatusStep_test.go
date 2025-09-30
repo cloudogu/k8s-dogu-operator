@@ -3,13 +3,15 @@ package upgrade
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var testTime = metav1.Time{Time: time.Unix(112313, 0)}
 
 func TestNewPreUpgradeStatusStep(t *testing.T) {
 	step := NewPreUpgradeStatusStep(newMockUpgradeChecker(t), newMockDoguInterface(t))
@@ -62,7 +64,27 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 			fields: fields{
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
+					expectedDogu := &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}, Status: v2.DoguStatus{
+						Status: "upgrading",
+						Health: "unavailable",
+						Conditions: []metav1.Condition{
+							{
+								Type:               "healthy",
+								Status:             metav1.ConditionFalse,
+								Reason:             "Upgrading",
+								Message:            "The spec version differs from the installed version, therefore an upgrade was scheduled.",
+								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+							},
+							{
+								Type:               "ready",
+								Status:             metav1.ConditionFalse,
+								Reason:             "Upgrading",
+								Message:            "The spec version differs from the installed version, therefore an upgrade was scheduled.",
+								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+							},
+						},
+					}}
+					mck.EXPECT().UpdateStatus(testCtx, expectedDogu, metav1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 				upgradeCheckerFn: func(t *testing.T) upgradeChecker {
@@ -79,7 +101,27 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 			fields: fields{
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil)
+					expectedDogu := &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}, Status: v2.DoguStatus{
+						Status: "upgrading",
+						Health: "unavailable",
+						Conditions: []metav1.Condition{
+							{
+								Type:               "healthy",
+								Status:             metav1.ConditionFalse,
+								Reason:             "Upgrading",
+								Message:            "The spec version differs from the installed version, therefore an upgrade was scheduled.",
+								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+							},
+							{
+								Type:               "ready",
+								Status:             metav1.ConditionFalse,
+								Reason:             "Upgrading",
+								Message:            "The spec version differs from the installed version, therefore an upgrade was scheduled.",
+								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+							},
+						},
+					}}
+					mck.EXPECT().UpdateStatus(testCtx, expectedDogu, metav1.UpdateOptions{}).Return(nil, nil)
 					return mck
 				},
 				upgradeCheckerFn: func(t *testing.T) upgradeChecker {
@@ -94,6 +136,12 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			oldNow := steps.Now
+			defer func() { steps.Now = oldNow }()
+			steps.Now = func() metav1.Time {
+				return testTime
+			}
+
 			p := &PreUpgradeStatusStep{
 				upgradeChecker: tt.fields.upgradeCheckerFn(t),
 				doguInterface:  tt.fields.doguInterfaceFn(t),

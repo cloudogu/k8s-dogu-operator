@@ -16,6 +16,7 @@ type DoguDeleteUseCase struct {
 }
 
 func NewDoguDeleteUseCase(
+	statusStep *deletion.StatusStep,
 	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
 	deleteOutOfHealthConfigMapStep *deletion.DeleteOutOfHealthConfigMapStep,
 	removeSensitiveDoguConfigStep deletion.RemoveSensitiveDoguConfigStep,
@@ -23,6 +24,7 @@ func NewDoguDeleteUseCase(
 ) *DoguDeleteUseCase {
 	return &DoguDeleteUseCase{
 		steps: []Step{
+			statusStep,
 			serviceAccountRemoverStep,
 			deleteOutOfHealthConfigMapStep,
 			removeSensitiveDoguConfigStep,

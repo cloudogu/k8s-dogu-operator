@@ -3,14 +3,17 @@ package postinstall
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
-	v2 "k8s.io/api/apps/v1"
-	v3 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var testTime = metav1.Time{Time: time.Unix(112313, 0)}
 
 func TestNewSupportModeStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
@@ -59,19 +62,19 @@ func TestSupportModeStep_Run(t *testing.T) {
 			fields: fields{
 				supportManagerFn: func(t *testing.T) supportManager {
 					mck := newMockSupportManager(t)
-					mck.EXPECT().HandleSupportMode(testCtx, &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}).Return(false, nil)
+					mck.EXPECT().HandleSupportMode(testCtx, &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(false, nil)
 					return mck
 				},
 				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
 					mck := newMockDeploymentInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(nil, assert.AnError)
+					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					return newMockDoguInterface(t)
 				},
 			},
-			doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
+			doguResource: &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 			want:         steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %q: %w", "test", assert.AnError)),
 		},
 		{
@@ -79,34 +82,34 @@ func TestSupportModeStep_Run(t *testing.T) {
 			fields: fields{
 				supportManagerFn: func(t *testing.T) supportManager {
 					mck := newMockSupportManager(t)
-					mck.EXPECT().HandleSupportMode(testCtx, &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}).Return(false, nil)
+					mck.EXPECT().HandleSupportMode(testCtx, &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(false, nil)
 					return mck
 				},
 				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
 					mck := newMockDeploymentInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&v2.Deployment{}, nil)
+					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(&appsv1.Deployment{}, nil)
 					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
 					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
-						ObjectMeta: v1.ObjectMeta{Name: "test"},
+						ObjectMeta: metav1.ObjectMeta{Name: "test"},
 						Status: doguv2.DoguStatus{
-							Conditions: []v1.Condition{
+							Conditions: []metav1.Condition{
 								{
 									Type:               doguv2.ConditionSupportMode,
-									Status:             v1.ConditionFalse,
+									Status:             metav1.ConditionFalse,
 									Reason:             ReasonSupportModeInactive,
 									Message:            "The Support mode is inactive",
-									LastTransitionTime: v1.Now().Rfc3339Copy(),
+									LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
 								},
 							},
 						},
-					}, v1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, assert.AnError)
+					}, metav1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, assert.AnError)
 					return mck
 				},
 			},
-			doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
+			doguResource: &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 			want:         steps.RequeueWithError(assert.AnError),
 		},
 		{
@@ -114,18 +117,18 @@ func TestSupportModeStep_Run(t *testing.T) {
 			fields: fields{
 				supportManagerFn: func(t *testing.T) supportManager {
 					mck := newMockSupportManager(t)
-					mck.EXPECT().HandleSupportMode(testCtx, &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}).Return(false, nil)
+					mck.EXPECT().HandleSupportMode(testCtx, &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(false, nil)
 					return mck
 				},
 				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
 					mck := newMockDeploymentInterface(t)
-					deployment := &v2.Deployment{
-						Spec: v2.DeploymentSpec{
-							Template: v3.PodTemplateSpec{
-								Spec: v3.PodSpec{
-									Containers: []v3.Container{
+					deployment := &appsv1.Deployment{
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
 										{
-											Env: []v3.EnvVar{
+											Env: []corev1.EnvVar{
 												{
 													Name:  SupportModeEnvVar,
 													Value: "false",
@@ -137,34 +140,101 @@ func TestSupportModeStep_Run(t *testing.T) {
 							},
 						},
 					}
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(deployment, nil)
+					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(deployment, nil)
 					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
 					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
-						ObjectMeta: v1.ObjectMeta{Name: "test"},
+						ObjectMeta: metav1.ObjectMeta{Name: "test"},
 						Status: doguv2.DoguStatus{
-							Conditions: []v1.Condition{
+							Conditions: []metav1.Condition{
 								{
 									Type:               doguv2.ConditionSupportMode,
-									Status:             v1.ConditionFalse,
+									Status:             metav1.ConditionFalse,
 									Reason:             ReasonSupportModeInactive,
 									Message:            "The Support mode is inactive",
-									LastTransitionTime: v1.Now().Rfc3339Copy(),
+									LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
 								},
 							},
 						},
-					}, v1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
+					}, metav1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
 			},
-			doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
+			doguResource: &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 			want:         steps.Continue(),
+		},
+		{
+			name: "should succeed to set support mode condition if deployment in support mode",
+			fields: fields{
+				supportManagerFn: func(t *testing.T) supportManager {
+					mck := newMockSupportManager(t)
+					mck.EXPECT().HandleSupportMode(testCtx, &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(false, nil)
+					return mck
+				},
+				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
+					mck := newMockDeploymentInterface(t)
+					deployment := &appsv1.Deployment{
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Env: []corev1.EnvVar{
+												{
+													Name:  SupportModeEnvVar,
+													Value: "true",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					}
+					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(deployment, nil)
+					return mck
+				},
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					mck := newMockDoguInterface(t)
+					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
+						ObjectMeta: metav1.ObjectMeta{Name: "test"},
+						Status: doguv2.DoguStatus{
+							Health: "unavailable",
+							Conditions: []metav1.Condition{
+								{
+									Type:               doguv2.ConditionHealthy,
+									Status:             metav1.ConditionFalse,
+									Reason:             "SupportModeActive",
+									Message:            "The Support mode is active",
+									LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+								},
+								{
+									Type:               doguv2.ConditionSupportMode,
+									Status:             metav1.ConditionTrue,
+									Reason:             "SupportModeActive",
+									Message:            "The Support mode is active",
+									LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+								},
+							},
+						},
+					}, metav1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, nil)
+					return mck
+				},
+			},
+			doguResource: &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+			want:         steps.Abort(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			oldNow := steps.Now
+			defer func() { steps.Now = oldNow }()
+			steps.Now = func() metav1.Time {
+				return testTime
+			}
+
 			sms := &SupportModeStep{
 				supportManager:      tt.fields.supportManagerFn(t),
 				doguInterface:       tt.fields.doguInterfaceFn(t),

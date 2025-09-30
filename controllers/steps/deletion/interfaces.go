@@ -5,7 +5,7 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
@@ -31,16 +31,6 @@ type localDoguFetcher interface {
 	Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error)
 }
 
-// doguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
-type doguRegistrator interface {
-	// RegisterNewDogu registers a new dogu in the local dogu registry.
-	RegisterNewDogu(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
-	// RegisterDoguVersion registers a new version for an existing dogu in the dogu registry.
-	RegisterDoguVersion(ctx context.Context, dogu *cesappcore.Dogu) error
-	// UnregisterDogu removes a registration of a dogu from the local dogu registry.
-	UnregisterDogu(ctx context.Context, dogu string) error
-}
-
 // serviceAccountRemover includes functionality to remove existing service accounts for a dogu.
 //
 //nolint:unused
@@ -62,4 +52,8 @@ type doguConfigRepository interface {
 
 type k8sClient interface {
 	client.Client
+}
+
+type doguInterface interface {
+	doguClient.DoguInterface
 }

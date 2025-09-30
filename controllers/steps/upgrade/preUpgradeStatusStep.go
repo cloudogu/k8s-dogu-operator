@@ -31,7 +31,7 @@ func (p *PreUpgradeStatusStep) Run(ctx context.Context, resource *v2.Dogu) steps
 		resource.Status.Status = v2.DoguStatusUpgrading
 		resource.Status.Health = v2.UnavailableHealthStatus
 
-		lastTransitionTime := metav1.Now()
+		lastTransitionTime := steps.Now()
 		const message = "The spec version differs from the installed version, therefore an upgrade was scheduled."
 		meta.SetStatusCondition(&resource.Status.Conditions, metav1.Condition{
 			Type:               v2.ConditionHealthy,
