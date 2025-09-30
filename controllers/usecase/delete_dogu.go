@@ -8,14 +8,18 @@ import (
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type DoguDeleteUseCase struct {
-	steps []Step
+	client client.Client
+	steps  []Step
 }
 
 func NewDoguDeleteUseCase(
+	k8sClient client.Client,
 	statusStep *deletion.StatusStep,
 	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
 	deleteOutOfHealthConfigMapStep *deletion.DeleteOutOfHealthConfigMapStep,
@@ -23,6 +27,7 @@ func NewDoguDeleteUseCase(
 	removeFinalizerStep *deletion.RemoveFinalizerStep,
 ) *DoguDeleteUseCase {
 	return &DoguDeleteUseCase{
+		client: k8sClient,
 		steps: []Step{
 			statusStep,
 			serviceAccountRemoverStep,
@@ -38,6 +43,11 @@ func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResour
 		WithValues("doguName", doguResource.Name)
 
 	for _, s := range ddu.steps {
+		err := ddu.client.Get(ctx, types.NamespacedName{Name: doguResource.Name, Namespace: doguResource.Namespace}, doguResource)
+		if err != nil {
+			return 0, false, err
+		}
+
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
 			stepType := getType(s)
