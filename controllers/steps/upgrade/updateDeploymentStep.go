@@ -126,7 +126,7 @@ func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDo
 
 	preUpgradeScriptCmd := toDogu.GetExposedCommand(core.ExposedCommandPreUpgrade)
 
-	labels := toDoguResource.GetLabels()
+	labels := toDoguResource.GetPodLabels()
 	labels[v2.DoguLabelVersion] = fromDoguVersion
 	fromDoguPod, err := v2.GetPodForLabels(ctx, uds.client, labels)
 
