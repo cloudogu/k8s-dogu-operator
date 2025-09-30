@@ -75,7 +75,7 @@ func (rs *ReplicasStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.St
 func (rs *ReplicasStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
 	// Longhorn works this way and does not add the Condition "FileSystemResizePending" to the PVC
 	// see https://github.com/longhorn/longhorn/issues/2749
-	isRequestedCapacityAvailable := pvc.Status.Capacity.Storage().Value() >= quantity.Value()
+	isRequestedCapacityAvailable := pvc.Spec.Resources.Requests.Storage().Value() >= quantity.Value()
 	return isRequestedCapacityAvailable
 }
 

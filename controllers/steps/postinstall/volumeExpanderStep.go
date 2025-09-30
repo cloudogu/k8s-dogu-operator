@@ -66,40 +66,30 @@ func (vs *VolumeExpanderStep) Run(ctx context.Context, doguResource *v2.Dogu) st
 		return steps.Continue()
 	}
 
-	if !vs.isPvcResizeApplicable(pvc) {
-		_ = opresource.SetCurrentDataVolumeSize(ctx, vs.doguInterface, vs.client, doguResource, pvc)
+	if pvc.Spec.Size() == quantity.Size() {
+		return steps.RequeueAfter(requeueAfterVolume)
+	}
 
-		// It is necessary to create a new map because just setting a new quantity results in an exception.
-		pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}
-		err = vs.client.Update(ctx, pvc)
-		if err != nil {
-			return steps.RequeueWithError(fmt.Errorf("failed to update PVC %s: %w", pvc.Name, err))
-		}
+	err = opresource.SetCurrentDataVolumeSize(ctx, vs.doguInterface, vs.client, doguResource, pvc)
+	if err != nil {
+		steps.RequeueWithError(err)
+	}
+
+	// It is necessary to create a new map because just setting a new quantity results in an exception.
+	pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: quantity}
+	err = vs.client.Update(ctx, pvc)
+	if err != nil {
+		return steps.RequeueWithError(fmt.Errorf("failed to update PVC %s: %w", pvc.Name, err))
 	}
 
 	return steps.RequeueAfter(requeueAfterVolume)
 }
 
 func (vs *VolumeExpanderStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
-	if vs.isPvcResizeApplicable(pvc) {
-		return true
-	}
-
 	// Longhorn works this way and does not add the Condition "FileSystemResizePending" to the PVC
 	// see https://github.com/longhorn/longhorn/issues/2749
 	isRequestedCapacityAvailable := pvc.Status.Capacity.Storage().Value() >= quantity.Value()
 	return isRequestedCapacityAvailable
-}
-
-// isPvcResizeApplicable checks if the filesystem resize is "pending", which means that the pod has to be (re)started to actually resize the volume.
-// see https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/#file-system-expansion
-func (vs *VolumeExpanderStep) isPvcResizeApplicable(pvc *corev1.PersistentVolumeClaim) bool {
-	for _, condition := range pvc.Status.Conditions {
-		if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending && condition.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-	return false
 }
 
 func hasPvc(dogu *core.Dogu) bool {
