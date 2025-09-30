@@ -79,6 +79,8 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewEcoSystemClientSet, fx.As(new(doguClient.EcoSystemV2Interface))),
 			fx.Annotate(initfx.NewDoguInterface, fx.As(new(doguClient.DoguInterface))),
 			fx.Annotate(initfx.NewDoguRestartInterface, fx.As(new(doguClient.DoguRestartInterface))),
+			fx.Annotate(health.NewShutdownHandler, fx.As(new(health.HealthShutdownHandler))),
+
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
 			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder))),
 

@@ -94,3 +94,7 @@ type coreV1Interface interface {
 type deploymentInterface interface {
 	appsv1client.DeploymentInterface
 }
+
+type HealthShutdownHandler interface {
+	Handle(ctx context.Context) error
+}

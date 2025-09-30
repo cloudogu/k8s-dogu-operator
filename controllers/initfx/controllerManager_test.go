@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -113,11 +113,11 @@ func Test_getArgs(t *testing.T) {
 
 func TestNewControllerManager(t *testing.T) {
 	type args struct {
-		lcFn            func(t *testing.T) fxLifecycle
-		loggerFn        func(t *testing.T) logr.Logger
-		optionsFn       func(t *testing.T) manager.Options
-		restConfigFn    func(t *testing.T) *rest.Config
-		doguInterfaceFn func(t *testing.T) doguClient.DoguInterface
+		lcFn              func(t *testing.T) fxLifecycle
+		loggerFn          func(t *testing.T) logr.Logger
+		optionsFn         func(t *testing.T) manager.Options
+		restConfigFn      func(t *testing.T) *rest.Config
+		shutdownHandlerFn func(t *testing.T) health.HealthShutdownHandler
 	}
 	tests := []struct {
 		name              string
@@ -142,8 +142,8 @@ func TestNewControllerManager(t *testing.T) {
 					require.NoError(t, err)
 					return managerOptions
 				},
-				doguInterfaceFn: func(t *testing.T) doguClient.DoguInterface {
-					return newMockDoguInterface(t)
+				shutdownHandlerFn: func(t *testing.T) health.HealthShutdownHandler {
+					return health.NewShutdownHandler(newMockDoguInterface(t))
 				},
 			},
 			wantManagerNotNil: false,
@@ -152,7 +152,7 @@ func TestNewControllerManager(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewControllerManager(tt.args.lcFn(t), tt.args.loggerFn(t), tt.args.optionsFn(t), tt.args.restConfigFn(t), tt.args.doguInterfaceFn(t))
+			got, err := NewControllerManager(tt.args.lcFn(t), tt.args.loggerFn(t), tt.args.optionsFn(t), tt.args.restConfigFn(t), tt.args.shutdownHandlerFn(t))
 			if !tt.wantErr(t, err, fmt.Sprintf("NewControllerManager(%v, %v, %v, %v)", tt.args.lcFn(t), tt.args.loggerFn(t), tt.args.optionsFn(t), tt.args.restConfigFn(t))) {
 				return
 			}

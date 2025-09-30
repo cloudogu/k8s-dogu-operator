@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/go-logr/logr"
@@ -129,8 +130,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testDoguName}},
-			want:    controllerruntime.Result{RequeueAfter: 1},
-			wantErr: assert.Error,
+			want:    controllerruntime.Result{RequeueAfter: 5 * time.Second},
+			wantErr: assert.NoError,
 		},
 		{
 			name: "should succeed to update dogu resource on error",
@@ -162,8 +163,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testDoguName}},
-			want:    controllerruntime.Result{RequeueAfter: 0},
-			wantErr: assert.Error,
+			want:    controllerruntime.Result{RequeueAfter: 5 * time.Second},
+			wantErr: assert.NoError,
 		},
 		{
 			name: "should succeed to update dogu resource on abort",

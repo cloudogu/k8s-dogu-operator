@@ -7,9 +7,8 @@ import (
 	"os"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
@@ -46,7 +45,7 @@ func NewControllerManager(
 	logger logr.Logger,
 	options manager.Options,
 	restConfig *rest.Config,
-	doguInterface doguClient.DoguInterface,
+	handler health.HealthShutdownHandler,
 ) (manager.Manager, error) {
 	ctrl.SetLogger(logger)
 
@@ -71,62 +70,10 @@ func NewControllerManager(
 		}()
 	}))
 	lc.Append(fx.StopHook(func(ctx context.Context) {
-		ctx, canclFunc := context.WithCancel(context.Background())
-		defer canclFunc()
 		defer cancelFunc()
-		dogus, err := doguInterface.List(ctx, metav1.ListOptions{})
+		err := handler.Handle(ctx)
 		if err != nil {
-			logger.Info(fmt.Sprintf("failed to get dogus"))
 			return
-		}
-
-		logger.Error(nil, fmt.Sprintf("Dogu count: %d", len(dogus.Items)))
-		for _, dogu := range dogus.Items {
-			doguInterface.UpdateStatusWithRetry(ctx, &dogu, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-				status.Health = doguv2.UnknownHealthStatus
-				reason := "StoppingOperator"
-				message := "The operator is shutting down"
-				conditions := []metav1.Condition{
-					{
-						Type:               doguv2.ConditionReady,
-						Status:             metav1.ConditionUnknown,
-						Reason:             reason,
-						Message:            message,
-						LastTransitionTime: metav1.Now(),
-					},
-					{
-						Type:               doguv2.ConditionHealthy,
-						Status:             metav1.ConditionUnknown,
-						Reason:             reason,
-						Message:            message,
-						LastTransitionTime: metav1.Now(),
-					},
-					{
-						Type:               doguv2.ConditionSupportMode,
-						Status:             metav1.ConditionUnknown,
-						Reason:             reason,
-						Message:            message,
-						LastTransitionTime: metav1.Now(),
-					},
-					{
-						Type:               doguv2.ConditionMeetsMinVolumeSize,
-						Status:             metav1.ConditionUnknown,
-						Reason:             reason,
-						Message:            message,
-						LastTransitionTime: metav1.Now(),
-					},
-					{
-						Type:               doguv2.ConditionPauseReconciliation,
-						Status:             metav1.ConditionUnknown,
-						Reason:             reason,
-						Message:            message,
-						LastTransitionTime: metav1.Now(),
-					},
-				}
-
-				status.Conditions = conditions
-				return status
-			}, metav1.UpdateOptions{})
 		}
 	}))
 
