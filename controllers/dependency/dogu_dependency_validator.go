@@ -81,9 +81,6 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 
 	localDependency, err := dc.fetcher.FetchInstalled(ctx, cescommons.SimpleName(doguDependency.Name))
 	if err != nil {
-		log.FromContext(ctx).Info(fmt.Sprintf("+++++ failed to fetch dep (optional: %t) with err: %v", optional, err))
-		log.FromContext(ctx).Info(fmt.Sprintf("+++++ is not found err optional: %t", regLibErr.IsNotFoundError(err)))
-
 		if optional && regLibErr.IsNotFoundError(err) {
 			return nil // not installed => no error as this is ok for optional dependencies
 		}

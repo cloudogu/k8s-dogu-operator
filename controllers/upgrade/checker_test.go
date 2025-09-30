@@ -1,6 +1,7 @@
 package upgrade
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var testCtx = context.Background()
 
 func TestNewChecker(t *testing.T) {
 	c := NewChecker(newMockLocalDoguFetcher(t))

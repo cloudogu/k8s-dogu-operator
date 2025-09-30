@@ -7,6 +7,7 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-registry-lib/config"
@@ -39,15 +40,6 @@ type SensitiveDoguConfigOwnerReferenceStep interface {
 
 type LocalDoguDescriptorOwnerReferenceStep interface {
 	steps.Step
-}
-
-// premisesChecker includes functionality to check if the premises for an upgrade are met.
-//
-//nolint:unused
-//goland:noinspection GoUnusedType
-type premisesChecker interface {
-	// Check checks if dogu premises are met before a dogu upgrade.
-	Check(ctx context.Context, toDoguResource *v2.Dogu, fromDogu *cesappcore.Dogu, toDogu *cesappcore.Dogu) error
 }
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
@@ -176,6 +168,11 @@ type coreV1Interface interface {
 
 type dependencyValidator interface {
 	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
+}
+
+// doguHealthChecker includes functionality to check if the dogu described by the resource is up and running.
+type doguHealthChecker interface {
+	health.DoguHealthChecker
 }
 
 type persistentVolumeClaimInterface interface {

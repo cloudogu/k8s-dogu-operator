@@ -9,15 +9,13 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type ValidationStep struct {
-	premisesChecker               premisesChecker
-	localDoguFetcher              localDoguFetcher
+	doguHealthChecker             doguHealthChecker
 	resourceDoguFetcher           resourceDoguFetcher
 	securityValidator             securityValidator
 	doguAdditionalMountsValidator doguAdditionalMountsValidator
@@ -25,16 +23,14 @@ type ValidationStep struct {
 }
 
 func NewValidationStep(
-	checker upgrade.PremisesChecker,
-	localDoguFetcher cesregistry.LocalDoguFetcher,
+	healthChecker health.DoguHealthChecker,
 	resourceDoguFetcher cesregistry.ResourceDoguFetcher,
 	dependencyValidator dependency.Validator,
 	securityValidator security.Validator,
 	doguAdditionalMountsValidator additionalMount.Validator,
 ) *ValidationStep {
 	return &ValidationStep{
-		premisesChecker:               checker,
-		localDoguFetcher:              localDoguFetcher,
+		doguHealthChecker:             healthChecker,
 		resourceDoguFetcher:           resourceDoguFetcher,
 		dependencyValidator:           dependencyValidator,
 		securityValidator:             securityValidator,
@@ -43,21 +39,17 @@ func NewValidationStep(
 }
 
 func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	fromDogu, toDogu, _, err := vs.getDogusForUpgrade(ctx, doguResource)
+	toDogu, _, err := vs.getDogusForUpgrade(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
 
-	if fromDogu != nil && toDogu != nil && fromDogu.Version != toDogu.Version {
-		err = vs.premisesChecker.Check(ctx, doguResource, toDogu, fromDogu)
-		if err != nil {
-			return steps.RequeueWithError(fmt.Errorf("failed a premise check: %w", err))
-		}
-
-		return steps.Continue()
+	err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
+	if err != nil {
+		return steps.RequeueWithError(err)
 	}
 
-	err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
+	err = vs.doguHealthChecker.CheckDependenciesRecursive(ctx, toDogu, doguResource.Namespace)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
@@ -75,19 +67,11 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 	return steps.Continue()
 }
 
-func (vs *ValidationStep) getDogusForUpgrade(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, *core.Dogu, *v2.DevelopmentDoguMap, error) {
-	logger := log.FromContext(ctx).
-		WithName("ValidationStep.getDogusForUpgrade").
-		WithValues("doguName", doguResource.Name)
-	fromDogu, err := vs.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
-	if err != nil {
-		logger.Info("dogu ist not installed. Installation will be started.")
-	}
-
+func (vs *ValidationStep) getDogusForUpgrade(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, *v2.DevelopmentDoguMap, error) {
 	toDogu, developmentDoguMap, err := vs.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to fetch dogu descriptor: %w", err)
+		return nil, nil, fmt.Errorf("failed to fetch dogu descriptor: %w", err)
 	}
 
-	return fromDogu, toDogu, developmentDoguMap, nil
+	return toDogu, developmentDoguMap, nil
 }

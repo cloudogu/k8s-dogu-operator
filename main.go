@@ -145,7 +145,6 @@ func options() []fx.Option {
 			fx.Annotate(garbagecollection.NewDoguRestartGarbageCollector, fx.As(new(controllers.DoguRestartGarbageCollector))),
 			fx.Annotate(health.NewDoguConditionUpdater, fx.As(new(install.ConditionUpdater))),
 			fx.Annotate(health.NewDoguChecker, fx.As(new(health.DoguHealthChecker))),
-			fx.Annotate(upgrade.NewPremisesChecker, fx.As(new(upgrade.PremisesChecker))),
 			fx.Annotate(manager.NewDoguExportManager, fx.As(new(manager.DoguExportManager))),
 			fx.Annotate(manager.NewDoguSupportManager, fx.As(new(manager.SupportManager))),
 			fx.Annotate(manager.NewDoguAdditionalMountManager, fx.As(new(manager.AdditionalMountManager))),
