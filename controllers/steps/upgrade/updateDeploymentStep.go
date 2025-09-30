@@ -31,7 +31,6 @@ type UpdateDeploymentStep struct {
 	client              k8sClient
 	upserter            resourceUpserter
 	deploymentInterface deploymentInterface
-	resourceDoguFetcher resourceDoguFetcher
 	localDoguFetcher    localDoguFetcher
 	execPodFactory      execPodFactory
 	doguCommandExecutor commandExecutor
@@ -42,7 +41,6 @@ func NewUpdateDeploymentStep(
 	upserter resource.ResourceUpserter,
 	deploymentInterface appsv1.DeploymentInterface,
 	localFetcher cesregistry.LocalDoguFetcher,
-	resourceFetcher cesregistry.ResourceDoguFetcher,
 	factory exec.ExecPodFactory,
 	executor exec.CommandExecutor,
 ) *UpdateDeploymentStep {
@@ -51,7 +49,6 @@ func NewUpdateDeploymentStep(
 		upserter:            upserter,
 		deploymentInterface: deploymentInterface,
 		localDoguFetcher:    localFetcher,
-		resourceDoguFetcher: resourceFetcher,
 		execPodFactory:      factory,
 		doguCommandExecutor: executor,
 	}
@@ -67,7 +64,7 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		return steps.Continue()
 	}
 
-	dogu, _, err := uds.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	dogu, err := uds.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}

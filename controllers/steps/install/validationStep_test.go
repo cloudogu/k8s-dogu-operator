@@ -17,7 +17,6 @@ func TestNewValidationStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		step := NewValidationStep(
 			newMockDoguHealthChecker(t),
-			newMockResourceDoguFetcher(t),
 			newMockLocalDoguFetcher(t),
 			newMockDependencyValidator(t),
 			newMockSecurityValidator(t),
@@ -31,7 +30,6 @@ func TestNewValidationStep(t *testing.T) {
 func TestValidationStep_Run(t *testing.T) {
 	type fields struct {
 		doguHealthCheckerFn             func(t *testing.T) doguHealthChecker
-		resourceDoguFetcherFn           func(t *testing.T) resourceDoguFetcher
 		localDoguFetcherFn              func(t *testing.T) localDoguFetcher
 		securityValidatorFn             func(t *testing.T) securityValidator
 		doguAdditionalMountsValidatorFn func(t *testing.T) doguAdditionalMountsValidator
@@ -44,16 +42,17 @@ func TestValidationStep_Run(t *testing.T) {
 		want         steps.StepResult
 	}{
 		{
-			name: "should fail to get remote dogu descriptor",
+			name: "should fail to get dogu descriptor",
 			fields: fields{
 				doguHealthCheckerFn: func(t *testing.T) doguHealthChecker {
 					return newMockDoguHealthChecker(t)
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}).Return(nil, nil, assert.AnError)
+					}).Return(nil, assert.AnError)
 					return mck
 				},
 				securityValidatorFn: func(t *testing.T) securityValidator {
@@ -65,16 +64,11 @@ func TestValidationStep_Run(t *testing.T) {
 				dependencyValidatorFn: func(t *testing.T) dependencyValidator {
 					return newMockDependencyValidator(t)
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
-					return mck
-				},
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
 			},
-			want: steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", assert.AnError)),
+			want: steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor for %q: %w", "test", assert.AnError)),
 		},
 		{
 			name: "should fail dependency validation",
@@ -82,11 +76,12 @@ func TestValidationStep_Run(t *testing.T) {
 				doguHealthCheckerFn: func(t *testing.T) doguHealthChecker {
 					return newMockDoguHealthChecker(t)
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}).Return(&core.Dogu{Version: "1.0.1"}, nil, nil)
+					}).Return(&core.Dogu{Version: "1.0.1"}, nil)
 					return mck
 				},
 				securityValidatorFn: func(t *testing.T) securityValidator {
@@ -98,11 +93,6 @@ func TestValidationStep_Run(t *testing.T) {
 				dependencyValidatorFn: func(t *testing.T) dependencyValidator {
 					mck := newMockDependencyValidator(t)
 					mck.EXPECT().ValidateDependencies(testCtx, &core.Dogu{Version: "1.0.1"}).Return(assert.AnError)
-					return mck
-				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
 					return mck
 				},
 			},
@@ -119,11 +109,12 @@ func TestValidationStep_Run(t *testing.T) {
 					mck.EXPECT().CheckDependenciesRecursive(testCtx, &core.Dogu{Version: "1.0.1"}, "").Return(assert.AnError)
 					return mck
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}).Return(&core.Dogu{Version: "1.0.1"}, nil, nil)
+					}).Return(&core.Dogu{Version: "1.0.1"}, nil)
 					return mck
 				},
 				securityValidatorFn: func(t *testing.T) securityValidator {
@@ -135,11 +126,6 @@ func TestValidationStep_Run(t *testing.T) {
 				dependencyValidatorFn: func(t *testing.T) dependencyValidator {
 					mck := newMockDependencyValidator(t)
 					mck.EXPECT().ValidateDependencies(testCtx, &core.Dogu{Version: "1.0.1"}).Return(nil)
-					return mck
-				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
 					return mck
 				},
 			},
@@ -156,11 +142,12 @@ func TestValidationStep_Run(t *testing.T) {
 					mck.EXPECT().CheckDependenciesRecursive(testCtx, &core.Dogu{Version: "1.0.1"}, "").Return(nil)
 					return mck
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}).Return(&core.Dogu{Version: "1.0.1"}, nil, nil)
+					}).Return(&core.Dogu{Version: "1.0.1"}, nil)
 					return mck
 				},
 				securityValidatorFn: func(t *testing.T) securityValidator {
@@ -178,11 +165,6 @@ func TestValidationStep_Run(t *testing.T) {
 					mck.EXPECT().ValidateDependencies(testCtx, &core.Dogu{Version: "1.0.1"}).Return(nil)
 					return mck
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
-					return mck
-				},
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
@@ -197,11 +179,12 @@ func TestValidationStep_Run(t *testing.T) {
 					mck.EXPECT().CheckDependenciesRecursive(testCtx, &core.Dogu{Version: "1.0.1"}, "").Return(nil)
 					return mck
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}).Return(&core.Dogu{Version: "1.0.1"}, nil, nil)
+					}).Return(&core.Dogu{Version: "1.0.1"}, nil)
 					return mck
 				},
 				securityValidatorFn: func(t *testing.T) securityValidator {
@@ -223,11 +206,6 @@ func TestValidationStep_Run(t *testing.T) {
 					mck.EXPECT().ValidateDependencies(testCtx, &core.Dogu{Version: "1.0.1"}).Return(nil)
 					return mck
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
-					return mck
-				},
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
@@ -242,11 +220,12 @@ func TestValidationStep_Run(t *testing.T) {
 					mck.EXPECT().CheckDependenciesRecursive(testCtx, &core.Dogu{Version: "1.0.1"}, "").Return(nil)
 					return mck
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}).Return(&core.Dogu{Version: "1.0.1"}, nil, nil)
+					}).Return(&core.Dogu{Version: "1.0.1"}, nil)
 					return mck
 				},
 				securityValidatorFn: func(t *testing.T) securityValidator {
@@ -268,11 +247,6 @@ func TestValidationStep_Run(t *testing.T) {
 					mck.EXPECT().ValidateDependencies(testCtx, &core.Dogu{Version: "1.0.1"}).Return(nil)
 					return mck
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, errors.NewNotFoundError(assert.AnError))
-					return mck
-				},
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test"},
@@ -284,11 +258,10 @@ func TestValidationStep_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			vs := &ValidationStep{
 				doguHealthChecker:             tt.fields.doguHealthCheckerFn(t),
-				resourceDoguFetcher:           tt.fields.resourceDoguFetcherFn(t),
+				localDoguFetcher:              tt.fields.localDoguFetcherFn(t),
 				securityValidator:             tt.fields.securityValidatorFn(t),
 				doguAdditionalMountsValidator: tt.fields.doguAdditionalMountsValidatorFn(t),
 				dependencyValidator:           tt.fields.dependencyValidatorFn(t),
-				localDoguFetcher:              tt.fields.localDoguFetcherFn(t),
 			}
 			assert.Equalf(t, tt.want, vs.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)
 		})

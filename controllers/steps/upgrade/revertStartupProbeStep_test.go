@@ -21,7 +21,6 @@ func TestNewRevertStartupProbeStep(t *testing.T) {
 			newMockK8sClient(t),
 			nil,
 			nil,
-			nil,
 			newMockCommandExecutor(t),
 		)
 
@@ -33,7 +32,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 	type fields struct {
 		clientFn              func(t *testing.T) k8sClient
 		localDoguFetcherFn    func(t *testing.T) localDoguFetcher
-		resourceDoguFetcherFn func(t *testing.T) resourceDoguFetcher
 		deploymentInterfaceFn func(t *testing.T) deploymentInterface
 		doguCommandExecutorFn func(t *testing.T) commandExecutor
 	}
@@ -52,13 +50,10 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
 					return newMockDeploymentInterface(t)
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{}).Return(nil, nil, assert.AnError)
-					return mck
-				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					return newMockLocalDoguFetcher(t)
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{}).Return(nil, assert.AnError)
+					return mck
 				},
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
@@ -78,13 +73,10 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(nil, nil, nil)
-					return mck
-				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					return newMockLocalDoguFetcher(t)
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(nil, nil)
+					return mck
 				},
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
@@ -116,13 +108,10 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 					}, nil)
 					return mck
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{Name: "official/test"}, nil, nil)
-					return mck
-				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					return newMockLocalDoguFetcher(t)
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{Name: "official/test"}, nil)
+					return mck
 				},
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
 					return newMockCommandExecutor(t)
@@ -171,12 +160,8 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{Name: "official/test"}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "official/test"}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{Name: "official/test"}, nil, nil)
 					return mck
 				},
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
@@ -226,12 +211,8 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{Name: "official/test"}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "official/test"}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{Name: "official/test"}, nil, nil)
 					return mck
 				},
 				doguCommandExecutorFn: func(t *testing.T) commandExecutor {
@@ -258,9 +239,9 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(&appsv1.Deployment{}, nil)
 					return mck
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(
 						&core.Dogu{
 							Name: "official/test",
 							ExposedCommands: []core.ExposedCommand{
@@ -270,11 +251,7 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 									Description: "",
 								},
 							},
-						}, nil, nil)
-					return mck
-				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
+						}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "official/test"}, nil)
 					return mck
 				},
@@ -297,9 +274,9 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(&appsv1.Deployment{}, nil)
 					return mck
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(
 						&core.Dogu{
 							Name: "official/test",
 							ExposedCommands: []core.ExposedCommand{
@@ -309,11 +286,7 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 									Description: "",
 								},
 							},
-						}, nil, nil)
-					return mck
-				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					mck := newMockLocalDoguFetcher(t)
+						}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, assert.AnError)
 					return mck
 				},
@@ -329,7 +302,6 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rsps := &RevertStartupProbeStep{
 				client:              tt.fields.clientFn(t),
-				resourceDoguFetcher: tt.fields.resourceDoguFetcherFn(t),
 				deploymentInterface: tt.fields.deploymentInterfaceFn(t),
 				doguCommandExecutor: tt.fields.doguCommandExecutorFn(t),
 				localDoguFetcher:    tt.fields.localDoguFetcherFn(t),

@@ -11,20 +11,18 @@ import (
 )
 
 type EqualDoguDescriptorsStep struct {
-	resourceDoguFetcher resourceDoguFetcher
-	localDoguFetcher    localDoguFetcher
+	localDoguFetcher localDoguFetcher
 }
 
-func NewEqualDoguDescriptorsStep(resourceFetcher cesregistry.ResourceDoguFetcher, localFetcher cesregistry.LocalDoguFetcher) *EqualDoguDescriptorsStep {
+func NewEqualDoguDescriptorsStep(localFetcher cesregistry.LocalDoguFetcher) *EqualDoguDescriptorsStep {
 	return &EqualDoguDescriptorsStep{
-		resourceDoguFetcher: resourceFetcher,
-		localDoguFetcher:    localFetcher,
+		localDoguFetcher: localFetcher,
 	}
 }
 
 func (edds *EqualDoguDescriptorsStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
-	remoteDescriptor, _, err := edds.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	remoteDescriptor, err := edds.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}

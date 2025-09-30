@@ -24,7 +24,6 @@ const requeueAfterRevertStartupProbe = time.Second * 3
 type RevertStartupProbeStep struct {
 	client              k8sClient
 	localDoguFetcher    localDoguFetcher
-	resourceDoguFetcher resourceDoguFetcher
 	deploymentInterface deploymentInterface
 	doguCommandExecutor commandExecutor
 }
@@ -33,20 +32,18 @@ func NewRevertStartupProbeStep(
 	client client.Client,
 	deploymentInterface appsv1.DeploymentInterface,
 	localFetcher cesregistry.LocalDoguFetcher,
-	resourceFetcher cesregistry.ResourceDoguFetcher,
 	executor exec.CommandExecutor,
 ) *RevertStartupProbeStep {
 	return &RevertStartupProbeStep{
 		client:              client,
 		deploymentInterface: deploymentInterface,
 		localDoguFetcher:    localFetcher,
-		resourceDoguFetcher: resourceFetcher,
 		doguCommandExecutor: executor,
 	}
 }
 
 func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	toDogu, _, err := rsps.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	toDogu, err := rsps.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}

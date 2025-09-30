@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
@@ -12,10 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
 )
 
 // localDoguFetcher abstracts the access to dogu structs from the local dogu registry.
@@ -65,6 +66,20 @@ func (df *localDoguFetcher) FetchInstalled(ctx context.Context, doguName cescomm
 func (df *localDoguFetcher) Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error) {
 	enabled, _, err := checkDoguVersionEnabled(ctx, df.doguVersionRegistry, doguName)
 	return enabled, err
+}
+
+func (df *localDoguFetcher) FetchForResource(ctx context.Context, doguResource *doguv2.Dogu) (*core.Dogu, error) {
+	version, err := doguResource.GetSimpleNameVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	doguDescriptor, err := df.doguRepository.Get(ctx, version)
+	if err != nil {
+		return nil, err
+	}
+
+	return doguDescriptor, nil
 }
 
 func (df *localDoguFetcher) getLocalDogu(ctx context.Context, fromDoguName cescommons.SimpleName) (*core.Dogu, error) {

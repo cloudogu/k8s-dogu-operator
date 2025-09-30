@@ -164,6 +164,7 @@ func options() []fx.Option {
 			// install or change steps
 			install.NewConditionsStep,
 			install.NewHealthCheckStep,
+			install.NewFetchRemoteDoguDescriptorStep,
 			install.NewValidationStep,
 			install.NewPauseReconciliationStep,
 			install.NewFinalizerExistsStep,
@@ -217,7 +218,6 @@ func options() []fx.Option {
 			upgradeSteps.NewUpdateDeploymentStep,
 			upgradeSteps.NewDeleteExecPodStep,
 			upgradeSteps.NewRevertStartupProbeStep,
-			upgradeSteps.NewDeleteDevelopmentDoguMapStep,
 			upgradeSteps.NewInstalledVersionStep,
 			upgradeSteps.NewDeploymentUpdaterStep,
 			upgradeSteps.NewUpdateStartedAtStep,

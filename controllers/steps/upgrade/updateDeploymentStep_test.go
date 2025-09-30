@@ -27,7 +27,6 @@ func TestNewUpdateDeploymentStep(t *testing.T) {
 			nil,
 			newMockDeploymentInterface(t),
 			newMockLocalDoguFetcher(t),
-			newMockResourceDoguFetcher(t),
 			newMockExecPodFactory(t),
 			newMockCommandExecutor(t),
 		)
@@ -41,7 +40,6 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 		clientFn              func(t *testing.T) k8sClient
 		upserterFn            func(t *testing.T) resourceUpserter
 		deploymentInterfaceFn func(t *testing.T) deploymentInterface
-		resourceDoguFetcherFn func(t *testing.T) resourceDoguFetcher
 		localDoguFetcherFn    func(t *testing.T) localDoguFetcher
 		execPodFactoryFn      func(t *testing.T) execPodFactory
 		doguCommandExecutorFn func(t *testing.T) commandExecutor
@@ -68,9 +66,6 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					return newMockLocalDoguFetcher(t)
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					return newMockResourceDoguFetcher(t)
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
 					return newMockExecPodFactory(t)
@@ -107,9 +102,6 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					return newMockLocalDoguFetcher(t)
 				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					return newMockResourceDoguFetcher(t)
-				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
 					return newMockExecPodFactory(t)
 				},
@@ -143,11 +135,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					return newMockLocalDoguFetcher(t)
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(nil, nil, assert.AnError)
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(nil, assert.AnError)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -183,11 +172,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					return newMockLocalDoguFetcher(t)
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{}, nil, nil)
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -225,11 +211,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
-					return newMockLocalDoguFetcher(t)
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{}, nil, nil)
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -269,12 +252,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, assert.AnError)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{}, nil, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -316,12 +295,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{}, nil, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -367,12 +342,7 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
 						Name: "official/test",
 						ExposedCommands: []core.ExposedCommand{
 							{
@@ -381,7 +351,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 								Description: "",
 							},
 						},
-					}, nil, nil)
+					}, nil)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -451,12 +422,7 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
 						Name: "official/test",
 						ExposedCommands: []core.ExposedCommand{
 							{
@@ -465,7 +431,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 								Description: "",
 							},
 						},
-					}, nil, nil)
+					}, nil)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -550,12 +517,7 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
 						Name: "official/test",
 						ExposedCommands: []core.ExposedCommand{
 							{
@@ -564,7 +526,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 								Description: "",
 							},
 						},
-					}, nil, nil)
+					}, nil)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -651,12 +614,7 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
 						Name: "official/test",
 						ExposedCommands: []core.ExposedCommand{
 							{
@@ -665,7 +623,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 								Description: "",
 							},
 						},
-					}, nil, nil)
+					}, nil)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -753,12 +712,7 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
-					return mck
-				},
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}).Return(&core.Dogu{
 						Name: "official/test",
 						ExposedCommands: []core.ExposedCommand{
 							{
@@ -767,7 +721,8 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 								Description: "",
 							},
 						},
-					}, nil, nil)
+					}, nil)
+					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -827,7 +782,6 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				client:              tt.fields.clientFn(t),
 				upserter:            tt.fields.upserterFn(t),
 				deploymentInterface: tt.fields.deploymentInterfaceFn(t),
-				resourceDoguFetcher: tt.fields.resourceDoguFetcherFn(t),
 				localDoguFetcher:    tt.fields.localDoguFetcherFn(t),
 				execPodFactory:      tt.fields.execPodFactoryFn(t),
 				doguCommandExecutor: tt.fields.doguCommandExecutorFn(t),

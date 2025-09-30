@@ -18,7 +18,6 @@ import (
 
 type ValidationStep struct {
 	doguHealthChecker             doguHealthChecker
-	resourceDoguFetcher           resourceDoguFetcher
 	localDoguFetcher              localDoguFetcher
 	securityValidator             securityValidator
 	doguAdditionalMountsValidator doguAdditionalMountsValidator
@@ -27,19 +26,17 @@ type ValidationStep struct {
 
 func NewValidationStep(
 	healthChecker health.DoguHealthChecker,
-	resourceDoguFetcher cesregistry.ResourceDoguFetcher,
-	localDoguFetcher cesregistry.LocalDoguFetcher,
+	fetcher cesregistry.LocalDoguFetcher,
 	dependencyValidator dependency.Validator,
 	securityValidator security.Validator,
 	doguAdditionalMountsValidator additionalMount.Validator,
 ) *ValidationStep {
 	return &ValidationStep{
 		doguHealthChecker:             healthChecker,
-		resourceDoguFetcher:           resourceDoguFetcher,
+		localDoguFetcher:              fetcher,
 		dependencyValidator:           dependencyValidator,
 		securityValidator:             securityValidator,
 		doguAdditionalMountsValidator: doguAdditionalMountsValidator,
-		localDoguFetcher:              localDoguFetcher,
 	}
 }
 
@@ -60,9 +57,9 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 		}
 	}
 
-	toDogu, _, err := vs.getDogusForUpgrade(ctx, doguResource)
+	toDogu, err := vs.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
-		return steps.RequeueWithError(err)
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor for %q: %w", doguResource.Name, err))
 	}
 
 	err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
@@ -86,15 +83,6 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 	}
 
 	return steps.Continue()
-}
-
-func (vs *ValidationStep) getDogusForUpgrade(ctx context.Context, doguResource *v2.Dogu) (*core.Dogu, *v2.DevelopmentDoguMap, error) {
-	toDogu, developmentDoguMap, err := vs.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch dogu descriptor: %w", err)
-	}
-
-	return toDogu, developmentDoguMap, nil
 }
 
 func isOlder(version1Raw, version2Raw string) (bool, error) {

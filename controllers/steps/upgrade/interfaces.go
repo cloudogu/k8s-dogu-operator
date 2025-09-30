@@ -27,11 +27,6 @@ type localDoguFetcher interface {
 	cesregistry.LocalDoguFetcher
 }
 
-// resourceDoguFetcher includes functionality to get a dogu either from the remote dogu registry or from a local development dogu map.
-type resourceDoguFetcher interface {
-	cesregistry.ResourceDoguFetcher
-}
-
 // DependencyValidator checks if all necessary dependencies for an upgrade are installed.
 type DependencyValidator interface {
 	// ValidateDependencies is used to check if dogu dependencies are installed.

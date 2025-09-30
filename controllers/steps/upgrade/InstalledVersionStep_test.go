@@ -1,6 +1,7 @@
 package upgrade
 
 import (
+	"context"
 	"testing"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -8,6 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var testCtx = context.Background()
+
+const namespace = "ecosystem"
+const name = "test"
 
 func TestNewInstalledVersionStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {

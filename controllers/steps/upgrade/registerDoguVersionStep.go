@@ -11,19 +11,19 @@ import (
 )
 
 type RegisterDoguVersionStep struct {
-	resourceDoguFetcher resourceDoguFetcher
-	doguRegistrator     doguRegistrator
+	localDoguFetcher localDoguFetcher
+	doguRegistrator  doguRegistrator
 }
 
-func NewRegisterDoguVersionStep(fetcher cesregistry.ResourceDoguFetcher, registrator cesregistry.DoguRegistrator) *RegisterDoguVersionStep {
+func NewRegisterDoguVersionStep(fetcher cesregistry.LocalDoguFetcher, registrator cesregistry.DoguRegistrator) *RegisterDoguVersionStep {
 	return &RegisterDoguVersionStep{
-		resourceDoguFetcher: fetcher,
-		doguRegistrator:     registrator,
+		localDoguFetcher: fetcher,
+		doguRegistrator:  registrator,
 	}
 }
 
 func (rdvs *RegisterDoguVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	dogu, _, err := rdvs.resourceDoguFetcher.FetchWithResource(ctx, doguResource)
+	dogu, err := rdvs.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}

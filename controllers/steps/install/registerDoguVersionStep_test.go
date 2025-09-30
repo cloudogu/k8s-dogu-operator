@@ -14,7 +14,7 @@ import (
 
 func TestNewRegisterDoguVersionStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewRegisterDoguVersionStep(newMockResourceDoguFetcher(t), newMockLocalDoguFetcher(t), newMockDoguRegistrator(t))
+		step := NewRegisterDoguVersionStep(newMockLocalDoguFetcher(t), newMockDoguRegistrator(t))
 
 		assert.NotNil(t, step)
 	})
@@ -22,9 +22,8 @@ func TestNewRegisterDoguVersionStep(t *testing.T) {
 
 func TestRegisterDoguVersionStep_Run(t *testing.T) {
 	type fields struct {
-		resourceDoguFetcherFn func(t *testing.T) resourceDoguFetcher
-		doguRegistratorFn     func(t *testing.T) doguRegistrator
-		localDoguFetcherFn    func(t *testing.T) localDoguFetcher
+		doguRegistratorFn  func(t *testing.T) doguRegistrator
+		localDoguFetcherFn func(t *testing.T) localDoguFetcher
 	}
 	tests := []struct {
 		name         string
@@ -35,9 +34,6 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should fail to check if dogu is enabled",
 			fields: fields{
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					return newMockResourceDoguFetcher(t)
-				},
 				doguRegistratorFn: func(t *testing.T) doguRegistrator {
 					return newMockDoguRegistrator(t)
 				},
@@ -57,9 +53,6 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should continue if dogu is enabled",
 			fields: fields{
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					return newMockResourceDoguFetcher(t)
-				},
 				doguRegistratorFn: func(t *testing.T) doguRegistrator {
 					return newMockDoguRegistrator(t)
 				},
@@ -79,21 +72,17 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should fail to fetch dogu descriptor if dogu is not enabled",
 			fields: fields{
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
-						ObjectMeta: v1.ObjectMeta{
-							Name: "test",
-						},
-					}).Return(nil, nil, assert.AnError)
-					return mck
-				},
 				doguRegistratorFn: func(t *testing.T) doguRegistrator {
 					return newMockDoguRegistrator(t)
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().Enabled(testCtx, dogu.SimpleName("test")).Return(false, nil)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{
+							Name: "test",
+						},
+					}).Return(nil, assert.AnError)
 					return mck
 				},
 			},
@@ -107,15 +96,6 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should fail to register dogu if dogu is not enabled",
 			fields: fields{
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
-						ObjectMeta: v1.ObjectMeta{
-							Name: "test",
-						},
-					}).Return(&cesappcore.Dogu{Name: "test"}, nil, nil)
-					return mck
-				},
 				doguRegistratorFn: func(t *testing.T) doguRegistrator {
 					mck := newMockDoguRegistrator(t)
 					mck.EXPECT().RegisterNewDogu(testCtx, &v2.Dogu{
@@ -128,6 +108,11 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().Enabled(testCtx, dogu.SimpleName("test")).Return(false, nil)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{
+							Name: "test",
+						},
+					}).Return(&cesappcore.Dogu{Name: "test"}, nil)
 					return mck
 				},
 			},
@@ -141,15 +126,6 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should succeed to register dogu if dogu is not enabled",
 			fields: fields{
-				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
-					mck := newMockResourceDoguFetcher(t)
-					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
-						ObjectMeta: v1.ObjectMeta{
-							Name: "test",
-						},
-					}).Return(&cesappcore.Dogu{Name: "test"}, nil, nil)
-					return mck
-				},
 				doguRegistratorFn: func(t *testing.T) doguRegistrator {
 					mck := newMockDoguRegistrator(t)
 					mck.EXPECT().RegisterNewDogu(testCtx, &v2.Dogu{
@@ -162,6 +138,11 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().Enabled(testCtx, dogu.SimpleName("test")).Return(false, nil)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{
+							Name: "test",
+						},
+					}).Return(&cesappcore.Dogu{Name: "test"}, nil)
 					return mck
 				},
 			},
@@ -176,9 +157,8 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rdvs := &RegisterDoguVersionStep{
-				resourceDoguFetcher: tt.fields.resourceDoguFetcherFn(t),
-				doguRegistrator:     tt.fields.doguRegistratorFn(t),
-				localDoguFetcher:    tt.fields.localDoguFetcherFn(t),
+				doguRegistrator:  tt.fields.doguRegistratorFn(t),
+				localDoguFetcher: tt.fields.localDoguFetcherFn(t),
 			}
 			assert.Equalf(t, tt.want, rdvs.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)
 		})
