@@ -83,6 +83,7 @@ func options() []fx.Option {
 
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
 			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder))),
+			fx.Annotate(controllers.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandler))),
 
 			// our own dependencies
 			fx.Annotate(health.NewAvailabilityChecker, fx.As(new(health.DeploymentAvailabilityChecker))),

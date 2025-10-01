@@ -26,10 +26,13 @@ import (
 )
 
 const (
+	RequeueEventReason = "Requeue"
+)
+
+const (
 	ReasonReconcileSuccess = "ReconcileSuccess"
 	ReasonReconcileFail    = "ReconcileFail"
 	ReasonHasToReconcile   = "HasToReconcile"
-	requeueTime            = 5 * time.Second
 )
 
 type DoguReconciler struct {
@@ -37,6 +40,7 @@ type DoguReconciler struct {
 	doguChangeHandler DoguUsecase
 	doguDeleteHandler DoguUsecase
 	doguInterface     doguInterface
+	requeueHandler    RequeueHandler
 	externalEvents    <-chan event.TypedGenericEvent[*doguv2.Dogu]
 }
 
@@ -57,6 +61,7 @@ func NewDoguReconciler(
 	doguChangeHandler *usecase.DoguInstallOrChangeUseCase,
 	doguDeleteHandler *usecase.DoguDeleteUseCase,
 	doguInterface doguClient.DoguInterface,
+	requeueHandler RequeueHandler,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	manager manager.Manager,
 ) (*DoguReconciler, error) {
@@ -65,6 +70,7 @@ func NewDoguReconciler(
 		doguChangeHandler: doguChangeHandler,
 		doguDeleteHandler: doguDeleteHandler,
 		doguInterface:     doguInterface,
+		requeueHandler:    requeueHandler,
 		externalEvents:    externalEvents,
 	}
 	err := r.setupWithManager(manager)
@@ -79,7 +85,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	doguResource := &doguv2.Dogu{}
 	err := r.client.Get(ctx, req.NamespacedName, doguResource)
 	if err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return r.requeueHandler.Handle(ctx, doguResource, client.IgnoreNotFound(err), 0)
 	}
 
 	var requeueAfter time.Duration
@@ -95,7 +101,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	getDoguResourceErr := r.client.Get(ctx, req.NamespacedName, doguResource)
 	if getDoguResourceErr != nil {
-		return ctrl.Result{}, errors.Join(fmt.Errorf("failed to get doguResource %q: %w", req.NamespacedName, getDoguResourceErr), err)
+		return r.requeueHandler.Handle(ctx, doguResource, errors.Join(fmt.Errorf("failed to get doguResource %q: %w", req.NamespacedName, getDoguResourceErr), err), 0)
 	}
 
 	if requeueAfter != 0 {
@@ -109,11 +115,8 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	errs := errors.Join(getDoguResourceErr, err)
-	if errs != nil {
-		return ctrl.Result{RequeueAfter: requeueTime}, nil
-	}
 
-	return ctrl.Result{RequeueAfter: requeueAfter}, errs
+	return r.requeueHandler.Handle(ctx, doguResource, errs, requeueAfter)
 }
 
 // SetupWithManager sets up the controller with the manager.

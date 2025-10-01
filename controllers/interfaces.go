@@ -64,3 +64,17 @@ type configMapInterface interface {
 type deploymentManager interface {
 	GetLastStartingTime(ctx context.Context, deploymentName string) (*time.Time, error)
 }
+
+// requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
+type RequeueHandler interface {
+	// Handle takes an error and handles the requeue process for the current dogu operation.
+	Handle(ctx context.Context, doguResource *v2.Dogu, err error, reqTime time.Duration) (result ctrl.Result, requeueErr error)
+}
+
+type coreV1Interface interface {
+	v1.CoreV1Interface
+}
+
+type eventInterface interface {
+	v1.EventInterface
+}
