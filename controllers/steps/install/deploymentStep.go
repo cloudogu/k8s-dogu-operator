@@ -31,13 +31,13 @@ func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 		return steps.RequeueWithError(err)
 	}
 
+	if deployment != nil {
+		return steps.Continue()
+	}
+
 	dogu, err := ds.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return steps.RequeueWithError(err)
-	}
-
-	if deployment != nil {
-		return steps.Continue()
 	}
 
 	_, err = ds.upserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
