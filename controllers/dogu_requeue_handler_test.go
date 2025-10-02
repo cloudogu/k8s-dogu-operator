@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	v2 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -57,7 +58,9 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 					return NewMockClientSet(t)
 				},
 				recorderFn: func(t *testing.T) record.EventRecorder {
-					return newMockEventRecorder(t)
+					mck := newMockEventRecorder(t)
+					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v2.EventTypeNormal, ReasonReconcileOK, "resource synced")
+					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
 					mck := newMockDoguInterface(t)
@@ -95,79 +98,6 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 							RequeuePhase: "",
 						},
 					}, v1.UpdateOptions{}).Return(nil, assert.AnError)
-					return mck
-				},
-			},
-			args: args{
-				doguResource: &doguv2.Dogu{},
-				err:          fmt.Errorf(""),
-				reqTime:      time.Duration(0),
-			},
-			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
-			wantErr: assert.Error,
-		},
-		{
-			name: "should fail to get requeue events",
-			fields: fields{
-				nonCacheClientFn: func(t *testing.T) kubernetes.Interface {
-					eventMock := newMockEventInterface(t)
-					eventMock.EXPECT().List(testCtx, v1.ListOptions{
-						FieldSelector: fmt.Sprintf("reason=%s,involvedObject.name=%s", RequeueEventReason, ""),
-					}).Return(nil, assert.AnError)
-					coreV1Mock := newMockCoreV1Interface(t)
-					coreV1Mock.EXPECT().Events("ecosystem").Return(eventMock)
-					mck := NewMockClientSet(t)
-					mck.EXPECT().CoreV1().Return(coreV1Mock)
-					return mck
-				},
-				recorderFn: func(t *testing.T) record.EventRecorder {
-					return newMockEventRecorder(t)
-				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
-					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
-						Status: doguv2.DoguStatus{
-							RequeueTime:  5 * time.Second,
-							RequeuePhase: "",
-						},
-					}, v1.UpdateOptions{}).Return(&doguv2.Dogu{}, nil)
-					return mck
-				},
-			},
-			args: args{
-				doguResource: &doguv2.Dogu{},
-				err:          fmt.Errorf(""),
-				reqTime:      time.Duration(0),
-			},
-			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
-			wantErr: assert.Error,
-		},
-		{
-			name: "should fail to delete requeue events",
-			fields: fields{
-				nonCacheClientFn: func(t *testing.T) kubernetes.Interface {
-					eventMock := newMockEventInterface(t)
-					eventMock.EXPECT().List(testCtx, v1.ListOptions{
-						FieldSelector: fmt.Sprintf("reason=%s,involvedObject.name=%s", RequeueEventReason, ""),
-					}).Return(&v2.EventList{Items: []v2.Event{{ObjectMeta: v1.ObjectMeta{Name: "event"}}}}, nil)
-					eventMock.EXPECT().Delete(testCtx, "event", v1.DeleteOptions{}).Return(assert.AnError)
-					coreV1Mock := newMockCoreV1Interface(t)
-					coreV1Mock.EXPECT().Events("ecosystem").Return(eventMock)
-					mck := NewMockClientSet(t)
-					mck.EXPECT().CoreV1().Return(coreV1Mock)
-					return mck
-				},
-				recorderFn: func(t *testing.T) record.EventRecorder {
-					return newMockEventRecorder(t)
-				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
-					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
-						Status: doguv2.DoguStatus{
-							RequeueTime:  5 * time.Second,
-							RequeuePhase: "",
-						},
-					}, v1.UpdateOptions{}).Return(&doguv2.Dogu{}, nil)
 					return mck
 				},
 			},

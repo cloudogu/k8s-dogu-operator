@@ -14,6 +14,7 @@ import (
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,7 +27,8 @@ import (
 )
 
 const (
-	RequeueEventReason = "Requeue"
+	RequeueEventReason          = "Requeue"
+	ReconcileStartedEventReason = "ReconcileStarted"
 )
 
 const (
@@ -42,6 +44,7 @@ type DoguReconciler struct {
 	doguInterface     doguInterface
 	requeueHandler    RequeueHandler
 	externalEvents    <-chan event.TypedGenericEvent[*doguv2.Dogu]
+	eventRecorder     eventRecorder
 }
 
 func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
@@ -63,6 +66,7 @@ func NewDoguReconciler(
 	doguInterface doguClient.DoguInterface,
 	requeueHandler RequeueHandler,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
+	recorder record.EventRecorder,
 	manager manager.Manager,
 ) (*DoguReconciler, error) {
 	r := &DoguReconciler{
@@ -72,6 +76,7 @@ func NewDoguReconciler(
 		doguInterface:     doguInterface,
 		requeueHandler:    requeueHandler,
 		externalEvents:    externalEvents,
+		eventRecorder:     recorder,
 	}
 	err := r.setupWithManager(manager)
 	if err != nil {
@@ -87,6 +92,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		return r.requeueHandler.Handle(ctx, doguResource, client.IgnoreNotFound(err), 0)
 	}
+	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 
 	var requeueAfter time.Duration
 	var cont bool
