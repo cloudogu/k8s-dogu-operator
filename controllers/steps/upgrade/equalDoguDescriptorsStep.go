@@ -11,7 +11,7 @@ import (
 )
 
 type EqualDoguDescriptorsStep struct {
-	localDoguFetcher localDoguFetcher
+	localDoguFetcher LocalDoguFetcher
 }
 
 func NewEqualDoguDescriptorsStep(localFetcher cesregistry.LocalDoguFetcher) *EqualDoguDescriptorsStep {

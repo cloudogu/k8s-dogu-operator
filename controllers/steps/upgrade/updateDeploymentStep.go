@@ -29,9 +29,9 @@ const preUpgradeScriptDir = "/tmp/pre-upgrade"
 
 type UpdateDeploymentStep struct {
 	client              k8sClient
-	upserter            resourceUpserter
+	upserter            ResourceUpserter
 	deploymentInterface deploymentInterface
-	localDoguFetcher    localDoguFetcher
+	localDoguFetcher    LocalDoguFetcher
 	execPodFactory      execPodFactory
 	doguCommandExecutor commandExecutor
 }

@@ -21,7 +21,7 @@ func TestNewRegisterDoguVersionStep(t *testing.T) {
 
 func TestRegisterDoguVersionStep_Run(t *testing.T) {
 	type fields struct {
-		localDoguFetcherFn func(t *testing.T) localDoguFetcher
+		localDoguFetcherFn func(t *testing.T) LocalDoguFetcher
 		doguRegistratorFn  func(t *testing.T) doguRegistrator
 	}
 	tests := []struct {
@@ -33,7 +33,7 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should fail to fetch remote dogu descriptor",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{}).Return(nil, assert.AnError)
 					return mck
@@ -48,7 +48,7 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should fail to register dogu",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{}).Return(&core.Dogu{}, nil)
 					return mck
@@ -65,7 +65,7 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should continue if dogu version is already registered",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{}).Return(&core.Dogu{}, nil)
 					return mck
@@ -82,7 +82,7 @@ func TestRegisterDoguVersionStep_Run(t *testing.T) {
 		{
 			name: "should continue if dogu version is successfully registered",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{}).Return(&core.Dogu{}, nil)
 					return mck

@@ -23,7 +23,7 @@ func TestNewDeleteExecPodStep(t *testing.T) {
 func TestDeleteExecPodStep_Run(t *testing.T) {
 	type fields struct {
 		execPodFactoryFn   func(t *testing.T) execPodFactory
-		localDoguFetcherFn func(t *testing.T) localDoguFetcher
+		localDoguFetcherFn func(t *testing.T) LocalDoguFetcher
 	}
 	tests := []struct {
 		name         string
@@ -37,7 +37,7 @@ func TestDeleteExecPodStep_Run(t *testing.T) {
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
 					return newMockExecPodFactory(t)
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, assert.AnError)
 					return mck
@@ -54,7 +54,7 @@ func TestDeleteExecPodStep_Run(t *testing.T) {
 					mck.EXPECT().Delete(testCtx, &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, &core.Dogu{Name: "test"}).Return(assert.AnError)
 					return mck
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test"}, nil)
 					return mck
@@ -71,7 +71,7 @@ func TestDeleteExecPodStep_Run(t *testing.T) {
 					mck.EXPECT().Delete(testCtx, &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, &core.Dogu{Name: "test"}).Return(nil)
 					return mck
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test"}, nil)
 					return mck

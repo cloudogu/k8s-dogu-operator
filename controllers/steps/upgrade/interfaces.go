@@ -22,8 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// localDoguFetcher includes functionality to search the local dogu registry for a dogu.
-type localDoguFetcher interface {
+// LocalDoguFetcher includes functionality to search the local dogu registry for a dogu.
+type LocalDoguFetcher interface {
 	cesregistry.LocalDoguFetcher
 }
 
@@ -65,7 +65,7 @@ type execPodFactory interface {
 	exec.ExecPodFactory
 }
 
-type resourceUpserter interface {
+type ResourceUpserter interface {
 	// UpsertDoguDeployment generates a deployment for a given dogu and applies it to the cluster.
 	// All parameters are mandatory except deploymentPatch which may be nil.
 	// The deploymentPatch can be used to arbitrarily alter the deployment after resource generation.

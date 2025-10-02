@@ -48,8 +48,8 @@ func TestDeploymentUpdaterStep_Run(t *testing.T) {
 	}
 
 	type fields struct {
-		upserterFn         func(t *testing.T) resourceUpserter
-		localDoguFetcherFn func(t *testing.T) localDoguFetcher
+		upserterFn         func(t *testing.T) ResourceUpserter
+		localDoguFetcherFn func(t *testing.T) LocalDoguFetcher
 	}
 	tests := []struct {
 		name         string
@@ -60,10 +60,10 @@ func TestDeploymentUpdaterStep_Run(t *testing.T) {
 		{
 			name: "should do nothing on upgrade (deployment should already be updated earlier)",
 			fields: fields{
-				upserterFn: func(t *testing.T) resourceUpserter {
+				upserterFn: func(t *testing.T) ResourceUpserter {
 					return newMockResourceUpserter(t)
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					return newMockLocalDoguFetcher(t)
 				},
 			},
@@ -73,10 +73,10 @@ func TestDeploymentUpdaterStep_Run(t *testing.T) {
 		{
 			name: "should requeue on dogu fetch error",
 			fields: fields{
-				upserterFn: func(t *testing.T) resourceUpserter {
+				upserterFn: func(t *testing.T) ResourceUpserter {
 					return newMockResourceUpserter(t)
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, doguNoUpgradeResource).Return(nil, assert.AnError)
 					return mck
@@ -88,12 +88,12 @@ func TestDeploymentUpdaterStep_Run(t *testing.T) {
 		{
 			name: "should fail to upsert deployment",
 			fields: fields{
-				upserterFn: func(t *testing.T) resourceUpserter {
+				upserterFn: func(t *testing.T) ResourceUpserter {
 					mck := newMockResourceUpserter(t)
 					mck.EXPECT().UpsertDoguDeployment(testCtx, doguNoUpgradeResource, &core.Dogu{}, mock.Anything).Return(nil, assert.AnError)
 					return mck
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, doguNoUpgradeResource).Return(&core.Dogu{}, nil)
 					return mck
@@ -105,12 +105,12 @@ func TestDeploymentUpdaterStep_Run(t *testing.T) {
 		{
 			name: "should succeed to upsert deployment",
 			fields: fields{
-				upserterFn: func(t *testing.T) resourceUpserter {
+				upserterFn: func(t *testing.T) ResourceUpserter {
 					mck := newMockResourceUpserter(t)
 					mck.EXPECT().UpsertDoguDeployment(testCtx, doguNoUpgradeResource, &core.Dogu{}, mock.Anything).Return(nil, nil)
 					return mck
 				},
-				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, doguNoUpgradeResource).Return(&core.Dogu{}, nil)
 					return mck

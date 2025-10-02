@@ -105,7 +105,7 @@ func options() []fx.Option {
 				fx.As(new(initfx.OwnerReferenceSetter)),
 				fx.ResultTags(`name:"localDoguDescriptorRepository"`),
 			),
-			fx.Annotate(initfx.NewLocalDoguFetcher, fx.As(new(cesregistry.LocalDoguFetcher))),
+			fx.Annotate(initfx.NewLocalDoguFetcher, fx.As(new(cesregistry.LocalDoguFetcher)), fx.As(new(upgradeSteps.LocalDoguFetcher))),
 			fx.Annotate(repository.NewGlobalConfigRepository, fx.As(new(resource.GlobalConfigRepository))),
 			// provide twice, tagged as well as untagged
 			fx.Annotate(
@@ -139,7 +139,7 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewHostAliasGenerator, fx.As(new(resource.HostAliasGenerator))),
 			fx.Annotate(resource.NewSecurityContextGenerator, fx.As(new(resource.SecurityContextGenerator))),
 			fx.Annotate(resource.NewResourceGenerator, fx.As(new(resource.DoguResourceGenerator))),
-			fx.Annotate(resource.NewUpserter, fx.As(new(resource.ResourceUpserter))),
+			fx.Annotate(resource.NewUpserter, fx.As(new(resource.ResourceUpserter)), fx.As(new(upgradeSteps.ResourceUpserter))),
 			fx.Annotate(cesregistry.NewCESDoguRegistrator, fx.As(new(cesregistry.DoguRegistrator))),
 			fx.Annotate(initfx.NewImageRegistry, fx.As(new(imageregistry.ImageRegistry))),
 			fx.Annotate(manager.NewDoguRestartManager, fx.As(new(manager.DoguRestartManager))),

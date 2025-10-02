@@ -2,21 +2,18 @@ package upgrade
 
 import (
 	"context"
-
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
 type DeploymentUpdaterStep struct {
-	upserter                 resourceUpserter
-	localDoguFetcher         localDoguFetcher
-	client                   k8sClient
-	securityContextGenerator securityContextGenerator
+	upserter         ResourceUpserter
+	localDoguFetcher LocalDoguFetcher
 }
 
 func NewDeploymentUpdaterStep(
-	upserter resourceUpserter,
-	fetcher localDoguFetcher,
+	upserter ResourceUpserter,
+	fetcher LocalDoguFetcher,
 ) *DeploymentUpdaterStep {
 	return &DeploymentUpdaterStep{
 		upserter:         upserter,
