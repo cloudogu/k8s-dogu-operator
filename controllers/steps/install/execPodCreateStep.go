@@ -45,7 +45,7 @@ func (epcs *ExecPodCreateStep) Run(ctx context.Context, doguResource *v2.Dogu) s
 		return steps.Continue()
 	}
 
-	dogu, err := epcs.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
+	dogu, err := epcs.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("dogu not found in local registry: %w", err))
 	}

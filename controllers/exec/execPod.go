@@ -106,7 +106,7 @@ func (ep *execPodFactory) CheckReady(ctx context.Context, doguResource *k8sv2.Do
 }
 
 func (ep *execPodFactory) createPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.Pod, error) {
-	image := dogu.Image + ":" + doguResource.Spec.Version
+	image := dogu.Image + ":" + dogu.Version
 	doNothingCommand := []string{"/bin/sleep", "infinity"}
 	// set app name for completeness's sake so all generated resource can be selected (and possibly cleaned up) with our ces label.
 	labels := resource.GetAppLabel()
