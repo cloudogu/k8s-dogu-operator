@@ -88,7 +88,7 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *doguv2.Do
 		if timeErr != nil {
 			result.RequeueAfter = requeueTime
 			d.fireRequeueEvent(doguResource, result, err)
-			logger.Error(err, fmt.Sprintf("failed to set requeue time2: %w", timeErr))
+			logger.Error(err, fmt.Sprintf("failed to set requeue time: %w", timeErr))
 			return result, nil
 		}
 		d.recorder.Event(newDoguResource, v1.EventTypeNormal, ReasonReconcileOK, "resource synced")
