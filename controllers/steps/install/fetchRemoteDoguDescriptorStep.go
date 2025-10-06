@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	dogu2 "github.com/cloudogu/ces-commons-lib/dogu"
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
@@ -9,7 +10,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type FetchRemoteDoguDescriptorStep struct {
@@ -47,9 +47,12 @@ func (f *FetchRemoteDoguDescriptorStep) Run(ctx context.Context, resource *v2.Do
 		return steps.RequeueWithError(err)
 	}
 
-	err = developmentDoguMap.DeleteFromCluster(ctx, f.client)
-	if err != nil {
-		logger.Error(err, "failed to delete development dogu map from cluster")
+	if developmentDoguMap != nil {
+		err = developmentDoguMap.DeleteFromCluster(ctx, f.client)
+		if err != nil {
+			logger.Error(err, "failed to delete development dogu map from cluster")
+			return steps.Continue()
+		}
 	}
 
 	return steps.Continue()

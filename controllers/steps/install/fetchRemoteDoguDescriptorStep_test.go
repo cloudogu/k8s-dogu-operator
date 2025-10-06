@@ -191,6 +191,71 @@ func TestFetchRemoteDoguDescriptorStep_Run(t *testing.T) {
 			},
 			want: steps.Continue(),
 		},
+		{
+			name: "success without dev config map",
+			fields: fields{
+				localDoguDescriptorRepoFn: func(t *testing.T) localDoguDescriptorRepository {
+					mck := newMockLocalDoguDescriptorRepository(t)
+					mck.EXPECT().Get(testCtx, dogu.SimpleNameVersion{Name: "test", Version: core.Version{Raw: "1.0.0", Major: 1}}).Return(nil, errors.NewNotFoundError(assert.AnError))
+					mck.EXPECT().Add(testCtx, dogu.SimpleName("test"), &core.Dogu{Name: "test", Version: "1.0.0"}).Return(nil)
+					return mck
+				},
+				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
+					mck := newMockResourceDoguFetcher(t)
+					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: "test"},
+						Spec: v2.DoguSpec{
+							Version: "1.0.0",
+						},
+					}).Return(&core.Dogu{Name: "test", Version: "1.0.0"}, nil, nil)
+					return mck
+				},
+				clientFn: func(t *testing.T) k8sClient {
+					mck := newMockK8sClient(t)
+					return mck
+				},
+			},
+			resource: &v2.Dogu{
+				ObjectMeta: v1.ObjectMeta{Name: "test"},
+				Spec: v2.DoguSpec{
+					Version: "1.0.0",
+				},
+			},
+			want: steps.Continue(),
+		},
+		{
+			name: "success with dev config map",
+			fields: fields{
+				localDoguDescriptorRepoFn: func(t *testing.T) localDoguDescriptorRepository {
+					mck := newMockLocalDoguDescriptorRepository(t)
+					mck.EXPECT().Get(testCtx, dogu.SimpleNameVersion{Name: "test", Version: core.Version{Raw: "1.0.0", Major: 1}}).Return(nil, errors.NewNotFoundError(assert.AnError))
+					mck.EXPECT().Add(testCtx, dogu.SimpleName("test"), &core.Dogu{Name: "test", Version: "1.0.0"}).Return(nil)
+					return mck
+				},
+				resourceDoguFetcherFn: func(t *testing.T) resourceDoguFetcher {
+					mck := newMockResourceDoguFetcher(t)
+					mck.EXPECT().FetchWithResource(testCtx, &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: "test"},
+						Spec: v2.DoguSpec{
+							Version: "1.0.0",
+						},
+					}).Return(&core.Dogu{Name: "test", Version: "1.0.0"}, &v2.DevelopmentDoguMap{}, nil)
+					return mck
+				},
+				clientFn: func(t *testing.T) k8sClient {
+					mck := newMockK8sClient(t)
+					mck.EXPECT().Delete(testCtx, &v3.ConfigMap{}).Return(nil)
+					return mck
+				},
+			},
+			resource: &v2.Dogu{
+				ObjectMeta: v1.ObjectMeta{Name: "test"},
+				Spec: v2.DoguSpec{
+					Version: "1.0.0",
+				},
+			},
+			want: steps.Continue(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
