@@ -38,10 +38,6 @@ type validator struct {
 	secretInterface    secretGetter
 }
 
-type Validator interface {
-	ValidateAdditionalMounts(ctx context.Context, doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error
-}
-
 func NewValidator(configMapGetter corev1.ConfigMapInterface, secretGatter corev1.SecretInterface) Validator {
 	return &validator{
 		configMapInterface: configMapGetter,

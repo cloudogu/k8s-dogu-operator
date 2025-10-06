@@ -3,14 +3,19 @@ package additionalMount
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/cloudogu/cesapp-lib/core"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type configMapGetter interface {
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.ConfigMap, error)
+	corev1.ConfigMapInterface
 }
 
 type secretGetter interface {
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Secret, error)
+	corev1.SecretInterface
+}
+
+type Validator interface {
+	ValidateAdditionalMounts(ctx context.Context, doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error
 }

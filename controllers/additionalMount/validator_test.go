@@ -324,10 +324,15 @@ func TestValidator_ValidateAdditionalMounts(t *testing.T) {
 
 func TestNewValidator(t *testing.T) {
 	t.Run("should set parameter", func(t *testing.T) {
+		// given
+		configMapMock := newMockConfigMapGetter(t)
+		secretMapMock := newMockSecretGetter(t)
+
 		// when
-		sut := NewValidator(nil, nil)
+		sut := NewValidator(configMapMock, secretMapMock)
 
 		// then
-		assert.NotNil(t, sut)
+		assert.Equal(t, configMapMock, sut.(*validator).configMapInterface)
+		assert.Equal(t, secretMapMock, sut.(*validator).secretInterface)
 	})
 }
