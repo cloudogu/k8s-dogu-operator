@@ -27,12 +27,6 @@ type LocalDoguFetcher interface {
 	cesregistry.LocalDoguFetcher
 }
 
-// DependencyValidator checks if all necessary dependencies for an upgrade are installed.
-type DependencyValidator interface {
-	// ValidateDependencies is used to check if dogu dependencies are installed.
-	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
-}
-
 // doguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
 type doguRegistrator interface {
 	// RegisterNewDogu registers a new dogu in the local dogu registry.

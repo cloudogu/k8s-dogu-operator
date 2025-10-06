@@ -76,11 +76,12 @@ func TestNewCompositeDependencyValidator(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("0.0.0")
 		require.NoError(t, err)
+		fetcher := newMockLocalDoguFetcher(t)
 
 		config := &opConfig.OperatorConfig{Version: &version}
 
 		// when
-		compositeValidator := NewCompositeDependencyValidator(config, nil)
+		compositeValidator := NewCompositeDependencyValidator(config, fetcher)
 
 		// then
 		assert.NotEmpty(t, compositeValidator)
