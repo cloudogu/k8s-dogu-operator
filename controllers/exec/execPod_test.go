@@ -3,9 +3,12 @@ package exec
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/cloudogu/cesapp-lib/core"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -386,4 +389,176 @@ func Test_execPodFactory_CheckReady(t *testing.T) {
 		// then
 		assert.Error(t, err)
 	})
+}
+
+func Test_execPodFactory_CreateOrUpdate(t *testing.T) {
+	type fields struct {
+		clientFn func(t *testing.T) client.Client
+	}
+	type args struct {
+		doguResource *k8sv2.Dogu
+		dogu         *core.Dogu
+	}
+	tests := []struct {
+		name                     string
+		fields                   fields
+		args                     args
+		setControllerReferenceFn func(owner, controlled metav1.Object, scheme *runtime.Scheme, opts ...controllerutil.OwnerReferenceOption) error
+		wantErr                  assert.ErrorAssertionFunc
+	}{
+		{
+			name: "should fail to set controller reference",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := newMockK8sClient(t)
+					mck.EXPECT().Scheme().Return(getTestScheme())
+					return mck
+				},
+			},
+			args: args{
+				doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{
+					Name:      "dogu",
+					Namespace: testNamespace,
+				}},
+				dogu: &core.Dogu{
+					Name:    "official/dogu",
+					Image:   "registry.example.com/official/dogu",
+					Version: "1.2.3-1",
+				},
+			},
+			setControllerReferenceFn: func(owner, controlled metav1.Object, scheme *runtime.Scheme, opts ...controllerutil.OwnerReferenceOption) error {
+				return assert.AnError
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorIs(t, err, assert.AnError) &&
+					assert.ErrorContains(t, err, "failed to set controller reference to exec pod \"dogu-execpod\"")
+			},
+		},
+		{
+			name: "should fail to update exec pod",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := newMockK8sClient(t)
+					mck.EXPECT().Scheme().Return(getTestScheme()).Once()
+					mck.EXPECT().Get(testCtx, types.NamespacedName{
+						Namespace: testNamespace,
+						Name:      "dogu-execpod",
+					}, &corev1.Pod{}).Return(nil).Once()
+					mck.EXPECT().Update(testCtx, readExpectedExecPod(t)).Return(assert.AnError).Once()
+					return mck
+				},
+			},
+			args: args{
+				doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{
+					Name:      "dogu",
+					Namespace: testNamespace,
+				}},
+				dogu: &core.Dogu{
+					Name:    "official/dogu",
+					Image:   "registry.example.com/official/dogu",
+					Version: "1.2.3-1",
+				},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorIs(t, err, assert.AnError)
+			},
+		},
+		{
+			name: "should succeed to update exec pod",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := newMockK8sClient(t)
+					mck.EXPECT().Scheme().Return(getTestScheme()).Once()
+					mck.EXPECT().Get(testCtx, types.NamespacedName{
+						Namespace: testNamespace,
+						Name:      "dogu-execpod",
+					}, &corev1.Pod{}).Return(nil).Once()
+					mck.EXPECT().Update(testCtx, readExpectedExecPod(t)).Return(nil).Once()
+					return mck
+				},
+			},
+			args: args{
+				doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{
+					Name:      "dogu",
+					Namespace: testNamespace,
+				}},
+				dogu: &core.Dogu{
+					Name:    "official/dogu",
+					Image:   "registry.example.com/official/dogu",
+					Version: "1.2.3-1",
+				},
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "should fail to create exec pod",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := newMockK8sClient(t)
+					mck.EXPECT().Scheme().Return(getTestScheme()).Once()
+					mck.EXPECT().Get(testCtx, types.NamespacedName{
+						Namespace: testNamespace,
+						Name:      "dogu-execpod",
+					}, &corev1.Pod{}).Return(errors.NewNotFound(schema.GroupResource{}, "")).Once()
+					mck.EXPECT().Create(testCtx, readExpectedExecPod(t)).Return(assert.AnError).Once()
+					return mck
+				},
+			},
+			args: args{
+				doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{
+					Name:      "dogu",
+					Namespace: testNamespace,
+				}},
+				dogu: &core.Dogu{
+					Name:    "official/dogu",
+					Image:   "registry.example.com/official/dogu",
+					Version: "1.2.3-1",
+				},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorIs(t, err, assert.AnError)
+			},
+		},
+		{
+			name: "should succeed to create exec pod",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := newMockK8sClient(t)
+					mck.EXPECT().Scheme().Return(getTestScheme()).Once()
+					mck.EXPECT().Get(testCtx, types.NamespacedName{
+						Namespace: testNamespace,
+						Name:      "dogu-execpod",
+					}, &corev1.Pod{}).Return(errors.NewNotFound(schema.GroupResource{}, "")).Once()
+					mck.EXPECT().Create(testCtx, readExpectedExecPod(t)).Return(nil).Once()
+					return mck
+				},
+			},
+			args: args{
+				doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{
+					Name:      "dogu",
+					Namespace: testNamespace,
+				}},
+				dogu: &core.Dogu{
+					Name:    "official/dogu",
+					Image:   "registry.example.com/official/dogu",
+					Version: "1.2.3-1",
+				},
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setControllerReferenceFn != nil {
+				oldFunc := ctrl.SetControllerReference
+				ctrl.SetControllerReference = tt.setControllerReferenceFn
+				defer func() { ctrl.SetControllerReference = oldFunc }()
+			}
+
+			ep := &execPodFactory{
+				client: tt.fields.clientFn(t),
+			}
+			tt.wantErr(t, ep.CreateOrUpdate(testCtx, tt.args.doguResource, tt.args.dogu), fmt.Sprintf("CreateOrUpdate(%v, %v, %v)", testCtx, tt.args.doguResource, tt.args.dogu))
+		})
+	}
 }

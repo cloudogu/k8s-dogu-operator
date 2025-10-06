@@ -76,7 +76,12 @@ func (ep *execPodFactory) CreateOrUpdate(ctx context.Context, doguResource *k8sv
 		return err
 	}
 
-	if !ep.Exists(ctx, doguResource, dogu) {
+	if ep.Exists(ctx, doguResource, dogu) {
+		err := ep.client.Update(ctx, execPodSpec)
+		if err != nil {
+			return err
+		}
+	} else {
 		err = ep.client.Create(ctx, execPodSpec)
 		if err != nil {
 			return err
@@ -123,10 +128,9 @@ func (ep *execPodFactory) createPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (
 	podSpec := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        podName,
-			Namespace:   doguResource.Namespace,
-			Labels:      labels,
-			Annotations: make(map[string]string),
+			Name:      podName,
+			Namespace: doguResource.Namespace,
+			Labels:    labels,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{

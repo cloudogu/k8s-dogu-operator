@@ -22,6 +22,9 @@ var ldapBytes []byte
 //go:embed testdata/ldap-cr.yaml
 var ldapDoguResourceBytes []byte
 
+//go:embed testdata/expectedExecPod.yaml
+var expectedExecPodBytes []byte
+
 func readLdapDogu(t *testing.T) *core.Dogu {
 	t.Helper()
 
@@ -39,6 +42,18 @@ func readLdapDoguResource(t *testing.T) *doguv2.Dogu {
 
 	data := &doguv2.Dogu{}
 	err := yaml.Unmarshal(ldapDoguResourceBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readExpectedExecPod(t *testing.T) *v1.Pod {
+	t.Helper()
+
+	data := &v1.Pod{}
+	err := yaml.Unmarshal(expectedExecPodBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
