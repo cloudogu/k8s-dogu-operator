@@ -69,19 +69,14 @@ func (ep *execPodFactory) CreateBlocking(ctx context.Context, doguResource *k8sv
 	return nil
 }
 
-// CreateOrUpdate adds a new exec pod to the cluster or updates it if it already exists.
-func (ep *execPodFactory) CreateOrUpdate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
+// Create adds a new exec pod to the cluster if it not already exists.
+func (ep *execPodFactory) Create(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
 	execPodSpec, err := ep.createPod(doguResource, dogu)
 	if err != nil {
 		return err
 	}
 
-	if ep.Exists(ctx, doguResource, dogu) {
-		err := ep.client.Update(ctx, execPodSpec)
-		if err != nil {
-			return err
-		}
-	} else {
+	if !ep.Exists(ctx, doguResource, dogu) {
 		err = ep.client.Create(ctx, execPodSpec)
 		if err != nil {
 			return err

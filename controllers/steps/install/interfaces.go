@@ -180,7 +180,7 @@ type persistentVolumeClaimInterface interface {
 }
 
 type execPodFactory interface {
-	CreateOrUpdate(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+	Create(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
 	Exists(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) bool
 	CheckReady(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
 }

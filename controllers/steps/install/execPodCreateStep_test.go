@@ -124,7 +124,7 @@ func TestExecPodCreateStep_Run(t *testing.T) {
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
 					mck := newMockExecPodFactory(t)
-					mck.EXPECT().CreateOrUpdate(testCtx, &v2.Dogu{
+					mck.EXPECT().Create(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test", Namespace: namespace},
 					}, &core.Dogu{Name: "test"}).Return(assert.AnError)
 					return mck
@@ -157,7 +157,7 @@ func TestExecPodCreateStep_Run(t *testing.T) {
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
 					mck := newMockExecPodFactory(t)
-					mck.EXPECT().CreateOrUpdate(testCtx, &v2.Dogu{
+					mck.EXPECT().Create(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test", Namespace: namespace},
 					}, &core.Dogu{Name: "test"}).Return(nil)
 					return mck

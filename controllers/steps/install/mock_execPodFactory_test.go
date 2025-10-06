@@ -72,12 +72,12 @@ func (_c *mockExecPodFactory_CheckReady_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// CreateOrUpdate provides a mock function with given fields: ctx, doguResource, dogu
-func (_m *mockExecPodFactory) CreateOrUpdate(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) error {
+// Create provides a mock function with given fields: ctx, doguResource, dogu
+func (_m *mockExecPodFactory) Create(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) error {
 	ret := _m.Called(ctx, doguResource, dogu)
 
 	if len(ret) == 0 {
-		panic("no return value specified for CreateOrUpdate")
+		panic("no return value specified for Create")
 	}
 
 	var r0 error
@@ -90,32 +90,32 @@ func (_m *mockExecPodFactory) CreateOrUpdate(ctx context.Context, doguResource *
 	return r0
 }
 
-// mockExecPodFactory_CreateOrUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateOrUpdate'
-type mockExecPodFactory_CreateOrUpdate_Call struct {
+// mockExecPodFactory_Create_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Create'
+type mockExecPodFactory_Create_Call struct {
 	*mock.Call
 }
 
-// CreateOrUpdate is a helper method to define mock.On call
+// Create is a helper method to define mock.On call
 //   - ctx context.Context
 //   - doguResource *v2.Dogu
 //   - dogu *core.Dogu
-func (_e *mockExecPodFactory_Expecter) CreateOrUpdate(ctx interface{}, doguResource interface{}, dogu interface{}) *mockExecPodFactory_CreateOrUpdate_Call {
-	return &mockExecPodFactory_CreateOrUpdate_Call{Call: _e.mock.On("CreateOrUpdate", ctx, doguResource, dogu)}
+func (_e *mockExecPodFactory_Expecter) Create(ctx interface{}, doguResource interface{}, dogu interface{}) *mockExecPodFactory_Create_Call {
+	return &mockExecPodFactory_Create_Call{Call: _e.mock.On("Create", ctx, doguResource, dogu)}
 }
 
-func (_c *mockExecPodFactory_CreateOrUpdate_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu)) *mockExecPodFactory_CreateOrUpdate_Call {
+func (_c *mockExecPodFactory_Create_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu)) *mockExecPodFactory_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu))
 	})
 	return _c
 }
 
-func (_c *mockExecPodFactory_CreateOrUpdate_Call) Return(_a0 error) *mockExecPodFactory_CreateOrUpdate_Call {
+func (_c *mockExecPodFactory_Create_Call) Return(_a0 error) *mockExecPodFactory_Create_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockExecPodFactory_CreateOrUpdate_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu) error) *mockExecPodFactory_CreateOrUpdate_Call {
+func (_c *mockExecPodFactory_Create_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu) error) *mockExecPodFactory_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }

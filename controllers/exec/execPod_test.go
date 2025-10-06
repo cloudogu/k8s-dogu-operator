@@ -391,7 +391,7 @@ func Test_execPodFactory_CheckReady(t *testing.T) {
 	})
 }
 
-func Test_execPodFactory_CreateOrUpdate(t *testing.T) {
+func Test_execPodFactory_Create(t *testing.T) {
 	type fields struct {
 		clientFn func(t *testing.T) client.Client
 	}
@@ -435,7 +435,7 @@ func Test_execPodFactory_CreateOrUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "should fail to update exec pod",
+			name: "should succeed without creating exec pod if it already exists",
 			fields: fields{
 				clientFn: func(t *testing.T) client.Client {
 					mck := newMockK8sClient(t)
@@ -444,36 +444,6 @@ func Test_execPodFactory_CreateOrUpdate(t *testing.T) {
 						Namespace: testNamespace,
 						Name:      "dogu-execpod",
 					}, &corev1.Pod{}).Return(nil).Once()
-					mck.EXPECT().Update(testCtx, readExpectedExecPod(t)).Return(assert.AnError).Once()
-					return mck
-				},
-			},
-			args: args{
-				doguResource: &k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{
-					Name:      "dogu",
-					Namespace: testNamespace,
-				}},
-				dogu: &core.Dogu{
-					Name:    "official/dogu",
-					Image:   "registry.example.com/official/dogu",
-					Version: "1.2.3-1",
-				},
-			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				return assert.ErrorIs(t, err, assert.AnError)
-			},
-		},
-		{
-			name: "should succeed to update exec pod",
-			fields: fields{
-				clientFn: func(t *testing.T) client.Client {
-					mck := newMockK8sClient(t)
-					mck.EXPECT().Scheme().Return(getTestScheme()).Once()
-					mck.EXPECT().Get(testCtx, types.NamespacedName{
-						Namespace: testNamespace,
-						Name:      "dogu-execpod",
-					}, &corev1.Pod{}).Return(nil).Once()
-					mck.EXPECT().Update(testCtx, readExpectedExecPod(t)).Return(nil).Once()
 					return mck
 				},
 			},
@@ -558,7 +528,7 @@ func Test_execPodFactory_CreateOrUpdate(t *testing.T) {
 			ep := &execPodFactory{
 				client: tt.fields.clientFn(t),
 			}
-			tt.wantErr(t, ep.CreateOrUpdate(testCtx, tt.args.doguResource, tt.args.dogu), fmt.Sprintf("CreateOrUpdate(%v, %v, %v)", testCtx, tt.args.doguResource, tt.args.dogu))
+			tt.wantErr(t, ep.Create(testCtx, tt.args.doguResource, tt.args.dogu), fmt.Sprintf("Create(%v, %v, %v)", testCtx, tt.args.doguResource, tt.args.dogu))
 		})
 	}
 }
