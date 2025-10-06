@@ -161,6 +161,28 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("should ignore legacy nginx and registrator dogu dependencies", func(t *testing.T) {
+		/*
+			redmine
+			+-m-> ☑nginx
+			+-m-> ☑registrator
+			+-o-> ☑nginx
+			+-o-> ☑registrator
+		*/
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		ignoreNginxRegistratorDogu := readTestDataDogu(t, ignoreNginxRegistratorBytes)
+		ecosystemClient := newMockEcosystemInterface(t)
+
+		sut := NewDoguChecker(ecosystemClient, localFetcher)
+
+		// when
+		err := sut.CheckDependenciesRecursive(testCtx, ignoreNginxRegistratorDogu, testNamespace)
+
+		// then
+		require.NoError(t, err)
+	})
+
 	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
 		/*
 			testDogu

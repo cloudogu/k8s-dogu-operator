@@ -92,6 +92,9 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 	var errs []error
 
 	for _, dependency := range localDogu.GetDependenciesOfType(core.DependencyTypeDogu) {
+		if dependency.Name == "nginx" || dependency.Name == "registrator" {
+			continue
+		}
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
 		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, cescommons.SimpleName(dependency.Name))
@@ -120,6 +123,10 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 	var errs []error
 
 	for _, dependency := range localDogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu) {
+		if dependency.Name == "nginx" || dependency.Name == "registrator" {
+			continue
+		}
+
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
 		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, cescommons.SimpleName(dependency.Name))

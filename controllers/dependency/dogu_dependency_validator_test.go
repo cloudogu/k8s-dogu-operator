@@ -123,6 +123,46 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		assert.ErrorContains(t, err, "parsed Version does not fulfill version requirement of")
 	})
 
+	t.Run("should ignore nginx and registrator dependency", func(t *testing.T) {
+		// given
+		localDoguFetcherMock := newMockLocalDoguFetcher(t)
+		validator := newDoguDependencyValidator(localDoguFetcherMock)
+		dogu := &core.Dogu{
+			Name:    "dogu",
+			Version: "1.0.0",
+			Dependencies: []core.Dependency{
+				{
+					Type:    "dogu",
+					Name:    "nginx",
+					Version: ">=1.0.0",
+				},
+				{
+					Type:    "dogu",
+					Name:    "registrator",
+					Version: ">=1.0.0",
+				},
+			},
+			OptionalDependencies: []core.Dependency{
+				{
+					Type:    "dogu",
+					Name:    "nginx",
+					Version: ">=1.0.0",
+				},
+				{
+					Type:    "dogu",
+					Name:    "registrator",
+					Version: ">=1.0.0",
+				},
+			},
+		}
+
+		// when
+		err := validator.ValidateAllDependencies(testCtx, dogu)
+
+		// then
+		require.NoError(t, err)
+	})
+
 	t.Run("success on mandatory and optional dependency", func(t *testing.T) {
 		// given
 		redmineDogu := &core.Dogu{

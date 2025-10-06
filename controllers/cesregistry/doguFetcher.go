@@ -60,7 +60,7 @@ func (df *localDoguFetcher) FetchInstalled(ctx context.Context, doguName cescomm
 		return nil, fmt.Errorf("failed to get local dogu descriptor for %s: %w", doguName, err)
 	}
 
-	return replaceK8sIncompatibleDoguDependencies(installedDogu), nil
+	return installedDogu, nil
 }
 
 func (df *localDoguFetcher) Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error) {
@@ -124,15 +124,13 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 			return nil, nil, fmt.Errorf("failed to get dogu from remote or cache: %w", err)
 		}
 
-		patchedDogu := replaceK8sIncompatibleDoguDependencies(remoteDogu)
-		return patchedDogu, nil, err
+		return remoteDogu, nil, nil
 	}
 
 	log.FromContext(ctx).Info("Fetching dogu from development dogu map...")
 	remoteDogu, err := rdf.getFromDevelopmentDoguMap(developmentDoguMap)
 
-	patchedDogu := replaceK8sIncompatibleDoguDependencies(remoteDogu)
-	return patchedDogu, developmentDoguMap, err
+	return remoteDogu, developmentDoguMap, err
 }
 
 func (rdf *resourceDoguFetcher) getDevelopmentDoguMap(ctx context.Context, doguResource *doguv2.Dogu) (*doguv2.DevelopmentDoguMap, error) {
@@ -173,29 +171,4 @@ func (rdf *resourceDoguFetcher) getDoguFromRemoteRegistry(context context.Contex
 	}
 
 	return remoteDogu, nil
-}
-
-func replaceK8sIncompatibleDoguDependencies(dogu *core.Dogu) *core.Dogu {
-	dogu.Dependencies = patchDependencies(dogu.Dependencies)
-	dogu.OptionalDependencies = patchDependencies(dogu.OptionalDependencies)
-
-	return dogu
-}
-
-func patchDependencies(deps []core.Dependency) []core.Dependency {
-	patchedDependencies := make([]core.Dependency, 0)
-
-	skippedDogus := map[string]struct{}{
-		"registrator": {},
-		"nginx":       {},
-	}
-
-	for _, doguDep := range deps {
-		name := doguDep.Name
-		if _, ok := skippedDogus[name]; ok {
-			continue
-		}
-		patchedDependencies = append(patchedDependencies, doguDep)
-	}
-	return patchedDependencies
 }

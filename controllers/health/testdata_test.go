@@ -36,6 +36,9 @@ var optional1Bytes []byte
 //go:embed testdata/optional2-dogu.json
 var optional2Bytes []byte
 
+//go:embed testdata/ignore-nginx-registrator.json
+var ignoreNginxRegistratorBytes []byte
+
 func readTestDataLdapCr(t *testing.T) *doguv2.Dogu {
 	t.Helper()
 

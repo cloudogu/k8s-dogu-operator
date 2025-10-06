@@ -1,0 +1,26 @@
+{
+  "Name": "official/redmine",
+  "Version": "3.2.1-1",
+  "DisplayName": "Ignore dogus in multinode",
+  "Image": "registry.cloudogu.com/official/redmine",
+  "Dependencies": [
+    {
+      "type": "dogu",
+      "name": "nginx"
+    },
+    {
+      "type": "dogu",
+      "name": "registrator"
+    }
+  ],
+  "OptionalDependencies": [
+    {
+      "type": "dogu",
+      "name": "nginx"
+    },
+    {
+      "type": "dogu",
+      "name": "registrator"
+    }
+  ]
+}
