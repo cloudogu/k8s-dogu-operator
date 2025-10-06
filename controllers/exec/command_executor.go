@@ -19,7 +19,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/cluster-api/util/conditions"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -124,7 +123,7 @@ func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resour
 // identified by its pod name.
 func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand) (*bytes.Buffer, error) {
 	req := ce.getCreateExecRequest(pod, command)
-	exec, err := ce.commandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
+	exec, err := ce.commandExecutorCreator(ce.restConfig, "POST", req.URL())
 	if err != nil {
 		return nil, &stateError{
 			sourceError: fmt.Errorf("failed to create new spdy executor: %w", err),
