@@ -90,9 +90,12 @@ type podTemplateResourceGenerator interface {
 // DoguResourceGenerator is used to generate kubernetes resources for the dogu.
 type DoguResourceGenerator interface {
 	podTemplateResourceGenerator
-
 	// CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
 	CreateDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
+	// UpdateDoguDeployment updates the given dogu deployment with a given dogu.json and dogu custom resource.
+	// This method should be used to update the dogu deployments. A creation of a new Deployment in CreateDoguDeployment
+	// would result in an unnecessary reconciliation and even with the predicate filter in an endless loop.
+	UpdateDoguDeployment(ctx context.Context, deployment *apps.Deployment, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*apps.Deployment, error)
 	// CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
 	// The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 	// apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides

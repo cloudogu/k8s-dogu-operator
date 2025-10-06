@@ -137,7 +137,6 @@ func (r *DoguReconciler) setupWithManager(mgr ctrl.Manager) error {
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
 		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{})).
-		WithEventFilter(predicate.Or(predicate.GenerationChangedPredicate{}, predicate.LabelChangedPredicate{})).
 		Complete(r)
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 type RegisterDoguVersionStep struct {
-	localDoguFetcher LocalDoguFetcher
+	localDoguFetcher localDoguFetcher
 	doguRegistrator  doguRegistrator
 }
 

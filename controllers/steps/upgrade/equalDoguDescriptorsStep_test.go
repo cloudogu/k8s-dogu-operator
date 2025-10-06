@@ -22,7 +22,7 @@ func TestNewEqualDoguDescriptorsStep(t *testing.T) {
 
 func TestEqualDoguDescriptorsStep_Run(t *testing.T) {
 	type fields struct {
-		localDoguFetcherFn func(t *testing.T) LocalDoguFetcher
+		localDoguFetcherFn func(t *testing.T) localDoguFetcher
 	}
 	tests := []struct {
 		name         string
@@ -33,7 +33,7 @@ func TestEqualDoguDescriptorsStep_Run(t *testing.T) {
 		{
 			name: "should fail to fetch remote dogu descriptor",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{}).Return(nil, assert.AnError)
 					return mck
@@ -45,7 +45,7 @@ func TestEqualDoguDescriptorsStep_Run(t *testing.T) {
 		{
 			name: "should fail to fetch local dogu descriptor",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: name}}).Return(&core.Dogu{}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(name)).Return(nil, assert.AnError)
@@ -58,7 +58,7 @@ func TestEqualDoguDescriptorsStep_Run(t *testing.T) {
 		{
 			name: "should continue if versions are the same",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: name}}).Return(&core.Dogu{Version: "1.0.0"}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(name)).Return(&core.Dogu{Version: "1.0.0"}, nil)
@@ -71,7 +71,7 @@ func TestEqualDoguDescriptorsStep_Run(t *testing.T) {
 		{
 			name: "should fail identity check because of different names",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: name}}).Return(&core.Dogu{Name: "test2", Version: "1.0.1"}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(name)).Return(&core.Dogu{Name: "test1", Version: "1.0.0"}, nil)
@@ -84,7 +84,7 @@ func TestEqualDoguDescriptorsStep_Run(t *testing.T) {
 		{
 			name: "should fail identity check because of different namespaces",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: name}}).Return(&core.Dogu{Name: "official/test", Version: "1.0.1"}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(name)).Return(&core.Dogu{Name: "official2/test", Version: "1.0.0"}, nil)
@@ -97,7 +97,7 @@ func TestEqualDoguDescriptorsStep_Run(t *testing.T) {
 		{
 			name: "should succeed identity check",
 			fields: fields{
-				localDoguFetcherFn: func(t *testing.T) LocalDoguFetcher {
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
 					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: name}}).Return(&core.Dogu{Version: "1.0.0"}, nil)
 					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(name)).Return(&core.Dogu{Name: "official/test", Version: "1.0.0"}, nil)

@@ -94,8 +94,16 @@ func NewResourceGenerator(
 	}
 }
 
+func (r *resourceGenerator) UpdateDoguDeployment(ctx context.Context, deployment *appsv1.Deployment, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	return r.updateDoguDeployment(ctx, deployment, doguResource, dogu)
+}
+
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
 func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	return r.updateDoguDeployment(ctx, &appsv1.Deployment{}, doguResource, dogu)
+}
+
+func (r *resourceGenerator) updateDoguDeployment(ctx context.Context, deployment *appsv1.Deployment, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
 	podTemplate, err := r.GetPodTemplate(ctx, doguResource, dogu)
 	if err != nil {
 		return nil, err
@@ -105,14 +113,11 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 	// Version labels only get applied to pods to discern them during an upgrade.
 	appDoguNameLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
 
-	// Create deployment
-	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
-		Name:      doguResource.Name,
-		Namespace: doguResource.Namespace,
-		Labels:    appDoguNameLabels,
-	}}
+	deployment.Name = doguResource.Name
+	deployment.Namespace = doguResource.Namespace
+	deployment.Labels = appDoguNameLabels
 
-	deployment.Spec = buildDeploymentSpec(doguResource, podTemplate)
+	updateDeploymentSpec(deployment, doguResource, podTemplate)
 
 	err = ctrl.SetControllerReference(doguResource, deployment, r.scheme)
 	if err != nil {
@@ -419,6 +424,22 @@ func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume
 	return filteredList
 }
 
+func updateDeploymentSpec(deployment *appsv1.Deployment, doguResource *k8sv2.Dogu, podTemplate *corev1.PodTemplateSpec) {
+	var replicas int32 = ReplicaCountStarted
+	if doguResource.Spec.Stopped {
+		replicas = ReplicaCountStopped
+	}
+
+	deployment.Spec.Selector = &metav1.LabelSelector{MatchLabels: doguResource.GetDoguNameLabel()}
+	deployment.Spec.Strategy = appsv1.DeploymentStrategy{
+		Type: "Recreate",
+	}
+	deployment.Spec.Replicas = &replicas
+	deployment.Spec.Template = *podTemplate
+	deployment.Spec.ProgressDeadlineSeconds = ptr.To(int32(600))
+	deployment.Spec.RevisionHistoryLimit = ptr.To(int32(10))
+}
+
 func buildDeploymentSpec(doguResource *k8sv2.Dogu, podTemplate *corev1.PodTemplateSpec) appsv1.DeploymentSpec {
 	var replicas int32 = ReplicaCountStarted
 	if doguResource.Spec.Stopped {
@@ -430,8 +451,10 @@ func buildDeploymentSpec(doguResource *k8sv2.Dogu, podTemplate *corev1.PodTempla
 		Strategy: appsv1.DeploymentStrategy{
 			Type: "Recreate",
 		},
-		Template: *podTemplate,
-		Replicas: &replicas,
+		Template:                *podTemplate,
+		Replicas:                &replicas,
+		ProgressDeadlineSeconds: ptr.To(int32(600)),
+		RevisionHistoryLimit:    ptr.To(int32(10)),
 	}
 }
 

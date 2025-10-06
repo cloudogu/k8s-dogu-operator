@@ -23,7 +23,7 @@ const requeueAfterRevertStartupProbe = time.Second * 3
 
 type RevertStartupProbeStep struct {
 	client              k8sClient
-	localDoguFetcher    LocalDoguFetcher
+	localDoguFetcher    localDoguFetcher
 	deploymentInterface deploymentInterface
 	doguCommandExecutor commandExecutor
 }

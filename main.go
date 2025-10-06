@@ -105,7 +105,7 @@ func options() []fx.Option {
 				fx.As(new(initfx.OwnerReferenceSetter)),
 				fx.ResultTags(`name:"localDoguDescriptorRepository"`),
 			),
-			fx.Annotate(initfx.NewLocalDoguFetcher, fx.As(new(cesregistry.LocalDoguFetcher)), fx.As(new(upgradeSteps.LocalDoguFetcher))),
+			fx.Annotate(initfx.NewLocalDoguFetcher, fx.As(new(cesregistry.LocalDoguFetcher))),
 			fx.Annotate(repository.NewGlobalConfigRepository, fx.As(new(resource.GlobalConfigRepository))),
 			// provide twice, tagged as well as untagged
 			fx.Annotate(

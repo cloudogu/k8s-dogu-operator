@@ -12,7 +12,7 @@ import (
 
 type DeleteExecPodStep struct {
 	execPodFactory   execPodFactory
-	localDoguFetcher LocalDoguFetcher
+	localDoguFetcher localDoguFetcher
 }
 
 func NewDeleteExecPodStep(fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory) *DeleteExecPodStep {

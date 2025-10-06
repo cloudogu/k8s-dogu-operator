@@ -331,6 +331,67 @@ func (_c *mockResourceGenerator_GetPodTemplate_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// UpdateDoguDeployment provides a mock function with given fields: ctx, deployment, doguResource, dogu
+func (_m *mockResourceGenerator) UpdateDoguDeployment(ctx context.Context, deployment *appsv1.Deployment, doguResource *v2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	ret := _m.Called(ctx, deployment, doguResource, dogu)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateDoguDeployment")
+	}
+
+	var r0 *appsv1.Deployment
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *appsv1.Deployment, *v2.Dogu, *core.Dogu) (*appsv1.Deployment, error)); ok {
+		return rf(ctx, deployment, doguResource, dogu)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *appsv1.Deployment, *v2.Dogu, *core.Dogu) *appsv1.Deployment); ok {
+		r0 = rf(ctx, deployment, doguResource, dogu)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*appsv1.Deployment)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *appsv1.Deployment, *v2.Dogu, *core.Dogu) error); ok {
+		r1 = rf(ctx, deployment, doguResource, dogu)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockResourceGenerator_UpdateDoguDeployment_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateDoguDeployment'
+type mockResourceGenerator_UpdateDoguDeployment_Call struct {
+	*mock.Call
+}
+
+// UpdateDoguDeployment is a helper method to define mock.On call
+//   - ctx context.Context
+//   - deployment *appsv1.Deployment
+//   - doguResource *v2.Dogu
+//   - dogu *core.Dogu
+func (_e *mockResourceGenerator_Expecter) UpdateDoguDeployment(ctx interface{}, deployment interface{}, doguResource interface{}, dogu interface{}) *mockResourceGenerator_UpdateDoguDeployment_Call {
+	return &mockResourceGenerator_UpdateDoguDeployment_Call{Call: _e.mock.On("UpdateDoguDeployment", ctx, deployment, doguResource, dogu)}
+}
+
+func (_c *mockResourceGenerator_UpdateDoguDeployment_Call) Run(run func(ctx context.Context, deployment *appsv1.Deployment, doguResource *v2.Dogu, dogu *core.Dogu)) *mockResourceGenerator_UpdateDoguDeployment_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*appsv1.Deployment), args[2].(*v2.Dogu), args[3].(*core.Dogu))
+	})
+	return _c
+}
+
+func (_c *mockResourceGenerator_UpdateDoguDeployment_Call) Return(_a0 *appsv1.Deployment, _a1 error) *mockResourceGenerator_UpdateDoguDeployment_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockResourceGenerator_UpdateDoguDeployment_Call) RunAndReturn(run func(context.Context, *appsv1.Deployment, *v2.Dogu, *core.Dogu) (*appsv1.Deployment, error)) *mockResourceGenerator_UpdateDoguDeployment_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // newMockResourceGenerator creates a new instance of mockResourceGenerator. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockResourceGenerator(t interface {

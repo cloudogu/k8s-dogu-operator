@@ -22,8 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// LocalDoguFetcher includes functionality to search the local dogu registry for a dogu.
-type LocalDoguFetcher interface {
+// localDoguFetcher includes functionality to search the local dogu registry for a dogu.
+type localDoguFetcher interface {
 	cesregistry.LocalDoguFetcher
 }
 

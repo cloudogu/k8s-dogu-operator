@@ -31,7 +31,7 @@ type UpdateDeploymentStep struct {
 	client              k8sClient
 	upserter            ResourceUpserter
 	deploymentInterface deploymentInterface
-	localDoguFetcher    LocalDoguFetcher
+	localDoguFetcher    localDoguFetcher
 	execPodFactory      execPodFactory
 	doguCommandExecutor commandExecutor
 }
