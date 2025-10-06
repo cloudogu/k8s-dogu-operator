@@ -16,12 +16,15 @@ func TestNewDoguStatusUpdater(t *testing.T) {
 	// given
 	ecosystemClientMock := newMockEcosystemInterface(t)
 	recorderMock := newMockEventRecorder(t)
+	k8sClientMock := newMockClientSet(t)
 
 	// when
-	actual := NewDoguStatusUpdater(ecosystemClientMock, recorderMock, nil)
+	actual := NewDoguStatusUpdater(ecosystemClientMock, recorderMock, k8sClientMock)
 
 	// then
-	assert.NotEmpty(t, actual)
+	assert.Same(t, ecosystemClientMock, actual.ecosystemClient)
+	assert.Same(t, recorderMock, actual.recorder)
+	assert.Same(t, k8sClientMock, actual.k8sClientSet)
 }
 
 func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
