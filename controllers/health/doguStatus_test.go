@@ -14,17 +14,17 @@ import (
 
 func TestNewDoguStatusUpdater(t *testing.T) {
 	// given
-	ecosystemClientMock := newMockEcosystemInterface(t)
 	recorderMock := newMockEventRecorder(t)
-	k8sClientMock := newMockClientSet(t)
+	configMapInterfaceMock := newMockConfigMapInterface(t)
+	podInterfaceMock := newMockPodInterface(t)
 
 	// when
-	actual := NewDoguStatusUpdater(ecosystemClientMock, recorderMock, k8sClientMock)
+	actual := NewDoguStatusUpdater(recorderMock, configMapInterfaceMock, podInterfaceMock)
 
 	// then
-	assert.Same(t, ecosystemClientMock, actual.ecosystemClient)
+	assert.Same(t, podInterfaceMock, actual.podInterface)
 	assert.Same(t, recorderMock, actual.recorder)
-	assert.Same(t, k8sClientMock, actual.k8sClientSet)
+	assert.Same(t, configMapInterfaceMock, actual.configMapInterface)
 }
 
 func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
@@ -55,15 +55,8 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 
 	t.Run("should succeed to update health config map", func(t *testing.T) {
 		// given
-		clientSetMock := newMockClientSet(t)
-		coreV1Client := newMockCoreV1Interface(t)
 		podClientMock := newMockPodInterface(t)
 		cmClientMock := newMockConfigMapInterface(t)
-
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
-
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
-		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
 
 		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
 		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
@@ -77,7 +70,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 				Type: "state",
 			}},
 		}
-		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
+		sut := &DoguStatusUpdater{podInterface: podClientMock, configMapInterface: cmClientMock}
 
 		// when
 		err := sut.UpdateHealthConfigMap(testCtx, deployment, doguJson)
@@ -91,15 +84,8 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 		testCM.Data = make(map[string]string)
 		testCM.Data["ldap"] = "ready"
 
-		clientSetMock := newMockClientSet(t)
-		coreV1Client := newMockCoreV1Interface(t)
 		podClientMock := newMockPodInterface(t)
 		cmClientMock := newMockConfigMapInterface(t)
-
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
-
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
-		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
 
 		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
 		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
@@ -114,7 +100,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 				State: "customReady123",
 			}},
 		}
-		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
+		sut := &DoguStatusUpdater{podInterface: podClientMock, configMapInterface: cmClientMock}
 
 		// when
 		err := sut.UpdateHealthConfigMap(testCtx, deployment, doguJson)
@@ -130,15 +116,8 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 		started = false
 		podList.Items[0].Status.ContainerStatuses[0].Started = &started
 
-		clientSetMock := newMockClientSet(t)
-		coreV1Client := newMockCoreV1Interface(t)
 		podClientMock := newMockPodInterface(t)
 		cmClientMock := newMockConfigMapInterface(t)
-
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
-
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
-		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
 
 		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
 		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
@@ -152,7 +131,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 				Type: "state",
 			}},
 		}
-		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
+		sut := &DoguStatusUpdater{podInterface: podClientMock, configMapInterface: cmClientMock}
 
 		// when
 		err := sut.UpdateHealthConfigMap(testCtx, deployment, doguJson)
@@ -166,15 +145,8 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 		testCM.Data = make(map[string]string)
 		testCM.Data["ldap"] = "ready"
 
-		clientSetMock := newMockClientSet(t)
-		coreV1Client := newMockCoreV1Interface(t)
 		podClientMock := newMockPodInterface(t)
 		cmClientMock := newMockConfigMapInterface(t)
-
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
-
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
-		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
 
 		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
 		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(testCM, nil)
@@ -188,7 +160,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 				Type: "tcp",
 			}},
 		}
-		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
+		sut := &DoguStatusUpdater{podInterface: podClientMock, configMapInterface: cmClientMock}
 
 		// when
 		err := sut.UpdateHealthConfigMap(testCtx, deployment, doguJson)
@@ -199,15 +171,11 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to get configmap", func(t *testing.T) {
 		// given
-		clientSetMock := newMockClientSet(t)
-		coreV1Client := newMockCoreV1Interface(t)
 		cmClientMock := newMockConfigMapInterface(t)
 
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
 		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(nil, assert.AnError)
 
-		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
+		sut := &DoguStatusUpdater{configMapInterface: cmClientMock}
 
 		// when
 		err := sut.UpdateHealthConfigMap(testCtx, deployment, &core.Dogu{})
@@ -219,15 +187,8 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to get pod list of deployment", func(t *testing.T) {
 		// given
-		clientSetMock := newMockClientSet(t)
-		coreV1Client := newMockCoreV1Interface(t)
 		podClientMock := newMockPodInterface(t)
 		cmClientMock := newMockConfigMapInterface(t)
-
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
-
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
-		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
 
 		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(&corev1.ConfigMap{}, nil)
 
@@ -235,7 +196,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),
 		}).Return(nil, assert.AnError)
 
-		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
+		sut := &DoguStatusUpdater{podInterface: podClientMock, configMapInterface: cmClientMock}
 
 		// when
 		err := sut.UpdateHealthConfigMap(testCtx, deployment, &core.Dogu{})
@@ -247,15 +208,8 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 	})
 	t.Run("should throw error if not able to update configmap", func(t *testing.T) {
 		// given
-		clientSetMock := newMockClientSet(t)
-		coreV1Client := newMockCoreV1Interface(t)
 		podClientMock := newMockPodInterface(t)
 		cmClientMock := newMockConfigMapInterface(t)
-
-		clientSetMock.EXPECT().CoreV1().Return(coreV1Client)
-
-		coreV1Client.EXPECT().ConfigMaps(testNamespace).Return(cmClientMock)
-		coreV1Client.EXPECT().Pods(testNamespace).Return(podClientMock)
 
 		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(testCM, nil)
 		cmClientMock.EXPECT().Update(testCtx, testCM, metav1api.UpdateOptions{}).Return(nil, assert.AnError)
@@ -269,7 +223,7 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 				Type: "state",
 			}},
 		}
-		sut := &DoguStatusUpdater{k8sClientSet: clientSetMock}
+		sut := &DoguStatusUpdater{podInterface: podClientMock, configMapInterface: cmClientMock}
 
 		// when
 		err := sut.UpdateHealthConfigMap(testCtx, deployment, doguJson)

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -23,6 +24,7 @@ type DeploymentAvailabilityChecker interface {
 
 type DoguHealthStatusUpdater interface {
 	UpdateHealthConfigMap(ctx context.Context, deployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error
+	DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error
 }
 
 type DoguHealthChecker interface {
