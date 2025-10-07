@@ -26,6 +26,7 @@ func (dcu *DoguConditionUpdater) UpdateCondition(ctx context.Context, doguResour
 		return fmt.Errorf("failed to get dogu: %w", err)
 	}
 
+	condition.ObservedGeneration = newDoguResource.Generation
 	meta.SetStatusCondition(&newDoguResource.Status.Conditions, condition)
 	newDoguResource, err = dcu.doguInterface.UpdateStatus(ctx, newDoguResource, metav1.UpdateOptions{})
 	if err != nil {
@@ -42,6 +43,7 @@ func (dcu *DoguConditionUpdater) UpdateConditions(ctx context.Context, doguResou
 	}
 
 	for _, condition := range conditions {
+		condition.ObservedGeneration = newDoguResource.Generation
 		meta.SetStatusCondition(&newDoguResource.Status.Conditions, condition)
 	}
 

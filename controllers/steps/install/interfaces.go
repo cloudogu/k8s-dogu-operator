@@ -148,6 +148,7 @@ type deploymentAvailabilityChecker interface {
 
 type doguHealthStatusUpdater interface {
 	UpdateHealthConfigMap(ctx context.Context, deployment *apps.Deployment, doguJson *cesappcore.Dogu) error
+	DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error
 }
 
 type serviceAccountCreator interface {

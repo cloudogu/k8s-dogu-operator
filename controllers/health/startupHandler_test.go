@@ -1,6 +1,7 @@
 package health
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -60,7 +61,8 @@ func TestStartupHandler_Start(t *testing.T) {
 		doguEvents := make(chan event.TypedGenericEvent[*v2.Dogu])
 		sut := StartupHandler{doguInterface: doguInterfaceMock, doguEvents: doguEvents}
 
-		go func() {
+		var wg sync.WaitGroup
+		wg.Go(func() {
 			expectedEvents := []event.TypedGenericEvent[*v2.Dogu]{
 				{Object: casDogu}, {Object: ldapDogu},
 			}
@@ -73,12 +75,13 @@ func TestStartupHandler_Start(t *testing.T) {
 					return
 				}
 			}
-		}()
+		})
 
 		// when
 		err := sut.Start(testCtx)
 
 		// then
+		wg.Wait()
 		require.NoError(t, err)
 	})
 

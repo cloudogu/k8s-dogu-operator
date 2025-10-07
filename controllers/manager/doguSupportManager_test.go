@@ -68,7 +68,10 @@ func TestNewDoguSupportManager(t *testing.T) {
 	manager := NewDoguSupportManager(k8sClient, fetcher, generator, recorder)
 
 	// then
-	require.NotNil(t, manager)
+	assert.Same(t, k8sClient, manager.(*doguSupportManager).client)
+	assert.Same(t, fetcher, manager.(*doguSupportManager).doguFetcher)
+	assert.Same(t, generator, manager.(*doguSupportManager).podTemplateResourceGenerator)
+	assert.Same(t, recorder, manager.(*doguSupportManager).eventRecorder)
 }
 
 func Test_doguSupportManager_supportModeChanged(t *testing.T) {

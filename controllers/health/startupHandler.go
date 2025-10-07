@@ -16,6 +16,8 @@ type StartupHandler struct {
 	doguEvents    chan<- event.TypedGenericEvent[*v2.Dogu]
 }
 
+// NewStartupHandler creates the StartupHandler as a manager.Runnable and adds it to the manager.Manager.
+// The doguEvents channel is used to trigger reconciles by enqueuing generic events for dogus.
 func NewStartupHandler(manager manager.Manager, doguInterface doguClient.DoguInterface, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (*StartupHandler, error) {
 	sh := &StartupHandler{
 		doguInterface: doguInterface,

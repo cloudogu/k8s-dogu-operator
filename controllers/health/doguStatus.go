@@ -5,43 +5,40 @@ import (
 	"fmt"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
-
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 )
 
-const statusUpdateEventReason = "HealthStatusUpdate"
 const healthConfigMapName = "k8s-dogu-operator-dogu-health"
 
 type DoguStatusUpdater struct {
-	ecosystemClient doguClient.EcoSystemV2Interface
-	recorder        record.EventRecorder
-	k8sClientSet    clientSet
+	recorder           record.EventRecorder
+	configMapInterface configMapInterface
+	podInterface       podInterface
 }
 
-func NewDoguStatusUpdater(ecosystemClient doguClient.EcoSystemV2Interface, recorder record.EventRecorder, k8sClientSet kubernetes.Interface) *DoguStatusUpdater {
+func NewDoguStatusUpdater(recorder record.EventRecorder, configMapInterface corev1.ConfigMapInterface, podInterface corev1.PodInterface) *DoguStatusUpdater {
 	return &DoguStatusUpdater{
-		ecosystemClient: ecosystemClient,
-		recorder:        recorder,
-		k8sClientSet:    k8sClientSet,
+		recorder:           recorder,
+		configMapInterface: configMapInterface,
+		podInterface:       podInterface,
 	}
 }
 
 func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDeployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error {
-	namespace := doguDeployment.Namespace
-
-	stateConfigMap, err := dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, healthConfigMapName, metav1api.GetOptions{})
+	stateConfigMap, err := dsw.configMapInterface.Get(ctx, healthConfigMapName, metav1api.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get health state configMap: %w", err)
 	}
 	initHealthConfigMap(stateConfigMap, doguDeployment)
 
 	// Get all pods to deployment
-	pods, err := dsw.k8sClientSet.CoreV1().Pods(namespace).List(ctx, metav1api.ListOptions{
+	pods, err := dsw.podInterface.List(ctx, metav1api.ListOptions{
 		LabelSelector: metav1api.FormatLabelSelector(doguDeployment.Spec.Selector),
 	})
 	if err != nil {
@@ -55,7 +52,7 @@ func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDep
 			setHealthConfigMapStateWhenStarted(stateConfigMap, pod, doguDeployment, state)
 		}
 
-		_, err = dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+		_, err = dsw.configMapInterface.Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to update health state in health configMap: %w", err)
 		}
@@ -66,6 +63,51 @@ func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDep
 	}
 
 	return nil
+}
+
+func (dsw *DoguStatusUpdater) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error {
+	stateConfigMap, err := dsw.configMapInterface.Get(ctx, healthConfigMapName, metav1api.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			cm := &v1.ConfigMap{
+				ObjectMeta: metav1api.ObjectMeta{Name: healthConfigMapName},
+			}
+			stateConfigMap, err = dsw.configMapInterface.Create(ctx, cm, metav1api.CreateOptions{})
+			if err != nil {
+				return err
+			}
+			return nil
+		} else {
+			return err
+		}
+	}
+	newData := stateConfigMap.Data
+	if newData == nil {
+		newData = make(map[string]string)
+	}
+	delete(newData, dogu.Name)
+
+	stateConfigMap.Data = newData
+
+	// Update the ConfigMap
+	_, err = dsw.configMapInterface.Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+	return err
+}
+
+func (dsw *DoguStatusUpdater) getOrCreateHealthConfigMap(ctx context.Context) (*v1.ConfigMap, error) {
+	cm, err := dsw.configMapInterface.Get(ctx, healthConfigMapName, metav1api.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		cm = &v1.ConfigMap{
+			ObjectMeta: metav1api.ObjectMeta{Name: healthConfigMapName},
+		}
+		cm, err = dsw.configMapInterface.Create(ctx, cm, metav1api.CreateOptions{})
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+	return cm, nil
 }
 
 func initHealthConfigMap(stateConfigMap *v1.ConfigMap, doguDeployment *appsv1.Deployment) {
