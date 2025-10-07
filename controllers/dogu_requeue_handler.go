@@ -32,12 +32,12 @@ type doguRequeueHandler struct {
 }
 
 // NewDoguRequeueHandler creates a new dogu requeue handler.
-func NewDoguRequeueHandler(doguInterface doguClient.DoguInterface, recorder record.EventRecorder, operatorConfig *config.OperatorConfig) (*doguRequeueHandler, error) {
+func NewDoguRequeueHandler(doguInterface doguClient.DoguInterface, recorder record.EventRecorder, operatorConfig *config.OperatorConfig) *doguRequeueHandler {
 	return &doguRequeueHandler{
 		doguInterface: doguInterface,
 		namespace:     operatorConfig.Namespace,
 		recorder:      recorder,
-	}, nil
+	}
 }
 
 func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *doguv2.Dogu, reconcileError error, reqTime time.Duration) (ctrl.Result, error) {
@@ -53,9 +53,6 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
 		return
 	}
-	if result.RequeueAfter == 0 {
-		return
-	}
 
 	doguResource, err := d.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
@@ -63,6 +60,8 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 		logger.Error(err, "failed to get doguResource for setting requeue time")
 		return
 	}
+
+	doguResource.Status.RequeueTime = result.RequeueAfter
 
 	doguResource, err = d.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
 	if err != nil {
