@@ -13,12 +13,15 @@ import (
 
 func TestNewDeploymentManager(t *testing.T) {
 	t.Run("Successfully created deployment manager", func(t *testing.T) {
+		podMock := newMockPodInterface(t)
+		deployMock := newMockDeploymentInterface(t)
 		manager := NewDeploymentManager(
-			newMockPodInterface(t),
-			newMockDeploymentInterface(t),
+			podMock,
+			deployMock,
 		)
 
-		assert.NotNil(t, manager)
+		assert.Same(t, podMock, manager.(*deploymentManager).podInterface)
+		assert.Same(t, deployMock, manager.(*deploymentManager).deploymentInterface)
 	})
 }
 
@@ -80,14 +83,14 @@ func Test_deploymentManager_GetLastStartingTime(t *testing.T) {
 					mck := newMockDeploymentInterface(t)
 					mck.EXPECT().Get(testCtx, "test", metav1.GetOptions{}).Return(&appsv1.Deployment{
 						Spec: appsv1.DeploymentSpec{
-							Selector: &metav1.LabelSelector{},
+							Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}},
 						},
 					}, nil)
 					return mck
 				},
 				podInterfaceFn: func(t *testing.T) podInterface {
 					mck := newMockPodInterface(t)
-					labelSelector := metav1.FormatLabelSelector(&metav1.LabelSelector{})
+					labelSelector := metav1.FormatLabelSelector(&metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}})
 					pods := &v1.PodList{Items: []v1.Pod{
 						{
 							Status: v1.PodStatus{

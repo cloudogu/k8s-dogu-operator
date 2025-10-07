@@ -1,25 +1,29 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	appsv1 "k8s.io/api/apps/v1"
-	v3 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewDoguRestartManager(t *testing.T) {
 	t.Run("Successfully created restart manager", func(t *testing.T) {
+		doguMock := newMockDoguInterface(t)
+		deploymentMock := newMockDeploymentInterface(t)
 		step := NewDoguRestartManager(
-			newMockDoguInterface(t),
-			newMockDeploymentInterface(t),
+			doguMock,
+			deploymentMock,
 		)
 
-		assert.NotNil(t, step)
+		assert.Same(t, doguMock, step.(*doguRestartManager).doguInterface)
+		assert.Same(t, deploymentMock, step.(*doguRestartManager).deploymentInterface)
 	})
 }
 
@@ -58,17 +62,14 @@ func Test_doguRestartManager_RestartDogu(t *testing.T) {
 				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
 					mck := newMockDeploymentInterface(t)
 					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&appsv1.Deployment{}, nil)
-					mck.EXPECT().Update(testCtx, &appsv1.Deployment{
-						Spec: appsv1.DeploymentSpec{
-							Template: v3.PodTemplateSpec{
-								ObjectMeta: v1.ObjectMeta{
-									Annotations: map[string]string{
-										restartedAtAnnotationKey: time.Now().Format(time.RFC3339),
-									},
-								},
-							},
-						},
-					}, v1.UpdateOptions{}).Return(nil, assert.AnError)
+					mck.EXPECT().Update(testCtx, mock.Anything, v1.UpdateOptions{}).
+						Run(func(ctx context.Context, deployment *appsv1.Deployment, opts v1.UpdateOptions) {
+							restartedAt, exists := deployment.Spec.Template.Annotations[restartedAtAnnotationKey]
+							assert.True(t, exists, "restartedAt annotation should exist")
+							_, err := time.Parse(time.RFC3339, restartedAt)
+							assert.NoError(t, err, "restartedAt should be formatted correctly")
+						}).
+						Return(nil, assert.AnError)
 					return mck
 				},
 			},
@@ -84,17 +85,14 @@ func Test_doguRestartManager_RestartDogu(t *testing.T) {
 				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
 					mck := newMockDeploymentInterface(t)
 					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&appsv1.Deployment{}, nil)
-					mck.EXPECT().Update(testCtx, &appsv1.Deployment{
-						Spec: appsv1.DeploymentSpec{
-							Template: v3.PodTemplateSpec{
-								ObjectMeta: v1.ObjectMeta{
-									Annotations: map[string]string{
-										restartedAtAnnotationKey: time.Now().Format(time.RFC3339),
-									},
-								},
-							},
-						},
-					}, v1.UpdateOptions{}).Return(nil, nil)
+					mck.EXPECT().Update(testCtx, mock.Anything, v1.UpdateOptions{}).
+						Run(func(ctx context.Context, deployment *appsv1.Deployment, opts v1.UpdateOptions) {
+							restartedAt, exists := deployment.Spec.Template.Annotations[restartedAtAnnotationKey]
+							assert.True(t, exists, "restartedAt annotation should exist")
+							_, err := time.Parse(time.RFC3339, restartedAt)
+							assert.NoError(t, err, "restartedAt should be formatted correctly")
+						}).
+						Return(nil, nil)
 					return mck
 				},
 			},
