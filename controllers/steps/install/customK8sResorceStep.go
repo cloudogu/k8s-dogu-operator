@@ -55,10 +55,10 @@ func (ses *CustomK8sResourceStep) Run(ctx context.Context, doguResource *v2.Dogu
 
 	if len(customK8sResources) > 0 {
 		ses.recorder.Eventf(doguResource, corev1.EventTypeNormal, InstallEventReason, "Creating custom dogu resources to the cluster: [%s]", util.GetMapKeysAsString(customK8sResources))
-	}
-	err = ses.collectApplier.CollectApply(ctx, customK8sResources, doguResource)
-	if err != nil {
-		return steps.RequeueWithError(fmt.Errorf("failed to apply customK8sResources: %w", err))
+		err = ses.collectApplier.CollectApply(ctx, customK8sResources, doguResource)
+		if err != nil {
+			return steps.RequeueWithError(fmt.Errorf("failed to apply customK8sResources: %w", err))
+		}
 	}
 
 	return steps.Continue()
