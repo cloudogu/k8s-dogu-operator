@@ -84,6 +84,10 @@ type configMapInterface interface {
 	v1.ConfigMapInterface
 }
 
+type globalConfigRepository interface {
+	Get(ctx context.Context) (config.GlobalConfig, error)
+}
+
 //nolint:unused
 //goland:noinspection GoUnusedType
 type securityContextGenerator interface {

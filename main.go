@@ -212,7 +212,7 @@ func options() []fx.Option {
 			postinstall.NewExportModeStep,
 			postinstall.NewSupportModeStep,
 			postinstall.NewAdditionalMountsStep,
-			fx.Annotate(upgradeSteps.NewRestartDoguStep, fx.ParamTags(`name:"normalDoguConfig"`, `name:"sensitiveDoguConfig"`, "", "")),
+			fx.Annotate(upgradeSteps.NewRestartDoguStep, fx.ParamTags(`name:"normalDoguConfig"`, `name:"sensitiveDoguConfig"`, "", "", "")),
 			upgradeSteps.NewEqualDoguDescriptorsStep,
 			upgradeSteps.NewPreUpgradeStatusStep,
 			upgradeSteps.NewRegisterDoguVersionStep,

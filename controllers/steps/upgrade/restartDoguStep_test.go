@@ -10,21 +10,20 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v3 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewRestartDoguStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		doguConfigRepo := newMockDoguConfigRepository(t)
-		configMapInterfaceMock := newMockConfigMapInterface(t)
+		globalConfigRepoMock := newMockGlobalConfigRepository(t)
 
 		step := NewRestartDoguStep(
 			doguConfigRepo,
 			doguConfigRepo,
 			newMockDoguRestartManager(t),
 			newMockDeploymentManager(t),
-			configMapInterfaceMock,
+			globalConfigRepoMock,
 		)
 
 		assert.NotNil(t, step)
@@ -37,7 +36,7 @@ func TestRestartDoguStep_Run(t *testing.T) {
 		sensitiveDoguRepositoryFn  func(t *testing.T) doguConfigRepository
 		doguRestartManagerFn       func(t *testing.T) doguRestartManager
 		deploymentManagerManagerFn func(t *testing.T) deploymentManager
-		configMapInterfaceFn       func(t *testing.T) configMapInterface
+		globalConfigRepositoryFn   func(t *testing.T) globalConfigRepository
 	}
 	tests := []struct {
 		name         string
@@ -62,9 +61,7 @@ func TestRestartDoguStep_Run(t *testing.T) {
 				doguRestartManagerFn: func(t *testing.T) doguRestartManager {
 					return newMockDoguRestartManager(t)
 				},
-				configMapInterfaceFn: func(t *testing.T) configMapInterface {
-					return newMockConfigMapInterface(t)
-				},
+				globalConfigRepositoryFn: func(t *testing.T) globalConfigRepository { return newMockGlobalConfigRepository(t) },
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{
@@ -92,9 +89,7 @@ func TestRestartDoguStep_Run(t *testing.T) {
 				doguRestartManagerFn: func(t *testing.T) doguRestartManager {
 					return newMockDoguRestartManager(t)
 				},
-				configMapInterfaceFn: func(t *testing.T) configMapInterface {
-					return newMockConfigMapInterface(t)
-				},
+				globalConfigRepositoryFn: func(t *testing.T) globalConfigRepository { return newMockGlobalConfigRepository(t) },
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{
@@ -124,9 +119,7 @@ func TestRestartDoguStep_Run(t *testing.T) {
 				doguRestartManagerFn: func(t *testing.T) doguRestartManager {
 					return newMockDoguRestartManager(t)
 				},
-				configMapInterfaceFn: func(t *testing.T) configMapInterface {
-					return newMockConfigMapInterface(t)
-				},
+				globalConfigRepositoryFn: func(t *testing.T) globalConfigRepository { return newMockGlobalConfigRepository(t) },
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{
@@ -156,9 +149,9 @@ func TestRestartDoguStep_Run(t *testing.T) {
 				doguRestartManagerFn: func(t *testing.T) doguRestartManager {
 					return newMockDoguRestartManager(t)
 				},
-				configMapInterfaceFn: func(t *testing.T) configMapInterface {
-					mck := newMockConfigMapInterface(t)
-					mck.EXPECT().Get(testCtx, "global-config", v1.GetOptions{}).Return(nil, assert.AnError)
+				globalConfigRepositoryFn: func(t *testing.T) globalConfigRepository {
+					mck := newMockGlobalConfigRepository(t)
+					mck.EXPECT().Get(testCtx).Return(config.GlobalConfig{}, assert.AnError)
 					return mck
 				},
 			},
@@ -216,9 +209,9 @@ func TestRestartDoguStep_Run(t *testing.T) {
 					}).Return(assert.AnError)
 					return mck
 				},
-				configMapInterfaceFn: func(t *testing.T) configMapInterface {
-					mck := newMockConfigMapInterface(t)
-					mck.EXPECT().Get(testCtx, "global-config", v1.GetOptions{}).Return(&v3.ConfigMap{}, nil)
+				globalConfigRepositoryFn: func(t *testing.T) globalConfigRepository {
+					mck := newMockGlobalConfigRepository(t)
+					mck.EXPECT().Get(testCtx).Return(config.GlobalConfig{}, nil)
 					return mck
 				},
 			},
@@ -276,9 +269,9 @@ func TestRestartDoguStep_Run(t *testing.T) {
 					}).Return(nil)
 					return mck
 				},
-				configMapInterfaceFn: func(t *testing.T) configMapInterface {
-					mck := newMockConfigMapInterface(t)
-					mck.EXPECT().Get(testCtx, "global-config", v1.GetOptions{}).Return(&v3.ConfigMap{}, nil)
+				globalConfigRepositoryFn: func(t *testing.T) globalConfigRepository {
+					mck := newMockGlobalConfigRepository(t)
+					mck.EXPECT().Get(testCtx).Return(config.GlobalConfig{}, nil)
 					return mck
 				},
 			},
@@ -297,7 +290,7 @@ func TestRestartDoguStep_Run(t *testing.T) {
 				sensitiveDoguRepository: tt.fields.sensitiveDoguRepositoryFn(t),
 				doguRestartManager:      tt.fields.doguRestartManagerFn(t),
 				deploymentManager:       tt.fields.deploymentManagerManagerFn(t),
-				configMapInterface:      tt.fields.configMapInterfaceFn(t),
+				globalConfigRepository:  tt.fields.globalConfigRepositoryFn(t),
 			}
 			assert.Equalf(t, tt.want, rds.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)
 		})

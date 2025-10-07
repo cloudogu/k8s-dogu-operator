@@ -6,10 +6,8 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type RestartDoguStep struct {
@@ -18,6 +16,7 @@ type RestartDoguStep struct {
 	doguRestartManager      doguRestartManager
 	deploymentManager       deploymentManager
 	configMapInterface      configMapInterface
+	globalConfigRepository  globalConfigRepository
 }
 
 func NewRestartDoguStep(
@@ -25,14 +24,14 @@ func NewRestartDoguStep(
 	sensitiveDoguConfigRepo initfx.DoguConfigRepository,
 	restartManager manager.DoguRestartManager,
 	deploymentManager manager.DeploymentManager,
-	mapInterface v1.ConfigMapInterface,
+	globalConfigRepository resource.GlobalConfigRepository,
 ) *RestartDoguStep {
 	return &RestartDoguStep{
 		doguConfigRepository:    doguConfigRepo,
 		sensitiveDoguRepository: sensitiveDoguConfigRepo,
 		doguRestartManager:      restartManager,
 		deploymentManager:       deploymentManager,
-		configMapInterface:      mapInterface,
+		globalConfigRepository:  globalConfigRepository,
 	}
 }
 
@@ -52,14 +51,12 @@ func (rds *RestartDoguStep) Run(ctx context.Context, doguResource *v2.Dogu) step
 		return steps.RequeueWithError(err)
 	}
 
-	globalConfig, err := rds.configMapInterface.Get(ctx, "global-config", metav1.GetOptions{})
+	globalConfig, err := rds.globalConfigRepository.Get(ctx)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
 
-	globalConfigLastUpdateTime := rds.getConfigMapLastUpdatedTime(globalConfig)
-
-	if startingTime != nil && (startingTime.Before(sensConfig.LastUpdated.Time) || startingTime.Before(doguConfig.LastUpdated.Time) || startingTime.Before(globalConfigLastUpdateTime.Time)) {
+	if startingTime != nil && (startingTime.Before(sensConfig.LastUpdated.Time) || startingTime.Before(doguConfig.LastUpdated.Time) || startingTime.Before(globalConfig.LastUpdated.Time)) {
 		err = rds.doguRestartManager.RestartDogu(ctx, doguResource)
 		if err != nil {
 			return steps.RequeueWithError(err)
@@ -67,17 +64,4 @@ func (rds *RestartDoguStep) Run(ctx context.Context, doguResource *v2.Dogu) step
 	}
 
 	return steps.Continue()
-}
-
-func (rds *RestartDoguStep) getConfigMapLastUpdatedTime(cm *corev1.ConfigMap) *metav1.Time {
-	timestamp := cm.GetCreationTimestamp()
-	latest := &timestamp
-
-	for _, managedFields := range cm.GetManagedFields() {
-		if managedFields.Time != nil && managedFields.Time.After(latest.Time) {
-			latest = managedFields.Time
-		}
-	}
-
-	return latest
 }
