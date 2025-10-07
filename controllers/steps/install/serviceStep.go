@@ -31,12 +31,12 @@ func NewServiceStep(registry imageregistry.ImageRegistry, serviceInterface v1.Se
 }
 
 func (ses *ServiceStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	doguDescriptor, err := ses.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
+	doguDescriptor, err := ses.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
 
-	imageConfig, err := ses.imageRegistry.PullImageConfig(ctx, doguDescriptor.Image+":"+doguResource.Spec.Version)
+	imageConfig, err := ses.imageRegistry.PullImageConfig(ctx, doguDescriptor.Image+":"+doguDescriptor.Version)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
