@@ -222,10 +222,3 @@ func TestDoguInstallOrChangeUseCase_HandleUntilApplied(t *testing.T) {
 		})
 	}
 }
-
-func Test_getType(t *testing.T) {
-	type MyStruct struct{}
-
-	assert.Equal(t, "usecase.MyStruct", getType(MyStruct{}))
-	assert.Equal(t, "*usecase.MyStruct", getType(&MyStruct{}))
-}

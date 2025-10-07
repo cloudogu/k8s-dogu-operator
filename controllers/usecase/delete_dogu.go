@@ -50,14 +50,13 @@ func (ddu *DoguDeleteUseCase) HandleUntilApplied(ctx context.Context, doguResour
 
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
-			stepType := getType(s)
 			if result.Err != nil {
 				if cloudoguerrors.IsNotFoundError(result.Err) {
 					return 0, true, nil
 				}
-				logger.Error(result.Err, fmt.Sprintf("reconcile step %s has to requeue: %q", stepType, result.Err))
+				logger.Error(result.Err, fmt.Sprintf("reconcile step %T has to requeue: %q", s, result.Err))
 			} else {
-				logger.Info(fmt.Sprintf("reconcile step %s has to requeue after %d", stepType, result.RequeueAfter))
+				logger.Info(fmt.Sprintf("reconcile step %T has to requeue after %d", s, result.RequeueAfter))
 			}
 			return result.RequeueAfter, false, result.Err
 		}
