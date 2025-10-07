@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -137,9 +136,5 @@ func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, 
 }
 
 func getType(val interface{}) string {
-	if t := reflect.TypeOf(val); t.Kind() == reflect.Ptr {
-		return "*" + t.Elem().Name()
-	} else {
-		return t.Name()
-	}
+	return fmt.Sprintf("%T", val)
 }

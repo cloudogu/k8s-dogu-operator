@@ -3,7 +3,6 @@ package install
 import (
 	"testing"
 
-	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -24,6 +23,15 @@ func TestNewServiceStep(t *testing.T) {
 }
 
 func TestServiceStep_Run(t *testing.T) {
+
+	testDoguCR := &v2.Dogu{
+		ObjectMeta: v1.ObjectMeta{Name: "test"},
+		Spec: v2.DoguSpec{
+			Version: "1.0.0",
+		},
+	}
+	testDogu := &core.Dogu{Name: "test", Image: "test", Version: "1.0.0"}
+
 	type fields struct {
 		serviceGeneratorFn func(t *testing.T) serviceGenerator
 		localDoguFetcherFn func(t *testing.T) localDoguFetcher
@@ -44,7 +52,7 @@ func TestServiceStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, assert.AnError)
+					mck.EXPECT().FetchForResource(testCtx, testDoguCR).Return(nil, assert.AnError)
 					return mck
 				},
 				imageRegistryFn: func(t *testing.T) imageRegistry {
@@ -54,10 +62,8 @@ func TestServiceStep_Run(t *testing.T) {
 					return newMockServiceInterface(t)
 				},
 			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{Name: "test"},
-			},
-			want: steps.RequeueWithError(assert.AnError),
+			doguResource: testDoguCR,
+			want:         steps.RequeueWithError(assert.AnError),
 		},
 		{
 			name: "should fail to pull image config",
@@ -67,7 +73,7 @@ func TestServiceStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test", Image: "test"}, nil)
+					mck.EXPECT().FetchForResource(testCtx, testDoguCR).Return(testDogu, nil)
 					return mck
 				},
 				imageRegistryFn: func(t *testing.T) imageRegistry {
@@ -79,13 +85,8 @@ func TestServiceStep_Run(t *testing.T) {
 					return newMockServiceInterface(t)
 				},
 			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{Name: "test"},
-				Spec: v2.DoguSpec{
-					Version: "1.0.0",
-				},
-			},
-			want: steps.RequeueWithError(assert.AnError),
+			doguResource: testDoguCR,
+			want:         steps.RequeueWithError(assert.AnError),
 		},
 		{
 			name: "should fail to generate services",
@@ -93,20 +94,15 @@ func TestServiceStep_Run(t *testing.T) {
 				serviceGeneratorFn: func(t *testing.T) serviceGenerator {
 					mck := newMockServiceGenerator(t)
 					mck.EXPECT().CreateDoguService(
-						&v2.Dogu{
-							ObjectMeta: v1.ObjectMeta{Name: "test"},
-							Spec: v2.DoguSpec{
-								Version: "1.0.0",
-							},
-						},
-						&core.Dogu{Name: "test", Image: "test"},
+						testDoguCR,
+						testDogu,
 						&v3.ConfigFile{},
 					).Return(nil, assert.AnError)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test", Image: "test"}, nil)
+					mck.EXPECT().FetchForResource(testCtx, testDoguCR).Return(testDogu, nil)
 					return mck
 				},
 				imageRegistryFn: func(t *testing.T) imageRegistry {
@@ -118,13 +114,8 @@ func TestServiceStep_Run(t *testing.T) {
 					return newMockServiceInterface(t)
 				},
 			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{Name: "test"},
-				Spec: v2.DoguSpec{
-					Version: "1.0.0",
-				},
-			},
-			want: steps.RequeueWithError(assert.AnError),
+			doguResource: testDoguCR,
+			want:         steps.RequeueWithError(assert.AnError),
 		},
 		{
 			name: "should fail to get service",
@@ -132,20 +123,15 @@ func TestServiceStep_Run(t *testing.T) {
 				serviceGeneratorFn: func(t *testing.T) serviceGenerator {
 					mck := newMockServiceGenerator(t)
 					mck.EXPECT().CreateDoguService(
-						&v2.Dogu{
-							ObjectMeta: v1.ObjectMeta{Name: "test"},
-							Spec: v2.DoguSpec{
-								Version: "1.0.0",
-							},
-						},
-						&core.Dogu{Name: "test", Image: "test"},
+						testDoguCR,
+						testDogu,
 						&v3.ConfigFile{},
 					).Return(&v4.Service{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test", Image: "test"}, nil)
+					mck.EXPECT().FetchForResource(testCtx, testDoguCR).Return(testDogu, nil)
 					return mck
 				},
 				imageRegistryFn: func(t *testing.T) imageRegistry {
@@ -173,20 +159,15 @@ func TestServiceStep_Run(t *testing.T) {
 				serviceGeneratorFn: func(t *testing.T) serviceGenerator {
 					mck := newMockServiceGenerator(t)
 					mck.EXPECT().CreateDoguService(
-						&v2.Dogu{
-							ObjectMeta: v1.ObjectMeta{Name: "test"},
-							Spec: v2.DoguSpec{
-								Version: "1.0.0",
-							},
-						},
-						&core.Dogu{Name: "test", Image: "test"},
+						testDoguCR,
+						testDogu,
 						&v3.ConfigFile{},
 					).Return(&v4.Service{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test", Image: "test"}, nil)
+					mck.EXPECT().FetchForResource(testCtx, testDoguCR).Return(testDogu, nil)
 					return mck
 				},
 				imageRegistryFn: func(t *testing.T) imageRegistry {
@@ -201,13 +182,8 @@ func TestServiceStep_Run(t *testing.T) {
 					return mck
 				},
 			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{Name: "test"},
-				Spec: v2.DoguSpec{
-					Version: "1.0.0",
-				},
-			},
-			want: steps.RequeueWithError(assert.AnError),
+			doguResource: testDoguCR,
+			want:         steps.RequeueWithError(assert.AnError),
 		},
 		{
 			name: "should fail to update service if service for dogu is found",
@@ -215,20 +191,15 @@ func TestServiceStep_Run(t *testing.T) {
 				serviceGeneratorFn: func(t *testing.T) serviceGenerator {
 					mck := newMockServiceGenerator(t)
 					mck.EXPECT().CreateDoguService(
-						&v2.Dogu{
-							ObjectMeta: v1.ObjectMeta{Name: "test"},
-							Spec: v2.DoguSpec{
-								Version: "1.0.0",
-							},
-						},
-						&core.Dogu{Name: "test", Image: "test"},
+						testDoguCR,
+						testDogu,
 						&v3.ConfigFile{},
 					).Return(&v4.Service{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test", Image: "test"}, nil)
+					mck.EXPECT().FetchForResource(testCtx, testDoguCR).Return(testDogu, nil)
 					return mck
 				},
 				imageRegistryFn: func(t *testing.T) imageRegistry {
@@ -243,13 +214,8 @@ func TestServiceStep_Run(t *testing.T) {
 					return mck
 				},
 			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{Name: "test"},
-				Spec: v2.DoguSpec{
-					Version: "1.0.0",
-				},
-			},
-			want: steps.RequeueWithError(assert.AnError),
+			doguResource: testDoguCR,
+			want:         steps.RequeueWithError(assert.AnError),
 		},
 		{
 			name: "should succeed to update service if service for dogu is found",
@@ -257,20 +223,15 @@ func TestServiceStep_Run(t *testing.T) {
 				serviceGeneratorFn: func(t *testing.T) serviceGenerator {
 					mck := newMockServiceGenerator(t)
 					mck.EXPECT().CreateDoguService(
-						&v2.Dogu{
-							ObjectMeta: v1.ObjectMeta{Name: "test"},
-							Spec: v2.DoguSpec{
-								Version: "1.0.0",
-							},
-						},
-						&core.Dogu{Name: "test", Image: "test"},
+						testDoguCR,
+						testDogu,
 						&v3.ConfigFile{},
 					).Return(&v4.Service{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test", Image: "test"}, nil)
+					mck.EXPECT().FetchForResource(testCtx, testDoguCR).Return(testDogu, nil)
 					return mck
 				},
 				imageRegistryFn: func(t *testing.T) imageRegistry {
@@ -285,13 +246,8 @@ func TestServiceStep_Run(t *testing.T) {
 					return mck
 				},
 			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{Name: "test"},
-				Spec: v2.DoguSpec{
-					Version: "1.0.0",
-				},
-			},
-			want: steps.Continue(),
+			doguResource: testDoguCR,
+			want:         steps.Continue(),
 		},
 	}
 	for _, tt := range tests {

@@ -95,6 +95,8 @@ type deploymentInterface interface {
 	appsv1client.DeploymentInterface
 }
 
+// HealthShutdownHandler is responsible for setting health states to unknown on shutdown of the operator.
 type HealthShutdownHandler interface {
+	// Handle waits for the context to be cancelled and then sets health states to unknown.
 	Handle(ctx context.Context) error
 }
