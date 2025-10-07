@@ -248,3 +248,21 @@ func TestCustomK8sResourceStep_Run(t *testing.T) {
 		})
 	}
 }
+
+func TestNewCustomK8sResourceStep(t *testing.T) {
+	t.Run("Successfully created step", func(t *testing.T) {
+		recorder := newMockEventRecorder(t)
+		fetcher := newMockLocalDoguFetcher(t)
+		factory := newMockExecPodFactory(t)
+		extractor := newMockFileExtractor(t)
+		applier := newMockCollectApplier(t)
+
+		step := NewCustomK8sResourceStep(recorder, fetcher, factory, extractor, applier)
+
+		assert.Same(t, recorder, step.recorder)
+		assert.Same(t, fetcher, step.localDoguFetcher)
+		assert.Same(t, factory, step.execPodFactory)
+		assert.Same(t, extractor, step.fileExtractor)
+		assert.Same(t, applier, step.collectApplier)
+	})
+}

@@ -14,9 +14,10 @@ import (
 
 func TestNewCreateConfigStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewCreateConfigStep(newMockDoguConfigRepository(t))
+		repository := newMockDoguConfigRepository(t)
+		step := NewCreateConfigStep(repository)
 
-		assert.NotNil(t, step)
+		assert.Same(t, repository, step.configRepository)
 	})
 }
 
@@ -62,6 +63,20 @@ func TestCreateConfigStep_Run(t *testing.T) {
 				mck := newMockDoguConfigRepository(t)
 				mck.EXPECT().Get(testCtx, cescommons.SimpleName("test")).Return(config.DoguConfig{}, cloudoguerrors.NewNotFoundError(assert.AnError))
 				mck.EXPECT().Create(testCtx, config.CreateDoguConfig("test", make(config.Entries))).Return(config.DoguConfig{}, nil)
+				return mck
+			},
+			doguResource: &v2.Dogu{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "test",
+				},
+			},
+			want: steps.Continue(),
+		},
+		{
+			name: "should continue if config exists",
+			configRepositoryFn: func(t *testing.T) doguConfigRepository {
+				mck := newMockDoguConfigRepository(t)
+				mck.EXPECT().Get(testCtx, cescommons.SimpleName("test")).Return(config.DoguConfig{}, nil)
 				return mck
 			},
 			doguResource: &v2.Dogu{

@@ -8,6 +8,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -181,9 +182,7 @@ type persistentVolumeClaimInterface interface {
 }
 
 type execPodFactory interface {
-	Create(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
-	Exists(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) bool
-	CheckReady(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) error
+	exec.ExecPodFactory
 }
 
 type eventRecorder interface {

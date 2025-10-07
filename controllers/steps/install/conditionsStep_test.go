@@ -35,7 +35,38 @@ func TestConditionsStep_Run(t *testing.T) {
 			name: "no conditions are set",
 			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
 				updaterMock := NewMockConditionUpdater(t)
-				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(nil).Once()
+				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, []v1.Condition{
+					{
+						Type:    doguv2.ConditionHealthy,
+						Status:  v1.ConditionUnknown,
+						Reason:  "Initializing",
+						Message: "Controller is initializing, status not yet determined",
+					},
+					{
+						Type:    doguv2.ConditionMeetsMinVolumeSize,
+						Status:  v1.ConditionUnknown,
+						Reason:  "Initializing",
+						Message: "Controller is initializing, status not yet determined",
+					},
+					{
+						Type:    doguv2.ConditionReady,
+						Status:  v1.ConditionUnknown,
+						Reason:  "Initializing",
+						Message: "Controller is initializing, status not yet determined",
+					},
+					{
+						Type:    doguv2.ConditionSupportMode,
+						Status:  v1.ConditionUnknown,
+						Reason:  "Initializing",
+						Message: "Controller is initializing, status not yet determined",
+					},
+					{
+						Type:    doguv2.ConditionPauseReconciliation,
+						Status:  v1.ConditionUnknown,
+						Reason:  "Initializing",
+						Message: "Controller is initializing, status not yet determined",
+					},
+				}).Return(nil).Once()
 				return updaterMock
 			},
 			doguResource: &doguv2.Dogu{
@@ -93,7 +124,20 @@ func TestConditionsStep_Run(t *testing.T) {
 			},
 			conditionUpdaterFn: func(t *testing.T) ConditionUpdater {
 				updaterMock := NewMockConditionUpdater(t)
-				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, mock.Anything).Return(nil)
+				updaterMock.EXPECT().UpdateConditions(testCtx, mock.Anything, []v1.Condition{
+					{
+						Type:    doguv2.ConditionReady,
+						Status:  v1.ConditionUnknown,
+						Reason:  "Initializing",
+						Message: "Controller is initializing, status not yet determined",
+					},
+					{
+						Type:    doguv2.ConditionPauseReconciliation,
+						Status:  v1.ConditionUnknown,
+						Reason:  "Initializing",
+						Message: "Controller is initializing, status not yet determined",
+					},
+				}).Return(nil).Once()
 				return updaterMock
 			},
 			doguResource: &doguv2.Dogu{

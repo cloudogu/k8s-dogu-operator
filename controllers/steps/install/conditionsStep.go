@@ -38,26 +38,23 @@ func (cs *ConditionsStep) Run(ctx context.Context, doguResource *doguv2.Dogu) st
 	}
 
 	existingConditions := sets.NewString()
-	conditions := doguResource.Status.Conditions
 	for _, condition := range doguResource.Status.Conditions {
 		existingConditions.Insert(condition.Type)
 	}
 
-	updateConditions := false
+	var conditions []v1.Condition
 	for _, condition := range expectedConditions {
 		if !existingConditions.Has(condition) {
-			updateConditions = true
 			conditions = append(conditions, v1.Condition{
-				Type:               condition,
-				Status:             v1.ConditionUnknown,
-				Reason:             ConditionReason,
-				Message:            ConditionMessage,
-				LastTransitionTime: v1.Now(),
+				Type:    condition,
+				Status:  v1.ConditionUnknown,
+				Reason:  ConditionReason,
+				Message: ConditionMessage,
 			})
 		}
 	}
 
-	if updateConditions {
+	if len(conditions) > 0 {
 		err := cs.conditionUpdater.UpdateConditions(ctx, doguResource, conditions)
 		if err != nil {
 			return steps.RequeueWithError(err)
