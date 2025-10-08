@@ -1,7 +1,7 @@
 package install
 
 import (
-	context "context"
+	"context"
 	"fmt"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -202,18 +202,6 @@ func TestHealthCheckStep_Run(t *testing.T) {
 						ObjectMeta: v1.ObjectMeta{
 							Namespace: namespace,
 							Name:      "test",
-						},
-						Status: doguv2.DoguStatus{
-							Health: "available",
-							Conditions: []v1.Condition{
-								{
-									Type:               doguv2.ConditionHealthy,
-									Status:             v1.ConditionTrue,
-									Reason:             "DoguIsHealthy",
-									Message:            "All replicas are available",
-									LastTransitionTime: v1.Now().Rfc3339Copy(),
-								},
-							},
 						},
 					}, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck

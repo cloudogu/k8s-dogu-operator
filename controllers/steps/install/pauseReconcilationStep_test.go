@@ -1,6 +1,7 @@
 package install
 
 import (
+	"context"
 	"github.com/stretchr/testify/mock"
 	"testing"
 
@@ -78,7 +79,16 @@ func TestPauseReconciliationStep_Run(t *testing.T) {
 						Conditions: []v1.Condition{condition},
 					},
 				}
-				mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(dogu, nil)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
+					modifyStatusFn(dogu.Status)
+					assert.Equal(t, v1.Condition{
+						Type:               v2.ConditionPauseReconciliation,
+						Status:             v1.ConditionTrue,
+						Reason:             conditionReasonPaused,
+						Message:            conditionMessagePaused,
+						LastTransitionTime: v1.Now().Rfc3339Copy(),
+					}, dogu.Status.Conditions[0])
+				}).Return(dogu, nil)
 				return mck
 			},
 			want: steps.Abort(),
@@ -107,7 +117,7 @@ func TestPauseReconciliationStep_Run(t *testing.T) {
 						Conditions: []v1.Condition{condition},
 					},
 				}
-				mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(dogu, nil)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(dogu, nil)
 				return mck
 			},
 			want: steps.Continue(),

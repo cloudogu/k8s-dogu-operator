@@ -1,7 +1,9 @@
 package postinstall
 
 import (
+	"context"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
@@ -92,20 +94,9 @@ func TestSupportModeStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, &doguv2.Dogu{
 						ObjectMeta: metav1.ObjectMeta{Name: "test"},
-						Status: doguv2.DoguStatus{
-							Conditions: []metav1.Condition{
-								{
-									Type:               doguv2.ConditionSupportMode,
-									Status:             metav1.ConditionFalse,
-									Reason:             ReasonSupportModeInactive,
-									Message:            "The Support mode is inactive",
-									LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-								},
-							},
-						},
-					}, metav1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, assert.AnError)
+					}, mock.Anything, metav1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, assert.AnError)
 					return mck
 				},
 			},
@@ -145,20 +136,20 @@ func TestSupportModeStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, &doguv2.Dogu{
 						ObjectMeta: metav1.ObjectMeta{Name: "test"},
-						Status: doguv2.DoguStatus{
-							Conditions: []metav1.Condition{
-								{
-									Type:               doguv2.ConditionSupportMode,
-									Status:             metav1.ConditionFalse,
-									Reason:             ReasonSupportModeInactive,
-									Message:            "The Support mode is inactive",
-									LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-								},
+					}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, []metav1.Condition{
+							{
+								Type:               doguv2.ConditionSupportMode,
+								Status:             metav1.ConditionFalse,
+								Reason:             ReasonSupportModeInactive,
+								Message:            "The Support mode is inactive",
+								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
 							},
-						},
-					}, metav1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, nil)
+						}, status.Conditions)
+					}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
 			},
@@ -198,28 +189,31 @@ func TestSupportModeStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, &doguv2.Dogu{
 						ObjectMeta: metav1.ObjectMeta{Name: "test"},
 						Status: doguv2.DoguStatus{
-							Health: "unavailable",
-							Conditions: []metav1.Condition{
-								{
-									Type:               doguv2.ConditionHealthy,
-									Status:             metav1.ConditionFalse,
-									Reason:             "SupportModeActive",
-									Message:            "The Support mode is active",
-									LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-								},
-								{
-									Type:               doguv2.ConditionSupportMode,
-									Status:             metav1.ConditionTrue,
-									Reason:             "SupportModeActive",
-									Message:            "The Support mode is active",
-									LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-								},
-							},
+							Health: doguv2.UnavailableHealthStatus,
 						},
-					}, metav1.UpdateOptions{}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, nil)
+					}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, doguv2.UnavailableHealthStatus, status.Health)
+						assert.Equal(t, []metav1.Condition{
+							{
+								Type:               doguv2.ConditionSupportMode,
+								Status:             metav1.ConditionTrue,
+								Reason:             "SupportModeActive",
+								Message:            "The Support mode is active",
+								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+							},
+							{
+								Type:               doguv2.ConditionHealthy,
+								Status:             metav1.ConditionFalse,
+								Reason:             "SupportModeActive",
+								Message:            "The Support mode is active",
+								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+							},
+						}, status.Conditions)
+					}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
 			},

@@ -50,21 +50,21 @@ func (sms *SupportModeStep) Run(ctx context.Context, doguResource *doguv2.Dogu) 
 		doguResource.Status.Health = doguv2.UnavailableHealthStatus
 
 		const message = "The Support mode is active"
-		meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+		healthCondition := &metav1.Condition{
 			Type:               doguv2.ConditionHealthy,
 			Status:             metav1.ConditionFalse,
 			Reason:             ReasonSupportModeActive,
 			Message:            message,
 			LastTransitionTime: steps.Now().Rfc3339Copy(),
-		})
+		}
 
-		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionTrue, ReasonSupportModeActive, message)
+		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionTrue, ReasonSupportModeActive, message, healthCondition)
 		if err != nil {
 			return steps.RequeueWithError(err)
 		}
 		return steps.Abort()
 	} else {
-		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionFalse, ReasonSupportModeInactive, "The Support mode is inactive")
+		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionFalse, ReasonSupportModeInactive, "The Support mode is inactive", nil)
 		if err != nil {
 			return steps.RequeueWithError(err)
 		}
@@ -85,7 +85,7 @@ func isDeploymentInSupportMode(deployment *appsv1.Deployment) bool {
 	return false
 }
 
-func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguResource *doguv2.Dogu, status metav1.ConditionStatus, reason, message string) error {
+func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguResource *doguv2.Dogu, status metav1.ConditionStatus, reason, message string, healthCondition *metav1.Condition) error {
 	condition := metav1.Condition{
 		Type:               doguv2.ConditionSupportMode,
 		Status:             status,
@@ -97,6 +97,9 @@ func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguRes
 
 	doguResource, err := sms.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		meta.SetStatusCondition(&status.Conditions, condition)
+		if healthCondition != nil {
+			meta.SetStatusCondition(&status.Conditions, *healthCondition)
+		}
 		return status
 	}, metav1.UpdateOptions{})
 	if err != nil {

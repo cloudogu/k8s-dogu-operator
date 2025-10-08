@@ -81,7 +81,7 @@ func TestVolumeExpanderStep_Run(t *testing.T) {
 						},
 					}
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, d, v1.UpdateOptions{}).Return(nil, assert.AnError)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, d, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
@@ -114,7 +114,7 @@ func TestVolumeExpanderStep_Run(t *testing.T) {
 						},
 					}
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, d, v1.UpdateOptions{}).Return(d, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, d, mock.Anything, v1.UpdateOptions{}).Return(d, nil)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
@@ -160,7 +160,7 @@ func TestVolumeExpanderStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, mock.Anything, v1.UpdateOptions{}).Return(&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Return(&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
