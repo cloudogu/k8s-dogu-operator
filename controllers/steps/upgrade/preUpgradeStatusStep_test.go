@@ -1,7 +1,9 @@
 package upgrade
 
 import (
+	"context"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
@@ -84,7 +86,7 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 							},
 						},
 					}}
-					mck.EXPECT().UpdateStatus(testCtx, expectedDogu, metav1.UpdateOptions{}).Return(nil, assert.AnError)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 				upgradeCheckerFn: func(t *testing.T) upgradeChecker {
@@ -121,7 +123,10 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 							},
 						},
 					}}
-					mck.EXPECT().UpdateStatus(testCtx, expectedDogu, metav1.UpdateOptions{}).Return(nil, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDogu, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, expectedDogu.Status, status)
+					}).Return(nil, nil)
 					return mck
 				},
 				upgradeCheckerFn: func(t *testing.T) upgradeChecker {

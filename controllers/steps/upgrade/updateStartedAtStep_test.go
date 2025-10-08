@@ -1,6 +1,7 @@
 package upgrade
 
 import (
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
@@ -63,7 +64,7 @@ func TestUpdateStartedAtStep_Run(t *testing.T) {
 							StartedAt: v1.Time{Time: time.Time{}},
 						},
 					}
-					mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(nil, assert.AnError)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 			},
@@ -86,7 +87,7 @@ func TestUpdateStartedAtStep_Run(t *testing.T) {
 							StartedAt: v1.Time{Time: time.Time{}},
 						},
 					}
-					mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(&v2.Dogu{
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(&v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 						Status: v2.DoguStatus{
 							StartedAt: v1.Time{Time: time.Time{}},
