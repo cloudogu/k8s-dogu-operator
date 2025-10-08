@@ -153,8 +153,11 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 		Message:            message,
 		LastTransitionTime: metav1.Now(),
 	}
-	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
-	doguResource, err := r.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+
+	doguResource, err := r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+		meta.SetStatusCondition(&status.Conditions, condition)
+		return status
+	}, metav1.UpdateOptions{})
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Failed to update dogu resource"))
 		return err

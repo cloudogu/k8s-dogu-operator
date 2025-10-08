@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	context "context"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
@@ -68,9 +70,11 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 					mck := newMockDoguInterface(t)
 					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
 					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
-					updateDogu.Status.RequeueTime = requeueTime
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
-					mck.EXPECT().UpdateStatus(testCtx, updateDogu, v1.UpdateOptions{}).Return(updateDogu, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, getDogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts v1.UpdateOptions) {
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, requeueTime, status.RequeueTime)
+					}).Return(updateDogu, nil)
 					return mck
 				},
 			},
@@ -99,10 +103,8 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
 					mck := newMockDoguInterface(t)
 					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
-					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
-					updateDogu.Status.RequeueTime = requeueTime
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
-					mck.EXPECT().UpdateStatus(testCtx, updateDogu, v1.UpdateOptions{}).Return(nil, assert.AnError)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, getDogu, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 			},
@@ -162,7 +164,10 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
 					updateDogu.Status.RequeueTime = 15 * time.Second
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
-					mck.EXPECT().UpdateStatus(testCtx, updateDogu, v1.UpdateOptions{}).Return(updateDogu, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, getDogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts v1.UpdateOptions) {
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, 15*time.Second, status.RequeueTime)
+					}).Return(updateDogu, nil)
 					return mck
 				},
 			},
@@ -192,7 +197,10 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
 					updateDogu.Status.RequeueTime = 0
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
-					mck.EXPECT().UpdateStatus(testCtx, updateDogu, v1.UpdateOptions{}).Return(updateDogu, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, getDogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts v1.UpdateOptions) {
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, time.Duration(0), status.RequeueTime)
+					}).Return(updateDogu, nil)
 					return mck
 				},
 			},

@@ -62,9 +62,10 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 		return
 	}
 
-	doguResource.Status.RequeueTime = result.RequeueAfter
-
-	doguResource, err = d.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+	doguResource, err = d.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+		status.RequeueTime = result.RequeueAfter
+		return status
+	}, metav1.UpdateOptions{})
 	if err != nil {
 		result.RequeueAfter = requeueTime
 		logger.Error(err, "failed to set requeue time")
