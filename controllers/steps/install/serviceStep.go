@@ -60,16 +60,11 @@ func (ses *ServiceStep) createOrUpdateService(ctx context.Context, service *core
 		if !errors.IsNotFound(err) {
 			return err
 		}
-		_, errCreate := ses.serviceInterface.Create(ctx, service, metav1.CreateOptions{})
-		if errCreate != nil {
-			return errCreate
-		}
-	}
 
-	_, err = ses.serviceInterface.Update(ctx, service, metav1.UpdateOptions{})
-	if err != nil {
+		_, err = ses.serviceInterface.Create(ctx, service, metav1.CreateOptions{})
 		return err
 	}
 
-	return nil
+	_, err = ses.serviceInterface.Update(ctx, service, metav1.UpdateOptions{})
+	return err
 }
