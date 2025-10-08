@@ -64,8 +64,7 @@ func (df *localDoguFetcher) FetchInstalled(ctx context.Context, doguName cescomm
 }
 
 func (df *localDoguFetcher) Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error) {
-	enabled, _, err := checkDoguVersionEnabled(ctx, df.doguVersionRegistry, doguName)
-	return enabled, err
+	return checkDoguVersionEnabled(ctx, df.doguVersionRegistry, doguName)
 }
 
 func (df *localDoguFetcher) FetchForResource(ctx context.Context, doguResource *doguv2.Dogu) (*core.Dogu, error) {
