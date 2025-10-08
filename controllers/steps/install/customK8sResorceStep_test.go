@@ -9,6 +9,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -156,7 +157,9 @@ func TestCustomK8sResourceStep_Run(t *testing.T) {
 			name: "should fail to apply custom resources",
 			fields: fields{
 				recorderFn: func(t *testing.T) eventRecorder {
-					return newMockEventRecorder(t)
+					mck := newMockEventRecorder(t)
+					mck.EXPECT().Eventf(mock.Anything, "Normal", "Installation", "Creating custom dogu resources to the cluster: [%s]", "")
+					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
@@ -177,12 +180,12 @@ func TestCustomK8sResourceStep_Run(t *testing.T) {
 					mck := newMockFileExtractor(t)
 					mck.EXPECT().ExtractK8sResourcesFromExecPod(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}, &core.Dogu{Name: "test"}).Return(map[string]string{}, nil)
+					}, &core.Dogu{Name: "test"}).Return(map[string]string{"": ""}, nil)
 					return mck
 				},
 				collectApplierFn: func(t *testing.T) collectApplier {
 					mck := newMockCollectApplier(t)
-					mck.EXPECT().CollectApply(testCtx, map[string]string{}, &v2.Dogu{
+					mck.EXPECT().CollectApply(testCtx, map[string]string{"": ""}, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 					}).Return(assert.AnError)
 					return mck
@@ -197,7 +200,9 @@ func TestCustomK8sResourceStep_Run(t *testing.T) {
 			name: "should successfully apply custom resources",
 			fields: fields{
 				recorderFn: func(t *testing.T) eventRecorder {
-					return newMockEventRecorder(t)
+					mck := newMockEventRecorder(t)
+					mck.EXPECT().Eventf(mock.Anything, "Normal", "Installation", "Creating custom dogu resources to the cluster: [%s]", "")
+					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
@@ -218,12 +223,12 @@ func TestCustomK8sResourceStep_Run(t *testing.T) {
 					mck := newMockFileExtractor(t)
 					mck.EXPECT().ExtractK8sResourcesFromExecPod(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-					}, &core.Dogu{Name: "test"}).Return(map[string]string{}, nil)
+					}, &core.Dogu{Name: "test"}).Return(map[string]string{"": ""}, nil)
 					return mck
 				},
 				collectApplierFn: func(t *testing.T) collectApplier {
 					mck := newMockCollectApplier(t)
-					mck.EXPECT().CollectApply(testCtx, map[string]string{}, &v2.Dogu{
+					mck.EXPECT().CollectApply(testCtx, map[string]string{"": ""}, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 					}).Return(nil)
 					return mck

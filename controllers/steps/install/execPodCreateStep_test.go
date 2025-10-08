@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -90,7 +89,9 @@ func TestExecPodCreateStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(nil, assert.AnError)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: "test", Namespace: namespace},
+					}).Return(nil, assert.AnError)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -119,7 +120,9 @@ func TestExecPodCreateStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test"}, nil)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: "test", Namespace: namespace},
+					}).Return(&core.Dogu{Name: "test"}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {
@@ -152,7 +155,9 @@ func TestExecPodCreateStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Name: "test"}, nil)
+					mck.EXPECT().FetchForResource(testCtx, &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: "test", Namespace: namespace},
+					}).Return(&core.Dogu{Name: "test"}, nil)
 					return mck
 				},
 				execPodFactoryFn: func(t *testing.T) execPodFactory {

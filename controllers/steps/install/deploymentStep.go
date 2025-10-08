@@ -26,12 +26,10 @@ func NewDeploymentStep(client client.Client, upserter resource.ResourceUpserter,
 }
 
 func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	deployment, err := doguResource.GetDeployment(ctx, ds.client)
+	_, err := doguResource.GetDeployment(ctx, ds.client)
 	if err != nil && !errors.IsNotFound(err) {
 		return steps.RequeueWithError(err)
-	}
-
-	if deployment != nil {
+	} else if err == nil {
 		return steps.Continue()
 	}
 

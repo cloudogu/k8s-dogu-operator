@@ -191,4 +191,6 @@ spec:
         - name: configmap-test
           configMap:
             name: k8s-my-configmap
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
 status: { }

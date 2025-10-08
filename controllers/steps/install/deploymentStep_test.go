@@ -74,7 +74,7 @@ func TestDeploymentStep_Run(t *testing.T) {
 				},
 				clientFn: func(t *testing.T) k8sClient {
 					mck := newMockK8sClient(t)
-					mck.EXPECT().Get(testCtx, types.NamespacedName{Namespace: namespace, Name: doguName}, &appsv1.Deployment{}).Return(nil)
+					mck.EXPECT().Get(testCtx, types.NamespacedName{Namespace: namespace, Name: doguName}, &appsv1.Deployment{}).Return(errors.NewNotFound(schema.GroupResource{Group: v1.SchemeGroupVersion.Group, Resource: doguName}, ""))
 					return mck
 				},
 			},
@@ -91,7 +91,6 @@ func TestDeploymentStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName(doguName)).Return(&cesappcore.Dogu{}, nil)
 					return mck
 				},
 				clientFn: func(t *testing.T) k8sClient {
