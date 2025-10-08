@@ -49,12 +49,12 @@ func NewControllerManager(
 ) (manager.Manager, error) {
 	ctrl.SetLogger(logger)
 
-	k8sManager, err := ctrl.NewManager(restConfig, options)
+	controllerManager, err := ctrl.NewManager(restConfig, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
 
-	err = addChecks(k8sManager)
+	err = addChecks(controllerManager)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add checks to the manager: %w", err)
 	}
@@ -63,7 +63,7 @@ func NewControllerManager(
 	lc.Append(fx.StartHook(func() {
 		go func() {
 			startupLog.Info("starting manager")
-			err := k8sManager.Start(ctx)
+			err = controllerManager.Start(ctx)
 			if err != nil {
 				startupLog.Error(err, "failed to start manager")
 			}
@@ -77,7 +77,7 @@ func NewControllerManager(
 		}
 	}))
 
-	return k8sManager, nil
+	return controllerManager, nil
 }
 
 type Args []string

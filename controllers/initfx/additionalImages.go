@@ -2,6 +2,7 @@ package initfx
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -13,6 +14,12 @@ import (
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+var imageKeys = []string{
+	config.ChownInitImageConfigmapNameKey,
+	config.ExporterImageConfigmapNameKey,
+	config.AdditionalMountsInitContainerImageConfigmapNameKey,
+}
+
 func GetAdditionalImages(configMapClient corev1.ConfigMapInterface) (resource.AdditionalImages, error) {
 	ctx := context.Background()
 
@@ -21,24 +28,21 @@ func GetAdditionalImages(configMapClient corev1.ConfigMapInterface) (resource.Ad
 		return nil, fmt.Errorf("error while getting configmap '%s': %w", config.OperatorAdditionalImagesConfigmapName, err)
 	}
 
-	additionalImageChownInitContainer, err := imageForKey(config.ChownInitImageConfigmapNameKey, configMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	var errs []error
+	additionalImages := make(resource.AdditionalImages, 3)
+	for _, imageKey := range imageKeys {
+		image, err := imageForKey(imageKey, configMap)
+		if err != nil {
+			errs = append(errs, err)
+		}
+
+		additionalImages[imageKey] = image
 	}
 
-	additionalExportModeContainer, err := imageForKey(config.ExporterImageConfigmapNameKey, configMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get additional images: %w", err)
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("error while getting additional images: %w", errors.Join(errs...))
 	}
 
-	additionalMountsContainer, err := imageForKey(config.AdditionalMountsInitContainerImageConfigmapNameKey, configMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get additional images: %w", err)
-	}
-
-	additionalImages := map[string]string{config.ChownInitImageConfigmapNameKey: additionalImageChownInitContainer,
-		config.ExporterImageConfigmapNameKey:                      additionalExportModeContainer,
-		config.AdditionalMountsInitContainerImageConfigmapNameKey: additionalMountsContainer}
 	return additionalImages, nil
 }
 
@@ -59,7 +63,7 @@ func imageForKey(key string, configMap *v1.ConfigMap) (string, error) {
 
 	err := verifyImageTag(imageTag)
 	if err != nil {
-		return "", fmt.Errorf("configmap '%s' contains an invalid image tag: %w", config.OperatorAdditionalImagesConfigmapName, err)
+		return "", fmt.Errorf("configmap '%s' contains an invalid image tag for key %s: %w", config.OperatorAdditionalImagesConfigmapName, key, err)
 	}
 
 	return imageTag, nil
