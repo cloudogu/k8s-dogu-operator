@@ -2,7 +2,6 @@ package install
 
 import (
 	"context"
-
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,10 +45,10 @@ func (cs *ConditionsStep) Run(ctx context.Context, doguResource *doguv2.Dogu) st
 	for _, condition := range expectedConditions {
 		if !existingConditions.Has(condition) {
 			conditions = append(conditions, v1.Condition{
-				Type:    condition,
-				Status:  v1.ConditionUnknown,
-				Reason:  ConditionReason,
-				Message: ConditionMessage,
+				Type:               condition,
+				Status:             v1.ConditionUnknown,
+				Reason:             ConditionReason,
+				Message:            ConditionMessage,
 				ObservedGeneration: doguResource.Generation,
 			})
 		}

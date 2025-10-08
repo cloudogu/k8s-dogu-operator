@@ -44,10 +44,6 @@ func TestInstalledVersionStep_Run(t *testing.T) {
 					dogu := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: name},
 						Spec:       v2.DoguSpec{Version: "1.0.0"},
-						Status: v2.DoguStatus{
-							Status:           v2.DoguStatusInstalled,
-							InstalledVersion: "1.0.0",
-						},
 					}
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
@@ -64,17 +60,17 @@ func TestInstalledVersionStep_Run(t *testing.T) {
 			fields: fields{
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
+					expectedStatus := v2.DoguStatus{
+						Status:           v2.DoguStatusInstalled,
+						InstalledVersion: "1.0.0",
+					}
 					dogu := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: name},
 						Spec:       v2.DoguSpec{Version: "1.0.0"},
-						Status: v2.DoguStatus{
-							Status:           v2.DoguStatusInstalled,
-							InstalledVersion: "1.0.0",
-						},
 					}
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
-						modifyStatusFn(dogu.Status)
-						assert.Equal(t, v2.DoguStatusInstalled, dogu.Status.Status)
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, expectedStatus, status)
 					}).Return(nil, nil)
 					return mck
 				},

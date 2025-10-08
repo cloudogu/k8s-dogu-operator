@@ -34,9 +34,9 @@ func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 
 		mockDoguClient := newMockDoguInterface(t)
 		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
-			modifyStatusFn(doguResource.Status)
-			assert.Equal(t, false, doguResource.Status.ExportMode)
-			assert.Equal(t, doguv2.DoguStatusChangingExportMode, doguResource.Status.Status)
+			status := modifyStatusFn(dogu.Status)
+			assert.Equal(t, false, status.ExportMode)
+			assert.Equal(t, doguv2.DoguStatusChangingExportMode, status.Status)
 		}).Return(nil, nil)
 
 		mockPodClient := newMockPodInterface(t)
@@ -351,9 +351,9 @@ func Test_doguExportManager_updateStatusWithRetry(t *testing.T) {
 
 		mockDoguClient := newMockDoguInterface(t)
 		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
-			modifyStatusFn(doguResource.Status)
-			assert.Equal(t, true, doguResource.Status.ExportMode)
-			assert.Equal(t, "testPhase", doguResource.Status.Status)
+			status := modifyStatusFn(doguResource.Status)
+			assert.Equal(t, true, status.ExportMode)
+			assert.Equal(t, "testPhase", status.Status)
 		}).Return(nil, nil)
 
 		dem := &doguExportManager{

@@ -3,12 +3,11 @@ package deletion
 import (
 	"context"
 	"fmt"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
-
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,30 +24,30 @@ func NewStatusStep(doguInterface doguClient.DoguInterface) *StatusStep {
 }
 
 func (s *StatusStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResult {
-	var err error
-	resource.Status.Status = v2.DoguStatusDeleting
-	resource.Status.Health = v2.UnavailableHealthStatus
+	resource, err := s.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
+		status.Status = v2.DoguStatusDeleting
+		status.Health = v2.UnavailableHealthStatus
 
-	lastTransitionTime := steps.Now()
-	const message = "The dogu is being deleted."
-	meta.SetStatusCondition(&resource.Status.Conditions, metav1.Condition{
-		Type:               v2.ConditionHealthy,
-		Status:             metav1.ConditionFalse,
-		Reason:             ReasonDeleting,
-		Message:            message,
-		LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
-		ObservedGeneration: resource.Generation,
-	})
-	meta.SetStatusCondition(&resource.Status.Conditions, metav1.Condition{
-		Type:               v2.ConditionReady,
-		Status:             metav1.ConditionFalse,
-		Reason:             ReasonDeleting,
-		Message:            message,
-		LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
-		ObservedGeneration: resource.Generation,
-	})
-	resource, err = s.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
-		return resource.Status
+		lastTransitionTime := steps.Now()
+		const message = "The dogu is being deleted."
+		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               v2.ConditionHealthy,
+			Status:             metav1.ConditionFalse,
+			Reason:             ReasonDeleting,
+			Message:            message,
+			LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
+			ObservedGeneration: resource.Generation,
+		})
+		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               v2.ConditionReady,
+			Status:             metav1.ConditionFalse,
+			Reason:             ReasonDeleting,
+			Message:            message,
+			LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
+			ObservedGeneration: resource.Generation,
+		})
+
+		return status
 	}, metav1.UpdateOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {

@@ -41,9 +41,9 @@ func (prs *PauseReconciliationStep) Run(ctx context.Context, doguResource *v2.Do
 		condition.Message = conditionMessageNotPaused
 	}
 
-	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
 	doguResource, err := prs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
-		return doguResource.Status
+		meta.SetStatusCondition(&status.Conditions, condition)
+		return status
 	}, v1.UpdateOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)

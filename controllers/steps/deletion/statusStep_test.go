@@ -21,6 +21,27 @@ func TestNewStatusStep(t *testing.T) {
 }
 
 func TestStatusStep_Run(t *testing.T) {
+	expectedStatus := v2.DoguStatus{
+		Status: "deleting",
+		Health: "unavailable",
+		Conditions: []metav1.Condition{
+			{
+				Type:               "healthy",
+				Status:             metav1.ConditionFalse,
+				Reason:             "Deleting",
+				Message:            "The dogu is being deleted.",
+				LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+			},
+			{
+				Type:               "ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "Deleting",
+				Message:            "The dogu is being deleted.",
+				LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
+			},
+		},
+	}
+	expectedDogu := &v2.Dogu{Status: expectedStatus}
 	tests := []struct {
 		name            string
 		doguInterfaceFn func(t *testing.T) doguInterface
@@ -31,27 +52,10 @@ func TestStatusStep_Run(t *testing.T) {
 			name: "should fail to update status",
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
-				expectedDoguResource := &v2.Dogu{Status: v2.DoguStatus{
-					Status: "deleting",
-					Health: "unavailable",
-					Conditions: []metav1.Condition{
-						{
-							Type:               "healthy",
-							Status:             metav1.ConditionFalse,
-							Reason:             "Deleting",
-							Message:            "The dogu is being deleted.",
-							LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-						},
-						{
-							Type:               "ready",
-							Status:             metav1.ConditionFalse,
-							Reason:             "Deleting",
-							Message:            "The dogu is being deleted.",
-							LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-						},
-					},
-				}}
-				mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDoguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, &v2.Dogu{}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
+					status := modifyStatusFn(dogu.Status)
+					assert.Equal(t, expectedStatus, status)
+				}).Return(nil, assert.AnError)
 				return mck
 			},
 			resource: &v2.Dogu{},
@@ -61,30 +65,10 @@ func TestStatusStep_Run(t *testing.T) {
 			name: "should succeed to update status",
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
-				expectedDoguResource := &v2.Dogu{Status: v2.DoguStatus{
-					Status: "deleting",
-					Health: "unavailable",
-					Conditions: []metav1.Condition{
-						{
-							Type:               "healthy",
-							Status:             metav1.ConditionFalse,
-							Reason:             "Deleting",
-							Message:            "The dogu is being deleted.",
-							LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-						},
-						{
-							Type:               "ready",
-							Status:             metav1.ConditionFalse,
-							Reason:             "Deleting",
-							Message:            "The dogu is being deleted.",
-							LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-						},
-					},
-				}}
-				mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDoguResource, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
-					modifyStatusFn(expectedDoguResource.Status)
-					assert.Equal(t, "deleting", expectedDoguResource.Status.Status)
-				}).Return(expectedDoguResource, nil)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, &v2.Dogu{}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
+					status := modifyStatusFn(dogu.Status)
+					assert.Equal(t, expectedStatus, status)
+				}).Return(expectedDogu, nil)
 				return mck
 			},
 			resource: &v2.Dogu{},

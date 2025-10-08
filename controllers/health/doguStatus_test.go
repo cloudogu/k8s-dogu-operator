@@ -174,28 +174,11 @@ func TestDoguStatusUpdater_UpdateHealthConfigMap(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, testCM.Data["ldap"])
 	})
-	t.Run("should throw error if not able to get configmap", func(t *testing.T) {
-		// given
-		cmClientMock := newMockConfigMapInterface(t)
 
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(nil, assert.AnError)
-
-		sut := &DoguStatusUpdater{configMapInterface: cmClientMock}
-
-		// when
-		err := sut.UpdateHealthConfigMap(testCtx, deployment, &core.Dogu{})
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to get health state configMap")
-		assert.ErrorIs(t, err, assert.AnError)
-	})
 	t.Run("should throw error if not able to get pod list of deployment", func(t *testing.T) {
 		// given
 		podClientMock := newMockPodInterface(t)
 		cmClientMock := newMockConfigMapInterface(t)
-
-		cmClientMock.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(&corev1.ConfigMap{}, nil)
 
 		podClientMock.EXPECT().List(testCtx, metav1api.ListOptions{
 			LabelSelector: metav1api.FormatLabelSelector(deployment.Spec.Selector),

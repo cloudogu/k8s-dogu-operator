@@ -35,19 +35,9 @@ func TestPauseReconciliationStep_Run(t *testing.T) {
 			},
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
-				condition := v1.Condition{
-					Type:               v2.ConditionPauseReconciliation,
-					Status:             v1.ConditionTrue,
-					Reason:             conditionReasonPaused,
-					Message:            conditionMessagePaused,
-					LastTransitionTime: v1.Now().Rfc3339Copy(),
-				}
 				dogu := &v2.Dogu{
 					Spec: v2.DoguSpec{
 						PauseReconciliation: true,
-					},
-					Status: v2.DoguStatus{
-						Conditions: []v1.Condition{condition},
 					},
 				}
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
@@ -71,23 +61,17 @@ func TestPauseReconciliationStep_Run(t *testing.T) {
 					Message:            conditionMessagePaused,
 					LastTransitionTime: v1.Now().Rfc3339Copy(),
 				}
+				expectedStatus := v2.DoguStatus{
+					Conditions: []v1.Condition{condition},
+				}
 				dogu := &v2.Dogu{
 					Spec: v2.DoguSpec{
 						PauseReconciliation: true,
 					},
-					Status: v2.DoguStatus{
-						Conditions: []v1.Condition{condition},
-					},
 				}
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
-					modifyStatusFn(dogu.Status)
-					assert.Equal(t, v1.Condition{
-						Type:               v2.ConditionPauseReconciliation,
-						Status:             v1.ConditionTrue,
-						Reason:             conditionReasonPaused,
-						Message:            conditionMessagePaused,
-						LastTransitionTime: v1.Now().Rfc3339Copy(),
-					}, dogu.Status.Conditions[0])
+					status := modifyStatusFn(dogu.Status)
+					assert.Equal(t, expectedStatus, status)
 				}).Return(dogu, nil)
 				return mck
 			},
@@ -102,19 +86,9 @@ func TestPauseReconciliationStep_Run(t *testing.T) {
 			},
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
-				condition := v1.Condition{
-					Type:               v2.ConditionPauseReconciliation,
-					Status:             v1.ConditionFalse,
-					Reason:             conditionReasonNotPaused,
-					Message:            conditionMessageNotPaused,
-					LastTransitionTime: v1.Now().Rfc3339Copy(),
-				}
 				dogu := &v2.Dogu{
 					Spec: v2.DoguSpec{
 						PauseReconciliation: false,
-					},
-					Status: v2.DoguStatus{
-						Conditions: []v1.Condition{condition},
 					},
 				}
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(dogu, nil)

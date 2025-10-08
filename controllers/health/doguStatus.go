@@ -3,6 +3,7 @@ package health
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/retry-lib/retry"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -31,12 +32,6 @@ func NewDoguStatusUpdater(recorder record.EventRecorder, configMapInterface core
 }
 
 func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDeployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error {
-	stateConfigMap, err := dsw.configMapInterface.Get(ctx, healthConfigMapName, metav1api.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get health state configMap: %w", err)
-	}
-	initHealthConfigMap(stateConfigMap, doguDeployment)
-
 	// Get all pods to deployment
 	pods, err := dsw.podInterface.List(ctx, metav1api.ListOptions{
 		LabelSelector: metav1api.FormatLabelSelector(doguDeployment.Spec.Selector),
@@ -46,18 +41,28 @@ func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDep
 	}
 
 	isState, state := hasHealthCheckofTypeState(doguJson)
-
+	var stateConfigMap *v1.ConfigMap
 	for _, pod := range pods.Items {
-		if isState {
-			setHealthConfigMapStateWhenStarted(stateConfigMap, pod, doguDeployment, state)
+		retryErr := retry.OnConflict(func() error {
+			stateConfigMap, err = dsw.configMapInterface.Get(ctx, healthConfigMapName, metav1api.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to update health state in health configMap: %w", err)
+			}
+			initHealthConfigMap(stateConfigMap, doguDeployment)
+
+			if isState {
+				setHealthConfigMapStateWhenStarted(stateConfigMap, pod, doguDeployment, state)
+			}
+
+			_, err = dsw.configMapInterface.Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+
+			return err
+		})
+		if retryErr != nil {
+			return fmt.Errorf("failed to update health state in health configMap: %w", retryErr)
 		}
 
-		_, err = dsw.configMapInterface.Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to update health state in health configMap: %w", err)
-		}
-
-		if stateConfigMap.Data[doguDeployment.Name] != "" {
+		if stateConfigMap != nil && stateConfigMap.Data[doguDeployment.Name] != "" {
 			break
 		}
 	}

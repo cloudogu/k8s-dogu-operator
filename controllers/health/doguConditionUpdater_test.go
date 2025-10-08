@@ -39,7 +39,8 @@ func TestDoguConditionUpdater_UpdateCondition(t *testing.T) {
 				mck := newMockDoguInterface(t)
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, fn func(status v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 					g := gomega.NewWithT(t)
-					g.Expect(dogu.Status.Conditions).
+					status := fn(dogu.Status)
+					g.Expect(status.Conditions).
 						To(conditions.MatchConditions([]v1.Condition{{
 							Type:    "test",
 							Status:  "test",
@@ -96,7 +97,8 @@ func TestDoguConditionUpdater_UpdateConditions(t *testing.T) {
 				mck := newMockDoguInterface(t)
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, fn func(status v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 					g := gomega.NewWithT(t)
-					g.Expect(dogu.Status.Conditions).
+					status := fn(dogu.Status)
+					g.Expect(status.Conditions).
 						To(conditions.MatchConditions([]v1.Condition{
 							{
 								Type:    "test",
@@ -137,7 +139,8 @@ func TestDoguConditionUpdater_UpdateConditions(t *testing.T) {
 				mck := newMockDoguInterface(t)
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, fn func(status v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 					g := gomega.NewWithT(t)
-					g.Expect(dogu.Status.Conditions).
+					status := fn(dogu.Status)
+					g.Expect(status.Conditions).
 						To(conditions.MatchConditions([]v1.Condition{
 							{
 								Type:    "test",

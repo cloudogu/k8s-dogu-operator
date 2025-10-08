@@ -66,26 +66,7 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 			fields: fields{
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					expectedDogu := &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}, Status: v2.DoguStatus{
-						Status: "upgrading",
-						Health: "unavailable",
-						Conditions: []metav1.Condition{
-							{
-								Type:               "healthy",
-								Status:             metav1.ConditionFalse,
-								Reason:             "Upgrading",
-								Message:            "The spec version differs from the installed version, therefore an upgrade was scheduled.",
-								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-							},
-							{
-								Type:               "ready",
-								Status:             metav1.ConditionFalse,
-								Reason:             "Upgrading",
-								Message:            "The spec version differs from the installed version, therefore an upgrade was scheduled.",
-								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-							},
-						},
-					}}
+					expectedDogu := &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}}
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
@@ -103,7 +84,7 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 			fields: fields{
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					expectedDogu := &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}, Status: v2.DoguStatus{
+					expectedStatus := v2.DoguStatus{
 						Status: "upgrading",
 						Health: "unavailable",
 						Conditions: []metav1.Condition{
@@ -122,10 +103,11 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
 							},
 						},
-					}}
+					}
+					expectedDogu := &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}}
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDogu, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
 						status := modifyStatusFn(dogu.Status)
-						assert.Equal(t, expectedDogu.Status, status)
+						assert.Equal(t, expectedStatus, status)
 					}).Return(nil, nil)
 					return mck
 				},

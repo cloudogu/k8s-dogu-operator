@@ -176,8 +176,8 @@ func (m *doguAdditionalMountManager) UpdateAdditionalMounts(ctx context.Context,
 
 	installedStatus := v2.DoguStatusInstalled
 	doguResource, err = m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
-		doguResource.Status.Status = installedStatus
-		return doguResource.Status
+		status.Status = installedStatus
+		return status
 	}, v1.UpdateOptions{})
 
 	if err != nil {

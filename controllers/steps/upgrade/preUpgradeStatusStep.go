@@ -3,12 +3,12 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,28 +28,27 @@ func (p *PreUpgradeStatusStep) Run(ctx context.Context, resource *v2.Dogu) steps
 	}
 
 	if isUpgrade {
-		resource.Status.Status = v2.DoguStatusUpgrading
-		resource.Status.Health = v2.UnavailableHealthStatus
-
-		lastTransitionTime := steps.Now()
-		const message = "The spec version differs from the installed version, therefore an upgrade was scheduled."
-		meta.SetStatusCondition(&resource.Status.Conditions, metav1.Condition{
-			Type:               v2.ConditionHealthy,
-			Status:             metav1.ConditionFalse,
-			Reason:             ReasonUpgrading,
-			Message:            message,
-			LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
-		})
-		meta.SetStatusCondition(&resource.Status.Conditions, metav1.Condition{
-			Type:               v2.ConditionReady,
-			Status:             metav1.ConditionFalse,
-			Reason:             ReasonUpgrading,
-			Message:            message,
-			LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
-		})
-
 		resource, err = p.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
-			return resource.Status
+			status.Status = v2.DoguStatusUpgrading
+			status.Health = v2.UnavailableHealthStatus
+
+			lastTransitionTime := steps.Now()
+			const message = "The spec version differs from the installed version, therefore an upgrade was scheduled."
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               v2.ConditionHealthy,
+				Status:             metav1.ConditionFalse,
+				Reason:             ReasonUpgrading,
+				Message:            message,
+				LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
+			})
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               v2.ConditionReady,
+				Status:             metav1.ConditionFalse,
+				Reason:             ReasonUpgrading,
+				Message:            message,
+				LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
+			})
+			return status
 		}, metav1.UpdateOptions{})
 		if err != nil {
 			return steps.RequeueWithError(fmt.Errorf("failed to update dogu status before upgrade: %w", err))

@@ -1,6 +1,7 @@
 package postinstall
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -67,18 +68,8 @@ func TestVolumeExpanderStep_Run(t *testing.T) {
 					return newMockK8sClient(t)
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
-					condition := v1.Condition{
-						Type:               v2.ConditionMeetsMinVolumeSize,
-						Status:             v1.ConditionTrue,
-						Reason:             ActualVolumeSizeMeetsMinDataSize,
-						Message:            "Current VolumeSize meets the configured minimum VolumeSize",
-						LastTransitionTime: v1.Now().Rfc3339Copy(),
-					}
 					d := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-						Status: v2.DoguStatus{
-							Conditions: []v1.Condition{condition},
-						},
 					}
 					mck := newMockDoguInterface(t)
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, d, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
@@ -107,14 +98,17 @@ func TestVolumeExpanderStep_Run(t *testing.T) {
 						Message:            "Current VolumeSize meets the configured minimum VolumeSize",
 						LastTransitionTime: v1.Now().Rfc3339Copy(),
 					}
+					expectedDoguStatus := v2.DoguStatus{
+						Conditions: []v1.Condition{condition},
+					}
 					d := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
-						Status: v2.DoguStatus{
-							Conditions: []v1.Condition{condition},
-						},
 					}
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatusWithRetry(testCtx, d, mock.Anything, v1.UpdateOptions{}).Return(d, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, d, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, expectedDoguStatus, status)
+					}).Return(d, nil)
 					return mck
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {

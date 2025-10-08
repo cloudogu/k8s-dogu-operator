@@ -575,8 +575,8 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 				doguInterface: func() doguInterface {
 					doguMock := newMockDoguInterface(t)
 					doguMock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithAdditionalMounts, testifymock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
-						modifyStatusFn(nginxDoguResourceWithAdditionalMounts.Status)
-						assert.Equal(t, v2.DoguStatusInstalled, nginxDoguResourceWithAdditionalMounts.Status.Status)
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, v2.DoguStatusInstalled, status.Status)
 					}).Return(nil, nil)
 					return doguMock
 				},
@@ -620,8 +620,8 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 				doguInterface: func() doguInterface {
 					doguMock := newMockDoguInterface(t)
 					doguMock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithAdditionalMounts, testifymock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
-						modifyStatusFn(nginxDoguResourceWithAdditionalMounts.Status)
-						assert.Equal(t, v2.DoguStatusInstalled, nginxDoguResourceWithAdditionalMounts.Status.Status)
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, v2.DoguStatusInstalled, status.Status)
 					}).Return(nil, nil)
 					return doguMock
 				},
