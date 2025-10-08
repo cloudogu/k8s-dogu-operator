@@ -8,7 +8,6 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -39,8 +38,8 @@ const (
 
 type DoguReconciler struct {
 	client            client.Client
-	doguChangeHandler DoguUsecase
-	doguDeleteHandler DoguUsecase
+	doguChangeHandler DoguInstallOrChangeUseCase
+	doguDeleteHandler DoguDeleteUseCase
 	doguInterface     doguInterface
 	requeueHandler    RequeueHandler
 	externalEvents    <-chan event.TypedGenericEvent[*doguv2.Dogu]
@@ -61,8 +60,8 @@ func NewDoguEventsOut(channel chan event.TypedGenericEvent[*doguv2.Dogu]) <-chan
 
 func NewDoguReconciler(
 	k8sClient client.Client,
-	doguChangeHandler *usecase.DoguInstallOrChangeUseCase,
-	doguDeleteHandler *usecase.DoguDeleteUseCase,
+	doguChangeHandler DoguInstallOrChangeUseCase,
+	doguDeleteHandler DoguDeleteUseCase,
 	doguInterface doguClient.DoguInterface,
 	requeueHandler RequeueHandler,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
@@ -100,6 +99,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		requeueAfter, cont, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
 	} else {
 		requeueAfter, cont, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
+		err = client.IgnoreNotFound(err)
 		if cont {
 			return ctrl.Result{}, nil
 		}
@@ -125,7 +125,11 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return r.requeueHandler.Handle(ctx, doguResource, errs, requeueAfter)
 }
 
-// SetupWithManager sets up the controller with the manager.
+// setupWithManager sets up the controller with the manager.
+// The dogu controller should be triggered when resources on which a dogu cr has an OwnerReference change.
+// These resource types are listed here with owns.
+// In addition, the dogu reconciler can be triggered via an events channel.
+// This is intended, for example, for the GlobalConfigReconciler to reconcile the dogus again.
 func (r *DoguReconciler) setupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).

@@ -2,25 +2,37 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type DoguInstallOrChangeUseCase struct {
-	client client.Client
-	steps  []Step
+type DoguUseCase struct {
+	steps []Step
+}
+
+func NewDoguDeleteUseCase(
+	statusStep *deletion.StatusStep,
+	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
+	deleteOutOfHealthConfigMapStep *deletion.DeleteOutOfHealthConfigMapStep,
+	removeSensitiveDoguConfigStep deletion.RemoveSensitiveDoguConfigStep,
+	removeFinalizerStep *deletion.RemoveFinalizerStep,
+) *DoguUseCase {
+	return &DoguUseCase{
+		steps: []Step{
+			statusStep,
+			serviceAccountRemoverStep,
+			deleteOutOfHealthConfigMapStep,
+			removeSensitiveDoguConfigStep,
+			removeFinalizerStep,
+		}}
 }
 
 func NewDoguInstallOrChangeUseCase(
-	k8sClient client.Client,
 	conditionsStep *install.ConditionsStep,
 	healthCheckStep *install.HealthCheckStep,
 	fetchRemoteDoguDescriptorStep *install.FetchRemoteDoguDescriptorStep,
@@ -59,9 +71,8 @@ func NewDoguInstallOrChangeUseCase(
 	installedVersionStep *upgrade.InstalledVersionStep,
 	updateStartedAtStep *upgrade.UpdateStartedAtStep,
 	restartDoguStep *upgrade.RestartDoguStep,
-) *DoguInstallOrChangeUseCase {
-	return &DoguInstallOrChangeUseCase{
-		client: k8sClient,
+) *DoguUseCase {
+	return &DoguUseCase{
 		steps: []Step{
 			conditionsStep,
 			healthCheckStep,
@@ -105,25 +116,15 @@ func NewDoguInstallOrChangeUseCase(
 	}
 }
 
-func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error) {
-	logger := log.FromContext(ctx).
-		WithName("DoguChangeUseCase.HandleUntilApplied").
-		WithValues("doguName", doguResource.Name)
-
-	for _, s := range dicu.steps {
+func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error) {
+	for _, s := range duc.steps {
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
-			if result.Err != nil {
-				logger.Error(result.Err, fmt.Sprintf("reconcile step %T has to requeue: %q", s, result.Err))
-			} else {
-				logger.Info(fmt.Sprintf("reconcile step %T has to requeue after %d", s, result.RequeueAfter))
-			}
 			return result.RequeueAfter, false, result.Err
 		}
 		if !result.Continue {
 			return 0, false, nil
 		}
 	}
-	logger.Info(fmt.Sprintf("Successfully went through all steps!"))
 	return 0, true, nil
 }

@@ -78,3 +78,10 @@ type coreV1Interface interface {
 type eventInterface interface {
 	v1.EventInterface
 }
+
+type DoguInstallOrChangeUseCase interface {
+	DoguUsecase
+}
+type DoguDeleteUseCase interface {
+	DoguUsecase
+}

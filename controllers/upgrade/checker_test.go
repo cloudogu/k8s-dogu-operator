@@ -89,6 +89,17 @@ func Test_checker_IsUpgrade(t *testing.T) {
 			want:         false,
 			wantErr:      assert.NoError,
 		},
+		{
+			name: "should not upgrade if desired version is equal to installed version",
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				mck := newMockLocalDoguFetcher(t)
+				mck.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("test")).Return(&core.Dogu{Version: "1.2.3-4"}, nil)
+				return mck
+			},
+			doguResource: &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}, Spec: doguv2.DoguSpec{Name: "test", Version: "1.2.3-4"}},
+			want:         false,
+			wantErr:      assert.NoError,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

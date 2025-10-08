@@ -36,7 +36,7 @@ func TestNewDoguReconciler(t *testing.T) {
 
 	// then
 	assert.NoError(t, err)
-	assert.NotEmpty(t, reconciler)
+	assert.NotNil(t, reconciler)
 }
 
 func TestDoguReconciler_Reconcile(t *testing.T) {

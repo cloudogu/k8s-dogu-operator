@@ -224,11 +224,27 @@ func options() []fx.Option {
 			upgradeSteps.NewUpdateStartedAtStep,
 
 			// use-cases
-			usecase.NewDoguDeleteUseCase,
-			usecase.NewDoguInstallOrChangeUseCase,
+			fx.Annotate(
+				usecase.NewDoguDeleteUseCase,
+				fx.As(new(controllers.DoguDeleteUseCase)),
+				fx.ResultTags(`name:"doguDeleteUseCase"`),
+			),
+			fx.Annotate(
+				usecase.NewDoguDeleteUseCase,
+				fx.As(new(controllers.DoguDeleteUseCase)),
+			),
+			fx.Annotate(
+				usecase.NewDoguInstallOrChangeUseCase,
+				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
+				fx.ResultTags(`name:"doguInstallOrChangeUseCase"`),
+			),
+			fx.Annotate(
+				usecase.NewDoguInstallOrChangeUseCase,
+				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
+			),
 
 			// reconcilers
-			controllers.NewDoguReconciler,
+			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, "", "", "", "", "")),
 			controllers.NewGlobalConfigReconciler,
 			controllers.NewDoguRestartReconciler,
 
