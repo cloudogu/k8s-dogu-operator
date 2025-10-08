@@ -154,7 +154,7 @@ func TestServiceStep_Run(t *testing.T) {
 			want: steps.RequeueWithError(assert.AnError),
 		},
 		{
-			name: "should fail to upsert service if no service for dogu is found",
+			name: "should fail to create service if no service for dogu is found",
 			fields: fields{
 				serviceGeneratorFn: func(t *testing.T) serviceGenerator {
 					mck := newMockServiceGenerator(t)
@@ -184,6 +184,38 @@ func TestServiceStep_Run(t *testing.T) {
 			},
 			doguResource: testDoguCR,
 			want:         steps.RequeueWithError(assert.AnError),
+		},
+		{
+			name: "should succeed to create service if no service for dogu is found",
+			fields: fields{
+				serviceGeneratorFn: func(t *testing.T) serviceGenerator {
+					mck := newMockServiceGenerator(t)
+					mck.EXPECT().CreateDoguService(
+						testDoguCR,
+						testDogu,
+						&v3.ConfigFile{},
+					).Return(&v4.Service{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
+					return mck
+				},
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					mck := newMockLocalDoguFetcher(t)
+					mck.EXPECT().FetchForResource(testCtx, testDoguCR).Return(testDogu, nil)
+					return mck
+				},
+				imageRegistryFn: func(t *testing.T) imageRegistry {
+					mck := newMockImageRegistry(t)
+					mck.EXPECT().PullImageConfig(testCtx, "test:1.0.0").Return(&v3.ConfigFile{}, nil)
+					return mck
+				},
+				serviceInterfaceFn: func(t *testing.T) serviceInterface {
+					mck := newMockServiceInterface(t)
+					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(nil, errors.NewNotFound(schema.GroupResource{}, ""))
+					mck.EXPECT().Create(testCtx, &v4.Service{ObjectMeta: v1.ObjectMeta{Name: "test"}}, v1.CreateOptions{}).Return(nil, nil)
+					return mck
+				},
+			},
+			doguResource: testDoguCR,
+			want:         steps.Continue(),
 		},
 		{
 			name: "should fail to update service if service for dogu is found",
