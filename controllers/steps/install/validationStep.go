@@ -13,7 +13,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 )
 
 type ValidationStep struct {
@@ -22,6 +23,7 @@ type ValidationStep struct {
 	securityValidator             securityValidator
 	doguAdditionalMountsValidator doguAdditionalMountsValidator
 	dependencyValidator           dependencyValidator
+	recorder                      eventRecorder
 }
 
 func NewValidationStep(
@@ -30,6 +32,7 @@ func NewValidationStep(
 	dependencyValidator dependency.Validator,
 	securityValidator security.Validator,
 	doguAdditionalMountsValidator additionalMount.Validator,
+	recorder record.EventRecorder,
 ) *ValidationStep {
 	return &ValidationStep{
 		doguHealthChecker:             healthChecker,
@@ -37,11 +40,11 @@ func NewValidationStep(
 		dependencyValidator:           dependencyValidator,
 		securityValidator:             securityValidator,
 		doguAdditionalMountsValidator: doguAdditionalMountsValidator,
+		recorder:                      recorder,
 	}
 }
 
 func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	logger := log.FromContext(ctx)
 	fromDogu, err := vs.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil && !errors.IsNotFoundError(err) {
 		return steps.RequeueWithError(err)
@@ -52,7 +55,7 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 			return steps.RequeueWithError(err)
 		}
 		if older && !doguResource.Spec.UpgradeConfig.ForceUpgrade {
-			logger.Info(fmt.Sprintf("Downgrade is not allowed. Please install another version of dogu %s", doguResource.Name))
+			vs.recorder.Eventf(doguResource, v1.EventTypeWarning, InstallEventReason, "Downgrade is not allowed. Please install another version of dogu %s", doguResource.Name)
 			return steps.Abort()
 		}
 	}

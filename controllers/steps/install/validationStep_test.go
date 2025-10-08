@@ -15,15 +15,27 @@ import (
 
 func TestNewValidationStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
+		checker := newMockDoguHealthChecker(t)
+		fetcher := newMockLocalDoguFetcher(t)
+		dependencyValidator := newMockDependencyValidator(t)
+		securityValidator := newMockSecurityValidator(t)
+		additionalMountsValidator := newMockDoguAdditionalMountsValidator(t)
+		recorder := newMockEventRecorder(t)
 		step := NewValidationStep(
-			newMockDoguHealthChecker(t),
-			newMockLocalDoguFetcher(t),
-			newMockDependencyValidator(t),
-			newMockSecurityValidator(t),
-			newMockDoguAdditionalMountsValidator(t),
+			checker,
+			fetcher,
+			dependencyValidator,
+			securityValidator,
+			additionalMountsValidator,
+			recorder,
 		)
 
-		assert.NotNil(t, step)
+		assert.Same(t, checker, step.doguHealthChecker)
+		assert.Same(t, fetcher, step.localDoguFetcher)
+		assert.Same(t, dependencyValidator, step.dependencyValidator)
+		assert.Same(t, securityValidator, step.securityValidator)
+		assert.Same(t, additionalMountsValidator, step.doguAdditionalMountsValidator)
+		assert.Same(t, recorder, step.recorder)
 	})
 }
 
