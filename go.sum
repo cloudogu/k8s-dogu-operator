@@ -26,6 +26,10 @@ github.com/cloudogu/k8s-apply-lib v0.5.0 h1:XeQKwTgT8FIozpqyPO/b09LAenPswBilmatw
 github.com/cloudogu/k8s-apply-lib v0.5.0/go.mod h1:jR/+7q47O5gb++4gVsmEElT8/EJoi+Msw2dVzArTPW0=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250930130232-e1e361713114 h1:AzYHJyCHhoyfBfGALSIktCWRfIEvRXqgilh506B1DXQ=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20250930130232-e1e361713114/go.mod h1:2xkJ1TI7fuBRcqIpHUlmQ6CJAtzlOvyUbwPktIVq6K8=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20251007124239-eb10ba9327fa h1:uPY1sp8RJqI3GcjmJRKKyhmMwpSYzPBqlTm6lvFPYpo=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20251007124239-eb10ba9327fa/go.mod h1:2xkJ1TI7fuBRcqIpHUlmQ6CJAtzlOvyUbwPktIVq6K8=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20251007151701-7d78516b77dc h1:7NTXQqvOfEz1xqoz9HISM2rPTbN6J33/GmtGhDxpwZQ=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20251007151701-7d78516b77dc/go.mod h1:2xkJ1TI7fuBRcqIpHUlmQ6CJAtzlOvyUbwPktIVq6K8=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.9.0 h1:eMXorf00BBQq6kwFUsVOs9f0aPuQ6J/XuakiT9F24Q8=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.9.0/go.mod h1:XvnrQKqCh+ksGc+tFkv+EXfKeZC7P1jPInidSElh5CM=
 github.com/cloudogu/k8s-host-change v0.7.0 h1:291ojIo64Z245xtBJdC3sa6H+eAPvbjb7cpvCr9kYP8=

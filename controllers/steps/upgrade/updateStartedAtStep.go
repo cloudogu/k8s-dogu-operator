@@ -32,7 +32,9 @@ func (usas *UpdateStartedAtStep) Run(ctx context.Context, doguResource *v2.Dogu)
 	}
 
 	doguResource.Status.StartedAt = metav1.Time{Time: *startingTime}
-	doguResource, err = usas.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+	doguResource, err = usas.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+		return doguResource.Status
+	}, metav1.UpdateOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}

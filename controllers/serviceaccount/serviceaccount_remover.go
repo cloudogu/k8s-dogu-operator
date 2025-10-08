@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
@@ -54,6 +55,10 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 
 	sensitiveConfig, err := r.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
+		if cloudoguerrors.IsNotFoundError(err) {
+			logger.Info(fmt.Sprintf("skipping service account removal because %s sensitive dogu config is not found", dogu.GetSimpleName()))
+			return nil
+		}
 		return fmt.Errorf("unable to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
 	}
 

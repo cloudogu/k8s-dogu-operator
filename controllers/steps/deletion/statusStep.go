@@ -3,11 +3,12 @@ package deletion
 import (
 	"context"
 	"fmt"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,6 +25,7 @@ func NewStatusStep(doguInterface doguClient.DoguInterface) *StatusStep {
 }
 
 func (s *StatusStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResult {
+	var err error
 	resource.Status.Status = v2.DoguStatusDeleting
 	resource.Status.Health = v2.UnavailableHealthStatus
 
@@ -35,6 +37,7 @@ func (s *StatusStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResul
 		Reason:             ReasonDeleting,
 		Message:            message,
 		LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
+		ObservedGeneration: resource.Generation,
 	})
 	meta.SetStatusCondition(&resource.Status.Conditions, metav1.Condition{
 		Type:               v2.ConditionReady,
@@ -42,11 +45,15 @@ func (s *StatusStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResul
 		Reason:             ReasonDeleting,
 		Message:            message,
 		LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
+		ObservedGeneration: resource.Generation,
 	})
-
-	var err error
-	resource, err = s.doguInterface.UpdateStatus(ctx, resource, metav1.UpdateOptions{})
+	resource, err = s.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
+		return resource.Status
+	}, metav1.UpdateOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return steps.Continue()
+		}
 		return steps.RequeueWithError(fmt.Errorf("failed to update status of dogu when deleting: %w", err))
 	}
 

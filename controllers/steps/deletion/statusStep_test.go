@@ -1,7 +1,9 @@
 package deletion
 
 import (
+	"context"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
@@ -49,7 +51,7 @@ func TestStatusStep_Run(t *testing.T) {
 						},
 					},
 				}}
-				mck.EXPECT().UpdateStatus(testCtx, expectedDoguResource, metav1.UpdateOptions{}).Return(nil, assert.AnError)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDoguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
 				return mck
 			},
 			resource: &v2.Dogu{},
@@ -79,7 +81,10 @@ func TestStatusStep_Run(t *testing.T) {
 						},
 					},
 				}}
-				mck.EXPECT().UpdateStatus(testCtx, expectedDoguResource, metav1.UpdateOptions{}).Return(expectedDoguResource, nil)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDoguResource, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
+					modifyStatusFn(expectedDoguResource.Status)
+					assert.Equal(t, "deleting", expectedDoguResource.Status.Status)
+				}).Return(expectedDoguResource, nil)
 				return mck
 			},
 			resource: &v2.Dogu{},

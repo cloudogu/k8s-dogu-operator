@@ -111,7 +111,9 @@ func (vs *VolumeExpanderStep) setSuccessCondition(ctx context.Context, doguResou
 	}
 
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
-	doguResource, err := vs.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
+	doguResource, err := vs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+		return doguResource.Status
+	}, v1.UpdateOptions{})
 	if err != nil {
 		return err
 	}

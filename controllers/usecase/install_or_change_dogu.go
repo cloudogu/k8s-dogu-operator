@@ -10,7 +10,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
 
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -112,11 +111,6 @@ func (dicu *DoguInstallOrChangeUseCase) HandleUntilApplied(ctx context.Context, 
 		WithValues("doguName", doguResource.Name)
 
 	for _, s := range dicu.steps {
-		err := dicu.client.Get(ctx, types.NamespacedName{Name: doguResource.Name, Namespace: doguResource.Namespace}, doguResource)
-		if err != nil {
-			return 0, false, err
-		}
-
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
 			if result.Err != nil {

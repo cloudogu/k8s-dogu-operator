@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	testifymock "github.com/stretchr/testify/mock"
 	"testing"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
@@ -572,9 +573,12 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 					return mock
 				},
 				doguInterface: func() doguInterface {
-					mock := newMockDoguInterface(t)
-					mock.EXPECT().UpdateStatus(testCtx, nginxDoguResourceWithAdditionalMounts, v1.UpdateOptions{}).Return(nil, nil)
-					return mock
+					doguMock := newMockDoguInterface(t)
+					doguMock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithAdditionalMounts, testifymock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
+						modifyStatusFn(nginxDoguResourceWithAdditionalMounts.Status)
+						assert.Equal(t, v2.DoguStatusInstalled, nginxDoguResourceWithAdditionalMounts.Status.Status)
+					}).Return(nil, nil)
+					return doguMock
 				},
 			},
 			args: args{
@@ -614,9 +618,12 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 					return mock
 				},
 				doguInterface: func() doguInterface {
-					mock := newMockDoguInterface(t)
-					mock.EXPECT().UpdateStatus(testCtx, nginxDoguResourceWithAdditionalMounts, v1.UpdateOptions{}).Return(nil, nil)
-					return mock
+					doguMock := newMockDoguInterface(t)
+					doguMock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithAdditionalMounts, testifymock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
+						modifyStatusFn(nginxDoguResourceWithAdditionalMounts.Status)
+						assert.Equal(t, v2.DoguStatusInstalled, nginxDoguResourceWithAdditionalMounts.Status.Status)
+					}).Return(nil, nil)
+					return doguMock
 				},
 			},
 			args: args{

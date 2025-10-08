@@ -1,6 +1,7 @@
 package install
 
 import (
+	"github.com/stretchr/testify/mock"
 	"testing"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -48,7 +49,7 @@ func TestPauseReconciliationStep_Run(t *testing.T) {
 						Conditions: []v1.Condition{condition},
 					},
 				}
-				mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(nil, assert.AnError)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 				return mck
 			},
 			want: steps.RequeueWithError(assert.AnError),

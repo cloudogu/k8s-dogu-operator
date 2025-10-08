@@ -612,7 +612,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 	t.Run("error no pvc", func(t *testing.T) {
 		dogu := &k8sv2.Dogu{}
 		doguClient := newMockDoguClientInterface(t)
-		doguClient.EXPECT().UpdateStatus(context.TODO(), dogu, mock.Anything).Return(nil, nil)
+		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(nil, nil)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
 
@@ -635,7 +635,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 	t.Run("error update status", func(t *testing.T) {
 		dogu := &k8sv2.Dogu{}
 		doguClient := newMockDoguClientInterface(t)
-		doguClient.EXPECT().UpdateStatus(context.TODO(), dogu, mock.Anything).Return(nil, assert.AnError)
+		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(nil, assert.AnError)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
 
@@ -644,7 +644,11 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 	t.Run("run inline function", func(t *testing.T) {
 		dogu := &k8sv2.Dogu{}
 		doguClient := newMockDoguClientInterface(t)
-		doguClient.EXPECT().UpdateStatus(context.TODO(), dogu, mock.Anything).Return(nil, nil)
+		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Run(func(ctx context.Context, dogu *k8sv2.Dogu, modifyStatusFn func(k8sv2.DoguStatus) k8sv2.DoguStatus, opts metav1.UpdateOptions) {
+			modifyStatusFn(dogu.Status)
+			expectedDefaultVolumeSize := resource.MustParse("2Gi")
+			assert.Equal(t, &expectedDefaultVolumeSize, dogu.Status.DataVolumeSize)
+		}).Return(nil, nil)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
 
@@ -660,7 +664,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 		clientMock := newMockK8sClient(t)
 
 		doguClient := newMockDoguClientInterface(t)
-		doguClient.EXPECT().UpdateStatus(context.TODO(), dogu, mock.Anything).Return(dogu, nil)
+		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(dogu, nil)
 		specrequests := make(map[corev1.ResourceName]resource.Quantity)
 		specrequests[corev1.ResourceStorage] = resource.MustParse("10Mi")
 		statrequests := make(map[corev1.ResourceName]resource.Quantity)

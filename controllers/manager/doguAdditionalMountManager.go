@@ -175,8 +175,10 @@ func (m *doguAdditionalMountManager) UpdateAdditionalMounts(ctx context.Context,
 	logger.Info(fmt.Sprintf("Successfully updated additional mounts for dogu resource %s", doguResource.Name))
 
 	installedStatus := v2.DoguStatusInstalled
-	doguResource.Status.Status = installedStatus
-	doguResource, err = m.doguInterface.UpdateStatus(ctx, doguResource, v1.UpdateOptions{})
+	doguResource, err = m.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+		doguResource.Status.Status = installedStatus
+		return doguResource.Status
+	}, v1.UpdateOptions{})
 
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %s to %s", doguResource.Name, installedStatus)

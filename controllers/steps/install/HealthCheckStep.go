@@ -89,11 +89,14 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 		Reason:             reason,
 		Message:            message,
 		LastTransitionTime: metav1.Now().Rfc3339Copy(),
+		ObservedGeneration: doguResource.Generation,
 	}
 
-	doguResource.Status.Health = desiredHealthStatus
-	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
-	doguResource, err = hcs.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+	doguResource, err = hcs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+		status.Health = desiredHealthStatus
+		meta.SetStatusCondition(&status.Conditions, condition)
+		return status
+	}, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}

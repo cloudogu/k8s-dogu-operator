@@ -13,6 +13,8 @@ metadata:
       name: ldap
       uid: ""
 spec:
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
   selector:
     matchLabels:
       dogu.name: ldap

@@ -21,36 +21,29 @@ func NewDoguConditionUpdater(doguInterface doguClient.DoguInterface) *DoguCondit
 }
 
 func (dcu *DoguConditionUpdater) UpdateCondition(ctx context.Context, doguResource *v2.Dogu, condition metav1.Condition) error {
-	newDoguResource, err := dcu.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
+	condition.ObservedGeneration = doguResource.Generation
+	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
+	name := doguResource.Name
+	doguResource, err := dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+		return doguResource.Status
+	}, metav1.UpdateOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get dogu: %w", err)
+		return fmt.Errorf("failed to update status of dogu %s: %w", name, err)
 	}
 
-	condition.ObservedGeneration = newDoguResource.Generation
-	meta.SetStatusCondition(&newDoguResource.Status.Conditions, condition)
-	newDoguResource, err = dcu.doguInterface.UpdateStatus(ctx, newDoguResource, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to update status of dogu %s: %w", doguResource.Name, err)
-	}
-
-	doguResource = newDoguResource
 	return nil
 }
 func (dcu *DoguConditionUpdater) UpdateConditions(ctx context.Context, doguResource *v2.Dogu, conditions []metav1.Condition) error {
-	newDoguResource, err := dcu.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get dogu: %w", err)
-	}
-
 	for _, condition := range conditions {
-		condition.ObservedGeneration = newDoguResource.Generation
-		meta.SetStatusCondition(&newDoguResource.Status.Conditions, condition)
+		condition.ObservedGeneration = doguResource.Generation
+		meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
 	}
-
-	newDoguResource, err = dcu.doguInterface.UpdateStatus(ctx, newDoguResource, metav1.UpdateOptions{})
+	name := doguResource.Name
+	doguResource, err := dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+		return doguResource.Status
+	}, metav1.UpdateOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to update status of dogu %s: %w", doguResource.Name, err)
+		return fmt.Errorf("failed to update status of dogu %s: %w", name, err)
 	}
-	doguResource = newDoguResource
 	return nil
 }

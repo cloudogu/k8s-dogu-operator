@@ -48,7 +48,9 @@ func (p *PreUpgradeStatusStep) Run(ctx context.Context, resource *v2.Dogu) steps
 			LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
 		})
 
-		resource, err = p.doguInterface.UpdateStatus(ctx, resource, metav1.UpdateOptions{})
+		resource, err = p.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
+			return resource.Status
+		}, metav1.UpdateOptions{})
 		if err != nil {
 			return steps.RequeueWithError(fmt.Errorf("failed to update dogu status before upgrade: %w", err))
 		}

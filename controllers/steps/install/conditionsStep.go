@@ -50,6 +50,7 @@ func (cs *ConditionsStep) Run(ctx context.Context, doguResource *doguv2.Dogu) st
 				Status:  v1.ConditionUnknown,
 				Reason:  ConditionReason,
 				Message: ConditionMessage,
+				ObservedGeneration: doguResource.Generation,
 			})
 		}
 	}

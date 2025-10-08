@@ -3,6 +3,7 @@ package deletion
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/retry-lib/retry"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -24,9 +25,20 @@ func NewRemoveFinalizerStep(client client.Client) *RemoveFinalizerStep {
 }
 
 func (rf *RemoveFinalizerStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	controllerutil.RemoveFinalizer(doguResource, legacyFinalizerName)
-	controllerutil.RemoveFinalizer(doguResource, finalizerName)
-	err := rf.client.Update(ctx, doguResource)
+	if !controllerutil.ContainsFinalizer(doguResource, legacyFinalizerName) && !controllerutil.ContainsFinalizer(doguResource, finalizerName) {
+		return steps.Continue()
+	}
+
+	err := retry.OnConflict(func() error {
+		err := rf.client.Get(ctx, client.ObjectKeyFromObject(doguResource), doguResource)
+		if err != nil {
+			return err
+		}
+
+		controllerutil.RemoveFinalizer(doguResource, legacyFinalizerName)
+		controllerutil.RemoveFinalizer(doguResource, finalizerName)
+		return rf.client.Update(ctx, doguResource)
+	})
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to update dogu: %w", err))
 	}

@@ -3,6 +3,7 @@ package postinstall
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/retry-lib/retry"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
@@ -32,19 +33,23 @@ func (scs *SecurityContextStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 		return steps.RequeueWithError(fmt.Errorf("failed to get local descriptor for dogu %q: %w", doguResource.Name, err))
 	}
 
-	deployment, err := scs.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
-	if err != nil {
-		return steps.RequeueWithError(fmt.Errorf("failed to get deployment of dogu %q: %w", doguResource.Name, err))
-	}
+	err = retry.OnConflict(func() error {
+		var retryErr error
+		deployment, retryErr := scs.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
+		if retryErr != nil {
+			return fmt.Errorf("failed to get deployment of dogu %q: %w", doguResource.Name, retryErr)
+		}
 
-	podSecurityContext, containerSecurityContext := scs.securityContextGenerator.Generate(ctx, dogu, doguResource)
+		podSecurityContext, containerSecurityContext := scs.securityContextGenerator.Generate(ctx, dogu, doguResource)
 
-	deployment.Spec.Template.Spec.SecurityContext = podSecurityContext
-	for i := range deployment.Spec.Template.Spec.Containers {
-		deployment.Spec.Template.Spec.Containers[i].SecurityContext = containerSecurityContext
-	}
+		deployment.Spec.Template.Spec.SecurityContext = podSecurityContext
+		for i := range deployment.Spec.Template.Spec.Containers {
+			deployment.Spec.Template.Spec.Containers[i].SecurityContext = containerSecurityContext
+		}
 
-	_, err = scs.deploymentInterface.Update(ctx, deployment, metav1.UpdateOptions{})
+		_, retryErr = scs.deploymentInterface.Update(ctx, deployment, metav1.UpdateOptions{})
+		return retryErr
+	})
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}

@@ -1,7 +1,9 @@
 package postinstall
 
 import (
+	context "context"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
@@ -284,12 +286,12 @@ func TestReplicasStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &v2.Dogu{
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 						Spec: v2.DoguSpec{
 							Stopped: false,
 						},
-					}, v1.UpdateOptions{}).Return(nil, assert.AnError)
+					}, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 			},
@@ -328,12 +330,16 @@ func TestReplicasStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &v2.Dogu{
+					doguCr := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
 						Spec: v2.DoguSpec{
 							Stopped: false,
 						},
-					}, v1.UpdateOptions{}).Return(nil, nil)
+					}
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, doguCr, mock.Anything, v1.UpdateOptions{}).Return(nil, nil).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
+						modifyStatusFn(doguCr.Status)
+						assert.Equal(t, false, doguCr.Status.Stopped)
+					})
 					return mck
 				},
 			},

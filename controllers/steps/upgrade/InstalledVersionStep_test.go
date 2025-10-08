@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"context"
+	"github.com/stretchr/testify/mock"
 	"testing"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -48,7 +49,7 @@ func TestInstalledVersionStep_Run(t *testing.T) {
 							InstalledVersion: "1.0.0",
 						},
 					}
-					mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(nil, assert.AnError)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 			},
@@ -71,7 +72,10 @@ func TestInstalledVersionStep_Run(t *testing.T) {
 							InstalledVersion: "1.0.0",
 						},
 					}
-					mck.EXPECT().UpdateStatus(testCtx, dogu, v1.UpdateOptions{}).Return(nil, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
+						modifyStatusFn(dogu.Status)
+						assert.Equal(t, v2.DoguStatusInstalled, dogu.Status.Status)
+					}).Return(nil, nil)
 					return mck
 				},
 			},

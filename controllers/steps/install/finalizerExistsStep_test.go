@@ -1,6 +1,7 @@
 package install
 
 import (
+	client2 "sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ func TestFinalizerExistsStep_Run(t *testing.T) {
 	t.Run("Successfully added finalizer", func(t *testing.T) {
 		doguResource := &v2.Dogu{}
 		client := newMockK8sClient(t)
+		client.EXPECT().Get(testCtx, client2.ObjectKeyFromObject(doguResource), doguResource).Return(nil)
 		client.EXPECT().Update(testCtx, doguResource).Return(nil)
 		sut := NewFinalizerExistsStep(client)
 
@@ -33,6 +35,7 @@ func TestFinalizerExistsStep_Run(t *testing.T) {
 	t.Run("fail to add finalizer", func(t *testing.T) {
 		doguResource := &v2.Dogu{}
 		client := newMockK8sClient(t)
+		client.EXPECT().Get(testCtx, client2.ObjectKeyFromObject(doguResource), doguResource).Return(nil)
 		client.EXPECT().Update(testCtx, doguResource).Return(assert.AnError)
 		sut := NewFinalizerExistsStep(client)
 

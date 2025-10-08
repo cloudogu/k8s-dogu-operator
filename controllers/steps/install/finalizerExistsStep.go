@@ -3,6 +3,7 @@ package install
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/retry-lib/retry"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -23,8 +24,18 @@ func NewFinalizerExistsStep(client client.Client) *FinalizerExistsStep {
 }
 
 func (fs *FinalizerExistsStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	controllerutil.AddFinalizer(doguResource, finalizerName)
-	err := fs.client.Update(ctx, doguResource)
+	if controllerutil.ContainsFinalizer(doguResource, finalizerName) {
+		return steps.Continue()
+	}
+
+	err := retry.OnConflict(func() error {
+		err := fs.client.Get(ctx, client.ObjectKeyFromObject(doguResource), doguResource)
+		if err != nil {
+			return err
+		}
+		controllerutil.AddFinalizer(doguResource, finalizerName)
+		return fs.client.Update(ctx, doguResource)
+	})
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to update dogu: %w", err))
 	}

@@ -92,9 +92,13 @@ func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguRes
 		Reason:             reason,
 		Message:            message,
 		LastTransitionTime: steps.Now().Rfc3339Copy(),
+		ObservedGeneration: doguResource.Generation,
 	}
-	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
-	doguResource, err := sms.doguInterface.UpdateStatus(ctx, doguResource, metav1.UpdateOptions{})
+
+	doguResource, err := sms.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+		meta.SetStatusCondition(&status.Conditions, condition)
+		return status
+	}, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}

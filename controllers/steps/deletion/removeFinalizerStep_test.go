@@ -2,6 +2,7 @@ package deletion
 
 import (
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -19,6 +20,30 @@ func TestNewRemoveFinalizerStep(t *testing.T) {
 }
 
 func TestRemoveFinalizerStep_Run(t *testing.T) {
+	doguWithLegacyFinalizer := &v2.Dogu{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace:  "test",
+			Name:       "dogu",
+			Finalizers: []string{legacyFinalizerName},
+		},
+	}
+
+	doguWithFinalizer := &v2.Dogu{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace:  "test",
+			Name:       "dogu",
+			Finalizers: []string{finalizerName},
+		},
+	}
+
+	doguWithoutFinalizer := &v2.Dogu{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace:  "test",
+			Name:       "dogu",
+			Finalizers: []string{},
+		},
+	}
+
 	tests := []struct {
 		name         string
 		clientFn     func(t *testing.T) k8sClient
@@ -26,44 +51,36 @@ func TestRemoveFinalizerStep_Run(t *testing.T) {
 		want         steps.StepResult
 	}{
 		{
+			name: "should skip if dogu has no finalizer",
+			clientFn: func(t *testing.T) k8sClient {
+				clientMock := newMockK8sClient(t)
+				return clientMock
+			},
+			doguResource: doguWithoutFinalizer,
+			want:         steps.Continue(),
+		},
+		{
 			name: "should fail to update dogu resource",
 			clientFn: func(t *testing.T) k8sClient {
 				clientMock := newMockK8sClient(t)
-				clientMock.EXPECT().Update(testCtx, &v2.Dogu{
-					ObjectMeta: v1.ObjectMeta{
-						Finalizers: []string{},
-					},
-				}).Return(assert.AnError)
+				clientMock.EXPECT().Get(testCtx, client.ObjectKeyFromObject(doguWithoutFinalizer), doguWithLegacyFinalizer).Return(nil)
+				clientMock.EXPECT().Update(testCtx, doguWithoutFinalizer).Return(assert.AnError)
 				return clientMock
 			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{
-					Finalizers: []string{legacyFinalizerName},
-				},
-			},
+			doguResource: doguWithLegacyFinalizer,
 			want: steps.StepResult{
 				Err: fmt.Errorf("failed to update dogu: %w", assert.AnError),
 			},
 		},
 		{
-			name: "should remove finalizer from dogu resource",
+			name: "should remove finalizer",
 			clientFn: func(t *testing.T) k8sClient {
 				clientMock := newMockK8sClient(t)
-				clientMock.EXPECT().Update(testCtx, &v2.Dogu{
-					ObjectMeta: v1.ObjectMeta{
-						Finalizers: []string{},
-					},
-				}).Return(nil)
+				clientMock.EXPECT().Get(testCtx, client.ObjectKeyFromObject(doguWithFinalizer), doguWithFinalizer).Return(nil)
+				clientMock.EXPECT().Update(testCtx, doguWithoutFinalizer).Return(nil)
 				return clientMock
 			},
-			doguResource: &v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{
-					Finalizers: []string{
-						legacyFinalizerName,
-						finalizerName,
-					},
-				},
-			},
+			doguResource: doguWithFinalizer,
 			want: steps.StepResult{
 				Continue: true,
 			},

@@ -34,59 +34,10 @@ func TestDoguConditionUpdater_UpdateCondition(t *testing.T) {
 		wantErr         assert.ErrorAssertionFunc
 	}{
 		{
-			name: "should fail to get dogu resource",
-			doguInterfaceFn: func(t *testing.T) doguInterface {
-				mck := newMockDoguInterface(t)
-				mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(nil, assert.AnError)
-				return mck
-			},
-			doguResource: &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
-			condition: v1.Condition{
-				Type:    "test",
-				Status:  "test",
-				Reason:  "test",
-				Message: "test",
-			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				return assert.ErrorIs(t, err, assert.AnError) &&
-					assert.ErrorContains(t, err, "failed to get dogu")
-			},
-		},
-		{
-			name: "should fail to update dogu resource",
-			doguInterfaceFn: func(t *testing.T) doguInterface {
-				mck := newMockDoguInterface(t)
-				mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
-				mck.EXPECT().UpdateStatus(testCtx, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, opts v1.UpdateOptions) {
-					g := gomega.NewWithT(t)
-					g.Expect(dogu.Status.Conditions).
-						To(conditions.MatchConditions([]v1.Condition{{
-							Type:    "test",
-							Status:  "test",
-							Reason:  "test",
-							Message: "test",
-						}}, conditions.IgnoreLastTransitionTime(true)))
-				}).Return(nil, assert.AnError)
-				return mck
-			},
-			doguResource: &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
-			condition: v1.Condition{
-				Type:    "test",
-				Status:  "test",
-				Reason:  "test",
-				Message: "test",
-			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				return assert.ErrorIs(t, err, assert.AnError) &&
-					assert.ErrorContains(t, err, "failed to update status of dogu test")
-			},
-		},
-		{
 			name: "should succeed to update dogu resource",
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
-				mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}}, nil)
-				mck.EXPECT().UpdateStatus(testCtx, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, opts v1.UpdateOptions) {
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, fn func(status v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 					g := gomega.NewWithT(t)
 					g.Expect(dogu.Status.Conditions).
 						To(conditions.MatchConditions([]v1.Condition{{
@@ -140,22 +91,10 @@ func TestDoguConditionUpdater_UpdateConditions(t *testing.T) {
 		wantErr         assert.ErrorAssertionFunc
 	}{
 		{
-			name: "should fail to get dogu resource",
-			doguInterfaceFn: func(t *testing.T) doguInterface {
-				mck := newMockDoguInterface(t)
-				mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(nil, assert.AnError)
-				return mck
-			},
-			doguResource: &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "test"}},
-			conditions:   []v1.Condition{},
-			wantErr:      assert.Error,
-		},
-		{
 			name: "should fail to update dogu resource",
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
-				mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&v2.Dogu{}, nil)
-				mck.EXPECT().UpdateStatus(testCtx, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, opts v1.UpdateOptions) {
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, fn func(status v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 					g := gomega.NewWithT(t)
 					g.Expect(dogu.Status.Conditions).
 						To(conditions.MatchConditions([]v1.Condition{
@@ -196,8 +135,7 @@ func TestDoguConditionUpdater_UpdateConditions(t *testing.T) {
 			name: "should succeed to update dogu resource",
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
-				mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&v2.Dogu{}, nil)
-				mck.EXPECT().UpdateStatus(testCtx, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, opts v1.UpdateOptions) {
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, fn func(status v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 					g := gomega.NewWithT(t)
 					g.Expect(dogu.Status.Conditions).
 						To(conditions.MatchConditions([]v1.Condition{

@@ -1,7 +1,9 @@
 package install
 
 import (
+	context "context"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"testing"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
@@ -196,7 +198,7 @@ func TestHealthCheckStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, &doguv2.Dogu{
 						ObjectMeta: v1.ObjectMeta{
 							Namespace: namespace,
 							Name:      "test",
@@ -213,7 +215,7 @@ func TestHealthCheckStep_Run(t *testing.T) {
 								},
 							},
 						},
-					}, v1.UpdateOptions{}).Return(nil, assert.AnError)
+					}, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 			},
@@ -250,24 +252,25 @@ func TestHealthCheckStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatus(testCtx, &doguv2.Dogu{
+					doguCr := &doguv2.Dogu{
 						ObjectMeta: v1.ObjectMeta{
 							Namespace: namespace,
 							Name:      "test",
 						},
-						Status: doguv2.DoguStatus{
-							Health: "available",
-							Conditions: []v1.Condition{
-								{
-									Type:               doguv2.ConditionHealthy,
-									Status:             v1.ConditionTrue,
-									Reason:             "DoguIsHealthy",
-									Message:            "All replicas are available",
-									LastTransitionTime: v1.Now().Rfc3339Copy(),
-								},
+					}
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, doguCr, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts v1.UpdateOptions) {
+						status := modifyStatusFn(doguCr.Status)
+						assert.Equal(t, doguv2.AvailableHealthStatus, status.Health)
+						assert.Equal(t, []v1.Condition{
+							{
+								Type:               doguv2.ConditionHealthy,
+								Status:             v1.ConditionTrue,
+								Reason:             "DoguIsHealthy",
+								Message:            "All replicas are available",
+								LastTransitionTime: v1.Now().Rfc3339Copy(),
 							},
-						},
-					}, v1.UpdateOptions{}).Return(nil, nil)
+						}, status.Conditions)
+					}).Return(nil, nil)
 					return mck
 				},
 			},
