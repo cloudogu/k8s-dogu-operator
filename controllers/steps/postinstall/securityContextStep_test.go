@@ -12,6 +12,7 @@ import (
 	v4 "k8s.io/api/apps/v1"
 	v3 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 func TestNewSecurityContextStep(t *testing.T) {
@@ -127,26 +128,101 @@ func TestSecurityContextStep_Run(t *testing.T) {
 					mck := newMockSecurityContextGenerator(t)
 					mck.EXPECT().Generate(testCtx, &core.Dogu{}, &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test", Namespace: namespace},
-					}).Return(&v3.PodSecurityContext{}, &v3.SecurityContext{})
+						Spec: v2.DoguSpec{
+							Security: v2.Security{
+								Capabilities: v2.Capabilities{
+									Add:  []core.Capability{"test"},
+									Drop: []core.Capability{"test2"},
+								},
+								RunAsNonRoot: pointer.Bool(true),
+							},
+						},
+					}).Return(&v3.PodSecurityContext{
+						RunAsNonRoot: pointer.Bool(true),
+					}, &v3.SecurityContext{
+						Capabilities: &v3.Capabilities{
+							Add:  []v3.Capability{"test"},
+							Drop: []v3.Capability{"test2"},
+						},
+						RunAsNonRoot: pointer.Bool(true),
+					})
 					return mck
 				},
 				deploymentInterfaceFn: func(t *testing.T) deploymentInterface {
 					mck := newMockDeploymentInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&v4.Deployment{}, nil)
+					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(
+						&v4.Deployment{
+							Spec: v4.DeploymentSpec{
+								Template: v3.PodTemplateSpec{
+									Spec: v3.PodSpec{
+										Containers: []v3.Container{
+											{
+												Name: "test-container",
+											},
+										},
+									},
+								},
+							},
+						}, nil)
 					mck.EXPECT().Update(testCtx, &v4.Deployment{
 						Spec: v4.DeploymentSpec{
 							Template: v3.PodTemplateSpec{
 								Spec: v3.PodSpec{
-									SecurityContext: &v3.PodSecurityContext{},
+									SecurityContext: &v3.PodSecurityContext{
+										RunAsNonRoot: pointer.Bool(true),
+									},
+									Containers: []v3.Container{
+										{
+											Name: "test-container",
+											SecurityContext: &v3.SecurityContext{
+												Capabilities: &v3.Capabilities{
+													Add:  []v3.Capability{"test"},
+													Drop: []v3.Capability{"test2"},
+												},
+												RunAsNonRoot: pointer.Bool(true),
+											},
+										},
+									},
 								},
 							},
 						},
-					}, v1.UpdateOptions{}).Return(&v4.Deployment{}, nil)
+					}, v1.UpdateOptions{}).Return(&v4.Deployment{
+						Spec: v4.DeploymentSpec{
+							Template: v3.PodTemplateSpec{
+								Spec: v3.PodSpec{
+									SecurityContext: &v3.PodSecurityContext{
+										RunAsNonRoot: pointer.Bool(true),
+									},
+									Containers: []v3.Container{
+										{
+											Name: "test-container",
+											SecurityContext: &v3.SecurityContext{
+												Capabilities: &v3.Capabilities{
+													Add:  []v3.Capability{"test"},
+													Drop: []v3.Capability{"test2"},
+												},
+												RunAsNonRoot: pointer.Bool(true),
+											},
+										},
+									},
+								},
+							},
+						},
+					}, nil)
 					return mck
 				},
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{Name: "test", Namespace: namespace},
+				Spec: v2.DoguSpec{
+					Security: v2.Security{
+						Capabilities: v2.Capabilities{
+							Add:  []core.Capability{"test"},
+							Drop: []core.Capability{"test2"},
+						},
+						RunAsNonRoot: pointer.Bool(true),
+					},
+				},
 			},
 			want: steps.Continue(),
 		},
