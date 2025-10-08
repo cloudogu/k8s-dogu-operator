@@ -19,7 +19,7 @@ import (
 func TestNewDoguRequeueHandler(t *testing.T) {
 	t.Run("should fail to create DoguRequeueHandler", func(t *testing.T) {
 		// given
-		conf := &config.OperatorConfig{}
+		conf := &config.OperatorConfig{Namespace: testNamespace}
 		doguInterfaceMock := newMockDoguInterface(t)
 		eventRecorderMock := newMockEventRecorder(t)
 
@@ -27,7 +27,9 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 		handler := NewDoguRequeueHandler(doguInterfaceMock, eventRecorderMock, conf)
 
 		// then
-		assert.NotEmpty(t, handler)
+		assert.Same(t, doguInterfaceMock, handler.doguInterface)
+		assert.Same(t, eventRecorderMock, handler.recorder)
+		assert.Equal(t, testNamespace, handler.namespace)
 	})
 }
 
