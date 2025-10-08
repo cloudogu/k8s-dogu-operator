@@ -486,13 +486,24 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			networkPoliciesEnabled: true,
 		},
 		{
-			name:     "no network policies created when networkPoliciesEnabled=false",
+			name:     "delete networkpolicies when networkPoliciesEnabled=false",
 			doguName: "redmine",
 			doguDependencies: []string{
 				"postgresql",
 				"cas",
 				"postfix",
 			},
+			expectedNetworkPolicies: []string{},
+		},
+		{
+			name:     "fail to delete networkpolicies when networkPoliciesEnabled=false",
+			doguName: "redmine",
+			doguDependencies: []string{
+				"postgresql",
+				"cas",
+				"postfix",
+			},
+			expectError:             true,
 			expectedNetworkPolicies: []string{},
 		},
 	}
@@ -558,6 +569,12 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 						})
 					}
 				}).Return(nil).Once()
+			} else if test.expectError {
+				mockClient.EXPECT().DeleteAllOf(context.Background(), &netv1.NetworkPolicy{}, client.InNamespace(doguResource.Namespace),
+					client.MatchingLabels{k8sv2.DoguLabelName: dogu.GetSimpleName()}).Return(assert.AnError).Once()
+			} else {
+				mockClient.EXPECT().DeleteAllOf(context.Background(), &netv1.NetworkPolicy{}, client.InNamespace(doguResource.Namespace),
+					client.MatchingLabels{k8sv2.DoguLabelName: dogu.GetSimpleName()}).Return(nil).Once()
 			}
 
 			if len(test.additionalExistingNetworkPolicies) > 0 {
@@ -603,9 +620,6 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 					assert.Fail(t, fmt.Sprintf("the policy '%s' was expected but not created", expectedPolicy))
 				}
 			}
-
-			mockClient.AssertExpectations(t)
-
 		})
 	}
 }

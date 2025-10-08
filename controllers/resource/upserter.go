@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -119,7 +120,17 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu,
 func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, service *v1.Service) error {
 	logger := log.FromContext(ctx)
 	if !u.networkPoliciesEnabled {
-		logger.Info("Do not create network policies as they are disabled by configuration")
+		logger.Info("Do not create network policies as they are disabled by configuration; deleting previously applied network policies")
+
+		err := u.client.DeleteAllOf(ctx,
+			&netv1.NetworkPolicy{},
+			client.InNamespace(doguResource.Namespace),
+			client.MatchingLabels{k8sv2.DoguLabelName: dogu.GetSimpleName()},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to delete network policies because they are disabled: %w", err)
+		}
+
 		return nil
 	}
 
