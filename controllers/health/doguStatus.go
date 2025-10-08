@@ -66,21 +66,11 @@ func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDep
 }
 
 func (dsw *DoguStatusUpdater) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error {
-	stateConfigMap, err := dsw.configMapInterface.Get(ctx, healthConfigMapName, metav1api.GetOptions{})
+	stateConfigMap, err := dsw.getOrCreateHealthConfigMap(ctx)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			cm := &v1.ConfigMap{
-				ObjectMeta: metav1api.ObjectMeta{Name: healthConfigMapName},
-			}
-			stateConfigMap, err = dsw.configMapInterface.Create(ctx, cm, metav1api.CreateOptions{})
-			if err != nil {
-				return err
-			}
-			return nil
-		} else {
-			return err
-		}
+		return err
 	}
+
 	newData := stateConfigMap.Data
 	if newData == nil {
 		newData = make(map[string]string)
@@ -99,6 +89,7 @@ func (dsw *DoguStatusUpdater) getOrCreateHealthConfigMap(ctx context.Context) (*
 	if err != nil && errors.IsNotFound(err) {
 		cm = &v1.ConfigMap{
 			ObjectMeta: metav1api.ObjectMeta{Name: healthConfigMapName},
+			Data:       map[string]string{},
 		}
 		cm, err = dsw.configMapInterface.Create(ctx, cm, metav1api.CreateOptions{})
 		if err != nil {
