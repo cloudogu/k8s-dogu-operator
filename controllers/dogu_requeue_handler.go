@@ -54,7 +54,8 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 		return
 	}
 
-	doguResource, err := d.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
+	var err error
+	doguResource, err = d.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
 		result.RequeueAfter = requeueTime
 		logger.Error(err, "failed to get doguResource for setting requeue time")
