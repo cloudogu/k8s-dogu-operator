@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -70,6 +71,19 @@ func TestServiceAccountRemoverStep_Run(t *testing.T) {
 			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 				localDoguFetcherMock := newMockLocalDoguFetcher(t)
 				localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("")).Return(&core.Dogu{}, nil)
+				return localDoguFetcherMock
+			},
+			doguResource: &v2.Dogu{},
+			want:         steps.StepResult{Continue: true},
+		},
+		{
+			name: "should continue if dogu is not found",
+			serviceAccountRemoverFn: func(t *testing.T) serviceAccountRemover {
+				return newMockServiceAccountRemover(t)
+			},
+			localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+				localDoguFetcherMock := newMockLocalDoguFetcher(t)
+				localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, dogu.SimpleName("")).Return(nil, cloudoguerrors.NewNotFoundError(assert.AnError))
 				return localDoguFetcherMock
 			},
 			doguResource: &v2.Dogu{},

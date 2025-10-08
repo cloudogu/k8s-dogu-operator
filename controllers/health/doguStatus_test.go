@@ -371,7 +371,7 @@ func TestDoguStatusUpdater_DeleteDoguOutOfHealthConfigMap(t *testing.T) {
 						Data: map[string]string{},
 					}
 					mck.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(nil, errors.NewNotFound(schema.GroupResource{}, ""))
-					mck.EXPECT().Create(testCtx, createCm, metav1api.CreateOptions{}).Return(createCm, nil)
+					mck.EXPECT().Create(testCtx, createCm, metav1api.CreateOptions{}).Return(createCm, assert.AnError)
 					return mck
 				},
 				podInterfaceFn: func(t *testing.T) podInterface {
@@ -379,7 +379,7 @@ func TestDoguStatusUpdater_DeleteDoguOutOfHealthConfigMap(t *testing.T) {
 				},
 			},
 			dogu:    &v2.Dogu{ObjectMeta: metav1api.ObjectMeta{Name: "test"}},
-			wantErr: assert.NoError,
+			wantErr: assert.Error,
 		},
 		{
 			name: "should create health config map if not exists",
@@ -397,6 +397,7 @@ func TestDoguStatusUpdater_DeleteDoguOutOfHealthConfigMap(t *testing.T) {
 					}
 					mck.EXPECT().Get(testCtx, healthConfigMapName, metav1api.GetOptions{}).Return(nil, errors.NewNotFound(schema.GroupResource{}, ""))
 					mck.EXPECT().Create(testCtx, createCm, metav1api.CreateOptions{}).Return(createCm, nil)
+					mck.EXPECT().Update(testCtx, createCm, metav1api.UpdateOptions{}).Return(createCm, nil)
 					return mck
 				},
 				podInterfaceFn: func(t *testing.T) podInterface {

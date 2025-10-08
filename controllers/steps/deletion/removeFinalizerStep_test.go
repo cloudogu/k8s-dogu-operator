@@ -46,7 +46,7 @@ func TestRemoveFinalizerStep_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "should fail to update dogu resource",
+			name: "should remove finalizer from dogu resource",
 			clientFn: func(t *testing.T) k8sClient {
 				clientMock := newMockK8sClient(t)
 				clientMock.EXPECT().Update(testCtx, &v2.Dogu{
@@ -58,7 +58,10 @@ func TestRemoveFinalizerStep_Run(t *testing.T) {
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: v1.ObjectMeta{
-					Finalizers: []string{legacyFinalizerName},
+					Finalizers: []string{
+						legacyFinalizerName,
+						finalizerName,
+					},
 				},
 			},
 			want: steps.StepResult{
