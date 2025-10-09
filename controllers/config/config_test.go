@@ -1,9 +1,10 @@
 package config
 
 import (
-	"github.com/cloudogu/cesapp-lib/core"
 	"os"
 	"testing"
+
+	"github.com/cloudogu/cesapp-lib/core"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,6 +68,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	})
 
 	t.Setenv("DOGU_REGISTRY_PASSWORD", expectedDoguRegistryData.Password)
+	t.Setenv("REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS", "50000")
 	t.Setenv("DOGU_REGISTRY_URLSCHEMA", "")
 	t.Setenv("NETWORK_POLICIES_ENABLED", "true")
 
@@ -111,6 +113,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarDoguRegistryPassword, "password")
 	t.Setenv(envVarDoguRegistryPassword, "password")
 	t.Setenv(envVarNetworkPolicyEnabled, "true")
+	t.Setenv(envVarRequeueTimeForDoguResourceInNanoseconds, "5")
 
 	for _, tt := range tests {
 		t.Setenv(envVarDoguRegistryURLSchema, tt.urlSchemaEnv)

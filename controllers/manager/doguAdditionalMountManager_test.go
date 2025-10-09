@@ -3,7 +3,6 @@ package manager
 import (
 	"context"
 	"fmt"
-	testifymock "github.com/stretchr/testify/mock"
 	"testing"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
@@ -429,10 +428,9 @@ func TestNewdoguAdditionalMountsManager(t *testing.T) {
 		requirementsGeneratorMock := newMockRequirementsGenerator(t)
 		mountsValidatorMock := newMockDoguAdditionalMountsValidator(t)
 		images := resource.AdditionalImages{config.AdditionalMountsInitContainerImageConfigmapNameKey: "image"}
-		doguInterfaceMock := newMockDoguInterface(t)
 
 		// when
-		sut := NewDoguAdditionalMountManager(deploymentMock, resourceGeneratorMock, localDoguFetcherMock, requirementsGeneratorMock, mountsValidatorMock, images, doguInterfaceMock)
+		sut := NewDoguAdditionalMountManager(deploymentMock, resourceGeneratorMock, localDoguFetcherMock, requirementsGeneratorMock, mountsValidatorMock, images)
 
 		// then
 		require.NotNil(t, sut)
@@ -531,7 +529,6 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 		localDoguFetcher          func() localDoguFetcher
 		requirementsGenerator     func() requirementsGenerator
 		additionalMountsValidator func() doguAdditionalMountsValidator
-		doguInterface             func() doguInterface
 	}
 	type args struct {
 		ctx          context.Context
@@ -572,14 +569,6 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 					mock.EXPECT().ValidateAdditionalMounts(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts).Return(nil)
 					return mock
 				},
-				doguInterface: func() doguInterface {
-					doguMock := newMockDoguInterface(t)
-					doguMock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithAdditionalMounts, testifymock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
-						status := modifyStatusFn(dogu.Status)
-						assert.Equal(t, v2.DoguStatusInstalled, status.Status)
-					}).Return(nil, nil)
-					return doguMock
-				},
 			},
 			args: args{
 				ctx:          testCtx,
@@ -616,14 +605,6 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 					mock := newMockDoguAdditionalMountsValidator(t)
 					mock.EXPECT().ValidateAdditionalMounts(testCtx, nginxDogu, nginxDoguResourceWithAdditionalMounts).Return(nil)
 					return mock
-				},
-				doguInterface: func() doguInterface {
-					doguMock := newMockDoguInterface(t)
-					doguMock.EXPECT().UpdateStatusWithRetry(testCtx, nginxDoguResourceWithAdditionalMounts, testifymock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
-						status := modifyStatusFn(dogu.Status)
-						assert.Equal(t, v2.DoguStatusInstalled, status.Status)
-					}).Return(nil, nil)
-					return doguMock
 				},
 			},
 			args: args{
@@ -725,9 +706,6 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 			}
 			if tt.fields.additionalMountsValidator != nil {
 				m.doguAdditionalMountValidator = tt.fields.additionalMountsValidator()
-			}
-			if tt.fields.doguInterface != nil {
-				m.doguInterface = tt.fields.doguInterface()
 			}
 			tt.wantErr(t, m.UpdateAdditionalMounts(tt.args.ctx, tt.args.doguResource), fmt.Sprintf("UpdateAdditionalMounts(%v, %v)", tt.args.ctx, tt.args.doguResource))
 		})

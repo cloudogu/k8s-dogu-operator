@@ -7,7 +7,6 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -30,7 +29,6 @@ type doguAdditionalMountManager struct {
 	localDoguFetcher             localDoguFetcher
 	requirementsGenerator        requirementsGenerator
 	doguAdditionalMountValidator doguAdditionalMountsValidator
-	doguInterface                doguInterface
 	image                        string
 }
 
@@ -41,7 +39,6 @@ func NewDoguAdditionalMountManager(
 	requirementsGenerator resource.RequirementsGenerator,
 	additionalMountValidator additionalMount.Validator,
 	images resource.AdditionalImages,
-	doguInterface doguClient.DoguInterface,
 ) AdditionalMountManager {
 	return &doguAdditionalMountManager{
 		deploymentInterface:          deploymentInterface,
@@ -50,7 +47,6 @@ func NewDoguAdditionalMountManager(
 		requirementsGenerator:        requirementsGenerator,
 		doguAdditionalMountValidator: additionalMountValidator,
 		image:                        images[config.AdditionalMountsInitContainerImageConfigmapNameKey],
-		doguInterface:                doguInterface,
 	}
 }
 

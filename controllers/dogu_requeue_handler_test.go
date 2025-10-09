@@ -4,9 +4,10 @@ import (
 	context "context"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/mock"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -17,6 +18,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
+
+const requeueTime = time.Second * 5
 
 func TestNewDoguRequeueHandler(t *testing.T) {
 	t.Run("should fail to create DoguRequeueHandler", func(t *testing.T) {
@@ -259,6 +262,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				namespace:     "ecosystem",
 				recorder:      tt.fields.recorderFn(t),
 				doguInterface: tt.fields.doguInterfaceFn(t),
+				requeueTime:   time.Second * 5,
 			}
 			got, err := d.Handle(testCtx, tt.args.doguResource, tt.args.err, tt.args.reqTime)
 			if !tt.wantErr(t, err, fmt.Sprintf("Handle(%v, %v, %v, %v)", testCtx, tt.args.doguResource, tt.args.err, tt.args.reqTime)) {
