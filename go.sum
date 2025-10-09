@@ -38,6 +38,8 @@ github.com/cloudogu/k8s-host-change v0.7.0 h1:291ojIo64Z245xtBJdC3sa6H+eAPvbjb7c
 github.com/cloudogu/k8s-host-change v0.7.0/go.mod h1:vl0XIdCpvxXCZCcTRyfWYDgf+cmw8/fy6rZnmJ0oblo=
 github.com/cloudogu/k8s-registry-lib v0.2.2-0.20251001091325-24beb2ab5465 h1:c4b9rX/+UUuAw7e9eIGwuPL2vorqUJq9QUC9mCobzaA=
 github.com/cloudogu/k8s-registry-lib v0.2.2-0.20251001091325-24beb2ab5465/go.mod h1:NytbB2XBjc+gr5gOJFoPjCzyxs/TuhWpKSnDJzCLQ14=
+github.com/cloudogu/k8s-registry-lib v0.6.0 h1:+3gQoP2CVLuhTqRen49rvN0a0Jpa1qJ1cSZqu+J64CY=
+github.com/cloudogu/k8s-registry-lib v0.6.0/go.mod h1:NytbB2XBjc+gr5gOJFoPjCzyxs/TuhWpKSnDJzCLQ14=
 github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1 h1:NWoBvBwiE8yO8HqSId0+nOTBMGSjzX0yM8m6fC7Ll6E=
 github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1/go.mod h1:AGZ3bihl/sUUJ6iEtcxtALIt/UlkfUdK7HXJ6DtBivE=
 github.com/cloudogu/retry-lib v0.1.0 h1:gaAmtyjUqgHbxfCWMeUn0qnGbDH4TtZVSQkbZ1Nq6eI=
