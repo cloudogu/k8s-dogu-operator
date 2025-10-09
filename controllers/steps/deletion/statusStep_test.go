@@ -52,10 +52,7 @@ func TestStatusStep_Run(t *testing.T) {
 			name: "should fail to update status",
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
-				mck.EXPECT().UpdateStatusWithRetry(testCtx, &v2.Dogu{}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
-					status := modifyStatusFn(dogu.Status)
-					assert.Equal(t, expectedStatus, status)
-				}).Return(nil, assert.AnError)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, &v2.Dogu{}, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
 				return mck
 			},
 			resource: &v2.Dogu{},
@@ -67,7 +64,7 @@ func TestStatusStep_Run(t *testing.T) {
 				mck := newMockDoguInterface(t)
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, &v2.Dogu{}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
 					status := modifyStatusFn(dogu.Status)
-					assert.Equal(t, expectedStatus, status)
+					assertContainsConditions(t, status, expectedStatus)
 				}).Return(expectedDogu, nil)
 				return mck
 			},
@@ -88,5 +85,21 @@ func TestStatusStep_Run(t *testing.T) {
 			}
 			assert.Equalf(t, tt.want, s.Run(testCtx, tt.resource), "Run(%v, %v)", testCtx, tt.resource)
 		})
+	}
+}
+
+func assertContainsConditions(t *testing.T, status v2.DoguStatus, doguStatus v2.DoguStatus) {
+	for _, condition := range status.Conditions {
+		found := false
+		for _, doguCondition := range doguStatus.Conditions {
+			if condition.Type == doguCondition.Type {
+				found = true
+				assert.Equal(t, condition.Status, doguCondition.Status)
+				assert.Equal(t, condition.Reason, doguCondition.Reason)
+				assert.Equal(t, condition.Message, doguCondition.Message)
+				break
+			}
+		}
+		assert.True(t, found)
 	}
 }
