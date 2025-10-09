@@ -65,6 +65,14 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor for %q: %w", doguResource.Name, err))
 	}
 
+	if fromDogu != nil {
+		changeNamespace := doguResource.Spec.UpgradeConfig.AllowNamespaceSwitch
+		err = vs.checkDoguIdentity(fromDogu, toDogu, changeNamespace)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
+	}
+
 	err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
 	if err != nil {
 		return steps.RequeueWithError(err)
@@ -100,4 +108,16 @@ func isOlder(version1Raw, version2Raw string) (bool, error) {
 	}
 
 	return version1.IsOlderThan(version2), nil
+}
+
+func (vs *ValidationStep) checkDoguIdentity(localDogu *core.Dogu, remoteDogu *core.Dogu, namespaceChange bool) error {
+	if localDogu.GetSimpleName() != remoteDogu.GetSimpleName() {
+		return fmt.Errorf("dogus must have the same name (%s=%s)", localDogu.GetSimpleName(), remoteDogu.GetSimpleName())
+	}
+
+	if !namespaceChange && localDogu.GetNamespace() != remoteDogu.GetNamespace() {
+		return fmt.Errorf("dogus must have the same namespace (%s=%s)", localDogu.GetNamespace(), remoteDogu.GetNamespace())
+	}
+
+	return nil
 }

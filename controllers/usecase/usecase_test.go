@@ -167,7 +167,6 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			&postinstall.SupportModeStep{},
 			&postinstall.AdditionalMountsStep{},
 
-			&upgrade.EqualDoguDescriptorsStep{},
 			&upgrade.PreUpgradeStatusStep{},
 			&upgrade.UpdateDeploymentStep{},
 			&upgrade.DeleteExecPodStep{},
@@ -199,6 +198,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*install.VolumeGeneratorStep",
 			"*install.NetworkPoliciesStep",
 			"*install.DeploymentStep",
+
 			"*postinstall.ReplicasStep",
 			"*postinstall.VolumeExpanderStep",
 			"*postinstall.AdditionalIngressAnnotationsStep",
@@ -206,7 +206,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*postinstall.ExportModeStep",
 			"*postinstall.SupportModeStep",
 			"*postinstall.AdditionalMountsStep",
-			"*upgrade.EqualDoguDescriptorsStep",
+
 			"*upgrade.PreUpgradeStatusStep",
 			"*upgrade.UpdateDeploymentStep",
 			"*upgrade.DeleteExecPodStep",

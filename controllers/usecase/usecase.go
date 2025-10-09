@@ -61,7 +61,6 @@ func NewDoguInstallOrChangeUseCase(
 	supportModeStep *postinstall.SupportModeStep,
 	additionalMountsStep *postinstall.AdditionalMountsStep,
 
-	equalDoguDescriptorStep *upgrade.EqualDoguDescriptorsStep,
 	preUpgradeStatusStep *upgrade.PreUpgradeStatusStep,
 	updateDeploymentStep *upgrade.UpdateDeploymentStep,
 	deleteExecPodStep *upgrade.DeleteExecPodStep,
@@ -102,7 +101,6 @@ func NewDoguInstallOrChangeUseCase(
 			supportModeStep,
 			additionalMountsStep,
 
-			equalDoguDescriptorStep,
 			preUpgradeStatusStep,
 			updateDeploymentStep,
 			deleteExecPodStep,
