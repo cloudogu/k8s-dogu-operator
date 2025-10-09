@@ -107,7 +107,7 @@ func (vs *VolumeExpanderStep) setSuccessCondition(ctx context.Context, doguResou
 		Status:             v1.ConditionTrue,
 		Reason:             ActualVolumeSizeMeetsMinDataSize,
 		Message:            "Current VolumeSize meets the configured minimum VolumeSize",
-		LastTransitionTime: v1.Now().Rfc3339Copy(),
+		ObservedGeneration: doguResource.Generation,
 	}
 
 	doguResource, err := vs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {

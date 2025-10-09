@@ -3,17 +3,17 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"testing"
-	"time"
+
+	"github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
+	"sigs.k8s.io/cluster-api/util/conditions"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-var testTime = metav1.Time{Time: time.Unix(112313, 0)}
 
 func TestNewPreUpgradeStatusStep(t *testing.T) {
 	step := NewPreUpgradeStatusStep(newMockUpgradeChecker(t), newMockDoguInterface(t))
@@ -84,30 +84,27 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 			fields: fields{
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					expectedStatus := v2.DoguStatus{
-						Status: "upgrading",
-						Health: "unavailable",
-						Conditions: []metav1.Condition{
-							{
-								Type:               "healthy",
-								Status:             metav1.ConditionFalse,
-								Reason:             "Upgrading",
-								Message:            "The spec version differs from the installed version, therefore an upgrade was scheduled.",
-								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-							},
-							{
-								Type:               "ready",
-								Status:             metav1.ConditionFalse,
-								Reason:             "Upgrading",
-								Message:            "The spec version differs from the installed version, therefore an upgrade was scheduled.",
-								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-							},
+					expectedConditions := []metav1.Condition{
+						{
+							Type:    "healthy",
+							Status:  metav1.ConditionFalse,
+							Reason:  "Upgrading",
+							Message: "The spec version differs from the installed version, therefore an upgrade was scheduled.",
+						},
+						{
+							Type:    "ready",
+							Status:  metav1.ConditionFalse,
+							Reason:  "Upgrading",
+							Message: "The spec version differs from the installed version, therefore an upgrade was scheduled.",
 						},
 					}
 					expectedDogu := &v2.Dogu{Spec: v2.DoguSpec{Name: "test"}}
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, expectedDogu, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
 						status := modifyStatusFn(dogu.Status)
-						assert.Equal(t, expectedStatus, status)
+						assert.Equal(t, "upgrading", status.Status)
+						assert.Equal(t, v2.HealthStatus("unavailable"), status.Health)
+						gomega.NewWithT(t).Expect(expectedConditions).
+							To(conditions.MatchConditions(expectedConditions, conditions.IgnoreLastTransitionTime(true)))
 					}).Return(nil, nil)
 					return mck
 				},
@@ -123,12 +120,6 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldNow := steps.Now
-			defer func() { steps.Now = oldNow }()
-			steps.Now = func() metav1.Time {
-				return testTime
-			}
-
 			p := &PreUpgradeStatusStep{
 				upgradeChecker: tt.fields.upgradeCheckerFn(t),
 				doguInterface:  tt.fields.doguInterfaceFn(t),

@@ -3,17 +3,17 @@ package deletion
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 )
-
-var testTime = metav1.Time{Time: time.Unix(112313, 0)}
 
 func TestNewStatusStep(t *testing.T) {
 	step := NewStatusStep(newMockDoguInterface(t))
@@ -64,7 +64,10 @@ func TestStatusStep_Run(t *testing.T) {
 				mck := newMockDoguInterface(t)
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, &v2.Dogu{}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
 					status := modifyStatusFn(dogu.Status)
-					assertContainsConditions(t, status, expectedStatus)
+					assert.Equal(t, expectedStatus.Status, status.Status)
+					assert.Equal(t, expectedStatus.Health, status.Health)
+					gomega.NewWithT(t).Expect(status.Conditions).
+						To(conditions.MatchConditions(expectedStatus.Conditions, conditions.IgnoreLastTransitionTime(true)))
 				}).Return(expectedDogu, nil)
 				return mck
 			},
@@ -74,32 +77,10 @@ func TestStatusStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldNow := steps.Now
-			defer func() { steps.Now = oldNow }()
-			steps.Now = func() metav1.Time {
-				return testTime
-			}
-
 			s := &StatusStep{
 				doguInterface: tt.doguInterfaceFn(t),
 			}
 			assert.Equalf(t, tt.want, s.Run(testCtx, tt.resource), "Run(%v, %v)", testCtx, tt.resource)
 		})
-	}
-}
-
-func assertContainsConditions(t *testing.T, status v2.DoguStatus, doguStatus v2.DoguStatus) {
-	for _, condition := range status.Conditions {
-		found := false
-		for _, doguCondition := range doguStatus.Conditions {
-			if condition.Type == doguCondition.Type {
-				found = true
-				assert.Equal(t, condition.Status, doguCondition.Status)
-				assert.Equal(t, condition.Reason, doguCondition.Reason)
-				assert.Equal(t, condition.Message, doguCondition.Message)
-				break
-			}
-		}
-		assert.True(t, found)
 	}
 }

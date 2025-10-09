@@ -88,7 +88,6 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
-		LastTransitionTime: metav1.Now().Rfc3339Copy(),
 		ObservedGeneration: doguResource.Generation,
 	}
 

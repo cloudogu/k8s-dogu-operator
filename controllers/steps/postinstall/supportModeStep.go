@@ -55,7 +55,7 @@ func (sms *SupportModeStep) Run(ctx context.Context, doguResource *doguv2.Dogu) 
 			Status:             metav1.ConditionFalse,
 			Reason:             ReasonSupportModeActive,
 			Message:            message,
-			LastTransitionTime: steps.Now().Rfc3339Copy(),
+			ObservedGeneration: doguResource.Generation,
 		}
 
 		err = sms.setSupportModeCondition(ctx, doguResource, metav1.ConditionTrue, ReasonSupportModeActive, message, healthCondition)
@@ -91,7 +91,6 @@ func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguRes
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
-		LastTransitionTime: steps.Now().Rfc3339Copy(),
 		ObservedGeneration: doguResource.Generation,
 	}
 

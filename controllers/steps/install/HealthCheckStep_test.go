@@ -3,8 +3,11 @@ package install
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"testing"
+
+	"github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
+	"sigs.k8s.io/cluster-api/util/conditions"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
@@ -249,15 +252,15 @@ func TestHealthCheckStep_Run(t *testing.T) {
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, doguCr, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts v1.UpdateOptions) {
 						status := modifyStatusFn(doguCr.Status)
 						assert.Equal(t, doguv2.AvailableHealthStatus, status.Health)
-						assert.Equal(t, []v1.Condition{
-							{
-								Type:               doguv2.ConditionHealthy,
-								Status:             v1.ConditionTrue,
-								Reason:             "DoguIsHealthy",
-								Message:            "All replicas are available",
-								LastTransitionTime: v1.Now().Rfc3339Copy(),
-							},
-						}, status.Conditions)
+						gomega.NewWithT(t).Expect(status.Conditions).
+							To(conditions.MatchConditions([]v1.Condition{
+								{
+									Type:    doguv2.ConditionHealthy,
+									Status:  v1.ConditionTrue,
+									Reason:  "DoguIsHealthy",
+									Message: "All replicas are available",
+								},
+							}, conditions.IgnoreLastTransitionTime(true)))
 					}).Return(nil, nil)
 					return mck
 				},

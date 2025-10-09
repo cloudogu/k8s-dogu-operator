@@ -2,8 +2,11 @@ package install
 
 import (
 	"context"
-	"github.com/stretchr/testify/mock"
 	"testing"
+
+	"github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
+	"sigs.k8s.io/cluster-api/util/conditions"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -55,14 +58,10 @@ func TestPauseReconciliationStep_Run(t *testing.T) {
 			doguInterfaceFn: func(t *testing.T) doguInterface {
 				mck := newMockDoguInterface(t)
 				condition := v1.Condition{
-					Type:               v2.ConditionPauseReconciliation,
-					Status:             v1.ConditionTrue,
-					Reason:             conditionReasonPaused,
-					Message:            conditionMessagePaused,
-					LastTransitionTime: v1.Now().Rfc3339Copy(),
-				}
-				expectedStatus := v2.DoguStatus{
-					Conditions: []v1.Condition{condition},
+					Type:    v2.ConditionPauseReconciliation,
+					Status:  v1.ConditionTrue,
+					Reason:  conditionReasonPaused,
+					Message: conditionMessagePaused,
 				}
 				dogu := &v2.Dogu{
 					Spec: v2.DoguSpec{
@@ -71,7 +70,8 @@ func TestPauseReconciliationStep_Run(t *testing.T) {
 				}
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 					status := modifyStatusFn(dogu.Status)
-					assert.Equal(t, expectedStatus, status)
+					gomega.NewWithT(t).Expect(status.Conditions).
+						To(conditions.MatchConditions([]v1.Condition{condition}, conditions.IgnoreLastTransitionTime(true)))
 				}).Return(dogu, nil)
 				return mck
 			},

@@ -3,6 +3,7 @@ package deletion
 import (
 	"context"
 	"fmt"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -28,14 +29,12 @@ func (s *StatusStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResul
 		status.Status = v2.DoguStatusDeleting
 		status.Health = v2.UnavailableHealthStatus
 
-		lastTransitionTime := steps.Now()
 		const message = "The dogu is being deleted."
 		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 			Type:               v2.ConditionHealthy,
 			Status:             metav1.ConditionFalse,
 			Reason:             ReasonDeleting,
 			Message:            message,
-			LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
 			ObservedGeneration: resource.Generation,
 		})
 		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
@@ -43,7 +42,6 @@ func (s *StatusStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResul
 			Status:             metav1.ConditionFalse,
 			Reason:             ReasonDeleting,
 			Message:            message,
-			LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
 			ObservedGeneration: resource.Generation,
 		})
 

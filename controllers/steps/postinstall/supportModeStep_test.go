@@ -3,9 +3,11 @@ package postinstall
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"testing"
-	"time"
+
+	"github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
+	"sigs.k8s.io/cluster-api/util/conditions"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -14,8 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-var testTime = metav1.Time{Time: time.Unix(112313, 0)}
 
 func TestNewSupportModeStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
@@ -140,15 +140,15 @@ func TestSupportModeStep_Run(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{Name: "test"},
 					}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
 						status := modifyStatusFn(dogu.Status)
-						assert.Equal(t, []metav1.Condition{
-							{
-								Type:               doguv2.ConditionSupportMode,
-								Status:             metav1.ConditionFalse,
-								Reason:             ReasonSupportModeInactive,
-								Message:            "The Support mode is inactive",
-								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-							},
-						}, status.Conditions)
+						gomega.NewWithT(t).Expect(status.Conditions).
+							To(conditions.MatchConditions([]metav1.Condition{
+								{
+									Type:    doguv2.ConditionSupportMode,
+									Status:  metav1.ConditionFalse,
+									Reason:  ReasonSupportModeInactive,
+									Message: "The Support mode is inactive",
+								},
+							}, conditions.IgnoreLastTransitionTime(true)))
 					}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
@@ -197,22 +197,21 @@ func TestSupportModeStep_Run(t *testing.T) {
 					}, mock.Anything, metav1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts metav1.UpdateOptions) {
 						status := modifyStatusFn(dogu.Status)
 						assert.Equal(t, doguv2.UnavailableHealthStatus, status.Health)
-						assert.Equal(t, []metav1.Condition{
-							{
-								Type:               doguv2.ConditionSupportMode,
-								Status:             metav1.ConditionTrue,
-								Reason:             "SupportModeActive",
-								Message:            "The Support mode is active",
-								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-							},
-							{
-								Type:               doguv2.ConditionHealthy,
-								Status:             metav1.ConditionFalse,
-								Reason:             "SupportModeActive",
-								Message:            "The Support mode is active",
-								LastTransitionTime: metav1.Time{Time: time.Unix(112313, 0)},
-							},
-						}, status.Conditions)
+						gomega.NewWithT(t).Expect(status.Conditions).
+							To(conditions.MatchConditions([]metav1.Condition{
+								{
+									Type:    doguv2.ConditionSupportMode,
+									Status:  metav1.ConditionTrue,
+									Reason:  "SupportModeActive",
+									Message: "The Support mode is active",
+								},
+								{
+									Type:    doguv2.ConditionHealthy,
+									Status:  metav1.ConditionFalse,
+									Reason:  "SupportModeActive",
+									Message: "The Support mode is active",
+								},
+							}, conditions.IgnoreLastTransitionTime(true)))
 					}).Return(&doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, nil)
 					return mck
 				},
@@ -223,12 +222,6 @@ func TestSupportModeStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldNow := steps.Now
-			defer func() { steps.Now = oldNow }()
-			steps.Now = func() metav1.Time {
-				return testTime
-			}
-
 			sms := &SupportModeStep{
 				supportManager:      tt.fields.supportManagerFn(t),
 				doguInterface:       tt.fields.doguInterfaceFn(t),

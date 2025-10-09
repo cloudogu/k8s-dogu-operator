@@ -514,7 +514,7 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 		Type:               k8sv2.ConditionMeetsMinVolumeSize,
 		Status:             metav1.ConditionTrue,
 		Message:            "Current VolumeSize meets the configured minimum VolumeSize",
-		LastTransitionTime: metav1.Now(),
+		ObservedGeneration: doguResource.Generation,
 	}
 	minDataSize, err := doguResource.GetMinDataVolumeSize()
 	if err != nil {

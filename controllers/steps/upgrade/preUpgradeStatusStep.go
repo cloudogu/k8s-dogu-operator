@@ -3,6 +3,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -32,21 +33,20 @@ func (p *PreUpgradeStatusStep) Run(ctx context.Context, resource *v2.Dogu) steps
 			status.Status = v2.DoguStatusUpgrading
 			status.Health = v2.UnavailableHealthStatus
 
-			lastTransitionTime := steps.Now()
 			const message = "The spec version differs from the installed version, therefore an upgrade was scheduled."
 			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 				Type:               v2.ConditionHealthy,
 				Status:             metav1.ConditionFalse,
 				Reason:             ReasonUpgrading,
 				Message:            message,
-				LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
+				ObservedGeneration: resource.Generation,
 			})
 			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 				Type:               v2.ConditionReady,
 				Status:             metav1.ConditionFalse,
 				Reason:             ReasonUpgrading,
 				Message:            message,
-				LastTransitionTime: lastTransitionTime.Rfc3339Copy(),
+				ObservedGeneration: resource.Generation,
 			})
 			return status
 		}, metav1.UpdateOptions{})

@@ -9,11 +9,13 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/cluster-api/util/conditions"
 )
 
 func TestNewVolumeExpanderStep(t *testing.T) {
@@ -92,14 +94,10 @@ func TestVolumeExpanderStep_Run(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					condition := v1.Condition{
-						Type:               v2.ConditionMeetsMinVolumeSize,
-						Status:             v1.ConditionTrue,
-						Reason:             ActualVolumeSizeMeetsMinDataSize,
-						Message:            "Current VolumeSize meets the configured minimum VolumeSize",
-						LastTransitionTime: v1.Now().Rfc3339Copy(),
-					}
-					expectedDoguStatus := v2.DoguStatus{
-						Conditions: []v1.Condition{condition},
+						Type:    v2.ConditionMeetsMinVolumeSize,
+						Status:  v1.ConditionTrue,
+						Reason:  ActualVolumeSizeMeetsMinDataSize,
+						Message: "Current VolumeSize meets the configured minimum VolumeSize",
 					}
 					d := &v2.Dogu{
 						ObjectMeta: v1.ObjectMeta{Name: "test"},
@@ -107,7 +105,8 @@ func TestVolumeExpanderStep_Run(t *testing.T) {
 					mck := newMockDoguInterface(t)
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, d, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 						status := modifyStatusFn(dogu.Status)
-						assert.Equal(t, expectedDoguStatus, status)
+						gomega.NewWithT(t).Expect(status.Conditions).
+							To(conditions.MatchConditions([]v1.Condition{condition}, conditions.IgnoreLastTransitionTime(true)))
 					}).Return(d, nil)
 					return mck
 				},

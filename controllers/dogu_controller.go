@@ -151,7 +151,7 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
-		LastTransitionTime: metav1.Now(),
+		ObservedGeneration: doguResource.Generation,
 	}
 
 	doguResource, err := r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
