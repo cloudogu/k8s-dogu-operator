@@ -100,7 +100,6 @@ func (rsps *RevertStartupProbeStep) applyPostUpgradeScript(ctx context.Context, 
 func (rsps *RevertStartupProbeStep) executePostUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, postUpgradeCmd *core.ExposedCommand) error {
 	postUpgradeShellCmd := exec.NewShellCommand(postUpgradeCmd.Command, fromDoguVersion, toDoguResource.Spec.Version)
 
-	toDoguPod := &coreV1.Pod{}
 	toDoguPod, getPodErr := toDoguResource.GetPod(ctx, rsps.client)
 	if getPodErr != nil {
 		return fmt.Errorf("failed to get new %s pod for post upgrade: %w", toDoguResource.Name, getPodErr)

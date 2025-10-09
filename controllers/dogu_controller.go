@@ -159,9 +159,9 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 		return status
 	}, metav1.UpdateOptions{})
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Failed to update dogu resource"))
+		logger.Error(err, "Failed to update dogu resource")
 		return err
 	}
-	logger.Info(fmt.Sprintf("Updated dogu resource successfully!"))
+	logger.Info("Updated dogu resource successfully!")
 	return nil
 }

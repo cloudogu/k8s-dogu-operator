@@ -15,7 +15,6 @@ type RestartDoguStep struct {
 	sensitiveDoguRepository doguConfigRepository
 	doguRestartManager      doguRestartManager
 	deploymentManager       deploymentManager
-	configMapInterface      configMapInterface
 	globalConfigRepository  globalConfigRepository
 }
 
