@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -16,6 +17,8 @@ const (
 	StageProduction          = "production"
 	StageEnvironmentVariable = "STAGE"
 )
+
+const defaultRequeueTime = time.Second * 5
 
 const cacheDir = "/tmp/dogu-registry-cache"
 
@@ -33,13 +36,14 @@ const (
 var Stage = StageProduction
 
 var (
-	envVarNamespace             = "NAMESPACE"
-	envVarDoguRegistryEndpoint  = "DOGU_REGISTRY_ENDPOINT"
-	envVarDoguRegistryUsername  = "DOGU_REGISTRY_USERNAME"
-	envVarDoguRegistryPassword  = "DOGU_REGISTRY_PASSWORD"
-	envVarDoguRegistryURLSchema = "DOGU_REGISTRY_URLSCHEMA"
-	envVarNetworkPolicyEnabled  = "NETWORK_POLICIES_ENABLED"
-	log                         = ctrl.Log.WithName("config")
+	envVarNamespace                               = "NAMESPACE"
+	envVarDoguRegistryEndpoint                    = "DOGU_REGISTRY_ENDPOINT"
+	envVarDoguRegistryUsername                    = "DOGU_REGISTRY_USERNAME"
+	envVarDoguRegistryPassword                    = "DOGU_REGISTRY_PASSWORD"
+	envVarDoguRegistryURLSchema                   = "DOGU_REGISTRY_URLSCHEMA"
+	envVarNetworkPolicyEnabled                    = "NETWORK_POLICIES_ENABLED"
+	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
+	log                                           = ctrl.Log.WithName("config")
 )
 
 // DoguRegistryData contains all necessary data for the dogu registry.
@@ -60,6 +64,8 @@ type OperatorConfig struct {
 	Version *core.Version `json:"version"`
 	// NetworkPoliciesEnabled defines whether network policies should be created for dogus and their dependencies
 	NetworkPoliciesEnabled bool `json:"network_policies_enabled"`
+	// RequeueTimeForDoguReconciler defines the requeue time for the dogu reconciler
+	RequeueTimeForDoguReconciler time.Duration `json:"requeue_time_for_dogu_reconciler"`
 }
 
 type Version string
@@ -94,11 +100,18 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored dogu registry data! Using dogu registry %s", doguRegistryData.Endpoint))
 
+	doguReconcilerRequeueTime, err := readDoguReconcilerRequeueTime()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read dogu reconciler requeue time: %w", err)
+	}
+	log.Info(fmt.Sprintf("Found stored dogu reconciler requeue time! Using requeue time %s", doguReconcilerRequeueTime.String()))
+
 	return &OperatorConfig{
-		Namespace:              namespace,
-		DoguRegistry:           doguRegistryData,
-		Version:                &parsedVersion,
-		NetworkPoliciesEnabled: getNetworkPoliciesEnabled(),
+		Namespace:                    namespace,
+		DoguRegistry:                 doguRegistryData,
+		Version:                      &parsedVersion,
+		NetworkPoliciesEnabled:       getNetworkPoliciesEnabled(),
+		RequeueTimeForDoguReconciler: doguReconcilerRequeueTime,
 	}, nil
 }
 
@@ -109,6 +122,18 @@ func readNamespace() (string, error) {
 	}
 
 	return namespace, nil
+}
+
+func readDoguReconcilerRequeueTime() (time.Duration, error) {
+	requeueTimeString, err := getEnvVar(envVarRequeueTimeForDoguResourceInNanoseconds)
+	if err != nil {
+		return defaultRequeueTime, newEnvVarError(envVarNamespace, err)
+	}
+	requeueTime, err := strconv.ParseFloat(requeueTimeString, 64)
+	if err != nil {
+		return defaultRequeueTime, err
+	}
+	return time.Duration(requeueTime), nil
 }
 
 func readDoguRegistryData() (DoguRegistryData, error) {

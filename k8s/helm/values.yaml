@@ -27,6 +27,7 @@ controllerManager:
     doguRestartGarbageCollectionDisabled: false
     doguDescriptorMaxRetries: 20
     getServiceAccountPodMaxRetries: 5
+    requeueTimeForDoguResourceInNanoseconds: 5000000000
   resourceLimits:
     memory: 105M
   resourceRequests:

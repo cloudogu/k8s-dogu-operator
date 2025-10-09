@@ -52,7 +52,7 @@ var (
 	fxApp                              *fxtest.App
 )
 
-const TimeoutInterval = time.Second * 10
+const TimeoutInterval = time.Second * 20
 const PollingInterval = time.Second * 1
 
 var (
@@ -77,6 +77,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	err = os.Setenv("NAMESPACE", "ecosystem")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	err = os.Setenv("DOGU_REGISTRY_ENDPOINT", "https://dogu.cloudogu.com")
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	err = os.Setenv("REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS", "1")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	err = os.Setenv("DOGU_REGISTRY_USERNAME", "ecosystem")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())

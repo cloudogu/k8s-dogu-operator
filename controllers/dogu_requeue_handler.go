@@ -22,13 +22,12 @@ const (
 	ReasonReconcileOK      = "ReconcileSucceeded"
 )
 
-const requeueTime = 5 * time.Second
-
 // doguRequeueHandler is responsible to requeue a dogu resource after it failed.
 type doguRequeueHandler struct {
 	namespace     string
 	recorder      record.EventRecorder
 	doguInterface doguClient.DoguInterface
+	requeueTime   time.Duration
 }
 
 // NewDoguRequeueHandler creates a new dogu requeue handler.
@@ -37,6 +36,7 @@ func NewDoguRequeueHandler(doguInterface doguClient.DoguInterface, recorder reco
 		doguInterface: doguInterface,
 		namespace:     operatorConfig.Namespace,
 		recorder:      recorder,
+		requeueTime:   operatorConfig.RequeueTimeForDoguReconciler,
 	}
 }
 
@@ -57,7 +57,7 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 	var err error
 	doguResource, err = d.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
-		result.RequeueAfter = requeueTime
+		result.RequeueAfter = d.requeueTime
 		logger.Error(err, "failed to get doguResource for setting requeue time")
 		return
 	}
@@ -67,7 +67,7 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 		return status
 	}, metav1.UpdateOptions{})
 	if err != nil {
-		result.RequeueAfter = requeueTime
+		result.RequeueAfter = d.requeueTime
 		logger.Error(err, "failed to set requeue time")
 		return
 	}
@@ -95,7 +95,7 @@ func (d *doguRequeueHandler) handleRequeue(doguResource *doguv2.Dogu, reconcileE
 	}
 
 	if reconcileError != nil {
-		result.RequeueAfter = requeueTime
+		result.RequeueAfter = d.requeueTime
 		return result
 	}
 
