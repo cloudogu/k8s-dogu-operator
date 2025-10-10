@@ -14,6 +14,7 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+// The ServiceStep creates or updates the service for the dogu.
 type ServiceStep struct {
 	serviceGenerator serviceGenerator
 	localDoguFetcher localDoguFetcher

@@ -176,7 +176,7 @@ func TestExecPodCreateStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			epcs := &ExecPodCreateStep{
+			epcs := &CreateExecPodStep{
 				client:           tt.fields.clientFn(t),
 				recorder:         tt.fields.recorderFn(t),
 				localDoguFetcher: tt.fields.localDoguFetcherFn(t),

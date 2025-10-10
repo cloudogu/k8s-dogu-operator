@@ -1,9 +1,10 @@
 package install
 
 import (
-	client2 "sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 	"time"
+
+	client2 "sigs.k8s.io/controller-runtime/pkg/client"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,7 @@ import (
 
 func TestNewFinalizerExistsStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewFinalizerExistsStep(newMockK8sClient(t))
+		step := NewCreateFinalizerStep(newMockK8sClient(t))
 
 		assert.NotNil(t, step)
 	})
@@ -23,7 +24,7 @@ func TestFinalizerExistsStep_Run(t *testing.T) {
 		client := newMockK8sClient(t)
 		client.EXPECT().Get(testCtx, client2.ObjectKeyFromObject(doguResource), doguResource).Return(nil)
 		client.EXPECT().Update(testCtx, doguResource).Return(nil)
-		sut := NewFinalizerExistsStep(client)
+		sut := NewCreateFinalizerStep(client)
 
 		result := sut.Run(testCtx, doguResource)
 
@@ -37,7 +38,7 @@ func TestFinalizerExistsStep_Run(t *testing.T) {
 		client := newMockK8sClient(t)
 		client.EXPECT().Get(testCtx, client2.ObjectKeyFromObject(doguResource), doguResource).Return(nil)
 		client.EXPECT().Update(testCtx, doguResource).Return(assert.AnError)
-		sut := NewFinalizerExistsStep(client)
+		sut := NewCreateFinalizerStep(client)
 
 		result := sut.Run(testCtx, doguResource)
 

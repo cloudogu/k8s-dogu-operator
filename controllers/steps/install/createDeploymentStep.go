@@ -11,21 +11,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type DeploymentStep struct {
+// The CreateDeploymentStep generates a new deployment out of a dogu cr and dogu descriptor if no deployment exists for the dogu cr
+type CreateDeploymentStep struct {
 	upserter         resourceUpserter
 	localDoguFetcher localDoguFetcher
 	client           k8sClient
 }
 
-func NewDeploymentStep(client client.Client, upserter resource.ResourceUpserter, fetcher cesregistry.LocalDoguFetcher) *DeploymentStep {
-	return &DeploymentStep{
+func NewCreateDeploymentStep(client client.Client, upserter resource.ResourceUpserter, fetcher cesregistry.LocalDoguFetcher) *CreateDeploymentStep {
+	return &CreateDeploymentStep{
 		client:           client,
 		upserter:         upserter,
 		localDoguFetcher: fetcher,
 	}
 }
 
-func (ds *DeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (ds *CreateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	_, err := doguResource.GetDeployment(ctx, ds.client)
 	if err != nil && !errors.IsNotFound(err) {
 		return steps.RequeueWithError(err)

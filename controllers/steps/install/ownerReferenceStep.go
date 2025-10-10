@@ -10,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// The OwnerReferenceStep creates an owner reference for the dogu cr on a specific resource.
+// It is used for the dogu config and dogu descriptor config maps and secret dogu secrets.
 type OwnerReferenceStep struct {
 	ownerReferenceSetter ownerReferenceSetter
 }

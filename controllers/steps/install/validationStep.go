@@ -17,6 +17,12 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
+// The ValidationStep validates if the dogu can be installed or upgraded.
+// The step validates if
+//   - the upgrade is an unallowed downgrade
+//   - all dependencies are healthy
+//   - the security context is valid
+//   - the additional mounts are valid
 type ValidationStep struct {
 	doguHealthChecker             doguHealthChecker
 	localDoguFetcher              localDoguFetcher

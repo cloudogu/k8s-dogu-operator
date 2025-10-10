@@ -18,15 +18,17 @@ import (
 const podTemplateVersionKey = "dogu.version"
 const InstallEventReason = "Installation"
 
-type ExecPodCreateStep struct {
+// The CreateExecPodStep creates an exec pod if a dogu is in the installing or upgrading process.
+// The exec pod will not be created if the dogu ist stopped with the `stopped` flag.
+type CreateExecPodStep struct {
 	client           k8sClient
 	recorder         eventRecorder
 	localDoguFetcher localDoguFetcher
 	execPodFactory   execPodFactory
 }
 
-func NewExecPodCreateStep(client client.Client, eventRecorder record.EventRecorder, fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory) *ExecPodCreateStep {
-	return &ExecPodCreateStep{
+func NewCreateExecPodStep(client client.Client, eventRecorder record.EventRecorder, fetcher cesregistry.LocalDoguFetcher, factory exec.ExecPodFactory) *CreateExecPodStep {
+	return &CreateExecPodStep{
 		client:           client,
 		recorder:         eventRecorder,
 		localDoguFetcher: fetcher,
@@ -34,7 +36,7 @@ func NewExecPodCreateStep(client client.Client, eventRecorder record.EventRecord
 	}
 }
 
-func (epcs *ExecPodCreateStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (epcs *CreateExecPodStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	deployment, err := doguResource.GetDeployment(ctx, epcs.client)
 	if client.IgnoreNotFound(err) != nil {
 		return steps.RequeueWithError(err)

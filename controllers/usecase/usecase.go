@@ -34,12 +34,12 @@ func NewDoguDeleteUseCase(
 
 //nolint:funlen
 func NewDoguInstallOrChangeUseCase(
-	conditionsStep *install.ConditionsStep,
+	conditionsStep *install.InitializeConditionsStep,
 	healthCheckStep *install.HealthCheckStep,
 	fetchRemoteDoguDescriptorStep *install.FetchRemoteDoguDescriptorStep,
 	validationStep *install.ValidationStep,
 	pauseReconciliationStep *install.PauseReconciliationStep,
-	finalizerExistsStep *install.FinalizerExistsStep,
+	finalizerExistsStep *install.CreateFinalizerStep,
 	createDoguConfigStep install.CreateDoguConfigStep,
 	doguConfigOwnerReferenceStep install.DoguConfigOwnerReferenceStep,
 	createSensitiveDoguConfigStep install.CreateSensitiveDoguConfigStep,
@@ -48,11 +48,11 @@ func NewDoguInstallOrChangeUseCase(
 	localDoguDescriptorOwnerReferenceStep install.LocalDoguDescriptorOwnerReferenceStep,
 	serviceAccountStep *install.ServiceAccountStep,
 	serviceStep *install.ServiceStep,
-	execPodCreateStep *install.ExecPodCreateStep,
+	execPodCreateStep *install.CreateExecPodStep,
 	customK8sResourceStep *install.CustomK8sResourceStep,
-	volumeGeneratorStep *install.VolumeGeneratorStep,
+	volumeGeneratorStep *install.CreateVolumeStep,
 	networkPoliciesStep *install.NetworkPoliciesStep,
-	deploymentStep *install.DeploymentStep,
+	deploymentStep *install.CreateDeploymentStep,
 
 	replicasStep *postinstall.ReplicasStep,
 	volumeExpanderStep *postinstall.VolumeExpanderStep,

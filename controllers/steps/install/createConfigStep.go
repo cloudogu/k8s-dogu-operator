@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 )
 
+// The CreateConfigStep creates configs like the doguConfig or secretConfig for a dogu.
 type CreateConfigStep struct {
 	configRepository doguConfigRepository
 }

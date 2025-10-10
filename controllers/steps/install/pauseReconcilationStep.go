@@ -15,6 +15,7 @@ const conditionReasonNotPaused = "ReconciliationIsEnabled"
 const conditionMessagePaused = "Reconciliation is paused because of spec change"
 const conditionMessageNotPaused = "Reconciliation of this resource is currently enabled"
 
+// The PauseReconciliationStep checks if the pause reconciliation
 type PauseReconciliationStep struct {
 	doguInterface doguInterface
 }

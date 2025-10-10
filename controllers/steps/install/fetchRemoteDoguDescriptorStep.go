@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	dogu2 "github.com/cloudogu/ces-commons-lib/dogu"
@@ -12,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// The FetchRemoteDoguDescriptorStep fetches the dogu descriptor for the dogu cr from the remote registry
+// and stores it inside the local registry to reduce remote fetches.
 type FetchRemoteDoguDescriptorStep struct {
 	client                  k8sClient
 	resourceDoguFetcher     resourceDoguFetcher

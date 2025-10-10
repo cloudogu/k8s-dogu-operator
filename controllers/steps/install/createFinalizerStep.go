@@ -3,6 +3,7 @@ package install
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/retry-lib/retry"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -13,17 +14,18 @@ import (
 
 const finalizerName = "k8s.cloudogu.com/dogu-cleanup"
 
-type FinalizerExistsStep struct {
+// The CreateFinalizerStep checks if the dogu cr has the required finalizer and adds it if necessary.
+type CreateFinalizerStep struct {
 	client k8sClient
 }
 
-func NewFinalizerExistsStep(client client.Client) *FinalizerExistsStep {
-	return &FinalizerExistsStep{
+func NewCreateFinalizerStep(client client.Client) *CreateFinalizerStep {
+	return &CreateFinalizerStep{
 		client: client,
 	}
 }
 
-func (fs *FinalizerExistsStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (fs *CreateFinalizerStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	if controllerutil.ContainsFinalizer(doguResource, finalizerName) {
 		return steps.Continue()
 	}

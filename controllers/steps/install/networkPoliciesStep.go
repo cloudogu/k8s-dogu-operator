@@ -13,6 +13,7 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+// The NetworkPoliciesStep creates or updates the Network Policies based on the dogu resource
 type NetworkPoliciesStep struct {
 	netPolUpserter   netPolUpserter
 	localDoguFetcher localDoguFetcher

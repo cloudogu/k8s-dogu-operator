@@ -139,12 +139,12 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	t.Run("should successfully create dogu install or change use case with steps in correct order", func(t *testing.T) {
 		got := NewDoguInstallOrChangeUseCase(
-			&install.ConditionsStep{},
+			&install.InitializeConditionsStep{},
 			&install.HealthCheckStep{},
 			&install.FetchRemoteDoguDescriptorStep{},
 			&install.ValidationStep{},
 			&install.PauseReconciliationStep{},
-			&install.FinalizerExistsStep{},
+			&install.CreateFinalizerStep{},
 			install.NewCreateConfigStep(nil),
 			install.NewOwnerReferenceStep(nil),
 			install.NewCreateConfigStep(nil),
@@ -153,11 +153,11 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			install.NewOwnerReferenceStep(nil),
 			&install.ServiceAccountStep{},
 			&install.ServiceStep{},
-			&install.ExecPodCreateStep{},
+			&install.CreateExecPodStep{},
 			&install.CustomK8sResourceStep{},
-			&install.VolumeGeneratorStep{},
+			&install.CreateVolumeStep{},
 			&install.NetworkPoliciesStep{},
-			&install.DeploymentStep{},
+			&install.CreateDeploymentStep{},
 
 			&postinstall.ReplicasStep{},
 			&postinstall.VolumeExpanderStep{},
@@ -179,12 +179,12 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		)
 
 		wantTypes := []string{
-			"*install.ConditionsStep",
+			"*install.InitializeConditionsStep",
 			"*install.HealthCheckStep",
 			"*install.FetchRemoteDoguDescriptorStep",
 			"*install.ValidationStep",
 			"*install.PauseReconciliationStep",
-			"*install.FinalizerExistsStep",
+			"*install.CreateFinalizerStep",
 			"*install.CreateConfigStep",
 			"*install.OwnerReferenceStep",
 			"*install.CreateConfigStep",
@@ -193,11 +193,11 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*install.OwnerReferenceStep",
 			"*install.ServiceAccountStep",
 			"*install.ServiceStep",
-			"*install.ExecPodCreateStep",
+			"*install.CreateExecPodStep",
 			"*install.CustomK8sResourceStep",
-			"*install.VolumeGeneratorStep",
+			"*install.CreateVolumeStep",
 			"*install.NetworkPoliciesStep",
-			"*install.DeploymentStep",
+			"*install.CreateDeploymentStep",
 
 			"*postinstall.ReplicasStep",
 			"*postinstall.VolumeExpanderStep",

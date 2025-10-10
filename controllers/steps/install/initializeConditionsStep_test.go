@@ -17,7 +17,7 @@ var testCtx = context.Background()
 
 func TestNewConditionsStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewConditionsStep(nil)
+		step := NewInitializeConditionsStep(nil)
 
 		assert.NotNil(t, step)
 	})
@@ -205,7 +205,7 @@ func TestConditionsStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cs := &ConditionsStep{
+			cs := &InitializeConditionsStep{
 				conditionUpdater: tt.conditionUpdaterFn(t),
 			}
 			assert.Equalf(t, tt.want, cs.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)

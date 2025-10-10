@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
+// The RegisterDoguVersionStep registers the dogu version in the dogu descriptor config map.
 type RegisterDoguVersionStep struct {
 	doguRegistrator  doguRegistrator
 	localDoguFetcher localDoguFetcher

@@ -16,7 +16,7 @@ import (
 
 func TestNewVolumeGeneratorStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewVolumeGeneratorStep(newMockLocalDoguFetcher(t), newMockResourceUpserter(t), newMockPersistentVolumeClaimInterface(t))
+		step := NewCreateVolumeStep(newMockLocalDoguFetcher(t), newMockResourceUpserter(t), newMockPersistentVolumeClaimInterface(t))
 
 		assert.NotNil(t, step)
 	})
@@ -151,7 +151,7 @@ func TestVolumeGeneratorStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vgs := &VolumeGeneratorStep{
+			vgs := &CreateVolumeStep{
 				localDoguFetcher: tt.fields.localDoguFetcherFn(t),
 				resourceUpserter: tt.fields.resourceUpserterFn(t),
 				pvcGetter:        tt.fields.pvcGetterFn(t),

@@ -164,12 +164,12 @@ func options() []fx.Option {
 			deletion.NewRemoveFinalizerStep,
 
 			// install or change steps
-			install.NewConditionsStep,
+			install.NewInitializeConditionsStep,
 			install.NewHealthCheckStep,
 			install.NewFetchRemoteDoguDescriptorStep,
 			install.NewValidationStep,
 			install.NewPauseReconciliationStep,
-			install.NewFinalizerExistsStep,
+			install.NewCreateFinalizerStep,
 			// Dogu config steps
 			fx.Annotate(
 				install.NewCreateConfigStep,
@@ -201,11 +201,11 @@ func options() []fx.Option {
 			),
 			install.NewServiceAccountStep,
 			install.NewServiceStep,
-			install.NewExecPodCreateStep,
+			install.NewCreateExecPodStep,
 			install.NewCustomK8sResourceStep,
-			install.NewVolumeGeneratorStep,
+			install.NewCreateVolumeStep,
 			install.NewNetworkPoliciesStep,
-			install.NewDeploymentStep,
+			install.NewCreateDeploymentStep,
 			postinstall.NewReplicasStep,
 			postinstall.NewVolumeExpanderStep,
 			postinstall.NewAdditionalIngressAnnotationsStep,

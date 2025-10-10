@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
+// The CustomK8sResourceStep extracts k8s resources out of a dogu pod and applies them into the cluster.
 type CustomK8sResourceStep struct {
 	recorder         eventRecorder
 	localDoguFetcher localDoguFetcher

@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
+// The ServiceAccountStep creates service accounts for the dependencies and optional dependencies of the dogu.
 type ServiceAccountStep struct {
 	serviceAccountCreator serviceAccountCreator
 	localDoguFetcher      localDoguFetcher

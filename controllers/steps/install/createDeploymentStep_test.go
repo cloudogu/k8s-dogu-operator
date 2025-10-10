@@ -21,7 +21,7 @@ const doguName = "test"
 
 func TestNewDeploymentStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewDeploymentStep(
+		step := NewCreateDeploymentStep(
 			newMockK8sClient(t),
 			nil, nil)
 
@@ -169,7 +169,7 @@ func TestDeploymentStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ds := &DeploymentStep{
+			ds := &CreateDeploymentStep{
 				upserter:         tt.fields.upserterFn(t),
 				localDoguFetcher: tt.fields.localDoguFetcherFn(t),
 				client:           tt.fields.clientFn(t),

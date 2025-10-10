@@ -14,21 +14,21 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-type VolumeGeneratorStep struct {
+type CreateVolumeStep struct {
 	localDoguFetcher localDoguFetcher
 	resourceUpserter resourceUpserter
 	pvcGetter        persistentVolumeClaimInterface
 }
 
-func NewVolumeGeneratorStep(fetcher cesregistry.LocalDoguFetcher, upserter resource.ResourceUpserter, pvcInterface v1.PersistentVolumeClaimInterface) *VolumeGeneratorStep {
-	return &VolumeGeneratorStep{
+func NewCreateVolumeStep(fetcher cesregistry.LocalDoguFetcher, upserter resource.ResourceUpserter, pvcInterface v1.PersistentVolumeClaimInterface) *CreateVolumeStep {
+	return &CreateVolumeStep{
 		localDoguFetcher: fetcher,
 		resourceUpserter: upserter,
 		pvcGetter:        pvcInterface,
 	}
 }
 
-func (vgs *VolumeGeneratorStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (vgs *CreateVolumeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	_, err := vgs.pvcGetter.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {

@@ -23,6 +23,7 @@ const (
 	ReasonDoguHealthy    = "DoguIsHealthy"
 )
 
+// The HealthCheckStep checks the health of the dogu and updates the status of the dogu resource
 type HealthCheckStep struct {
 	client                  k8sClient
 	availabilityChecker     deploymentAvailabilityChecker
