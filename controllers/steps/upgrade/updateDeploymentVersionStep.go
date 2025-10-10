@@ -27,7 +27,8 @@ const podTemplateVersionKey = "dogu.version"
 const upgradeStartupProbeFailureThresholdRetries = int32(1080)
 const preUpgradeScriptDir = "/tmp/pre-upgrade"
 
-type UpdateDeploymentStep struct {
+// The UpdateDeploymentVersionStep updates the dogu version inside the deployment and runs the pre upgrade script.
+type UpdateDeploymentVersionStep struct {
 	client              k8sClient
 	upserter            ResourceUpserter
 	deploymentInterface deploymentInterface
@@ -36,15 +37,15 @@ type UpdateDeploymentStep struct {
 	doguCommandExecutor commandExecutor
 }
 
-func NewUpdateDeploymentStep(
+func NewUpdateDeploymentVersionStep(
 	client client.Client,
 	upserter resource.ResourceUpserter,
 	deploymentInterface appsv1.DeploymentInterface,
 	localFetcher cesregistry.LocalDoguFetcher,
 	factory exec.ExecPodFactory,
 	executor exec.CommandExecutor,
-) *UpdateDeploymentStep {
-	return &UpdateDeploymentStep{
+) *UpdateDeploymentVersionStep {
+	return &UpdateDeploymentVersionStep{
 		client:              client,
 		upserter:            upserter,
 		deploymentInterface: deploymentInterface,
@@ -54,7 +55,7 @@ func NewUpdateDeploymentStep(
 	}
 }
 
-func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (uds *UpdateDeploymentVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	deployment, err := uds.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
@@ -106,7 +107,7 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 	return steps.RequeueAfter(requeueAfterUpdateDeployment)
 }
 
-func (uds *UpdateDeploymentStep) isDoguVersionUpdatedInDeployment(doguResource *v2.Dogu, deployment *v1.Deployment) bool {
+func (uds *UpdateDeploymentVersionStep) isDoguVersionUpdatedInDeployment(doguResource *v2.Dogu, deployment *v1.Deployment) bool {
 	return deployment.Spec.Template.Labels[podTemplateVersionKey] == doguResource.Spec.Version
 }
 
@@ -119,7 +120,7 @@ func increaseStartupProbeTimeoutForUpdate(containerName string, deployment *v1.D
 	}
 }
 
-func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, toDogu *core.Dogu) error {
+func (uds *UpdateDeploymentVersionStep) applyPreUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, toDogu *core.Dogu) error {
 	if !toDogu.HasExposedCommand(core.ExposedCommandPreUpgrade) {
 		return nil
 	}
@@ -147,7 +148,7 @@ func (uds *UpdateDeploymentStep) applyPreUpgradeScript(ctx context.Context, toDo
 	return nil
 }
 
-func (uds *UpdateDeploymentStep) copyPreUpgradeScriptFromPodToPod(ctx context.Context, toDoguResource *v2.Dogu, toDogu *core.Dogu, destPod *corev1.Pod, preUpgradeScriptCmd *core.ExposedCommand) error {
+func (uds *UpdateDeploymentVersionStep) copyPreUpgradeScriptFromPodToPod(ctx context.Context, toDoguResource *v2.Dogu, toDogu *core.Dogu, destPod *corev1.Pod, preUpgradeScriptCmd *core.ExposedCommand) error {
 	tarCommand := exec.NewShellCommand("/bin/tar", "cf", "-", preUpgradeScriptCmd.Command)
 	archive, err := uds.execPodFactory.Exec(ctx, toDoguResource, toDogu, tarCommand)
 	if err != nil {
@@ -169,7 +170,7 @@ func (uds *UpdateDeploymentStep) copyPreUpgradeScriptFromPodToPod(ctx context.Co
 	return nil
 }
 
-func (uds *UpdateDeploymentStep) applyPreUpgradeScriptToOlderDogu(
+func (uds *UpdateDeploymentVersionStep) applyPreUpgradeScriptToOlderDogu(
 	ctx context.Context,
 	fromDoguVersion string,
 	fromDoguPod *corev1.Pod,

@@ -1,8 +1,9 @@
 package upgrade
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
 	"testing"
+
+	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -16,7 +17,7 @@ func TestNewDeploymentUpdaterStep(t *testing.T) {
 		fetcher := newMockLocalDoguFetcher(t)
 		deployInterface := newMockDeploymentInterface(t)
 		resourceGen := newMockResourceGenerator(t)
-		step := NewDeploymentUpdaterStep(
+		step := NewRegenerateDeploymentStep(
 			fetcher,
 			deployInterface,
 			resourceGen,
@@ -197,7 +198,7 @@ func TestDeploymentUpdaterStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dus := &DeploymentUpdaterStep{
+			dus := &RegenerateDeploymentStep{
 				localDoguFetcher:    tt.fields.localDoguFetcherFn(t),
 				deploymentInterface: tt.fields.deploymentInterfaceFn(t),
 				resourceGenerator:   tt.fields.resourceGeneratorFn(t),

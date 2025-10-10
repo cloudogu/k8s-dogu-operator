@@ -18,7 +18,7 @@ func TestNewRestartDoguStep(t *testing.T) {
 		doguConfigRepo := newMockDoguConfigRepository(t)
 		globalConfigRepoMock := newMockGlobalConfigRepository(t)
 
-		step := NewRestartDoguStep(
+		step := NewRestartAfterConfigChangeStep(
 			doguConfigRepo,
 			doguConfigRepo,
 			newMockDoguRestartManager(t),
@@ -285,7 +285,7 @@ func TestRestartDoguStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rds := &RestartDoguStep{
+			rds := &RestartAfterConfigChangeStep{
 				doguConfigRepository:    tt.fields.doguConfigRepositoryFn(t),
 				sensitiveDoguRepository: tt.fields.sensitiveDoguRepositoryFn(t),
 				doguRestartManager:      tt.fields.doguRestartManagerFn(t),

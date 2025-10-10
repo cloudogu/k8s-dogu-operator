@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// The InstalledVersionStep sets the currently installed version in the spec and sets the status to installed.
 type InstalledVersionStep struct {
 	doguInterface doguInterface
 }

@@ -17,7 +17,7 @@ import (
 
 func TestNewRevertStartupProbeStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewRevertStartupProbeStep(
+		step := NewPostUpgradeStep(
 			newMockK8sClient(t),
 			nil,
 			nil,
@@ -300,7 +300,7 @@ func TestRevertStartupProbeStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rsps := &RevertStartupProbeStep{
+			rsps := &PostUpgradeStep{
 				client:              tt.fields.clientFn(t),
 				deploymentInterface: tt.fields.deploymentInterfaceFn(t),
 				doguCommandExecutor: tt.fields.doguCommandExecutorFn(t),

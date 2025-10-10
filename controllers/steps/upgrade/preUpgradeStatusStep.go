@@ -17,6 +17,7 @@ const (
 	ReasonUpgrading = "Upgrading"
 )
 
+// The PreUpgradeStatusStep sets the status of the dogu to upgrading and the health and ready conditions to false.
 type PreUpgradeStatusStep struct {
 	upgradeChecker upgradeChecker
 	doguInterface  doguInterface

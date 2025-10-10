@@ -213,14 +213,14 @@ func options() []fx.Option {
 			postinstall.NewExportModeStep,
 			postinstall.NewSupportModeStep,
 			postinstall.NewAdditionalMountsStep,
-			fx.Annotate(upgradeSteps.NewRestartDoguStep, fx.ParamTags(`name:"normalDoguConfig"`, `name:"sensitiveDoguConfig"`, "", "", "")),
+			fx.Annotate(upgradeSteps.NewRestartAfterConfigChangeStep, fx.ParamTags(`name:"normalDoguConfig"`, `name:"sensitiveDoguConfig"`, "", "", "")),
 			upgradeSteps.NewPreUpgradeStatusStep,
 			upgradeSteps.NewRegisterDoguVersionStep,
-			upgradeSteps.NewUpdateDeploymentStep,
+			upgradeSteps.NewUpdateDeploymentVersionStep,
 			upgradeSteps.NewDeleteExecPodStep,
-			upgradeSteps.NewRevertStartupProbeStep,
+			upgradeSteps.NewPostUpgradeStep,
 			upgradeSteps.NewInstalledVersionStep,
-			upgradeSteps.NewDeploymentUpdaterStep,
+			upgradeSteps.NewRegenerateDeploymentStep,
 			upgradeSteps.NewUpdateStartedAtStep,
 
 			// use-cases

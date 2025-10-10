@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
+// The DeleteExecPodStep deletes the exec pod if currently exist.
 type DeleteExecPodStep struct {
 	execPodFactory   execPodFactory
 	localDoguFetcher localDoguFetcher

@@ -10,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// The UpdateStartedAtStep sets the startedAt time in the dogu status.
+// The started at time is needed for the blueprint-operator.
 type UpdateStartedAtStep struct {
 	deploymentManager deploymentManager
 	doguInterface     doguInterface

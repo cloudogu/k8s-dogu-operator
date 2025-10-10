@@ -63,14 +63,14 @@ func NewDoguInstallOrChangeUseCase(
 	additionalMountsStep *postinstall.AdditionalMountsStep,
 
 	preUpgradeStatusStep *upgrade.PreUpgradeStatusStep,
-	updateDeploymentStep *upgrade.UpdateDeploymentStep,
+	updateDeploymentStep *upgrade.UpdateDeploymentVersionStep,
 	deleteExecPodStep *upgrade.DeleteExecPodStep,
-	revertStartupProbeStep *upgrade.RevertStartupProbeStep,
-	deploymentUpdaterStep *upgrade.DeploymentUpdaterStep,
+	revertStartupProbeStep *upgrade.PostUpgradeStep,
+	deploymentUpdaterStep *upgrade.RegenerateDeploymentStep,
 	upgradeRegisterDoguVersionStep *upgrade.RegisterDoguVersionStep,
 	installedVersionStep *upgrade.InstalledVersionStep,
 	updateStartedAtStep *upgrade.UpdateStartedAtStep,
-	restartDoguStep *upgrade.RestartDoguStep,
+	restartDoguStep *upgrade.RestartAfterConfigChangeStep,
 ) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{

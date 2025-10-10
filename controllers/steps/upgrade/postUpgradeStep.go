@@ -21,20 +21,21 @@ import (
 
 const requeueAfterRevertStartupProbe = time.Second * 3
 
-type RevertStartupProbeStep struct {
+// The PostUpgradeStep runs the post-upgrade script and reverts the startup probe to the previous value.
+type PostUpgradeStep struct {
 	client              k8sClient
 	localDoguFetcher    localDoguFetcher
 	deploymentInterface deploymentInterface
 	doguCommandExecutor commandExecutor
 }
 
-func NewRevertStartupProbeStep(
+func NewPostUpgradeStep(
 	client client.Client,
 	deploymentInterface appsv1.DeploymentInterface,
 	localFetcher cesregistry.LocalDoguFetcher,
 	executor exec.CommandExecutor,
-) *RevertStartupProbeStep {
-	return &RevertStartupProbeStep{
+) *PostUpgradeStep {
+	return &PostUpgradeStep{
 		client:              client,
 		deploymentInterface: deploymentInterface,
 		localDoguFetcher:    localFetcher,
@@ -42,7 +43,7 @@ func NewRevertStartupProbeStep(
 	}
 }
 
-func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (rsps *PostUpgradeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	toDogu, err := rsps.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
@@ -78,7 +79,7 @@ func (rsps *RevertStartupProbeStep) Run(ctx context.Context, doguResource *v2.Do
 	return steps.RequeueAfter(requeueAfterRevertStartupProbe)
 }
 
-func (rsps *RevertStartupProbeStep) startupProbeHasDefaultValue(deployment *v1.Deployment, containerName string, probe *coreV1.Probe) bool {
+func (rsps *PostUpgradeStep) startupProbeHasDefaultValue(deployment *v1.Deployment, containerName string, probe *coreV1.Probe) bool {
 	for i, container := range deployment.Spec.Template.Spec.Containers {
 		if container.Name == containerName {
 			return reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[i].StartupProbe, probe)
@@ -87,7 +88,7 @@ func (rsps *RevertStartupProbeStep) startupProbeHasDefaultValue(deployment *v1.D
 	return false
 }
 
-func (rsps *RevertStartupProbeStep) applyPostUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, toDogu *core.Dogu) error {
+func (rsps *PostUpgradeStep) applyPostUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, toDogu *core.Dogu) error {
 	if !toDogu.HasExposedCommand(core.ExposedCommandPostUpgrade) {
 		return nil
 	}
@@ -97,7 +98,7 @@ func (rsps *RevertStartupProbeStep) applyPostUpgradeScript(ctx context.Context, 
 	return rsps.executePostUpgradeScript(ctx, toDoguResource, fromDoguVersion, postUpgradeCmd)
 }
 
-func (rsps *RevertStartupProbeStep) executePostUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, postUpgradeCmd *core.ExposedCommand) error {
+func (rsps *PostUpgradeStep) executePostUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, postUpgradeCmd *core.ExposedCommand) error {
 	postUpgradeShellCmd := exec.NewShellCommand(postUpgradeCmd.Command, fromDoguVersion, toDoguResource.Spec.Version)
 
 	toDoguPod, getPodErr := toDoguResource.GetPod(ctx, rsps.client)
@@ -113,7 +114,7 @@ func (rsps *RevertStartupProbeStep) executePostUpgradeScript(ctx context.Context
 	return nil
 }
 
-func (rsps *RevertStartupProbeStep) revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *v2.Dogu, toDogu *core.Dogu, deployment *v1.Deployment) error {
+func (rsps *PostUpgradeStep) revertStartupProbeAfterUpdate(ctx context.Context, toDoguResource *v2.Dogu, toDogu *core.Dogu, deployment *v1.Deployment) error {
 	originalStartupProbe := resource.CreateStartupProbe(toDogu)
 
 	for i, container := range deployment.Spec.Template.Spec.Containers {

@@ -10,7 +10,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
-type RestartDoguStep struct {
+// The RestartAfterConfigChangeStep restarts the dogu if the secret config, dogu config or global config is updated after the last start / restart of the dogu.
+type RestartAfterConfigChangeStep struct {
 	doguConfigRepository    doguConfigRepository
 	sensitiveDoguRepository doguConfigRepository
 	doguRestartManager      doguRestartManager
@@ -18,14 +19,14 @@ type RestartDoguStep struct {
 	globalConfigRepository  globalConfigRepository
 }
 
-func NewRestartDoguStep(
+func NewRestartAfterConfigChangeStep(
 	doguConfigRepo initfx.DoguConfigRepository,
 	sensitiveDoguConfigRepo initfx.DoguConfigRepository,
 	restartManager manager.DoguRestartManager,
 	deploymentManager manager.DeploymentManager,
 	globalConfigRepository resource.GlobalConfigRepository,
-) *RestartDoguStep {
-	return &RestartDoguStep{
+) *RestartAfterConfigChangeStep {
+	return &RestartAfterConfigChangeStep{
 		doguConfigRepository:    doguConfigRepo,
 		sensitiveDoguRepository: sensitiveDoguConfigRepo,
 		doguRestartManager:      restartManager,
@@ -34,7 +35,7 @@ func NewRestartDoguStep(
 	}
 }
 
-func (rds *RestartDoguStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (rds *RestartAfterConfigChangeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	startingTime, err := rds.deploymentManager.GetLastStartingTime(ctx, doguResource.Name)
 	if err != nil {
 		return steps.RequeueWithError(err)

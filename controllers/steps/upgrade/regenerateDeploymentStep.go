@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"context"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
@@ -10,25 +11,26 @@ import (
 	v3 "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
-type DeploymentUpdaterStep struct {
+// The RegenerateDeploymentStep updates the deployment with the current status of the dogu cr.
+type RegenerateDeploymentStep struct {
 	localDoguFetcher    localDoguFetcher
 	deploymentInterface deploymentInterface
 	resourceGenerator   resourceGenerator
 }
 
-func NewDeploymentUpdaterStep(
+func NewRegenerateDeploymentStep(
 	fetcher cesregistry.LocalDoguFetcher,
 	deploymentInterface v3.DeploymentInterface,
 	resourceGenerator resource.DoguResourceGenerator,
-) *DeploymentUpdaterStep {
-	return &DeploymentUpdaterStep{
+) *RegenerateDeploymentStep {
+	return &RegenerateDeploymentStep{
 		localDoguFetcher:    fetcher,
 		deploymentInterface: deploymentInterface,
 		resourceGenerator:   resourceGenerator,
 	}
 }
 
-func (dus *DeploymentUpdaterStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (dus *RegenerateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	// Only update the deployment if this is not a dogu upgrade.
 	// The deployment was already updated from prior steps in an upgrade path.
 	if doguResource.Status.InstalledVersion != doguResource.Spec.Version {

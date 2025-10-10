@@ -168,14 +168,14 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			&postinstall.AdditionalMountsStep{},
 
 			&upgrade.PreUpgradeStatusStep{},
-			&upgrade.UpdateDeploymentStep{},
+			&upgrade.UpdateDeploymentVersionStep{},
 			&upgrade.DeleteExecPodStep{},
-			&upgrade.RevertStartupProbeStep{},
-			&upgrade.DeploymentUpdaterStep{},
+			&upgrade.PostUpgradeStep{},
+			&upgrade.RegenerateDeploymentStep{},
 			&upgrade.RegisterDoguVersionStep{},
 			&upgrade.InstalledVersionStep{},
 			&upgrade.UpdateStartedAtStep{},
-			&upgrade.RestartDoguStep{},
+			&upgrade.RestartAfterConfigChangeStep{},
 		)
 
 		wantTypes := []string{
@@ -208,14 +208,14 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*postinstall.AdditionalMountsStep",
 
 			"*upgrade.PreUpgradeStatusStep",
-			"*upgrade.UpdateDeploymentStep",
+			"*upgrade.UpdateDeploymentVersionStep",
 			"*upgrade.DeleteExecPodStep",
-			"*upgrade.RevertStartupProbeStep",
+			"*upgrade.PostUpgradeStep",
 			"*upgrade.InstalledVersionStep",
-			"*upgrade.DeploymentUpdaterStep",
+			"*upgrade.RegenerateDeploymentStep",
 			"*upgrade.RegisterDoguVersionStep",
 			"*upgrade.UpdateStartedAtStep",
-			"*upgrade.RestartDoguStep",
+			"*upgrade.RestartAfterConfigChangeStep",
 		}
 
 		assert.NotNil(t, got)

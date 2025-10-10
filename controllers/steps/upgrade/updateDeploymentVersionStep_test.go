@@ -22,7 +22,7 @@ import (
 
 func TestNewUpdateDeploymentStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewUpdateDeploymentStep(
+		step := NewUpdateDeploymentVersionStep(
 			newMockK8sClient(t),
 			nil,
 			newMockDeploymentInterface(t),
@@ -778,7 +778,7 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uds := &UpdateDeploymentStep{
+			uds := &UpdateDeploymentVersionStep{
 				client:              tt.fields.clientFn(t),
 				upserter:            tt.fields.upserterFn(t),
 				deploymentInterface: tt.fields.deploymentInterfaceFn(t),
