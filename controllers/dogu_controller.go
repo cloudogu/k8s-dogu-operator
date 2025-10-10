@@ -58,6 +58,8 @@ func NewDoguEventsOut(channel chan event.TypedGenericEvent[*doguv2.Dogu]) <-chan
 	return channel
 }
 
+// NewDoguReconciler creates the component necessary for applying the desired state of the dogu.
+// NOSONAR ignore additional function param
 func NewDoguReconciler(
 	k8sClient client.Client,
 	doguChangeHandler DoguInstallOrChangeUseCase,
@@ -66,7 +68,7 @@ func NewDoguReconciler(
 	requeueHandler RequeueHandler,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	recorder record.EventRecorder,
-	manager manager.Manager, //NOSONAR ignore additional function param
+	manager manager.Manager,
 ) (*DoguReconciler, error) {
 	r := &DoguReconciler{
 		client:            k8sClient,
@@ -154,7 +156,8 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 		ObservedGeneration: doguResource.Generation,
 	}
 
-	doguResource, err := r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+	var err error
+	doguResource, err = r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus { //nolint:staticcheck
 		meta.SetStatusCondition(&status.Conditions, condition)
 		return status
 	}, metav1.UpdateOptions{})

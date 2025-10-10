@@ -231,9 +231,9 @@ func createDoguVolumes(doguVolumes []core.Volume, doguResource *k8sv2.Dogu) ([]c
 
 	for _, doguVolume := range doguVolumes {
 		// to mount e.g. config maps
-		client, clientExists := doguVolume.GetClient(doguOperatorClient)
+		volumeClient, clientExists := doguVolume.GetClient(doguOperatorClient)
 		if clientExists {
-			volume, err := createVolumeByClient(doguVolume, client)
+			volume, err := createVolumeByClient(doguVolume, volumeClient)
 			if err != nil {
 				multiError = errors.Join(multiError, err)
 				continue
@@ -551,7 +551,7 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
 	logger.Info(fmt.Sprintf("set data volume size %v for dogu %s", currentSize, doguResource.Name))
-	doguResource, err = doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus { //nolint:unused
+	doguResource, err = doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus { //nolint:staticcheck
 		status.DataVolumeSize = currentSize
 		return status
 	}, metav1.UpdateOptions{})
