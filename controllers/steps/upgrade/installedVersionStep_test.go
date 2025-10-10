@@ -71,7 +71,7 @@ func TestInstalledVersionStep_Run(t *testing.T) {
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 						status := modifyStatusFn(dogu.Status)
 						assert.Equal(t, expectedStatus, status)
-					}).Return(nil, nil)
+					}).Return(dogu, nil)
 					return mck
 				},
 			},

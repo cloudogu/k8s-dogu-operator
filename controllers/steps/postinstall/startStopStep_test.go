@@ -337,7 +337,7 @@ func TestReplicasStep_Run(t *testing.T) {
 							Stopped: false,
 						},
 					}
-					mck.EXPECT().UpdateStatusWithRetry(testCtx, doguCr, mock.Anything, v1.UpdateOptions{}).Return(nil, nil).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, doguCr, mock.Anything, v1.UpdateOptions{}).Return(doguCr, nil).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
 						modifyStatusFn(doguCr.Status)
 						assert.Equal(t, false, doguCr.Status.Stopped)
 					})
