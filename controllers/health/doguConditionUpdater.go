@@ -23,7 +23,8 @@ func NewDoguConditionUpdater(doguInterface doguClient.DoguInterface) *DoguCondit
 func (dcu *DoguConditionUpdater) UpdateCondition(ctx context.Context, doguResource *v2.Dogu, condition metav1.Condition) error {
 	condition.ObservedGeneration = doguResource.Generation
 	name := doguResource.Name
-	doguResource, err := dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+	var err error
+	doguResource, err = dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
 		meta.SetStatusCondition(&status.Conditions, condition)
 		return status
 	}, metav1.UpdateOptions{})
@@ -35,7 +36,8 @@ func (dcu *DoguConditionUpdater) UpdateCondition(ctx context.Context, doguResour
 }
 func (dcu *DoguConditionUpdater) UpdateConditions(ctx context.Context, doguResource *v2.Dogu, conditions []metav1.Condition) error {
 	name := doguResource.Name
-	doguResource, err := dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+	var err error
+	doguResource, err = dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
 		for _, condition := range conditions {
 			condition.ObservedGeneration = doguResource.Generation
 			meta.SetStatusCondition(&status.Conditions, condition)

@@ -62,7 +62,7 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 		return
 	}
 
-	doguResource, err = d.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+	doguResource, err = d.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus { //nolint:staticcheck
 		status.RequeueTime = result.RequeueAfter
 		return status
 	}, metav1.UpdateOptions{})

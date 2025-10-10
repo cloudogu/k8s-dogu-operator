@@ -36,6 +36,20 @@ const (
 	ReasonHasToReconcile   = "HasToReconcile"
 )
 
+// The DoguReconciler knows where the [*doguv2.Dogu] is at all times. It knows this because it knows where it isn't.
+// By subtracting where it is from where it isn't, or where it isn't from where it is (whichever is greater), it obtains
+// a difference, or deviation. The guidance subsystem uses deviations to generate corrective commands to drive the
+// [*doguv2.Dogu] from a position where it is to a position where it isn't, and arriving at a position where it wasn't,
+// it now is. Consequently, the position where it is, is now the position that it wasn't, and it follows that the
+// position that it was, is now the position that it isn't. In the event that the position that it is in is not the
+// position that it wasn't, the system has acquired a variation, the variation being the difference between where the
+// [*doguv2.Dogu] is, and where it wasn't. If variation is considered to be a significant factor, it too may be
+// corrected by the GEA. However, the DoguReconciler must also know where the [*doguv2.Dogu] was.
+// The [*doguv2.Dogu] guidance computer scenario works as follows. Because a variation has modified some of the
+// information the [*doguv2.Dogu] has obtained, it is not sure just where it is. However, it is sure where it isn't,
+// within reason, and it knows where it was. It now subtracts where it should be from where it wasn't, or vice-versa,
+// and by differentiating this from the algebraic sum of where it shouldn't be, and where it was, it is able to obtain
+// the deviation and its variation, which is called error.
 type DoguReconciler struct {
 	client            client.Client
 	doguChangeHandler DoguInstallOrChangeUseCase
@@ -58,6 +72,7 @@ func NewDoguEventsOut(channel chan event.TypedGenericEvent[*doguv2.Dogu]) <-chan
 	return channel
 }
 
+// NewDoguReconciler creates the component necessary for applying the desired state of the dogu.
 func NewDoguReconciler(
 	k8sClient client.Client,
 	doguChangeHandler DoguInstallOrChangeUseCase,
@@ -66,7 +81,7 @@ func NewDoguReconciler(
 	requeueHandler RequeueHandler,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	recorder record.EventRecorder,
-	manager manager.Manager, //NOSONAR ignore additional function param
+	manager manager.Manager,
 ) (*DoguReconciler, error) {
 	r := &DoguReconciler{
 		client:            k8sClient,
@@ -154,7 +169,8 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 		ObservedGeneration: doguResource.Generation,
 	}
 
-	doguResource, err := r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+	var err error
+	doguResource, err = r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus { //nolint:staticcheck
 		meta.SetStatusCondition(&status.Conditions, condition)
 		return status
 	}, metav1.UpdateOptions{})
