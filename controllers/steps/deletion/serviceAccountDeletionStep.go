@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
+// The ServiceAccountRemoverStep removes all service accounts that are needed for the dogu.
 type ServiceAccountRemoverStep struct {
 	serviceAccountRemover serviceAccountRemover
 	doguFetcher           localDoguFetcher

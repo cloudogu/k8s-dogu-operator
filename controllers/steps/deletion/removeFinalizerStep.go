@@ -3,6 +3,7 @@ package deletion
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/retry-lib/retry"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -14,6 +15,7 @@ import (
 const legacyFinalizerName = "dogu-finalizer"
 const finalizerName = "k8s.cloudogu.com/dogu-cleanup"
 
+// The RemoveFinalizerStep removes the finalizer of the dogu resource.
 type RemoveFinalizerStep struct {
 	client k8sClient
 }

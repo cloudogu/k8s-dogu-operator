@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
+// The DeleteOutOfHealthConfigMapStep remove the dogu out of the `k8s-dogu-operator-dogu-health` config map.
 type DeleteOutOfHealthConfigMapStep struct {
 	doguHealthStatusUpdater doguHealthStatusUpdater
 }

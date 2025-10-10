@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
+// The removeDoguConfigStep is used to delete the secret config of the dogu.
 type removeDoguConfigStep struct {
 	doguConfigRepository doguConfigRepository
 }

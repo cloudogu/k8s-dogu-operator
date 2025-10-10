@@ -16,6 +16,7 @@ const (
 	ReasonDeleting = "Deleting"
 )
 
+// The StatusStep sets the status of the dogu to deleting and the healthy and ready conditions to false.
 type StatusStep struct {
 	doguInterface doguInterface
 }
