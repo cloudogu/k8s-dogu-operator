@@ -125,7 +125,7 @@ func TestFetchRemoteDoguDescriptorStep_Run(t *testing.T) {
 					Version: "1.0.0",
 				},
 			},
-			want: steps.RequeueWithError(assert.AnError),
+			want: steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", assert.AnError)),
 		},
 		{
 			name: "should fail to add remote dogu descriptor to local dogu descriptor repo",
