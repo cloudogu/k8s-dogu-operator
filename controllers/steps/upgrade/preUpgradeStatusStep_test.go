@@ -105,7 +105,7 @@ func TestPreUpgradeStatusStep_Run(t *testing.T) {
 						assert.Equal(t, v2.HealthStatus("unavailable"), status.Health)
 						gomega.NewWithT(t).Expect(expectedConditions).
 							To(conditions.MatchConditions(expectedConditions, conditions.IgnoreLastTransitionTime(true)))
-					}).Return(nil, nil)
+					}).Return(expectedDogu, nil)
 					return mck
 				},
 				upgradeCheckerFn: func(t *testing.T) upgradeChecker {

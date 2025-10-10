@@ -170,7 +170,7 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 	}
 
 	var err error
-	doguResource, err = r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus { //nolint:staticcheck
+	updatedDoguResource, err := r.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		meta.SetStatusCondition(&status.Conditions, condition)
 		return status
 	}, metav1.UpdateOptions{})
@@ -178,6 +178,7 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 		logger.Error(err, "Failed to update dogu resource")
 		return err
 	}
+	*doguResource = *updatedDoguResource
 	logger.Info("Updated dogu resource successfully!")
 	return nil
 }

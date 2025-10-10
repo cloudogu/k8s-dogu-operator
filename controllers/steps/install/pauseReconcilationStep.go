@@ -41,13 +41,14 @@ func (prs *PauseReconciliationStep) Run(ctx context.Context, doguResource *v2.Do
 		condition.Message = conditionMessageNotPaused
 	}
 
-	doguResource, err := prs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+	updatedDoguResource, err := prs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
 		meta.SetStatusCondition(&status.Conditions, condition)
 		return status
 	}, v1.UpdateOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
+	*doguResource = *updatedDoguResource
 
 	if doguResource.Spec.PauseReconciliation {
 		return steps.Abort()

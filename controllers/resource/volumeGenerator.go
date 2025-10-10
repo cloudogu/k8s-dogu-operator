@@ -551,7 +551,7 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 
 	meta.SetStatusCondition(&doguResource.Status.Conditions, condition)
 	logger.Info(fmt.Sprintf("set data volume size %v for dogu %s", currentSize, doguResource.Name))
-	doguResource, err = doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus { //nolint:staticcheck
+	updatedDoguResource, err := doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status k8sv2.DoguStatus) k8sv2.DoguStatus {
 		status.DataVolumeSize = currentSize
 		return status
 	}, metav1.UpdateOptions{})
@@ -560,6 +560,7 @@ func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClient.Dogu
 		logger.Error(err, "failed to update data volume size")
 		return err
 	}
+	*doguResource = *updatedDoguResource
 
 	return nil
 }

@@ -261,7 +261,7 @@ func TestHealthCheckStep_Run(t *testing.T) {
 									Message: "All replicas are available",
 								},
 							}, conditions.IgnoreLastTransitionTime(true)))
-					}).Return(nil, nil)
+					}).Return(doguCr, nil)
 					return mck
 				},
 			},

@@ -92,7 +92,7 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 		ObservedGeneration: doguResource.Generation,
 	}
 
-	doguResource, err = hcs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus { //nolint:staticcheck
+	updatedDoguResource, err := hcs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		status.Health = desiredHealthStatus
 		meta.SetStatusCondition(&status.Conditions, condition)
 		return status
@@ -100,5 +100,7 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 	if err != nil {
 		return err
 	}
+	*doguResource = *updatedDoguResource
+
 	return nil
 }

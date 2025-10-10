@@ -96,7 +96,7 @@ func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguRes
 	}
 
 	var err error
-	doguResource, err = sms.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus { //nolint:staticcheck
+	updatedDoguResource, err := sms.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
 		meta.SetStatusCondition(&status.Conditions, condition)
 		if healthCondition != nil {
 			meta.SetStatusCondition(&status.Conditions, *healthCondition)
@@ -106,6 +106,7 @@ func (sms *SupportModeStep) setSupportModeCondition(ctx context.Context, doguRes
 	if err != nil {
 		return err
 	}
+	*doguResource = *updatedDoguResource
 
 	return nil
 }

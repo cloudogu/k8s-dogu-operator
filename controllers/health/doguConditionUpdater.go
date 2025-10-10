@@ -24,20 +24,21 @@ func (dcu *DoguConditionUpdater) UpdateCondition(ctx context.Context, doguResour
 	condition.ObservedGeneration = doguResource.Generation
 	name := doguResource.Name
 	var err error
-	doguResource, err = dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus { //nolint:staticcheck
+	updatedDoguResource, err := dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
 		meta.SetStatusCondition(&status.Conditions, condition)
 		return status
 	}, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %s: %w", name, err)
 	}
+	*doguResource = *updatedDoguResource
 
 	return nil
 }
 func (dcu *DoguConditionUpdater) UpdateConditions(ctx context.Context, doguResource *v2.Dogu, conditions []metav1.Condition) error {
 	name := doguResource.Name
 	var err error
-	doguResource, err = dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus { //nolint:staticcheck
+	updatedDoguResource, err := dcu.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
 		for _, condition := range conditions {
 			condition.ObservedGeneration = doguResource.Generation
 			meta.SetStatusCondition(&status.Conditions, condition)
@@ -47,5 +48,6 @@ func (dcu *DoguConditionUpdater) UpdateConditions(ctx context.Context, doguResou
 	if err != nil {
 		return fmt.Errorf("failed to update status of dogu %s: %w", name, err)
 	}
+	*doguResource = *updatedDoguResource
 	return nil
 }

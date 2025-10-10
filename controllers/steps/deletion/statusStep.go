@@ -26,7 +26,7 @@ func NewStatusStep(doguInterface doguClient.DoguInterface) *StatusStep {
 }
 
 func (s *StatusStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResult {
-	resource, err := s.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
+	updatedDoguResource, err := s.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
 		status.Status = v2.DoguStatusDeleting
 		status.Health = v2.UnavailableHealthStatus
 
@@ -54,6 +54,7 @@ func (s *StatusStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResul
 		}
 		return steps.RequeueWithError(fmt.Errorf("failed to update status of dogu when deleting: %w", err))
 	}
+	*resource = *updatedDoguResource
 
 	return steps.Continue()
 }

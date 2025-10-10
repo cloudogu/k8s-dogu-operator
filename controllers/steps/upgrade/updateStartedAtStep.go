@@ -33,13 +33,14 @@ func (usas *UpdateStartedAtStep) Run(ctx context.Context, doguResource *v2.Dogu)
 		return steps.RequeueWithError(err)
 	}
 
-	doguResource, err = usas.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus { //nolint:staticcheck
+	updatedDoguResource, err := usas.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
 		status.StartedAt = metav1.Time{Time: *startingTime}
 		return status
 	}, metav1.UpdateOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
+	*doguResource = *updatedDoguResource
 
 	return steps.Continue()
 }

@@ -612,7 +612,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 	t.Run("error no pvc", func(t *testing.T) {
 		dogu := &k8sv2.Dogu{}
 		doguClient := newMockDoguClientInterface(t)
-		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(nil, nil)
+		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(dogu, nil)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
 
@@ -635,7 +635,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 	t.Run("error update status", func(t *testing.T) {
 		dogu := &k8sv2.Dogu{}
 		doguClient := newMockDoguClientInterface(t)
-		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		doguClient.EXPECT().UpdateStatusWithRetry(context.TODO(), dogu, mock.Anything, mock.Anything).Return(dogu, assert.AnError)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
 
@@ -648,7 +648,7 @@ func TestVolumeStartUpHandler_SetCurrentDataVolumeSize(t *testing.T) {
 			status := modifyStatusFn(dogu.Status)
 			expectedDefaultVolumeSize := resource.MustParse("2Gi")
 			assert.Equal(t, &expectedDefaultVolumeSize, status.DataVolumeSize)
-		}).Return(nil, nil)
+		}).Return(dogu, nil)
 
 		err := SetCurrentDataVolumeSize(context.TODO(), doguClient, nil, dogu, nil)
 

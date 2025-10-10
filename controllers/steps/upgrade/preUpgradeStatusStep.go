@@ -30,7 +30,7 @@ func (p *PreUpgradeStatusStep) Run(ctx context.Context, resource *v2.Dogu) steps
 	}
 
 	if isUpgrade {
-		resource, err = p.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
+		updatedDoguResource, updateErr := p.doguInterface.UpdateStatusWithRetry(ctx, resource, func(status v2.DoguStatus) v2.DoguStatus {
 			status.Status = v2.DoguStatusUpgrading
 			status.Health = v2.UnavailableHealthStatus
 
@@ -51,9 +51,10 @@ func (p *PreUpgradeStatusStep) Run(ctx context.Context, resource *v2.Dogu) steps
 			})
 			return status
 		}, metav1.UpdateOptions{})
-		if err != nil {
-			return steps.RequeueWithError(fmt.Errorf("failed to update dogu status before upgrade: %w", err))
+		if updateErr != nil {
+			return steps.RequeueWithError(fmt.Errorf("failed to update dogu status before upgrade: %w", updateErr))
 		}
+		*resource = *updatedDoguResource
 	}
 
 	return steps.Continue()

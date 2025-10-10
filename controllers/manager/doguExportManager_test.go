@@ -37,7 +37,7 @@ func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 			status := modifyStatusFn(dogu.Status)
 			assert.Equal(t, false, status.ExportMode)
 			assert.Equal(t, doguv2.DoguStatusChangingExportMode, status.Status)
-		}).Return(nil, nil)
+		}).Return(doguResource, nil)
 
 		mockPodClient := newMockPodInterface(t)
 		mockPodClient.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=myDogu"}).Return(podList, nil)
@@ -148,7 +148,7 @@ func Test_doguExportManager_UpdateExportMode(t *testing.T) {
 		}}
 
 		mockDoguClient := newMockDoguInterface(t)
-		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil)
+		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Return(doguResource, nil)
 
 		mockPodClient := newMockPodInterface(t)
 		mockPodClient.EXPECT().List(testCtx, metav1.ListOptions{LabelSelector: "dogu.name=myDogu"}).Return(podList, nil)
@@ -276,7 +276,7 @@ func Test_doguExportManager_updateExportMode(t *testing.T) {
 		dogu := &core.Dogu{}
 
 		mockDoguClient := newMockDoguInterface(t)
-		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil)
+		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Return(doguResource, nil)
 
 		mockDoguFetcher := newMockLocalDoguFetcher(t)
 		mockDoguFetcher.EXPECT().FetchInstalled(testCtx, doguResource.GetSimpleDoguName()).Return(dogu, assert.AnError)
@@ -311,7 +311,7 @@ func Test_doguExportManager_updateExportMode(t *testing.T) {
 		dogu := &core.Dogu{}
 
 		mockDoguClient := newMockDoguInterface(t)
-		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil)
+		mockDoguClient.EXPECT().UpdateStatusWithRetry(testCtx, doguResource, mock.Anything, metav1.UpdateOptions{}).Return(doguResource, nil)
 
 		mockDoguFetcher := newMockLocalDoguFetcher(t)
 		mockDoguFetcher.EXPECT().FetchInstalled(testCtx, doguResource.GetSimpleDoguName()).Return(dogu, nil)
@@ -354,7 +354,7 @@ func Test_doguExportManager_updateStatusWithRetry(t *testing.T) {
 			status := modifyStatusFn(doguResource.Status)
 			assert.Equal(t, true, status.ExportMode)
 			assert.Equal(t, "testPhase", status.Status)
-		}).Return(nil, nil)
+		}).Return(doguResource, nil)
 
 		dem := &doguExportManager{
 			doguClient: mockDoguClient,

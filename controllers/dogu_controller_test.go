@@ -188,7 +188,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Return(nil, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Return(&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}, nil)
 					return mck
 				},
 				eventRecorderFn: func(t *testing.T) eventRecorder {
@@ -231,7 +231,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Return(nil, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Return(&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}, nil)
 					return mck
 				},
 				eventRecorderFn: func(t *testing.T) eventRecorder {
@@ -274,7 +274,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
-					mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Return(nil, nil)
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, mock.Anything, mock.Anything, v1.UpdateOptions{}).Return(&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}, nil)
 					return mck
 				},
 				eventRecorderFn: func(t *testing.T) eventRecorder {
