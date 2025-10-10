@@ -1,6 +1,8 @@
 package install
 
 import (
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"testing"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
@@ -12,28 +14,38 @@ import (
 
 func TestNewOwnerReferenceStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
-		step := NewOwnerReferenceStep(newMockOwnerReferenceSetter(t))
+		step := NewOwnerReferenceStep(newMockOwnerReferenceSetter(t), nil)
 
 		assert.NotNil(t, step)
 	})
 }
 
 func TestOwnerReferenceStep_Run(t *testing.T) {
+	scheme := runtime.NewScheme()
+
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v2",
+		Kind:    "Dogu",
+	}, &v2.Dogu{})
+
 	tests := []struct {
 		name                   string
 		ownerReferenceSetterFn func(t *testing.T) ownerReferenceSetter
+		scheme                 *runtime.Scheme
 		doguResource           *v2.Dogu
 		want                   steps.StepResult
 	}{
 		{
-			name: "should fail to set owner reference",
+			name:   "should fail to set owner reference",
+			scheme: scheme,
 			ownerReferenceSetterFn: func(t *testing.T) ownerReferenceSetter {
 				mck := newMockOwnerReferenceSetter(t)
 				mck.EXPECT().SetOwnerReference(testCtx, cescommons.SimpleName("test"), []metav1.OwnerReference{
 					{
 						Name:               "test",
 						Kind:               "Dogu",
-						APIVersion:         "v1",
+						APIVersion:         "k8s.cloudogu.com/v2",
 						UID:                "uid",
 						Controller:         &[]bool{true}[0],
 						BlockOwnerDeletion: &[]bool{true}[0],
@@ -54,14 +66,15 @@ func TestOwnerReferenceStep_Run(t *testing.T) {
 			want: steps.RequeueWithError(assert.AnError),
 		},
 		{
-			name: "should succeed to set owner reference",
+			name:   "should succeed to set owner reference",
+			scheme: scheme,
 			ownerReferenceSetterFn: func(t *testing.T) ownerReferenceSetter {
 				mck := newMockOwnerReferenceSetter(t)
 				mck.EXPECT().SetOwnerReference(testCtx, cescommons.SimpleName("test"), []metav1.OwnerReference{
 					{
 						Name:               "test",
 						Kind:               "Dogu",
-						APIVersion:         "v1",
+						APIVersion:         "k8s.cloudogu.com/v2",
 						UID:                "uid",
 						Controller:         &[]bool{true}[0],
 						BlockOwnerDeletion: &[]bool{true}[0],
@@ -86,6 +99,7 @@ func TestOwnerReferenceStep_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dcs := &OwnerReferenceStep{
 				ownerReferenceSetter: tt.ownerReferenceSetterFn(t),
+				doguScheme:           tt.scheme,
 			}
 			assert.Equalf(t, tt.want, dcs.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)
 		})

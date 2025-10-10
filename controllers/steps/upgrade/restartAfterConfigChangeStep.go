@@ -86,15 +86,14 @@ func (rds *RestartAfterConfigChangeStep) Run(ctx context.Context, doguResource *
 			ObservedGeneration: doguResource.Generation,
 		}
 
-		newDoguResource := &v2.Dogu{}
-		newDoguResource, err = rds.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus { //nolint:staticcheck
+		newDoguResource, updateErr := rds.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
 			meta.SetStatusCondition(&status.Conditions, healthyCondition)
 			meta.SetStatusCondition(&status.Conditions, readyCondition)
 			status.Health = v2.UnavailableHealthStatus
 			return status
 		}, v1.UpdateOptions{})
-		if err != nil {
-			return steps.RequeueWithError(err)
+		if updateErr != nil {
+			return steps.RequeueWithError(updateErr)
 		}
 		*doguResource = *newDoguResource
 	}
