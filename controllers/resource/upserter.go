@@ -216,8 +216,7 @@ func (u *upserter) upsertServiceAnnotationNetworkPolicy(ctx context.Context, dog
 	if _, ok := service.Annotations[annotation.CesServicesAnnotation]; !ok {
 		return nil
 	}
-	var dependencyNetworkPolicy *netv1.NetworkPolicy
-	dependencyNetworkPolicy = generateIngressNetPol(doguResource, dogu)
+	dependencyNetworkPolicy := generateIngressNetPol(doguResource, dogu)
 	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
 		return fmt.Errorf("failed to create or update network policy allow rule for ingress of dogu %s: %w", dogu.GetSimpleName(), err)
 	}

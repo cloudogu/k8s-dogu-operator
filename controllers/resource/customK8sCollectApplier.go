@@ -28,7 +28,7 @@ func (ca *collectApplier) CollectApply(ctx context.Context, customK8sResources m
 		return nil
 	}
 
-	targetNamespace := doguResource.ObjectMeta.Namespace
+	targetNamespace := doguResource.Namespace
 
 	namespaceTemplate := struct {
 		Namespace string

@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/mock"
 
@@ -34,9 +33,6 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}}},
 	}
 	command := NewShellCommand("ls", "-l")
-	originalMaxTries := maxTries
-	defer func() { maxTries = originalMaxTries }()
-	maxTries = 1
 
 	fakeNewSPDYExecutor, fakeErrorInitNewSPDYExecutor, fakeErrorStreamNewSPDYExecutor := createFakeExecutors(t)
 
@@ -70,10 +66,6 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 	t.Run("found no dogu resource", func(t *testing.T) {
 		// given
-		oldWaitLimit := waitLimit
-		waitLimit = time.Second * 3
-		defer func() { waitLimit = oldWaitLimit }()
-
 		cli := fake2.NewClientBuilder().WithScheme(getTestScheme()).WithObjects().Build()
 		client := testclient.NewSimpleClientset()
 		sut := NewCommandExecutor(cli, &rest.Config{}, client, &fake.RESTClient{})
@@ -89,10 +81,6 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 
 	t.Run("found no dogu pod", func(t *testing.T) {
 		// given
-		oldWaitLimit := waitLimit
-		waitLimit = time.Second * 3
-		defer func() { waitLimit = oldWaitLimit }()
-
 		cli := fake2.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(doguResource).Build()
 		client := testclient.NewSimpleClientset()
 		sut := NewCommandExecutor(cli, &rest.Config{}, client, &fake.RESTClient{})
@@ -146,9 +134,6 @@ func TestCommandExecutor_ExecCommandForDogu(t *testing.T) {
 func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 	ctx := context.TODO()
 	doguResource := readLdapDoguResource(t)
-	originalMaxTries := maxTries
-	defer func() { maxTries = originalMaxTries }()
-	maxTries = 1
 
 	readyPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "ldap-xyz", Labels: doguResource.GetPodLabels()},

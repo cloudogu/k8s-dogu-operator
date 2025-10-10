@@ -11,7 +11,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -67,10 +66,6 @@ type doguRestartInterface interface {
 //goland:noinspection GoUnusedType
 type eventRecorder interface {
 	record.EventRecorder
-}
-
-type clientSet interface {
-	kubernetes.Interface
 }
 
 //nolint:unused

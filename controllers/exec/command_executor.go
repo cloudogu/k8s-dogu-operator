@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/url"
 	"strings"
-	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,13 +68,6 @@ func (e *stateError) Error() string {
 func (e *stateError) Requeue() bool {
 	return true
 }
-
-// maxTries controls the maximum number of waiting intervals between tries when getting an error that is recoverable
-// during command execution.
-var (
-	maxTries  = 20
-	waitLimit = time.Minute * 30
-)
 
 // commandExecutor is the unit to execute commands in a dogu
 type defaultCommandExecutor struct {
