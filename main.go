@@ -255,11 +255,19 @@ func options() []fx.Option {
 		// the empty invoke functions tell fx to instantiate these structs even if nothing depends on them.
 		// reconcilers and runners are the last in the dependency chain so we have to invoke them here.
 		fx.Invoke(
-			func(*controllers.DoguReconciler) {},
-			func(*controllers.DoguRestartReconciler) {},
-			func(*controllers.GlobalConfigReconciler) {},
+			func(*controllers.DoguReconciler) {
+				// creates a fx dependency on the DoguReconciler
+			},
+			func(*controllers.DoguRestartReconciler) {
+				// creates a fx dependency on the DoguRestartReconciler
+			},
+			func(*controllers.GlobalConfigReconciler) {
+				// creates a fx dependency on the GlobalConfigReconciler
+			},
 
-			func(*health.StartupHandler) {},
+			func(*health.StartupHandler) {
+				// creates a fx dependency on the StartupHandler
+			},
 		),
 	}
 }
