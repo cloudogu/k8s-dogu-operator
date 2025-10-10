@@ -66,7 +66,7 @@ func NewDoguReconciler(
 	requeueHandler RequeueHandler,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	recorder record.EventRecorder,
-	manager manager.Manager,
+	manager manager.Manager, //NOSONAR ignore additional function param
 ) (*DoguReconciler, error) {
 	r := &DoguReconciler{
 		client:            k8sClient,

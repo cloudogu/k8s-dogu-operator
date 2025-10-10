@@ -32,6 +32,7 @@ func NewDoguDeleteUseCase(
 		}}
 }
 
+//nolint:funlen
 func NewDoguInstallOrChangeUseCase(
 	conditionsStep *install.ConditionsStep,
 	healthCheckStep *install.HealthCheckStep,

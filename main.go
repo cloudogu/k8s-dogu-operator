@@ -55,6 +55,7 @@ func main() {
 	fx.New(options()...).Run()
 }
 
+//nolint:funlen
 func options() []fx.Option {
 	return []fx.Option{
 		fx.Provide(
