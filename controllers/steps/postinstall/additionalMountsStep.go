@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
+// The AdditionalMountsStep updates the additional mounts if they have changed.
 type AdditionalMountsStep struct {
 	additionalMountManager
 }

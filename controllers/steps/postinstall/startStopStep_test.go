@@ -3,9 +3,10 @@ package postinstall
 import (
 	context "context"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
@@ -25,7 +26,7 @@ func TestNewReplicasStep(t *testing.T) {
 		fetcher := newMockLocalDoguFetcher(t)
 		doguInterfaceMock := newMockDoguInterface(t)
 
-		step := NewReplicasStep(
+		step := NewStartStopStep(
 			newMockK8sClient(t),
 			deploymentInterfaceMock,
 			fetcher,
@@ -354,7 +355,7 @@ func TestReplicasStep_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rs := &ReplicasStep{
+			rs := &StartStopStep{
 				deploymentInterface: tt.fields.deploymentInterfaceFn(t),
 				client:              tt.fields.clientFn(t),
 				localDoguFetcher:    tt.fields.localDoguFetcherFn(t),

@@ -21,6 +21,7 @@ const (
 	ReasonSupportModeInactive = "SupportModeInactive"
 )
 
+// The SupportModeStep sets the dogu into support mode.
 type SupportModeStep struct {
 	supportManager      supportManager
 	doguInterface       doguInterface

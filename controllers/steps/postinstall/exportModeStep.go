@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 
+// The ExportModeStep handles the export mode of the dogu.
 type ExportModeStep struct {
 	exportManager exportManager
 }

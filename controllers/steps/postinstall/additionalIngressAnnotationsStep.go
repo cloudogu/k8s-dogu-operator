@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// The AdditionalIngressAnnotationsStep create or updates the annotations if they changed.
 type AdditionalIngressAnnotationsStep struct {
 	client    k8sClient
 	annotator ingressAnnotator

@@ -159,7 +159,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			&install.NetworkPoliciesStep{},
 			&install.CreateDeploymentStep{},
 
-			&postinstall.ReplicasStep{},
+			&postinstall.StartStopStep{},
 			&postinstall.VolumeExpanderStep{},
 			&postinstall.AdditionalIngressAnnotationsStep{},
 			&postinstall.SecurityContextStep{},
@@ -199,7 +199,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*install.NetworkPoliciesStep",
 			"*install.CreateDeploymentStep",
 
-			"*postinstall.ReplicasStep",
+			"*postinstall.StartStopStep",
 			"*postinstall.VolumeExpanderStep",
 			"*postinstall.AdditionalIngressAnnotationsStep",
 			"*postinstall.SecurityContextStep",

@@ -22,6 +22,8 @@ import (
 const requeueAfterVolume = 10 * time.Second
 const ActualVolumeSizeMeetsMinDataSize = "ActualVolumeSizeMeetsMinDataSize"
 
+// The VolumeExpanderStep checks if the pvc of the dogu has the configured size.
+// If not the pvc will be resized and the dogu will be restarted.
 type VolumeExpanderStep struct {
 	client           k8sClient
 	doguInterface    doguInterface

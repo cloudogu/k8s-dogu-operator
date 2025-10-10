@@ -18,15 +18,17 @@ import (
 
 const requeueAfterReplicasStep = 5 * time.Second
 
-type ReplicasStep struct {
+// The StartStopStep checks the stopped flag of the dogu or if a pvc resize is in progress.
+// Based on this information the dogu will be started or stopped.
+type StartStopStep struct {
 	deploymentInterface deploymentInterface
 	client              k8sClient
 	localDoguFetcher    localDoguFetcher
 	doguInterface       doguInterface
 }
 
-func NewReplicasStep(client client.Client, deploymentInterface v1.DeploymentInterface, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *ReplicasStep {
-	return &ReplicasStep{
+func NewStartStopStep(client client.Client, deploymentInterface v1.DeploymentInterface, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *StartStopStep {
+	return &StartStopStep{
 		client:              client,
 		deploymentInterface: deploymentInterface,
 		localDoguFetcher:    fetcher,
@@ -34,7 +36,7 @@ func NewReplicasStep(client client.Client, deploymentInterface v1.DeploymentInte
 	}
 }
 
-func (rs *ReplicasStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+func (rs *StartStopStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	scale, err := rs.deploymentInterface.GetScale(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
@@ -74,14 +76,14 @@ func (rs *ReplicasStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.St
 	return steps.RequeueAfter(requeueAfterReplicasStep)
 }
 
-func (rs *ReplicasStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
+func (rs *StartStopStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
 	// Longhorn works this way and does not add the Condition "FileSystemResizePending" to the PVC
 	// see https://github.com/longhorn/longhorn/issues/2749
 	isRequestedCapacityAvailable := pvc.Spec.Resources.Requests.Storage().Value() >= quantity.Value()
 	return isRequestedCapacityAvailable
 }
 
-func (rs *ReplicasStep) shouldBeStopped(ctx context.Context, doguResource *v2.Dogu) (bool, error) {
+func (rs *StartStopStep) shouldBeStopped(ctx context.Context, doguResource *v2.Dogu) (bool, error) {
 	if doguResource.Spec.Stopped {
 		return true, nil
 	}

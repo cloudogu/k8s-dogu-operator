@@ -54,7 +54,7 @@ func NewDoguInstallOrChangeUseCase(
 	networkPoliciesStep *install.NetworkPoliciesStep,
 	deploymentStep *install.CreateDeploymentStep,
 
-	replicasStep *postinstall.ReplicasStep,
+	replicasStep *postinstall.StartStopStep,
 	volumeExpanderStep *postinstall.VolumeExpanderStep,
 	additionalIngressAnnotationsStep *postinstall.AdditionalIngressAnnotationsStep,
 	securityContextStep *postinstall.SecurityContextStep,

@@ -206,7 +206,7 @@ func options() []fx.Option {
 			install.NewCreateVolumeStep,
 			install.NewNetworkPoliciesStep,
 			install.NewCreateDeploymentStep,
-			postinstall.NewReplicasStep,
+			postinstall.NewStartStopStep,
 			postinstall.NewVolumeExpanderStep,
 			postinstall.NewAdditionalIngressAnnotationsStep,
 			postinstall.NewSecurityContextStep,
