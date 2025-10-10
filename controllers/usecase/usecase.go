@@ -32,8 +32,6 @@ func NewDoguDeleteUseCase(
 		}}
 }
 
-// NOSONAR ignore additional function param
-//
 //nolint:funlen
 func NewDoguInstallOrChangeUseCase(
 	conditionsStep *install.ConditionsStep,

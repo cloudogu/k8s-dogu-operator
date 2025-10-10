@@ -91,7 +91,7 @@ func (hcs *HealthCheckStep) updateDoguHealth(ctx context.Context, doguDeployment
 		ObservedGeneration: doguResource.Generation,
 	}
 
-	doguResource, err = hcs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus { //nolint:unused
+	doguResource, err = hcs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus { //nolint:staticcheck
 		status.Health = desiredHealthStatus
 		meta.SetStatusCondition(&status.Conditions, condition)
 		return status

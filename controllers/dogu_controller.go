@@ -73,7 +73,6 @@ func NewDoguEventsOut(channel chan event.TypedGenericEvent[*doguv2.Dogu]) <-chan
 }
 
 // NewDoguReconciler creates the component necessary for applying the desired state of the dogu.
-// NOSONAR ignore additional function param
 func NewDoguReconciler(
 	k8sClient client.Client,
 	doguChangeHandler DoguInstallOrChangeUseCase,
