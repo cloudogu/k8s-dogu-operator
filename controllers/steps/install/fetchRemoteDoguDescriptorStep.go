@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"fmt"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -42,7 +43,7 @@ func (f *FetchRemoteDoguDescriptorStep) Run(ctx context.Context, resource *v2.Do
 
 	doguDescriptor, developmentDoguMap, err := f.resourceDoguFetcher.FetchWithResource(ctx, resource)
 	if err != nil {
-		return steps.RequeueWithError(err)
+		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
 
 	err = f.localDoguDescriptorRepo.Add(ctx, resource.GetSimpleDoguName(), doguDescriptor)
