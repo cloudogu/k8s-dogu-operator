@@ -30,14 +30,16 @@ func TestNewUpserter(t *testing.T) {
 	// given
 	mockClient := newMockK8sClient(t)
 	mockResourceGenerator := NewMockDoguResourceGenerator(t)
+	testScheme := getTestScheme()
 
 	// when
-	resourceUpserter := NewUpserter(mockClient, mockResourceGenerator, &opConfig.OperatorConfig{NetworkPoliciesEnabled: true})
+	resourceUpserter := NewUpserter(mockClient, testScheme, mockResourceGenerator, &opConfig.OperatorConfig{NetworkPoliciesEnabled: true})
 
 	// then
 	require.NotNil(t, resourceUpserter)
 	assert.Equal(t, mockClient, resourceUpserter.(*upserter).client)
 	assert.Equal(t, resourceUpserter.(*upserter).networkPoliciesEnabled, true)
+	assert.Equal(t, testScheme, resourceUpserter.(*upserter).scheme)
 	require.NotNil(t, resourceUpserter.(*upserter).generator)
 }
 
@@ -606,13 +608,14 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				client:                 mockClient,
 				generator:              generator,
 				networkPoliciesEnabled: test.networkPoliciesEnabled,
+				scheme:                 getTestScheme(),
 			}
 
 			err := ups.UpsertDoguNetworkPolicies(context.Background(), doguResource, dogu, &service)
 			if !test.expectError {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 			}
 
 			for _, expectedPolicy := range test.expectedNetworkPolicies {

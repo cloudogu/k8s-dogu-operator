@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -40,14 +41,16 @@ var (
 
 type upserter struct {
 	client                 k8sClient
+	scheme                 *runtime.Scheme
 	generator              DoguResourceGenerator
 	networkPoliciesEnabled bool
 }
 
 // NewUpserter creates a new upserter that generates dogu resources and applies them to the cluster.
-func NewUpserter(client client.Client, generator DoguResourceGenerator, config *opConfig.OperatorConfig) ResourceUpserter {
+func NewUpserter(client client.Client, scheme *runtime.Scheme, generator DoguResourceGenerator, config *opConfig.OperatorConfig) ResourceUpserter {
 	return &upserter{
 		client:                 client,
+		scheme:                 scheme,
 		generator:              generator,
 		networkPoliciesEnabled: config.NetworkPoliciesEnabled,
 	}
@@ -135,15 +138,18 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	}
 
 	var multiErr error
-	denyAllPolicy := generateDenyAllPolicy(doguResource, dogu)
+	denyAllPolicy, err := generateDenyAllPolicy(doguResource, dogu, u.scheme)
+	if err != nil {
+		return fmt.Errorf("failed to generate deny all policy: %w", err)
+	}
 
-	if err := u.upsertNetworkPolicy(ctx, denyAllPolicy); err != nil {
+	if err = u.upsertNetworkPolicy(ctx, denyAllPolicy); err != nil {
 		multiErr = errors.Join(multiErr, fmt.Errorf("failed to create or update deny all rule for dogu %s: %w", dogu.GetSimpleName(), err))
 	}
 
 	var allDependencies = append(dogu.Dependencies, dogu.OptionalDependencies...)
 
-	err := u.upsertNetworkPoliciesForDependencies(ctx, doguResource, dogu, allDependencies)
+	err = u.upsertNetworkPoliciesForDependencies(ctx, doguResource, dogu, allDependencies)
 	if err != nil {
 		multiErr = errors.Join(multiErr, err)
 	}
@@ -216,7 +222,11 @@ func (u *upserter) upsertServiceAnnotationNetworkPolicy(ctx context.Context, dog
 	if _, ok := service.Annotations[annotation.CesServicesAnnotation]; !ok {
 		return nil
 	}
-	dependencyNetworkPolicy := generateIngressNetPol(doguResource, dogu)
+	dependencyNetworkPolicy, err := generateIngressNetPol(doguResource, dogu, u.scheme)
+	if err != nil {
+		return fmt.Errorf("failed to generate ingress netpol for dogu %s: %w", dogu.GetSimpleName(), err)
+	}
+
 	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
 		return fmt.Errorf("failed to create or update network policy allow rule for ingress of dogu %s: %w", dogu.GetSimpleName(), err)
 	}
@@ -224,7 +234,10 @@ func (u *upserter) upsertServiceAnnotationNetworkPolicy(ctx context.Context, dog
 }
 
 func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
-	dependencyNetworkPolicy := generateDoguDepNetPol(doguResource, dogu, dependencyName)
+	dependencyNetworkPolicy, err := generateDoguDepNetPol(doguResource, dogu, dependencyName, u.scheme)
+	if err != nil {
+		return fmt.Errorf("failed to generate dogu dependency netpol for dogu %s and dependency %s: %w", dogu.GetSimpleName(), dependencyName, err)
+	}
 
 	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
 		return fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err)
@@ -234,7 +247,10 @@ func (u *upserter) upsertDoguDependencyNetworkPolicy(ctx context.Context, depend
 }
 
 func (u *upserter) upsertComponentDependencyNetworkPolicy(ctx context.Context, dependencyName string, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
-	dependencyNetworkPolicy := generateComponentDepNetPol(doguResource, dogu, dependencyName)
+	dependencyNetworkPolicy, err := generateComponentDepNetPol(doguResource, dogu, dependencyName, u.scheme)
+	if err != nil {
+		return fmt.Errorf("failed to generate component dependency netpol for dogu %s and dependency %s: %w", dogu.GetSimpleName(), dependencyName, err)
+	}
 
 	if err := u.upsertNetworkPolicy(ctx, dependencyNetworkPolicy); err != nil {
 		return fmt.Errorf("failed to create or update network policy allow rule for dependency %s of dogu %s: %w", dependencyName, dogu.GetSimpleName(), err)

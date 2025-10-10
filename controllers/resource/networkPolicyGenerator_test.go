@@ -1,12 +1,14 @@
 package resource
 
 import (
+	"testing"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func Test_getNetPolObjectKey(t *testing.T) {
@@ -30,7 +32,7 @@ func Test_generateNetPolWithOwner(t *testing.T) {
 		doguResource := &k8sv2.Dogu{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Dogu",
-				APIVersion: "v1",
+				APIVersion: "k8s.cloudogu.com/v2",
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "MyDogu",
@@ -47,7 +49,9 @@ func Test_generateNetPolWithOwner(t *testing.T) {
 			},
 		}
 
-		result := generateNetPolWithOwner("testNetPol", doguResource, spec)
+		result, err := generateNetPolWithOwner("testNetPol", doguResource, spec, getTestScheme())
+
+		require.NoError(t, err)
 
 		assert.Equal(t, "testNetPol", result.Name)
 		assert.Equal(t, doguResource.Namespace, result.Namespace)
@@ -77,7 +81,9 @@ func Test_generateIngressNetPol(t *testing.T) {
 		}
 		dogu := &core.Dogu{Name: "official/redmine"}
 
-		result := generateIngressNetPol(doguResource, dogu)
+		result, err := generateIngressNetPol(doguResource, dogu, getTestScheme())
+
+		require.NoError(t, err)
 		assert.Equal(t, "redmine-ingress", result.Name)
 		assert.Equal(t, "redmine", result.Spec.PodSelector.MatchLabels["dogu.name"])
 		assert.Len(t, result.Spec.PolicyTypes, 1)
@@ -104,7 +110,9 @@ func Test_generateDoguDepNetPol(t *testing.T) {
 		}
 		dogu := &core.Dogu{Name: "official/redmine"}
 
-		result := generateDoguDepNetPol(doguResource, dogu, "cas")
+		result, err := generateDoguDepNetPol(doguResource, dogu, "cas", getTestScheme())
+
+		require.NoError(t, err)
 		assert.Equal(t, "redmine-dependency-dogu-cas", result.Name)
 		assert.Equal(t, "cas", result.Spec.PodSelector.MatchLabels["dogu.name"])
 		assert.Len(t, result.Spec.PolicyTypes, 1)
@@ -131,7 +139,9 @@ func Test_generateComponentDepNetPol(t *testing.T) {
 		}
 		dogu := &core.Dogu{Name: "official/admin"}
 
-		result := generateComponentDepNetPol(doguResource, dogu, "k8s-ces-control")
+		result, err := generateComponentDepNetPol(doguResource, dogu, "k8s-ces-control", getTestScheme())
+
+		require.NoError(t, err)
 		assert.Equal(t, "admin-dependency-component-k8s-ces-control", result.Name)
 		assert.Equal(t, "k8s-ces-control", result.Spec.PodSelector.MatchLabels[componentNameLabel])
 		assert.Len(t, result.Spec.PolicyTypes, 1)
@@ -158,7 +168,9 @@ func Test_generateDenyAllPolicy(t *testing.T) {
 		}
 		dogu := &core.Dogu{Name: "official/redmine"}
 
-		result := generateDenyAllPolicy(doguResource, dogu)
+		result, err := generateDenyAllPolicy(doguResource, dogu, getTestScheme())
+
+		require.NoError(t, err)
 		assert.Equal(t, "redmine-deny-all", result.Name)
 		assert.Equal(t, "redmine", result.Spec.PodSelector.MatchLabels["dogu.name"])
 		assert.Len(t, result.Spec.PolicyTypes, 1)
