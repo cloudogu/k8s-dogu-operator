@@ -18,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -78,10 +77,6 @@ type doguConfigRepository interface {
 
 type doguRestartManager interface {
 	RestartDogu(ctx context.Context, dogu *v2.Dogu) error
-}
-
-type configMapInterface interface {
-	v1.ConfigMapInterface
 }
 
 type globalConfigRepository interface {

@@ -310,7 +310,7 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 			},
 			doguResource: &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
-			want:         steps.RequeueAfter(requeueAfterUpdateDeployment),
+			want:         steps.RequeueWithError(assert.AnError),
 		},
 		{
 			name: "should fail to get pod",

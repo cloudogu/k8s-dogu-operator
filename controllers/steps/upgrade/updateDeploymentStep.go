@@ -99,6 +99,9 @@ func (uds *UpdateDeploymentStep) Run(ctx context.Context, doguResource *v2.Dogu)
 			increaseStartupProbeTimeoutForUpdate(doguResource.Name, deployment)
 		},
 	)
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
 
 	return steps.RequeueAfter(requeueAfterUpdateDeployment)
 }

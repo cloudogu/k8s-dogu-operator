@@ -49,15 +49,12 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 	if err != nil && !errors.IsNotFoundError(err) {
 		return steps.RequeueWithError(err)
 	}
-	if fromDogu != nil {
-		older, err := isOlder(doguResource.Spec.Version, fromDogu.Version)
-		if err != nil {
-			return steps.RequeueWithError(err)
-		}
-		if older && !doguResource.Spec.UpgradeConfig.ForceUpgrade {
-			vs.recorder.Eventf(doguResource, v1.EventTypeWarning, InstallEventReason, "Downgrade is not allowed. Please install another version of dogu %s", doguResource.Name)
-			return steps.Abort()
-		}
+	unallowedDowngrade, err := vs.shouldAbortBecauseOfUnallowedDowngrade(fromDogu, doguResource)
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+	if unallowedDowngrade {
+		return steps.Abort()
 	}
 
 	toDogu, err := vs.localDoguFetcher.FetchForResource(ctx, doguResource)
@@ -120,4 +117,18 @@ func (vs *ValidationStep) checkDoguIdentity(localDogu *core.Dogu, remoteDogu *co
 	}
 
 	return nil
+}
+
+func (vs *ValidationStep) shouldAbortBecauseOfUnallowedDowngrade(fromDogu *core.Dogu, doguResource *v2.Dogu) (bool, error) {
+	if fromDogu != nil {
+		older, err := isOlder(doguResource.Spec.Version, fromDogu.Version)
+		if err != nil {
+			return false, err
+		}
+		if older && !doguResource.Spec.UpgradeConfig.ForceUpgrade {
+			vs.recorder.Eventf(doguResource, v1.EventTypeWarning, InstallEventReason, "Downgrade is not allowed. Please install another version of dogu %s", doguResource.Name)
+			return true, nil
+		}
+	}
+	return false, nil
 }

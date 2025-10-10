@@ -143,17 +143,9 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 
 	var allDependencies = append(dogu.Dependencies, dogu.OptionalDependencies...)
 
-	for _, dependency := range allDependencies {
-		if dependency.Type == dependencyTypeDogu {
-			if err := u.upsertDoguDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
-				multiErr = errors.Join(multiErr, err)
-			}
-		}
-		if dependency.Type == dependencyTypeComponent {
-			if err := u.upsertComponentDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
-				multiErr = errors.Join(multiErr, err)
-			}
-		}
+	err := u.upsertNetworkPoliciesForDependencies(ctx, doguResource, dogu, allDependencies)
+	if err != nil {
+		multiErr = errors.Join(multiErr, err)
 	}
 
 	if err := u.upsertServiceAnnotationNetworkPolicy(ctx, doguResource, dogu, service); err != nil {
@@ -171,6 +163,23 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	}
 
 	return nil
+}
+
+func (u *upserter) upsertNetworkPoliciesForDependencies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, allDependencies []core.Dependency) error {
+	var multiErr error
+	for _, dependency := range allDependencies {
+		if dependency.Type == dependencyTypeDogu {
+			if err := u.upsertDoguDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
+				multiErr = errors.Join(multiErr, err)
+			}
+		}
+		if dependency.Type == dependencyTypeComponent {
+			if err := u.upsertComponentDependencyNetworkPolicy(ctx, dependency.Name, doguResource, dogu); err != nil {
+				multiErr = errors.Join(multiErr, err)
+			}
+		}
+	}
+	return multiErr
 }
 
 func (u *upserter) deleteNonExistentDependencyPolicies(ctx context.Context, dogu *core.Dogu, allDependencies []core.Dependency) error {

@@ -13,7 +13,6 @@ import (
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
@@ -74,10 +73,6 @@ type requirementsGenerator interface {
 
 type doguAdditionalMountsValidator interface {
 	ValidateAdditionalMounts(ctx context.Context, doguDescriptor *cesappcore.Dogu, doguResource *v2.Dogu) error
-}
-
-type k8sClient interface {
-	client.Client
 }
 
 type DeploymentManager interface {

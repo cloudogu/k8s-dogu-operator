@@ -36,7 +36,7 @@ spec:
                   key: network_policies_enabled
                   name: {{ include "k8s-dogu-operator.name" . }}-manager-config
             - name: STAGE
-              value: {{ quote .Values.controllerManager.env.stage | default "production"}}
+              value: {{ quote .Values.controllerManager.env.stage | default "production" }}
             - name: LOG_LEVEL
               value: {{ quote .Values.controllerManager.env.logLevel | default "info" }}
             - name: NAMESPACE
@@ -75,11 +75,11 @@ spec:
             - name: DOGU_RESTART_GARBAGE_COLLECTION_DISABLED
               value: {{ quote .Values.controllerManager.env.doguRestartGarbageCollectionDisabled | default false }}
             - name: DOGU_DESCRIPTOR_MAX_RETRIES
-              value: {{ quote .Values.controllerManager.env.doguDescriptorMaxRetries | default "20"}}
+              value: {{ quote .Values.controllerManager.env.doguDescriptorMaxRetries | default "20" }}
             - name: GET_SERVICE_ACCOUNT_POD_MAX_RETRIES
-              value: {{ quote .Values.controllerManager.env.getServiceAccountPodMaxRetries | default "5"}}
+              value: {{ quote .Values.controllerManager.env.getServiceAccountPodMaxRetries | default "5" }}
             - name: REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS
-              value: {{ quote .Values.controllerManager.env.requeueTimeForDoguResourceInNanoseconds | default "5000000000"}}
+              value: {{ quote .Values.controllerManager.env.requeueTimeForDoguResourceInNanoseconds | default "5000000000" }}
             - name: PROXY_URL
               valueFrom:
                 secretKeyRef:
@@ -87,7 +87,7 @@ spec:
                   key: url
                   optional: true
           image: "{{ .Values.controllerManager.image.registry }}/{{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}"
-          imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent"}}
+          imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent" }}
           livenessProbe:
             httpGet:
               path: /healthz

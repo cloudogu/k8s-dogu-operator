@@ -38,6 +38,8 @@ type k8sManager interface {
 	manager.Manager
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
 type fxLifecycle interface {
 	fx.Lifecycle
 }
