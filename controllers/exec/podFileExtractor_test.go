@@ -8,8 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	fake2 "k8s.io/client-go/kubernetes/fake"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var testLsShellCommand = NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")
@@ -19,45 +17,35 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 	ldapCr := readLdapDoguResource(t)
 	// simulate dogu in a non-default namespace
 	ldapCr.Namespace = testNamespace
+	ldapDescriptor := readLdapDogu(t)
 
 	t.Run("should fail with command error on exec pod", func(t *testing.T) {
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			Build()
-		clientset := fake2.NewSimpleClientset()
-
-		execPod := NewMockExecPod(t)
-		execPod.On("Exec", testCtx, testLsShellCommand).Return(bytes.NewBufferString("uh oh"), assert.AnError)
+		execPod := NewMockExecPodFactory(t)
+		execPod.EXPECT().Exec(testCtx, ldapCr, ldapDescriptor, testLsShellCommand).Return(bytes.NewBufferString("uh oh"), assert.AnError)
 
 		sut := &podFileExtractor{
-			k8sClient: fakeClient,
-			clientSet: clientset,
+			factory: execPod,
 		}
 
 		// when
-		actual, err := sut.ExtractK8sResourcesFromContainer(testContext, execPod)
+		actual, err := sut.ExtractK8sResourcesFromExecPod(testContext, ldapCr, ldapDescriptor)
 
 		// then
 		require.Error(t, err)
 		assert.Nil(t, actual)
 	})
 	t.Run("should run successfully with file output", func(t *testing.T) {
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			Build()
-		clientset := fake2.NewSimpleClientset()
-		execPod := NewMockExecPod(t)
-		execPod.On("Exec", testCtx, testLsShellCommand).Once().Return(bytes.NewBufferString("test-k8s-resources.yaml"), nil)
+		execPod := NewMockExecPodFactory(t)
+		execPod.EXPECT().Exec(testCtx, ldapCr, ldapDescriptor, testLsShellCommand).Once().Return(bytes.NewBufferString("test-k8s-resources.yaml"), nil)
 		expectedCatCommand := &shellCommand{command: "/bin/cat", args: []string{"/k8s/test-k8s-resources.yaml"}}
-		execPod.On("Exec", testCtx, expectedCatCommand).Once().Return(bytes.NewBufferString("resource { content : goes-here }"), nil)
+		execPod.EXPECT().Exec(testCtx, ldapCr, ldapDescriptor, expectedCatCommand).Once().Return(bytes.NewBufferString("resource { content : goes-here }"), nil)
 
 		sut := &podFileExtractor{
-			k8sClient: fakeClient,
-			clientSet: clientset,
+			factory: execPod,
 		}
 
 		// when
-		actual, err := sut.ExtractK8sResourcesFromContainer(testContext, execPod)
+		actual, err := sut.ExtractK8sResourcesFromExecPod(testContext, ldapCr, ldapDescriptor)
 
 		// then
 		require.NoError(t, err)
@@ -66,20 +54,15 @@ func Test_podFileExtractor_ExtractK8sResourcesFromContainer(t *testing.T) {
 		assert.Equal(t, expectedFileMap, actual)
 	})
 	t.Run("should run successfully without file output", func(t *testing.T) {
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(getTestScheme()).
-			Build()
-		clientset := fake2.NewSimpleClientset()
-		execPod := NewMockExecPod(t)
-		execPod.On("Exec", testCtx, testLsShellCommand).Return(bytes.NewBufferString("No such file or directory"), nil)
+		execPod := NewMockExecPodFactory(t)
+		execPod.EXPECT().Exec(testCtx, ldapCr, ldapDescriptor, testLsShellCommand).Return(bytes.NewBufferString("No such file or directory"), nil)
 
 		sut := &podFileExtractor{
-			k8sClient: fakeClient,
-			clientSet: clientset,
+			factory: execPod,
 		}
 
 		// when
-		actual, err := sut.ExtractK8sResourcesFromContainer(testContext, execPod)
+		actual, err := sut.ExtractK8sResourcesFromExecPod(testContext, ldapCr, ldapDescriptor)
 
 		// then
 		require.NoError(t, err)

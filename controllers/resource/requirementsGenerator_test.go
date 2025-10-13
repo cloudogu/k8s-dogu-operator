@@ -2,15 +2,17 @@ package resource
 
 import (
 	"context"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-registry-lib/config"
+
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"testing"
 )
 
 func Test_convertCesUnitToQuantity(t *testing.T) {
@@ -171,7 +173,7 @@ func Test_requirementsGenerator_Generate(t *testing.T) {
 			"container_config/cpu_core_limit": "",
 		})
 
-		doguConfigRepoMock := newMockDoguConfigGetter(t)
+		doguConfigRepoMock := NewMockDoguConfigRepository(t)
 		doguConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguConfig, nil)
 
 		generator := NewRequirementsGenerator(doguConfigRepoMock)
@@ -197,7 +199,7 @@ func Test_requirementsGenerator_Generate(t *testing.T) {
 			"container_config/storage_request":  "1g",
 		})
 
-		doguConfigRepoMock := newMockDoguConfigGetter(t)
+		doguConfigRepoMock := NewMockDoguConfigRepository(t)
 		doguConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguConfig, nil)
 
 		generator := NewRequirementsGenerator(doguConfigRepoMock)

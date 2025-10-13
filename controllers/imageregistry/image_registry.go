@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+
 	"github.com/cloudogu/retry-lib/retry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"net/http"
-	"net/url"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 type craneContainerImageRegistry struct{}
 
 // NewCraneContainerImageRegistry creates a new instance of craneContainerImageRegistry
-func NewCraneContainerImageRegistry() *craneContainerImageRegistry {
+func NewCraneContainerImageRegistry() ImageRegistry {
 	return &craneContainerImageRegistry{}
 }
 

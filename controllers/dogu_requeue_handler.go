@@ -2,169 +2,107 @@ package controllers
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"reflect"
 	"time"
+
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// requeuableError indicates that the current error requires the operator to requeue the dogu.
-type requeuableError interface {
-	// Requeue returns true when the error should produce a requeue for the current dogu resource operation.
-	Requeue() bool
-}
-
-// requeuableError indicates that the current error requires the operator to requeue the dogu.
-type requeuableErrorWithTime interface {
-	requeuableError
-	// GetRequeueTime return the time to wait before the next reconciliation. The constant ExponentialRequeueTime indicates
-	// that the requeue time increased exponentially.
-	GetRequeueTime() time.Duration
-}
-
-// requeuableErrorWithState indicates that the current error requires the operator to requeue the dogu and set the state
-// in dogu status.
-type requeuableErrorWithState interface {
-	requeuableErrorWithTime
-	// GetState returns the current state of the reconciled resource.
-	// In most cases it can be empty if no async state mechanism is used.
-	GetState() string
-}
+const (
+	ReasonReconcileStarted = "ReconcileStarted"
+	ReasonReconcileOK      = "ReconcileSucceeded"
+)
 
 // doguRequeueHandler is responsible to requeue a dogu resource after it failed.
 type doguRequeueHandler struct {
-	// nonCacheClient is required to list all events while filtering them by their fields.
-	nonCacheClient kubernetes.Interface
-	namespace      string
-	recorder       record.EventRecorder
-	doguInterface  doguClient.DoguInterface
+	namespace     string
+	recorder      record.EventRecorder
+	doguInterface doguClient.DoguInterface
+	requeueTime   time.Duration
 }
 
 // NewDoguRequeueHandler creates a new dogu requeue handler.
-func NewDoguRequeueHandler(doguInterface doguClient.DoguInterface, recorder record.EventRecorder, namespace string) (*doguRequeueHandler, error) {
-	clusterConfig, err := ctrl.GetConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load cluster configuration: %w", err)
-	}
-
-	clientSet, err := kubernetes.NewForConfig(clusterConfig)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create kubernetes client: %w", err)
-	}
-
+func NewDoguRequeueHandler(doguInterface doguClient.DoguInterface, recorder record.EventRecorder, operatorConfig *config.OperatorConfig) *doguRequeueHandler {
 	return &doguRequeueHandler{
-		doguInterface:  doguInterface,
-		nonCacheClient: clientSet,
-		namespace:      namespace,
-		recorder:       recorder,
-	}, nil
+		doguInterface: doguInterface,
+		namespace:     operatorConfig.Namespace,
+		recorder:      recorder,
+		requeueTime:   operatorConfig.RequeueTimeForDoguReconciler,
+	}
 }
 
-// Handle takes an error and handles the requeue process for the current dogu operation.
-func (d *doguRequeueHandler) Handle(ctx context.Context, contextMessage string, doguResource *doguv2.Dogu, originalErr error, onRequeue func(dogu *doguv2.Dogu) error) (ctrl.Result, error) {
-	if !shouldRequeue(originalErr) {
-		return ctrl.Result{}, nil
-	}
-
-	requeueTime, timeErr := getRequeueTime(ctx, doguResource, d.doguInterface, originalErr)
-	if timeErr != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get requeue time: %w", timeErr)
-	}
-	if onRequeue != nil {
-		onRequeueErr := onRequeue(doguResource)
-		if onRequeueErr != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to call onRequeue handler: %w", onRequeueErr)
-		}
-	}
-
-	_, updateError := d.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-		status.RequeuePhase = getRequeuePhase(originalErr)
-		return status
-	}, metav1.UpdateOptions{})
-	if updateError != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to update dogu status: %w", updateError)
-	}
-
-	result := ctrl.Result{Requeue: true, RequeueAfter: requeueTime}
-	err := d.fireRequeueEvent(ctx, doguResource, result)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	log.FromContext(ctx).Error(err, fmt.Sprintf("%s: requeue in %s seconds because of: %s", contextMessage, requeueTime, originalErr.Error()))
-
+func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *doguv2.Dogu, reconcileError error, reqTime time.Duration) (ctrl.Result, error) {
+	result := d.handleRequeue(doguResource, reconcileError, reqTime)
+	d.handleRequeueEvent(doguResource, reconcileError, result.RequeueAfter)
+	d.handleRequeueTime(ctx, doguResource, &result)
 	return result, nil
-
 }
 
-func getRequeuePhase(err error) string {
-	var errorWithState requeuableErrorWithState
-	if errors.As(err, &errorWithState) {
-		return errorWithState.GetState()
+func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource *doguv2.Dogu, result *ctrl.Result) {
+	logger := log.FromContext(ctx)
+	emptyDogu := &doguv2.Dogu{}
+	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
+		return
 	}
 
-	return ""
-}
-
-func getRequeueTime(ctx context.Context, dogu *doguv2.Dogu, doguInterface doguClient.DoguInterface, err error) (time.Duration, error) {
-	var errorWithTime requeuableErrorWithTime
-	if errors.As(err, &errorWithTime) {
-		return errorWithTime.GetRequeueTime(), nil
+	var err error
+	doguResource, err = d.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
+	if err != nil {
+		result.RequeueAfter = d.requeueTime
+		logger.Error(err, "failed to get doguResource for setting requeue time")
+		return
 	}
 
-	var requeueTime time.Duration
-	_, timeErr := doguInterface.UpdateStatusWithRetry(ctx, dogu, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-		requeueTime = dogu.Status.NextRequeue()
-		status.RequeueTime = requeueTime
+	updatedDoguResource, err := d.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status doguv2.DoguStatus) doguv2.DoguStatus {
+		status.RequeueTime = result.RequeueAfter
 		return status
 	}, metav1.UpdateOptions{})
-	if timeErr != nil {
-		return 0, timeErr
-	}
-
-	return requeueTime, nil
-}
-
-func shouldRequeue(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var requeueableError requeuableError
-	if errors.As(err, &requeueableError) {
-		if requeueableError.Requeue() {
-
-			return true
-		}
-	}
-
-	return false
-}
-
-func (d *doguRequeueHandler) fireRequeueEvent(ctx context.Context, doguResource *doguv2.Dogu, result ctrl.Result) error {
-	doguEvents, err := d.nonCacheClient.CoreV1().Events(d.namespace).List(ctx, metav1.ListOptions{
-		FieldSelector: fmt.Sprintf("reason=%s,involvedObject.name=%s", RequeueEventReason, doguResource.Name),
-	})
 	if err != nil {
-		return fmt.Errorf("failed to get all requeue errors: %w", err)
+		result.RequeueAfter = d.requeueTime
+		logger.Error(err, "failed to set requeue time")
+		return
+	}
+	*doguResource = *updatedDoguResource
+}
+
+func (d *doguRequeueHandler) handleRequeueEvent(doguResource *doguv2.Dogu, reconcileError error, reqTime time.Duration) {
+	emptyDogu := &doguv2.Dogu{}
+	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
+		return
+	}
+	if reconcileError == nil && reqTime == 0 {
+		d.recorder.Event(doguResource, v1.EventTypeNormal, ReasonReconcileOK, "resource synced")
+	} else if reconcileError != nil {
+		d.recorder.Eventf(doguResource, v1.EventTypeWarning, ReasonReconcileFail, "Trying again in %s because of: %s", reqTime.String(), reconcileError.Error())
+	} else {
+		d.recorder.Eventf(doguResource, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", reqTime.String())
+	}
+}
+
+func (d *doguRequeueHandler) handleRequeue(doguResource *doguv2.Dogu, reconcileError error, reqTime time.Duration) ctrl.Result {
+	result := ctrl.Result{}
+	emptyDogu := &doguv2.Dogu{}
+	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
+		return result
 	}
 
-	for _, event := range doguEvents.Items {
-		err = d.nonCacheClient.CoreV1().Events(d.namespace).Delete(ctx, event.Name, metav1.DeleteOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to delete old requeue event: %w", err)
-		}
+	if reconcileError != nil {
+		result.RequeueAfter = d.requeueTime
+		return result
 	}
 
-	d.recorder.Eventf(doguResource, v1.EventTypeNormal, RequeueEventReason, "Trying again in %s.", result.RequeueAfter.String())
-	return nil
+	if reqTime > 0 {
+		result.RequeueAfter = reqTime
+	}
+
+	return result
 }

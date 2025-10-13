@@ -2,6 +2,7 @@ package cesregistry
 
 import (
 	"context"
+
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -28,6 +29,8 @@ type LocalDoguFetcher interface {
 	// Enabled checks is the given dogu is enabled.
 	// Returns false (without error), when the dogu is not installed
 	Enabled(ctx context.Context, doguName cescommons.SimpleName) (bool, error)
+	// FetchForResource fetches the dogu descriptor for the desired version of the dogu from the local dogu registry.
+	FetchForResource(ctx context.Context, doguResource *k8sv2.Dogu) (*cesappcore.Dogu, error)
 }
 
 // ResourceDoguFetcher includes functionality to get a dogu either from the remote dogu registry or from a local development dogu map.

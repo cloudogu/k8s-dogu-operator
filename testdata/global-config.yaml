@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: global-config
+data:
+  config.yaml: |
+    fqdn: ecosystem.cloudogu.com
+    k8s:
+      use_internal_ip: "false"

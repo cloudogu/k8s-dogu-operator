@@ -71,7 +71,7 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to get local dogu descriptor for redmine")
 	})
-	t.Run("should return a dogu that misses a no-substitute dependency", func(t *testing.T) {
+	t.Run("should return a dogu that contains a legacy dependency", func(t *testing.T) {
 		// given
 		doguCr := readTestDataRedmineCr(t)
 		dogu := readTestDataDogu(t, redmineBytes)
@@ -80,7 +80,13 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 			Version: "",
 			Type:    core.DependencyTypeDogu,
 		}
+		nginxDep := core.Dependency{
+			Name:    "nginx",
+			Version: "",
+			Type:    core.DependencyTypeDogu,
+		}
 		dogu.Dependencies = append(dogu.Dependencies, registratorDep)
+		dogu.Dependencies = append(dogu.Dependencies, nginxDep)
 		require.Contains(t, dogu.Dependencies, registratorDep)
 		coreDoguVersion, lerr := dogu.GetVersion()
 		require.NoError(t, lerr)
@@ -102,7 +108,8 @@ func Test_localDoguFetcher_FetchInstalled(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotContains(t, installedDogu.Dependencies, core.Dependency{Name: "registrator", Type: core.DependencyTypeDogu})
+		assert.Contains(t, installedDogu.Dependencies, core.Dependency{Name: "registrator", Type: core.DependencyTypeDogu})
+		assert.Contains(t, installedDogu.Dependencies, core.Dependency{Name: "nginx", Type: core.DependencyTypeDogu})
 	})
 }
 
@@ -159,11 +166,6 @@ func Test_resourceDoguFetcher_FetchFromResource(t *testing.T) {
 		require.NoError(t, err)
 		expectedDogu := readTestDataDogu(t, redmineBytes)
 
-		for idx, dep := range expectedDogu.Dependencies {
-			if dep.Name == "nginx" {
-				expectedDogu.Dependencies = append(expectedDogu.Dependencies[:idx], expectedDogu.Dependencies[idx+1:]...)
-			}
-		}
 		// save the dependencies for later
 		expectedDependencies := expectedDogu.Dependencies
 		actualDependencies := fetchedDogu.Dependencies

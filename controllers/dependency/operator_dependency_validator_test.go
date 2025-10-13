@@ -16,7 +16,7 @@ func TestNewOperatorDependencyValidator(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	validator := NewOperatorDependencyValidator(&version)
+	validator := newOperatorDependencyValidator(&version)
 
 	// then
 	assert.NotNil(t, validator)
@@ -29,7 +29,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("0.0.1")
 		require.NoError(t, err)
-		validator := NewOperatorDependencyValidator(&version)
+		validator := newOperatorDependencyValidator(&version)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -57,7 +57,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("0.0.1")
 		require.NoError(t, err)
-		validator := NewOperatorDependencyValidator(&version)
+		validator := newOperatorDependencyValidator(&version)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -81,7 +81,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("0.0.1")
 		require.NoError(t, err)
-		validator := NewOperatorDependencyValidator(&version)
+		validator := newOperatorDependencyValidator(&version)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -105,7 +105,7 @@ func TestOperatorDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		// given
 		version, err := core.ParseVersion("1.5.0")
 		require.NoError(t, err)
-		validator := NewOperatorDependencyValidator(&version)
+		validator := newOperatorDependencyValidator(&version)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",

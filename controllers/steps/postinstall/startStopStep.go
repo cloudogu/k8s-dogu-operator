@@ -1,0 +1,111 @@
+package postinstall
+
+import (
+	"context"
+	"time"
+
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const requeueAfterReplicasStep = 5 * time.Second
+
+// The StartStopStep checks the stopped flag of the dogu or if a pvc resize is in progress.
+// Based on this information the dogu will be started or stopped.
+type StartStopStep struct {
+	deploymentInterface deploymentInterface
+	client              k8sClient
+	localDoguFetcher    localDoguFetcher
+	doguInterface       doguInterface
+}
+
+func NewStartStopStep(client client.Client, deploymentInterface v1.DeploymentInterface, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *StartStopStep {
+	return &StartStopStep{
+		client:              client,
+		deploymentInterface: deploymentInterface,
+		localDoguFetcher:    fetcher,
+		doguInterface:       doguInterface,
+	}
+}
+
+func (rs *StartStopStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	scale, err := rs.deploymentInterface.GetScale(ctx, doguResource.Name, metav1.GetOptions{})
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+
+	shouldBeStopped, err := rs.shouldBeStopped(ctx, doguResource)
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+
+	if shouldBeStopped && scale.Spec.Replicas == 0 || !shouldBeStopped && scale.Spec.Replicas == 1 {
+		if doguResource.Spec.Stopped {
+			// do not reconcile if the dogu was stopped manually
+			return steps.Abort()
+		}
+		return steps.Continue()
+	}
+
+	scale.Spec.Replicas = 1
+	if shouldBeStopped {
+		scale.Spec.Replicas = 0
+	}
+
+	_, err = rs.deploymentInterface.UpdateScale(ctx, doguResource.Name, scale, metav1.UpdateOptions{})
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+
+	updatedDogu, err := rs.doguInterface.UpdateStatusWithRetry(ctx, doguResource, func(status v2.DoguStatus) v2.DoguStatus {
+		status.Stopped = shouldBeStopped
+		return status
+	}, metav1.UpdateOptions{})
+	if err != nil {
+		return steps.RequeueWithError(err)
+	}
+	*doguResource = *updatedDogu
+
+	return steps.RequeueAfter(requeueAfterReplicasStep)
+}
+
+func (rs *StartStopStep) isPvcStorageResized(pvc *corev1.PersistentVolumeClaim, quantity resource.Quantity) bool {
+	// Longhorn works this way and does not add the Condition "FileSystemResizePending" to the PVC
+	// see https://github.com/longhorn/longhorn/issues/2749
+	isRequestedCapacityAvailable := pvc.Spec.Resources.Requests.Storage().Value() >= quantity.Value()
+	return isRequestedCapacityAvailable
+}
+
+func (rs *StartStopStep) shouldBeStopped(ctx context.Context, doguResource *v2.Dogu) (bool, error) {
+	if doguResource.Spec.Stopped {
+		return true, nil
+	}
+
+	dogu, err := rs.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
+	if err != nil {
+		return false, err
+	}
+
+	if hasPvc(dogu) {
+		pvc, err := doguResource.GetDataPVC(ctx, rs.client)
+		if err != nil {
+			return false, err
+		}
+
+		quantity, err := doguResource.GetMinDataVolumeSize()
+		if err != nil {
+			return false, err
+		}
+		return !rs.isPvcStorageResized(pvc, quantity), nil
+	}
+
+	return false, nil
+}

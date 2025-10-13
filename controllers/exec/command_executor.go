@@ -3,26 +3,22 @@ package exec
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"io"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"net/url"
 	"strings"
-	"time"
 
-	"github.com/cloudogu/retry-lib/retry"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // ShellCommand represents all necessary arguments to execute a command inside a container.
@@ -73,26 +69,21 @@ func (e *stateError) Requeue() bool {
 	return true
 }
 
-// maxTries controls the maximum number of waiting intervals between tries when getting an error that is recoverable
-// during command execution.
-var (
-	maxTries  = 20
-	waitLimit = time.Minute * 30
-)
-
 // commandExecutor is the unit to execute commands in a dogu
 type defaultCommandExecutor struct {
 	client                 client.Client
+	restConfig             *rest.Config
 	clientSet              kubernetes.Interface
 	coreV1RestClient       rest.Interface
 	commandExecutorCreator func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error)
 }
 
 // NewCommandExecutor creates a new instance of NewCommandExecutor
-func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) *defaultCommandExecutor {
+func NewCommandExecutor(cli client.Client, restConfig *rest.Config, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) CommandExecutor {
 	return &defaultCommandExecutor{
-		client:    cli,
-		clientSet: clientSet,
+		client:     cli,
+		restConfig: restConfig,
+		clientSet:  clientSet,
 		// the rest clientSet COULD be generated from the clientSet but makes harder to test, so we source it additionally
 		coreV1RestClient:       coreV1RestClient,
 		commandExecutorCreator: remotecommand.NewSPDYExecutor,
@@ -101,47 +92,30 @@ func NewCommandExecutor(cli client.Client, clientSet kubernetes.Interface, coreV
 
 // ExecCommandForDogu execs a command in the first found pod of a dogu. This method executes a command on a dogu pod
 // that can be selected by a K8s label.
-func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command ShellCommand, expectedStatus PodStatusForExec) (*bytes.Buffer, error) {
-	logger := log.FromContext(ctx)
-	pod := &corev1.Pod{}
-	err := retry.OnErrorWithLimit(waitLimit, retry.AlwaysRetryFunc, func() error {
-		updatedDogu := &v2.Dogu{}
-		err := ce.client.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, updatedDogu)
-		if err != nil {
-			logger.Info(fmt.Sprintf("Failed to get dogu %s. Trying again: %s", resource.Name, err.Error()))
-			return err
-		}
-
-		if updatedDogu.Status.Health != v2.AvailableHealthStatus {
-			unavailableErrMsg := fmt.Sprintf("Dogu %s is not available. Trying again", resource.Name)
-			logger.Info(unavailableErrMsg)
-			return errors.New(unavailableErrMsg)
-		}
-
-		pod, err = v2.GetPodForLabels(ctx, ce.client, updatedDogu.GetPodLabelsWithStatusVersion())
-		if err != nil {
-			logger.Info(fmt.Sprintf("Failed to get pod from dogu %s. Trying again: %s", resource.Name, err.Error()))
-			return err
-		}
-		return nil
-	})
+func (ce *defaultCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command ShellCommand) (*bytes.Buffer, error) {
+	updatedDogu := &v2.Dogu{}
+	err := ce.client.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, updatedDogu)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pod for dogu %s: %w", resource.Name, err)
+		return nil, fmt.Errorf("failed to get dogu %q: %w", resource.Name, err)
 	}
 
-	return ce.ExecCommandForPod(ctx, pod, command, expectedStatus)
+	if conditions.IsFalse(updatedDogu, v2.ConditionHealthy) {
+		return nil, fmt.Errorf("dogu %q is not available", resource.Name)
+	}
+
+	pod, err := v2.GetPodForLabels(ctx, ce.client, updatedDogu.GetPodLabelsWithStatusVersion())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod from dogu %q: %w", resource.Name, err)
+	}
+
+	return ce.ExecCommandForPod(ctx, pod, command)
 }
 
 // ExecCommandForPod execs a command in a given pod. This method executes a command on an arbitrary pod that can be
 // identified by its pod name.
-func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand, expectedStatus PodStatusForExec) (*bytes.Buffer, error) {
-	err := ce.waitForPodToHaveExpectedStatus(ctx, pod, expectedStatus)
-	if err != nil {
-		return nil, fmt.Errorf("an error occurred while waiting for pod %s to have status %s: %w", pod.Name, expectedStatus, err)
-	}
-
+func (ce *defaultCommandExecutor) ExecCommandForPod(ctx context.Context, pod *corev1.Pod, command ShellCommand) (*bytes.Buffer, error) {
 	req := ce.getCreateExecRequest(pod, command)
-	exec, err := ce.commandExecutorCreator(ctrl.GetConfigOrDie(), "POST", req.URL())
+	exec, err := ce.commandExecutorCreator(ce.restConfig, "POST", req.URL())
 	if err != nil {
 		return nil, &stateError{
 			sourceError: fmt.Errorf("failed to create new spdy executor: %w", err),
@@ -158,28 +132,14 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	command ShellCommand,
 	pod *corev1.Pod,
 ) (*bytes.Buffer, error) {
-	logger := log.FromContext(ctx)
-
-	var err error
 	stdin := command.Stdin()
 	buffer := bytes.NewBuffer([]byte{})
 	bufferErr := bytes.NewBuffer([]byte{})
-	err = retry.OnError(maxTries, func(err error) bool {
-		return strings.Contains(err.Error(), "error dialing backend: EOF")
-	}, func() error {
-		err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
-			Stdin:  stdin,
-			Stdout: buffer,
-			Stderr: bufferErr,
-			Tty:    false,
-		})
-		if err != nil {
-			// ignore this error and retry again instead since the container did not receive the command
-			if strings.Contains(err.Error(), "error dialing backend: EOF") {
-				logger.Error(err, fmt.Sprintf("Error executing '%s' in pod %s. Trying again.", command, pod.Name))
-			}
-		}
-		return err
+	err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  stdin,
+		Stdout: buffer,
+		Stderr: bufferErr,
+		Tty:    false,
 	})
 	if err != nil {
 		return nil, &stateError{
@@ -189,38 +149,6 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	}
 
 	return buffer, nil
-}
-
-func (ce *defaultCommandExecutor) waitForPodToHaveExpectedStatus(ctx context.Context, pod *corev1.Pod, expected PodStatusForExec) error {
-	var err error
-	err = retry.OnError(maxTries, retry.TestableRetryFunc, func() error {
-		pod, err = ce.clientSet.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		return podHasStatus(pod, expected)
-	})
-
-	return err
-}
-
-func podHasStatus(pod *corev1.Pod, expected PodStatusForExec) error {
-	switch expected {
-	case ContainersStarted:
-		if pod.Status.Phase == corev1.PodRunning {
-			return nil
-		}
-	case PodReady:
-		for _, condition := range pod.Status.Conditions {
-			if condition.Type == corev1.ContainersReady && condition.Status == corev1.ConditionTrue {
-				return nil
-			}
-		}
-	default:
-		return fmt.Errorf("unsupported pod status: %s", expected)
-	}
-
-	return &retry.TestableRetrierError{Err: fmt.Errorf("expected status %s not fulfilled", expected)}
 }
 
 func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command ShellCommand) *rest.Request {

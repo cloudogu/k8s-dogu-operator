@@ -1,52 +1,44 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
-	"github.com/cloudogu/k8s-registry-lib/repository"
-	"os"
+	"go.uber.org/fx"
 
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
-	"github.com/google/uuid"
-
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlMan "sigs.k8s.io/controller-runtime/pkg/manager"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	// +kubebuilder:scaffold:imports
-)
-
-var (
-	scheme = runtime.NewScheme()
-	// set up the logger before the actual logger is instantiated
-	// the logger will be replaced later-on with a more sophisticated instance
-	startupLog           = ctrl.Log.WithName("k8s-dogu-operator")
-	metricsAddr          string
-	enableLeaderElection bool
-	probeAddr            string
+	"github.com/cloudogu/ces-commons-lib/dogu"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
+	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
+	"github.com/cloudogu/k8s-registry-lib/repository"
 )
 
 var (
@@ -54,271 +46,228 @@ var (
 	Version = "0.0.0"
 )
 
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(doguv2.AddToScheme(scheme))
-
-	// +kubebuilder:scaffold:scheme
+// newVersion is a constructor to inject the version without import cycles
+func newVersion() config.Version {
+	return config.Version(Version)
 }
 
 func main() {
-	err := startDoguOperator()
-	if err != nil {
-		startupLog.Error(err, "failed to operate dogu operator")
-		os.Exit(1)
-	}
+	fx.New(options()...).Run()
 }
 
-func startDoguOperator() error {
-	err := logging.ConfigureLogger()
-	if err != nil {
-		return err
+//nolint:funlen
+func options() []fx.Option {
+	return []fx.Option{
+		fx.Provide(
+			newVersion,
+			logging.NewLogger,
+			initfx.NewOperatorConfig,
+			initfx.GetArgs,
+
+			// k8s dependencies
+			initfx.NewManagerOptions,
+			ctrl.GetConfig,
+			initfx.NewScheme,
+			fx.Annotate(initfx.NewK8sClient, fx.As(new(client.Client))),
+			fx.Annotate(initfx.NewKubernetesClientSet, fx.As(new(kubernetes.Interface))),
+			fx.Annotate(initfx.NewRestClient, fx.As(new(rest.Interface))),
+			fx.Annotate(initfx.NewConfigMapInterface, fx.As(new(v1.ConfigMapInterface)), fx.As(new(repository.ConfigMapClient))),
+			fx.Annotate(initfx.NewSecretInterface, fx.As(new(v1.SecretInterface)), fx.As(new(repository.SecretClient))),
+			fx.Annotate(initfx.NewDeploymentInterface, fx.As(new(appsv1.DeploymentInterface))),
+			fx.Annotate(initfx.NewPodInterface, fx.As(new(v1.PodInterface))),
+			fx.Annotate(initfx.NewServiceInterface, fx.As(new(v1.ServiceInterface))),
+			fx.Annotate(initfx.NewPersistentVolumeClaimInterface, fx.As(new(v1.PersistentVolumeClaimInterface))),
+			fx.Annotate(initfx.NewEcoSystemClientSet, fx.As(new(doguClient.EcoSystemV2Interface))),
+			fx.Annotate(initfx.NewDoguInterface, fx.As(new(doguClient.DoguInterface))),
+			fx.Annotate(initfx.NewDoguRestartInterface, fx.As(new(doguClient.DoguRestartInterface))),
+			fx.Annotate(health.NewShutdownHandler, fx.As(new(health.HealthShutdownHandler))),
+
+			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
+			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder))),
+			fx.Annotate(controllers.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandler))),
+
+			// our own dependencies
+			fx.Annotate(health.NewAvailabilityChecker, fx.As(new(health.DeploymentAvailabilityChecker))),
+			fx.Annotate(health.NewDoguStatusUpdater, fx.As(new(health.DoguHealthStatusUpdater))),
+			fx.Annotate(initfx.NewCollectApplier, fx.As(new(initfx.CollectApplier)), fx.As(new(resource.CollectApplier))),
+			initfx.GetAdditionalImages,
+			fx.Annotate(initfx.NewCommandExecutor, fx.As(new(exec.CommandExecutor))),
+			fx.Annotate(exec.NewExecPodFactory, fx.As(new(exec.ExecPodFactory))),
+			fx.Annotate(exec.NewPodFileExtractor, fx.As(new(exec.FileExtractor))),
+			fx.Annotate(initfx.NewDoguVersionRegistry, fx.As(new(dogu.VersionRegistry))),
+			// provide twice, tagged as well as untagged
+			fx.Annotate(
+				initfx.NewLocalDoguDescriptorRepository,
+				fx.As(new(dogu.LocalDoguDescriptorRepository)),
+				fx.As(new(initfx.LocalDoguDescriptorRepository)),
+			),
+			fx.Annotate(
+				initfx.NewLocalDoguDescriptorRepository,
+				fx.As(new(initfx.OwnerReferenceSetter)),
+				fx.ResultTags(`name:"localDoguDescriptorRepository"`),
+			),
+			fx.Annotate(initfx.NewLocalDoguFetcher, fx.As(new(cesregistry.LocalDoguFetcher))),
+			fx.Annotate(repository.NewGlobalConfigRepository, fx.As(new(resource.GlobalConfigRepository))),
+			// provide twice, tagged as well as untagged
+			fx.Annotate(
+				repository.NewDoguConfigRepository,
+				fx.As(new(resource.DoguConfigRepository)),
+			),
+			fx.Annotate(
+				repository.NewDoguConfigRepository,
+				fx.As(new(initfx.DoguConfigRepository)),
+				fx.As(new(initfx.OwnerReferenceSetter)),
+				fx.ResultTags(`name:"normalDoguConfig"`),
+			),
+			// provide twice, tagged as well as untagged
+			fx.Annotate(
+				repository.NewSensitiveDoguConfigRepository,
+				fx.As(new(serviceaccount.SensitiveDoguConfigRepository)),
+			),
+			fx.Annotate(
+				repository.NewSensitiveDoguConfigRepository, fx.As(new(initfx.DoguConfigRepository)),
+				fx.As(new(initfx.OwnerReferenceSetter)),
+				fx.ResultTags(`name:"sensitiveDoguConfig"`),
+			),
+			fx.Annotate(serviceaccount.NewCreator, fx.As(new(serviceaccount.ServiceAccountCreator))),
+			fx.Annotate(serviceaccount.NewRemover, fx.As(new(serviceaccount.ServiceAccountRemover))),
+			fx.Annotate(dependency.NewCompositeDependencyValidator, fx.As(new(dependency.Validator))),
+			fx.Annotate(security.NewValidator, fx.As(new(security.Validator))),
+			fx.Annotate(additionalMount.NewValidator, fx.As(new(additionalMount.Validator))),
+			fx.Annotate(initfx.NewRemoteDoguDescriptorRepository, fx.As(new(dogu.RemoteDoguDescriptorRepository))),
+			fx.Annotate(initfx.NewResourceDoguFetcher, fx.As(new(cesregistry.ResourceDoguFetcher))),
+			fx.Annotate(resource.NewRequirementsGenerator, fx.As(new(resource.RequirementsGenerator))),
+			fx.Annotate(initfx.NewHostAliasGenerator, fx.As(new(resource.HostAliasGenerator))),
+			fx.Annotate(resource.NewSecurityContextGenerator, fx.As(new(resource.SecurityContextGenerator))),
+			fx.Annotate(resource.NewResourceGenerator, fx.As(new(resource.DoguResourceGenerator))),
+			fx.Annotate(resource.NewUpserter, fx.As(new(resource.ResourceUpserter)), fx.As(new(upgradeSteps.ResourceUpserter))),
+			fx.Annotate(cesregistry.NewCESDoguRegistrator, fx.As(new(cesregistry.DoguRegistrator))),
+			fx.Annotate(initfx.NewImageRegistry, fx.As(new(imageregistry.ImageRegistry))),
+			fx.Annotate(manager.NewDoguRestartManager, fx.As(new(manager.DoguRestartManager))),
+			fx.Annotate(garbagecollection.NewDoguRestartGarbageCollector, fx.As(new(controllers.DoguRestartGarbageCollector))),
+			fx.Annotate(health.NewDoguConditionUpdater, fx.As(new(install.ConditionUpdater))),
+			fx.Annotate(health.NewDoguChecker, fx.As(new(health.DoguHealthChecker))),
+			fx.Annotate(manager.NewDoguExportManager, fx.As(new(manager.DoguExportManager))),
+			fx.Annotate(manager.NewDoguSupportManager, fx.As(new(manager.SupportManager))),
+			fx.Annotate(manager.NewDoguAdditionalMountManager, fx.As(new(manager.AdditionalMountManager))),
+			fx.Annotate(manager.NewDeploymentManager, fx.As(new(manager.DeploymentManager))),
+			fx.Annotate(upgrade.NewChecker, fx.As(new(upgrade.Checker))),
+			controllers.NewDoguEvents,
+			controllers.NewDoguEventsIn,
+			controllers.NewDoguEventsOut,
+
+			// delete steps
+			deletion.NewStatusStep,
+			deletion.NewServiceAccountRemoverStep,
+			deletion.NewDeleteOutOfHealthConfigMapStep,
+			fx.Annotate(deletion.NewRemoveDoguConfigStep, fx.ParamTags(`name:"sensitiveDoguConfig"`), fx.As(new(deletion.RemoveSensitiveDoguConfigStep))),
+			deletion.NewRemoveFinalizerStep,
+
+			// install or change steps
+			install.NewInitializeConditionsStep,
+			install.NewHealthCheckStep,
+			install.NewFetchRemoteDoguDescriptorStep,
+			install.NewValidationStep,
+			install.NewPauseReconciliationStep,
+			install.NewCreateFinalizerStep,
+			// Dogu config steps
+			fx.Annotate(
+				install.NewCreateConfigStep,
+				fx.ParamTags(`name:"normalDoguConfig"`),
+				fx.As(new(install.CreateDoguConfigStep)),
+			),
+			fx.Annotate(
+				install.NewOwnerReferenceStep,
+				fx.ParamTags(`name:"normalDoguConfig"`),
+				fx.As(new(install.DoguConfigOwnerReferenceStep)),
+			),
+			// Sensitive dogu config steps
+			fx.Annotate(
+				install.NewCreateConfigStep,
+				fx.ParamTags(`name:"sensitiveDoguConfig"`),
+				fx.As(new(install.CreateSensitiveDoguConfigStep)),
+			),
+			fx.Annotate(
+				install.NewOwnerReferenceStep,
+				fx.ParamTags(`name:"sensitiveDoguConfig"`),
+				fx.As(new(install.SensitiveDoguConfigOwnerReferenceStep)),
+			),
+			// Create local dogu descriptor and set owner reference
+			install.NewRegisterDoguVersionStep,
+			fx.Annotate(
+				install.NewOwnerReferenceStep,
+				fx.ParamTags(`name:"localDoguDescriptorRepository"`),
+				fx.As(new(install.LocalDoguDescriptorOwnerReferenceStep)),
+			),
+			install.NewServiceAccountStep,
+			install.NewServiceStep,
+			install.NewCreateExecPodStep,
+			install.NewCustomK8sResourceStep,
+			install.NewCreateVolumeStep,
+			install.NewNetworkPoliciesStep,
+			install.NewCreateDeploymentStep,
+			postinstall.NewStartStopStep,
+			postinstall.NewVolumeExpanderStep,
+			postinstall.NewAdditionalIngressAnnotationsStep,
+			postinstall.NewSecurityContextStep,
+			postinstall.NewExportModeStep,
+			postinstall.NewSupportModeStep,
+			postinstall.NewAdditionalMountsStep,
+			fx.Annotate(upgradeSteps.NewRestartAfterConfigChangeStep, fx.ParamTags(`name:"normalDoguConfig"`, `name:"sensitiveDoguConfig"`, "", "", "")),
+			upgradeSteps.NewPreUpgradeStatusStep,
+			upgradeSteps.NewRegisterDoguVersionStep,
+			upgradeSteps.NewUpdateDeploymentVersionStep,
+			upgradeSteps.NewDeleteExecPodStep,
+			upgradeSteps.NewPostUpgradeStep,
+			upgradeSteps.NewInstalledVersionStep,
+			upgradeSteps.NewRegenerateDeploymentStep,
+			upgradeSteps.NewUpdateStartedAtStep,
+
+			// use-cases
+			fx.Annotate(
+				usecase.NewDoguDeleteUseCase,
+				fx.As(new(controllers.DoguDeleteUseCase)),
+				fx.ResultTags(`name:"doguDeleteUseCase"`),
+			),
+			fx.Annotate(
+				usecase.NewDoguDeleteUseCase,
+				fx.As(new(controllers.DoguDeleteUseCase)),
+			),
+			fx.Annotate(
+				usecase.NewDoguInstallOrChangeUseCase,
+				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
+				fx.ResultTags(`name:"doguInstallOrChangeUseCase"`),
+			),
+			fx.Annotate(
+				usecase.NewDoguInstallOrChangeUseCase,
+				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
+			),
+
+			// reconcilers
+			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, "", "", "", "", "")),
+			controllers.NewGlobalConfigReconciler,
+			controllers.NewDoguRestartReconciler,
+
+			// runners
+			health.NewStartupHandler,
+			health.NewShutdownHandler,
+		),
+		// the empty invoke functions tell fx to instantiate these structs even if nothing depends on them.
+		// reconcilers and runners are the last in the dependency chain so we have to invoke them here.
+		fx.Invoke(
+			func(*controllers.DoguReconciler) {
+				// creates a fx dependency on the DoguReconciler
+			},
+			func(*controllers.DoguRestartReconciler) {
+				// creates a fx dependency on the DoguRestartReconciler
+			},
+			func(*controllers.GlobalConfigReconciler) {
+				// creates a fx dependency on the GlobalConfigReconciler
+			},
+
+			func(*health.StartupHandler) {
+				// creates a fx dependency on the StartupHandler
+			},
+		),
 	}
-
-	operatorConfig, err := config.NewOperatorConfig(Version)
-	if err != nil {
-		return fmt.Errorf("failed to create new operator configuration: %w", err)
-	}
-	options := getK8sManagerOptions(operatorConfig)
-	correlatorOptions := record.CorrelatorOptions{
-		// This fixes the problem that different events with the same reason get aggregated.
-		// Now only events that are exactly the same get aggregated.
-		KeyFunc: noAggregationKey,
-		// This will prevent any events of the dogu operator from being dropped by the spam filter.
-		SpamKeyFunc: noSpamKey,
-	}
-	options.EventBroadcaster = record.NewBroadcasterWithCorrelatorOptions(correlatorOptions)
-
-	k8sManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
-	if err != nil {
-		return fmt.Errorf("failed to start manager: %w", err)
-	}
-
-	err = configureManager(k8sManager, operatorConfig)
-	if err != nil {
-		return fmt.Errorf("failed to configure manager: %w", err)
-	}
-
-	// print starting info to stderr; we don't use the logger here because by default the level must be ERROR
-	println("Starting manager...")
-
-	return startK8sManager(k8sManager)
-}
-
-func noAggregationKey(_ *v1.Event) (string, string) {
-	uniqueEventGroup := uuid.NewString()
-	return uniqueEventGroup, uniqueEventGroup
-}
-
-func noSpamKey(_ *v1.Event) string {
-	return uuid.NewString()
-}
-
-func configureManager(k8sManager manager.Manager, operatorConfig *config.OperatorConfig) error {
-	ecosystemClientSet, err := getEcoSystemClientSet(k8sManager.GetConfig())
-	if err != nil {
-		return err
-	}
-
-	k8sClientSet, err := getK8sClientSet(k8sManager.GetConfig())
-	if err != nil {
-		return err
-	}
-
-	availabilityChecker := &health.AvailabilityChecker{}
-	eventRecorder := k8sManager.GetEventRecorderFor("k8s-dogu-operator")
-	healthStatusUpdater := health.NewDoguStatusUpdater(ecosystemClientSet, eventRecorder, k8sClientSet)
-
-	if err = resourceRequirementsUpdater(k8sManager, operatorConfig.Namespace, k8sClientSet); err != nil {
-		return fmt.Errorf("failed to create resource requirements updater: %w", err)
-	}
-
-	err = configureReconciler(k8sManager, k8sClientSet, ecosystemClientSet, healthStatusUpdater, availabilityChecker, operatorConfig, eventRecorder)
-	if err != nil {
-		return fmt.Errorf("failed to configure reconciler: %w", err)
-	}
-
-	err = addRunners(k8sManager, k8sClientSet, ecosystemClientSet, healthStatusUpdater, availabilityChecker, operatorConfig.Namespace)
-	if err != nil {
-		return fmt.Errorf("failed to add runners: %w", err)
-	}
-
-	// +kubebuilder:scaffold:builder
-	err = addChecks(k8sManager)
-	if err != nil {
-		return fmt.Errorf("failed to add checks to the manager: %w", err)
-	}
-
-	return nil
-}
-
-func getK8sManagerOptions(operatorConfig *config.OperatorConfig) manager.Options {
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-
-	options := ctrl.Options{
-		Scheme:  scheme,
-		Metrics: server.Options{BindAddress: metricsAddr},
-		Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{
-			operatorConfig.Namespace: {},
-		}},
-		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "951e217a.cloudogu.com",
-	}
-
-	return options
-}
-
-func startK8sManager(k8sManager manager.Manager) error {
-	startupLog.Info("starting manager")
-	err := k8sManager.Start(ctrl.SetupSignalHandler())
-	if err != nil {
-		return fmt.Errorf("failed to start manager: %w", err)
-	}
-
-	return nil
-}
-
-func resourceRequirementsUpdater(k8sManager manager.Manager, namespace string, clientSet kubernetes.Interface) error {
-	configMapClient := clientSet.CoreV1().ConfigMaps(namespace)
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(dogu.NewDoguVersionRegistry(configMapClient), dogu.NewLocalDoguDescriptorRepository(configMapClient))
-
-	requirementsUpdater, err := resource.NewRequirementsUpdater(k8sManager.GetClient(), namespace, repository.NewDoguConfigRepository(configMapClient), localDoguFetcher, repository.NewGlobalConfigRepository(configMapClient))
-	if err != nil {
-		return err
-	}
-
-	if err := k8sManager.Add(requirementsUpdater); err != nil {
-		return fmt.Errorf("failed to add requirementsUpdater as runnable to the manager: %w", err)
-	}
-
-	return nil
-}
-
-func configureReconciler(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
-	ecosystemClientSet *doguClient.EcoSystemV2Client, healthStatusUpdater health.DoguHealthStatusUpdater,
-	availabilityChecker *health.AvailabilityChecker, operatorConfig *config.OperatorConfig, eventRecorder record.EventRecorder) error {
-
-	localDoguFetcher := cesregistry.NewLocalDoguFetcher(
-		dogu.NewDoguVersionRegistry(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
-		dogu.NewLocalDoguDescriptorRepository(k8sClientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)),
-	)
-
-	doguManager, err := controllers.NewManager(
-		k8sManager.GetClient(),
-		ecosystemClientSet,
-		operatorConfig,
-		eventRecorder,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create dogu manager: %w", err)
-	}
-
-	doguReconciler, err := controllers.NewDoguReconciler(
-		k8sManager.GetClient(),
-		ecosystemClientSet.Dogus(operatorConfig.Namespace),
-		doguManager,
-		eventRecorder,
-		operatorConfig.Namespace,
-		localDoguFetcher,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create new dogu reconciler: %w", err)
-	}
-
-	err = doguReconciler.SetupWithManager(k8sManager)
-	if err != nil {
-		return fmt.Errorf("failed to setup dogu reconciler with manager: %w", err)
-	}
-
-	deploymentReconciler := controllers.NewDeploymentReconciler(
-		k8sClientSet,
-		availabilityChecker,
-		healthStatusUpdater,
-		localDoguFetcher,
-	)
-	err = deploymentReconciler.SetupWithManager(k8sManager)
-	if err != nil {
-		return fmt.Errorf("failed to setup deployment reconciler with manager: %w", err)
-	}
-
-	restartInterface := ecosystemClientSet.DoguRestarts(operatorConfig.Namespace)
-	if err = controllers.NewDoguRestartReconciler(restartInterface, ecosystemClientSet.Dogus(operatorConfig.Namespace), eventRecorder, garbagecollection.NewDoguRestartGarbageCollector(restartInterface)).
-		SetupWithManager(k8sManager); err != nil {
-		return fmt.Errorf("failed to setup dogu restart reconciler with manager: %w", err)
-	}
-
-	pvcReconciler := controllers.NewPvcReconciler(k8sManager.GetClient(), k8sClientSet, ecosystemClientSet)
-	err = pvcReconciler.SetupWithManager(k8sManager)
-	if err != nil {
-		return fmt.Errorf("failed to setup pvc reconciler with manager: %w", err)
-	}
-
-	// +kubebuilder:scaffold:builder
-
-	return nil
-}
-
-func addChecks(mgr manager.Manager) error {
-	err := mgr.AddHealthzCheck("healthz", healthz.Ping)
-	if err != nil {
-		return fmt.Errorf("failed to add healthz check: %w", err)
-	}
-
-	err = mgr.AddReadyzCheck("readyz", healthz.Ping)
-	if err != nil {
-		return fmt.Errorf("failed to add readyz check: %w", err)
-	}
-
-	return nil
-}
-
-func addRunners(k8sManager manager.Manager, k8sClientSet controllers.ClientSet,
-	ecosystemClientSet doguClient.EcoSystemV2Interface, updater health.DoguHealthStatusUpdater,
-	availabilityChecker *health.AvailabilityChecker, namespace string) error {
-	doguInterface := ecosystemClientSet.Dogus(namespace)
-	deploymentInterface := k8sClientSet.AppsV1().Deployments(namespace)
-
-	volumesizeStartupHandler := resource.NewVolumeStartupHandler(k8sManager.GetClient(), doguInterface)
-	err := k8sManager.Add(volumesizeStartupHandler)
-	if err != nil {
-		return err
-	}
-
-	healthStartupHandler := health.NewStartupHandler(doguInterface, deploymentInterface, availabilityChecker, updater)
-	err = k8sManager.Add(healthStartupHandler)
-	if err != nil {
-		return err
-	}
-
-	healthShutdownHandler := health.NewShutdownHandler(doguInterface)
-	err = k8sManager.Add(healthShutdownHandler)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func getEcoSystemClientSet(config *rest.Config) (*doguClient.EcoSystemV2Client, error) {
-	ecosystemClientSet, err := doguClient.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ecosystem client set: %w", err)
-	}
-
-	return ecosystemClientSet, nil
-}
-
-func getK8sClientSet(config *rest.Config) (controllers.ClientSet, error) {
-	k8sClientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create k8s client set: %w", err)
-	}
-
-	return k8sClientSet, nil
 }

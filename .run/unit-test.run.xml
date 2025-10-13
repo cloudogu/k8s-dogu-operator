@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="unit-test" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="k8s-dogu-operator" />
+    <working_directory value="$PROJECT_DIR$" />
+    <EXTENSION ID="com.fapiko.jetbrains.plugins.better_direnv.runconfigs.GolandRunConfigurationExtension">
+      <option name="DIRENV_ENABLED" value="false" />
+      <option name="DIRENV_TRUSTED" value="false" />
+    </EXTENSION>
+    <kind value="DIRECTORY" />
+    <package value="github.com/cloudogu/k8s-dogu-operator" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <pattern value="./..." />
+    <method v="2" />
+  </configuration>
+</component>

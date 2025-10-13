@@ -8,16 +8,20 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
-type Validator struct {
+type validator struct {
+}
+
+type Validator interface {
+	ValidateSecurity(doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error
 }
 
 // NewValidator constructs a new *security.Validator.
-func NewValidator() *Validator {
-	return &Validator{}
+func NewValidator() Validator {
+	return &validator{}
 }
 
 // ValidateSecurity verifies the security fields of dogu descriptor and resource for correctness.
-func (v *Validator) ValidateSecurity(doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error {
+func (v *validator) ValidateSecurity(doguDescriptor *core.Dogu, doguResource *k8sv2.Dogu) error {
 	descriptorErr := doguDescriptor.ValidateSecurity()
 	if descriptorErr != nil {
 		descriptorErr = fmt.Errorf("invalid security field in dogu descriptor: %w", descriptorErr)

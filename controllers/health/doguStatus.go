@@ -3,74 +3,37 @@ package health
 import (
 	"context"
 	"fmt"
+	"github.com/cloudogu/retry-lib/retry"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
-
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 )
 
-const statusUpdateEventReason = "HealthStatusUpdate"
 const healthConfigMapName = "k8s-dogu-operator-dogu-health"
 
 type DoguStatusUpdater struct {
-	ecosystemClient doguClient.EcoSystemV2Interface
-	recorder        record.EventRecorder
-	k8sClientSet    clientSet
+	recorder           record.EventRecorder
+	configMapInterface configMapInterface
+	podInterface       podInterface
 }
 
-func NewDoguStatusUpdater(ecosystemClient doguClient.EcoSystemV2Interface, recorder record.EventRecorder, k8sClientSet clientSet) *DoguStatusUpdater {
+func NewDoguStatusUpdater(recorder record.EventRecorder, configMapInterface corev1.ConfigMapInterface, podInterface corev1.PodInterface) *DoguStatusUpdater {
 	return &DoguStatusUpdater{
-		ecosystemClient: ecosystemClient,
-		recorder:        recorder,
-		k8sClientSet:    k8sClientSet,
+		recorder:           recorder,
+		configMapInterface: configMapInterface,
+		podInterface:       podInterface,
 	}
-}
-
-// UpdateStatus sets the health status of the dogu according to whether if it's available or not.
-func (dsw *DoguStatusUpdater) UpdateStatus(ctx context.Context, doguName types.NamespacedName, isAvailable bool) error {
-	doguEcosystemClient := dsw.ecosystemClient.Dogus(doguName.Namespace)
-
-	dogu, err := doguEcosystemClient.Get(ctx, doguName.Name, metav1api.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get dogu resource %q: %w", doguName, err)
-	}
-
-	desiredHealthStatus := doguv2.UnavailableHealthStatus
-	if isAvailable {
-		desiredHealthStatus = doguv2.AvailableHealthStatus
-	}
-
-	_, err = doguEcosystemClient.UpdateStatusWithRetry(ctx, dogu, func(status doguv2.DoguStatus) doguv2.DoguStatus {
-		status.Health = desiredHealthStatus
-		return status
-	}, metav1api.UpdateOptions{})
-
-	if err != nil {
-		message := fmt.Sprintf("failed to update dogu %q with current health status [%q] to desired health status [%q]", doguName, dogu.Status.Health, desiredHealthStatus)
-		dsw.recorder.Event(dogu, v1.EventTypeWarning, statusUpdateEventReason, message)
-		return fmt.Errorf("%s: %w", message, err)
-	}
-
-	dsw.recorder.Eventf(dogu, v1.EventTypeNormal, statusUpdateEventReason, "successfully updated health status to %q", desiredHealthStatus)
-	return nil
 }
 
 func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDeployment *appsv1.Deployment, doguJson *cesappcore.Dogu) error {
-	namespace := doguDeployment.Namespace
-
-	stateConfigMap, err := dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Get(ctx, healthConfigMapName, metav1api.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get health state configMap: %w", err)
-	}
-	initHealthConfigMap(stateConfigMap, doguDeployment)
-
 	// Get all pods to deployment
-	pods, err := dsw.k8sClientSet.CoreV1().Pods(namespace).List(ctx, metav1api.ListOptions{
+	pods, err := dsw.podInterface.List(ctx, metav1api.ListOptions{
 		LabelSelector: metav1api.FormatLabelSelector(doguDeployment.Spec.Selector),
 	})
 	if err != nil {
@@ -78,23 +41,69 @@ func (dsw *DoguStatusUpdater) UpdateHealthConfigMap(ctx context.Context, doguDep
 	}
 
 	isState, state := hasHealthCheckofTypeState(doguJson)
-
+	var stateConfigMap *v1.ConfigMap
 	for _, pod := range pods.Items {
-		if isState {
-			setHealthConfigMapStateWhenStarted(stateConfigMap, pod, doguDeployment, state)
+		retryErr := retry.OnConflict(func() error {
+			stateConfigMap, err = dsw.configMapInterface.Get(ctx, healthConfigMapName, metav1api.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to update health state in health configMap: %w", err)
+			}
+			initHealthConfigMap(stateConfigMap, doguDeployment)
+
+			if isState {
+				setHealthConfigMapStateWhenStarted(stateConfigMap, pod, doguDeployment, state)
+			}
+
+			_, err = dsw.configMapInterface.Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+
+			return err
+		})
+		if retryErr != nil {
+			return fmt.Errorf("failed to update health state in health configMap: %w", retryErr)
 		}
 
-		_, err = dsw.k8sClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to update health state in health configMap: %w", err)
-		}
-
-		if stateConfigMap.Data[doguDeployment.Name] != "" {
+		if stateConfigMap != nil && stateConfigMap.Data[doguDeployment.Name] != "" {
 			break
 		}
 	}
 
 	return nil
+}
+
+func (dsw *DoguStatusUpdater) DeleteDoguOutOfHealthConfigMap(ctx context.Context, dogu *v2.Dogu) error {
+	stateConfigMap, err := dsw.getOrCreateHealthConfigMap(ctx)
+	if err != nil {
+		return err
+	}
+
+	newData := stateConfigMap.Data
+	if newData == nil {
+		newData = make(map[string]string)
+	}
+	delete(newData, dogu.Name)
+
+	stateConfigMap.Data = newData
+
+	// Update the ConfigMap
+	_, err = dsw.configMapInterface.Update(ctx, stateConfigMap, metav1api.UpdateOptions{})
+	return err
+}
+
+func (dsw *DoguStatusUpdater) getOrCreateHealthConfigMap(ctx context.Context) (*v1.ConfigMap, error) {
+	cm, err := dsw.configMapInterface.Get(ctx, healthConfigMapName, metav1api.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		cm = &v1.ConfigMap{
+			ObjectMeta: metav1api.ObjectMeta{Name: healthConfigMapName},
+			Data:       map[string]string{},
+		}
+		cm, err = dsw.configMapInterface.Create(ctx, cm, metav1api.CreateOptions{})
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+	return cm, nil
 }
 
 func initHealthConfigMap(stateConfigMap *v1.ConfigMap, doguDeployment *appsv1.Deployment) {

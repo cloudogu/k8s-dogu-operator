@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,7 +37,7 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(ecosystemClient doguClient.EcoSystemV2Interface, localFetcher localDoguFetcher) *doguChecker {
+func NewDoguChecker(ecosystemClient doguClient.EcoSystemV2Interface, localFetcher cesregistry.LocalDoguFetcher) DoguHealthChecker {
 	return &doguChecker{
 		ecosystemClient:   ecosystemClient,
 		doguLocalRegistry: localFetcher,
@@ -91,6 +92,9 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 	var errs []error
 
 	for _, dependency := range localDogu.GetDependenciesOfType(core.DependencyTypeDogu) {
+		if dependency.Name == "nginx" || dependency.Name == "registrator" {
+			continue
+		}
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
 		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, cescommons.SimpleName(dependency.Name))
@@ -119,6 +123,10 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 	var errs []error
 
 	for _, dependency := range localDogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu) {
+		if dependency.Name == "nginx" || dependency.Name == "registrator" {
+			continue
+		}
+
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
 		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, cescommons.SimpleName(dependency.Name))

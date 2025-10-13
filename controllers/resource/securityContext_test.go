@@ -300,7 +300,7 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &SecurityContextGenerator{}
+			s := &securityContextGenerator{}
 			got1, got2 := s.Generate(testCtx, tt.dogu, tt.doguResource)
 			slices.Sort(got2.Capabilities.Add)
 			slices.Sort(got2.Capabilities.Drop)

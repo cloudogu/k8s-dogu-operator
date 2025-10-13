@@ -2,13 +2,14 @@ package additionalMount
 
 import (
 	"context"
+	"testing"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"testing"
 )
 
 func TestValidator_ValidateAdditionalMounts(t *testing.T) {
@@ -305,7 +306,7 @@ func TestValidator_ValidateAdditionalMounts(t *testing.T) {
 				secretMapMock = tt.fields.secretInterface(t)
 			}
 
-			v := &Validator{
+			v := &validator{
 				configMapInterface: configMapMock,
 				secretInterface:    secretMapMock,
 			}
@@ -331,7 +332,7 @@ func TestNewValidator(t *testing.T) {
 		sut := NewValidator(configMapMock, secretMapMock)
 
 		// then
-		assert.Equal(t, configMapMock, sut.configMapInterface)
-		assert.Equal(t, secretMapMock, sut.secretInterface)
+		assert.Equal(t, configMapMock, sut.(*validator).configMapInterface)
+		assert.Equal(t, secretMapMock, sut.(*validator).secretInterface)
 	})
 }

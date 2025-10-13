@@ -1,0 +1,30 @@
+metadata:
+  name: dogu-execpod
+  namespace: ecosystem
+  labels:
+    app: ces
+    k8s.cloudogu.com/execPod: dogu
+  ownerReferences:
+    - apiVersion: k8s.cloudogu.com/v2
+      kind: Dogu
+      name: dogu
+      uid: ""
+      controller: true
+      blockOwnerDeletion: true
+spec:
+  containers:
+    - name: dogu-execpod
+      image: registry.example.com/official/dogu:1.2.3-1
+      command:
+        - /bin/sleep
+        - infinity
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          memory: 105M
+        requests:
+          memory: 105M
+          cpu: 15m
+  imagePullSecrets:
+    - name: ces-container-registries
+  automountServiceAccountToken: false
