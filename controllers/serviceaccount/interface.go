@@ -3,9 +3,11 @@ package serviceaccount
 import (
 	"bytes"
 	"context"
+
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-registry-lib/config"
 )
@@ -43,7 +45,7 @@ type sensitiveDoguConfig interface {
 	sensitiveDoguConfigDeleter
 }
 
-type sensitiveDoguConfigRepository interface {
+type SensitiveDoguConfigRepository interface {
 	Get(ctx context.Context, name dogu.SimpleName) (config.DoguConfig, error)
 	Update(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
 	SaveOrMerge(ctx context.Context, doguConfig config.DoguConfig) (config.DoguConfig, error)
@@ -63,12 +65,7 @@ type ServiceAccountRemover interface {
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
 type localDoguFetcher interface {
-	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
-	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName dogu.SimpleName) (installedDogu *cesappcore.Dogu, err error)
-	// Enabled checks is the given dogu is enabled.
-	// Returns false (without error), when the dogu is not installed
-	Enabled(ctx context.Context, doguName dogu.SimpleName) (bool, error)
+	cesregistry.LocalDoguFetcher
 }
 
 // commandExecutor is used to execute commands in pods and dogus
@@ -77,5 +74,5 @@ type localDoguFetcher interface {
 //goland:noinspection GoUnusedType
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
-	ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command exec.ShellCommand, expected exec.PodStatusForExec) (*bytes.Buffer, error)
+	ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command exec.ShellCommand) (*bytes.Buffer, error)
 }

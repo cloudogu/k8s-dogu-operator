@@ -1,0 +1,12 @@
+apiVersion: k8s.cloudogu.com/v2
+kind: Dogu
+metadata:
+  name: redmine
+  annotations:
+    test: dev
+  labels:
+    dogu.name: redmine
+    app: ces
+spec:
+  name: official/redmine
+  version: 4.2.3-10

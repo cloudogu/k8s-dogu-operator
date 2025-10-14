@@ -4,6 +4,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
+func NewAvailabilityChecker() *AvailabilityChecker {
+	return &AvailabilityChecker{}
+}
+
 type AvailabilityChecker struct{}
 
 // IsAvailable checks whether the deployment has reached its desired state and is available.

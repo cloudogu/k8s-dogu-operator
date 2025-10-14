@@ -1,255 +1,117 @@
 package main
 
 import (
-	"context"
-	"flag"
-	"fmt"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	"os"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
+	"github.com/cloudogu/cesapp-lib/core"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/go-logr/logr"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"go.uber.org/fx/fxtest"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	runtimeconf "sigs.k8s.io/controller-runtime/pkg/config"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-type mockDefinition struct {
-	Arguments   []interface{}
-	ReturnValue interface{}
-}
+const testNamespace = "ecosystem"
 
-func getCopyMap(definitions map[string]mockDefinition) map[string]mockDefinition {
-	newCopyMap := map[string]mockDefinition{}
-	for k, v := range definitions {
-		newCopyMap[k] = v
+func Test_options(t *testing.T) {
+	// given
+	restInterfaceMock := newMockRestInterface(t)
+	serviceInterfaceMock := newMockServiceInterface(t)
+	configMapInterfaceMock := newMockConfigMapInterface(t)
+	additionalImagesConfigMap := &corev1.ConfigMap{
+		Data: map[string]string{
+			config.ChownInitImageConfigmapNameKey:                     "chown-image:1.2.3",
+			config.ExporterImageConfigmapNameKey:                      "exporter-image:1.2.3",
+			config.AdditionalMountsInitContainerImageConfigmapNameKey: "additional-mounts-init-container-image:1.2.3",
+		},
 	}
-	return newCopyMap
-}
+	configMapInterfaceMock.EXPECT().Get(mock.Anything, config.OperatorAdditionalImagesConfigmapName, v1.GetOptions{}).Return(additionalImagesConfigMap, nil)
+	secretInterfaceMock := newMockSecretInterface(t)
+	pvcInterfaceMock := newMockPvcInterface(t)
+	podInterfaceMock := newMockPodInterface(t)
+	deploymentInterfaceMock := newMockDeploymentInterface(t)
+	coreV1InterfaceMock := newMockCoreV1Interface(t)
+	coreV1InterfaceMock.EXPECT().ConfigMaps(testNamespace).Return(configMapInterfaceMock)
+	coreV1InterfaceMock.EXPECT().Secrets(testNamespace).Return(secretInterfaceMock)
+	coreV1InterfaceMock.EXPECT().Services(testNamespace).Return(serviceInterfaceMock)
+	coreV1InterfaceMock.EXPECT().PersistentVolumeClaims(testNamespace).Return(pvcInterfaceMock)
+	coreV1InterfaceMock.EXPECT().Pods(testNamespace).Return(podInterfaceMock)
+	coreV1InterfaceMock.EXPECT().RESTClient().Return(restInterfaceMock)
+	appsV1InterfaceMock := newMockAppsV1Interface(t)
+	appsV1InterfaceMock.EXPECT().Deployments(testNamespace).Return(deploymentInterfaceMock)
+	kubernetesInterfaceMock := newMockKubernetesInterface(t)
+	kubernetesInterfaceMock.EXPECT().CoreV1().Return(coreV1InterfaceMock)
+	kubernetesInterfaceMock.EXPECT().AppsV1().Return(appsV1InterfaceMock)
 
-func getNewMockManager(expectedErrorOnNewManager error, definitions map[string]mockDefinition) manager.Manager {
-	k8sManager := &MockControllerManager{}
-	ctrl.NewManager = func(config *rest.Config, options manager.Options) (manager.Manager, error) {
-		for key, value := range definitions {
-			k8sManager.On(key, value.Arguments...).Return(value.ReturnValue)
-		}
-		return k8sManager, expectedErrorOnNewManager
+	doguInterfaceMock := newMockDoguInterface(t)
+	doguRestartInterfaceMock := newMockDoguRestartInterface(t)
+	ecoSystemInterfaceMock := newMockEcoSystemInterface(t)
+	ecoSystemInterfaceMock.EXPECT().Dogus(testNamespace).Return(doguInterfaceMock)
+	ecoSystemInterfaceMock.EXPECT().DoguRestarts(testNamespace).Return(doguRestartInterfaceMock)
+
+	oldOperatorConfigFn := initfx.NewOperatorConfig
+	initfx.NewOperatorConfig = newTestOperatorConfig(t)
+	oldKubernetesClientSet := initfx.NewKubernetesClientSet
+	initfx.NewKubernetesClientSet = newTestKubernetesInterfaceFn(kubernetesInterfaceMock)
+	oldEcoSystemClientSet := initfx.NewEcoSystemClientSet
+	initfx.NewEcoSystemClientSet = newTestEcoSystemInterfaceFn(ecoSystemInterfaceMock)
+	oldGetRestConfig := ctrl.GetConfig
+	ctrl.GetConfig = newTestGetConfig()
+	oldGetArgs := initfx.GetArgs
+	initfx.GetArgs = func() initfx.Args {
+		return initfx.Args{"k8s-dogu-operator"}
 	}
-	ctrl.SetLogger = func(l logr.Logger) {
-		k8sManager.Mock.On("GetLogger").Return(l)
-	}
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-
-	return k8sManager
-}
-
-func Test_noSpamKey(t *testing.T) {
-	t.Run("should not return the same key", func(t *testing.T) {
-		// when
-		first := noSpamKey(nil)
-		second := noSpamKey(nil)
-
-		// then
-		assert.NotEqual(t, first, second)
-	})
-}
-
-func Test_noAggregationKey(t *testing.T) {
-	t.Run("should not return the same keys", func(t *testing.T) {
-		// when
-		firstAggregateKey, firstLocalKey := noAggregationKey(nil)
-		secondAggregateKey, secondLocalKey := noAggregationKey(nil)
-
-		// then
-		assert.NotEqual(t, firstAggregateKey, secondAggregateKey)
-		assert.NotEqual(t, firstLocalKey, secondLocalKey)
-	})
-}
-
-func Test_startDoguOperator(t *testing.T) {
-
-	t.Run("Error on missing namespace environment variable", func(t *testing.T) {
-		// given
-		resetFunc := setupOverrides()
-		defer resetFunc()
-
-		_ = os.Unsetenv("NAMESPACE")
-		getNewMockManager(nil, createMockDefinitions())
-
-		// when
-		err := startDoguOperator()
-
-		// then
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to read namespace: failed to get env var [NAMESPACE]")
+	t.Cleanup(func() {
+		initfx.NewOperatorConfig = oldOperatorConfigFn
+		initfx.NewKubernetesClientSet = oldKubernetesClientSet
+		initfx.NewEcoSystemClientSet = oldEcoSystemClientSet
+		ctrl.GetConfig = oldGetRestConfig
+		initfx.GetArgs = oldGetArgs
 	})
 
-	t.Run("Test without logger environment variables", func(t *testing.T) {
-		// given
-		resetFunc := setupOverrides()
-		defer resetFunc()
-
-		setupEnvironment(t)
-
-		k8sManager := getNewMockManager(nil, createMockDefinitions())
-
-		// when
-		err := startDoguOperator()
-
-		// then
-		require.NoError(t, err)
-		mock.AssertExpectationsForObjects(t, k8sManager)
-	})
-
-	expectedError := fmt.Errorf("this is my expected error")
-
-	t.Run("Test with error on manager creation", func(t *testing.T) {
-		// given
-		resetFunc := setupOverrides()
-		defer resetFunc()
-
-		setupEnvironment(t)
-
-		getNewMockManager(expectedError, createMockDefinitions())
-
-		// when
-		err := startDoguOperator()
-
-		// then
-		require.ErrorIs(t, err, expectedError)
-	})
-
-	mockDefinitionsThatCanFail := []string{
-		"Add",
-		"AddHealthzCheck",
-		"AddReadyzCheck",
-		"Start",
-	}
-
-	for _, mockDefinitionName := range mockDefinitionsThatCanFail {
-		t.Run(fmt.Sprintf("fail setup when error on %s", mockDefinitionName), func(t *testing.T) {
-			// given
-			resetFunc := setupOverrides()
-			t.Cleanup(resetFunc)
-
-			setupEnvironment(t)
-
-			adaptedMockDefinitions := getCopyMap(createMockDefinitions())
-			adaptedMockDefinitions[mockDefinitionName] = mockDefinition{
-				Arguments:   adaptedMockDefinitions[mockDefinitionName].Arguments,
-				ReturnValue: expectedError,
-			}
-			getNewMockManager(nil, adaptedMockDefinitions)
-
-			// when
-			startErr := startDoguOperator()
-
-			// then
-			require.ErrorIs(t, startErr, expectedError)
-		})
-	}
+	// when
+	_ = fxtest.New(t, options()...)
 }
 
-func setupEnvironment(t *testing.T) {
-	t.Setenv("NAMESPACE", "mynamespace")
-	t.Setenv("DOGU_REGISTRY_ENDPOINT", "mynamespace")
-	t.Setenv("DOGU_REGISTRY_USERNAME", "mynamespace")
-	t.Setenv("DOGU_REGISTRY_PASSWORD", "mynamespace")
-	t.Setenv("NETWORK_POLICIES_ENABLED", "true")
-}
-
-func setupOverrides() func() {
-	// override default controller method to create a new manager
-	oldNewManagerDelegate := ctrl.NewManager
-
-	// override default controller method to retrieve a kube config
-	oldGetConfigOrDieDelegate := ctrl.GetConfigOrDie
-	ctrl.GetConfigOrDie = func() *rest.Config {
-		return &rest.Config{}
-	}
-
-	// override default controller method to retrieve a kube config
-	oldGetConfigDelegate := ctrl.GetConfig
-	ctrl.GetConfig = func() (*rest.Config, error) {
+func newTestGetConfig() func() (*rest.Config, error) {
+	return func() (*rest.Config, error) {
 		return &rest.Config{}, nil
 	}
+}
 
-	// override default controller method to signal the setup handler
-	oldHandler := ctrl.SetupSignalHandler
-	ctrl.SetupSignalHandler = func() context.Context {
-		return context.TODO()
-	}
-
-	// override default controller-builder and add skipNameValidation for tests
-	oldCtrlBuilder := ctrl.NewControllerManagedBy
-	ctrl.NewControllerManagedBy = func(m manager.Manager) *ctrl.Builder {
-		builder := oldCtrlBuilder(m)
-		skipNameValidation := true
-		builder.WithOptions(controller.Options{SkipNameValidation: &skipNameValidation})
-
-		return builder
-	}
-
-	// override default controller method to retrieve a kube config
-	oldSetLoggerDelegate := ctrl.SetLogger
-
-	oldDoguManager := controllers.NewManager
-	controllers.NewManager = func(client client.Client, ecosystemClient doguClient.EcoSystemV2Interface, operatorConfig *config.OperatorConfig, recorder record.EventRecorder) (*controllers.DoguManager, error) {
-		return &controllers.DoguManager{}, nil
-	}
-
-	return func() {
-		ctrl.NewManager = oldNewManagerDelegate
-		ctrl.GetConfigOrDie = oldGetConfigOrDieDelegate
-		ctrl.GetConfig = oldGetConfigDelegate
-		ctrl.SetupSignalHandler = oldHandler
-		ctrl.SetLogger = oldSetLoggerDelegate
-		ctrl.NewControllerManagedBy = oldCtrlBuilder
-		controllers.NewManager = oldDoguManager
+func newTestKubernetesInterfaceFn(p kubernetes.Interface) func(c *rest.Config) (kubernetes.Interface, error) {
+	return func(c *rest.Config) (kubernetes.Interface, error) {
+		return p, nil
 	}
 }
 
-func createMockDefinitions() map[string]mockDefinition {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cloudogu.com",
-		Version: "v2",
-		Kind:    "dogu",
-	}, &v2.Dogu{})
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   "k8s.cloudogu.com",
-		Version: "v2",
-		Kind:    "dogurestart",
-	}, &v2.DoguRestart{})
-	myClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+func newTestEcoSystemInterfaceFn(v2Interface doguClient.EcoSystemV2Interface) func(c *rest.Config) (doguClient.EcoSystemV2Interface, error) {
+	return func(c *rest.Config) (doguClient.EcoSystemV2Interface, error) {
+		return v2Interface, nil
+	}
+}
 
-	return map[string]mockDefinition{
-		"GetScheme":            {ReturnValue: scheme},
-		"GetClient":            {ReturnValue: myClient},
-		"GetCache":             {ReturnValue: nil},
-		"GetConfig":            {ReturnValue: &rest.Config{}},
-		"Add":                  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
-		"AddHealthzCheck":      {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
-		"AddReadyzCheck":       {Arguments: []interface{}{mock.Anything, mock.Anything}, ReturnValue: nil},
-		"Start":                {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
-		"GetControllerOptions": {ReturnValue: runtimeconf.Controller{}},
-		"GetEventRecorderFor":  {Arguments: []interface{}{mock.Anything}, ReturnValue: nil},
+func newTestOperatorConfig(t *testing.T) func(version config.Version) (*config.OperatorConfig, error) {
+	return func(version config.Version) (*config.OperatorConfig, error) {
+		parsed, err := core.ParseVersion(string(version))
+		assert.NoError(t, err)
+
+		return &config.OperatorConfig{
+			Namespace: testNamespace,
+			DoguRegistry: config.DoguRegistryData{
+				Endpoint:  "myEndpoint",
+				Username:  "myUsername",
+				Password:  "myPassword",
+				URLSchema: "default",
+			},
+			Version:                &parsed,
+			NetworkPoliciesEnabled: true,
+		}, nil
 	}
 }

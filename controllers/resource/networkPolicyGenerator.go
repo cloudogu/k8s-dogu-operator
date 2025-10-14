@@ -2,10 +2,13 @@ package resource
 
 import (
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -26,7 +29,7 @@ func (c NetPolType) String() string {
 	return [...]string{"Dogu", "Component", "Ingress"}[c]
 }
 
-func generateDenyAllPolicy(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.NetworkPolicy {
+func generateDenyAllPolicy(doguResource *k8sv2.Dogu, dogu *core.Dogu, scheme *runtime.Scheme) (*netv1.NetworkPolicy, error) {
 	return generateNetPolWithOwner(
 		fmt.Sprintf("%s-deny-all", dogu.GetSimpleName()),
 		doguResource,
@@ -40,6 +43,7 @@ func generateDenyAllPolicy(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.Net
 				netv1.PolicyTypeIngress,
 			},
 		},
+		scheme,
 	)
 }
 
@@ -83,10 +87,10 @@ func getSelectors(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName 
 	return
 }
 
-func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName string, netPolType NetPolType) *netv1.NetworkPolicy {
+func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyName string, netPolType NetPolType, scheme *runtime.Scheme) (*netv1.NetworkPolicy, error) {
 	netPolName, podSelector, namespaceSelector, matchLabels := getSelectors(doguResource, coreDogu, dependencyName, netPolType)
 
-	netPol := generateNetPolWithOwner(
+	netPol, err := generateNetPolWithOwner(
 		netPolName,
 		doguResource,
 		netv1.NetworkPolicySpec{
@@ -110,42 +114,44 @@ func generateNetPol(doguResource *k8sv2.Dogu, coreDogu *core.Dogu, dependencyNam
 				},
 			},
 		},
+		scheme,
 	)
 
-	netPol.Labels["k8s.cloudogu.com/dependency"] = dependencyName
+	if netPol != nil {
+		netPol.Labels["k8s.cloudogu.com/dependency"] = dependencyName
+	}
 
-	return netPol
+	return netPol, err
 }
 
-func generateDoguDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string) *netv1.NetworkPolicy {
-	return generateNetPol(doguResource, dogu, dependencyName, netPolTypeDogu)
+func generateDoguDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string, scheme *runtime.Scheme) (*netv1.NetworkPolicy, error) {
+	return generateNetPol(doguResource, dogu, dependencyName, netPolTypeDogu, scheme)
 }
 
-func generateComponentDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string) *netv1.NetworkPolicy {
-	return generateNetPol(doguResource, dogu, dependencyName, netPolTypeComponent)
+func generateComponentDepNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, dependencyName string, scheme *runtime.Scheme) (*netv1.NetworkPolicy, error) {
+	return generateNetPol(doguResource, dogu, dependencyName, netPolTypeComponent, scheme)
 }
 
-func generateIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu) *netv1.NetworkPolicy {
-	return generateNetPol(doguResource, dogu, "", netPolTypeIngress)
+func generateIngressNetPol(doguResource *k8sv2.Dogu, dogu *core.Dogu, scheme *runtime.Scheme) (*netv1.NetworkPolicy, error) {
+	return generateNetPol(doguResource, dogu, "", netPolTypeIngress, scheme)
 }
 
-func generateNetPolWithOwner(name string, parentDoguResource *k8sv2.Dogu, spec netv1.NetworkPolicySpec) *netv1.NetworkPolicy {
-	return &netv1.NetworkPolicy{
+func generateNetPolWithOwner(name string, parentDoguResource *k8sv2.Dogu, spec netv1.NetworkPolicySpec, scheme *runtime.Scheme) (*netv1.NetworkPolicy, error) {
+	netpol := &netv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: parentDoguResource.APIVersion,
-					Kind:       parentDoguResource.Kind,
-					Name:       parentDoguResource.Name,
-					UID:        parentDoguResource.UID,
-				},
-			},
+			Name:      name,
 			Namespace: parentDoguResource.Namespace,
 			Labels:    GetAppLabel().Add(parentDoguResource.GetDoguNameLabel()),
 		},
 		Spec: spec,
 	}
+
+	err := ctrl.SetControllerReference(parentDoguResource, netpol, scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set owner reference on network policy for dogu %s: %v", name, err)
+	}
+
+	return netpol, nil
 }
 
 // GetObjectKey returns the object key with the actual name and namespace from the netPol resource

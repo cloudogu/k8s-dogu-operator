@@ -2,118 +2,20 @@ package health
 
 import (
 	"context"
+	"fmt"
+	"testing"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
+	"sigs.k8s.io/cluster-api/util/conditions"
 )
 
-func TestShutdownHandler_Start(t *testing.T) {
-	t.Run("should update all dogu health status to unknown on shutdown", func(t *testing.T) {
-		// given
-		doneCtx, cancelFunc := context.WithCancel(testCtx)
-		cancelFunc()
-		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := newMockDoguInterface(t)
-
-		casDogu := &v2.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
-			Status:     v2.DoguStatus{},
-		}
-		ldapDogu := &v2.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
-			Status:     v2.DoguStatus{},
-		}
-		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
-		doguInterfaceMock.EXPECT().List(expectedContext, metav1.ListOptions{}).Return(doguList, nil)
-
-		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(expectedContext, casDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
-				status := modifyStatusFn(casDogu.Status)
-				assert.Equal(t, v2.UnknownHealthStatus, status.Health)
-			})
-
-		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(expectedContext, ldapDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, nil).
-			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
-				status := modifyStatusFn(ldapDogu.Status)
-				assert.Equal(t, v2.UnknownHealthStatus, status.Health)
-			})
-
-		sut := ShutdownHandler{doguInterface: doguInterfaceMock}
-
-		// when
-		err := sut.Start(doneCtx)
-
-		// then
-		require.NoError(t, err)
-	})
-
-	t.Run("should return error on list error", func(t *testing.T) {
-		// given
-		doneCtx, cancelFunc := context.WithCancel(testCtx)
-		cancelFunc()
-
-		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := newMockDoguInterface(t)
-
-		doguInterfaceMock.EXPECT().List(expectedContext, metav1.ListOptions{}).Return(nil, assert.AnError)
-
-		sut := ShutdownHandler{doguInterface: doguInterfaceMock}
-
-		// when
-		err := sut.Start(doneCtx)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorIs(t, err, assert.AnError)
-	})
-
-	t.Run("should join update errors", func(t *testing.T) {
-		// given
-		doneCtx, cancelFunc := context.WithCancel(testCtx)
-		cancelFunc()
-
-		expectedContext := context.WithoutCancel(doneCtx)
-		doguInterfaceMock := newMockDoguInterface(t)
-
-		casDogu := &v2.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "cas"},
-			Status:     v2.DoguStatus{},
-		}
-		ldapDogu := &v2.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
-			Status:     v2.DoguStatus{},
-		}
-		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
-		doguInterfaceMock.EXPECT().List(expectedContext, metav1.ListOptions{}).Return(doguList, nil)
-
-		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(expectedContext, casDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError).
-			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
-				status := modifyStatusFn(casDogu.Status)
-				assert.Equal(t, v2.UnknownHealthStatus, status.Health)
-			})
-
-		doguInterfaceMock.EXPECT().UpdateStatusWithRetry(expectedContext, ldapDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError).
-			Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts metav1.UpdateOptions) {
-				status := modifyStatusFn(ldapDogu.Status)
-				assert.Equal(t, v2.UnknownHealthStatus, status.Health)
-			})
-
-		sut := ShutdownHandler{doguInterface: doguInterfaceMock}
-
-		// when
-		err := sut.Start(doneCtx)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to set health status of \"cas\" to \"unknown\": assert.AnError general error for testing\nfailed to set health status of \"ldap\" to \"unknown\": assert.AnError general error for testing")
-	})
-}
-
 func TestNewShutdownHandler(t *testing.T) {
-	t.Run("should set properties", func(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
 		// given
 		doguInterfaceMock := newMockDoguInterface(t)
 
@@ -124,4 +26,115 @@ func TestNewShutdownHandler(t *testing.T) {
 		assert.Equal(t, doguInterfaceMock, handler.doguInterface)
 	})
 
+}
+
+func TestShutdownHandler_Handle(t *testing.T) {
+	tests := []struct {
+		name            string
+		doguInterfaceFn func(t *testing.T) client.DoguInterface
+		wantErr         assert.ErrorAssertionFunc
+	}{
+		{
+			name: "should fail to list dogus",
+			doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				mck := newMockDoguInterface(t)
+				mck.EXPECT().List(testCtx, metav1.ListOptions{}).Return(nil, assert.AnError)
+				return mck
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorIs(t, err, assert.AnError)
+			},
+		},
+		{
+			name: "should fail to update dogu status",
+			doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				mck := newMockDoguInterface(t)
+				ldapDogu := &v2.Dogu{
+					ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
+				}
+				casDogu := &v2.Dogu{
+					ObjectMeta: metav1.ObjectMeta{Name: "cas"},
+				}
+				mck.EXPECT().List(testCtx, metav1.ListOptions{}).Return(&v2.DoguList{Items: []v2.Dogu{
+					*ldapDogu,
+					*casDogu,
+				}}, nil)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, ldapDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, casDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
+				return mck
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorIs(t, err, assert.AnError) &&
+					assert.ErrorContains(t, err, "failed to set health status and conditions of \"ldap\" to unknown") &&
+					assert.ErrorContains(t, err, "failed to set health status and conditions of \"cas\" to unknown")
+			},
+		},
+		{
+			name: "should succeed to update dogu status",
+			doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				mck := newMockDoguInterface(t)
+				ldapDogu := &v2.Dogu{
+					ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
+				}
+				casDogu := &v2.Dogu{
+					ObjectMeta: metav1.ObjectMeta{Name: "cas"},
+				}
+				mck.EXPECT().List(testCtx, metav1.ListOptions{}).Return(&v2.DoguList{Items: []v2.Dogu{
+					*ldapDogu,
+					*casDogu,
+				}}, nil)
+				runAndReturnFn := func(ctx context.Context, dogu *v2.Dogu, f func(v2.DoguStatus) v2.DoguStatus, options metav1.UpdateOptions) (*v2.Dogu, error) {
+					dogu.Status = f(dogu.Status)
+					reason := "StoppingOperator"
+					message := "The operator is shutting down"
+					expectedConditions := []metav1.Condition{
+						{
+							Type:    v2.ConditionReady,
+							Status:  metav1.ConditionUnknown,
+							Reason:  reason,
+							Message: message,
+						},
+						{
+							Type:    v2.ConditionHealthy,
+							Status:  metav1.ConditionUnknown,
+							Reason:  reason,
+							Message: message,
+						},
+						{
+							Type:    v2.ConditionSupportMode,
+							Status:  metav1.ConditionUnknown,
+							Reason:  reason,
+							Message: message,
+						},
+						{
+							Type:    v2.ConditionMeetsMinVolumeSize,
+							Status:  metav1.ConditionUnknown,
+							Reason:  reason,
+							Message: message,
+						},
+					}
+					gomega.NewWithT(t).Expect(dogu.Status.Conditions).
+						To(conditions.MatchConditions(expectedConditions, conditions.IgnoreLastTransitionTime(true)))
+
+					assert.Equal(t, v2.HealthStatus("unknown"), dogu.Status.Health)
+
+					return dogu, nil
+				}
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, ldapDogu, mock.Anything, metav1.UpdateOptions{}).
+					RunAndReturn(runAndReturnFn)
+				mck.EXPECT().UpdateStatusWithRetry(testCtx, casDogu, mock.Anything, metav1.UpdateOptions{}).
+					RunAndReturn(runAndReturnFn)
+				return mck
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &ShutdownHandler{
+				doguInterface: tt.doguInterfaceFn(t),
+			}
+			tt.wantErr(t, s.Handle(testCtx), fmt.Sprintf("Handle(%v)", testCtx))
+		})
+	}
 }

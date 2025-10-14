@@ -3,10 +3,8 @@ package resource
 import (
 	"context"
 	"fmt"
-	"k8s.io/utils/ptr"
 	"os"
 	"path"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 	"strings"
 
@@ -14,7 +12,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -69,20 +69,22 @@ const (
 // as controller
 type resourceGenerator struct {
 	scheme                   *runtime.Scheme
-	requirementsGenerator    requirementsGenerator
-	hostAliasGenerator       hostAliasGenerator
-	securityContextGenerator securityContextGenerator
-	additionalImages         map[string]string
+	requirementsGenerator    RequirementsGenerator
+	hostAliasGenerator       HostAliasGenerator
+	securityContextGenerator SecurityContextGenerator
+	additionalImages         AdditionalImages
 }
+
+type AdditionalImages map[string]string
 
 // NewResourceGenerator creates a new generator for k8s resources
 func NewResourceGenerator(
 	scheme *runtime.Scheme,
-	requirementsGenerator requirementsGenerator,
-	hostAliasGenerator hostAliasGenerator,
-	securityContextGenerator securityContextGenerator,
-	additionalImages map[string]string,
-) *resourceGenerator {
+	requirementsGenerator RequirementsGenerator,
+	hostAliasGenerator HostAliasGenerator,
+	securityContextGenerator SecurityContextGenerator,
+	additionalImages AdditionalImages,
+) DoguResourceGenerator {
 	return &resourceGenerator{
 		scheme:                   scheme,
 		requirementsGenerator:    requirementsGenerator,
@@ -92,8 +94,16 @@ func NewResourceGenerator(
 	}
 }
 
+func (r *resourceGenerator) UpdateDoguDeployment(ctx context.Context, deployment *appsv1.Deployment, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	return r.updateDoguDeployment(ctx, deployment, doguResource, dogu)
+}
+
 // CreateDoguDeployment creates a new instance of a deployment with a given dogu.json and dogu custom resource.
 func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
+	return r.updateDoguDeployment(ctx, &appsv1.Deployment{}, doguResource, dogu)
+}
+
+func (r *resourceGenerator) updateDoguDeployment(ctx context.Context, deployment *appsv1.Deployment, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*appsv1.Deployment, error) {
 	podTemplate, err := r.GetPodTemplate(ctx, doguResource, dogu)
 	if err != nil {
 		return nil, err
@@ -103,14 +113,11 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 	// Version labels only get applied to pods to discern them during an upgrade.
 	appDoguNameLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
 
-	// Create deployment
-	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
-		Name:      doguResource.Name,
-		Namespace: doguResource.Namespace,
-		Labels:    appDoguNameLabels,
-	}}
+	deployment.Name = doguResource.Name
+	deployment.Namespace = doguResource.Namespace
+	deployment.Labels = appDoguNameLabels
 
-	deployment.Spec = buildDeploymentSpec(doguResource, podTemplate)
+	updateDeploymentSpec(deployment, doguResource, podTemplate)
 
 	err = ctrl.SetControllerReference(doguResource, deployment, r.scheme)
 	if err != nil {
@@ -122,14 +129,11 @@ func (r *resourceGenerator) CreateDoguDeployment(ctx context.Context, doguResour
 
 // GetPodTemplate returns a pod template for the given dogu.
 func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*corev1.PodTemplateSpec, error) {
-	exportModeActive := doguResource.Spec.ExportMode
-
-	volumes, err := CreateVolumes(doguResource, dogu, exportModeActive)
+	volumes, err := CreateVolumes(doguResource, dogu, doguResource.Spec.ExportMode)
 	if err != nil {
 		return nil, err
 	}
 
-	volumeMounts := createVolumeMounts(doguResource, dogu)
 	envVars := []corev1.EnvVar{
 		{Name: doguPodNamespace, Value: doguResource.GetNamespace()},
 		{Name: doguPodName, ValueFrom: &corev1.EnvVarSource{
@@ -140,45 +144,20 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		{Name: doguPodMultiNode, Value: "true"},
 	}
 
-	initContainers := make([]*corev1.Container, 0)
-	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
-
 	resourceRequirements, err := r.requirementsGenerator.Generate(ctx, dogu)
 	if err != nil {
 		return nil, err
 	}
 
-	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage, resourceRequirements)
+	initContainers, err := r.generateInitContainers(ctx, doguResource, dogu, resourceRequirements)
 	if err != nil {
 		return nil, err
-	}
-	initContainers = append(initContainers, chownContainer)
-
-	if hasLocalConfigVolume(dogu) {
-		additionalMountsContainerImage := r.additionalImages[config.AdditionalMountsInitContainerImageConfigmapNameKey]
-		additionalMountsContainer, err := r.BuildAdditionalMountInitContainer(ctx, dogu, doguResource, additionalMountsContainerImage, resourceRequirements)
-		if err != nil {
-			return nil, err
-		}
-		initContainers = append(initContainers, additionalMountsContainer)
-	}
-
-	sidecars := make([]*corev1.Container, 0)
-
-	if exportModeActive {
-		exporterImage := r.additionalImages[config.ExporterImageConfigmapNameKey]
-
-		exporterContainer := getExporterContainer(dogu, doguResource, exporterImage)
-
-		sidecars = append(sidecars, exporterContainer)
 	}
 
 	hostAliases, err := r.hostAliasGenerator.Generate(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	podSecurityContext, containerSecurityContext := r.securityContextGenerator.Generate(ctx, dogu, doguResource)
 
 	podTemplate := newPodSpecBuilder(doguResource, dogu).
 		labels(GetAppLabel().Add(doguResource.GetPodLabels())).
@@ -188,19 +167,56 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 		enableServiceLinks(false).
 		initContainers(initContainers...).
-		sidecarContainers(sidecars...).
+		sidecarContainers(r.generateSidecarContainers(doguResource, dogu)...).
 		containerEmptyCommandAndArgs().
 		containerLivenessProbe().
 		containerStartupProbe().
 		containerPullPolicy().
-		containerVolumeMounts(volumeMounts).
+		containerVolumeMounts(createVolumeMounts(doguResource, dogu)).
 		containerEnvVars(envVars).
 		containerResourceRequirements(resourceRequirements).
 		serviceAccount().
-		securityContext(podSecurityContext, containerSecurityContext).
+		securityContext(r.securityContextGenerator.Generate(ctx, dogu, doguResource)).
 		build()
 
 	return podTemplate, nil
+}
+
+func (r *resourceGenerator) generateInitContainers(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, resourceRequirements corev1.ResourceRequirements) ([]*corev1.Container, error) {
+	initContainers := make([]*corev1.Container, 0)
+	chownInitImage := r.additionalImages[config.ChownInitImageConfigmapNameKey]
+
+	chownContainer, err := getChownInitContainer(dogu, doguResource, chownInitImage, resourceRequirements)
+	if err != nil {
+		return nil, err
+	}
+
+	initContainers = append(initContainers, chownContainer)
+
+	if hasLocalConfigVolume(dogu) {
+		additionalMountsContainerImage := r.additionalImages[config.AdditionalMountsInitContainerImageConfigmapNameKey]
+		additionalMountsContainer, err := r.BuildAdditionalMountInitContainer(ctx, dogu, doguResource, additionalMountsContainerImage, resourceRequirements)
+		if err != nil {
+			return nil, err
+		}
+
+		initContainers = append(initContainers, additionalMountsContainer)
+	}
+
+	return initContainers, nil
+}
+
+func (r *resourceGenerator) generateSidecarContainers(doguResource *k8sv2.Dogu, dogu *core.Dogu) []*corev1.Container {
+	sidecars := make([]*corev1.Container, 0)
+
+	if doguResource.Spec.ExportMode {
+		exporterImage := r.additionalImages[config.ExporterImageConfigmapNameKey]
+
+		exporterContainer := getExporterContainer(dogu, doguResource, exporterImage)
+
+		sidecars = append(sidecars, exporterContainer)
+	}
+	return sidecars
 }
 
 func hasLocalConfigVolume(dogu *core.Dogu) bool {
@@ -417,20 +433,20 @@ func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume
 	return filteredList
 }
 
-func buildDeploymentSpec(doguResource *k8sv2.Dogu, podTemplate *corev1.PodTemplateSpec) appsv1.DeploymentSpec {
+func updateDeploymentSpec(deployment *appsv1.Deployment, doguResource *k8sv2.Dogu, podTemplate *corev1.PodTemplateSpec) {
 	var replicas int32 = ReplicaCountStarted
 	if doguResource.Spec.Stopped {
 		replicas = ReplicaCountStopped
 	}
 
-	return appsv1.DeploymentSpec{
-		Selector: &metav1.LabelSelector{MatchLabels: doguResource.GetDoguNameLabel()},
-		Strategy: appsv1.DeploymentStrategy{
-			Type: "Recreate",
-		},
-		Template: *podTemplate,
-		Replicas: &replicas,
+	deployment.Spec.Selector = &metav1.LabelSelector{MatchLabels: doguResource.GetDoguNameLabel()}
+	deployment.Spec.Strategy = appsv1.DeploymentStrategy{
+		Type: "Recreate",
 	}
+	deployment.Spec.Replicas = &replicas
+	deployment.Spec.Template = *podTemplate
+	deployment.Spec.ProgressDeadlineSeconds = ptr.To(int32(600))
+	deployment.Spec.RevisionHistoryLimit = ptr.To(int32(10))
 }
 
 // CreateStartupProbe returns a container start-up probe for the given dogu if it contains a state healthcheck.

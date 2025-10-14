@@ -1,0 +1,23 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="integration test with debug option" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="k8s-dogu-operator" />
+    <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="-tags=k8s_integration" />
+    <envs>
+      <env name="KUBEBUILDER_ASSETS" value="$USER_HOME$/.local/share/kubebuilder-envtest/k8s/1.34.1-linux-amd64" />
+    </envs>
+    <EXTENSION ID="com.fapiko.jetbrains.plugins.better_direnv.runconfigs.GolandRunConfigurationExtension">
+      <option name="DIRENV_ENABLED" value="false" />
+      <option name="DIRENV_TRUSTED" value="false" />
+    </EXTENSION>
+    <kind value="PACKAGE" />
+    <package value="github.com/cloudogu/k8s-dogu-operator/v3" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <pattern value="./.*_integration_test.go" />
+    <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="install-envtest" run_configuration_type="ShConfigurationType" />
+    </method>
+  </configuration>
+</component>

@@ -15,8 +15,8 @@ type operatorDependencyValidator struct {
 	version *core.Version
 }
 
-// NewOperatorDependencyValidator creates a new operator dependency validator
-func NewOperatorDependencyValidator(version *core.Version) *operatorDependencyValidator {
+// newOperatorDependencyValidator creates a new operator dependency validator
+func newOperatorDependencyValidator(version *core.Version) *operatorDependencyValidator {
 	return &operatorDependencyValidator{
 		version: version,
 	}

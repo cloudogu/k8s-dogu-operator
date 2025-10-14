@@ -3,17 +3,19 @@ package resource
 import (
 	"context"
 	"fmt"
-	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
-	"github.com/stretchr/testify/mock"
-	netv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/stretchr/testify/mock"
+	netv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,15 +30,17 @@ func TestNewUpserter(t *testing.T) {
 	// given
 	mockClient := newMockK8sClient(t)
 	mockResourceGenerator := NewMockDoguResourceGenerator(t)
+	testScheme := getTestScheme()
 
 	// when
-	upserter := NewUpserter(mockClient, mockResourceGenerator, true)
+	resourceUpserter := NewUpserter(mockClient, testScheme, mockResourceGenerator, &opConfig.OperatorConfig{NetworkPoliciesEnabled: true})
 
 	// then
-	require.NotNil(t, upserter)
-	assert.Equal(t, mockClient, upserter.client)
-	assert.Equal(t, upserter.networkPoliciesEnabled, true)
-	require.NotNil(t, upserter.generator)
+	require.NotNil(t, resourceUpserter)
+	assert.Equal(t, mockClient, resourceUpserter.(*upserter).client)
+	assert.Equal(t, resourceUpserter.(*upserter).networkPoliciesEnabled, true)
+	assert.Equal(t, testScheme, resourceUpserter.(*upserter).scheme)
+	require.NotNil(t, resourceUpserter.(*upserter).generator)
 }
 
 func Test_upserter_updateOrInsert(t *testing.T) {
@@ -484,13 +488,24 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 			networkPoliciesEnabled: true,
 		},
 		{
-			name:     "no network policies created when networkPoliciesEnabled=false",
+			name:     "delete networkpolicies when networkPoliciesEnabled=false",
 			doguName: "redmine",
 			doguDependencies: []string{
 				"postgresql",
 				"cas",
 				"postfix",
 			},
+			expectedNetworkPolicies: []string{},
+		},
+		{
+			name:     "fail to delete networkpolicies when networkPoliciesEnabled=false",
+			doguName: "redmine",
+			doguDependencies: []string{
+				"postgresql",
+				"cas",
+				"postfix",
+			},
+			expectError:             true,
 			expectedNetworkPolicies: []string{},
 		},
 	}
@@ -556,6 +571,12 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 						})
 					}
 				}).Return(nil).Once()
+			} else if test.expectError {
+				mockClient.EXPECT().DeleteAllOf(context.Background(), &netv1.NetworkPolicy{}, client.InNamespace(doguResource.Namespace),
+					client.MatchingLabels{k8sv2.DoguLabelName: dogu.GetSimpleName()}).Return(assert.AnError).Once()
+			} else {
+				mockClient.EXPECT().DeleteAllOf(context.Background(), &netv1.NetworkPolicy{}, client.InNamespace(doguResource.Namespace),
+					client.MatchingLabels{k8sv2.DoguLabelName: dogu.GetSimpleName()}).Return(nil).Once()
 			}
 
 			if len(test.additionalExistingNetworkPolicies) > 0 {
@@ -587,13 +608,14 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				client:                 mockClient,
 				generator:              generator,
 				networkPoliciesEnabled: test.networkPoliciesEnabled,
+				scheme:                 getTestScheme(),
 			}
 
 			err := ups.UpsertDoguNetworkPolicies(context.Background(), doguResource, dogu, &service)
 			if !test.expectError {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 			}
 
 			for _, expectedPolicy := range test.expectedNetworkPolicies {
@@ -601,9 +623,6 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 					assert.Fail(t, fmt.Sprintf("the policy '%s' was expected but not created", expectedPolicy))
 				}
 			}
-
-			mockClient.AssertExpectations(t)
-
 		})
 	}
 }

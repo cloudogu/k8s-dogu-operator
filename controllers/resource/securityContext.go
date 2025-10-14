@@ -2,22 +2,23 @@ package resource
 
 import (
 	"context"
+	"slices"
+
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
-	"slices"
 )
 
-func NewSecurityContextGenerator() *SecurityContextGenerator {
-	return &SecurityContextGenerator{}
+func NewSecurityContextGenerator() SecurityContextGenerator {
+	return &securityContextGenerator{}
 }
 
 // SecurityContextGenerator provides functionality to create security contexts for dogus.
-type SecurityContextGenerator struct{}
+type securityContextGenerator struct{}
 
 // Generate creates security contexts for the pod and containers of a dogu.
-func (s *SecurityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu, doguResource *v2.Dogu) (*corev1.PodSecurityContext, *corev1.SecurityContext) {
+func (s *securityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu, doguResource *v2.Dogu) (*corev1.PodSecurityContext, *corev1.SecurityContext) {
 	runAsNonRoot := isRunAsNonRoot(dogu, doguResource)
 	seLinuxOptions := seLinuxOptions(doguResource.Spec.Security.SELinuxOptions)
 	appArmorProfile := appArmorProfile(doguResource.Spec.Security.AppArmorProfile)

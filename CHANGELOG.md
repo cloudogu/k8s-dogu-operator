@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.14.0] - 2025-10-13
+### Changed
+- [#259] Continuously reconcile dogus
+  - Refactor to step-based architecture
+  - When necessary, automatically restart dogus to apply config changes
+  - Do not depend on status for reconciliation
+  - Set conditions for better alignment with k8s best practices
+### Added
+- [#259] Pause reconciliation for dogus with flag `spec.pauseReconciliation`
+
 ## [v3.13.0] - 2025-09-23
 - [#262] Update Dependency to k8s-ces-gateway 1.x.x
 

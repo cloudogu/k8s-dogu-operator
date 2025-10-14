@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	"github.com/cloudogu/k8s-registry-lib/config"
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-registry-lib/config"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -18,7 +21,7 @@ import (
 // Remover removes a dogu's service account.
 type remover struct {
 	client            client.Client
-	sensitiveDoguRepo sensitiveDoguConfigRepository
+	sensitiveDoguRepo SensitiveDoguConfigRepository
 	doguFetcher       localDoguFetcher
 	executor          commandExecutor
 	clientSet         kubernetes.Interface
@@ -27,7 +30,14 @@ type remover struct {
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
-func NewRemover(repo sensitiveDoguConfigRepository, localFetcher localDoguFetcher, commandExecutor commandExecutor, client client.Client, clientSet kubernetes.Interface, namespace string) *remover {
+func NewRemover(
+	repo SensitiveDoguConfigRepository,
+	localFetcher cesregistry.LocalDoguFetcher,
+	commandExecutor exec.CommandExecutor,
+	client client.Client,
+	clientSet kubernetes.Interface,
+	operatorConfig *opConfig.OperatorConfig,
+) *remover {
 	return &remover{
 		client:            client,
 		sensitiveDoguRepo: repo,
@@ -35,7 +45,7 @@ func NewRemover(repo sensitiveDoguConfigRepository, localFetcher localDoguFetche
 		executor:          commandExecutor,
 		clientSet:         clientSet,
 		apiClient:         &apiClient{},
-		namespace:         namespace,
+		namespace:         operatorConfig.Namespace,
 	}
 }
 
@@ -45,7 +55,11 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 
 	sensitiveConfig, err := r.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
-		return fmt.Errorf("unbale to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
+		if cloudoguerrors.IsNotFoundError(err) {
+			logger.Info(fmt.Sprintf("skipping service account removal because %s sensitive dogu config is not found", dogu.GetSimpleName()))
+			return nil
+		}
+		return fmt.Errorf("unable to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
 	}
 
 	var allProblems error
@@ -143,7 +157,7 @@ func (r *remover) executeCommand(ctx context.Context, consumerDogu *core.Dogu, s
 		return err
 	}
 
-	_, err = r.executor.ExecCommandForDogu(ctx, doguResource, command, exec.PodReady)
+	_, err = r.executor.ExecCommandForDogu(ctx, doguResource, command)
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}

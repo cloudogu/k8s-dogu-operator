@@ -1,0 +1,93 @@
+package upgrade
+
+import (
+	"context"
+	"github.com/stretchr/testify/mock"
+	"testing"
+
+	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var testCtx = context.Background()
+
+const namespace = "ecosystem"
+const name = "test"
+
+func TestNewInstalledVersionStep(t *testing.T) {
+	t.Run("Successfully created step", func(t *testing.T) {
+		doguInterfaceMock := newMockDoguInterface(t)
+
+		step := NewInstalledVersionStep(doguInterfaceMock)
+
+		assert.NotNil(t, step)
+	})
+}
+
+func TestInstalledVersionStep_Run(t *testing.T) {
+	type fields struct {
+		doguInterfaceFn func(t *testing.T) doguInterface
+	}
+	tests := []struct {
+		name         string
+		fields       fields
+		doguResource *v2.Dogu
+		want         steps.StepResult
+	}{
+		{
+			name: "should fail to update status of dogu resource",
+			fields: fields{
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					mck := newMockDoguInterface(t)
+					dogu := &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: name},
+						Spec:       v2.DoguSpec{Version: "1.0.0"},
+					}
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
+					return mck
+				},
+			},
+			doguResource: &v2.Dogu{
+				ObjectMeta: v1.ObjectMeta{Name: name},
+				Spec:       v2.DoguSpec{Version: "1.0.0"},
+			},
+			want: steps.RequeueWithError(assert.AnError),
+		},
+		{
+			name: "should succeed to update status of dogu resource",
+			fields: fields{
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					mck := newMockDoguInterface(t)
+					expectedStatus := v2.DoguStatus{
+						Status:           v2.DoguStatusInstalled,
+						InstalledVersion: "1.0.0",
+					}
+					dogu := &v2.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: name},
+						Spec:       v2.DoguSpec{Version: "1.0.0"},
+					}
+					mck.EXPECT().UpdateStatusWithRetry(testCtx, dogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, opts v1.UpdateOptions) {
+						status := modifyStatusFn(dogu.Status)
+						assert.Equal(t, expectedStatus, status)
+					}).Return(dogu, nil)
+					return mck
+				},
+			},
+			doguResource: &v2.Dogu{
+				ObjectMeta: v1.ObjectMeta{Name: name},
+				Spec:       v2.DoguSpec{Version: "1.0.0"},
+			},
+			want: steps.Continue(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ivs := &InstalledVersionStep{
+				doguInterface: tt.fields.doguInterfaceFn(t),
+			}
+			assert.Equalf(t, tt.want, ivs.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)
+		})
+	}
+}

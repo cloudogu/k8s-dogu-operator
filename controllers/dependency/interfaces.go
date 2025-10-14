@@ -3,13 +3,17 @@ package dependency
 import (
 	"context"
 
-	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 )
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
 type localDoguFetcher interface {
-	// FetchInstalled fetches the dogu from the local registry and returns it with patched dogu dependencies (which
-	// otherwise might be incompatible with K8s CES).
-	FetchInstalled(ctx context.Context, doguName cescommons.SimpleName) (installedDogu *cesappcore.Dogu, err error)
+	cesregistry.LocalDoguFetcher
+}
+
+// Validator checks if all necessary dependencies of the dogu are installed.
+type Validator interface {
+	// ValidateDependencies is used to check if dogu dependencies are installed.
+	ValidateDependencies(ctx context.Context, dogu *cesappcore.Dogu) error
 }

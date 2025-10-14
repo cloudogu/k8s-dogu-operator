@@ -4,19 +4,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sirupsen/logrus"
+	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	ctrl "sigs.k8s.io/controller-runtime"
-
-	"github.com/cloudogu/cesapp-lib/core"
 )
 
-func TestConfigureLogger(t *testing.T) {
-	originalControllerLogger := ctrl.Log
+func TestNewLogger(t *testing.T) {
 	originalLibraryLogger := core.GetLogger()
 	defer func() {
-		ctrl.Log = originalControllerLogger
 		core.GetLogger = func() core.Logger {
 			return originalLibraryLogger
 		}
@@ -27,7 +22,7 @@ func TestConfigureLogger(t *testing.T) {
 		_ = os.Unsetenv(logLevelEnvVar)
 
 		// when
-		err := ConfigureLogger()
+		_, err := NewLogger()
 
 		// then
 		assert.NoError(t, err)
@@ -37,11 +32,10 @@ func TestConfigureLogger(t *testing.T) {
 		t.Setenv(logLevelEnvVar, "")
 
 		// when
-		err := ConfigureLogger()
+		_, err := NewLogger()
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, logrus.ErrorLevel, CurrentLogLevel)
 	})
 
 	t.Run("create logger with log level INFO", func(t *testing.T) {
@@ -49,10 +43,9 @@ func TestConfigureLogger(t *testing.T) {
 		_ = os.Setenv(logLevelEnvVar, "INFO")
 
 		// when
-		err := ConfigureLogger()
+		_, err := NewLogger()
 
 		// then
-		core.GetLogger().Info("test")
 		assert.NoError(t, err)
 	})
 
@@ -61,7 +54,7 @@ func TestConfigureLogger(t *testing.T) {
 		_ = os.Setenv(logLevelEnvVar, "TEST_LEVEL")
 
 		// when
-		err := ConfigureLogger()
+		_, err := NewLogger()
 
 		// then
 		assert.Error(t, err)
