@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- [#265] Use `sh` instead if `bash` to support dogus which do not use our container base image with pre-installed bash.
+- [#265] Use `sh` instead of `bash` to support dogus which do not use our container base image with pre-installed bash.
   - This affects the startup probe which calls `doguctl` in a shell to check if the dogu is ready and
   - the support manager wich uses the shell to execute a sleep command while the dogu is in support mode.
 
