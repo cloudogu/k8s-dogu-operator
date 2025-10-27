@@ -176,6 +176,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			&upgrade.InstalledVersionStep{},
 			&upgrade.UpdateStartedAtStep{},
 			&upgrade.RestartAfterConfigChangeStep{},
+			&upgrade.RetroactiveServiceAccountStep{},
 		)
 
 		wantTypes := []string{
@@ -216,6 +217,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*upgrade.RegisterDoguVersionStep",
 			"*upgrade.UpdateStartedAtStep",
 			"*upgrade.RestartAfterConfigChangeStep",
+			"*upgrade.RetroactiveServiceAccountStep",
 		}
 
 		assert.NotNil(t, got)
