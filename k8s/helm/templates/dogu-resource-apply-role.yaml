@@ -108,3 +108,4 @@ rules:
     - get
     - update
     - watch
+    - deletecollection
