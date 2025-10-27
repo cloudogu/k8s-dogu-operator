@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#265] Use `sh` instead of `bash` to support dogus which do not use our container base image with pre-installed bash.
+  - This affects the startup probe which calls `doguctl` in a shell to check if the dogu is ready and
+  - the support manager wich uses the shell to execute a sleep command while the dogu is in support mode.
 ### Fixed
 - [#267] Fix networkpolicy enabled configuration and add missing rbac.
 
