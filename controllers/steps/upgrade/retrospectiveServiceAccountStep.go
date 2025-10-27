@@ -47,9 +47,9 @@ func (r *RetroactiveServiceAccountStep) Run(ctx context.Context, resource *doguv
 
 	var errs []error
 	for _, dogu := range doguList.Items {
-		doguDescriptor, err := r.localDoguFetcher.FetchForResource(ctx, &dogu)
-		if err != nil {
-			errs = append(errs, err)
+		doguDescriptor, fetchErr := r.localDoguFetcher.FetchForResource(ctx, &dogu)
+		if fetchErr != nil {
+			errs = append(errs, fetchErr)
 			continue
 		}
 
