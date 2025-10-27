@@ -542,8 +542,8 @@ func Test_CreateStartupProbe(t *testing.T) {
 		state string
 		want  []string
 	}{
-		{name: "should be ready if not set", state: "", want: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
-		{name: "should be custom if custom", state: "custom", want: []string{"bash", "-c", "[[ $(doguctl state) == \"custom\" ]]"}},
+		{name: "should be ready if not set", state: "", want: []string{"/bin/sh", "-c", "[ $(doguctl state) = \"ready\" ]"}},
+		{name: "should be custom if custom", state: "custom", want: []string{"/bin/sh", "-c", "[ $(doguctl state) = \"custom\" ]"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -7,12 +7,13 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"k8s.io/utils/ptr"
-	"sigs.k8s.io/cluster-api/util/conditions"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/cluster-api/util/conditions"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -667,7 +668,7 @@ func createDoguPod(ctx context.Context, doguCr *doguv2.Dogu, podLabels doguv2.Ce
 			Labels:       podLabels,
 		},
 		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: doguCr.Name, Image: "ldap-image", StartupProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
-			Exec: &corev1.ExecAction{Command: []string{"bash", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
+			Exec: &corev1.ExecAction{Command: []string{"/bin/sh", "-c", "[[ $(doguctl state) == \"ready\" ]]"}},
 		}, FailureThreshold: 6 * 30}}}},
 		Status: corev1.PodStatus{Phase: corev1.PodRunning,
 			Conditions: []corev1.PodCondition{{Type: corev1.ContainersReady, Status: corev1.ConditionTrue}},
