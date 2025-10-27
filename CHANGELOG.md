@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#265] Use `sh` instead of `bash` to support dogus which do not use our container base image with pre-installed bash.
   - This affects the startup probe which calls `doguctl` in a shell to check if the dogu is ready and
   - the support manager wich uses the shell to execute a sleep command while the dogu is in support mode.
+### Fixed
+- [#267] Fix networkpolicy enabled configuration and add missing rbac.
 
 ## [v3.14.0] - 2025-10-13
 ### Changed

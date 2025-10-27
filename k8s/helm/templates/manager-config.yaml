@@ -5,4 +5,4 @@ metadata:
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 data:
-  network_policies_enabled: "{{- if .Values.networkPolicies.enabled }}true{{- else }}false{{- end }}"
+  network_policies_enabled: "{{- if .Values.global.networkPolicies.enabled }}true{{- else }}false{{- end }}"
