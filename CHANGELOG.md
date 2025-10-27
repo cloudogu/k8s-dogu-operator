@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - This is necessary as service accounts will be skipped if an optional dependency is not installed.
     If the dependency is installed later, this will ensure that the service account will be created.
   - This works by reconciling the dependent dogu.
+### Fixed
+- [#267] Fix networkpolicy enabled configuration and add missing rbac.
+
 
 ## [v3.14.0] - 2025-10-13
 ### Changed
