@@ -462,7 +462,7 @@ func CreateStartupProbe(dogu *core.Dogu) *corev1.Probe {
 			}
 			return &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					Exec: &corev1.ExecAction{Command: []string{"bash", "-c", fmt.Sprintf("[[ $(doguctl state) == \"%s\" ]]", state)}},
+					Exec: &corev1.ExecAction{Command: []string{"/bin/sh", "-c", fmt.Sprintf("[ $(doguctl state) = \"%s\" ]", state)}},
 				},
 				TimeoutSeconds:   timeoutSeconds,
 				PeriodSeconds:    10,

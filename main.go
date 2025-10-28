@@ -222,6 +222,7 @@ func options() []fx.Option {
 			upgradeSteps.NewInstalledVersionStep,
 			upgradeSteps.NewRegenerateDeploymentStep,
 			upgradeSteps.NewUpdateStartedAtStep,
+			upgradeSteps.NewRetroactiveServiceAccountStep,
 
 			// use-cases
 			fx.Annotate(

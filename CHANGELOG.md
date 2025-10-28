@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.15.0] - 2025-10-28
+### Added
+- [#269] Functionality to create service accounts after their dependant is already installed
+  - This is necessary as service accounts will be skipped if an optional dependency is not installed.
+    If the dependency is installed later, this will ensure that the service account will be created.
+  - This works by reconciling the dependent dogu.
+
+### Changed
+- [#265] Use `sh` instead of `bash` to support dogus which do not use our container base image with pre-installed bash.
+  - This affects the startup probe which calls `doguctl` in a shell to check if the dogu is ready and
+  - the support manager wich uses the shell to execute a sleep command while the dogu is in support mode.
+
+### Fixed
+- [#267] Fix networkpolicy enabled configuration and add missing rbac.
+
 ## [v3.14.0] - 2025-10-13
 ### Changed
 - [#259] Continuously reconcile dogus

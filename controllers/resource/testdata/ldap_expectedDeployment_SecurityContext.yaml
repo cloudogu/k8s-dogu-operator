@@ -174,9 +174,9 @@ spec:
           startupProbe:
             exec:
               command:
-                - bash
+                - /bin/sh
                 - -c
-                - '[[ $(doguctl state) == "ready" ]]'
+                - '[ $(doguctl state) = "ready" ]'
             failureThreshold: 180
             periodSeconds: 10
             successThreshold: 1
@@ -225,6 +225,4 @@ spec:
         - name: configmap-test
           configMap:
             name: k8s-my-configmap
-  revisionHistoryLimit: 10
-  progressDeadlineSeconds: 600
 status: { }

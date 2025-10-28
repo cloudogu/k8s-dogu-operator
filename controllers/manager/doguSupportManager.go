@@ -109,8 +109,8 @@ func setDoguPodTemplateInSupportMode(doguResource *doguv2.Dogu, template *corev1
 			container.LivenessProbe = nil
 			container.ReadinessProbe = nil
 			container.StartupProbe = nil
-			container.Command = []string{"/bin/bash", "-c", "--"}
-			container.Args = []string{"while true; do sleep 5; done;"}
+			container.Command = []string{"sleep"}
+			container.Args = []string{"infinity"}
 			container.Env = append(container.Env, corev1.EnvVar{Name: SupportModeEnvVar, Value: "true"})
 		}
 	}

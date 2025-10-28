@@ -71,6 +71,7 @@ func NewDoguInstallOrChangeUseCase(
 	installedVersionStep *upgrade.InstalledVersionStep,
 	updateStartedAtStep *upgrade.UpdateStartedAtStep,
 	restartDoguStep *upgrade.RestartAfterConfigChangeStep,
+	retroactiveServiceAccountStep *upgrade.RetroactiveServiceAccountStep,
 ) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
@@ -111,6 +112,7 @@ func NewDoguInstallOrChangeUseCase(
 			upgradeRegisterDoguVersionStep,
 			updateStartedAtStep,
 			restartDoguStep,
+			retroactiveServiceAccountStep,
 		},
 	}
 }

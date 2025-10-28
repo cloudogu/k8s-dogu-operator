@@ -175,8 +175,8 @@ func Test_doguSupportManager_updateDeployment(t *testing.T) {
 						Name:  "SUPPORT_MODE",
 						Value: "true",
 					}},
-					Command: []string{"/bin/bash", "-c", "--"},
-					Args:    []string{"while true; do sleep 5; done;"},
+					Command: []string{"sleep"},
+					Args:    []string{"infinity"},
 				},
 			},
 		}

@@ -66,7 +66,7 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 
 	sensitiveConfig, err := c.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
-		return fmt.Errorf("unbale to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
+		return fmt.Errorf("unable to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
 	}
 
 	for _, serviceAccount := range dogu.ServiceAccounts {
