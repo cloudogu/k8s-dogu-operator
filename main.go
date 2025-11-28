@@ -199,6 +199,7 @@ func options() []fx.Option {
 				fx.ParamTags(`name:"localDoguDescriptorRepository"`),
 				fx.As(new(install.LocalDoguDescriptorOwnerReferenceStep)),
 			),
+			install.NewRemoveServiceAccountStep,
 			install.NewServiceAccountStep,
 			install.NewServiceStep,
 			install.NewCreateExecPodStep,

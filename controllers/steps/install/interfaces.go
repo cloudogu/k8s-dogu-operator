@@ -156,6 +156,10 @@ type serviceAccountCreator interface {
 	CreateAll(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
+type serviceAccountRemover interface {
+	RemoveAllFromComponents(ctx context.Context, dogu *cesappcore.Dogu) error
+}
+
 //nolint:unused
 //goland:noinspection GoUnusedType
 type clientSet interface {

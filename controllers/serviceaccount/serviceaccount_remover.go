@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
@@ -84,6 +85,31 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 	}
 
 	return allProblems
+}
+
+// RemoveAllFromComponents removes all service accounts for a given dogu's components'
+func (r *remover) RemoveAllFromComponents(ctx context.Context, dogu *core.Dogu) error {
+	logger := log.FromContext(ctx)
+
+	sensitiveConfig, err := r.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
+	if err != nil {
+		if cloudoguerrors.IsNotFoundError(err) {
+			logger.Info(fmt.Sprintf("skipping service account removal because %s sensitive dogu config is not found", dogu.GetSimpleName()))
+			return nil
+		}
+		return fmt.Errorf("unable to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
+	}
+
+	for _, serviceAccount := range dogu.ServiceAccounts {
+		if serviceAccount.Kind == componentKind {
+			lErr := r.removeComponentServiceAccount(ctx, dogu, serviceAccount, &sensitiveConfig)
+			if lErr != nil {
+				err = errors.Join(err, fmt.Errorf("unable to remove service account for component %s: %w", serviceAccount.Type, lErr))
+			}
+		}
+	}
+
+	return err
 }
 
 func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
