@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.16.0] - 2025-11-28
+### Added
+- [#271] Add v2 Dependency for k8s-ces-gateway `1.x.x || 2.x.x` to support new the version of k8s-ces-gateway.
+
 ## [v3.15.0] - 2025-10-28
 ### Added
 - [#269] Functionality to create service accounts after their dependant is already installed
