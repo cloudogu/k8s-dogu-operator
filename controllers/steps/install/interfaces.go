@@ -157,6 +157,7 @@ type serviceAccountCreator interface {
 }
 
 type serviceAccountRemover interface {
+	RemoveAll(ctx context.Context, dogu *cesappcore.Dogu) error
 	RemoveAllFromComponents(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
