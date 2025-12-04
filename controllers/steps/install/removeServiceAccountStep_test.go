@@ -53,7 +53,8 @@ func TestRemoveServiceAccountStep_Run(t *testing.T) {
 			},
 			doguResource: &v2.Dogu{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test",
+					Name:        "test",
+					Annotations: map[string]string{"wasRestored": "true"},
 				},
 			},
 			want: steps.RequeueWithError(assert.AnError),
@@ -66,7 +67,6 @@ func TestRemoveServiceAccountStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, doguName).Return(&cesappcore.Dogu{Name: "test"}, nil)
 					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {
@@ -88,7 +88,6 @@ func TestRemoveServiceAccountStep_Run(t *testing.T) {
 				},
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					mck := newMockLocalDoguFetcher(t)
-					mck.EXPECT().FetchInstalled(testCtx, doguName).Return(&cesappcore.Dogu{Name: "test"}, nil)
 					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) doguInterface {

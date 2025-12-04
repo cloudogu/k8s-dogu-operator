@@ -48,6 +48,8 @@ var (
 	ImageRegistryMock                  *mockImageRegistry
 	CommandExecutorMock                *mockCommandExecutor
 	RemoteDoguDescriptorRepositoryMock *mockRemoteDoguDescriptorRepository
+	localDoguFetcherMock               *mockLocalDoguFetcher
+	localDoguDescriptorRepositoryMock  *mockLocalDoguDescriptorRepository
 	k8sClient                          controllers.K8sClient
 	fxApp                              *fxtest.App
 )
@@ -105,6 +107,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	ginkgo.By("creating mocks")
 	CommandExecutorMock = &mockCommandExecutor{}
 	RemoteDoguDescriptorRepositoryMock = &mockRemoteDoguDescriptorRepository{}
+	localDoguFetcherMock = &mockLocalDoguFetcher{}
+	localDoguDescriptorRepositoryMock = &mockLocalDoguDescriptorRepository{}
 	ImageRegistryMock = &mockImageRegistry{}
 
 	ginkgo.By("overriding functions")

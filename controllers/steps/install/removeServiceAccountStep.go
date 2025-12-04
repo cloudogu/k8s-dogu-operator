@@ -29,6 +29,13 @@ func NewRemoveServiceAccountStep(creator serviceaccount.ServiceAccountRemover, f
 
 func (sas *RemoveServiceAccountStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 	const restoredAnnotation = "wasRestored"
+	if len(doguResource.Annotations) == 0 {
+		return steps.Continue()
+	}
+	if _, wasRestored := doguResource.Annotations[restoredAnnotation]; !wasRestored {
+		return steps.Continue()
+	}
+
 	doguDescriptor, err := sas.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return steps.RequeueWithError(err)
