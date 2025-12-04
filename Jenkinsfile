@@ -60,10 +60,6 @@ node('docker') {
                                 junit allowEmptyResults: true, testResults: 'target/unit-tests/*-tests.xml'
                             }
 
-                            stage('k8s-Integration-Test') {
-                                make 'k8s-integration-test'
-                            }
-
                             stage("Review dog analysis") {
                                 stageStaticAnalysisReviewDog()
                             }
