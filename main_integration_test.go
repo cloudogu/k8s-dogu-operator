@@ -610,11 +610,12 @@ func setExecPodRunning(ctx context.Context, doguName string) {
 	Eventually(func() bool {
 		err := k8sClient.List(ctx, podList)
 		Expect(err).ToNot(HaveOccurred())
+		fmt.Fprintf(GinkgoWriter, "available pods: %v", podList.Items)
 		for _, pod := range podList.Items {
 			if strings.Contains(pod.Name, doguName+"-execpod") && pod.Status.Phase != corev1.PodRunning {
 				pod.Status.Phase = corev1.PodRunning
 				err := k8sClient.Status().Update(ctx, &pod)
-
+				fmt.Fprintf(GinkgoWriter, "error: %v", err)
 				return err == nil
 			}
 		}

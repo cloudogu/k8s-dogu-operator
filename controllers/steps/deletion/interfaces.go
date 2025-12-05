@@ -36,6 +36,7 @@ type localDoguFetcher interface {
 type serviceAccountRemover interface {
 	// RemoveAll is used to remove all existing service accounts for the given dogu.
 	RemoveAll(ctx context.Context, dogu *cesappcore.Dogu) error
+	RemoveAllFromComponents(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
 type doguConfigRepository interface {

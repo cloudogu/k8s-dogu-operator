@@ -61,6 +61,7 @@ type ServiceAccountCreator interface {
 type ServiceAccountRemover interface {
 	// RemoveAll is used to remove all existing service accounts for the given dogu.
 	RemoveAll(ctx context.Context, dogu *cesappcore.Dogu) error
+	RemoveAllFromComponents(ctx context.Context, dogu *cesappcore.Dogu) error
 }
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
