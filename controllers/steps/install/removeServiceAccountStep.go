@@ -44,9 +44,11 @@ func (sas *RemoveServiceAccountStep) Run(ctx context.Context, doguResource *v2.D
 	if doguResource.Annotations != nil {
 		if _, wasRestored := doguResource.Annotations[restoredAnnotation]; wasRestored {
 			err = sas.serviceAccountRemover.RemoveAllFromComponents(ctx, doguDescriptor)
-			// remove annotation afterward to prevent endless requeue
-			delete(doguResource.Annotations, restoredAnnotation)
-			_, err = sas.doguInterface.Update(ctx, doguResource, metav1.UpdateOptions{})
+			if err == nil {
+				// remove annotation afterward to prevent endless requeue
+				delete(doguResource.Annotations, restoredAnnotation)
+				_, err = sas.doguInterface.Update(ctx, doguResource, metav1.UpdateOptions{})
+			}
 		}
 	}
 
