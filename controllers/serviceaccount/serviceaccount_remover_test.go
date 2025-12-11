@@ -3,6 +3,7 @@ package serviceaccount
 import (
 	"testing"
 
+	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -387,5 +388,177 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get service:")
+	})
+}
+
+func TestRemover_RemoveAllFromComponents(t *testing.T) {
+	t.Run("success remove component service account", func(t *testing.T) {
+		// given
+		fakeClient := fake.NewClientset(
+			&v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "sa-provider-svc",
+					Namespace: "testNs",
+					Annotations: map[string]string{
+						"ces.cloudogu.com/serviceaccount-port":        "9977",
+						"ces.cloudogu.com/serviceaccount-path":        "/sa-management",
+						"ces.cloudogu.com/serviceaccount-secret-name": "k8s-prometheus-api-key",
+						"ces.cloudogu.com/serviceaccount-secret-key":  "theApiKey",
+					},
+					Labels: map[string]string{
+						"app": "ces",
+						"ces.cloudogu.com/serviceaccount-provider": "k8s-prometheus",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					ClusterIP: "1.2.3.4",
+				},
+			},
+			&v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "k8s-prometheus-api-key",
+					Namespace: "testNs",
+				},
+				Data: map[string][]byte{
+					"theApiKey": []byte("secretKey"),
+				},
+			},
+		)
+
+		doguCfg := config.CreateDoguConfig("grafana", config.Entries{
+			"sa-k8s-prometheus/username": "testUser",
+			"sa-k8s-prometheus/password": "testPassword",
+		})
+
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, cescommons.SimpleName("grafana")).Return(doguCfg, nil)
+		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
+
+		mockApiClient := newMockServiceAccountApiClient(t)
+		mockApiClient.EXPECT().deleteServiceAccount(mock.Anything, "http://1.2.3.4:9977/sa-management", "secretKey", "grafana").Return(nil)
+
+		r := remover{
+			clientSet:         fakeClient,
+			sensitiveDoguRepo: sensitiveConfigRepoMock,
+			apiClient:         mockApiClient,
+			namespace:         "testNs",
+		}
+
+		dogu := &core.Dogu{
+			Name: "official/grafana",
+			ServiceAccounts: []core.ServiceAccount{
+				{Kind: "component", Type: "k8s-prometheus"},
+			},
+		}
+
+		// when
+		err := r.RemoveAllFromComponents(testCtx, dogu)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("skip removal because sensitive config not found", func(t *testing.T) {
+		// given
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, cescommons.SimpleName("grafana")).
+			Return(config.DoguConfig{}, cloudoguerrors.NewNotFoundError(assert.AnError))
+
+		r := remover{sensitiveDoguRepo: sensitiveConfigRepoMock}
+
+		dogu := &core.Dogu{
+			Name: "official/grafana",
+			ServiceAccounts: []core.ServiceAccount{
+				{Kind: "component", Type: "k8s-prometheus"},
+			},
+		}
+
+		// when
+		err := r.RemoveAllFromComponents(testCtx, dogu)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("fail to get sensitive config", func(t *testing.T) {
+		// given
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, cescommons.SimpleName("grafana")).
+			Return(config.DoguConfig{}, assert.AnError)
+
+		r := remover{sensitiveDoguRepo: sensitiveConfigRepoMock}
+
+		dogu := &core.Dogu{
+			Name: "official/grafana",
+			ServiceAccounts: []core.ServiceAccount{
+				{Kind: "component", Type: "k8s-prometheus"},
+			},
+		}
+
+		// when
+		err := r.RemoveAllFromComponents(testCtx, dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "unable to get sensitive config for dogu grafana")
+	})
+
+	t.Run("skip non-component service accounts", func(t *testing.T) {
+		// given
+		doguCfg := config.CreateDoguConfig("redmine", config.Entries{
+			"sa-postgresql/username": "testUser",
+			"sa-postgresql/password": "testPassword",
+		})
+
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, cescommons.SimpleName("redmine")).Return(doguCfg, nil)
+
+		r := remover{sensitiveDoguRepo: sensitiveConfigRepoMock}
+
+		dogu := &core.Dogu{
+			Name: "official/redmine",
+			ServiceAccounts: []core.ServiceAccount{
+				{Kind: "dogu", Type: "postgresql"},
+			},
+		}
+
+		// when
+		err := r.RemoveAllFromComponents(testCtx, dogu)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("fail to remove component service account", func(t *testing.T) {
+		// given
+		fakeClient := fake.NewClientset()
+
+		doguCfg := config.CreateDoguConfig("grafana", config.Entries{
+			"sa-k8s-prometheus/username": "testUser",
+			"sa-k8s-prometheus/password": "testPassword",
+		})
+
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, cescommons.SimpleName("grafana")).Return(doguCfg, nil)
+
+		r := remover{
+			clientSet:         fakeClient,
+			sensitiveDoguRepo: sensitiveConfigRepoMock,
+			namespace:         "testNs",
+		}
+
+		dogu := &core.Dogu{
+			Name: "official/grafana",
+			ServiceAccounts: []core.ServiceAccount{
+				{Kind: "component", Type: "k8s-prometheus"},
+			},
+		}
+
+		// when
+		err := r.RemoveAllFromComponents(testCtx, dogu)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "unable to remove service account for component k8s-prometheus")
 	})
 }
