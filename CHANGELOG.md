@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.17.0] - 2025-12-11
+### Fixed
+- [#273] Recreate component service accounts if dogus are restored from a backup.
+
 ## [v3.16.0] - 2025-11-28
 ### Added
 - [#271] Add v2 Dependency for k8s-ces-gateway `1.x.x || 2.x.x` to support new the version of k8s-ces-gateway.
