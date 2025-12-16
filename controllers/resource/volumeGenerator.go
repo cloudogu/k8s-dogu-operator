@@ -452,6 +452,10 @@ func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv2.Dogu) 
 		},
 	}
 
+	if doguResource.Spec.Resources.DataVolumeStorageClass != "" {
+		pvc.Spec.StorageClassName = &doguResource.Spec.Resources.DataVolumeStorageClass
+	}
+
 	err = ctrl.SetControllerReference(doguResource, pvc, r.scheme)
 	if err != nil {
 		return nil, wrapControllerReferenceError(err)
