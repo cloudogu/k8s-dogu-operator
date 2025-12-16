@@ -444,16 +444,13 @@ func (r *resourceGenerator) createPVC(pvcName string, doguResource *k8sv2.Dogu) 
 	}
 
 	pvc.Spec = corev1.PersistentVolumeClaimSpec{
-		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+		StorageClassName: doguResource.Spec.Resources.StorageClassName,
+		AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 		Resources: corev1.VolumeResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: size,
 			},
 		},
-	}
-
-	if doguResource.Spec.Resources.DataVolumeStorageClass != "" {
-		pvc.Spec.StorageClassName = &doguResource.Spec.Resources.DataVolumeStorageClass
 	}
 
 	err = ctrl.SetControllerReference(doguResource, pvc, r.scheme)

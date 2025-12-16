@@ -78,7 +78,8 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 		}
 
 		ldapDoguResource := readLdapDoguResource(t)
-		ldapDoguResource.Spec.Resources.DataVolumeStorageClass = "customStorageClass"
+		storageClass := "customStorageClass"
+		ldapDoguResource.Spec.Resources.StorageClassName = &storageClass
 
 		// when
 		actualPVC, err := generator.CreateDoguPVC(ldapDoguResource)
