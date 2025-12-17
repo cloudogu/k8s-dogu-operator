@@ -76,14 +76,16 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 		}
 	}
 
-	err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
-	if err != nil {
-		return steps.RequeueWithError(err)
-	}
+	if vs.shouldValidateDependencies(doguResource) {
+		err = vs.dependencyValidator.ValidateDependencies(ctx, toDogu)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 
-	err = vs.doguHealthChecker.CheckDependenciesRecursive(ctx, toDogu, doguResource.Namespace)
-	if err != nil {
-		return steps.RequeueWithError(err)
+		err = vs.doguHealthChecker.CheckDependenciesRecursive(ctx, toDogu, doguResource.Namespace)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
 	}
 
 	err = vs.securityValidator.ValidateSecurity(toDogu, doguResource)
@@ -97,6 +99,13 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 	}
 
 	return steps.Continue()
+}
+
+func (vs *ValidationStep) shouldValidateDependencies(doguResource *v2.Dogu) bool {
+	if doguResource != nil && doguResource.Status.Stopped {
+		return false
+	}
+	return true
 }
 
 func isOlder(version1Raw, version2Raw string) (bool, error) {
