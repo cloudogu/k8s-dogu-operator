@@ -71,6 +71,24 @@ func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 		assert.Equal(t, readLdapDoguExpectedDoguPVCWithCustomSize(t), actualPVC)
 	})
 
+	t.Run("Return simple pvc with custom storage class", func(t *testing.T) {
+		// given
+		generator := resourceGenerator{
+			scheme: getTestScheme(),
+		}
+
+		ldapDoguResource := readLdapDoguResource(t)
+		storageClass := "customStorageClass"
+		ldapDoguResource.Spec.Resources.StorageClassName = &storageClass
+
+		// when
+		actualPVC, err := generator.CreateDoguPVC(ldapDoguResource)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, readLdapDoguExpectedDoguPVCWithCustomStorageClass(t), actualPVC)
+	})
+
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {
 		// given
 		generator := resourceGenerator{

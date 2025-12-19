@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#274] Support for data volume storage class in Dogu-CR
 
 ## [v3.17.0] - 2025-12-11
 ### Fixed

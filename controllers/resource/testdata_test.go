@@ -3,9 +3,10 @@ package resource
 import (
 	_ "embed"
 	"encoding/json"
+	"testing"
+
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -43,6 +44,9 @@ var expectedDoguPVCBytes []byte
 
 //go:embed testdata/ldap_expectedPVC_withCustomSize.yaml
 var expectedDoguPVCWithCustomSizeBytes []byte
+
+//go:embed testdata/ldap_expectedDoguPVC_withCustomStorageClass.yaml
+var expectedDoguPVCWithCustomStorageClassBytes []byte
 
 //go:embed testdata/ldap_expectedService.yaml
 var expectedServiceBytes []byte
@@ -173,6 +177,18 @@ func readLdapDoguExpectedDoguPVCWithCustomSize(t *testing.T) *v1.PersistentVolum
 
 	data := &v1.PersistentVolumeClaim{}
 	err := yaml.Unmarshal(expectedDoguPVCWithCustomSizeBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readLdapDoguExpectedDoguPVCWithCustomStorageClass(t *testing.T) *v1.PersistentVolumeClaim {
+	t.Helper()
+
+	data := &v1.PersistentVolumeClaim{}
+	err := yaml.Unmarshal(expectedDoguPVCWithCustomStorageClassBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

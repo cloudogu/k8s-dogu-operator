@@ -209,6 +209,7 @@ func options() []fx.Option {
 			install.NewCreateDeploymentStep,
 			postinstall.NewStartStopStep,
 			postinstall.NewVolumeExpanderStep,
+			postinstall.NewMismatchedStorageClassWarningStep,
 			postinstall.NewAdditionalIngressAnnotationsStep,
 			postinstall.NewSecurityContextStep,
 			postinstall.NewExportModeStep,

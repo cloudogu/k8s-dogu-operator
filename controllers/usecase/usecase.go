@@ -57,6 +57,7 @@ func NewDoguInstallOrChangeUseCase(
 
 	replicasStep *postinstall.StartStopStep,
 	volumeExpanderStep *postinstall.VolumeExpanderStep,
+	mismatchedStorageClassWarningStep *postinstall.MismatchedStorageClassWarningStep,
 	additionalIngressAnnotationsStep *postinstall.AdditionalIngressAnnotationsStep,
 	securityContextStep *postinstall.SecurityContextStep,
 	exportModeStep *postinstall.ExportModeStep,
@@ -99,6 +100,7 @@ func NewDoguInstallOrChangeUseCase(
 			deploymentStep,
 			replicasStep,
 			volumeExpanderStep,
+			mismatchedStorageClassWarningStep,
 			additionalIngressAnnotationsStep,
 			securityContextStep,
 			exportModeStep,
