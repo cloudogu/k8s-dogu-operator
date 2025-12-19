@@ -38,7 +38,7 @@ func (m *MismatchedStorageClassWarningStep) Run(ctx context.Context, resource *v
 		return steps.Continue()
 	}
 
-	if pvc.Spec.StorageClassName != resource.Spec.Resources.StorageClassName {
+	if !equalPtr(pvc.Spec.StorageClassName, resource.Spec.Resources.StorageClassName) {
 		message := fmt.Sprintf(
 			"Mismatched storage class name between dogu and pvc resource: {dogu: %s, pvc: %s}",
 			*resource.Spec.Resources.StorageClassName, *pvc.Spec.StorageClassName)
@@ -47,4 +47,11 @@ func (m *MismatchedStorageClassWarningStep) Run(ctx context.Context, resource *v
 	}
 
 	return steps.Continue()
+}
+
+func equalPtr[T comparable](a, b *T) bool {
+	if a == nil || b == nil {
+		return a == b // both nil → true; one nil → false
+	}
+	return *a == *b
 }
