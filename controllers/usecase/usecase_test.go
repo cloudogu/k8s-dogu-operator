@@ -162,6 +162,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 
 			&postinstall.StartStopStep{},
 			&postinstall.VolumeExpanderStep{},
+			&postinstall.MismatchedStorageClassWarningStep{},
 			&postinstall.AdditionalIngressAnnotationsStep{},
 			&postinstall.SecurityContextStep{},
 			&postinstall.ExportModeStep{},
@@ -204,6 +205,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 
 			"*postinstall.StartStopStep",
 			"*postinstall.VolumeExpanderStep",
+			"*postinstall.MismatchedStorageClassWarningStep",
 			"*postinstall.AdditionalIngressAnnotationsStep",
 			"*postinstall.SecurityContextStep",
 			"*postinstall.ExportModeStep",
