@@ -320,7 +320,7 @@ func TestShouldValidationStep(t *testing.T) {
 		)
 		doguResource := &v2.Dogu{
 			ObjectMeta: v1.ObjectMeta{Name: "test"},
-			Status:     v2.DoguStatus{Stopped: true},
+			Spec:       v2.DoguSpec{Stopped: true},
 		}
 		result := step.shouldValidateDependencies(doguResource)
 

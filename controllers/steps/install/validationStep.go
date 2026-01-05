@@ -102,7 +102,7 @@ func (vs *ValidationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.
 }
 
 func (vs *ValidationStep) shouldValidateDependencies(doguResource *v2.Dogu) bool {
-	if doguResource != nil && doguResource.Status.Stopped {
+	if doguResource != nil && doguResource.Spec.Stopped {
 		return false
 	}
 	return true
