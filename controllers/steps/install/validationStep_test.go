@@ -279,3 +279,51 @@ func TestValidationStep_Run(t *testing.T) {
 		})
 	}
 }
+
+func TestShouldValidationStep(t *testing.T) {
+	t.Run("Successfully Return True", func(t *testing.T) {
+		checker := newMockDoguHealthChecker(t)
+		fetcher := newMockLocalDoguFetcher(t)
+		dependencyValidator := newMockDependencyValidator(t)
+		securityValidator := newMockSecurityValidator(t)
+		additionalMountsValidator := newMockDoguAdditionalMountsValidator(t)
+		recorder := newMockEventRecorder(t)
+		step := NewValidationStep(
+			checker,
+			fetcher,
+			dependencyValidator,
+			securityValidator,
+			additionalMountsValidator,
+			recorder,
+		)
+		doguResource := &v2.Dogu{
+			ObjectMeta: v1.ObjectMeta{Name: "test"},
+		}
+		result := step.shouldValidateDependencies(doguResource)
+
+		assert.True(t, result)
+	})
+	t.Run("Successfully Return False", func(t *testing.T) {
+		checker := newMockDoguHealthChecker(t)
+		fetcher := newMockLocalDoguFetcher(t)
+		dependencyValidator := newMockDependencyValidator(t)
+		securityValidator := newMockSecurityValidator(t)
+		additionalMountsValidator := newMockDoguAdditionalMountsValidator(t)
+		recorder := newMockEventRecorder(t)
+		step := NewValidationStep(
+			checker,
+			fetcher,
+			dependencyValidator,
+			securityValidator,
+			additionalMountsValidator,
+			recorder,
+		)
+		doguResource := &v2.Dogu{
+			ObjectMeta: v1.ObjectMeta{Name: "test"},
+			Spec:       v2.DoguSpec{Stopped: true},
+		}
+		result := step.shouldValidateDependencies(doguResource)
+
+		assert.False(t, result)
+	})
+}
