@@ -57,6 +57,13 @@ rules:
 - apiGroups:
     - networking.k8s.io
   resources:
+    - networkpolicies
+  verbs:
+    - create
+    - patch
+- apiGroups:
+    - networking.k8s.io
+  resources:
     - ingresses/status
   verbs:
     - update
