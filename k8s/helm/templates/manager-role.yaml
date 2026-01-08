@@ -59,6 +59,7 @@ rules:
       - get
       - list
       - create
+      - patch
       - update
       - delete
   # managing dogu deployments
@@ -118,12 +119,28 @@ rules:
       - update
       - delete
       - deletecollection
+      - patch
+      - watch
   - apiGroups:
       - ""
     resources:
       - pods/exec
     verbs:
       - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
   - apiGroups:
       - ""
     resources:
@@ -134,4 +151,26 @@ rules:
       - patch
       # we list and delete requeue events to avoid spam
       - list
+      - delete
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - create
+      - delete
+  - apiGroups:
+      - "rbac.authorization.k8s.io"
+    resources:
+      - roles
+    verbs:
+      - create
+      - delete
+  - apiGroups:
+      - "rbac.authorization.k8s.io"
+    resources:
+      - rolebindings
+    verbs:
+      - create
       - delete
