@@ -10,6 +10,8 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -94,15 +96,7 @@ func (u *upserter) UpsertDoguService(ctx context.Context, doguResource *k8sv2.Do
 
 // UpsertDoguPVCs generates a persistent volume claim for a given dogu and applies it to the cluster.
 func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (*v1.PersistentVolumeClaim, error) {
-	shouldCreatePVC := false
-	for _, volume := range dogu.Volumes {
-		if volume.NeedsBackup {
-			shouldCreatePVC = true
-			break
-		}
-	}
-
-	if shouldCreatePVC {
+	if needsPVCs(dogu) {
 		newPVC, err := u.generator.CreateDoguPVC(doguResource)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate pvc: %w", err)
@@ -117,6 +111,34 @@ func (u *upserter) UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu,
 	}
 
 	return nil, nil
+}
+
+// SetControllerReferenceForPVC sets a controller reference to the dogu in the specified PVC.
+func (u *upserter) SetControllerReferenceForPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv2.Dogu) error {
+	if !controllerutil.HasControllerReference(pvc) {
+		err := ctrl.SetControllerReference(doguResource, pvc, u.scheme)
+		if err != nil {
+			return wrapControllerReferenceError(err)
+		}
+
+		pvcObjectKey := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
+		err = u.updateOrInsert(ctx, pvcObjectKey, &v1.PersistentVolumeClaim{}, pvc)
+		if err != nil {
+			return fmt.Errorf("failed to update pvc with controller reference: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func needsPVCs(dogu *core.Dogu) bool {
+	for _, volume := range dogu.Volumes {
+		if volume.NeedsBackup {
+			return true
+		}
+	}
+
+	return false
 }
 
 // UpsertDoguNetworkPolicies generates the network policies for a dogu

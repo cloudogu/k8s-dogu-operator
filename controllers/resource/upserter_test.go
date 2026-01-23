@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
@@ -623,6 +624,136 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 					assert.Fail(t, fmt.Sprintf("the policy '%s' was expected but not created", expectedPolicy))
 				}
 			}
+		})
+	}
+}
+
+func Test_upserter_SetControllerReferenceForPVC(t *testing.T) {
+	type args struct {
+		pvc          *v1.PersistentVolumeClaim
+		doguResource *k8sv2.Dogu
+	}
+	tests := []struct {
+		name     string
+		clientFn func(t *testing.T) k8sClient
+		args     args
+		wantErr  assert.ErrorAssertionFunc
+	}{
+		{
+			name: "should fail to set controller reference",
+			clientFn: func(t *testing.T) k8sClient {
+				return nil
+			},
+			args: args{
+				pvc: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "namespace1",
+					},
+				},
+				doguResource: &k8sv2.Dogu{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "namespace2",
+					},
+				},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorContains(t, err, "failed to set controller reference", i)
+			},
+		},
+		{
+			name: "should fail to update PVC",
+			clientFn: func(t *testing.T) k8sClient {
+				mck := newMockK8sClient(t)
+				mck.EXPECT().Get(testCtx, types.NamespacedName{Name: "dogupvc", Namespace: "ecosystem"}, &v1.PersistentVolumeClaim{}).Return(assert.AnError).Once()
+				return mck
+			},
+			args: args{
+				pvc: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dogupvc",
+						Namespace: "ecosystem",
+					},
+				},
+				doguResource: &k8sv2.Dogu{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dogu",
+						Namespace: "ecosystem",
+					},
+				},
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.ErrorContains(t, err, "failed to update pvc with controller reference", i) &&
+					assert.ErrorIs(t, err, assert.AnError, i)
+			},
+		},
+		{
+			name: "should succeed",
+			clientFn: func(t *testing.T) k8sClient {
+				mck := newMockK8sClient(t)
+				mck.EXPECT().Get(testCtx, types.NamespacedName{Name: "dogupvc", Namespace: "ecosystem"}, &v1.PersistentVolumeClaim{}).Return(nil).Once()
+				mck.EXPECT().Update(testCtx, &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dogupvc",
+						Namespace: "ecosystem",
+						OwnerReferences: []metav1.OwnerReference{{
+							APIVersion:         "k8s.cloudogu.com/v2",
+							Kind:               "Dogu",
+							Name:               "dogu",
+							UID:                "asdf",
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
+						}},
+					},
+				}).Return(nil).Once()
+				return mck
+			},
+			args: args{
+				pvc: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dogupvc",
+						Namespace: "ecosystem",
+					},
+				},
+				doguResource: &k8sv2.Dogu{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dogu",
+						UID:       "asdf",
+						Namespace: "ecosystem",
+					},
+				},
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "should skip if controller reference already exists",
+			clientFn: func(t *testing.T) k8sClient {
+				return nil
+			},
+			args: args{
+				pvc: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						OwnerReferences: []metav1.OwnerReference{{
+							APIVersion:         "k8s.cloudogu.com/v2",
+							Kind:               "Dogu",
+							Name:               "test",
+							UID:                "asdf",
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
+						}},
+					},
+				},
+				doguResource: &k8sv2.Dogu{},
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := &upserter{
+				client: tt.clientFn(t),
+				scheme: getTestScheme(),
+			}
+			tt.wantErr(t, u.SetControllerReferenceForPVC(testCtx, tt.args.pvc, tt.args.doguResource))
 		})
 	}
 }

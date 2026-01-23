@@ -5,14 +5,15 @@ package manager
 import (
 	context "context"
 
+	appsv1 "k8s.io/api/apps/v1"
+
 	core "github.com/cloudogu/cesapp-lib/core"
-	corev1 "k8s.io/api/core/v1"
 
 	mock "github.com/stretchr/testify/mock"
 
 	pkgv1 "github.com/google/go-containerregistry/pkg/v1"
 
-	v1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
@@ -30,28 +31,76 @@ func (_m *mockResourceUpserter) EXPECT() *mockResourceUpserter_Expecter {
 	return &mockResourceUpserter_Expecter{mock: &_m.Mock}
 }
 
+// SetControllerReferenceForPVC provides a mock function with given fields: ctx, pvc, doguResource
+func (_m *mockResourceUpserter) SetControllerReferenceForPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *v2.Dogu) error {
+	ret := _m.Called(ctx, pvc, doguResource)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetControllerReferenceForPVC")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.PersistentVolumeClaim, *v2.Dogu) error); ok {
+		r0 = rf(ctx, pvc, doguResource)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockResourceUpserter_SetControllerReferenceForPVC_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetControllerReferenceForPVC'
+type mockResourceUpserter_SetControllerReferenceForPVC_Call struct {
+	*mock.Call
+}
+
+// SetControllerReferenceForPVC is a helper method to define mock.On call
+//   - ctx context.Context
+//   - pvc *v1.PersistentVolumeClaim
+//   - doguResource *v2.Dogu
+func (_e *mockResourceUpserter_Expecter) SetControllerReferenceForPVC(ctx interface{}, pvc interface{}, doguResource interface{}) *mockResourceUpserter_SetControllerReferenceForPVC_Call {
+	return &mockResourceUpserter_SetControllerReferenceForPVC_Call{Call: _e.mock.On("SetControllerReferenceForPVC", ctx, pvc, doguResource)}
+}
+
+func (_c *mockResourceUpserter_SetControllerReferenceForPVC_Call) Run(run func(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *v2.Dogu)) *mockResourceUpserter_SetControllerReferenceForPVC_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*v1.PersistentVolumeClaim), args[2].(*v2.Dogu))
+	})
+	return _c
+}
+
+func (_c *mockResourceUpserter_SetControllerReferenceForPVC_Call) Return(_a0 error) *mockResourceUpserter_SetControllerReferenceForPVC_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockResourceUpserter_SetControllerReferenceForPVC_Call) RunAndReturn(run func(context.Context, *v1.PersistentVolumeClaim, *v2.Dogu) error) *mockResourceUpserter_SetControllerReferenceForPVC_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpsertDoguDeployment provides a mock function with given fields: ctx, doguResource, dogu, deploymentPatch
-func (_m *mockResourceUpserter) UpsertDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, deploymentPatch func(*v1.Deployment)) (*v1.Deployment, error) {
+func (_m *mockResourceUpserter) UpsertDoguDeployment(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment)) (*appsv1.Deployment, error) {
 	ret := _m.Called(ctx, doguResource, dogu, deploymentPatch)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpsertDoguDeployment")
 	}
 
-	var r0 *v1.Deployment
+	var r0 *appsv1.Deployment
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, func(*v1.Deployment)) (*v1.Deployment, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, func(*appsv1.Deployment)) (*appsv1.Deployment, error)); ok {
 		return rf(ctx, doguResource, dogu, deploymentPatch)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, func(*v1.Deployment)) *v1.Deployment); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, func(*appsv1.Deployment)) *appsv1.Deployment); ok {
 		r0 = rf(ctx, doguResource, dogu, deploymentPatch)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v1.Deployment)
+			r0 = ret.Get(0).(*appsv1.Deployment)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *v2.Dogu, *core.Dogu, func(*v1.Deployment)) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *v2.Dogu, *core.Dogu, func(*appsv1.Deployment)) error); ok {
 		r1 = rf(ctx, doguResource, dogu, deploymentPatch)
 	} else {
 		r1 = ret.Error(1)
@@ -69,30 +118,30 @@ type mockResourceUpserter_UpsertDoguDeployment_Call struct {
 //   - ctx context.Context
 //   - doguResource *v2.Dogu
 //   - dogu *core.Dogu
-//   - deploymentPatch func(*v1.Deployment)
+//   - deploymentPatch func(*appsv1.Deployment)
 func (_e *mockResourceUpserter_Expecter) UpsertDoguDeployment(ctx interface{}, doguResource interface{}, dogu interface{}, deploymentPatch interface{}) *mockResourceUpserter_UpsertDoguDeployment_Call {
 	return &mockResourceUpserter_UpsertDoguDeployment_Call{Call: _e.mock.On("UpsertDoguDeployment", ctx, doguResource, dogu, deploymentPatch)}
 }
 
-func (_c *mockResourceUpserter_UpsertDoguDeployment_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, deploymentPatch func(*v1.Deployment))) *mockResourceUpserter_UpsertDoguDeployment_Call {
+func (_c *mockResourceUpserter_UpsertDoguDeployment_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, deploymentPatch func(*appsv1.Deployment))) *mockResourceUpserter_UpsertDoguDeployment_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu), args[3].(func(*v1.Deployment)))
+		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu), args[3].(func(*appsv1.Deployment)))
 	})
 	return _c
 }
 
-func (_c *mockResourceUpserter_UpsertDoguDeployment_Call) Return(_a0 *v1.Deployment, _a1 error) *mockResourceUpserter_UpsertDoguDeployment_Call {
+func (_c *mockResourceUpserter_UpsertDoguDeployment_Call) Return(_a0 *appsv1.Deployment, _a1 error) *mockResourceUpserter_UpsertDoguDeployment_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockResourceUpserter_UpsertDoguDeployment_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu, func(*v1.Deployment)) (*v1.Deployment, error)) *mockResourceUpserter_UpsertDoguDeployment_Call {
+func (_c *mockResourceUpserter_UpsertDoguDeployment_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu, func(*appsv1.Deployment)) (*appsv1.Deployment, error)) *mockResourceUpserter_UpsertDoguDeployment_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpsertDoguNetworkPolicies provides a mock function with given fields: ctx, doguResource, dogu, service
-func (_m *mockResourceUpserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, service *corev1.Service) error {
+func (_m *mockResourceUpserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, service *v1.Service) error {
 	ret := _m.Called(ctx, doguResource, dogu, service)
 
 	if len(ret) == 0 {
@@ -100,7 +149,7 @@ func (_m *mockResourceUpserter) UpsertDoguNetworkPolicies(ctx context.Context, d
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *corev1.Service) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *v1.Service) error); ok {
 		r0 = rf(ctx, doguResource, dogu, service)
 	} else {
 		r0 = ret.Error(0)
@@ -118,14 +167,14 @@ type mockResourceUpserter_UpsertDoguNetworkPolicies_Call struct {
 //   - ctx context.Context
 //   - doguResource *v2.Dogu
 //   - dogu *core.Dogu
-//   - service *corev1.Service
+//   - service *v1.Service
 func (_e *mockResourceUpserter_Expecter) UpsertDoguNetworkPolicies(ctx interface{}, doguResource interface{}, dogu interface{}, service interface{}) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
 	return &mockResourceUpserter_UpsertDoguNetworkPolicies_Call{Call: _e.mock.On("UpsertDoguNetworkPolicies", ctx, doguResource, dogu, service)}
 }
 
-func (_c *mockResourceUpserter_UpsertDoguNetworkPolicies_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, service *corev1.Service)) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
+func (_c *mockResourceUpserter_UpsertDoguNetworkPolicies_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, service *v1.Service)) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu), args[3].(*corev1.Service))
+		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*core.Dogu), args[3].(*v1.Service))
 	})
 	return _c
 }
@@ -135,29 +184,29 @@ func (_c *mockResourceUpserter_UpsertDoguNetworkPolicies_Call) Return(_a0 error)
 	return _c
 }
 
-func (_c *mockResourceUpserter_UpsertDoguNetworkPolicies_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu, *corev1.Service) error) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
+func (_c *mockResourceUpserter_UpsertDoguNetworkPolicies_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu, *v1.Service) error) *mockResourceUpserter_UpsertDoguNetworkPolicies_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpsertDoguPVCs provides a mock function with given fields: ctx, doguResource, dogu
-func (_m *mockResourceUpserter) UpsertDoguPVCs(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) (*corev1.PersistentVolumeClaim, error) {
+func (_m *mockResourceUpserter) UpsertDoguPVCs(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu) (*v1.PersistentVolumeClaim, error) {
 	ret := _m.Called(ctx, doguResource, dogu)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpsertDoguPVCs")
 	}
 
-	var r0 *corev1.PersistentVolumeClaim
+	var r0 *v1.PersistentVolumeClaim
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu) (*corev1.PersistentVolumeClaim, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu) (*v1.PersistentVolumeClaim, error)); ok {
 		return rf(ctx, doguResource, dogu)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu) *corev1.PersistentVolumeClaim); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu) *v1.PersistentVolumeClaim); ok {
 		r0 = rf(ctx, doguResource, dogu)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*corev1.PersistentVolumeClaim)
+			r0 = ret.Get(0).(*v1.PersistentVolumeClaim)
 		}
 	}
 
@@ -190,34 +239,34 @@ func (_c *mockResourceUpserter_UpsertDoguPVCs_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *mockResourceUpserter_UpsertDoguPVCs_Call) Return(_a0 *corev1.PersistentVolumeClaim, _a1 error) *mockResourceUpserter_UpsertDoguPVCs_Call {
+func (_c *mockResourceUpserter_UpsertDoguPVCs_Call) Return(_a0 *v1.PersistentVolumeClaim, _a1 error) *mockResourceUpserter_UpsertDoguPVCs_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockResourceUpserter_UpsertDoguPVCs_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu) (*corev1.PersistentVolumeClaim, error)) *mockResourceUpserter_UpsertDoguPVCs_Call {
+func (_c *mockResourceUpserter_UpsertDoguPVCs_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu) (*v1.PersistentVolumeClaim, error)) *mockResourceUpserter_UpsertDoguPVCs_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpsertDoguService provides a mock function with given fields: ctx, doguResource, dogu, image
-func (_m *mockResourceUpserter) UpsertDoguService(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, image *pkgv1.ConfigFile) (*corev1.Service, error) {
+func (_m *mockResourceUpserter) UpsertDoguService(ctx context.Context, doguResource *v2.Dogu, dogu *core.Dogu, image *pkgv1.ConfigFile) (*v1.Service, error) {
 	ret := _m.Called(ctx, doguResource, dogu, image)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpsertDoguService")
 	}
 
-	var r0 *corev1.Service
+	var r0 *v1.Service
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) (*corev1.Service, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) (*v1.Service, error)); ok {
 		return rf(ctx, doguResource, dogu, image)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) *corev1.Service); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) *v1.Service); ok {
 		r0 = rf(ctx, doguResource, dogu, image)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*corev1.Service)
+			r0 = ret.Get(0).(*v1.Service)
 		}
 	}
 
@@ -251,12 +300,12 @@ func (_c *mockResourceUpserter_UpsertDoguService_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *mockResourceUpserter_UpsertDoguService_Call) Return(_a0 *corev1.Service, _a1 error) *mockResourceUpserter_UpsertDoguService_Call {
+func (_c *mockResourceUpserter_UpsertDoguService_Call) Return(_a0 *v1.Service, _a1 error) *mockResourceUpserter_UpsertDoguService_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockResourceUpserter_UpsertDoguService_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) (*corev1.Service, error)) *mockResourceUpserter_UpsertDoguService_Call {
+func (_c *mockResourceUpserter_UpsertDoguService_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *core.Dogu, *pkgv1.ConfigFile) (*v1.Service, error)) *mockResourceUpserter_UpsertDoguService_Call {
 	_c.Call.Return(run)
 	return _c
 }
