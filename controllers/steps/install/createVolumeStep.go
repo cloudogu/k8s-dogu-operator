@@ -29,12 +29,17 @@ func NewCreateVolumeStep(fetcher cesregistry.LocalDoguFetcher, upserter resource
 }
 
 func (vgs *CreateVolumeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	_, err := vgs.pvcGetter.Get(ctx, doguResource.Name, metav1.GetOptions{})
+	pvc, err := vgs.pvcGetter.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return steps.RequeueWithError(err)
 		}
 	} else {
+		err := vgs.resourceUpserter.SetControllerReferenceForPVC(ctx, pvc, doguResource)
+		if err != nil {
+			return steps.RequeueWithError(err)
+		}
+
 		return steps.Continue()
 	}
 

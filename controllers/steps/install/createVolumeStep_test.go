@@ -9,6 +9,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -55,17 +56,49 @@ func TestVolumeGeneratorStep_Run(t *testing.T) {
 			want: steps.RequeueWithError(assert.AnError),
 		},
 		{
-			name: "pvs already exist",
+			name: "pvs already exist and set controller reference fails",
 			fields: fields{
 				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
 					return newMockLocalDoguFetcher(t)
 				},
 				resourceUpserterFn: func(t *testing.T) resourceUpserter {
-					return newMockResourceUpserter(t)
+					mck := newMockResourceUpserter(t)
+					mck.EXPECT().SetControllerReferenceForPVC(testCtx,
+						&corev1.PersistentVolumeClaim{ObjectMeta: v1.ObjectMeta{Name: doguName}},
+						&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: doguName}}).Return(assert.AnError)
+					return mck
 				},
 				pvcGetterFn: func(t *testing.T) persistentVolumeClaimInterface {
 					mck := newMockPersistentVolumeClaimInterface(t)
-					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(nil, nil)
+					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&corev1.PersistentVolumeClaim{
+						ObjectMeta: v1.ObjectMeta{Name: doguName},
+					}, nil)
+					return mck
+				},
+			},
+			doguResource: &v2.Dogu{
+				ObjectMeta: v1.ObjectMeta{Name: doguName},
+			},
+			want: steps.RequeueWithError(assert.AnError),
+		},
+		{
+			name: "pvs already exist and set controller reference successfully",
+			fields: fields{
+				localDoguFetcherFn: func(t *testing.T) localDoguFetcher {
+					return newMockLocalDoguFetcher(t)
+				},
+				resourceUpserterFn: func(t *testing.T) resourceUpserter {
+					mck := newMockResourceUpserter(t)
+					mck.EXPECT().SetControllerReferenceForPVC(testCtx,
+						&corev1.PersistentVolumeClaim{ObjectMeta: v1.ObjectMeta{Name: doguName}},
+						&v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: doguName}}).Return(nil)
+					return mck
+				},
+				pvcGetterFn: func(t *testing.T) persistentVolumeClaimInterface {
+					mck := newMockPersistentVolumeClaimInterface(t)
+					mck.EXPECT().Get(testCtx, "test", v1.GetOptions{}).Return(&corev1.PersistentVolumeClaim{
+						ObjectMeta: v1.ObjectMeta{Name: doguName},
+					}, nil)
 					return mck
 				},
 			},
