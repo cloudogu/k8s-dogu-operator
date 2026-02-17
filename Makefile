@@ -1,11 +1,11 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=3.19.1
+VERSION=3.19.2
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.25.1
+GOTAG=1.26.0
 MOCKERY_VERSION=v2.53.5
-LINT_VERSION=v2.4.0
+LINT_VERSION=v2.9.0
 MAKEFILES_VERSION=10.4.0
 
 PRE_COMPILE = generate-deepcopy

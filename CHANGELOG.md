@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.19.2] - 2026-02-17
+### Security
+- [#281] Fix Golang stdlib CVE-2025-68121
+
+### Fixed
+- Fixed error in Printf format string
+
 ## [v3.19.1] - 2026-01-28
 ### Changed
 - [#279] Set controller reference for dogu PVCs after creation
