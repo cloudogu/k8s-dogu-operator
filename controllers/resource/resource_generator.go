@@ -483,7 +483,7 @@ func getStartupProbeTimeout() int32 {
 		var err error
 		timeoutSeconds, err = strconv.Atoi(timeoutSecondsStr)
 		if err != nil {
-			log.Log.Error(err, fmt.Sprintf("failed to convert dogu startup probe timeout %q to int: defaulting to %q", timeoutSecondsStr, defaultStartupProbeTimeout))
+			log.Log.Error(err, fmt.Sprintf("failed to convert dogu startup probe timeout %q to int: defaulting to %d", timeoutSecondsStr, defaultStartupProbeTimeout))
 			timeoutSeconds = 1
 		}
 	}
