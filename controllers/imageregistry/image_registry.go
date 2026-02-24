@@ -56,7 +56,7 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 
 	stage, err := config.GetStage()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get env var: %w", err)
+		logger.Info(fmt.Sprintf("failed to get env var stage: %v", err))
 	}
 
 	var img imagev1.Image
