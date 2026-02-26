@@ -223,6 +223,37 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("skip legacy CAS service account creation if CAS dogu is not installed", func(t *testing.T) {
+		// given
+		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
+		sensitiveDoguCfgRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
+
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
+		commandExecutorMock := newMockCommandExecutor(t)
+		commandExecutorMock.EXPECT().
+			ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).
+			Return(bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname"), nil)
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
+		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("cas")).Return(false, nil)
+
+		serviceAccountCreator := creator{
+			client:            cli,
+			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
+			doguFetcher:       localFetcher,
+			executor:          commandExecutorMock,
+		}
+
+		// when
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptorTwoSa)
+
+		// then
+		require.NoError(t, err)
+	})
+
 	t.Run("service account already exists", func(t *testing.T) {
 		// given
 		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)

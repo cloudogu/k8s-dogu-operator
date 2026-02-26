@@ -27,6 +27,7 @@ import (
 const (
 	doguKind      = "dogu"
 	componentKind = "component"
+	casDoguName   = "cas"
 )
 
 // creator is the unit to handle the creation of service accounts
@@ -97,6 +98,15 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu, senDoguCfg *config.DoguConfig,
 	serviceAccount core.ServiceAccount, registryCredentialPath string) error {
 	logger := log.FromContext(ctx)
+
+	skip, err := c.shouldSkipLegacyCASServiceAccount(ctx, serviceAccount)
+	if err != nil {
+		return err
+	}
+	if skip {
+		logger.Info("skipping legacy CAS service account creation because CAS dogu is not installed")
+		return nil
+	}
 
 	if skip := serviceAccountExists(registryCredentialPath, *senDoguCfg); skip {
 		return nil
@@ -251,6 +261,27 @@ func (c *creator) isOptionalServiceAccount(dogu *core.Dogu, sa string) bool {
 		return true
 	}
 	return false
+}
+
+func (c *creator) shouldSkipLegacyCASServiceAccount(ctx context.Context, serviceAccount core.ServiceAccount) (bool, error) {
+	if !isDoguServiceAccount(serviceAccount) || !isCASServiceAccount(serviceAccount) {
+		return false, nil
+	}
+
+	casEnabled, err := c.doguFetcher.Enabled(ctx, cescommons.SimpleName(casDoguName))
+	if err != nil {
+		return false, fmt.Errorf("failed to check if dogu %s is enabled: %w", casDoguName, err)
+	}
+
+	return !casEnabled, nil
+}
+
+func isDoguServiceAccount(serviceAccount core.ServiceAccount) bool {
+	return serviceAccount.Kind == "" || serviceAccount.Kind == doguKind
+}
+
+func isCASServiceAccount(serviceAccount core.ServiceAccount) bool {
+	return serviceAccount.Type == casDoguName
 }
 
 func (c *creator) containsDependency(slice []core.Dependency, dependencyName string) bool {
