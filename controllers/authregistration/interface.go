@@ -7,7 +7,7 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 )
 
-// Manager describes the AuthRegistration lifecycle for a dogu.
+// AuthRegistrationManager describes the AuthRegistration lifecycle for a dogu.
 type Manager interface {
 	// EnsureAuthRegistration creates/updates the AuthRegistration and syncs sensitive credentials.
 	EnsureAuthRegistration(ctx context.Context, dogu *cesappcore.Dogu) error

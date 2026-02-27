@@ -10,7 +10,7 @@ import (
 
 // AuthRegistrationRemoverStep removes AuthRegistration resources for a dogu.
 type AuthRegistrationRemoverStep struct {
-	authRegistrationManager authregistration.Manager
+	authRegistrationManager authRegistrationManager
 }
 
 func NewAuthRegistrationRemoverStep(authRegistrationManager authregistration.Manager) *AuthRegistrationRemoverStep {
@@ -20,7 +20,6 @@ func NewAuthRegistrationRemoverStep(authRegistrationManager authregistration.Man
 }
 
 func (ars *AuthRegistrationRemoverStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	// FIXME only remove if the CAS-Dogu is NOT installed
 	if err := ars.authRegistrationManager.RemoveAuthRegistration(ctx, doguResource.GetSimpleDoguName()); err != nil {
 		return steps.RequeueWithError(err)
 	}

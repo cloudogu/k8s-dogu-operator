@@ -2,33 +2,48 @@ package install
 
 import (
 	"context"
+	"fmt"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/authregistration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+const casDoguName = "cas"
 
 // AuthRegistrationStep creates/updates AuthRegistration resources for a dogu.
 type AuthRegistrationStep struct {
-	localDoguFetcher        localDoguFetcher
-	authRegistrationManager authregistration.Manager
+	doguFetcher             localDoguFetcher
+	authRegistrationManager authRegistrationManager
 }
 
 func NewAuthRegistrationStep(authRegistrationManager authregistration.Manager, localDoguFetcher cesregistry.LocalDoguFetcher) *AuthRegistrationStep {
 	return &AuthRegistrationStep{
-		localDoguFetcher:        localDoguFetcher,
+		doguFetcher:             localDoguFetcher,
 		authRegistrationManager: authRegistrationManager,
 	}
 }
 
 func (ars *AuthRegistrationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	doguDescriptor, err := ars.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
+	logger := log.FromContext(ctx).WithName("authRegistrationStep")
+
+	casEnabled, err := ars.doguFetcher.Enabled(ctx, cescommons.SimpleName(casDoguName))
+	if err != nil {
+		return steps.RequeueWithError(fmt.Errorf("failed to check if CAS is enabled: %w", err))
+	}
+
+	if !casEnabled {
+		logger.Info("CAS is not enabled, skipping auth registration")
+		return steps.Continue()
+	}
+
+	doguDescriptor, err := ars.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
-
-	// FIXME only ensure auth-registration if the dogu needs an CAS-Service Account and if the CAS-Dogu is NOT installed
 
 	if err = ars.authRegistrationManager.EnsureAuthRegistration(ctx, doguDescriptor); err != nil {
 		return steps.RequeueWithError(err)
