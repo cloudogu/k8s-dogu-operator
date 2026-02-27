@@ -3,6 +3,7 @@ package main
 import (
 	"go.uber.org/fx"
 
+	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	"k8s.io/client-go/kubernetes"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -81,6 +82,8 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewEcoSystemClientSet, fx.As(new(doguClient.EcoSystemV2Interface))),
 			fx.Annotate(initfx.NewDoguInterface, fx.As(new(doguClient.DoguInterface))),
 			fx.Annotate(initfx.NewDoguRestartInterface, fx.As(new(doguClient.DoguRestartInterface))),
+			fx.Annotate(initfx.NewAuthRegistrationClientSet, fx.As(new(authRegClientV1.ApiV1Interface))),
+			fx.Annotate(initfx.NewAuthRegistrationInterface, fx.As(new(authRegClientV1.AuthRegistrationInterface))),
 			fx.Annotate(health.NewShutdownHandler, fx.As(new(health.HealthShutdownHandler))),
 
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
