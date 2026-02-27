@@ -132,7 +132,7 @@ func options() []fx.Option {
 			),
 			fx.Annotate(serviceaccount.NewCreator, fx.As(new(serviceaccount.ServiceAccountCreator))),
 			fx.Annotate(serviceaccount.NewRemover, fx.As(new(serviceaccount.ServiceAccountRemover))),
-			fx.Annotate(authregistration.NewStubManager, fx.As(new(authregistration.Manager))),
+			fx.Annotate(authregistration.NewManager, fx.As(new(authregistration.Manager))),
 			fx.Annotate(dependency.NewCompositeDependencyValidator, fx.As(new(dependency.Validator))),
 			fx.Annotate(security.NewValidator, fx.As(new(security.Validator))),
 			fx.Annotate(additionalMount.NewValidator, fx.As(new(additionalMount.Validator))),
