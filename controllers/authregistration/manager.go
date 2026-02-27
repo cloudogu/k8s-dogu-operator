@@ -10,18 +10,33 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	k8sErr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+type credentialsSyncer interface {
+	SyncCredentials(ctx context.Context, authReg *authRegApiV1.AuthRegistration, doguName string, serviceAccountType string) error
+}
+
 type AuthRegistrationManager struct {
-	client authRegistrationClient
+	client            authRegistrationClient
+	credentialsSyncer credentialsSyncer
 }
 
 // NewManager creates an AuthRegistrationManager which can be used to create and remove AuthRegistration resources.
-func NewManager(client authRegClientV1.AuthRegistrationInterface) *AuthRegistrationManager {
+func NewManager(
+	client authRegClientV1.AuthRegistrationInterface,
+	secretClient corev1.SecretInterface,
+	sensitiveDoguRepo serviceaccount.SensitiveDoguConfigRepository,
+) *AuthRegistrationManager {
 	return &AuthRegistrationManager{
 		client: client,
+		credentialsSyncer: &sensitiveConfigCredentialsSyncer{
+			secretClient:      secretClient,
+			sensitiveDoguRepo: sensitiveDoguRepo,
+		},
 	}
 }
 
@@ -34,10 +49,6 @@ func (sm *AuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, d
 	serviceAccount, found := getCASServiceAccount(dogu)
 	if !found {
 		return nil
-	}
-
-	if sm.client == nil {
-		return fmt.Errorf("auth registration client is not configured")
 	}
 
 	protocol, logoutURL, err := parseLegacyCASServiceAccountParams(serviceAccount.Params)
@@ -56,31 +67,13 @@ func (sm *AuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, d
 		},
 	}
 
-	authRegistrationName := createAuthRegistrationName(dogu.GetSimpleName())
-
-	authReg, err := sm.client.Get(ctx, authRegistrationName, metav1.GetOptions{})
+	authReg, err := sm.ensureAuthRegistration(ctx, desiredAuthReg)
 	if err != nil {
-		if k8sErr.IsNotFound(err) {
-			_, createErr := sm.client.Create(ctx, desiredAuthReg, metav1.CreateOptions{})
-			if createErr != nil {
-				return fmt.Errorf("failed to create AuthRegistration: %w", createErr)
-			}
-
-			return nil
-		}
-
-		return fmt.Errorf("failed to get AuthRegistration: %w", err)
+		return err
 	}
 
-	if reflect.DeepEqual(authReg.Spec, desiredAuthReg.Spec) {
-		return nil
-	}
-
-	authReg.Spec = desiredAuthReg.Spec
-
-	_, err = sm.client.Update(ctx, authReg, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to update AuthRegistration: %w", err)
+	if err = sm.credentialsSyncer.SyncCredentials(ctx, authReg, dogu.GetSimpleName(), serviceAccount.Type); err != nil {
+		return fmt.Errorf("failed to synchronize auth registration credentials into sensitive dogu config: %w", err)
 	}
 
 	return nil
@@ -102,6 +95,35 @@ func (sm *AuthRegistrationManager) RemoveAuthRegistration(ctx context.Context, d
 
 func createAuthRegistrationName(doguName string) string {
 	return fmt.Sprintf("%s-authregistration", doguName)
+}
+
+func (sm *AuthRegistrationManager) ensureAuthRegistration(ctx context.Context, desiredAuthReg *authRegApiV1.AuthRegistration) (*authRegApiV1.AuthRegistration, error) {
+	authReg, err := sm.client.Get(ctx, desiredAuthReg.Name, metav1.GetOptions{})
+	if err != nil {
+		if k8sErr.IsNotFound(err) {
+			createdAuthReg, createErr := sm.client.Create(ctx, desiredAuthReg, metav1.CreateOptions{})
+			if createErr != nil {
+				return nil, fmt.Errorf("failed to create AuthRegistration: %w", createErr)
+			}
+
+			return createdAuthReg, nil
+		}
+
+		return nil, fmt.Errorf("failed to get AuthRegistration: %w", err)
+	}
+
+	if reflect.DeepEqual(authReg.Spec, desiredAuthReg.Spec) {
+		return authReg, nil
+	}
+
+	authReg.Spec = desiredAuthReg.Spec
+
+	updatedAuthReg, err := sm.client.Update(ctx, authReg, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update AuthRegistration: %w", err)
+	}
+
+	return updatedAuthReg, nil
 }
 
 func getCASServiceAccount(dogu *cesappcore.Dogu) (cesappcore.ServiceAccount, bool) {

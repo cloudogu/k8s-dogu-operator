@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
@@ -61,7 +62,8 @@ func TestAuthRegistrationStep_Run(t *testing.T) {
 		fetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName(casDoguName)).Return(true, nil)
 		descriptor := &cesappcore.Dogu{Name: "test"}
 		fetcher.EXPECT().FetchInstalled(testCtx, doguName).Return(descriptor, nil)
-		manager.EXPECT().EnsureAuthRegistration(testCtx, descriptor).Return(assert.AnError)
+		managerErr := errors.New("auth registration credentials are not ready yet")
+		manager.EXPECT().EnsureAuthRegistration(testCtx, descriptor).Return(managerErr)
 
 		step := &AuthRegistrationStep{
 			doguFetcher:             fetcher,
@@ -69,7 +71,8 @@ func TestAuthRegistrationStep_Run(t *testing.T) {
 		}
 
 		result := step.Run(testCtx, doguResource)
-		assert.ErrorIs(t, result.Err, assert.AnError)
+		assert.ErrorIs(t, result.Err, managerErr)
+		assert.ErrorContains(t, result.Err, "auth registration credentials are not ready yet")
 		assert.False(t, result.Continue)
 	})
 
