@@ -11,6 +11,7 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,16 +38,18 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(ecosystemClient doguClient.EcoSystemV2Interface, localFetcher cesregistry.LocalDoguFetcher) DoguHealthChecker {
+func NewDoguChecker(operatorConfig *config.OperatorConfig, ecosystemClient doguClient.EcoSystemV2Interface, localFetcher cesregistry.LocalDoguFetcher) DoguHealthChecker {
 	return &doguChecker{
-		ecosystemClient:   ecosystemClient,
-		doguLocalRegistry: localFetcher,
+		ecosystemClient:         ecosystemClient,
+		doguLocalRegistry:       localFetcher,
+		authRegistrationEnabled: operatorConfig.AuthRegistrationEnabled,
 	}
 }
 
 type doguChecker struct {
-	ecosystemClient   doguClient.EcoSystemV2Interface
-	doguLocalRegistry localDoguFetcher
+	ecosystemClient         doguClient.EcoSystemV2Interface
+	doguLocalRegistry       localDoguFetcher
+	authRegistrationEnabled bool
 }
 
 // CheckByName returns nil if the dogu resource's health status says it's available.
@@ -95,6 +98,11 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 		if dependency.Name == "nginx" || dependency.Name == "registrator" {
 			continue
 		}
+
+		if dc.authRegistrationEnabled && dependency.Name == "cas" {
+			continue
+		}
+
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
 		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, cescommons.SimpleName(dependency.Name))
@@ -124,6 +132,10 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 
 	for _, dependency := range localDogu.GetOptionalDependenciesOfType(core.DependencyTypeDogu) {
 		if dependency.Name == "nginx" || dependency.Name == "registrator" {
+			continue
+		}
+
+		if dc.authRegistrationEnabled && dependency.Name == "cas" {
 			continue
 		}
 

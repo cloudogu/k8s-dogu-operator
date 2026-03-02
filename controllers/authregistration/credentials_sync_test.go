@@ -147,6 +147,29 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("should not update sensitive config when credentials are unchanged", func(t *testing.T) {
+		secretClient := newMockSecretClient(t)
+		repo := newMockSensitiveDoguConfigRepository(t)
+		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
+		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		doguCfg := config.CreateDoguConfig(cescommons.SimpleName("redmine"), config.Entries{
+			config.Key("sa-cas/username"): config.Value("john"),
+			config.Key("sa-cas/password"): config.Value("secret"),
+		})
+
+		secretClient.EXPECT().Get(ctx, "redmine-auth-secret", metav1.GetOptions{}).Return(&corev1.Secret{
+			Data: map[string][]byte{
+				"username": []byte("john"),
+				"password": []byte("secret"),
+			},
+		}, nil)
+		repo.EXPECT().Get(ctx, cescommons.SimpleName("redmine")).Return(doguCfg, nil)
+
+		err := syncer.SyncCredentials(ctx, authReg, "redmine", "cas")
+
+		require.NoError(t, err)
+	})
+
 	t.Run("should saveOrMerge when update returns conflict", func(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)

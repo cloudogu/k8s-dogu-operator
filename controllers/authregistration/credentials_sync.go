@@ -41,13 +41,25 @@ func (s *sensitiveConfigCredentialsSyncer) SyncCredentials(ctx context.Context, 
 		return fmt.Errorf("failed to get sensitive dogu config for %q: %w", doguName, err)
 	}
 
+	credentialsChanged := false
 	for key, value := range secret.Data {
 		path := fmt.Sprintf("/sa-%s/%s", serviceAccountType, key)
-		updatedCfg, setErr := sensitiveConfig.Set(config.Key(path), config.Value(string(value)))
+		newValue := string(value)
+		existingValue, exists := sensitiveConfig.Get(config.Key(path))
+		if exists && existingValue.String() == newValue {
+			continue
+		}
+
+		updatedCfg, setErr := sensitiveConfig.Set(config.Key(path), config.Value(newValue))
 		if setErr != nil {
 			return fmt.Errorf("failed to set value for path %q: %w", path, setErr)
 		}
 		sensitiveConfig.Config = updatedCfg
+		credentialsChanged = true
+	}
+
+	if !credentialsChanged {
+		return nil
 	}
 
 	if err = s.writeSensitiveDoguConfig(ctx, &sensitiveConfig); err != nil {
