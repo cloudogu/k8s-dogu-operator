@@ -7,6 +7,7 @@ import (
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
+	authRegFakeClient "github.com/cloudogu/k8s-auth-registration-lib/client/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -18,17 +19,15 @@ import (
 
 func TestNewManager(t *testing.T) {
 	t.Run("should create manager with sensitive config credentials syncer", func(t *testing.T) {
-		client := newMockAuthRegistrationClient(t)
+		fakeClient := authRegFakeClient.NewSimpleClientset().ApiV1().AuthRegistrations("ecosystem")
 		secretClient := k8sfake.NewClientset().CoreV1().Secrets("ecosystem")
 		repo := newMockSensitiveDoguConfigRepository(t)
 
-		manager := NewManager(client, secretClient, repo)
+		manager := NewManager(fakeClient, secretClient, repo)
 
 		require.NotNil(t, manager)
-
-		storedClient, ok := manager.client.(*mockAuthRegistrationClient)
-		require.True(t, ok)
-		assert.Same(t, client, storedClient)
+		assert.NotNil(t, manager.client)
+		assert.Equal(t, fakeClient, manager.client)
 
 		storedSyncer, ok := manager.credentialsSyncer.(*sensitiveConfigCredentialsSyncer)
 		require.True(t, ok)
@@ -257,6 +256,17 @@ func TestAuthRegistrationManager_RemoveAuthRegistration(t *testing.T) {
 		manager := &AuthRegistrationManager{client: client}
 
 		client.EXPECT().Delete(ctx, "redmine-authregistration", metav1.DeleteOptions{}).Return(nil)
+
+		err := manager.RemoveAuthRegistration(ctx, "redmine")
+
+		require.NoError(t, err)
+	})
+
+	t.Run("should ignore not found on delete", func(t *testing.T) {
+		client := newMockAuthRegistrationClient(t)
+		manager := &AuthRegistrationManager{client: client}
+
+		client.EXPECT().Delete(ctx, "redmine-authregistration", metav1.DeleteOptions{}).Return(newNotFoundErr("redmine-authregistration"))
 
 		err := manager.RemoveAuthRegistration(ctx, "redmine")
 

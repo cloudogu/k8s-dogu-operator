@@ -5,7 +5,7 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
+	authRegV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +20,10 @@ type Manager interface {
 }
 
 type authRegistrationClient interface {
-	authRegClientV1.AuthRegistrationInterface
+	Create(ctx context.Context, authRegistration *authRegV1.AuthRegistration, opts metav1.CreateOptions) (*authRegV1.AuthRegistration, error)
+	Update(ctx context.Context, authRegistration *authRegV1.AuthRegistration, opts metav1.UpdateOptions) (*authRegV1.AuthRegistration, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*authRegV1.AuthRegistration, error)
 }
 
 type secretClient interface {

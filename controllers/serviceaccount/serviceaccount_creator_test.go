@@ -223,7 +223,7 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("skip legacy CAS service account creation if CAS dogu is not installed", func(t *testing.T) {
+	t.Run("skip legacy CAS service account creation if auth registration is enabled", func(t *testing.T) {
 		// given
 		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
 		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
@@ -238,13 +238,13 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
-		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("cas")).Return(false, nil)
 
 		serviceAccountCreator := creator{
-			client:            cli,
-			sensitiveDoguRepo: sensitiveDoguCfgRepoMock,
-			doguFetcher:       localFetcher,
-			executor:          commandExecutorMock,
+			client:                  cli,
+			sensitiveDoguRepo:       sensitiveDoguCfgRepoMock,
+			doguFetcher:             localFetcher,
+			executor:                commandExecutorMock,
+			authRegistrationEnabled: true,
 		}
 
 		// when
@@ -624,10 +624,9 @@ func Test_creator_shouldSkipLegacyCASServiceAccount(t *testing.T) {
 		serviceAccount := core.ServiceAccount{Kind: componentKind, Type: casDoguName}
 
 		// when
-		skip, err := saCreator.shouldSkipLegacyCASServiceAccount(testCtx, serviceAccount)
+		skip := saCreator.shouldSkipLegacyCASServiceAccount(serviceAccount)
 
 		// then
-		require.NoError(t, err)
 		require.False(t, skip)
 	})
 
@@ -637,57 +636,33 @@ func Test_creator_shouldSkipLegacyCASServiceAccount(t *testing.T) {
 		serviceAccount := core.ServiceAccount{Kind: doguKind, Type: "postgresql"}
 
 		// when
-		skip, err := saCreator.shouldSkipLegacyCASServiceAccount(testCtx, serviceAccount)
+		skip := saCreator.shouldSkipLegacyCASServiceAccount(serviceAccount)
 
 		// then
-		require.NoError(t, err)
 		require.False(t, skip)
 	})
 
-	t.Run("should return wrapped error if CAS enabled check fails", func(t *testing.T) {
+	t.Run("should not skip if auth registration is disabled", func(t *testing.T) {
 		// given
-		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName(casDoguName)).Return(false, assert.AnError)
-		saCreator := &creator{doguFetcher: localFetcher}
-		serviceAccount := core.ServiceAccount{Kind: doguKind, Type: casDoguName}
-
-		// when
-		skip, err := saCreator.shouldSkipLegacyCASServiceAccount(testCtx, serviceAccount)
-
-		// then
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to check if dogu cas is enabled")
-		assert.ErrorIs(t, err, assert.AnError)
-		require.False(t, skip)
-	})
-
-	t.Run("should not skip if CAS dogu is enabled", func(t *testing.T) {
-		// given
-		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName(casDoguName)).Return(true, nil)
-		saCreator := &creator{doguFetcher: localFetcher}
+		saCreator := &creator{authRegistrationEnabled: false}
 		serviceAccount := core.ServiceAccount{Kind: "", Type: casDoguName}
 
 		// when
-		skip, err := saCreator.shouldSkipLegacyCASServiceAccount(testCtx, serviceAccount)
+		skip := saCreator.shouldSkipLegacyCASServiceAccount(serviceAccount)
 
 		// then
-		require.NoError(t, err)
 		require.False(t, skip)
 	})
 
-	t.Run("should skip if CAS dogu is not enabled", func(t *testing.T) {
+	t.Run("should skip if auth registration is enabled", func(t *testing.T) {
 		// given
-		localFetcher := newMockLocalDoguFetcher(t)
-		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName(casDoguName)).Return(false, nil)
-		saCreator := &creator{doguFetcher: localFetcher}
+		saCreator := &creator{authRegistrationEnabled: true}
 		serviceAccount := core.ServiceAccount{Kind: doguKind, Type: casDoguName}
 
 		// when
-		skip, err := saCreator.shouldSkipLegacyCASServiceAccount(testCtx, serviceAccount)
+		skip := saCreator.shouldSkipLegacyCASServiceAccount(serviceAccount)
 
 		// then
-		require.NoError(t, err)
 		require.True(t, skip)
 	})
 }

@@ -32,13 +32,14 @@ const (
 
 // creator is the unit to handle the creation of service accounts
 type creator struct {
-	client            client.Client
-	sensitiveDoguRepo SensitiveDoguConfigRepository
-	doguFetcher       localDoguFetcher
-	executor          commandExecutor
-	clientSet         kubernetes.Interface
-	apiClient         serviceAccountApiClient
-	namespace         string
+	client                  client.Client
+	sensitiveDoguRepo       SensitiveDoguConfigRepository
+	doguFetcher             localDoguFetcher
+	executor                commandExecutor
+	clientSet               kubernetes.Interface
+	apiClient               serviceAccountApiClient
+	namespace               string
+	authRegistrationEnabled bool
 }
 
 // NewCreator creates a new instance of ServiceAccountCreator
@@ -51,13 +52,14 @@ func NewCreator(
 	operatorConfig *opConfig.OperatorConfig,
 ) ServiceAccountCreator {
 	return &creator{
-		client:            client,
-		sensitiveDoguRepo: repo,
-		doguFetcher:       localDoguFetcher,
-		executor:          commandExecutor,
-		clientSet:         clientSet,
-		apiClient:         &apiClient{},
-		namespace:         operatorConfig.Namespace,
+		client:                  client,
+		sensitiveDoguRepo:       repo,
+		doguFetcher:             localDoguFetcher,
+		executor:                commandExecutor,
+		clientSet:               clientSet,
+		apiClient:               &apiClient{},
+		namespace:               operatorConfig.Namespace,
+		authRegistrationEnabled: operatorConfig.AuthRegistrationEnabled,
 	}
 }
 
@@ -99,12 +101,9 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 	serviceAccount core.ServiceAccount, registryCredentialPath string) error {
 	logger := log.FromContext(ctx)
 
-	skip, err := c.shouldSkipLegacyCASServiceAccount(ctx, serviceAccount)
-	if err != nil {
-		return err
-	}
+	skip := c.shouldSkipLegacyCASServiceAccount(serviceAccount)
 	if skip {
-		logger.Info("skipping legacy CAS service account creation because CAS dogu is not installed")
+		logger.Info("skipping legacy CAS service account creation because auth registration is enabled")
 		return nil
 	}
 
@@ -263,17 +262,12 @@ func (c *creator) isOptionalServiceAccount(dogu *core.Dogu, sa string) bool {
 	return false
 }
 
-func (c *creator) shouldSkipLegacyCASServiceAccount(ctx context.Context, serviceAccount core.ServiceAccount) (bool, error) {
+func (c *creator) shouldSkipLegacyCASServiceAccount(serviceAccount core.ServiceAccount) bool {
 	if !isDoguServiceAccount(serviceAccount) || !isCASServiceAccount(serviceAccount) {
-		return false, nil
+		return false
 	}
 
-	casEnabled, err := c.doguFetcher.Enabled(ctx, cescommons.SimpleName(casDoguName))
-	if err != nil {
-		return false, fmt.Errorf("failed to check if dogu %s is enabled: %w", casDoguName, err)
-	}
-
-	return !casEnabled, nil
+	return c.authRegistrationEnabled
 }
 
 func isDoguServiceAccount(serviceAccount core.ServiceAccount) bool {

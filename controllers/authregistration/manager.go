@@ -87,6 +87,9 @@ func (sm *AuthRegistrationManager) RemoveAuthRegistration(ctx context.Context, d
 
 	err := sm.client.Delete(ctx, createAuthRegistrationName(doguName.String()), metav1.DeleteOptions{})
 	if err != nil {
+		if k8sErr.IsNotFound(err) {
+			return nil
+		}
 		return fmt.Errorf("failed to delete AuthRegistration: %w", err)
 	}
 
