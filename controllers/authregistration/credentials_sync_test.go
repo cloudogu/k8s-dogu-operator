@@ -42,11 +42,55 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		assert.ErrorContains(t, err, `has no resolved secretRef yet`)
 	})
 
+	t.Run("should return error if completed condition is missing", func(t *testing.T) {
+		syncer := &sensitiveConfigCredentialsSyncer{
+			secretClient:      newMockSecretClient(t),
+			sensitiveDoguRepo: newMockSensitiveDoguConfigRepository(t),
+		}
+
+		authReg := &authRegApiV1.AuthRegistration{
+			ObjectMeta: metav1.ObjectMeta{Name: "redmine-authregistration"},
+			Status: authRegApiV1.AuthRegistrationStatus{
+				ResolvedSecretRef: "redmine-auth-secret",
+			},
+		}
+
+		err := syncer.SyncCredentials(ctx, authReg, "redmine", "cas")
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, `is not completed yet`)
+	})
+
+	t.Run("should return error if completed condition is not true", func(t *testing.T) {
+		syncer := &sensitiveConfigCredentialsSyncer{
+			secretClient:      newMockSecretClient(t),
+			sensitiveDoguRepo: newMockSensitiveDoguConfigRepository(t),
+		}
+
+		authReg := &authRegApiV1.AuthRegistration{
+			ObjectMeta: metav1.ObjectMeta{Name: "redmine-authregistration"},
+			Status: authRegApiV1.AuthRegistrationStatus{
+				ResolvedSecretRef: "redmine-auth-secret",
+				Conditions: []metav1.Condition{
+					{
+						Type:   authRegApiV1.ConditionCompleted,
+						Status: metav1.ConditionFalse,
+					},
+				},
+			},
+		}
+
+		err := syncer.SyncCredentials(ctx, authReg, "redmine", "cas")
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, `is not completed yet`)
+	})
+
 	t.Run("should return error when reading secret fails", func(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 
 		secretClient.EXPECT().Get(ctx, "redmine-auth-secret", metav1.GetOptions{}).Return(nil, assert.AnError)
 
@@ -61,7 +105,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 
 		secretClient.EXPECT().Get(ctx, "redmine-auth-secret", metav1.GetOptions{}).Return(&corev1.Secret{Data: map[string][]byte{}}, nil)
 
@@ -75,7 +119,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 
 		secretClient.EXPECT().Get(ctx, "redmine-auth-secret", metav1.GetOptions{}).Return(&corev1.Secret{Data: map[string][]byte{"username": []byte("   "), "password": []byte("")}}, nil)
 
@@ -89,7 +133,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 
 		secretClient.EXPECT().Get(ctx, "redmine-auth-secret", metav1.GetOptions{}).Return(&corev1.Secret{Data: map[string][]byte{"username": []byte("john")}}, nil)
 		repo.EXPECT().Get(ctx, cescommons.SimpleName("redmine")).Return(config.DoguConfig{}, assert.AnError)
@@ -105,7 +149,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 		doguCfg := config.CreateDoguConfig(cescommons.SimpleName("redmine"), config.Entries{
 			config.Key("sa-cas"): config.Value("already-set-as-value"),
 		})
@@ -123,7 +167,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 		doguCfg := config.CreateDoguConfig(cescommons.SimpleName("redmine"), config.Entries{})
 
 		secretClient.EXPECT().Get(ctx, "redmine-auth-secret", metav1.GetOptions{}).Return(&corev1.Secret{
@@ -151,7 +195,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 		doguCfg := config.CreateDoguConfig(cescommons.SimpleName("redmine"), config.Entries{
 			config.Key("sa-cas/username"): config.Value("john"),
 			config.Key("sa-cas/password"): config.Value("secret"),
@@ -174,7 +218,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 		doguCfg := config.CreateDoguConfig(cescommons.SimpleName("redmine"), config.Entries{})
 		conflictErr := regLibErr.NewConflictError(fmt.Errorf("conflict"))
 
@@ -192,7 +236,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 		doguCfg := config.CreateDoguConfig(cescommons.SimpleName("redmine"), config.Entries{})
 		conflictErr := regLibErr.NewConflictError(fmt.Errorf("conflict"))
 
@@ -212,7 +256,7 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		secretClient := newMockSecretClient(t)
 		repo := newMockSensitiveDoguConfigRepository(t)
 		syncer := &sensitiveConfigCredentialsSyncer{secretClient: secretClient, sensitiveDoguRepo: repo}
-		authReg := &authRegApiV1.AuthRegistration{Status: authRegApiV1.AuthRegistrationStatus{ResolvedSecretRef: "redmine-auth-secret"}}
+		authReg := authRegistrationWithCompletedCondition("redmine-auth-secret")
 		doguCfg := config.CreateDoguConfig(cescommons.SimpleName("redmine"), config.Entries{})
 
 		secretClient.EXPECT().Get(ctx, "redmine-auth-secret", metav1.GetOptions{}).Return(&corev1.Secret{Data: map[string][]byte{"username": []byte("john")}}, nil)
@@ -225,4 +269,18 @@ func TestSensitiveConfigCredentialsSyncer_SyncCredentials(t *testing.T) {
 		assert.ErrorContains(t, err, "unable to update sensitive config for dogu redmine")
 		assert.ErrorIs(t, err, assert.AnError)
 	})
+}
+
+func authRegistrationWithCompletedCondition(secretRef string) *authRegApiV1.AuthRegistration {
+	return &authRegApiV1.AuthRegistration{
+		Status: authRegApiV1.AuthRegistrationStatus{
+			ResolvedSecretRef: secretRef,
+			Conditions: []metav1.Condition{
+				{
+					Type:   authRegApiV1.ConditionCompleted,
+					Status: metav1.ConditionTrue,
+				},
+			},
+		},
+	}
 }

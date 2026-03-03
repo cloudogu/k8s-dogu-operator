@@ -10,6 +10,7 @@ import (
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,6 +27,10 @@ func (s *sensitiveConfigCredentialsSyncer) SyncCredentials(ctx context.Context, 
 	secretName := strings.TrimSpace(authReg.Status.ResolvedSecretRef)
 	if secretName == "" {
 		return fmt.Errorf("auth-registration %q has no resolved secretRef yet", authReg.Name)
+	}
+	completed := meta.FindStatusCondition(authReg.Status.Conditions, authRegApiV1.ConditionCompleted)
+	if completed == nil || completed.Status != metav1.ConditionTrue {
+		return fmt.Errorf("auth-registration %q is not completed yet", authReg.Name)
 	}
 
 	secret, err := s.secretClient.Get(ctx, secretName, metav1.GetOptions{})
