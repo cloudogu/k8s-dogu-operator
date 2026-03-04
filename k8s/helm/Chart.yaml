@@ -28,4 +28,4 @@ annotations:
   # Allow all versions up to next major version to avoid breaking changes
   "k8s.cloudogu.com/ces-dependency/k8s-dogu-operator-crd": "2.x.x-0"
   # The dependency for the CES Gateway is needed because the dogu-operator creates network policies for dogu ingress traffic from CES Gateway.
-  "k8s.cloudogu.com/ces-dependency/k8s-ces-gateway": "1.x.x-0 || 2.x.x-0"
+  "k8s.cloudogu.com/ces-dependency/k8s-ces-gateway": "1.x.x-0 || 2.x.x-0 || 3.x.x-0"
