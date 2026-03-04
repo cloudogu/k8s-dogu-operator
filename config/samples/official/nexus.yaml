@@ -9,5 +9,3 @@ spec:
   version: 3.70.2-5
   resources:
     dataVolumeSize: 5Gi
-  additionalIngressAnnotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "0"
