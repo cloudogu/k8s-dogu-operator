@@ -63,8 +63,6 @@ type doguHealthStatusUpdater interface {
 }
 
 type authRegistrationManager interface {
-	// EnsureAuthRegistration creates/updates the AuthRegistration and syncs sensitive credentials.
-	EnsureAuthRegistration(ctx context.Context, dogu *cesappcore.Dogu) error
 	// RemoveAuthRegistration removes the AuthRegistration belonging to the given dogu.
 	RemoveAuthRegistration(ctx context.Context, doguName cescommons.SimpleName) error
 }

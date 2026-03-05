@@ -81,10 +81,6 @@ func (sm *AuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, d
 
 // RemoveAuthRegistration removes the AuthRegistration belonging to the given dogu.
 func (sm *AuthRegistrationManager) RemoveAuthRegistration(ctx context.Context, doguName cescommons.SimpleName) error {
-	if sm.client == nil {
-		return fmt.Errorf("auth registration client is not configured")
-	}
-
 	err := sm.client.Delete(ctx, createAuthRegistrationName(doguName.String()), metav1.DeleteOptions{})
 	if err != nil {
 		if k8sErr.IsNotFound(err) {

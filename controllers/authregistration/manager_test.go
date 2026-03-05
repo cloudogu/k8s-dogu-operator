@@ -242,15 +242,6 @@ func TestAuthRegistrationManager_EnsureAuthRegistration(t *testing.T) {
 func TestAuthRegistrationManager_RemoveAuthRegistration(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("should fail if client is nil", func(t *testing.T) {
-		manager := &AuthRegistrationManager{}
-
-		err := manager.RemoveAuthRegistration(ctx, "redmine")
-
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "auth registration client is not configured")
-	})
-
 	t.Run("should remove auth registration", func(t *testing.T) {
 		client := newMockAuthRegistrationClient(t)
 		manager := &AuthRegistrationManager{client: client}

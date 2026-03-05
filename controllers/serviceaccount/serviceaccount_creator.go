@@ -263,15 +263,11 @@ func (c *creator) isOptionalServiceAccount(dogu *core.Dogu, sa string) bool {
 }
 
 func (c *creator) shouldSkipLegacyCASServiceAccount(serviceAccount core.ServiceAccount) bool {
-	if !isDoguServiceAccount(serviceAccount) || !isCASServiceAccount(serviceAccount) {
+	if !isCASServiceAccount(serviceAccount) {
 		return false
 	}
 
 	return c.authRegistrationEnabled
-}
-
-func isDoguServiceAccount(serviceAccount core.ServiceAccount) bool {
-	return serviceAccount.Kind == "" || serviceAccount.Kind == doguKind
 }
 
 func isCASServiceAccount(serviceAccount core.ServiceAccount) bool {

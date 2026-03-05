@@ -5,9 +5,7 @@ package install
 import (
 	context "context"
 
-	dogu "github.com/cloudogu/ces-commons-lib/dogu"
 	core "github.com/cloudogu/cesapp-lib/core"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -24,9 +22,9 @@ func (_m *mockAuthRegistrationManager) EXPECT() *mockAuthRegistrationManager_Exp
 	return &mockAuthRegistrationManager_Expecter{mock: &_m.Mock}
 }
 
-// EnsureAuthRegistration provides a mock function with given fields: ctx, _a1
-func (_m *mockAuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, _a1 *core.Dogu) error {
-	ret := _m.Called(ctx, _a1)
+// EnsureAuthRegistration provides a mock function with given fields: ctx, dogu
+func (_m *mockAuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, dogu *core.Dogu) error {
+	ret := _m.Called(ctx, dogu)
 
 	if len(ret) == 0 {
 		panic("no return value specified for EnsureAuthRegistration")
@@ -34,7 +32,7 @@ func (_m *mockAuthRegistrationManager) EnsureAuthRegistration(ctx context.Contex
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *core.Dogu) error); ok {
-		r0 = rf(ctx, _a1)
+		r0 = rf(ctx, dogu)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -49,12 +47,12 @@ type mockAuthRegistrationManager_EnsureAuthRegistration_Call struct {
 
 // EnsureAuthRegistration is a helper method to define mock.On call
 //   - ctx context.Context
-//   - _a1 *core.Dogu
-func (_e *mockAuthRegistrationManager_Expecter) EnsureAuthRegistration(ctx interface{}, _a1 interface{}) *mockAuthRegistrationManager_EnsureAuthRegistration_Call {
-	return &mockAuthRegistrationManager_EnsureAuthRegistration_Call{Call: _e.mock.On("EnsureAuthRegistration", ctx, _a1)}
+//   - dogu *core.Dogu
+func (_e *mockAuthRegistrationManager_Expecter) EnsureAuthRegistration(ctx interface{}, dogu interface{}) *mockAuthRegistrationManager_EnsureAuthRegistration_Call {
+	return &mockAuthRegistrationManager_EnsureAuthRegistration_Call{Call: _e.mock.On("EnsureAuthRegistration", ctx, dogu)}
 }
 
-func (_c *mockAuthRegistrationManager_EnsureAuthRegistration_Call) Run(run func(ctx context.Context, _a1 *core.Dogu)) *mockAuthRegistrationManager_EnsureAuthRegistration_Call {
+func (_c *mockAuthRegistrationManager_EnsureAuthRegistration_Call) Run(run func(ctx context.Context, dogu *core.Dogu)) *mockAuthRegistrationManager_EnsureAuthRegistration_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*core.Dogu))
 	})
@@ -67,53 +65,6 @@ func (_c *mockAuthRegistrationManager_EnsureAuthRegistration_Call) Return(_a0 er
 }
 
 func (_c *mockAuthRegistrationManager_EnsureAuthRegistration_Call) RunAndReturn(run func(context.Context, *core.Dogu) error) *mockAuthRegistrationManager_EnsureAuthRegistration_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RemoveAuthRegistration provides a mock function with given fields: ctx, doguName
-func (_m *mockAuthRegistrationManager) RemoveAuthRegistration(ctx context.Context, doguName dogu.SimpleName) error {
-	ret := _m.Called(ctx, doguName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RemoveAuthRegistration")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, dogu.SimpleName) error); ok {
-		r0 = rf(ctx, doguName)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockAuthRegistrationManager_RemoveAuthRegistration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveAuthRegistration'
-type mockAuthRegistrationManager_RemoveAuthRegistration_Call struct {
-	*mock.Call
-}
-
-// RemoveAuthRegistration is a helper method to define mock.On call
-//   - ctx context.Context
-//   - doguName dogu.SimpleName
-func (_e *mockAuthRegistrationManager_Expecter) RemoveAuthRegistration(ctx interface{}, doguName interface{}) *mockAuthRegistrationManager_RemoveAuthRegistration_Call {
-	return &mockAuthRegistrationManager_RemoveAuthRegistration_Call{Call: _e.mock.On("RemoveAuthRegistration", ctx, doguName)}
-}
-
-func (_c *mockAuthRegistrationManager_RemoveAuthRegistration_Call) Run(run func(ctx context.Context, doguName dogu.SimpleName)) *mockAuthRegistrationManager_RemoveAuthRegistration_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(dogu.SimpleName))
-	})
-	return _c
-}
-
-func (_c *mockAuthRegistrationManager_RemoveAuthRegistration_Call) Return(_a0 error) *mockAuthRegistrationManager_RemoveAuthRegistration_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockAuthRegistrationManager_RemoveAuthRegistration_Call) RunAndReturn(run func(context.Context, dogu.SimpleName) error) *mockAuthRegistrationManager_RemoveAuthRegistration_Call {
 	_c.Call.Return(run)
 	return _c
 }
