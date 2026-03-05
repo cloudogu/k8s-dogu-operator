@@ -10,6 +10,8 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	k8sErr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +25,7 @@ type credentialsSyncer interface {
 type AuthRegistrationManager struct {
 	client            authRegistrationClient
 	credentialsSyncer credentialsSyncer
+	doguFetcher       cesregistry.LocalDoguFetcher
 }
 
 // NewManager creates an AuthRegistrationManager which can be used to create and remove AuthRegistration resources.
@@ -30,6 +33,7 @@ func NewManager(
 	client authRegClientV1.AuthRegistrationInterface,
 	secretClient corev1.SecretInterface,
 	sensitiveDoguRepo serviceaccount.SensitiveDoguConfigRepository,
+	doguFetcher cesregistry.LocalDoguFetcher,
 ) *AuthRegistrationManager {
 	return &AuthRegistrationManager{
 		client: client,
@@ -37,16 +41,22 @@ func NewManager(
 			secretClient:      secretClient,
 			sensitiveDoguRepo: sensitiveDoguRepo,
 		},
+		doguFetcher: doguFetcher,
 	}
 }
 
 // EnsureAuthRegistration creates/updates the AuthRegistration and syncs sensitive credentials.
-func (sm *AuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, dogu *cesappcore.Dogu) error {
-	if dogu == nil {
-		return fmt.Errorf("dogu must not be nil")
+func (sm *AuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, doguResource *doguv2.Dogu) error {
+	if doguResource == nil {
+		return fmt.Errorf("dogu resource must not be nil")
 	}
 
-	serviceAccount, found := getCASServiceAccount(dogu)
+	doguDescriptor, err := sm.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
+	if err != nil {
+		return fmt.Errorf("failed to fetch installed dogu descriptor: %w", err)
+	}
+
+	serviceAccount, found := getCASServiceAccount(doguDescriptor)
 	if !found {
 		return nil
 	}
@@ -58,11 +68,14 @@ func (sm *AuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, d
 
 	desiredAuthReg := &authRegApiV1.AuthRegistration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: createAuthRegistrationName(dogu.GetSimpleName()),
+			Name: createAuthRegistrationName(doguResource.Name),
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu")),
+			},
 		},
 		Spec: authRegApiV1.AuthRegistrationSpec{
 			Protocol:  protocol,
-			Consumer:  dogu.GetSimpleName(),
+			Consumer:  doguResource.Name,
 			LogoutURL: logoutURL,
 		},
 	}
@@ -72,7 +85,7 @@ func (sm *AuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, d
 		return err
 	}
 
-	if err = sm.credentialsSyncer.SyncCredentials(ctx, authReg, dogu.GetSimpleName(), serviceAccount.Type); err != nil {
+	if err = sm.credentialsSyncer.SyncCredentials(ctx, authReg, doguResource.Name, serviceAccount.Type); err != nil {
 		return fmt.Errorf("failed to synchronize auth registration credentials into sensitive dogu config: %w", err)
 	}
 
@@ -111,11 +124,12 @@ func (sm *AuthRegistrationManager) ensureAuthRegistration(ctx context.Context, d
 		return nil, fmt.Errorf("failed to get AuthRegistration: %w", err)
 	}
 
-	if reflect.DeepEqual(authReg.Spec, desiredAuthReg.Spec) {
+	if reflect.DeepEqual(authReg.Spec, desiredAuthReg.Spec) && reflect.DeepEqual(authReg.OwnerReferences, desiredAuthReg.OwnerReferences) {
 		return authReg, nil
 	}
 
 	authReg.Spec = desiredAuthReg.Spec
+	authReg.OwnerReferences = desiredAuthReg.OwnerReferences
 
 	updatedAuthReg, err := sm.client.Update(ctx, authReg, metav1.UpdateOptions{})
 	if err != nil {

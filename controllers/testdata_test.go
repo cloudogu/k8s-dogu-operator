@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -104,6 +105,11 @@ func readDoguDevelopmentMap(t *testing.T, devMapBytes []byte) *doguv2.Developmen
 
 func getTestScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
+
+	err := authRegApiV1.AddToScheme(scheme)
+	if err != nil {
+		panic(err)
+	}
 
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
