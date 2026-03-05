@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - [#283] Configure image pull for local development
+  - The registry is not reachable with the local fqdn `k3ces.localdomain`
 
 ## [v3.19.2] - 2026-02-17
 ### Security

@@ -62,6 +62,7 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 	var img imagev1.Image
 	err = retry.OnErrorWithLimit(MaxWaitDuration, retry.AlwaysRetryFunc, func() (err error) {
 		if stage == config.StageDevelopment {
+			// The registry cannot be reached with the fqdn `k3ces.localdomain`. Therefore, the insecure flag is used.
 			img, err = ImagePull(image, crane.WithAuthFromKeychain(authn.DefaultKeychain), crane.WithTransport(transport), ctxOpt, crane.Insecure)
 		} else {
 			img, err = ImagePull(image, crane.WithAuthFromKeychain(authn.DefaultKeychain), crane.WithTransport(transport), ctxOpt)
