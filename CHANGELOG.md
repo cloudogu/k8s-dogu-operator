@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.19.4] - 2026-03-06
+### Changed
+- [#283] Configure image pull for local development
+  - The registry is not reachable with the local fqdn `k3ces.localdomain`
+
 ## [v3.19.3] - 2026-03-04
 ### Changed
 - [#289] Allow version 3.x.x of k8s-ces-gateway
