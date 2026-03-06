@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#283] Configure image pull for local development
+  - The registry is not reachable with the local fqdn `k3ces.localdomain`
 
 ## [v3.19.3] - 2026-03-04
 ### Changed
