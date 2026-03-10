@@ -45,6 +45,7 @@ rules:
       - authregistrations
     verbs:
       - get
+      - list
       - create
       - update
       - delete
