@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
@@ -458,11 +459,8 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			}()).To(BeTrue())
 
 			upgradedLdapDoguCr := createdDogu
-			Expect(func() bool {
-				upgradedLdapDoguCr.Spec.Version = ldapToVersion
-				err := k8sClient.Update(testCtx, upgradedLdapDoguCr)
-				return err == nil
-			}()).To(BeTrue())
+			upgradedLdapDoguCr.Spec.Version = ldapToVersion
+			updateDoguCr(testCtx, upgradedLdapDoguCr)
 
 			setExecPodRunning(testCtx, "ldap")
 
@@ -687,7 +685,20 @@ func installDoguCr(ctx context.Context, doguCr *doguv2.Dogu) {
 
 func updateDoguCr(ctx context.Context, doguCr *doguv2.Dogu) {
 	doguClient := ecosystemClientSet.Dogus(doguCr.Namespace)
-	_, err := doguClient.Update(ctx, doguCr, metav1.UpdateOptions{})
+
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		latestDogu, getErr := doguClient.Get(ctx, doguCr.Name, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		// Keep latest metadata/resourceVersion and only apply desired spec changes.
+		latestDogu.Spec = doguCr.Spec
+
+		_, updateErr := doguClient.Update(ctx, latestDogu, metav1.UpdateOptions{})
+		return updateErr
+	})
+
 	Expect(err).Should(Succeed())
 }
 

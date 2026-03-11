@@ -94,7 +94,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	ginkgo.By("bootstrapping test environment")
 	logf.SetLogger(logrusr.New(logrus.New()))
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "api", "v2")},
+		CRDDirectoryPaths: []string{
+			filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "api", "v2"),
+			filepath.Join("testdata", "crd"),
+		},
 		ErrorIfCRDPathMissing: true,
 	}
 

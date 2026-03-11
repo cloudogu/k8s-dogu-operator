@@ -223,6 +223,37 @@ func TestServiceAccountCreator_CreateServiceAccounts(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("skip legacy CAS service account creation if auth registration is enabled", func(t *testing.T) {
+		// given
+		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveDoguCfgRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(config.CreateDoguConfig("test", make(config.Entries)), nil)
+		sensitiveDoguCfgRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
+
+		postgresCreateSAShellCmd := exec.NewShellCommand(postgresCreateExposedCmd.Command, "redmine")
+		commandExecutorMock := newMockCommandExecutor(t)
+		commandExecutorMock.EXPECT().
+			ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresCreateSAShellCmd).
+			Return(bytes.NewBufferString("username:user\npassword:password\ndatabase:dbname"), nil)
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
+
+		serviceAccountCreator := creator{
+			client:                  cli,
+			sensitiveDoguRepo:       sensitiveDoguCfgRepoMock,
+			doguFetcher:             localFetcher,
+			executor:                commandExecutorMock,
+			authRegistrationEnabled: true,
+		}
+
+		// when
+		err := serviceAccountCreator.CreateAll(testCtx, redmineDescriptorTwoSa)
+
+		// then
+		require.NoError(t, err)
+	})
+
 	t.Run("service account already exists", func(t *testing.T) {
 		// given
 		sensitiveDoguCfgRepoMock := NewMockSensitiveDoguConfigRepository(t)
@@ -583,5 +614,55 @@ func Test_creator_isOptionalServiceAccount(t *testing.T) {
 
 		// then
 		require.False(t, result)
+	})
+}
+
+func Test_creator_shouldSkipLegacyCASServiceAccount(t *testing.T) {
+	t.Run("should return false for non-dogu service account", func(t *testing.T) {
+		// given
+		saCreator := &creator{}
+		serviceAccount := core.ServiceAccount{Kind: componentKind, Type: casDoguName}
+
+		// when
+		skip := saCreator.shouldSkipLegacyCASServiceAccount(serviceAccount)
+
+		// then
+		require.False(t, skip)
+	})
+
+	t.Run("should return false for dogu service account that is not CAS", func(t *testing.T) {
+		// given
+		saCreator := &creator{}
+		serviceAccount := core.ServiceAccount{Kind: doguKind, Type: "postgresql"}
+
+		// when
+		skip := saCreator.shouldSkipLegacyCASServiceAccount(serviceAccount)
+
+		// then
+		require.False(t, skip)
+	})
+
+	t.Run("should not skip if auth registration is disabled", func(t *testing.T) {
+		// given
+		saCreator := &creator{authRegistrationEnabled: false}
+		serviceAccount := core.ServiceAccount{Kind: "", Type: casDoguName}
+
+		// when
+		skip := saCreator.shouldSkipLegacyCASServiceAccount(serviceAccount)
+
+		// then
+		require.False(t, skip)
+	})
+
+	t.Run("should skip if auth registration is enabled", func(t *testing.T) {
+		// given
+		saCreator := &creator{authRegistrationEnabled: true}
+		serviceAccount := core.ServiceAccount{Kind: doguKind, Type: casDoguName}
+
+		// when
+		skip := saCreator.shouldSkipLegacyCASServiceAccount(serviceAccount)
+
+		// then
+		require.True(t, skip)
 	})
 }

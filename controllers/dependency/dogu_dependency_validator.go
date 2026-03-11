@@ -31,13 +31,15 @@ func (e *dependencyValidationError) Requeue() bool {
 
 // doguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type doguDependencyValidator struct {
-	fetcher localDoguFetcher
+	fetcher                 localDoguFetcher
+	authRegistrationEnabled bool
 }
 
 // newDoguDependencyValidator creates a new dogu dependencies checker
-func newDoguDependencyValidator(doguFetcher localDoguFetcher) *doguDependencyValidator {
+func newDoguDependencyValidator(doguFetcher localDoguFetcher, authRegistrationEnabled bool) *doguDependencyValidator {
 	return &doguDependencyValidator{
-		fetcher: doguFetcher,
+		fetcher:                 doguFetcher,
+		authRegistrationEnabled: authRegistrationEnabled,
 	}
 }
 
@@ -80,6 +82,11 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 	logger := log.FromContext(ctx)
 	if doguDependency.Name == "nginx" || doguDependency.Name == "registrator" {
 		logger.Info(fmt.Sprintf("skipping legacy dogu dependency: %s", doguDependency.Name))
+		return nil
+	}
+
+	if dc.authRegistrationEnabled && doguDependency.Name == "cas" {
+		logger.Info(fmt.Sprintf("skipping legacy dogu dependency for %q because auth registration is enabled", doguDependency.Name))
 		return nil
 	}
 

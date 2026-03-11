@@ -46,7 +46,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		ecosystemClientMock := newMockEcosystemInterface(t)
 		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(ecosystemClientMock, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClientMock, localFetcher)
 
 		// when
 		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
@@ -66,7 +66,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
@@ -88,7 +88,7 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
@@ -152,7 +152,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -174,13 +174,55 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		ignoreNginxRegistratorDogu := readTestDataDogu(t, ignoreNginxRegistratorBytes)
 		ecosystemClient := newMockEcosystemInterface(t)
 
-		sut := NewDoguChecker(ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, ignoreNginxRegistratorDogu, testNamespace)
 
 		// then
 		require.NoError(t, err)
+	})
+
+	t.Run("should ignore legacy cas dependency if authRegistration is enabled", func(t *testing.T) {
+		/*
+			redmine
+			+-m-> ☑cas
+			+-o-> ☑nginx
+		*/
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		ignoreAuhRegistrationCasDogu := readTestDataDogu(t, ignoreAuhRegistrationCasBytes)
+		ecosystemClient := newMockEcosystemInterface(t)
+
+		sut := NewDoguChecker(&config.OperatorConfig{AuthRegistrationEnabled: true}, ecosystemClient, localFetcher)
+
+		// when
+		err := sut.CheckDependenciesRecursive(testCtx, ignoreAuhRegistrationCasDogu, testNamespace)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("should not ignore legacy cas dependency if authRegistration is not enabled", func(t *testing.T) {
+		/*
+			redmine
+			+-m-> ☑cas
+			+-o-> ☑nginx
+		*/
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("cas")).Return(nil, registryKeyNotFoundTestErr)
+		ignoreAuhRegistrationCasDogu := readTestDataDogu(t, ignoreAuhRegistrationCasBytes)
+		ecosystemClient := newMockEcosystemInterface(t)
+
+		sut := NewDoguChecker(&config.OperatorConfig{AuthRegistrationEnabled: false}, ecosystemClient, localFetcher)
+
+		// when
+		err := sut.CheckDependenciesRecursive(testCtx, ignoreAuhRegistrationCasDogu, testNamespace)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error fetching local dogu descriptor for dependency \"cas\":")
 	})
 
 	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
@@ -226,7 +268,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, testDogu, testNamespace)
@@ -277,7 +319,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		ecosystemClient := newMockEcosystemInterface(t)
 		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-		sut := NewDoguChecker(ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -331,7 +373,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -383,7 +425,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -434,7 +476,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -488,7 +530,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -528,7 +570,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -578,7 +620,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -631,7 +673,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -684,7 +726,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -735,7 +777,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -787,7 +829,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -838,7 +880,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -883,7 +925,7 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				ecosystemClient := newMockEcosystemInterface(t)
 				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
 
-				sut := NewDoguChecker(ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
