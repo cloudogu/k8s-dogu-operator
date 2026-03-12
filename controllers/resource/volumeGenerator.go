@@ -332,6 +332,7 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 			Name:      "localtime",
 			ReadOnly:  true,
 			MountPath: "/etc/localtime",
+			SubPath:   "/usr/share/zoneinfo/UTC",
 		},
 		{
 			Name:      doguResource.GetEphemeralDataVolumeName(),
