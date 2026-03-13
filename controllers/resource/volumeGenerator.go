@@ -213,20 +213,12 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 		},
 	}
 
-	timeZoneVolume := corev1.Volume{
-		Name: "timezone",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
-
 	return []corev1.Volume{
 		doguHealthVolume,
 		ephemeralVolume,
 		globalConfigVolume,
 		normalConfigVolume,
 		sensitiveConfigVolume,
-		timeZoneVolume,
 	}
 }
 
@@ -327,12 +319,6 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 			Name:      doguHealth,
 			ReadOnly:  true,
 			MountPath: "/etc/ces/health",
-		},
-		{
-			Name:      "localtime",
-			ReadOnly:  true,
-			MountPath: "/etc/localtime",
-			SubPath:   "/usr/share/zoneinfo/UTC",
 		},
 		{
 			Name:      doguResource.GetEphemeralDataVolumeName(),
