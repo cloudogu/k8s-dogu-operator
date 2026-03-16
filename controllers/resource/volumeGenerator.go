@@ -332,7 +332,7 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 		}, {
 			Name:      "timezone",
 			ReadOnly:  true,
-			MountPath: "/etc/localtine",
+			MountPath: "/etc/localtime",
 		},
 		{
 			Name:      doguResource.GetEphemeralDataVolumeName(),
