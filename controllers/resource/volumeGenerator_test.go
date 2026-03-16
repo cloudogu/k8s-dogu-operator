@@ -418,11 +418,11 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, 6)
+		assert.Len(t, volumes, 7)
 
-		assert.Equal(t, "ldap-dogu-json", volumes[5].Name)
-		assert.Equal(t, "dogu-spec-ldap", volumes[5].VolumeSource.ConfigMap.LocalObjectReference.Name)
-		assert.True(t, *volumes[5].VolumeSource.ConfigMap.Optional)
+		assert.Equal(t, "ldap-dogu-json", volumes[6].Name)
+		assert.Equal(t, "dogu-spec-ldap", volumes[6].VolumeSource.ConfigMap.LocalObjectReference.Name)
+		assert.True(t, *volumes[6].VolumeSource.ConfigMap.Optional)
 	})
 
 	t.Run("should create importer publicKey-volume for active export-mode", func(t *testing.T) {
