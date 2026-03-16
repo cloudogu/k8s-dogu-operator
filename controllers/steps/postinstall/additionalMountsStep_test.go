@@ -1,12 +1,15 @@
 package postinstall
 
 import (
+	"context"
 	"testing"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
 )
+
+var testCtx = context.Background()
 
 func TestAdditionalMountsStep_Run(t *testing.T) {
 	tests := []struct {

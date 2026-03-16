@@ -15,6 +15,8 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+const namespace = "ecosystem"
+
 func TestNewSecurityContextStep(t *testing.T) {
 	t.Run("Successfully created step", func(t *testing.T) {
 		fetcher := newMockLocalDoguFetcher(t)
