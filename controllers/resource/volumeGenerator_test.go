@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const no_of_volumes int = 6
+const noOfStaticVolumes int = 6
 
 func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 
@@ -303,7 +303,7 @@ func Test_createVolumeMounts(t *testing.T) {
 		volumeMounts := createVolumeMounts(ldapDoguResource, &core.Dogu{})
 
 		// then
-		assert.Len(t, volumeMounts, no_of_volumes+1)
+		assert.Len(t, volumeMounts, noOfStaticVolumes+1)
 
 		assert.Equal(t, doguHealth, volumeMounts[0].Name)
 		assert.True(t, volumeMounts[0].ReadOnly)
@@ -318,7 +318,7 @@ func Test_createVolumeMounts(t *testing.T) {
 		assert.True(t, volumeMounts[2].ReadOnly)
 		assert.Equal(t, "/etc/ces/config/global", volumeMounts[2].MountPath)
 
-		assert.Equal(t, "timezone", volumeMounts[3].Name)
+		assert.Equal(t, localTimeMountName, volumeMounts[3].Name)
 		assert.True(t, volumeMounts[3].ReadOnly)
 		assert.Equal(t, "/etc/localtime", volumeMounts[3].MountPath)
 
@@ -339,7 +339,7 @@ func Test_createVolumeMounts(t *testing.T) {
 		volumeMounts := createVolumeMounts(ldapDoguResource, &core.Dogu{Name: "official/ldap"})
 
 		// then
-		assert.Len(t, volumeMounts, no_of_volumes+1)
+		assert.Len(t, volumeMounts, noOfStaticVolumes+1)
 
 		assert.Equal(t, "ldap-dogu-json", volumeMounts[6].Name)
 		assert.True(t, volumeMounts[6].ReadOnly)
@@ -378,25 +378,25 @@ func Test_createVolumeMounts(t *testing.T) {
 		})
 
 		// then
-		assert.Len(t, volumeMounts, no_of_volumes+4)
+		assert.Len(t, volumeMounts, noOfStaticVolumes+4)
 
-		assert.Equal(t, "ldap-dogu-json", volumeMounts[no_of_volumes].Name)
-		assert.True(t, volumeMounts[no_of_volumes].ReadOnly)
-		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[no_of_volumes].MountPath)
+		assert.Equal(t, "ldap-dogu-json", volumeMounts[noOfStaticVolumes].Name)
+		assert.True(t, volumeMounts[noOfStaticVolumes].ReadOnly)
+		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[noOfStaticVolumes].MountPath)
 
-		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumeMounts[no_of_volumes+1].Name)
-		assert.False(t, volumeMounts[no_of_volumes+1].ReadOnly)
-		assert.Equal(t, volumes[0].Path, volumeMounts[no_of_volumes+1].MountPath)
-		assert.Equal(t, volumes[0].Name, volumeMounts[no_of_volumes+1].SubPath)
+		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumeMounts[noOfStaticVolumes+1].Name)
+		assert.False(t, volumeMounts[noOfStaticVolumes+1].ReadOnly)
+		assert.Equal(t, volumes[0].Path, volumeMounts[noOfStaticVolumes+1].MountPath)
+		assert.Equal(t, volumes[0].Name, volumeMounts[noOfStaticVolumes+1].SubPath)
 
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumeMounts[no_of_volumes+2].Name)
-		assert.False(t, volumeMounts[no_of_volumes+2].ReadOnly)
-		assert.Equal(t, volumes[1].Path, volumeMounts[no_of_volumes+2].MountPath)
-		assert.Equal(t, volumes[1].Name, volumeMounts[no_of_volumes+2].SubPath)
+		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumeMounts[noOfStaticVolumes+2].Name)
+		assert.False(t, volumeMounts[noOfStaticVolumes+2].ReadOnly)
+		assert.Equal(t, volumes[1].Path, volumeMounts[noOfStaticVolumes+2].MountPath)
+		assert.Equal(t, volumes[1].Name, volumeMounts[noOfStaticVolumes+2].SubPath)
 
-		assert.Equal(t, volumes[2].Name, volumeMounts[no_of_volumes+3].Name)
-		assert.False(t, volumeMounts[no_of_volumes+3].ReadOnly)
-		assert.Equal(t, volumes[2].Path, volumeMounts[no_of_volumes+3].MountPath)
+		assert.Equal(t, volumes[2].Name, volumeMounts[noOfStaticVolumes+3].Name)
+		assert.False(t, volumeMounts[noOfStaticVolumes+3].ReadOnly)
+		assert.Equal(t, volumes[2].Path, volumeMounts[noOfStaticVolumes+3].MountPath)
 	})
 }
 
@@ -411,7 +411,7 @@ func Test_createVolumes(t *testing.T) {
 		// then
 		require.NoError(t, err)
 
-		assert.Len(t, volumes, no_of_volumes+1)
+		assert.Len(t, volumes, noOfStaticVolumes+1)
 
 		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[1].Name)
 	})
@@ -425,7 +425,7 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, no_of_volumes+1)
+		assert.Len(t, volumes, noOfStaticVolumes+1)
 
 		assert.Equal(t, "ldap-dogu-json", volumes[6].Name)
 		assert.Equal(t, "dogu-spec-ldap", volumes[6].VolumeSource.ConfigMap.LocalObjectReference.Name)
@@ -441,7 +441,7 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, no_of_volumes+2)
+		assert.Len(t, volumes, noOfStaticVolumes+2)
 
 		assert.Equal(t, importPublicKeyVolumeName, volumes[7].Name)
 		assert.Equal(t, importerPublicKeyConfigMapName, volumes[7].VolumeSource.ConfigMap.Name)
@@ -471,7 +471,7 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, no_of_volumes+2)
+		assert.Len(t, volumes, noOfStaticVolumes+2)
 
 		assert.Equal(t, "dogu-health", volumes[0].Name)
 		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[1].Name)

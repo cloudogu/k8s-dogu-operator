@@ -760,7 +760,7 @@ func CreateExpectedVolumes() []corev1.Volume {
 				},
 			},
 		}, {
-			Name: "timezone",
+			Name: "localtime",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: "/etc/localtime",
