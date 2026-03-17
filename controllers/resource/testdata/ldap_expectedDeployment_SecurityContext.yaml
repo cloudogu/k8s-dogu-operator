@@ -137,6 +137,9 @@ spec:
             - mountPath: /etc/ces/health
               name: dogu-health
               readOnly: true
+            - mountPath: /etc/localtime
+              name: timezone
+              readOnly: true
             - mountPath: /var/ces/state
               name: ldap-ephemeral
               readOnly: false

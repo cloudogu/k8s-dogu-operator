@@ -224,11 +224,11 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 
 	return []corev1.Volume{
 		doguHealthVolume,
-		hostTimezoneVolume,
 		ephemeralVolume,
 		globalConfigVolume,
 		normalConfigVolume,
 		sensitiveConfigVolume,
+		hostTimezoneVolume,
 	}
 }
 

@@ -17,6 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+const no_of_volumes int = 6
+
 func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 
 	t.Run("Return simple pvc", func(t *testing.T) {
@@ -301,7 +303,7 @@ func Test_createVolumeMounts(t *testing.T) {
 		volumeMounts := createVolumeMounts(ldapDoguResource, &core.Dogu{})
 
 		// then
-		assert.Len(t, volumeMounts, 6)
+		assert.Len(t, volumeMounts, no_of_volumes)
 
 		assert.Equal(t, doguHealth, volumeMounts[0].Name)
 		assert.True(t, volumeMounts[0].ReadOnly)
@@ -323,6 +325,10 @@ func Test_createVolumeMounts(t *testing.T) {
 		assert.Equal(t, sensitiveConfig, volumeMounts[4].Name)
 		assert.True(t, volumeMounts[4].ReadOnly)
 		assert.Equal(t, "/etc/ces/config/sensitive", volumeMounts[4].MountPath)
+
+		assert.False(t, volumeMounts[5].ReadOnly)
+		assert.Equal(t, "/etc/localtime", volumeMounts[5].MountPath)
+		assert.Equal(t, "/etc/localtime", volumeMounts[1].SubPath)
 	})
 
 	t.Run("should create own dogu.json volume mount", func(t *testing.T) {
@@ -404,7 +410,8 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, 6)
+
+		assert.Len(t, volumes, no_of_volumes)
 
 		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[1].Name)
 	})
@@ -464,7 +471,7 @@ func Test_createVolumes(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, volumes, 7)
+		assert.Len(t, volumes, no_of_volumes+2)
 
 		assert.Equal(t, "dogu-health", volumes[0].Name)
 		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[1].Name)
