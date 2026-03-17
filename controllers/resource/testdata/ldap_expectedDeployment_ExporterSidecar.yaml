@@ -119,15 +119,15 @@ spec:
             - mountPath: /etc/ces/health
               name: dogu-health
               readOnly: true
-            - mountPath: /etc/localtime
-              name: timezone
-              readOnly: true
             - mountPath: /var/ces/state
               name: ldap-ephemeral
               readOnly: false
               subPath: state
             - mountPath: /etc/ces/config/global
               name: global-config
+              readOnly: true
+            - mountPath: /etc/localtime
+              name: timezone
               readOnly: true
             - mountPath: /etc/ces/config/normal
               name: normal-config
@@ -213,6 +213,9 @@ spec:
         - name: sensitive-config
           secret:
             secretName: ldap-config
+        - name: timezone
+          hostPath:
+            path: /etc/localtime
         - name: ldap-dogu-json
           configMap:
             name: dogu-spec-ldap

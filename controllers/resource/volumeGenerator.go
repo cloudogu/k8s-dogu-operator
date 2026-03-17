@@ -329,10 +329,6 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 			Name:      doguHealth,
 			ReadOnly:  true,
 			MountPath: "/etc/ces/health",
-		}, {
-			Name:      "timezone",
-			ReadOnly:  true,
-			MountPath: "/etc/localtime",
 		},
 		{
 			Name:      doguResource.GetEphemeralDataVolumeName(),
@@ -344,6 +340,10 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 			Name:      globalConfig,
 			ReadOnly:  true,
 			MountPath: "/etc/ces/config/global",
+		}, {
+			Name:      "timezone",
+			ReadOnly:  true,
+			MountPath: "/etc/localtime",
 		},
 	}
 
