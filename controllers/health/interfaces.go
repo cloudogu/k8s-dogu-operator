@@ -7,13 +7,12 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 type DeploymentAvailabilityChecker interface {
@@ -47,6 +46,17 @@ type ecosystemInterface interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type ctrlManager interface {
+	//GetLogger() logr.Logger
+	//GetControllerOptions() config.Controller
+	//Add(manager.Runnable) error
+	//GetCache() cache.Cache
+	//GetScheme() *runtime.Scheme
+	//GetRESTMapper() meta.RESTMapper
+	//AddHealthzCheck(name string, check healthz.Checker) error
+	//AddReadyzCheck(name string, check healthz.Checker) error
+	//AddMetricsServerExtraHandler(path string, handler http.Handler) error
+	//Elected() <-chan struct{}
+	//GetAPIReader() client.Reader
 	manager.Manager
 }
 
