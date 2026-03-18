@@ -7,7 +7,7 @@ require (
 	github.com/cloudogu/ces-commons-lib v0.3.0
 	github.com/cloudogu/cesapp-lib v0.18.2
 	github.com/cloudogu/k8s-apply-lib v0.5.0
-	github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20260317064146-207727f3bf21
+	github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0
 	github.com/cloudogu/k8s-host-change v0.8.0
 	github.com/cloudogu/k8s-registry-lib v0.6.0
 	github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1
