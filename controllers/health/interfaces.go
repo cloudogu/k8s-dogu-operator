@@ -46,17 +46,6 @@ type ecosystemInterface interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type ctrlManager interface {
-	//GetLogger() logr.Logger
-	//GetControllerOptions() config.Controller
-	//Add(manager.Runnable) error
-	//GetCache() cache.Cache
-	//GetScheme() *runtime.Scheme
-	//GetRESTMapper() meta.RESTMapper
-	//AddHealthzCheck(name string, check healthz.Checker) error
-	//AddReadyzCheck(name string, check healthz.Checker) error
-	//AddMetricsServerExtraHandler(path string, handler http.Handler) error
-	//Elected() <-chan struct{}
-	//GetAPIReader() client.Reader
 	manager.Manager
 }
 

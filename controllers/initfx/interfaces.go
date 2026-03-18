@@ -35,11 +35,6 @@ type OwnerReferenceSetter interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type k8sManager interface {
-	//GetClient() client.Client
-	//GetEventRecorderFor(name string) record.EventRecorder
-	//GetScheme() *runtime.Scheme
-	//AddHealthzCheck(name string, check healthz.Checker) error
-	//AddReadyzCheck(name string, check healthz.Checker) error
 	manager.Manager
 }
 
