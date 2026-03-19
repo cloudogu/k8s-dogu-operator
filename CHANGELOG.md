@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.21.0] - 2026-03-19
+### Removed
+- [#291] remove outdated ingress-nginx specific code and documentation 
+
 ## [v3.20.0] - 2026-03-19
 ### Added
 - [#287] add a volume mount for /etc/localtime to use the host system's timezone

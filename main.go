@@ -210,7 +210,6 @@ func options() []fx.Option {
 			postinstall.NewStartStopStep,
 			postinstall.NewVolumeExpanderStep,
 			postinstall.NewMismatchedStorageClassWarningStep,
-			postinstall.NewAdditionalIngressAnnotationsStep,
 			postinstall.NewSecurityContextStep,
 			postinstall.NewExportModeStep,
 			postinstall.NewSupportModeStep,

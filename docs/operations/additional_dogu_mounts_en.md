@@ -14,7 +14,7 @@ The [naming guidelines](https://kubernetes.io/docs/concepts/overview/working-wit
 
 ## Example
 
-### Nginx Custom HTML
+### Jenkins Custom HTML
 
 Custom HTML files can be easily integrated:
 
@@ -30,12 +30,12 @@ kind: Dogu
 metadata:
   labels:
     app: ces
-    dogu.name: nginx-static
-  name: nginx-static
+    dogu.name: jenkins
+  name: jenkins
   namespace: ecosystem
 spec:
-  name: k8s/nginx-static
-  version: 1.26.3-2
+  name: official/jenkins
+  version: 2.528.3-9
   additionalMounts:
     - sourceType: ConfigMap # Type of source [ConfigMap|Secret]
       name: myhtml # Name of the ConfigMap
@@ -50,12 +50,12 @@ kind: Dogu
 metadata:
   labels:
     app: ces
-    dogu.name: nginx-static
-  name: nginx-static
+    dogu.name: jenkins
+  name: jenkins
   namespace: ecosystem
 spec:
-  name: k8s/nginx-static
-  version: 1.26.3-2
+  name: official/jenkins
+  version: 2.528.3-9
   additionalMounts:
     - sourceType: ConfigMap # Type of source [ConfigMap|Secret]
       name: myhtml # Name of the ConfigMap

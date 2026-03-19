@@ -157,7 +157,7 @@ func (p *podSpecBuilder) containerResourceRequirements(reqs corev1.ResourceRequi
 func (p *podSpecBuilder) serviceAccount() *podSpecBuilder {
 	for _, account := range p.theDogu.ServiceAccounts {
 		if account.Kind == kubernetesServiceAccountKind && account.Type == doguOperatorClient {
-			// this is used for service accounts deployed from the k8s-folder of a dogu, e.g. in nginx-ingress
+			// this is used for service accounts deployed from the k8s-folder of a dogu
 			p.specServiceAccountName = p.theDogu.GetSimpleName()
 			p.specAutomountServiceAccountToken = true
 			return p

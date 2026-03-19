@@ -145,7 +145,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // These resource types are listed here with owns.
 // In addition, the dogu reconciler can be triggered via an events channel.
 // This is intended, for example, for the GlobalConfigReconciler to reconcile the dogus again.
-func (r *DoguReconciler) setupWithManager(mgr ctrl.Manager) error {
+func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&coreV1.ConfigMap{}).
