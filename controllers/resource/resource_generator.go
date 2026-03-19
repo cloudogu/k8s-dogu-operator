@@ -38,6 +38,11 @@ const (
 )
 
 const (
+	localTimeMountName = "localtime"
+	localTimeMountPath = "/etc/localtime"
+)
+
+const (
 	doguPodNamespace = "POD_NAMESPACE"
 	doguPodName      = "POD_NAME"
 	doguPodMultiNode = "ECOSYSTEM_MULTINODE"

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - [#291] remove outdated ingress-nginx specific code and documentation 
 
+## [v3.20.0] - 2026-03-19
+### Added
+- [#287] add a volume mount for /etc/localtime to use the host system's timezone
+
 ## [v3.19.4] - 2026-03-06
 ### Changed
 - [#283] Configure image pull for local development
