@@ -15,7 +15,7 @@ Daher gelten die [Namensrichtlinien](https://kubernetes.io/docs/concepts/overvie
 
 ## Beispiel
 
-### Nginx Custom HTML
+### Jenkins Custom HTML
 
 Eigene HTML-Files können leicht eingebunden werden:
 
@@ -31,12 +31,12 @@ kind: Dogu
 metadata:
   labels:
     app: ces
-    dogu.name: nginx-static
-  name: nginx-static
+    dogu.name: jenkins
+  name: jenkins
   namespace: ecosystem
 spec:
-  name: k8s/nginx-static
-  version: 1.26.3-2
+  name: official/jenkins
+  version: 2.528.3-9
   additionalMounts:
     - sourceType: ConfigMap # Typ der Quelle [ConfigMap|Secret]
       name: myhtml # Name der ConfigMap
@@ -51,12 +51,12 @@ kind: Dogu
 metadata:
   labels:
     app: ces
-    dogu.name: nginx-static
-  name: nginx-static
+    dogu.name: jenkins
+  name: jenkins
   namespace: ecosystem
 spec:
-  name: k8s/nginx-static
-  version: 1.26.3-2
+  name: official/jenkins
+  version: 2.528.3-9
   additionalMounts:
     - sourceType: ConfigMap # Typ der Quelle [ConfigMap|Secret]
       name: myhtml # Name der ConfigMap

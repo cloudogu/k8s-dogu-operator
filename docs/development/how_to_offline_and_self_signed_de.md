@@ -54,8 +54,10 @@ k8s:
       - "0.5.0"
     k8s/k8s-longhorn:
       - "1.5.1-3"
+    k8s/k8s-ces-gateway:
+      - "3.0.0"
     k8s/k8s-service-discovery:
-      - "0.15.0"
+      - "6.0.0"
   source:
     component-index:
       endpoint: https://registry.cloudogu.com/
@@ -80,10 +82,6 @@ dogu:
       - 2.6.2-6
     official/postfix:
       - 3.6.4-6
-    k8s/nginx-static:
-      - 1.23.1-5
-    k8s/nginx-ingress:
-      - 1.6.4-4
     official/cas:
       - 6.6.12-1
     official/postgresql:
@@ -257,8 +255,6 @@ setup_json: |
       "install": [
         "official/ldap",
         "official/postfix",
-        "k8s/nginx-static",
-        "k8s/nginx-ingress",
         "official/cas",
         "official/postgresql",
         "official/redmine"

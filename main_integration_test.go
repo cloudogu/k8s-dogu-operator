@@ -194,37 +194,6 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			Expect(CommandExecutorMock.AssertExpectations(mockeryT)).To(BeTrue())
 		})
 
-		It("Update dogus additional ingress annotations", func() {
-			By("Update dogu resource with ingress annotations")
-			createdDogu := &doguv2.Dogu{}
-			Eventually(func() error {
-				return k8sClient.Get(testCtx, ldapDoguLookupKey, createdDogu)
-			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).ShouldNot(HaveOccurred())
-
-			if createdDogu.Spec.AdditionalIngressAnnotations == nil {
-				createdDogu.Spec.AdditionalIngressAnnotations = map[string]string{}
-			}
-			createdDogu.Spec.AdditionalIngressAnnotations["new"] = "new"
-			updateDoguCr(testCtx, createdDogu)
-
-			By("Expect service with additional ingress annotations")
-			service := &corev1.Service{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(testCtx, ldapDoguLookupKey, service)
-				if err != nil {
-					return false
-				}
-
-				s, exists := service.ObjectMeta.Annotations["k8s-dogu-operator.cloudogu.com/additional-ingress-annotations"]
-				if exists && s == "{\"new\":\"new\"}" {
-					return true
-				}
-
-				return false
-			}).WithTimeout(TimeoutInterval).WithPolling(PollingInterval).Should(BeTrue())
-		})
-
 		It("Update dogus security context", func() {
 			By("Update dogu resource with ingress annotations")
 			createdDogu := &doguv2.Dogu{}
