@@ -176,11 +176,20 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 		},
 	}
 
-	hostTimezoneVolume := corev1.Volume{
+	hostLocalTimeVolume := corev1.Volume{
 		Name: localTimeMountName,
 		VolumeSource: corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{
 				Path: localTimeMountPath,
+			},
+		},
+	}
+
+	hostTimeZoneVolume := corev1.Volume{
+		Name: timeZoneMountName,
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: timeZoneMountPath,
 			},
 		},
 	}
@@ -228,7 +237,8 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 		globalConfigVolume,
 		normalConfigVolume,
 		sensitiveConfigVolume,
-		hostTimezoneVolume,
+		hostTimeZoneVolume,
+		hostLocalTimeVolume,
 	}
 }
 

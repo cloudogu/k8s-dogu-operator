@@ -40,6 +40,8 @@ const (
 const (
 	localTimeMountName = "localtime"
 	localTimeMountPath = "/etc/localtime"
+	timeZoneMountName  = "timezone"
+	timeZoneMountPath  = "/etc/timezone"
 )
 
 const (
