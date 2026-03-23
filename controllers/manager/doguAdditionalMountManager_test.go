@@ -759,11 +759,20 @@ func CreateExpectedVolumes() []corev1.Volume {
 					SecretName: "nginx-config",
 				},
 			},
-		}, {
+		},
+		{
 			Name: "localtime",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: "/etc/localtime",
+				},
+			},
+		},
+		{
+			Name: "timezone",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/etc/timezone",
 				},
 			},
 		},

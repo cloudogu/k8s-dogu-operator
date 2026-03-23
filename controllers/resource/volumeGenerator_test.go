@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const noOfStaticVolumes int = 6
+const noOfStaticVolumes int = 7
 
 func TestResourceGenerator_CreateDoguPVC(t *testing.T) {
 
@@ -320,15 +320,19 @@ func Test_createVolumeMounts(t *testing.T) {
 
 		assert.Equal(t, localTimeMountName, volumeMounts[3].Name)
 		assert.True(t, volumeMounts[3].ReadOnly)
-		assert.Equal(t, "/etc/localtime", volumeMounts[3].MountPath)
+		assert.Equal(t, localTimeMountPath, volumeMounts[3].MountPath)
 
-		assert.Equal(t, normalConfig, volumeMounts[4].Name)
+		assert.Equal(t, timeZoneMountName, volumeMounts[4].Name)
 		assert.True(t, volumeMounts[4].ReadOnly)
-		assert.Equal(t, "/etc/ces/config/normal", volumeMounts[4].MountPath)
+		assert.Equal(t, timeZoneMountPath, volumeMounts[4].MountPath)
 
-		assert.Equal(t, sensitiveConfig, volumeMounts[5].Name)
+		assert.Equal(t, normalConfig, volumeMounts[5].Name)
 		assert.True(t, volumeMounts[5].ReadOnly)
-		assert.Equal(t, "/etc/ces/config/sensitive", volumeMounts[5].MountPath)
+		assert.Equal(t, "/etc/ces/config/normal", volumeMounts[5].MountPath)
+
+		assert.Equal(t, sensitiveConfig, volumeMounts[6].Name)
+		assert.True(t, volumeMounts[6].ReadOnly)
+		assert.Equal(t, "/etc/ces/config/sensitive", volumeMounts[6].MountPath)
 	})
 
 	t.Run("should create own dogu.json volume mount", func(t *testing.T) {
@@ -341,9 +345,9 @@ func Test_createVolumeMounts(t *testing.T) {
 		// then
 		assert.Len(t, volumeMounts, noOfStaticVolumes+1)
 
-		assert.Equal(t, "ldap-dogu-json", volumeMounts[6].Name)
-		assert.True(t, volumeMounts[6].ReadOnly)
-		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[6].MountPath)
+		assert.Equal(t, "ldap-dogu-json", volumeMounts[noOfStaticVolumes].Name)
+		assert.True(t, volumeMounts[noOfStaticVolumes].ReadOnly)
+		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[noOfStaticVolumes].MountPath)
 	})
 
 	t.Run("should create dogu volumeMounts", func(t *testing.T) {
@@ -427,9 +431,9 @@ func Test_createVolumes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, volumes, noOfStaticVolumes+1)
 
-		assert.Equal(t, "ldap-dogu-json", volumes[6].Name)
-		assert.Equal(t, "dogu-spec-ldap", volumes[6].VolumeSource.ConfigMap.LocalObjectReference.Name)
-		assert.True(t, *volumes[6].VolumeSource.ConfigMap.Optional)
+		assert.Equal(t, "ldap-dogu-json", volumes[noOfStaticVolumes].Name)
+		assert.Equal(t, "dogu-spec-ldap", volumes[noOfStaticVolumes].VolumeSource.ConfigMap.LocalObjectReference.Name)
+		assert.True(t, *volumes[noOfStaticVolumes].VolumeSource.ConfigMap.Optional)
 	})
 
 	t.Run("should create importer publicKey-volume for active export-mode", func(t *testing.T) {

@@ -237,8 +237,8 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 		globalConfigVolume,
 		normalConfigVolume,
 		sensitiveConfigVolume,
-		hostTimeZoneVolume,
 		hostLocalTimeVolume,
+		hostTimeZoneVolume,
 	}
 }
 
@@ -350,10 +350,16 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 			Name:      globalConfig,
 			ReadOnly:  true,
 			MountPath: "/etc/ces/config/global",
-		}, {
+		},
+		{
 			Name:      localTimeMountName,
 			ReadOnly:  true,
 			MountPath: localTimeMountPath,
+		},
+		{
+			Name:      timeZoneMountName,
+			ReadOnly:  true,
+			MountPath: timeZoneMountPath,
 		},
 	}
 
