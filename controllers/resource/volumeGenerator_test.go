@@ -447,9 +447,9 @@ func Test_createVolumes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, volumes, noOfStaticVolumes+2)
 
-		assert.Equal(t, importPublicKeyVolumeName, volumes[7].Name)
-		assert.Equal(t, importerPublicKeyConfigMapName, volumes[7].VolumeSource.ConfigMap.Name)
-		assert.True(t, *volumes[7].VolumeSource.ConfigMap.Optional)
+		assert.Equal(t, importPublicKeyVolumeName, volumes[noOfStaticVolumes+1].Name)
+		assert.Equal(t, importerPublicKeyConfigMapName, volumes[noOfStaticVolumes+1].VolumeSource.ConfigMap.Name)
+		assert.True(t, *volumes[noOfStaticVolumes+1].VolumeSource.ConfigMap.Optional)
 	})
 
 	t.Run("should create dogu volumes", func(t *testing.T) {
@@ -482,8 +482,10 @@ func Test_createVolumes(t *testing.T) {
 		assert.Equal(t, globalConfig, volumes[2].Name)
 		assert.Equal(t, normalConfig, volumes[3].Name)
 		assert.Equal(t, sensitiveConfig, volumes[4].Name)
-		assert.Equal(t, "ldap-dogu-json", volumes[6].Name)
-		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumes[7].Name)
+		assert.Equal(t, localTimeMountName, volumes[5].Name)
+		assert.Equal(t, timeZoneMountName, volumes[6].Name)
+		assert.Equal(t, "ldap-dogu-json", volumes[7].Name)
+		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumes[8].Name)
 	})
 
 	t.Run("should fail create dogu volumes with invalid client-params", func(t *testing.T) {
