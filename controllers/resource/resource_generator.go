@@ -38,8 +38,11 @@ const (
 )
 
 const (
-	localTimeMountName = "localtime"
-	localTimeMountPath = "/etc/localtime"
+	timeZoneEnvVariable = "TZ"
+	//timeZoneMountName   = "timezone"
+	//timeZonePath        = "/etc/timezone"
+	//localTimeMountName  = "localtime"
+	//localTimeMountPath  = "/etc/localtime"
 )
 
 const (
