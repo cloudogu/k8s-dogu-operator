@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - [#285] Creating auth-registration CRs for v2-dogus when LOP-IdP is used
+- [#285] Ignore auth-registration events when auth-registration is not enabled
 - [#298] Feature flag to ignore postfix dependency for v2-dogus
   - This is to be used when postfix is installed as a component instead of a dogu.
 
