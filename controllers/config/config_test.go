@@ -73,6 +73,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOGU_REGISTRY_URLSCHEMA", "")
 	t.Setenv("NETWORK_POLICIES_ENABLED", "true")
 	t.Setenv("AUTH_REGISTRATION_ENABLED", "true")
+	t.Setenv("DISABLE_POSTFIX_DEPENDENCY_CHECK", "true")
 
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
