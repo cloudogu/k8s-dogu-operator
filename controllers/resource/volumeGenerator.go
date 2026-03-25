@@ -184,7 +184,7 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 					Name: operatorManagerConfigMap,
 				},
 				Items: []corev1.KeyToPath{
-					{"timezone", "localtime", new(int32(0o644))},
+					{"timezone", "timezone", new(int32(0o644))},
 				},
 			},
 		},
@@ -349,7 +349,8 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 		{
 			Name:      timeZoneMountName,
 			ReadOnly:  true,
-			MountPath: timeZonePath,
+			MountPath: "/etc/timezone",
+			SubPath:   "timezone",
 		},
 	}
 
