@@ -24,6 +24,8 @@ github.com/cloudogu/cesapp-lib v0.18.2 h1:S89A8WrDi51iYutCnMdIZ24lMrDmIBCbYUIHhs
 github.com/cloudogu/cesapp-lib v0.18.2/go.mod h1:8EIoGAI5WcwQH803FGjwF0I4sNPPcyTW8YPDtwdi+FM=
 github.com/cloudogu/k8s-apply-lib v0.5.0 h1:XeQKwTgT8FIozpqyPO/b09LAenPswBilmatw/+1L4fI=
 github.com/cloudogu/k8s-apply-lib v0.5.0/go.mod h1:jR/+7q47O5gb++4gVsmEElT8/EJoi+Msw2dVzArTPW0=
+github.com/cloudogu/k8s-auth-registration-lib v0.1.0 h1:Xq0wdsDGJoGkqchqDlwEzfOpch4w8D/SCXU6HSok5GI=
+github.com/cloudogu/k8s-auth-registration-lib v0.1.0/go.mod h1:PltBfG8QfrZNcayG33azghsq3O0anl4oJH2mWnx2oo8=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0 h1:As1MZ1adsFPZdjETA16JYEMD7l7idMYe+GIPIRNfiCc=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0/go.mod h1:IgA9mxjv/dKkLJ4e7n7+AyFbHvtO5sjxpZKN3GEoX44=
 github.com/cloudogu/k8s-host-change v0.8.0 h1:a1Xil1I1wJ5yDX6flLSDwHeIKCcP3WvlIL4mo7nTIYg=

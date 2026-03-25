@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	appsv1 "k8s.io/api/apps/v1"
@@ -155,6 +156,7 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
+		Owns(&authRegApiV1.AuthRegistration{}).
 		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{})).
 		Complete(r)
 }

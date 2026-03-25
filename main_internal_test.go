@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
@@ -55,12 +56,18 @@ func Test_options(t *testing.T) {
 	ecoSystemInterfaceMock.EXPECT().Dogus(testNamespace).Return(doguInterfaceMock)
 	ecoSystemInterfaceMock.EXPECT().DoguRestarts(testNamespace).Return(doguRestartInterfaceMock)
 
+	authRegMock := newMockAuthRegistrationInterface(t)
+	authRegClientsetMock := newMockAuthRegistrationClient(t)
+	authRegClientsetMock.EXPECT().AuthRegistrations(testNamespace).Return(authRegMock)
+
 	oldOperatorConfigFn := initfx.NewOperatorConfig
 	initfx.NewOperatorConfig = newTestOperatorConfig(t)
 	oldKubernetesClientSet := initfx.NewKubernetesClientSet
 	initfx.NewKubernetesClientSet = newTestKubernetesInterfaceFn(kubernetesInterfaceMock)
 	oldEcoSystemClientSet := initfx.NewEcoSystemClientSet
 	initfx.NewEcoSystemClientSet = newTestEcoSystemInterfaceFn(ecoSystemInterfaceMock)
+	oldAuthRegistrationClientSet := initfx.NewAuthRegistrationClientSet
+	initfx.NewAuthRegistrationClientSet = newTestAuthRegistrationClientSetFn(authRegClientsetMock)
 	oldGetRestConfig := ctrl.GetConfig
 	ctrl.GetConfig = newTestGetConfig()
 	oldGetArgs := initfx.GetArgs
@@ -71,6 +78,7 @@ func Test_options(t *testing.T) {
 		initfx.NewOperatorConfig = oldOperatorConfigFn
 		initfx.NewKubernetesClientSet = oldKubernetesClientSet
 		initfx.NewEcoSystemClientSet = oldEcoSystemClientSet
+		initfx.NewAuthRegistrationClientSet = oldAuthRegistrationClientSet
 		ctrl.GetConfig = oldGetRestConfig
 		initfx.GetArgs = oldGetArgs
 	})
@@ -94,6 +102,12 @@ func newTestKubernetesInterfaceFn(p kubernetes.Interface) func(c *rest.Config) (
 func newTestEcoSystemInterfaceFn(v2Interface doguClient.EcoSystemV2Interface) func(c *rest.Config) (doguClient.EcoSystemV2Interface, error) {
 	return func(c *rest.Config) (doguClient.EcoSystemV2Interface, error) {
 		return v2Interface, nil
+	}
+}
+
+func newTestAuthRegistrationClientSetFn(authRegInterface authRegClientV1.ApiV1Interface) func(c *rest.Config) (authRegClientV1.ApiV1Interface, error) {
+	return func(c *rest.Config) (authRegClientV1.ApiV1Interface, error) {
+		return authRegInterface, nil
 	}
 }
 

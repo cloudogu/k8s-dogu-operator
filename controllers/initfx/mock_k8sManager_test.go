@@ -3,7 +3,6 @@
 package initfx
 
 import (
-	"k8s.io/client-go/tools/events"
 	cache "sigs.k8s.io/controller-runtime/pkg/cache"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -12,6 +11,8 @@ import (
 	context "context"
 
 	conversion "sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
+
+	events "k8s.io/client-go/tools/events"
 
 	healthz "sigs.k8s.io/controller-runtime/pkg/healthz"
 
@@ -571,7 +572,6 @@ func (_m *mockK8sManager) GetEventRecorder(name string) events.EventRecorder {
 
 	var r0 events.EventRecorder
 	if rf, ok := ret.Get(0).(func(string) events.EventRecorder); ok {
-
 		r0 = rf(name)
 	} else {
 		if ret.Get(0) != nil {

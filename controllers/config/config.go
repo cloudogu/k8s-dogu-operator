@@ -42,6 +42,7 @@ var (
 	envVarDoguRegistryPassword                    = "DOGU_REGISTRY_PASSWORD"
 	envVarDoguRegistryURLSchema                   = "DOGU_REGISTRY_URLSCHEMA"
 	envVarNetworkPolicyEnabled                    = "NETWORK_POLICIES_ENABLED"
+	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	log                                           = ctrl.Log.WithName("config")
 )
@@ -64,6 +65,8 @@ type OperatorConfig struct {
 	Version *core.Version `json:"version"`
 	// NetworkPoliciesEnabled defines whether network policies should be created for dogus and their dependencies
 	NetworkPoliciesEnabled bool `json:"network_policies_enabled"`
+	// AuthRegistrationEnabled defines whether the operator should manage AuthRegistration CRs for v2 dogus.
+	AuthRegistrationEnabled bool `json:"auth_registration_enabled"`
 	// RequeueTimeForDoguReconciler defines the requeue time for the dogu reconciler
 	RequeueTimeForDoguReconciler time.Duration `json:"requeue_time_for_dogu_reconciler"`
 }
@@ -111,6 +114,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		DoguRegistry:                 doguRegistryData,
 		Version:                      &parsedVersion,
 		NetworkPoliciesEnabled:       getNetworkPoliciesEnabled(),
+		AuthRegistrationEnabled:      getAuthRegistrationEnabled(),
 		RequeueTimeForDoguReconciler: doguReconcilerRequeueTime,
 	}, nil
 }
@@ -260,6 +264,22 @@ func getNetworkPoliciesEnabled() bool {
 	}
 
 	return netPolEnabled
+}
+
+func getAuthRegistrationEnabled() bool {
+	authRegistrationEnabledStr, err := getEnvVar(envVarAuthRegistrationEnabled)
+	if err != nil {
+		log.Error(fmt.Errorf("failed to read %s from environment: %w", envVarAuthRegistrationEnabled, err), "Disabling auth registration by default")
+		return false
+	}
+
+	authRegistrationEnabled, err := strconv.ParseBool(authRegistrationEnabledStr)
+	if err != nil {
+		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarAuthRegistrationEnabled, err), "Disabling auth registration by default")
+		return false
+	}
+
+	return authRegistrationEnabled
 }
 
 func GetStage() (string, error) {

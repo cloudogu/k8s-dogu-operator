@@ -1,0 +1,2 @@
+# Mark all mocks as generated
+**/mock_*.go linguist-generated=true

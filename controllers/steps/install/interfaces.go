@@ -205,3 +205,10 @@ type collectApplier interface {
 	// CollectApply applies the given resources to the K8s cluster
 	CollectApply(ctx context.Context, customK8sResources map[string]string, doguResource *v2.Dogu) error
 }
+
+type authRegistrationManager interface {
+	// EnsureAuthRegistration creates/updates the AuthRegistration and syncs sensitive credentials.
+	EnsureAuthRegistration(ctx context.Context, doguResource *v2.Dogu) error
+	// RemoveAuthRegistration removes the AuthRegistration belonging to the given dogu.
+	RemoveAuthRegistration(ctx context.Context, doguName cescommons.SimpleName) error
+}

@@ -17,6 +17,7 @@ type DoguUseCase struct {
 
 func NewDoguDeleteUseCase(
 	statusStep *deletion.StatusStep,
+	authRegistrationRemoverStep *deletion.AuthRegistrationRemoverStep,
 	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
 	deleteOutOfHealthConfigMapStep *deletion.DeleteOutOfHealthConfigMapStep,
 	removeSensitiveDoguConfigStep deletion.RemoveSensitiveDoguConfigStep,
@@ -25,6 +26,7 @@ func NewDoguDeleteUseCase(
 	return &DoguUseCase{
 		steps: []Step{
 			statusStep,
+			authRegistrationRemoverStep,
 			serviceAccountRemoverStep,
 			deleteOutOfHealthConfigMapStep,
 			removeSensitiveDoguConfigStep,
@@ -47,6 +49,7 @@ func NewDoguInstallOrChangeUseCase(
 	removeServiceAccountStep *install.RemoveServiceAccountStep,
 	registerDoguVersionStep *install.RegisterDoguVersionStep,
 	localDoguDescriptorOwnerReferenceStep install.LocalDoguDescriptorOwnerReferenceStep,
+	authRegistrationStep *install.AuthRegistrationStep,
 	serviceAccountStep *install.ServiceAccountStep,
 	serviceStep *install.ServiceStep,
 	execPodCreateStep *install.CreateExecPodStep,
@@ -89,6 +92,7 @@ func NewDoguInstallOrChangeUseCase(
 			removeServiceAccountStep,
 			registerDoguVersionStep,
 			localDoguDescriptorOwnerReferenceStep,
+			authRegistrationStep,
 			serviceAccountStep,
 			serviceStep,
 			execPodCreateStep,
