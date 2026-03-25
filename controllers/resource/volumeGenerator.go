@@ -176,14 +176,19 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 		},
 	}
 
-	//hostTimezoneVolume := corev1.Volume{
-	//	Name: localTimeMountName,
-	//	VolumeSource: corev1.VolumeSource{
-	//		HostPath: &corev1.HostPathVolumeSource{
-	//			Path: localTimeMountPath,
-	//		},
-	//	},
-	//}
+	timezoneVolume := corev1.Volume{
+		Name: timeZoneMountName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: operatorManagerConfigMap,
+				},
+				Items: []corev1.KeyToPath{
+					{"timezone", "localtime", new(int32(0o644))},
+				},
+			},
+		},
+	}
 
 	// add EmptyDir-VolumeSource for all dogus to at least give them the ability to write state
 	ephemeralVolume := corev1.Volume{
@@ -228,7 +233,7 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 		globalConfigVolume,
 		normalConfigVolume,
 		sensitiveConfigVolume,
-		//hostTimezoneVolume,
+		timezoneVolume,
 	}
 }
 
@@ -341,11 +346,11 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 			ReadOnly:  true,
 			MountPath: "/etc/ces/config/global",
 		},
-		//{
-		//	Name:      localTimeMountName,
-		//	ReadOnly:  true,
-		//	MountPath: localTimeMountPath,
-		//},
+		{
+			Name:      timeZoneMountName,
+			ReadOnly:  true,
+			MountPath: timeZonePath,
+		},
 	}
 
 	doguVolumeMounts = append(doguVolumeMounts, createStaticDoguConfigVolumeMounts("")...)
