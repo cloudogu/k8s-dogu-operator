@@ -4,6 +4,7 @@ import (
 	"context"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
@@ -56,8 +57,6 @@ type k8sClient interface {
 	client.Client
 }
 
-//nolint:unused
-//goland:noinspection GoUnusedType
 type clientSet interface {
 	kubernetes.Interface
 }
@@ -120,6 +119,18 @@ type doguInterface interface {
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
 	doguClient.DoguRestartInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type authRegistrationClient interface {
+	authRegClientV1.ApiV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type authRegistrationInterface interface {
+	authRegClientV1.AuthRegistrationInterface
 }
 
 //nolint:unused

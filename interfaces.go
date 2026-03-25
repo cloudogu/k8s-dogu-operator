@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
+	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
@@ -107,4 +108,16 @@ type remoteDoguDescriptorRepository interface {
 //goland:noinspection GoUnusedType
 type imageRegistry interface {
 	imageregistry.ImageRegistry
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type authRegistrationClient interface {
+	authRegClientV1.ApiV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type authRegistrationInterface interface {
+	authRegClientV1.AuthRegistrationInterface
 }

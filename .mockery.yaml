@@ -4,6 +4,7 @@ exclude: ["vendor"]
 recursive: true
 inpackage: true
 include-auto-generated: false
+resolve-type-alias: false
 mockname: "{{.Mock}}{{.InterfaceName | camelcase }}"
 filename: "mock_{{.InterfaceName}}_test.go"
 dir: "{{.InterfaceDir}}"

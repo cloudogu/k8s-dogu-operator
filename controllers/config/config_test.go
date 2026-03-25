@@ -16,6 +16,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
 	_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
 	_ = os.Unsetenv("DOGU_REGISTRY_URLSCHEMA")
+	_ = os.Unsetenv("AUTH_REGISTRATION_ENABLED")
 
 	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
@@ -71,6 +72,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS", "50000")
 	t.Setenv("DOGU_REGISTRY_URLSCHEMA", "")
 	t.Setenv("NETWORK_POLICIES_ENABLED", "true")
+	t.Setenv("AUTH_REGISTRATION_ENABLED", "true")
 
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
@@ -82,6 +84,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.Equal(t, expectedNamespace, operatorConfig.Namespace)
 		assert.Equal(t, expectedDoguRegistryData, operatorConfig.DoguRegistry)
 		assert.Equal(t, "0.1.0", operatorConfig.Version.Raw)
+		assert.True(t, operatorConfig.AuthRegistrationEnabled)
 	})
 }
 
@@ -113,6 +116,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarDoguRegistryPassword, "password")
 	t.Setenv(envVarDoguRegistryPassword, "password")
 	t.Setenv(envVarNetworkPolicyEnabled, "true")
+	t.Setenv(envVarAuthRegistrationEnabled, "false")
 	t.Setenv(envVarRequeueTimeForDoguResourceInNanoseconds, "5")
 
 	for _, tt := range tests {

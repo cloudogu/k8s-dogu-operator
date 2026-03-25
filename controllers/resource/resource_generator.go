@@ -553,12 +553,6 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 		return nil, fmt.Errorf("failed to annotate service with exposed ports: %w", err)
 	}
 
-	ingressAnnotationCreator := annotation.IngressAnnotator{}
-	err = ingressAnnotationCreator.AppendIngressAnnotationsToService(service, doguResource.Spec.AdditionalIngressAnnotations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add ingress annotations to service: %w", err)
-	}
-
 	err = ctrl.SetControllerReference(doguResource, service, r.scheme)
 	if err != nil {
 		return nil, wrapControllerReferenceError(err)

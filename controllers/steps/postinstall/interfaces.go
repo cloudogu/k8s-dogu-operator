@@ -58,10 +58,6 @@ type securityContextGenerator interface {
 	Generate(ctx context.Context, dogu *cesappcore.Dogu, doguResource *v2.Dogu) (*corev1.PodSecurityContext, *corev1.SecurityContext)
 }
 
-type ingressAnnotator interface {
-	AppendIngressAnnotationsToService(service *corev1.Service, additionalIngressAnnotations v2.IngressAnnotations) error
-}
-
 //nolint:unused
 //goland:noinspection GoUnusedType
 type appV1Interface interface {

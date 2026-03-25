@@ -51,18 +51,6 @@ var expectedDoguPVCWithCustomStorageClassBytes []byte
 //go:embed testdata/ldap_expectedService.yaml
 var expectedServiceBytes []byte
 
-//go:embed testdata/nginx-ingress-dogu.json
-var nginxIngressBytes []byte
-
-//go:embed testdata/nginx-ingress-cr.yaml
-var nginxIngressDoguResourceBytes []byte
-
-//go:embed testdata/nginx-ingress-only_expectedLoadbalancer.yaml
-var expectedNginxIngressOnlyLoadBalancer []byte
-
-//go:embed testdata/nginx-ingress-scm_expectedLoadbalancer.yaml
-var expectedNginxIngressSCMLoadBalancer []byte
-
 //go:embed testdata/cas-dogu.json
 var casBytes []byte
 
@@ -201,54 +189,6 @@ func readLdapDoguExpectedService(t *testing.T) *v1.Service {
 
 	data := &v1.Service{}
 	err := yaml.Unmarshal(expectedServiceBytes, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return data
-}
-
-func readNginxIngressDogu(t *testing.T) *core.Dogu {
-	t.Helper()
-
-	data := &core.Dogu{}
-	err := json.Unmarshal(nginxIngressBytes, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return data
-}
-
-func readNginxIngressDoguResource(t *testing.T) *k8sv2.Dogu {
-	t.Helper()
-
-	data := &k8sv2.Dogu{}
-	err := yaml.Unmarshal(nginxIngressDoguResourceBytes, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return data
-}
-
-func readNginxIngressOnlyExpectedLoadBalancer(t *testing.T) *v1.Service {
-	t.Helper()
-
-	data := &v1.Service{}
-	err := yaml.Unmarshal(expectedNginxIngressOnlyLoadBalancer, data)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return data
-}
-
-func readNginxIngressSCMExpectedLoadBalancer(t *testing.T) *v1.Service {
-	t.Helper()
-
-	data := &v1.Service{}
-	err := yaml.Unmarshal(expectedNginxIngressSCMLoadBalancer, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

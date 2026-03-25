@@ -38,6 +38,23 @@ rules:
       - dogurestarts/status
     verbs:
       - update
+  # CRUD for AuthRegistration CRs used for integration of v2 Dogus with LOP-IdP
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - authregistrations
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - authregistrations/status
+    verbs:
+      - get
   # configuration of operator, local dogu registry, dogu + global config, health states
   - apiGroups:
       - ""

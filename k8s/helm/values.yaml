@@ -15,11 +15,12 @@ controllerManager:
   image:
     registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 3.19.4
+    tag: 3.21.0
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug
     stage: development
+    authRegistrationEnabled: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3
     doguRestartFailedHistoryLimit: 3

@@ -20,7 +20,7 @@ func TestNewDoguDependencyValidator(t *testing.T) {
 	localDoguFetcherMock := newMockLocalDoguFetcher(t)
 
 	// when
-	validator := newDoguDependencyValidator(localDoguFetcherMock)
+	validator := newDoguDependencyValidator(localDoguFetcherMock, false)
 
 	// then
 	assert.NotNil(t, validator)
@@ -35,7 +35,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDogu, nil)
-		validator := newDoguDependencyValidator(localDoguFetcherMock)
+		validator := newDoguDependencyValidator(localDoguFetcherMock, false)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -67,7 +67,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDogu, nil)
-		validator := newDoguDependencyValidator(localDoguFetcherMock)
+		validator := newDoguDependencyValidator(localDoguFetcherMock, false)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -99,7 +99,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDogu, nil)
-		validator := newDoguDependencyValidator(localDoguFetcherMock)
+		validator := newDoguDependencyValidator(localDoguFetcherMock, false)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -126,7 +126,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 	t.Run("should ignore nginx and registrator dependency", func(t *testing.T) {
 		// given
 		localDoguFetcherMock := newMockLocalDoguFetcher(t)
-		validator := newDoguDependencyValidator(localDoguFetcherMock)
+		validator := newDoguDependencyValidator(localDoguFetcherMock, false)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -171,7 +171,7 @@ func TestDoguDependencyValidator_ValidateAllDependencies(t *testing.T) {
 		}
 		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("redmine")).Return(redmineDogu, nil)
-		validator := newDoguDependencyValidator(localDoguFetcherMock)
+		validator := newDoguDependencyValidator(localDoguFetcherMock, false)
 		dogu := &core.Dogu{
 			Name:    "dogu",
 			Version: "1.0.0",
@@ -205,12 +205,39 @@ func Test_doguDependencyValidator_checkDoguDependency(t *testing.T) {
 		}
 		localDoguFetcherMock := newMockLocalDoguFetcher(t)
 		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("test")).Return(redmineDogu, regLibErr.NewNotFoundError(assert.AnError))
-		validator := newDoguDependencyValidator(localDoguFetcherMock)
+		validator := newDoguDependencyValidator(localDoguFetcherMock, false)
 
 		// when
 		err := validator.ValidateAllDependencies(testCtx, redmineDogu)
 
 		// then
 		require.Nil(t, err)
+	})
+
+	t.Run("should return nil if authRegistration is enabled and cas is checked", func(t *testing.T) {
+		// given
+		localDoguFetcherMock := newMockLocalDoguFetcher(t)
+		validator := newDoguDependencyValidator(localDoguFetcherMock, true)
+
+		// when
+		err := validator.checkDoguDependency(testCtx, core.Dependency{Type: "dogu", Name: "cas"}, false)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("should return err if authRegistration is not enabled and cas is not installed", func(t *testing.T) {
+		// given
+		localDoguFetcherMock := newMockLocalDoguFetcher(t)
+		localDoguFetcherMock.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("cas")).Return(nil, regLibErr.NewNotFoundError(assert.AnError))
+		validator := newDoguDependencyValidator(localDoguFetcherMock, false)
+
+		// when
+		err := validator.checkDoguDependency(testCtx, core.Dependency{Type: "dogu", Name: "cas"}, false)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, regLibErr.NewNotFoundError(assert.AnError))
+		assert.ErrorContains(t, err, "failed to resolve dependencies cas:")
 	})
 }
