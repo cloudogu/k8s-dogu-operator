@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/retry-lib/retry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
@@ -53,9 +54,20 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 		t.Proxy = http.ProxyURL(parsedURL)
 	}
 
+	stage, err := config.GetStage()
+	if err != nil {
+		logger.Info(fmt.Sprintf("failed to get env var stage: %v", err))
+	}
+
 	var img imagev1.Image
-	err := retry.OnErrorWithLimit(MaxWaitDuration, retry.AlwaysRetryFunc, func() (err error) {
-		img, err = ImagePull(image, crane.WithAuthFromKeychain(authn.DefaultKeychain), crane.WithTransport(transport), ctxOpt)
+	err = retry.OnErrorWithLimit(MaxWaitDuration, retry.AlwaysRetryFunc, func() (err error) {
+		if stage == config.StageDevelopment {
+			// The registry cannot be reached with the fqdn `k3ces.localdomain`. Therefore, the insecure flag is used.
+			img, err = ImagePull(image, crane.WithAuthFromKeychain(authn.DefaultKeychain), crane.WithTransport(transport), ctxOpt, crane.Insecure)
+		} else {
+			img, err = ImagePull(image, crane.WithAuthFromKeychain(authn.DefaultKeychain), crane.WithTransport(transport), ctxOpt)
+		}
+
 		if err != nil {
 			logger.Error(err, "error on image pull: retry")
 			return err

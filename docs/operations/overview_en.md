@@ -43,7 +43,7 @@ spec:
 > [!IMPORTANT]
 > `metadata.name` and the simple name of the dogu in `spec.name` must be equal.
 > The simple name is the part after the slash (`/`), so without the dogu namespace.
-> For example, for a dogu with `spec.name` of `k8s/nginx-ingress` the `metadata.name` of `nginx-ingress` would be ok, while `nginx` would not.
+> For example, for a dogu with `spec.name` of `official/jenkins` the `metadata.name` of `jenkins` would be ok, while `official/jenkins` would not.
 
 To install the LDAP dogu, a simple call is enough:
 

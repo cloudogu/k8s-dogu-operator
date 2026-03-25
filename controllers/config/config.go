@@ -281,3 +281,11 @@ func getAuthRegistrationEnabled() bool {
 
 	return authRegistrationEnabled
 }
+
+func GetStage() (string, error) {
+	stage, err := getEnvVar(StageEnvironmentVariable)
+	if err != nil {
+		return "", err
+	}
+	return stage, nil
+}

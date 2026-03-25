@@ -14,7 +14,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 // RequirementsGenerator handles resource requirements (limits and requests) for dogu deployments.
@@ -55,20 +54,10 @@ type ResourceUpserter interface {
 	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, service *v1.Service) error
 }
 
-// doguSecretHandler includes functionality to associate secrets from setup with a dogu.
-//
-//nolint:unused
-//goland:noinspection GoUnusedType
 type doguSecretHandler interface {
 	// WriteDoguSecretsToRegistry is used to write potential secret from the setup.json registryConfigEncrypted to the
 	// respective dogu configurations.
 	WriteDoguSecretsToRegistry(ctx context.Context, doguResource *k8sv2.Dogu) error
-}
-
-//nolint:unused
-//goland:noinspection GoUnusedType
-type ctrlManager interface {
-	manager.Manager
 }
 
 // Applier provides ways to apply unstructured Kubernetes resources against the API.

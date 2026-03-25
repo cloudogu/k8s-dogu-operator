@@ -166,3 +166,29 @@ func TestOperatorConfig_GetRemoteCredentials(t *testing.T) {
 	assert.Equal(t, "testUsername", remoteCredentials.Username)
 	assert.Equal(t, "testPassword", remoteCredentials.Password)
 }
+
+func TestGetStage(t *testing.T) {
+
+	t.Run("Error on missing stage env var", func(t *testing.T) {
+		// when
+		stage, err := GetStage()
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "environment variable STAGE must be set")
+		assert.Empty(t, stage)
+	})
+
+	t.Run("Successfully get stage env var", func(t *testing.T) {
+		// given
+		t.Setenv(StageEnvironmentVariable, "development")
+
+		// when
+		stage, err := GetStage()
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "development", stage)
+	})
+
+}

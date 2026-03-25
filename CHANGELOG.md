@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#285] creating auth-registration CRs for v2-dogus when LOP-IdP is used
 
+## [v3.21.0] - 2026-03-19
+### Removed
+- [#291] remove outdated ingress-nginx specific code and documentation 
+
+## [v3.20.0] - 2026-03-19
+### Added
+- [#287] add a volume mount for /etc/localtime to use the host system's timezone
+
+## [v3.19.4] - 2026-03-06
+### Changed
+- [#283] Configure image pull for local development
+  - The registry is not reachable with the local fqdn `k3ces.localdomain`
+
+## [v3.19.3] - 2026-03-04
+### Changed
+- [#289] Allow version 3.x.x of k8s-ces-gateway
+- [#289] Remove obsolete annotations in samples
+
 ## [v3.19.2] - 2026-02-17
 ### Security
 - [#281] Fix Golang stdlib CVE-2025-68121

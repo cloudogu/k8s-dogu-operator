@@ -126,6 +126,9 @@ spec:
             - mountPath: /etc/ces/config/global
               name: global-config
               readOnly: true
+            - mountPath: /etc/localtime
+              name: localtime
+              readOnly: true
             - mountPath: /etc/ces/config/normal
               name: normal-config
               readOnly: true
@@ -182,6 +185,9 @@ spec:
         - name: sensitive-config
           secret:
             secretName: ldap-config
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
         - name: ldap-dogu-json
           configMap:
             name: dogu-spec-ldap

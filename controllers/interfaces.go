@@ -14,6 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// basically a reimplementation of manager.Manager, but the mocks generate illegal files out of that interface
+//
 //nolint:unused
 //goland:noinspection GoUnusedType
 type ctrlManager interface {
@@ -38,7 +40,7 @@ type eventRecorder interface {
 
 type GenericReconciler interface {
 	reconcile.Reconciler
-	setupWithManager(mgr ctrl.Manager) error
+	setupWithManager(mgr ctrlManager) error
 }
 
 //nolint:unused

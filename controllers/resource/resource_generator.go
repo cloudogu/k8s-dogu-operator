@@ -38,6 +38,11 @@ const (
 )
 
 const (
+	localTimeMountName = "localtime"
+	localTimeMountPath = "/etc/localtime"
+)
+
+const (
 	doguPodNamespace = "POD_NAMESPACE"
 	doguPodName      = "POD_NAME"
 	doguPodMultiNode = "ECOSYSTEM_MULTINODE"
@@ -538,12 +543,6 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 	err = cesExposedPortAnnotator.AnnotateService(service, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to annotate service with exposed ports: %w", err)
-	}
-
-	ingressAnnotationCreator := annotation.IngressAnnotator{}
-	err = ingressAnnotationCreator.AppendIngressAnnotationsToService(service, doguResource.Spec.AdditionalIngressAnnotations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add ingress annotations to service: %w", err)
 	}
 
 	err = ctrl.SetControllerReference(doguResource, service, r.scheme)

@@ -57,8 +57,6 @@ type k8sClient interface {
 	client.Client
 }
 
-//nolint:unused
-//goland:noinspection GoUnusedType
 type clientSet interface {
 	kubernetes.Interface
 }
