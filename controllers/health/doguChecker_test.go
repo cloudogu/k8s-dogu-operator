@@ -225,6 +225,48 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		assert.ErrorContains(t, err, "error fetching local dogu descriptor for dependency \"cas\":")
 	})
 
+	t.Run("should ignore legacy cas dependency if postfix dependency check is disabled", func(t *testing.T) {
+		/*
+			redmine
+			+-m-> ☑postfix
+			+-o-> ☑nginx
+		*/
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		ignorePostfixDependencyDogu := readTestDataDogu(t, ignorePostfixDependencyBytes)
+		ecosystemClient := newMockEcosystemInterface(t)
+
+		sut := NewDoguChecker(&config.OperatorConfig{DisablePostfixDependencyCheck: true}, ecosystemClient, localFetcher)
+
+		// when
+		err := sut.CheckDependenciesRecursive(testCtx, ignorePostfixDependencyDogu, testNamespace)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("should not ignore legacy cas dependency if postfix dependency check is not disabled", func(t *testing.T) {
+		/*
+			redmine
+			+-m-> ☑postfix
+			+-o-> ☑nginx
+		*/
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postfix")).Return(nil, registryKeyNotFoundTestErr)
+		ignorePostfixDependencyDogu := readTestDataDogu(t, ignorePostfixDependencyBytes)
+		ecosystemClient := newMockEcosystemInterface(t)
+
+		sut := NewDoguChecker(&config.OperatorConfig{DisablePostfixDependencyCheck: false}, ecosystemClient, localFetcher)
+
+		// when
+		err := sut.CheckDependenciesRecursive(testCtx, ignorePostfixDependencyDogu, testNamespace)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error fetching local dogu descriptor for dependency \"postfix\":")
+	})
+
 	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
 		/*
 			testDogu

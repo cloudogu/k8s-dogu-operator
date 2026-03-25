@@ -43,6 +43,7 @@ var (
 	envVarDoguRegistryURLSchema                   = "DOGU_REGISTRY_URLSCHEMA"
 	envVarNetworkPolicyEnabled                    = "NETWORK_POLICIES_ENABLED"
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
+	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	log                                           = ctrl.Log.WithName("config")
 )
@@ -67,6 +68,10 @@ type OperatorConfig struct {
 	NetworkPoliciesEnabled bool `json:"network_policies_enabled"`
 	// AuthRegistrationEnabled defines whether the operator should manage AuthRegistration CRs for v2 dogus.
 	AuthRegistrationEnabled bool `json:"auth_registration_enabled"`
+	// DisablePostfixDependencyCheck defines whether the operator should validate dependencies on postfix.
+	// If set to false, the operator will assume that postfix is installed as a normal dogu and will validate the dependencies accordingly.
+	// If set to true, the operator will assume that postfix is installed as a component and will not validate the dependencies.
+	DisablePostfixDependencyCheck bool `json:"disable_postfix_dependency_check"`
 	// RequeueTimeForDoguReconciler defines the requeue time for the dogu reconciler
 	RequeueTimeForDoguReconciler time.Duration `json:"requeue_time_for_dogu_reconciler"`
 }
@@ -110,12 +115,13 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	log.Info(fmt.Sprintf("Found stored dogu reconciler requeue time! Using requeue time %s", doguReconcilerRequeueTime.String()))
 
 	return &OperatorConfig{
-		Namespace:                    namespace,
-		DoguRegistry:                 doguRegistryData,
-		Version:                      &parsedVersion,
-		NetworkPoliciesEnabled:       getNetworkPoliciesEnabled(),
-		AuthRegistrationEnabled:      getAuthRegistrationEnabled(),
-		RequeueTimeForDoguReconciler: doguReconcilerRequeueTime,
+		Namespace:                     namespace,
+		DoguRegistry:                  doguRegistryData,
+		Version:                       &parsedVersion,
+		NetworkPoliciesEnabled:        getNetworkPoliciesEnabled(),
+		AuthRegistrationEnabled:       getAuthRegistrationEnabled(),
+		DisablePostfixDependencyCheck: getDisablePostfixDependencyCheck(),
+		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
 	}, nil
 }
 
@@ -280,6 +286,22 @@ func getAuthRegistrationEnabled() bool {
 	}
 
 	return authRegistrationEnabled
+}
+
+func getDisablePostfixDependencyCheck() bool {
+	disablePostfixDependencyCheckStr, err := getEnvVar(envVarDisablePostfixDependencyCheck)
+	if err != nil {
+		log.Error(fmt.Errorf("failed to read %s from environment: %w", envVarDisablePostfixDependencyCheck, err), "Disabling postfix component by default")
+		return false
+	}
+
+	disablePostfixDependencyCheck, err := strconv.ParseBool(disablePostfixDependencyCheckStr)
+	if err != nil {
+		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarDisablePostfixDependencyCheck, err), "Disabling postfix component by default")
+		return false
+	}
+
+	return disablePostfixDependencyCheck
 }
 
 func GetStage() (string, error) {
