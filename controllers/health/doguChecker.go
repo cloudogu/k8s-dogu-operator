@@ -40,16 +40,18 @@ func (dhe *DoguHealthError) Error() string {
 // NewDoguChecker creates a checker for dogu health.
 func NewDoguChecker(operatorConfig *config.OperatorConfig, ecosystemClient doguClient.EcoSystemV2Interface, localFetcher cesregistry.LocalDoguFetcher) DoguHealthChecker {
 	return &doguChecker{
-		ecosystemClient:         ecosystemClient,
-		doguLocalRegistry:       localFetcher,
-		authRegistrationEnabled: operatorConfig.AuthRegistrationEnabled,
+		ecosystemClient:               ecosystemClient,
+		doguLocalRegistry:             localFetcher,
+		authRegistrationEnabled:       operatorConfig.AuthRegistrationEnabled,
+		disablePostfixDependencyCheck: operatorConfig.DisablePostfixDependencyCheck,
 	}
 }
 
 type doguChecker struct {
-	ecosystemClient         doguClient.EcoSystemV2Interface
-	doguLocalRegistry       localDoguFetcher
-	authRegistrationEnabled bool
+	ecosystemClient               doguClient.EcoSystemV2Interface
+	doguLocalRegistry             localDoguFetcher
+	authRegistrationEnabled       bool
+	disablePostfixDependencyCheck bool
 }
 
 // CheckByName returns nil if the dogu resource's health status says it's available.
@@ -103,6 +105,10 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 			continue
 		}
 
+		if dc.disablePostfixDependencyCheck && dependency.Name == "postfix" {
+			continue
+		}
+
 		localDependencyDoguName := types.NamespacedName{Name: dependency.Name, Namespace: namespace}
 
 		dependencyDogu, err := dc.doguLocalRegistry.FetchInstalled(ctx, cescommons.SimpleName(dependency.Name))
@@ -136,6 +142,10 @@ func (dc *doguChecker) checkOptionalRecursive(ctx context.Context, localDogu *co
 		}
 
 		if dc.authRegistrationEnabled && dependency.Name == "cas" {
+			continue
+		}
+
+		if dc.disablePostfixDependencyCheck && dependency.Name == "postfix" {
 			continue
 		}
 
