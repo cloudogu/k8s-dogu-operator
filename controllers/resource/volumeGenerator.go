@@ -184,7 +184,7 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 					Name: operatorManagerConfigMap,
 				},
 				Items: []corev1.KeyToPath{
-					{"timezone", "timezone", new(int32(0o644))},
+					{"timezone", "timezone", new(int32(0o444))},
 				},
 			},
 		},

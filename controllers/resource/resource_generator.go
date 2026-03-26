@@ -152,7 +152,7 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		}},
 		{Name: doguPodMultiNode, Value: "true"},
 		{Name: timeZoneEnvVariable, ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{Name: "k8s-dogu-operator-manager-config"},
+			LocalObjectReference: corev1.LocalObjectReference{Name: operatorManagerConfigMap},
 			Key:                  "timezone",
 		}}},
 	}
