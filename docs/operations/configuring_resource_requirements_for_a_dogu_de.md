@@ -26,7 +26,7 @@ Generell gibt es drei verschiedene Limits bzw. Requests:
 
 ## Konfigurieren von Ressourcenanforderungen
 
-Die Limits und Requests werden generell im Etcd konfiguriert. **Hinweis:** Das Setzen einer Ressourcenanforderung führt nicht automatisch zu einem
+Die Limits und Requests werden generell über die Dogu-Config konfiguriert. **Hinweis:** Das Setzen einer Ressourcenanforderung führt nicht automatisch zu einem
 Neustart des Dogus. Die Anwendung muss explizit stattfinden. Dies wird im nächsten Abschnitt beschrieben.
 
 Generell können in jedem `config`-Bereich eines Dogus unter dem Abschnitt `container_config` folgende Einträge gesetzt werden:
