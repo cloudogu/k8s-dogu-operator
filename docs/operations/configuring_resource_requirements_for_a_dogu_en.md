@@ -26,7 +26,7 @@ In general, there are three different limits or requests:
 
 ## Configuring resource requests.
 
-Limits and requests are generally configured in etcd. **Note:** Setting a resource requirements does not automatically result in a
+Limits and requests are generally configured in the Dogu config. **Note:** Setting a resource requirements does not automatically result in a
 restart of the Dogus. It must be applied explicitly. This is described in the next section.
 
 In general, the following entries can be set in any `config` section of a Dogu under the `container_config` section:
