@@ -760,10 +760,15 @@ func CreateExpectedVolumes() []corev1.Volume {
 				},
 			},
 		}, {
-			Name: "localtime",
+			Name: "timezone",
 			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/etc/localtime",
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "k8s-dogu-operator-manager-config",
+					},
+					Items: []corev1.KeyToPath{
+						{"timezone", "timezone", new(int32(0o444))},
+					},
 				},
 			},
 		},
