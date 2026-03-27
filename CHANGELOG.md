@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added 
+- [#297] add timezone to doogus
+  - added configmap value "timezone" to k8s-dogu-operator-manager-config
+  - add environment variable TZ to all created dogu pods
+  - add /etc/timezone to all created dogu pods
+
 ### Added
 - [#285] creating auth-registration CRs for v2-dogus when LOP-IdP is used
 

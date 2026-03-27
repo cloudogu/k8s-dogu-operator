@@ -318,9 +318,9 @@ func Test_createVolumeMounts(t *testing.T) {
 		assert.True(t, volumeMounts[2].ReadOnly)
 		assert.Equal(t, "/etc/ces/config/global", volumeMounts[2].MountPath)
 
-		assert.Equal(t, localTimeMountName, volumeMounts[3].Name)
+		assert.Equal(t, timeZoneMountName, volumeMounts[3].Name)
 		assert.True(t, volumeMounts[3].ReadOnly)
-		assert.Equal(t, "/etc/localtime", volumeMounts[3].MountPath)
+		assert.Equal(t, "/etc/timezone", volumeMounts[3].MountPath)
 
 		assert.Equal(t, normalConfig, volumeMounts[4].Name)
 		assert.True(t, volumeMounts[4].ReadOnly)
