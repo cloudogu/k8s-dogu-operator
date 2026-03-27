@@ -760,7 +760,7 @@ func CreateExpectedVolumes() []corev1.Volume {
 				},
 			},
 		}, {
-			Name: "timezone",
+			Name: "timezone-volume",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
