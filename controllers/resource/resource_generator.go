@@ -41,7 +41,6 @@ const (
 	operatorManagerConfigMap = "k8s-dogu-operator-manager-config"
 	timeZoneEnvVariable      = "TZ"
 	timeZoneMountName        = "timezone-volume"
-	timeZonePath             = "/etc/timezone"
 )
 
 const (
