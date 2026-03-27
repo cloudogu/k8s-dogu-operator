@@ -42,8 +42,6 @@ const (
 	timeZoneEnvVariable      = "TZ"
 	timeZoneMountName        = "timezone-volume"
 	timeZonePath             = "/etc/timezone"
-	//localTimeMountName  = "localtime"
-	//localTimeMountPath  = "/etc/localtime"
 )
 
 const (
