@@ -291,13 +291,13 @@ func getAuthRegistrationEnabled() bool {
 func getDisablePostfixDependencyCheck() bool {
 	disablePostfixDependencyCheckStr, err := getEnvVar(envVarDisablePostfixDependencyCheck)
 	if err != nil {
-		log.Error(fmt.Errorf("failed to read %s from environment: %w", envVarDisablePostfixDependencyCheck, err), "Disabling postfix component by default")
+		log.Error(fmt.Errorf("failed to read %s from environment: %w", envVarDisablePostfixDependencyCheck, err), "Leaving postfix dependency check enabled")
 		return false
 	}
 
 	disablePostfixDependencyCheck, err := strconv.ParseBool(disablePostfixDependencyCheckStr)
 	if err != nil {
-		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarDisablePostfixDependencyCheck, err), "Disabling postfix component by default")
+		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarDisablePostfixDependencyCheck, err), "Leaving postfix dependency check enabled")
 		return false
 	}
 
