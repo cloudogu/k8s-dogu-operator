@@ -26,7 +26,7 @@ func NewCompositeDependencyValidator(operatorConfig *config.OperatorConfig, dogu
 	operatorDependencyValidator := newOperatorDependencyValidator(operatorConfig.Version)
 	validators = append(validators, operatorDependencyValidator)
 
-	doguDependencyValidator := newDoguDependencyValidator(doguFetcher, operatorConfig.AuthRegistrationEnabled)
+	doguDependencyValidator := newDoguDependencyValidator(doguFetcher, operatorConfig)
 	validators = append(validators, doguDependencyValidator)
 
 	return &CompositeDependencyValidator{

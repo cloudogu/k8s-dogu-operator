@@ -7,6 +7,7 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -31,15 +32,17 @@ func (e *dependencyValidationError) Requeue() bool {
 
 // doguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type doguDependencyValidator struct {
-	fetcher                 localDoguFetcher
-	authRegistrationEnabled bool
+	fetcher                       localDoguFetcher
+	authRegistrationEnabled       bool
+	disablePostfixDependencyCheck bool
 }
 
 // newDoguDependencyValidator creates a new dogu dependencies checker
-func newDoguDependencyValidator(doguFetcher localDoguFetcher, authRegistrationEnabled bool) *doguDependencyValidator {
+func newDoguDependencyValidator(doguFetcher localDoguFetcher, config *config.OperatorConfig) *doguDependencyValidator {
 	return &doguDependencyValidator{
-		fetcher:                 doguFetcher,
-		authRegistrationEnabled: authRegistrationEnabled,
+		fetcher:                       doguFetcher,
+		authRegistrationEnabled:       config.AuthRegistrationEnabled,
+		disablePostfixDependencyCheck: config.DisablePostfixDependencyCheck,
 	}
 }
 
@@ -87,6 +90,11 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 
 	if dc.authRegistrationEnabled && doguDependency.Name == "cas" {
 		logger.Info(fmt.Sprintf("skipping legacy dogu dependency for %q because auth registration is enabled", doguDependency.Name))
+		return nil
+	}
+
+	if dc.disablePostfixDependencyCheck && doguDependency.Name == "postfix" {
+		logger.Info(fmt.Sprintf("skipping legacy dogu dependency for %q because postfix is assumed to be installed as a component", doguDependency.Name))
 		return nil
 	}
 
