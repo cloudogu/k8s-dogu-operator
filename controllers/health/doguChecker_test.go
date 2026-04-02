@@ -164,10 +164,10 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 	t.Run("should ignore legacy nginx and registrator dogu dependencies", func(t *testing.T) {
 		/*
 			redmine
-			+-m-> ☑nginx
-			+-m-> ☑registrator
-			+-o-> ☑nginx
-			+-o-> ☑registrator
+			+-m-> ☑️nginx
+			+-m-> ☑️registrator
+			+-o-> ☑️nginx
+			+-o-> ☑️registrator
 		*/
 
 		localFetcher := newMockLocalDoguFetcher(t)
@@ -186,8 +186,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 	t.Run("should ignore legacy cas dependency if authRegistration is enabled", func(t *testing.T) {
 		/*
 			redmine
-			+-m-> ☑cas
-			+-o-> ☑nginx
+			+-m-> ☑️cas
+			+-o-> ☑️cas
 		*/
 
 		localFetcher := newMockLocalDoguFetcher(t)
@@ -206,8 +206,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 	t.Run("should not ignore legacy cas dependency if authRegistration is not enabled", func(t *testing.T) {
 		/*
 			redmine
-			+-m-> ☑cas
-			+-o-> ☑nginx
+			+-m-> ❌️cas
+			+-o-> ❌️cas
 		*/
 
 		localFetcher := newMockLocalDoguFetcher(t)
@@ -225,15 +225,57 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		assert.ErrorContains(t, err, "error fetching local dogu descriptor for dependency \"cas\":")
 	})
 
+	t.Run("should ignore legacy postfix dependency if postfix dependency check is disabled", func(t *testing.T) {
+		/*
+			redmine
+			+-m-> ☑️postfix
+			+-o-> ☑️postfix
+		*/
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		ignorePostfixDependencyDogu := readTestDataDogu(t, ignorePostfixDependencyBytes)
+		ecosystemClient := newMockEcosystemInterface(t)
+
+		sut := NewDoguChecker(&config.OperatorConfig{DisablePostfixDependencyCheck: true}, ecosystemClient, localFetcher)
+
+		// when
+		err := sut.CheckDependenciesRecursive(testCtx, ignorePostfixDependencyDogu, testNamespace)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("should not ignore legacy postfix dependency if postfix dependency check is not disabled", func(t *testing.T) {
+		/*
+			redmine
+			+-m-> ❌️postfix
+			+-o-> ❌️postfix
+		*/
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postfix")).Return(nil, registryKeyNotFoundTestErr)
+		ignorePostfixDependencyDogu := readTestDataDogu(t, ignorePostfixDependencyBytes)
+		ecosystemClient := newMockEcosystemInterface(t)
+
+		sut := NewDoguChecker(&config.OperatorConfig{DisablePostfixDependencyCheck: false}, ecosystemClient, localFetcher)
+
+		// when
+		err := sut.CheckDependenciesRecursive(testCtx, ignorePostfixDependencyDogu, testNamespace)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error fetching local dogu descriptor for dependency \"postfix\":")
+	})
+
 	t.Run("should ignore client and package dependencies when checking health status of indirect dependencies", func(t *testing.T) {
 		/*
 			testDogu
-			+-m-> ☑ client1 (client)
-			+-m-> ☑ package1 (Package)
-			+-m-> ☑ testDogu2 (Dogu)
-				  +-o-> ☑ client2 (client)
-				  +-o-> ☑ package2 (Package)
-				  +-m-> ☑ testDogu3 (Dogu)
+			+-m-> ☑️ client1 (client)
+			+-m-> ☑️ package1 (Package)
+			+-m-> ☑️ testDogu2 (Dogu)
+				  +-o-> ☑️ client2 (client)
+				  +-o-> ☑️ package2 (Package)
+				  +-m-> ☑️ testDogu3 (Dogu)
 		*/
 
 		testDogu := &core.Dogu{
@@ -896,8 +938,8 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 					redmine
 					+-m-> ☑️postgresql
 					+-m-> ☑️mandatory1
-					+-o-> ☑ optional1
-						  +-m-> ☑ mandatory1
+					+-o-> ☑️ optional1
+						  +-m-> ☑️ mandatory1
 						  +-o-> ~optional2~
 								+-m-> ~mandatory2~
 				*/

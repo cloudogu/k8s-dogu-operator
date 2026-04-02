@@ -7,10 +7,21 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
+)
+
+// dogus with special validation treatment
+const (
+	// dogus that are no longer supported in k8s CES LOP
+	LegacyDoguNginx       = "nginx"
+	LegacyDoguRegistrator = "registrator"
+	// dogus that migrated from dogu to components
+	ComponentDoguCas     = "cas"
+	ComponentDoguPostfix = "postfix"
 )
 
 // dependencyValidationError is returned when a given dependency cloud not be validated.
@@ -31,15 +42,17 @@ func (e *dependencyValidationError) Requeue() bool {
 
 // doguDependencyValidator is responsible to check if all dogu dependencies are valid for a given dogu
 type doguDependencyValidator struct {
-	fetcher                 localDoguFetcher
-	authRegistrationEnabled bool
+	fetcher                       localDoguFetcher
+	authRegistrationEnabled       bool
+	disablePostfixDependencyCheck bool
 }
 
 // newDoguDependencyValidator creates a new dogu dependencies checker
-func newDoguDependencyValidator(doguFetcher localDoguFetcher, authRegistrationEnabled bool) *doguDependencyValidator {
+func newDoguDependencyValidator(doguFetcher localDoguFetcher, config *config.OperatorConfig) *doguDependencyValidator {
 	return &doguDependencyValidator{
-		fetcher:                 doguFetcher,
-		authRegistrationEnabled: authRegistrationEnabled,
+		fetcher:                       doguFetcher,
+		authRegistrationEnabled:       config.AuthRegistrationEnabled,
+		disablePostfixDependencyCheck: config.DisablePostfixDependencyCheck,
 	}
 }
 
@@ -80,13 +93,18 @@ func (dc *doguDependencyValidator) validateDoguDependencies(ctx context.Context,
 
 func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, doguDependency core.Dependency, optional bool) error {
 	logger := log.FromContext(ctx)
-	if doguDependency.Name == "nginx" || doguDependency.Name == "registrator" {
+	if doguDependency.Name == LegacyDoguNginx || doguDependency.Name == LegacyDoguRegistrator {
 		logger.Info(fmt.Sprintf("skipping legacy dogu dependency: %s", doguDependency.Name))
 		return nil
 	}
 
-	if dc.authRegistrationEnabled && doguDependency.Name == "cas" {
-		logger.Info(fmt.Sprintf("skipping legacy dogu dependency for %q because auth registration is enabled", doguDependency.Name))
+	if dc.authRegistrationEnabled && doguDependency.Name == ComponentDoguCas {
+		logger.Info("skipping legacy dogu dependency for 'cas' because auth registration is enabled")
+		return nil
+	}
+
+	if dc.disablePostfixDependencyCheck && doguDependency.Name == ComponentDoguPostfix {
+		logger.Info("skipping legacy dogu dependency for 'postfix' because postfix is assumed to be installed as a component")
 		return nil
 	}
 
@@ -97,14 +115,14 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 		if optional && regLibErr.IsNotFoundError(err) {
 			return nil // not installed => no error as this is ok for optional dependencies
 		}
-		return fmt.Errorf("failed to resolve dependencies %s: %w", doguDependency.Name, err)
+		return fmt.Errorf("failed to resolve dependency %q: %w", doguDependency.Name, err)
 	}
 
 	if localDependency == nil {
 		if optional {
 			return nil // not installed => no error as this is ok for optional dependencies
 		}
-		return fmt.Errorf("dependency %s seems not to be installed", doguDependency.Name)
+		return fmt.Errorf("dependency %q seems not to be installed", doguDependency.Name)
 	}
 
 	// it does not count as an error if no version is specified as the field is optional
@@ -114,12 +132,12 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 
 	localDependencyVersion, err := core.ParseVersion(localDependency.Version)
 	if err != nil {
-		return fmt.Errorf("failed to parse version of dependency %s: %w", localDependency.Name, err)
+		return fmt.Errorf("failed to parse version of dependency %q: %w", localDependency.Name, err)
 	}
 
 	comparator, err := core.ParseVersionComparator(doguDependency.Version)
 	if err != nil {
-		return fmt.Errorf("failed to parse ParseVersionComparator of version %s for doguDependency %s: %w", doguDependency.Version, doguDependency.Name, err)
+		return fmt.Errorf("failed to parse ParseVersionComparator of version %q for doguDependency %q: %w", doguDependency.Version, doguDependency.Name, err)
 	}
 
 	allows, err := comparator.Allows(localDependencyVersion)
@@ -127,7 +145,7 @@ func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, dogu
 		return fmt.Errorf("an error occurred when comparing the versions: %w", err)
 	}
 	if !allows {
-		return fmt.Errorf("%s parsed Version does not fulfill version requirement of %s dogu %s", localDependency.Version, doguDependency.Version, doguDependency.Name)
+		return fmt.Errorf("%q parsed Version does not fulfill version requirement of %q dogu %q", localDependency.Version, doguDependency.Version, doguDependency.Name)
 	}
 
 	return nil

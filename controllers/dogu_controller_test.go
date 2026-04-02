@@ -7,6 +7,7 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -32,7 +33,7 @@ func TestNewDoguReconciler(t *testing.T) {
 	managerMock.EXPECT().GetRESTMapper().Return(nil)
 
 	// when
-	reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, managerMock)
+	reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{})
 
 	// then
 	assert.NoError(t, err)

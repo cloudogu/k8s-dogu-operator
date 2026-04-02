@@ -253,7 +253,7 @@ func options() []fx.Option {
 			),
 
 			// reconcilers
-			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, "", "", "", "", "")),
+			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, "", "", "", "", "", "")),
 			controllers.NewGlobalConfigReconciler,
 			controllers.NewDoguRestartReconciler,
 

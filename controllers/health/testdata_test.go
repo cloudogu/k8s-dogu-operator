@@ -42,6 +42,9 @@ var ignoreNginxRegistratorBytes []byte
 //go:embed testdata/ignore-auth-registration-cas.json
 var ignoreAuhRegistrationCasBytes []byte
 
+//go:embed testdata/ignore-postfix-dependency.json
+var ignorePostfixDependencyBytes []byte
+
 func readTestDataLdapCr(t *testing.T) *doguv2.Dogu {
 	t.Helper()
 

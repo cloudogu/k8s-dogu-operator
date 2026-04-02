@@ -20,6 +20,7 @@ controllerManager:
     logLevel: debug
     stage: development
     authRegistrationEnabled: false
+    disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3
     doguRestartFailedHistoryLimit: 3
