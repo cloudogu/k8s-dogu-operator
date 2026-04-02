@@ -251,7 +251,7 @@ func Test_doguDependencyValidator_checkDoguDependency(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, regLibErr.NewNotFoundError(assert.AnError))
-		assert.ErrorContains(t, err, "failed to resolve dependencies cas:")
+		assert.ErrorContains(t, err, "failed to resolve dependency \"cas\":")
 	})
 
 	t.Run("should return err if postfix dependency check is not disabled and postfix is not installed", func(t *testing.T) {
@@ -266,6 +266,6 @@ func Test_doguDependencyValidator_checkDoguDependency(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorIs(t, err, regLibErr.NewNotFoundError(assert.AnError))
-		assert.ErrorContains(t, err, "failed to resolve dependencies postfix:")
+		assert.ErrorContains(t, err, "failed to resolve dependency \"postfix\":")
 	})
 }

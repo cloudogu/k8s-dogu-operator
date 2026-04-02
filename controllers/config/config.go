@@ -34,8 +34,10 @@ const (
 )
 
 var Stage = StageProduction
+var log = ctrl.Log.WithName("config")
 
-var (
+const (
+	envVarProxyUrl                                = "PROXY_URL"
 	envVarNamespace                               = "NAMESPACE"
 	envVarDoguRegistryEndpoint                    = "DOGU_REGISTRY_ENDPOINT"
 	envVarDoguRegistryUsername                    = "DOGU_REGISTRY_USERNAME"
@@ -45,7 +47,6 @@ var (
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
-	log                                           = ctrl.Log.WithName("config")
 )
 
 // DoguRegistryData contains all necessary data for the dogu registry.
@@ -80,7 +81,7 @@ type Version string
 
 // NewOperatorConfig creates a new operator config by reading values from the environment variables
 func NewOperatorConfig(version Version) (*OperatorConfig, error) {
-	stage, err := getEnvVar(StageEnvironmentVariable)
+	stage, err := getRequiredEnvVar(StageEnvironmentVariable)
 	if err != nil {
 		log.Error(err, "Error reading stage environment variable. Use Stage production")
 	}
@@ -126,7 +127,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 }
 
 func readNamespace() (string, error) {
-	namespace, err := getEnvVar(envVarNamespace)
+	namespace, err := getRequiredEnvVar(envVarNamespace)
 	if err != nil {
 		return "", newEnvVarError(envVarNamespace, err)
 	}
@@ -135,7 +136,7 @@ func readNamespace() (string, error) {
 }
 
 func readDoguReconcilerRequeueTime() (time.Duration, error) {
-	requeueTimeString, err := getEnvVar(envVarRequeueTimeForDoguResourceInNanoseconds)
+	requeueTimeString, err := getRequiredEnvVar(envVarRequeueTimeForDoguResourceInNanoseconds)
 	if err != nil {
 		return defaultRequeueTime, newEnvVarError(envVarNamespace, err)
 	}
@@ -147,24 +148,24 @@ func readDoguReconcilerRequeueTime() (time.Duration, error) {
 }
 
 func readDoguRegistryData() (DoguRegistryData, error) {
-	endpoint, err := getEnvVar(envVarDoguRegistryEndpoint)
+	endpoint, err := getRequiredEnvVar(envVarDoguRegistryEndpoint)
 	if err != nil {
 		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryEndpoint, err)
 	}
 	// remove tailing slash
 	endpoint = strings.TrimSuffix(endpoint, "/")
 
-	username, err := getEnvVar(envVarDoguRegistryUsername)
+	username, err := getRequiredEnvVar(envVarDoguRegistryUsername)
 	if err != nil {
 		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryUsername, err)
 	}
 
-	password, err := getEnvVar(envVarDoguRegistryPassword)
+	password, err := getRequiredEnvVar(envVarDoguRegistryPassword)
 	if err != nil {
 		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryPassword, err)
 	}
 
-	urlschema, err := getEnvVar(envVarDoguRegistryURLSchema)
+	urlschema, err := getRequiredEnvVar(envVarDoguRegistryURLSchema)
 	if err != nil {
 		log.Info(envVarDoguRegistryURLSchema + " not set, using default")
 		urlschema = "default"
@@ -178,7 +179,7 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 	}, nil
 }
 
-func getEnvVar(name string) (string, error) {
+func getRequiredEnvVar(name string) (string, error) {
 	ns, found := os.LookupEnv(name)
 	if !found {
 		return "", fmt.Errorf("environment variable %s must be set", name)
@@ -201,7 +202,7 @@ func (o *OperatorConfig) GetRemoteConfiguration() (*core.Remote, error) {
 		endpoint = strings.TrimSuffix(endpoint, "dogus")
 	}
 
-	proxyURL, found := os.LookupEnv("PROXY_URL")
+	proxyURL, found := os.LookupEnv(envVarProxyUrl)
 	proxySettings := core.ProxySettings{}
 	if found && len(proxyURL) > 0 {
 		var err error
@@ -257,10 +258,10 @@ func newEnvVarError(envVar string, err error) error {
 }
 
 func getNetworkPoliciesEnabled() bool {
-	netPolEnabledStr, err := getEnvVar(envVarNetworkPolicyEnabled)
-	if err != nil {
-		log.Error(fmt.Errorf("failed to read %s from environment: %w", envVarNetworkPolicyEnabled, err), "Enabling network policies by default")
-		return true
+	netPolEnabledStr, found := os.LookupEnv(envVarNetworkPolicyEnabled)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Enabling network policies by default", envVarNetworkPolicyEnabled))
+		return false
 	}
 
 	netPolEnabled, err := strconv.ParseBool(netPolEnabledStr)
@@ -273,9 +274,9 @@ func getNetworkPoliciesEnabled() bool {
 }
 
 func getAuthRegistrationEnabled() bool {
-	authRegistrationEnabledStr, err := getEnvVar(envVarAuthRegistrationEnabled)
-	if err != nil {
-		log.Error(fmt.Errorf("failed to read %s from environment: %w", envVarAuthRegistrationEnabled, err), "Disabling auth registration by default")
+	authRegistrationEnabledStr, found := os.LookupEnv(envVarAuthRegistrationEnabled)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Disabling auth registration by default", envVarAuthRegistrationEnabled))
 		return false
 	}
 
@@ -289,9 +290,9 @@ func getAuthRegistrationEnabled() bool {
 }
 
 func getDisablePostfixDependencyCheck() bool {
-	disablePostfixDependencyCheckStr, err := getEnvVar(envVarDisablePostfixDependencyCheck)
-	if err != nil {
-		log.Error(fmt.Errorf("failed to read %s from environment: %w", envVarDisablePostfixDependencyCheck, err), "Leaving postfix dependency check enabled")
+	disablePostfixDependencyCheckStr, found := os.LookupEnv(envVarDisablePostfixDependencyCheck)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Leaving postfix dependency check enabled", envVarDisablePostfixDependencyCheck))
 		return false
 	}
 
@@ -305,7 +306,7 @@ func getDisablePostfixDependencyCheck() bool {
 }
 
 func GetStage() (string, error) {
-	stage, err := getEnvVar(StageEnvironmentVariable)
+	stage, err := getRequiredEnvVar(StageEnvironmentVariable)
 	if err != nil {
 		return "", err
 	}
