@@ -38,8 +38,9 @@ const (
 )
 
 const (
-	localTimeMountName = "localtime"
-	localTimeMountPath = "/etc/localtime"
+	operatorManagerConfigMap = "k8s-dogu-operator-manager-config"
+	timeZoneEnvVariable      = "TZ"
+	timeZoneMountName        = "timezone-volume"
 )
 
 const (
@@ -147,6 +148,10 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 			},
 		}},
 		{Name: doguPodMultiNode, Value: "true"},
+		{Name: timeZoneEnvVariable, ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: operatorManagerConfigMap},
+			Key:                  "timezone",
+		}}},
 	}
 
 	resourceRequirements, err := r.requirementsGenerator.Generate(ctx, dogu)

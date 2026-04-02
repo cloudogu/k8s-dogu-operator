@@ -176,11 +176,16 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 		},
 	}
 
-	hostTimezoneVolume := corev1.Volume{
-		Name: localTimeMountName,
+	timezoneVolume := corev1.Volume{
+		Name: timeZoneMountName,
 		VolumeSource: corev1.VolumeSource{
-			HostPath: &corev1.HostPathVolumeSource{
-				Path: localTimeMountPath,
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: operatorManagerConfigMap,
+				},
+				Items: []corev1.KeyToPath{
+					{Key: "timezone", Path: "timezone", Mode: new(int32(0o444))},
+				},
 			},
 		},
 	}
@@ -228,7 +233,7 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) []corev1.Volume {
 		globalConfigVolume,
 		normalConfigVolume,
 		sensitiveConfigVolume,
-		hostTimezoneVolume,
+		timezoneVolume,
 	}
 }
 
@@ -340,10 +345,12 @@ func createStaticVolumeMounts(doguResource *k8sv2.Dogu) []corev1.VolumeMount {
 			Name:      globalConfig,
 			ReadOnly:  true,
 			MountPath: "/etc/ces/config/global",
-		}, {
-			Name:      localTimeMountName,
+		},
+		{
+			Name:      timeZoneMountName,
 			ReadOnly:  true,
-			MountPath: localTimeMountPath,
+			MountPath: "/etc/timezone",
+			SubPath:   "timezone",
 		},
 	}
 
