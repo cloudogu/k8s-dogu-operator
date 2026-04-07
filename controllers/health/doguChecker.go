@@ -12,6 +12,7 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	doguDepencency "github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
 
 	metav1api "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -97,15 +98,15 @@ func (dc *doguChecker) checkMandatoryRecursive(ctx context.Context, localDogu *c
 	var errs []error
 
 	for _, dependency := range localDogu.GetDependenciesOfType(core.DependencyTypeDogu) {
-		if dependency.Name == "nginx" || dependency.Name == "registrator" {
+		if dependency.Name == doguDepencency.LegacyDoguNginx || dependency.Name == doguDepencency.LegacyDoguRegistrator {
 			continue
 		}
 
-		if dc.authRegistrationEnabled && dependency.Name == "cas" {
+		if dc.authRegistrationEnabled && dependency.Name == doguDepencency.ComponentDoguCas {
 			continue
 		}
 
-		if dc.disablePostfixDependencyCheck && dependency.Name == "postfix" {
+		if dc.disablePostfixDependencyCheck && dependency.Name == doguDepencency.ComponentDoguPostfix {
 			continue
 		}
 
