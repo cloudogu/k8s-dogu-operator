@@ -217,11 +217,11 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 
 			"*upgrade.PreUpgradeStatusStep",
 			"*upgrade.UpdateDeploymentVersionStep",
+			"*upgrade.RegisterDoguVersionStep",
 			"*upgrade.DeleteExecPodStep",
 			"*upgrade.PostUpgradeStep",
 			"*upgrade.InstalledVersionStep",
 			"*upgrade.RegenerateDeploymentStep",
-			"*upgrade.RegisterDoguVersionStep",
 			"*upgrade.UpdateStartedAtStep",
 			"*upgrade.RestartAfterConfigChangeStep",
 			"*upgrade.RetroactiveServiceAccountStep",

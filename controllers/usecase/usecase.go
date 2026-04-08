@@ -111,11 +111,11 @@ func NewDoguInstallOrChangeUseCase(
 
 			preUpgradeStatusStep,
 			updateDeploymentStep,
+			upgradeRegisterDoguVersionStep,
 			deleteExecPodStep,
 			revertStartupProbeStep,
 			installedVersionStep,
 			deploymentUpdaterStep,
-			upgradeRegisterDoguVersionStep,
 			updateStartedAtStep,
 			restartDoguStep,
 			retroactiveServiceAccountStep,
