@@ -6,13 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.22.0] - 2026-04-08
+### Added 
+- [#297] add timezone to dogus
+  - added configmap value "timezone" to k8s-dogu-operator-manager-config
+  - add environment variable TZ to all created dogu pods
+  - add /etc/timezone to all created dogu pods
+
+### Added
+- [#285] Creating auth-registration CRs for v2-dogus when LOP-IdP is used
+- [#285] Ignore auth-registration events when auth-registration is not enabled
+- [#298] Feature flag to ignore postfix dependency for v2-dogus
+  - This is to be used when postfix is installed as a component instead of a dogu.
+
 ## [v3.21.0] - 2026-03-19
 ### Removed
-- [#291] remove outdated ingress-nginx specific code and documentation 
+- [#291] Remove outdated ingress-nginx specific code and documentation 
 
 ## [v3.20.0] - 2026-03-19
 ### Added
-- [#287] add a volume mount for /etc/localtime to use the host system's timezone
+- [#287] Add a volume mount for /etc/localtime to use the host system's timezone
 
 ## [v3.19.4] - 2026-03-06
 ### Changed

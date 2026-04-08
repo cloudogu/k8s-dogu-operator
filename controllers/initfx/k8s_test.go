@@ -79,6 +79,22 @@ func TestNewDoguRestartInterface(t *testing.T) {
 	})
 }
 
+func TestNewAuthRegistrationInterface(t *testing.T) {
+	t.Run("should successfully create auth registration interface", func(t *testing.T) {
+		// given
+		authRegistrationMock := newMockAuthRegistrationInterface(t)
+		authRegistrationClientMock := newMockAuthRegistrationClient(t)
+		authRegistrationClientMock.EXPECT().AuthRegistrations(namespace).Return(authRegistrationMock)
+		operatorConfig := &config.OperatorConfig{Namespace: namespace}
+
+		// when
+		interf := NewAuthRegistrationInterface(authRegistrationClientMock, operatorConfig)
+
+		// then
+		assert.NotNil(t, interf)
+	})
+}
+
 func TestNewEventRecorder(t *testing.T) {
 	t.Run("should successfully create dogu restart interface", func(t *testing.T) {
 		// given
@@ -217,6 +233,20 @@ func Test_newEcoSystemClientSet(t *testing.T) {
 
 		// when
 		cliSet, err := newEcoSystemClientSet(operatorConfig)
+
+		// then
+		assert.NotNil(t, cliSet)
+		assert.NoError(t, err)
+	})
+}
+
+func Test_newAuthRegistrationClientSet(t *testing.T) {
+	t.Run("should successfully create auth registration client set", func(t *testing.T) {
+		// given
+		operatorConfig := &rest.Config{}
+
+		// when
+		cliSet, err := newAuthRegistrationClientSet(operatorConfig)
 
 		// then
 		assert.NotNil(t, cliSet)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
@@ -38,6 +39,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(doguv2.AddToScheme(scheme))
+	utilruntime.Must(authRegApiV1.AddToScheme(scheme))
 }
 
 func NewControllerManager(

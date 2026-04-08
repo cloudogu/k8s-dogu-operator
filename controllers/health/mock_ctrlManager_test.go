@@ -3,7 +3,6 @@
 package health
 
 import (
-	"k8s.io/client-go/tools/events"
 	cache "sigs.k8s.io/controller-runtime/pkg/cache"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -12,6 +11,8 @@ import (
 	context "context"
 
 	conversion "sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
+
+	events "k8s.io/client-go/tools/events"
 
 	healthz "sigs.k8s.io/controller-runtime/pkg/healthz"
 

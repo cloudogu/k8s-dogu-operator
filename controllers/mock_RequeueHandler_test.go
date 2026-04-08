@@ -6,7 +6,7 @@ import (
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
-	reconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 
 	time "time"
 
@@ -27,22 +27,22 @@ func (_m *MockRequeueHandler) EXPECT() *MockRequeueHandler_Expecter {
 }
 
 // Handle provides a mock function with given fields: ctx, doguResource, err, reqTime
-func (_m *MockRequeueHandler) Handle(ctx context.Context, doguResource *v2.Dogu, err error, reqTime time.Duration) (reconcile.Result, error) {
+func (_m *MockRequeueHandler) Handle(ctx context.Context, doguResource *v2.Dogu, err error, reqTime time.Duration) (controllerruntime.Result, error) {
 	ret := _m.Called(ctx, doguResource, err, reqTime)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Handle")
 	}
 
-	var r0 reconcile.Result
+	var r0 controllerruntime.Result
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, error, time.Duration) (reconcile.Result, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, error, time.Duration) (controllerruntime.Result, error)); ok {
 		return rf(ctx, doguResource, err, reqTime)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, error, time.Duration) reconcile.Result); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, error, time.Duration) controllerruntime.Result); ok {
 		r0 = rf(ctx, doguResource, err, reqTime)
 	} else {
-		r0 = ret.Get(0).(reconcile.Result)
+		r0 = ret.Get(0).(controllerruntime.Result)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *v2.Dogu, error, time.Duration) error); ok {
@@ -75,12 +75,12 @@ func (_c *MockRequeueHandler_Handle_Call) Run(run func(ctx context.Context, dogu
 	return _c
 }
 
-func (_c *MockRequeueHandler_Handle_Call) Return(result reconcile.Result, requeueErr error) *MockRequeueHandler_Handle_Call {
+func (_c *MockRequeueHandler_Handle_Call) Return(result controllerruntime.Result, requeueErr error) *MockRequeueHandler_Handle_Call {
 	_c.Call.Return(result, requeueErr)
 	return _c
 }
 
-func (_c *MockRequeueHandler_Handle_Call) RunAndReturn(run func(context.Context, *v2.Dogu, error, time.Duration) (reconcile.Result, error)) *MockRequeueHandler_Handle_Call {
+func (_c *MockRequeueHandler_Handle_Call) RunAndReturn(run func(context.Context, *v2.Dogu, error, time.Duration) (controllerruntime.Result, error)) *MockRequeueHandler_Handle_Call {
 	_c.Call.Return(run)
 	return _c
 }

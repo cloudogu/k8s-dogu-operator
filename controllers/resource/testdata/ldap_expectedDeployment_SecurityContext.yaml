@@ -114,6 +114,11 @@ spec:
                   fieldPath: metadata.name
             - name: ECOSYSTEM_MULTINODE
               value: true
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: k8s-dogu-operator-manager-config
+                  key: timezone
           resources: { }
           securityContext:
             capabilities:
@@ -144,9 +149,10 @@ spec:
             - mountPath: /etc/ces/config/global
               name: global-config
               readOnly: true
-            - mountPath: /etc/localtime
-              name: localtime
+            - mountPath: /etc/timezone
+              name: timezone-volume
               readOnly: true
+              subPath: timezone
             - mountPath: /etc/ces/config/normal
               name: normal-config
               readOnly: true
@@ -218,9 +224,13 @@ spec:
         - name: sensitive-config
           secret:
             secretName: ldap-config
-        - name: localtime
-          hostPath:
-            path: /etc/localtime
+        - name: timezone-volume
+          configMap:
+            name: k8s-dogu-operator-manager-config
+            items:
+              - key: timezone
+                path: timezone
+                mode: 292
         - name: ldap-dogu-json
           configMap:
             name: dogu-spec-ldap

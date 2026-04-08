@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -51,13 +53,14 @@ const (
 // and by differentiating this from the algebraic sum of where it shouldn't be, and where it was, it is able to obtain
 // the deviation and its variation, which is called error.
 type DoguReconciler struct {
-	client            client.Client
-	doguChangeHandler DoguInstallOrChangeUseCase
-	doguDeleteHandler DoguDeleteUseCase
-	doguInterface     doguInterface
-	requeueHandler    RequeueHandler
-	externalEvents    <-chan event.TypedGenericEvent[*doguv2.Dogu]
-	eventRecorder     eventRecorder
+	client                  client.Client
+	doguChangeHandler       DoguInstallOrChangeUseCase
+	doguDeleteHandler       DoguDeleteUseCase
+	doguInterface           doguInterface
+	requeueHandler          RequeueHandler
+	externalEvents          <-chan event.TypedGenericEvent[*doguv2.Dogu]
+	eventRecorder           eventRecorder
+	authRegistrationEnabled bool
 }
 
 func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
@@ -82,15 +85,17 @@ func NewDoguReconciler(
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	recorder record.EventRecorder,
 	manager manager.Manager,
+	config *config.OperatorConfig,
 ) (*DoguReconciler, error) {
 	r := &DoguReconciler{
-		client:            k8sClient,
-		doguChangeHandler: doguChangeHandler,
-		doguDeleteHandler: doguDeleteHandler,
-		doguInterface:     doguInterface,
-		requeueHandler:    requeueHandler,
-		externalEvents:    externalEvents,
-		eventRecorder:     recorder,
+		client:                  k8sClient,
+		doguChangeHandler:       doguChangeHandler,
+		doguDeleteHandler:       doguDeleteHandler,
+		doguInterface:           doguInterface,
+		requeueHandler:          requeueHandler,
+		externalEvents:          externalEvents,
+		eventRecorder:           recorder,
+		authRegistrationEnabled: config.AuthRegistrationEnabled,
 	}
 	err := r.setupWithManager(manager)
 	if err != nil {
@@ -146,7 +151,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // In addition, the dogu reconciler can be triggered via an events channel.
 // This is intended, for example, for the GlobalConfigReconciler to reconcile the dogus again.
 func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	controllerBuilder := ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&coreV1.ConfigMap{}).
 		Owns(&coreV1.Secret{}).
@@ -155,8 +160,11 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
-		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{})).
-		Complete(r)
+		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{}))
+	if r.authRegistrationEnabled {
+		controllerBuilder = controllerBuilder.Owns(&authRegApiV1.AuthRegistration{})
+	}
+	return controllerBuilder.Complete(r)
 }
 
 func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *doguv2.Dogu, status metav1.ConditionStatus, reason, message string) error {

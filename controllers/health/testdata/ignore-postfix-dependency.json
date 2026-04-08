@@ -1,0 +1,18 @@
+{
+  "Name": "official/redmine",
+  "Version": "3.2.1-1",
+  "DisplayName": "Ignore cas dogu if authRegistration is enabled",
+  "Image": "registry.cloudogu.com/official/redmine",
+  "Dependencies": [
+    {
+      "type": "dogu",
+      "name": "postfix"
+    }
+  ],
+  "OptionalDependencies": [
+    {
+      "type": "dogu",
+      "name": "postfix"
+    }
+  ]
+}
