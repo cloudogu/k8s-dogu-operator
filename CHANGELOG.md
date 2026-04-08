@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added 
-- [#297] add timezone to doogus
+- [#297] add timezone to dogus
   - added configmap value "timezone" to k8s-dogu-operator-manager-config
   - add environment variable TZ to all created dogu pods
   - add /etc/timezone to all created dogu pods
