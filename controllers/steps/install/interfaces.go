@@ -96,10 +96,6 @@ type serviceInterface interface {
 	v1.ServiceInterface
 }
 
-type configMapInterface interface {
-	v1.ConfigMapInterface
-}
-
 // doguRegistrator includes functionality to manage the registration of dogus in the local dogu registry.
 type doguRegistrator interface {
 	// RegisterNewDogu registers a new dogu in the local dogu registry.
