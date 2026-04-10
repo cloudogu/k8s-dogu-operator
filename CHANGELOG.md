@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#298] Feature flag to ignore postfix dependency for v2-dogus
   - This is to be used when postfix is installed as a component instead of a dogu.
 
+### Fixed
+- Make sure dogus can access new dogu version after upgrade; #298
+
 ## [v3.21.0] - 2026-03-19
 ### Removed
 - [#291] Remove outdated ingress-nginx specific code and documentation 
