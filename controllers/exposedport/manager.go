@@ -8,11 +8,16 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	exposedPortsConfigMapName = "k8s-ces-gateway-config"
+	exposedPortsConfigMapName        = "k8s-ces-gateway-config"
+	initialExposedPortsConfigMapName = "initial-exposed-ports-config"
+	componentOperatorReconcileLabel  = "k8s.cloudogu.com/component.config"
+	k8sCesGatewayName                = "k8s-ces-gateway"
 )
 
 type Values struct {
@@ -36,39 +41,26 @@ func NewExposedPortsManager(
 	}
 }
 
-func (epm *exposedPortsManager) readValues(ctx context.Context) (*v1.ConfigMap, *Values, error) {
-	cm, err := epm.configMapInterface.Get(ctx, "k8s-ces-gateway-config", metav1.GetOptions{})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var values Values
-	if err := yaml.Unmarshal([]byte(cm.Data["values"]), &values); err != nil {
-		return nil, nil, err
-	}
-
-	return cm, &values, err
-}
-
-func (epm *exposedPortsManager) updateConfigMap(ctx context.Context, cm *v1.ConfigMap, values *Values) (*v1.ConfigMap, error) {
-	updated, err := yaml.Marshal(values)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize values: %w", err)
-	}
-
-	cm.Data["values"] = string(updated)
-
-	return epm.configMapInterface.Update(ctx, cm, metav1.UpdateOptions{})
-}
-
 func (epm *exposedPortsManager) AddPorts(ctx context.Context, ports []core.ExposedPort) (*v1.ConfigMap, error) {
+	logger := log.FromContext(ctx)
 	if len(ports) == 0 {
 		return nil, nil
 	}
 
+	logger.Info("Getting config")
 	cm, err := epm.configMapInterface.Get(ctx, exposedPortsConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		logger.Info("Getting config returned an error")
+		if client.IgnoreNotFound(err) != nil {
+			logger.Info("Getting config returned a requeable error")
+			return nil, err
+		}
+		logger.Info("Getting config returned not found error")
+		logger.Info("Creating config map")
+		cm, err = epm.createExposedPortsConfigMap(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	data, err := epm.addPorts(cm.Data, ports)
@@ -92,7 +84,13 @@ func (epm *exposedPortsManager) DeletePorts(ctx context.Context, ports []core.Ex
 
 	cm, err := epm.configMapInterface.Get(ctx, exposedPortsConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		if client.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+		cm, err = epm.createExposedPortsConfigMap(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	data, err := epm.deletePorts(cm.Data, ports)
@@ -150,4 +148,26 @@ func (epm *exposedPortsManager) deletePorts(data map[string]string, ports []core
 	cmBytes, err := yaml.Marshal(cmConfigValues)
 	data["values"] = strings.TrimSuffix(string(cmBytes), "\n")
 	return data, nil
+}
+
+func (epm *exposedPortsManager) createExposedPortsConfigMap(ctx context.Context) (*v1.ConfigMap, error) {
+	logger := log.FromContext(ctx)
+	logger.Info("Getting initial config")
+	initialCm, err := epm.configMapInterface.Get(ctx, initialExposedPortsConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		logger.Info("Getting config returned an error")
+		return nil, err
+	}
+	cm := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: exposedPortsConfigMapName,
+			Labels: map[string]string{
+				componentOperatorReconcileLabel: k8sCesGatewayName,
+			},
+			Namespace: initialCm.Namespace,
+		},
+		Data: initialCm.Data,
+	}
+	createdCm, err := epm.configMapInterface.Create(ctx, cm, metav1.CreateOptions{})
+	return createdCm, nil
 }

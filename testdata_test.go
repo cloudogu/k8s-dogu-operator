@@ -25,6 +25,9 @@ var ldapCrBytes []byte
 //go:embed testdata/ldap-dogu-local-config-volume.json
 var ldapDoguDescriptorWithLocalConfigVolumeBytes []byte
 
+//go:embed testdata/initial-exposed-ports-cm.yaml
+var initalExposedPortsCmBytes []byte
+
 //go:embed testdata/image-config.json
 var imageConfigBytes []byte
 
