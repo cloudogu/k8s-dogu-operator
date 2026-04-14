@@ -20,10 +20,6 @@ const (
 	k8sCesGatewayName                = "k8s-ces-gateway"
 )
 
-type Values struct {
-	ports map[string]interface{} `yaml:"ports"`
-}
-
 type Port struct {
 	Port     int    `yaml:"port"`
 	Protocol string `yaml:"protocol"`
@@ -109,8 +105,15 @@ func (epm *exposedPortsManager) addPorts(data map[string]string, ports []core.Ex
 	if err != nil {
 		return nil, err
 	}
-	traefik := cmConfigValues["traefik"].(map[string]interface{})
-	cmPorts := traefik["ports"].(map[string]interface{})
+
+	traefik, ok := cmConfigValues["traefik"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("type assertion for traefik failed")
+	}
+	cmPorts, ok := traefik["ports"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("type assertion for ports failed")
+	}
 
 	for _, port := range ports {
 		p := Port{
@@ -123,6 +126,9 @@ func (epm *exposedPortsManager) addPorts(data map[string]string, ports []core.Ex
 	}
 
 	cmBytes, err := yaml.Marshal(cmConfigValues)
+	if err != nil {
+		return nil, err
+	}
 	data["values"] = strings.TrimSuffix(string(cmBytes), "\n")
 	return data, nil
 }
@@ -133,8 +139,14 @@ func (epm *exposedPortsManager) deletePorts(data map[string]string, ports []core
 	if err != nil {
 		return nil, err
 	}
-	traefik := cmConfigValues["traefik"].(map[string]interface{})
-	cmPorts := traefik["ports"].(map[string]interface{})
+	traefik, ok := cmConfigValues["traefik"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("type assertion for traefik failed")
+	}
+	cmPorts, ok := traefik["ports"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("type assertion for ports failed")
+	}
 
 	for _, port := range ports {
 		portName := fmt.Sprintf("%s-%d", strings.ToLower(port.Type), port.Host)
@@ -142,6 +154,9 @@ func (epm *exposedPortsManager) deletePorts(data map[string]string, ports []core
 	}
 
 	cmBytes, err := yaml.Marshal(cmConfigValues)
+	if err != nil {
+		return nil, err
+	}
 	data["values"] = strings.TrimSuffix(string(cmBytes), "\n")
 	return data, nil
 }
@@ -166,5 +181,5 @@ func (epm *exposedPortsManager) createExposedPortsConfigMap(ctx context.Context)
 		Data: initialCm.Data,
 	}
 	createdCm, err := epm.configMapInterface.Create(ctx, cm, metav1.CreateOptions{})
-	return createdCm, nil
+	return createdCm, err
 }
