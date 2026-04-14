@@ -9,7 +9,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
 
@@ -38,12 +37,10 @@ func NewExposedPortsManager(
 }
 
 func (epm *exposedPortsManager) AddPorts(ctx context.Context, ports []core.ExposedPort) (*v1.ConfigMap, error) {
-	logger := log.FromContext(ctx)
 	if len(ports) == 0 {
 		return nil, nil
 	}
 
-	logger.Info("Getting config")
 	cm, err := epm.configMapInterface.Get(ctx, exposedPortsConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -100,19 +97,9 @@ func (epm *exposedPortsManager) DeletePorts(ctx context.Context, ports []core.Ex
 }
 
 func (epm *exposedPortsManager) addPorts(data map[string]string, ports []core.ExposedPort) (map[string]string, error) {
-	cmConfigValues := map[string]interface{}{}
-	err := yaml.Unmarshal([]byte(data["values"]), &cmConfigValues)
+	cmPorts, cmConfigValues, err := epm.getPortsOutOfMap(data)
 	if err != nil {
 		return nil, err
-	}
-
-	traefik, ok := cmConfigValues["traefik"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("type assertion for traefik failed")
-	}
-	cmPorts, ok := traefik["ports"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("type assertion for ports failed")
 	}
 
 	for _, port := range ports {
@@ -134,18 +121,9 @@ func (epm *exposedPortsManager) addPorts(data map[string]string, ports []core.Ex
 }
 
 func (epm *exposedPortsManager) deletePorts(data map[string]string, ports []core.ExposedPort) (map[string]string, error) {
-	cmConfigValues := map[string]interface{}{}
-	err := yaml.Unmarshal([]byte(data["values"]), &cmConfigValues)
+	cmPorts, cmConfigValues, err := epm.getPortsOutOfMap(data)
 	if err != nil {
 		return nil, err
-	}
-	traefik, ok := cmConfigValues["traefik"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("type assertion for traefik failed")
-	}
-	cmPorts, ok := traefik["ports"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("type assertion for ports failed")
 	}
 
 	for _, port := range ports {
@@ -182,4 +160,21 @@ func (epm *exposedPortsManager) createExposedPortsConfigMap(ctx context.Context)
 	}
 	createdCm, err := epm.configMapInterface.Create(ctx, cm, metav1.CreateOptions{})
 	return createdCm, err
+}
+
+func (epm *exposedPortsManager) getPortsOutOfMap(data map[string]string) (map[string]interface{}, map[string]interface{}, error) {
+	cmConfigValues := map[string]interface{}{}
+	err := yaml.Unmarshal([]byte(data["values"]), &cmConfigValues)
+	if err != nil {
+		return nil, nil, err
+	}
+	traefik, ok := cmConfigValues["traefik"].(map[string]interface{})
+	if !ok {
+		return nil, nil, fmt.Errorf("type assertion for traefik failed")
+	}
+	cmPorts, ok := traefik["ports"].(map[string]interface{})
+	if !ok {
+		return nil, nil, fmt.Errorf("type assertion for ports failed")
+	}
+	return cmPorts, cmConfigValues, nil
 }
