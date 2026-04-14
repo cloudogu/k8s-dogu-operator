@@ -83,6 +83,65 @@ func (_c *MockExposedPortsManager_AddPorts_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// DeletePorts provides a mock function with given fields: ctx, ports
+func (_m *MockExposedPortsManager) DeletePorts(ctx context.Context, ports []core.ExposedPort) (*v1.ConfigMap, error) {
+	ret := _m.Called(ctx, ports)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePorts")
+	}
+
+	var r0 *v1.ConfigMap
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []core.ExposedPort) (*v1.ConfigMap, error)); ok {
+		return rf(ctx, ports)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []core.ExposedPort) *v1.ConfigMap); ok {
+		r0 = rf(ctx, ports)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ConfigMap)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []core.ExposedPort) error); ok {
+		r1 = rf(ctx, ports)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockExposedPortsManager_DeletePorts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeletePorts'
+type MockExposedPortsManager_DeletePorts_Call struct {
+	*mock.Call
+}
+
+// DeletePorts is a helper method to define mock.On call
+//   - ctx context.Context
+//   - ports []core.ExposedPort
+func (_e *MockExposedPortsManager_Expecter) DeletePorts(ctx interface{}, ports interface{}) *MockExposedPortsManager_DeletePorts_Call {
+	return &MockExposedPortsManager_DeletePorts_Call{Call: _e.mock.On("DeletePorts", ctx, ports)}
+}
+
+func (_c *MockExposedPortsManager_DeletePorts_Call) Run(run func(ctx context.Context, ports []core.ExposedPort)) *MockExposedPortsManager_DeletePorts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]core.ExposedPort))
+	})
+	return _c
+}
+
+func (_c *MockExposedPortsManager_DeletePorts_Call) Return(_a0 *v1.ConfigMap, _a1 error) *MockExposedPortsManager_DeletePorts_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockExposedPortsManager_DeletePorts_Call) RunAndReturn(run func(context.Context, []core.ExposedPort) (*v1.ConfigMap, error)) *MockExposedPortsManager_DeletePorts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockExposedPortsManager creates a new instance of MockExposedPortsManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockExposedPortsManager(t interface {

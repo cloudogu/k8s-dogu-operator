@@ -8,9 +8,6 @@ data:
   values: |-
     traefik:
       ports:
-        tcp-10:
-          port: 10
-          protocol: TCP
         tcp-2222:
           port: 2222
           protocol: TCP

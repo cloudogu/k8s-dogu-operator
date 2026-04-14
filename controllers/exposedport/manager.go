@@ -50,13 +50,9 @@ func (epm *exposedPortsManager) AddPorts(ctx context.Context, ports []core.Expos
 	logger.Info("Getting config")
 	cm, err := epm.configMapInterface.Get(ctx, exposedPortsConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		logger.Info("Getting config returned an error")
 		if client.IgnoreNotFound(err) != nil {
-			logger.Info("Getting config returned a requeable error")
 			return nil, err
 		}
-		logger.Info("Getting config returned not found error")
-		logger.Info("Creating config map")
 		cm, err = epm.createExposedPortsConfigMap(ctx)
 		if err != nil {
 			return nil, err
@@ -151,14 +147,15 @@ func (epm *exposedPortsManager) deletePorts(data map[string]string, ports []core
 }
 
 func (epm *exposedPortsManager) createExposedPortsConfigMap(ctx context.Context) (*v1.ConfigMap, error) {
-	logger := log.FromContext(ctx)
-	logger.Info("Getting initial config")
 	initialCm, err := epm.configMapInterface.Get(ctx, initialExposedPortsConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		logger.Info("Getting config returned an error")
 		return nil, err
 	}
 	cm := &v1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: exposedPortsConfigMapName,
 			Labels: map[string]string{

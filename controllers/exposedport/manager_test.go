@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
 )
 
@@ -23,6 +25,12 @@ var expectedDeleteConfigMapBytes []byte
 //go:embed testdata/k8s-ces-gateway-config-previous.yaml
 var previousConfigMapBytes []byte
 
+//go:embed testdata/initial-exposed-ports-configmap.yaml
+var initialExposedPortsConfigMapBytes []byte
+
+//go:embed testdata/created-initial-exposed-ports-configmap.yaml
+var createdInitialExposedPortsConfigMapBytes []byte
+
 var testCtx = context.Background()
 
 func readExposedPortsExpectedAddConfigMap(t *testing.T) *v1.ConfigMap {
@@ -30,6 +38,30 @@ func readExposedPortsExpectedAddConfigMap(t *testing.T) *v1.ConfigMap {
 
 	data := &v1.ConfigMap{}
 	err := yaml.Unmarshal(expectedAddConfigMapBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readInitialExposedPortsAddConfigMap(t *testing.T) *v1.ConfigMap {
+	t.Helper()
+
+	data := &v1.ConfigMap{}
+	err := yaml.Unmarshal(initialExposedPortsConfigMapBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readCreatedInitialExposedPortsAddConfigMap(t *testing.T) *v1.ConfigMap {
+	t.Helper()
+
+	data := &v1.ConfigMap{}
+	err := yaml.Unmarshal(createdInitialExposedPortsConfigMapBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -89,11 +121,18 @@ func Test_exposedPortsManager_AddPorts(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
-			name: "should fail to add port to config map because configmap does not exist",
+			name: "should add port to config map and create config map if does not exist",
 			fields: fields{
 				configMapInterfaceFn: func(t *testing.T) configMapInterface {
 					mck := newMockConfigMapInterface(t)
-					mck.EXPECT().Get(testCtx, exposedPortsConfigMapName, metav1.GetOptions{}).Return(nil, assert.AnError)
+					err := errors.NewNotFound(schema.GroupResource{
+						Group:    "",
+						Resource: "configmaps",
+					}, exposedPortsConfigMapName)
+					mck.EXPECT().Get(testCtx, exposedPortsConfigMapName, metav1.GetOptions{}).Return(nil, err)
+					mck.EXPECT().Get(testCtx, initialExposedPortsConfigMapName, metav1.GetOptions{}).Return(readInitialExposedPortsAddConfigMap(t), nil)
+					mck.EXPECT().Create(testCtx, readCreatedInitialExposedPortsAddConfigMap(t), metav1.CreateOptions{}).Return(readCreatedInitialExposedPortsAddConfigMap(t), nil)
+					mck.EXPECT().Update(testCtx, mock.Anything, metav1.UpdateOptions{}).Return(readExposedPortsExpectedAddConfigMap(t), nil)
 					return mck
 				},
 			},
@@ -106,8 +145,8 @@ func Test_exposedPortsManager_AddPorts(t *testing.T) {
 					},
 				},
 			},
-			wantErr: assert.Error,
-			want:    nil,
+			wantErr: assert.NoError,
+			want:    readExposedPortsExpectedAddConfigMap(t),
 		},
 		{
 			name: "should fail to add port to config map because configmap could not be updated",
