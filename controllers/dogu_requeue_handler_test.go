@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/mock"
+	errors2 "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v2/client"
@@ -236,19 +238,55 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
-			name: "should not reconcile when deletion timestamp is set",
+			name: "should reconcile when deletion timestamp is set and an error occurs",
 			fields: fields{
 				recorderFn: func(t *testing.T) record.EventRecorder {
 					mck := newMockEventRecorder(t)
+					reqTime := 5 * time.Second
+					mck.EXPECT().Eventf(
+						&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Date(2026, time.April, 15, 11, 0, 0, 0, &time.Location{})}}},
+						v2.EventTypeWarning,
+						ReasonReconcileFail,
+						"Trying again in %s because of: %s", reqTime.String(), "",
+					).Return()
 					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
 					mck := newMockDoguInterface(t)
+					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 			},
 			args: args{
-				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Now()}}},
+				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Date(2026, time.April, 15, 11, 0, 0, 0, &time.Location{})}}},
+				err:          errors.New(""),
+				reqTime:      time.Duration(2),
+			},
+			want:    controllerruntime.Result{RequeueAfter: requeueTime},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "should not reconcile when deletion timestamp is set and dogu is not found error occurs",
+			fields: fields{
+				recorderFn: func(t *testing.T) record.EventRecorder {
+					mck := newMockEventRecorder(t)
+					reqTime := 5 * time.Second
+					mck.EXPECT().Eventf(
+						&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Date(2026, time.April, 15, 11, 0, 0, 0, &time.Location{})}}},
+						v2.EventTypeWarning,
+						ReasonReconcileFail,
+						"Trying again in %s because of: %s", reqTime.String(), "",
+					).Return()
+					return mck
+				},
+				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+					mck := newMockDoguInterface(t)
+					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(nil, errors2.NewNotFound(schema.GroupResource{}, testDoguName))
+					return mck
+				},
+			},
+			args: args{
+				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Date(2026, time.April, 15, 11, 0, 0, 0, &time.Location{})}}},
 				err:          errors.New(""),
 				reqTime:      time.Duration(2),
 			},
