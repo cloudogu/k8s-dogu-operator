@@ -20,8 +20,9 @@ controllerManager:
   env:
     logLevel: debug
     stage: development
-    authRegistrationEnabled: false
-    disablePostfixDependencyCheck: false
+    authRegistrationEnabled: true
+    expositionEnabled: false
+    disablePostfixDependencyCheck: true
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3
     doguRestartFailedHistoryLimit: 3

@@ -45,6 +45,7 @@ const (
 	envVarDoguRegistryURLSchema                   = "DOGU_REGISTRY_URLSCHEMA"
 	envVarNetworkPolicyEnabled                    = "NETWORK_POLICIES_ENABLED"
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
+	envVarExpositionEnabled                       = "EXPOSITION_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 )
@@ -69,6 +70,8 @@ type OperatorConfig struct {
 	NetworkPoliciesEnabled bool `json:"network_policies_enabled"`
 	// AuthRegistrationEnabled defines whether the operator should manage AuthRegistration CRs for v2 dogus.
 	AuthRegistrationEnabled bool `json:"auth_registration_enabled"`
+	// ExpositionEnabled defines whether the operator should manage Exposition CRs for v2 dogus.
+	ExpositionEnabled bool `json:"exposition_enabled"`
 	// DisablePostfixDependencyCheck defines whether the operator should validate dependencies on postfix.
 	// If set to false, the operator will assume that postfix is installed as a normal dogu and will validate the dependencies accordingly.
 	// If set to true, the operator will assume that postfix is installed as a component and will not validate the dependencies.
@@ -121,6 +124,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		Version:                       &parsedVersion,
 		NetworkPoliciesEnabled:        getNetworkPoliciesEnabled(),
 		AuthRegistrationEnabled:       getAuthRegistrationEnabled(),
+		ExpositionEnabled:             getExpositionEnabled(),
 		DisablePostfixDependencyCheck: getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
 	}, nil
@@ -287,6 +291,22 @@ func getAuthRegistrationEnabled() bool {
 	}
 
 	return authRegistrationEnabled
+}
+
+func getExpositionEnabled() bool {
+	expositionEnabledStr, found := os.LookupEnv(envVarExpositionEnabled)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Disabling exposition by default", envVarExpositionEnabled))
+		return false
+	}
+
+	expositionEnabled, err := strconv.ParseBool(expositionEnabledStr)
+	if err != nil {
+		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarExpositionEnabled, err), "Disabling exposition by default")
+		return false
+	}
+
+	return expositionEnabled
 }
 
 func getDisablePostfixDependencyCheck() bool {
