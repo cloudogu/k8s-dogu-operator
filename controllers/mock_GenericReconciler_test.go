@@ -6,8 +6,6 @@ import (
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
-	controllerruntime "sigs.k8s.io/controller-runtime"
-
 	reconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -82,7 +80,7 @@ func (_c *MockGenericReconciler_Reconcile_Call) RunAndReturn(run func(context.Co
 }
 
 // setupWithManager provides a mock function with given fields: mgr
-func (_m *MockGenericReconciler) setupWithManager(mgr controllerruntime.Manager) error {
+func (_m *MockGenericReconciler) setupWithManager(mgr ctrlManager) error {
 	ret := _m.Called(mgr)
 
 	if len(ret) == 0 {
@@ -90,7 +88,7 @@ func (_m *MockGenericReconciler) setupWithManager(mgr controllerruntime.Manager)
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(controllerruntime.Manager) error); ok {
+	if rf, ok := ret.Get(0).(func(ctrlManager) error); ok {
 		r0 = rf(mgr)
 	} else {
 		r0 = ret.Error(0)
@@ -105,14 +103,14 @@ type MockGenericReconciler_setupWithManager_Call struct {
 }
 
 // setupWithManager is a helper method to define mock.On call
-//   - mgr controllerruntime.Manager
+//   - mgr ctrlManager
 func (_e *MockGenericReconciler_Expecter) setupWithManager(mgr interface{}) *MockGenericReconciler_setupWithManager_Call {
 	return &MockGenericReconciler_setupWithManager_Call{Call: _e.mock.On("setupWithManager", mgr)}
 }
 
-func (_c *MockGenericReconciler_setupWithManager_Call) Run(run func(mgr controllerruntime.Manager)) *MockGenericReconciler_setupWithManager_Call {
+func (_c *MockGenericReconciler_setupWithManager_Call) Run(run func(mgr ctrlManager)) *MockGenericReconciler_setupWithManager_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(controllerruntime.Manager))
+		run(args[0].(ctrlManager))
 	})
 	return _c
 }
@@ -122,7 +120,7 @@ func (_c *MockGenericReconciler_setupWithManager_Call) Return(_a0 error) *MockGe
 	return _c
 }
 
-func (_c *MockGenericReconciler_setupWithManager_Call) RunAndReturn(run func(controllerruntime.Manager) error) *MockGenericReconciler_setupWithManager_Call {
+func (_c *MockGenericReconciler_setupWithManager_Call) RunAndReturn(run func(ctrlManager) error) *MockGenericReconciler_setupWithManager_Call {
 	_c.Call.Return(run)
 	return _c
 }
