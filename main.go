@@ -40,6 +40,7 @@ import (
 	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
+	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 )
 
@@ -84,6 +85,8 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewDoguRestartInterface, fx.As(new(doguClient.DoguRestartInterface))),
 			fx.Annotate(initfx.NewAuthRegistrationClientSet, fx.As(new(authRegClientV1.ApiV1Interface))),
 			fx.Annotate(initfx.NewAuthRegistrationInterface, fx.As(new(authRegClientV1.AuthRegistrationInterface))),
+			fx.Annotate(initfx.NewExpositionClientSet, fx.As(new(expClientV1.ApiV1Interface))),
+			fx.Annotate(initfx.NewExpositionInterface, fx.As(new(expClientV1.ExpositionInterface))),
 			fx.Annotate(health.NewShutdownHandler, fx.As(new(health.HealthShutdownHandler))),
 
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),

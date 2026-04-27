@@ -6,6 +6,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"go.uber.org/fx"
@@ -131,6 +132,18 @@ type authRegistrationClient interface {
 //goland:noinspection GoUnusedType
 type authRegistrationInterface interface {
 	authRegClientV1.AuthRegistrationInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type expositionClient interface {
+	expClientV1.ApiV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type expositionInterface interface {
+	expClientV1.ExpositionInterface
 }
 
 //nolint:unused

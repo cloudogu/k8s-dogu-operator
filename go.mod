@@ -9,6 +9,7 @@ require (
 	github.com/cloudogu/k8s-apply-lib v0.5.0
 	github.com/cloudogu/k8s-auth-registration-lib v0.1.0
 	github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0
+	github.com/cloudogu/k8s-exposition-lib v1.0.0
 	github.com/cloudogu/k8s-host-change v0.8.0
 	github.com/cloudogu/k8s-registry-lib v0.6.0
 	github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1
@@ -27,9 +28,11 @@ require (
 	k8s.io/client-go v0.35.1
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 	sigs.k8s.io/cluster-api v1.12.3
-	sigs.k8s.io/controller-runtime v0.23.1
+	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/yaml v1.6.0
 )
+
+replace github.com/cloudogu/k8s-exposition-lib => /home/bernst/projects/k8s-exposition-lib
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
