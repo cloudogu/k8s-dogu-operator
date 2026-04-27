@@ -68,3 +68,8 @@ type authRegistrationManager interface {
 	// RemoveAuthRegistration removes the AuthRegistration belonging to the given dogu.
 	RemoveAuthRegistration(ctx context.Context, doguName cescommons.SimpleName) error
 }
+
+type expositionManager interface {
+	EnsureExposition(ctx context.Context, doguResource *v2.Dogu) error
+	RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
@@ -139,6 +140,7 @@ func options() []fx.Option {
 			fx.Annotate(serviceaccount.NewCreator, fx.As(new(serviceaccount.ServiceAccountCreator))),
 			fx.Annotate(serviceaccount.NewRemover, fx.As(new(serviceaccount.ServiceAccountRemover))),
 			fx.Annotate(authregistration.NewManager, fx.As(new(authregistration.Manager))),
+			fx.Annotate(exposition.NewManager, fx.As(new(exposition.Manager))),
 			fx.Annotate(dependency.NewCompositeDependencyValidator, fx.As(new(dependency.Validator))),
 			fx.Annotate(security.NewValidator, fx.As(new(security.Validator))),
 			fx.Annotate(additionalMount.NewValidator, fx.As(new(additionalMount.Validator))),
@@ -167,6 +169,7 @@ func options() []fx.Option {
 			// delete steps
 			deletion.NewStatusStep,
 			deletion.NewAuthRegistrationRemoverStep,
+			deletion.NewExpositionRemoverStep,
 			deletion.NewServiceAccountRemoverStep,
 			deletion.NewDeleteOutOfHealthConfigMapStep,
 			fx.Annotate(deletion.NewRemoveDoguConfigStep, fx.ParamTags(`name:"sensitiveDoguConfig"`), fx.As(new(deletion.RemoveSensitiveDoguConfigStep))),
@@ -212,6 +215,7 @@ func options() []fx.Option {
 			install.NewAuthRegistrationStep,
 			install.NewServiceAccountStep,
 			install.NewServiceStep,
+			install.NewExpositionStep,
 			install.NewCreateExecPodStep,
 			install.NewCustomK8sResourceStep,
 			install.NewCreateVolumeStep,

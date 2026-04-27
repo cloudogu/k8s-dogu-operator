@@ -107,6 +107,7 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 	t.Run("should successfully create dogu delete use case with steps in correct order", func(t *testing.T) {
 		statusStep := &deletion.StatusStep{}
 		authRegistrationRemoverStep := &deletion.AuthRegistrationRemoverStep{}
+		expositionRemoverStep := &deletion.ExpositionRemoverStep{}
 		serviceAccountRemoverStep := &deletion.ServiceAccountRemoverStep{}
 		deleteOutOfHealthConfigMapStep := &deletion.DeleteOutOfHealthConfigMapStep{}
 		removeSensitiveDoguConfigStep := deletion.NewRemoveDoguConfigStep(nil)
@@ -115,6 +116,7 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 		got := NewDoguDeleteUseCase(
 			statusStep,
 			authRegistrationRemoverStep,
+			expositionRemoverStep,
 			serviceAccountRemoverStep,
 			deleteOutOfHealthConfigMapStep,
 			removeSensitiveDoguConfigStep,
@@ -124,6 +126,7 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 		wantTypes := []string{
 			"*deletion.StatusStep",
 			"*deletion.AuthRegistrationRemoverStep",
+			"*deletion.ExpositionRemoverStep",
 			"*deletion.ServiceAccountRemoverStep",
 			"*deletion.DeleteOutOfHealthConfigMapStep",
 			"*deletion.removeDoguConfigStep",
@@ -158,6 +161,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			&install.AuthRegistrationStep{},
 			&install.ServiceAccountStep{},
 			&install.ServiceStep{},
+			&install.ExpositionStep{},
 			&install.CreateExecPodStep{},
 			&install.CustomK8sResourceStep{},
 			&install.CreateVolumeStep{},
@@ -201,6 +205,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*install.AuthRegistrationStep",
 			"*install.ServiceAccountStep",
 			"*install.ServiceStep",
+			"*install.ExpositionStep",
 			"*install.CreateExecPodStep",
 			"*install.CustomK8sResourceStep",
 			"*install.CreateVolumeStep",
