@@ -28,6 +28,8 @@ github.com/cloudogu/k8s-auth-registration-lib v0.1.0 h1:Xq0wdsDGJoGkqchqDlwEzfOp
 github.com/cloudogu/k8s-auth-registration-lib v0.1.0/go.mod h1:PltBfG8QfrZNcayG33azghsq3O0anl4oJH2mWnx2oo8=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0 h1:As1MZ1adsFPZdjETA16JYEMD7l7idMYe+GIPIRNfiCc=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0/go.mod h1:IgA9mxjv/dKkLJ4e7n7+AyFbHvtO5sjxpZKN3GEoX44=
+github.com/cloudogu/k8s-exposition-lib v1.0.0 h1:WKL8oXt3N9CVH3WNuLUbbkmBAUjs1CcEvOoUnlnFtAo=
+github.com/cloudogu/k8s-exposition-lib v1.0.0/go.mod h1:psu5GdaD2wjUGVY9njtfmUjnxi4QX4Ks4txS8pGQhgY=
 github.com/cloudogu/k8s-host-change v0.8.0 h1:a1Xil1I1wJ5yDX6flLSDwHeIKCcP3WvlIL4mo7nTIYg=
 github.com/cloudogu/k8s-host-change v0.8.0/go.mod h1:2/mcqJkWBfrqTgWA70Bca+hL9ZtrIeyrUVsl8STD7Pg=
 github.com/cloudogu/k8s-registry-lib v0.6.0 h1:+3gQoP2CVLuhTqRen49rvN0a0Jpa1qJ1cSZqu+J64CY=
