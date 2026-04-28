@@ -21,6 +21,9 @@ eine Umgebungsvariable gekennzeichnet. Wenn das `Dockerfile` nur einen Port zur 
 in der Umgebungsvariable anzugeben. Zum Beispiel, wir betrachten die exponierten Ports `8080,8081` und wollen den Port `8081` als
 Webapp markieren. Dann müssen wir die Umgebungsvariable `SERVICE_8081_TAGS=webapp` anstelle von `SERVICE_TAGS=webapp` setzen.
 
+Wenn port-spezifische Webapp-Tags vorhanden sind, haben diese Vorrang vor dem globalen `SERVICE_TAGS=webapp`. Dadurch
+werden Nicht-HTTP-Ports bei Dogus mit mehreren Ports nicht fälschlich als Webapps behandelt.
+
 **Beispiel für eine einfache Webapp**
 
 Wir betrachten das folgende Setup:

@@ -47,7 +47,7 @@ func buildHTTPEntry(serviceName string, route serviceaccess.Route) (expv1.HTTPEn
 		entry.Rewrite = &expv1.Rewrite{
 			Regex: &expv1.RegexRewrite{
 				Pattern:     rewrite.Pattern,
-				Replacement: rewrite.Replacement,
+				Replacement: rewrite.Rewrite,
 			},
 		}
 	}
@@ -55,17 +55,12 @@ func buildHTTPEntry(serviceName string, route serviceaccess.Route) (expv1.HTTPEn
 	return entry, nil
 }
 
-type RouteRewrite struct {
-	Pattern     string
-	Replacement string
-}
-
 type serviceRewrite struct {
 	Pattern string `json:"pattern"`
 	Rewrite string `json:"rewrite"`
 }
 
-func getRewriteConfig(route serviceaccess.Route) (string, *RouteRewrite, error) {
+func getRewriteConfig(route serviceaccess.Route) (string, *serviceRewrite, error) {
 	// An explicit rewrite takes precedence over the pass/location fallback.
 	if route.Rewrite != "" {
 		return parseRewrite(route.Rewrite)
@@ -79,13 +74,13 @@ func getRewriteConfig(route serviceaccess.Route) (string, *RouteRewrite, error) 
 	}
 
 	// Otherwise rewrite requests from the exposed location to the target pass path.
-	return route.Location, &RouteRewrite{
-		Pattern:     "^" + regexp.QuoteMeta(route.Location) + "/?(.*)$",
-		Replacement: route.Pass + "$1",
+	return route.Location, &serviceRewrite{
+		Pattern: "^" + regexp.QuoteMeta(route.Location) + "/?(.*)$",
+		Rewrite: route.Pass + "$1",
 	}, nil
 }
 
-func parseRewrite(rawRewrite string) (string, *RouteRewrite, error) {
+func parseRewrite(rawRewrite string) (string, *serviceRewrite, error) {
 	rewrite := serviceRewrite{}
 	if err := json.Unmarshal([]byte(strings.Trim(rawRewrite, "'")), &rewrite); err != nil {
 		return "", nil, fmt.Errorf("failed to parse rewrite config: %w", err)
@@ -98,9 +93,9 @@ func parseRewrite(rawRewrite string) (string, *RouteRewrite, error) {
 		replacementPrefix += "/"
 	}
 
-	return rewritePath, &RouteRewrite{
-		Pattern:     "^" + regexp.QuoteMeta(rewritePath) + "(/|$)(.*)",
-		Replacement: replacementPrefix + "$2",
+	return rewritePath, &serviceRewrite{
+		Pattern: "^" + regexp.QuoteMeta(rewritePath) + "(/|$)(.*)",
+		Rewrite: replacementPrefix + "$2",
 	}, nil
 }
 

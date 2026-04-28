@@ -18,33 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func newNormalizedRoutes() []serviceaccess.Route {
-	return []serviceaccess.Route{
-		{
-			Name:     "admin",
-			Port:     80,
-			Location: "/admin",
-			Pass:     "/admin",
-		},
-		{
-			Name:     "admin-api",
-			Port:     80,
-			Location: "/api",
-			Pass:     "/admin/api/v2/",
-		},
-	}
-}
-
-func newExposedPorts() []serviceaccess.ExposedPort {
-	return []serviceaccess.ExposedPort{
-		{
-			Protocol:   "tcp",
-			Port:       2222,
-			TargetPort: 32222,
-		},
-	}
-}
-
 func TestNewManager(t *testing.T) {
 	manager := NewManager(nil, nil, nil)
 
@@ -373,6 +346,25 @@ func TestExpositionManager_RemoveExposition(t *testing.T) {
 
 func TestCreateExpositionName(t *testing.T) {
 	assert.Equal(t, "redmine", "redmine")
+}
+
+// ++++++++++ helper functions +++++++++++
+
+func newNormalizedRoutes() []serviceaccess.Route {
+	return []serviceaccess.Route{
+		{
+			Name:     "admin",
+			Port:     80,
+			Location: "/admin",
+			Pass:     "/admin",
+		},
+		{
+			Name:     "admin-api",
+			Port:     80,
+			Location: "/api",
+			Pass:     "/admin/api/v2/",
+		},
+	}
 }
 
 func newDoguResource() *doguv2.Dogu {
