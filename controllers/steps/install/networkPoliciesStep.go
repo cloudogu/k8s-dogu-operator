@@ -6,6 +6,8 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 
@@ -17,13 +19,15 @@ import (
 type NetworkPoliciesStep struct {
 	netPolUpserter   netPolUpserter
 	localDoguFetcher localDoguFetcher
+	imageRegistry    imageRegistry
 	serviceInterface serviceInterface
 }
 
-func NewNetworkPoliciesStep(upserter resource.ResourceUpserter, fetcher cesregistry.LocalDoguFetcher, serviceInterface v1.ServiceInterface) *NetworkPoliciesStep {
+func NewNetworkPoliciesStep(upserter resource.ResourceUpserter, fetcher cesregistry.LocalDoguFetcher, imageRegistry imageregistry.ImageRegistry, serviceInterface v1.ServiceInterface) *NetworkPoliciesStep {
 	return &NetworkPoliciesStep{
 		netPolUpserter:   upserter,
 		localDoguFetcher: fetcher,
+		imageRegistry:    imageRegistry,
 		serviceInterface: serviceInterface,
 	}
 }
@@ -39,7 +43,17 @@ func (nps *NetworkPoliciesStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 		return steps.RequeueWithError(fmt.Errorf("failed to get dogu service for %q: %w", doguResource.Name, err))
 	}
 
-	err = nps.netPolUpserter.UpsertDoguNetworkPolicies(ctx, doguResource, dogu, doguService)
+	imageConfig, err := nps.imageRegistry.PullImageConfig(ctx, dogu.Image+":"+dogu.Version)
+	if err != nil {
+		return steps.RequeueWithError(fmt.Errorf("failed to pull dogu image config for %q: %w", doguResource.Name, err))
+	}
+
+	routes, err := exposition.CollectRoutes(doguService, &imageConfig.Config)
+	if err != nil {
+		return steps.RequeueWithError(fmt.Errorf("failed to collect dogu routes for %q: %w", doguResource.Name, err))
+	}
+
+	err = nps.netPolUpserter.UpsertDoguNetworkPolicies(ctx, doguResource, dogu, len(routes) > 0)
 	if err != nil {
 		return steps.RequeueWithError(err)
 	}
