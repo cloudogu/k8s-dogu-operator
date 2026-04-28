@@ -21,6 +21,9 @@ an environment variable. If the `Dockerfile` provides only one port, you have to
 in the environment variable. For example, we consider the exposed ports `8080,8081` and want to mark port `8081` as a
 webapp. Then we need to set the environment variable `SERVICE_8081_TAGS=webapp` instead of `SERVICE_TAGS=webapp`.
 
+If port-specific webapp tags are present, they take precedence over the global `SERVICE_TAGS=webapp`. This prevents
+non-HTTP ports of multi-port dogus from being treated as webapps.
+
 **Example of a simple webapp**.
 
 We consider the following setup:

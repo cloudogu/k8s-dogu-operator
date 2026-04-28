@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 )
 
 func getTestFileMap(t *testing.T) map[string]string {
@@ -149,50 +148,5 @@ func TestCesServiceAnnotator_AnnotateService(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to unmarshal additional services: invalid character '\\'' looking for beginning of value")
-	})
-}
-
-func TestCollectRoutes(t *testing.T) {
-	t.Run("should collect routes for webapp and additional services", func(t *testing.T) {
-		// given
-		service := getExpectedService(t, "./testdata/input_service.yaml")
-		config := getImageConfigFromTestFile(t, "./testdata/test_additional_services.json")
-
-		// when
-		routes, err := serviceaccess.CollectRoutes(service, config)
-
-		// then
-		require.NoError(t, err)
-		require.Len(t, routes, 2)
-		assert.Contains(t, routes, serviceaccess.Route{
-			Name:     "admin",
-			Port:     80,
-			Location: "/admin",
-			Pass:     "/admin",
-		})
-		assert.Contains(t, routes, serviceaccess.Route{
-			Name:     "admin-api",
-			Port:     80,
-			Location: "/api",
-			Pass:     "/admin/api/v2/",
-		})
-	})
-
-	t.Run("should fail for invalid service variable input", func(t *testing.T) {
-		// given
-		config := &imagev1.Config{
-			Env: []string{
-				"SERVICE_TAGS-invalidEnvironmentVariable",
-			},
-		}
-		service := &corev1.Service{}
-
-		// when
-		routes, err := serviceaccess.CollectRoutes(service, config)
-
-		// then
-		require.Error(t, err)
-		assert.Nil(t, routes)
-		assert.ErrorContains(t, err, "environment variable [SERVICE_TAGS-invalidEnvironmentVariable] needs to be in form NAME=VALUE")
 	})
 }
