@@ -175,6 +175,9 @@ func TestOperatorConfig_GetRemoteCredentials(t *testing.T) {
 func TestGetStage(t *testing.T) {
 
 	t.Run("Error on missing stage env var", func(t *testing.T) {
+		t.Setenv(StageEnvironmentVariable, "")
+		require.NoError(t, os.Unsetenv(StageEnvironmentVariable))
+
 		// when
 		stage, err := GetStage()
 
