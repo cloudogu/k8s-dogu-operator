@@ -56,8 +56,8 @@ func appendServiceAnnotations(service *corev1.Service, routes []exposition.Route
 		cesServices = append(cesServices, cesService{
 			Name:     route.Name,
 			Port:     route.Port,
-			Location: route.Path,
-			Pass:     route.TargetPath,
+			Location: route.Location,
+			Pass:     route.Pass,
 			Rewrite:  route.Rewrite,
 		})
 	}

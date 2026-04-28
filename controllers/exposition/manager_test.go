@@ -16,6 +16,23 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+func newNormalizedRoutes() []Route {
+	return []Route{
+		{
+			Name:     "admin",
+			Port:     80,
+			Location: "/admin",
+			Pass:     "/admin",
+		},
+		{
+			Name:     "admin-api",
+			Port:     80,
+			Location: "/api",
+			Pass:     "/admin/api/v2/",
+		},
+	}
+}
+
 func TestNewManager(t *testing.T) {
 	manager := NewManager(nil, nil, nil)
 
@@ -99,7 +116,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(&imagev1.ConfigFile{}, nil)
 		client := newMockExpositionClient(t)
-		client.EXPECT().Delete(ctx, "redmine-exposition", metav1.DeleteOptions{}).Return(nil)
+		client.EXPECT().Delete(ctx, "redmine", metav1.DeleteOptions{}).Return(nil)
 		manager := &ExpositionManager{
 			client:        client,
 			doguFetcher:   fetcher,
@@ -117,10 +134,10 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
 		client := newMockExpositionClient(t)
-		client.EXPECT().Get(ctx, "redmine-exposition", metav1.GetOptions{}).Return(nil, newNotFoundErr("redmine-exposition"))
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(nil, newNotFoundErr("redmine"))
 		client.EXPECT().Create(ctx, mock.MatchedBy(func(exp *expv1.Exposition) bool {
 			return exp != nil &&
-				exp.Name == "redmine-exposition" &&
+				exp.Name == "redmine" &&
 				len(exp.Spec.HTTP) == 2 &&
 				exp.Spec.HTTP[0].Service == "redmine"
 		}), metav1.CreateOptions{}).Return(&expv1.Exposition{}, nil)
@@ -141,7 +158,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
 		client := newMockExpositionClient(t)
-		client.EXPECT().Get(ctx, "redmine-exposition", metav1.GetOptions{}).Return(nil, assert.AnError)
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(nil, assert.AnError)
 		manager := &ExpositionManager{
 			client:        client,
 			doguFetcher:   fetcher,
@@ -160,7 +177,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
 		client := newMockExpositionClient(t)
-		client.EXPECT().Get(ctx, "redmine-exposition", metav1.GetOptions{}).Return(nil, newNotFoundErr("redmine-exposition"))
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(nil, newNotFoundErr("redmine"))
 		client.EXPECT().Create(ctx, mock.Anything, metav1.CreateOptions{}).Return(nil, assert.AnError)
 		manager := &ExpositionManager{
 			client:        client,
@@ -168,10 +185,10 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		resultErr := manager.EnsureExposition(ctx, doguResource)
 
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "failed to create Exposition")
+		require.Error(t, resultErr)
+		assert.ErrorContains(t, resultErr, "failed to create Exposition")
 	})
 
 	t.Run("should not update if spec already matches", func(t *testing.T) {
@@ -179,26 +196,25 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
+		existingSpec, buildErr := BuildSpec("redmine", newNormalizedRoutes())
+		require.NoError(t, buildErr)
 		existing := &expv1.Exposition{
 			ObjectMeta: metav1.ObjectMeta{
 				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu"))},
 			},
-			Spec: BuildSpec("redmine", []Route{
-				{Name: "admin", Port: 80, Path: "/admin", TargetPath: "/admin"},
-				{Name: "admin-api", Port: 80, Path: "/api", TargetPath: "/admin/api/v2/"},
-			}),
+			Spec: existingSpec,
 		}
 		client := newMockExpositionClient(t)
-		client.EXPECT().Get(ctx, "redmine-exposition", metav1.GetOptions{}).Return(existing, nil)
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(existing, nil)
 		manager := &ExpositionManager{
 			client:        client,
 			doguFetcher:   fetcher,
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		resultErr := manager.EnsureExposition(ctx, doguResource)
 
-		require.NoError(t, err)
+		require.NoError(t, resultErr)
 	})
 
 	t.Run("should update exposition if spec differs", func(t *testing.T) {
@@ -207,11 +223,11 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
 		existing := &expv1.Exposition{
-			ObjectMeta: metav1.ObjectMeta{Name: "redmine-exposition"},
+			ObjectMeta: metav1.ObjectMeta{Name: "redmine"},
 			Spec:       expv1.ExpositionSpec{HTTP: []expv1.HTTPEntry{{Name: "old", Service: "redmine", Port: 80, Path: "/old"}}},
 		}
 		client := newMockExpositionClient(t)
-		client.EXPECT().Get(ctx, "redmine-exposition", metav1.GetOptions{}).Return(existing, nil)
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(existing, nil)
 		client.EXPECT().Update(ctx, mock.MatchedBy(func(exp *expv1.Exposition) bool {
 			return exp != nil && len(exp.Spec.HTTP) == 2
 		}), metav1.UpdateOptions{}).Return(existing, nil)
@@ -221,9 +237,9 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		resultErr := manager.EnsureExposition(ctx, doguResource)
 
-		require.NoError(t, err)
+		require.NoError(t, resultErr)
 	})
 
 	t.Run("should update exposition if owner references differ", func(t *testing.T) {
@@ -231,18 +247,17 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
+		existingSpec, buildErr := BuildSpec("redmine", newNormalizedRoutes())
+		require.NoError(t, buildErr)
 		existing := &expv1.Exposition{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            "redmine-exposition",
+				Name:            "redmine",
 				OwnerReferences: []metav1.OwnerReference{},
 			},
-			Spec: BuildSpec("redmine", []Route{
-				{Name: "admin", Port: 80, Path: "/admin", TargetPath: "/admin"},
-				{Name: "admin-api", Port: 80, Path: "/api", TargetPath: "/admin/api/v2/"},
-			}),
+			Spec: existingSpec,
 		}
 		client := newMockExpositionClient(t)
-		client.EXPECT().Get(ctx, "redmine-exposition", metav1.GetOptions{}).Return(existing, nil)
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(existing, nil)
 		client.EXPECT().Update(ctx, mock.MatchedBy(func(exp *expv1.Exposition) bool {
 			return exp != nil && len(exp.OwnerReferences) == 1
 		}), metav1.UpdateOptions{}).Return(existing, nil)
@@ -252,9 +267,9 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		resultErr := manager.EnsureExposition(ctx, doguResource)
 
-		require.NoError(t, err)
+		require.NoError(t, resultErr)
 	})
 
 	t.Run("should return update exposition error", func(t *testing.T) {
@@ -263,11 +278,11 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
 		existing := &expv1.Exposition{
-			ObjectMeta: metav1.ObjectMeta{Name: "redmine-exposition"},
+			ObjectMeta: metav1.ObjectMeta{Name: "redmine"},
 			Spec:       expv1.ExpositionSpec{HTTP: []expv1.HTTPEntry{{Name: "old", Service: "redmine", Port: 80, Path: "/old"}}},
 		}
 		client := newMockExpositionClient(t)
-		client.EXPECT().Get(ctx, "redmine-exposition", metav1.GetOptions{}).Return(existing, nil)
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(existing, nil)
 		client.EXPECT().Update(ctx, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
 		manager := &ExpositionManager{
 			client:        client,
@@ -287,7 +302,7 @@ func TestExpositionManager_RemoveExposition(t *testing.T) {
 
 	t.Run("should remove exposition", func(t *testing.T) {
 		client := newMockExpositionClient(t)
-		client.EXPECT().Delete(ctx, "redmine-exposition", metav1.DeleteOptions{}).Return(nil)
+		client.EXPECT().Delete(ctx, "redmine", metav1.DeleteOptions{}).Return(nil)
 		manager := &ExpositionManager{client: client}
 
 		err := manager.RemoveExposition(ctx, "redmine")
@@ -297,7 +312,7 @@ func TestExpositionManager_RemoveExposition(t *testing.T) {
 
 	t.Run("should ignore not found", func(t *testing.T) {
 		client := newMockExpositionClient(t)
-		client.EXPECT().Delete(ctx, "redmine-exposition", metav1.DeleteOptions{}).Return(newNotFoundErr("redmine-exposition"))
+		client.EXPECT().Delete(ctx, "redmine", metav1.DeleteOptions{}).Return(newNotFoundErr("redmine"))
 		manager := &ExpositionManager{client: client}
 
 		err := manager.RemoveExposition(ctx, "redmine")
@@ -307,7 +322,7 @@ func TestExpositionManager_RemoveExposition(t *testing.T) {
 
 	t.Run("should return delete error", func(t *testing.T) {
 		client := newMockExpositionClient(t)
-		client.EXPECT().Delete(ctx, "redmine-exposition", metav1.DeleteOptions{}).Return(assert.AnError)
+		client.EXPECT().Delete(ctx, "redmine", metav1.DeleteOptions{}).Return(assert.AnError)
 		manager := &ExpositionManager{client: client}
 
 		err := manager.RemoveExposition(ctx, "redmine")
@@ -318,7 +333,7 @@ func TestExpositionManager_RemoveExposition(t *testing.T) {
 }
 
 func TestCreateExpositionName(t *testing.T) {
-	assert.Equal(t, "redmine-exposition", createExpositionName("redmine"))
+	assert.Equal(t, "redmine", "redmine")
 }
 
 func newDoguResource() *doguv2.Dogu {

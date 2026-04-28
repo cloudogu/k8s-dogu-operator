@@ -165,16 +165,16 @@ func TestCollectRoutes(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, routes, 2)
 		assert.Contains(t, routes, exposition.Route{
-			Name:       "admin",
-			Port:       80,
-			Path:       "/admin",
-			TargetPath: "/admin",
+			Name:     "admin",
+			Port:     80,
+			Location: "/admin",
+			Pass:     "/admin",
 		})
 		assert.Contains(t, routes, exposition.Route{
-			Name:       "admin-api",
-			Port:       80,
-			Path:       "/api",
-			TargetPath: "/admin/api/v2/",
+			Name:     "admin-api",
+			Port:     80,
+			Location: "/api",
+			Pass:     "/admin/api/v2/",
 		})
 	})
 

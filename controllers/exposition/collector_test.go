@@ -31,21 +31,21 @@ func TestCollectRoutes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []Route{
 			{
-				Name:       "admin",
-				Port:       80,
-				Path:       "/admin",
-				TargetPath: "/admin",
+				Name:     "admin",
+				Port:     80,
+				Location: "/admin",
+				Pass:     "/admin",
 			},
 			{
-				Name:       "admin-api",
-				Port:       80,
-				Path:       "/api",
-				TargetPath: "/admin/api/v2/",
+				Name:     "admin-api",
+				Port:     80,
+				Location: "/api",
+				Pass:     "/admin/api/v2/",
 			},
 		}, routes)
 	})
 
-	t.Run("should apply port specific overrides and rewrite", func(t *testing.T) {
+	t.Run("should apply port specific overrides", func(t *testing.T) {
 		service := newTestService("cas", 8080)
 		config := &imagev1.Config{
 			Env: []string{
@@ -53,7 +53,6 @@ func TestCollectRoutes(t *testing.T) {
 				"SERVICE_8080_NAME=console",
 				"SERVICE_8080_LOCATION=ui",
 				"SERVICE_8080_PASS=internal/ui/",
-				"SERVICE_8080_REWRITE=/",
 			},
 			ExposedPorts: map[string]struct{}{
 				"8080/tcp": {},
@@ -66,11 +65,62 @@ func TestCollectRoutes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []Route{
 			{
-				Name:       "console",
-				Port:       8080,
-				Path:       "/ui",
-				TargetPath: "/internal/ui/",
-				Rewrite:    "/",
+				Name:     "console",
+				Port:     8080,
+				Location: "/ui",
+				Pass:     "/internal/ui/",
+			},
+		}, routes)
+	})
+
+	t.Run("should collect legacy rewrite config", func(t *testing.T) {
+		service := newTestService("cas", 80)
+		config := &imagev1.Config{
+			Env: []string{
+				"SERVICE_TAGS=webapp",
+				"SERVICE_REWRITE='{\"pattern\":\"portainer\",\"rewrite\":\"\"}'",
+			},
+			ExposedPorts: map[string]struct{}{
+				"80/tcp": {},
+			},
+		}
+
+		routes, err := CollectRoutes(service, config)
+
+		require.NoError(t, err)
+		assert.Equal(t, []Route{
+			{
+				Name:     "cas",
+				Port:     80,
+				Location: "/cas",
+				Pass:     "/cas",
+				Rewrite:  `'{"pattern":"portainer","rewrite":""}'`,
+			},
+		}, routes)
+	})
+
+	t.Run("should collect pass differing from location unchanged", func(t *testing.T) {
+		service := newTestService("cas", 80)
+		config := &imagev1.Config{
+			Env: []string{
+				"SERVICE_TAGS=webapp",
+				"SERVICE_LOCATION=api",
+				"SERVICE_PASS=internal/api/",
+			},
+			ExposedPorts: map[string]struct{}{
+				"80/tcp": {},
+			},
+		}
+
+		routes, err := CollectRoutes(service, config)
+
+		require.NoError(t, err)
+		assert.Equal(t, []Route{
+			{
+				Name:     "cas",
+				Port:     80,
+				Location: "/api",
+				Pass:     "/internal/api/",
 			},
 		}, routes)
 	})
@@ -91,10 +141,10 @@ func TestCollectRoutes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []Route{
 			{
-				Name:       "cas",
-				Port:       80,
-				Path:       "/cas",
-				TargetPath: "/cas",
+				Name:     "cas",
+				Port:     80,
+				Location: "/cas",
+				Pass:     "/cas",
 			},
 		}, routes)
 	})
@@ -117,10 +167,10 @@ func TestCollectRoutes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []Route{
 			{
-				Name:       "cas",
-				Port:       80,
-				Path:       "/ui",
-				TargetPath: "/internal/ui",
+				Name:     "cas",
+				Port:     80,
+				Location: "/ui",
+				Pass:     "/internal/ui",
 			},
 		}, routes)
 	})
@@ -202,4 +252,29 @@ func newTestService(name string, port int32) *corev1.Service {
 			},
 		},
 	}
+}
+
+func TestSplitImagePortConfig(t *testing.T) {
+	t.Run("should parse port without protocol", func(t *testing.T) {
+		port, protocol, err := SplitImagePortConfig("8080")
+
+		assert.NoError(t, err)
+		assert.Equal(t, int32(8080), port)
+		assert.Equal(t, "TCP", string(protocol))
+	})
+
+	t.Run("should parse port with protocol", func(t *testing.T) {
+		port, protocol, err := SplitImagePortConfig("53/udp")
+
+		assert.NoError(t, err)
+		assert.Equal(t, int32(53), port)
+		assert.Equal(t, "UDP", string(protocol))
+	})
+
+	t.Run("should fail for invalid port", func(t *testing.T) {
+		_, _, err := SplitImagePortConfig("http/tcp")
+
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "error parsing int")
+	})
 }
