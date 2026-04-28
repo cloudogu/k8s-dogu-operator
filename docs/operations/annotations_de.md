@@ -13,6 +13,9 @@ Jeder CES-Dienst definiert einen externen Dienst des Systems, der über den Webs
 für jedes Dogu generiert, das als Webapp markiert ist. Es ist auch möglich, das Verhalten der Dienste anzupassen, indem eine
 benutzerdefinierte URL angeben wird, über die der Dienst erreichbar ist.
 
+Diese Annotation wird nur erzeugt, wenn `EXPOSITION_ENABLED=false` ist. Wenn `EXPOSITION_ENABLED=true` ist, erstellt
+der Operator stattdessen `Exposition`-CRs anstelle der Legacy-Service-Annotationen.
+
 **Wie kennzeichne ich mein Dogu als Webapp?**
 
 Die Voraussetzung für Ihr Dogu ist, dass das `Dockerfile` mindestens einen Port zur Verfügung stellt. Das Dogu wird als Webapp über
@@ -101,3 +104,10 @@ anstelle von `my-dogu-name`, was der Name des Dogus ist. Akzeptierte Eigenschaft
 Neben dem Überschreiben des standardmäßigen CES-Dienstes ist es möglich, zusätzliche Dienste hinzuzufügen. Diese werden mit der
 Umgebungsvariable `SERVICE_ADDITIONAL_SERVICES` definiert. Diese können `ces-service`-JSON-Objekte enthalten, die in der
 CES-service-Anmerkung übergeben werden.
+
+### k8s-dogu-operator.cloudogu.com/ces-exposed-ports
+
+Die Annotation `k8s-dogu-operator.cloudogu.com/ces-exposed-ports` enthält Legacy-Informationen zu Exposed Ports von Dogus.
+
+Diese Annotation wird nur erzeugt, wenn `EXPOSITION_ENABLED=false` ist. Wenn `EXPOSITION_ENABLED=true` ist, erstellt
+der Operator stattdessen `Exposition`-CRs anstelle der Legacy-Service-Annotationen.
