@@ -51,11 +51,13 @@ func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource 
 		return fmt.Errorf("failed to collect web routes: %w", err)
 	}
 
-	if len(routes) == 0 {
+	exposedPorts := serviceaccess.CollectExposedPorts(doguDescriptor)
+
+	if len(routes) == 0 && len(exposedPorts) == 0 {
 		return em.RemoveExposition(ctx, doguResource.GetSimpleDoguName())
 	}
 
-	spec, err := buildSpec(doguResource.Name, routes)
+	spec, err := buildSpec(doguResource.Name, routes, exposedPorts)
 	if err != nil {
 		return fmt.Errorf("failed to build Exposition spec: %w", err)
 	}
@@ -115,8 +117,8 @@ func (em *ExpositionManager) ensureExposition(ctx context.Context, desired *expv
 	return updated, nil
 }
 
-// buildSpec maps collected legacy routes to an Exposition HTTP spec for a given Kubernetes Service.
-func buildSpec(serviceName string, routes []serviceaccess.Route) (expv1.ExpositionSpec, error) {
+// buildSpec maps collected legacy routes and exposed ports to an Exposition spec.
+func buildSpec(serviceName string, routes []serviceaccess.Route, exposedPorts []serviceaccess.ExposedPort) (expv1.ExpositionSpec, error) {
 	httpEntries, err := buildHTTPEntries(serviceName, routes)
 	if err != nil {
 		return expv1.ExpositionSpec{}, err
@@ -124,6 +126,7 @@ func buildSpec(serviceName string, routes []serviceaccess.Route) (expv1.Expositi
 
 	return expv1.ExpositionSpec{
 		HTTP: httpEntries,
-		// TODO: Add TCP and UDP routes
+		TCP:  buildTCPEntries(serviceName, exposedPorts),
+		UDP:  buildUDPEntries(serviceName, exposedPorts),
 	}, nil
 }

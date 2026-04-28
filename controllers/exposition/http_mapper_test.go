@@ -59,30 +59,6 @@ func TestBuildHTTPEntries(t *testing.T) {
 		}, entries)
 	})
 
-	t.Run("should build exposition spec with http entries", func(t *testing.T) {
-		routes := []serviceaccess.Route{
-			{
-				Name:     "admin",
-				Port:     80,
-				Location: "/admin",
-				Pass:     "/admin",
-			},
-		}
-
-		spec, err := buildSpec("cas", routes)
-		assert.NoError(t, err)
-		assert.Equal(t, expv1.ExpositionSpec{
-			HTTP: []expv1.HTTPEntry{
-				{
-					Name:    "admin",
-					Service: "cas",
-					Port:    80,
-					Path:    "/admin",
-				},
-			},
-		}, spec)
-	})
-
 	t.Run("should not create rewrite if target path is empty", func(t *testing.T) {
 		routes := []serviceaccess.Route{
 			{

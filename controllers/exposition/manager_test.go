@@ -35,6 +35,16 @@ func newNormalizedRoutes() []serviceaccess.Route {
 	}
 }
 
+func newExposedPorts() []serviceaccess.ExposedPort {
+	return []serviceaccess.ExposedPort{
+		{
+			Protocol:   "tcp",
+			Port:       2222,
+			TargetPort: 32222,
+		},
+	}
+}
+
 func TestNewManager(t *testing.T) {
 	manager := NewManager(nil, nil, nil)
 
@@ -199,7 +209,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
-		existingSpec, buildErr := buildSpec("redmine", newNormalizedRoutes())
+		existingSpec, buildErr := buildSpec("redmine", newNormalizedRoutes(), nil)
 		require.NoError(t, buildErr)
 		existing := &expv1.Exposition{
 			ObjectMeta: metav1.ObjectMeta{
@@ -245,12 +255,38 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		require.NoError(t, resultErr)
 	})
 
+	t.Run("should create exposition if only exposed ports exist", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptorWithExposedPorts(), nil)
+		imageRegistry := newMockImageRegistry(t)
+		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(&imagev1.ConfigFile{}, nil)
+		client := newMockExpositionClient(t)
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(nil, newNotFoundErr("redmine"))
+		client.EXPECT().Create(ctx, mock.MatchedBy(func(exp *expv1.Exposition) bool {
+			return exp != nil &&
+				len(exp.Spec.HTTP) == 0 &&
+				len(exp.Spec.TCP) == 1 &&
+				len(exp.Spec.UDP) == 1 &&
+				exp.Spec.TCP[0].Port == 2222 &&
+				exp.Spec.UDP[0].Port == 2222
+		}), metav1.CreateOptions{}).Return(&expv1.Exposition{}, nil)
+		manager := &ExpositionManager{
+			client:        client,
+			doguFetcher:   fetcher,
+			imageRegistry: imageRegistry,
+		}
+
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
+
+		require.NoError(t, err)
+	})
+
 	t.Run("should update exposition if owner references differ", func(t *testing.T) {
 		fetcher := newMockLocalDoguFetcher(t)
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
-		existingSpec, buildErr := buildSpec("redmine", newNormalizedRoutes())
+		existingSpec, buildErr := buildSpec("redmine", newNormalizedRoutes(), nil)
 		require.NoError(t, buildErr)
 		existing := &expv1.Exposition{
 			ObjectMeta: metav1.ObjectMeta{
@@ -357,6 +393,21 @@ func newDoguDescriptor() *cesappcore.Dogu {
 		Name:    "official/redmine",
 		Image:   "cloudogu/redmine",
 		Version: "1.0.0",
+	}
+}
+
+func newDoguDescriptorWithExposedPorts() *cesappcore.Dogu {
+	return &cesappcore.Dogu{
+		Name:    "official/redmine",
+		Image:   "cloudogu/redmine",
+		Version: "1.0.0",
+		ExposedPorts: []cesappcore.ExposedPort{
+			{
+				Type:      "tcp",
+				Container: 2222,
+				Host:      32222,
+			},
+		},
 	}
 }
 
