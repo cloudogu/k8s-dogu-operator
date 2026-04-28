@@ -28,7 +28,7 @@ func buildHTTPEntries(serviceName string, routes []serviceaccess.Route) ([]expv1
 
 func buildHTTPEntry(serviceName string, route serviceaccess.Route) (expv1.HTTPEntry, error) {
 	entry := expv1.HTTPEntry{
-		Name:    route.Name,
+		Name:    fmt.Sprintf("%s-%d", route.Name, route.Port),
 		Service: serviceName,
 		Port:    route.Port,
 		Path:    route.Location,

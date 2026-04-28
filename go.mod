@@ -32,8 +32,6 @@ require (
 	sigs.k8s.io/yaml v1.6.0
 )
 
-replace github.com/cloudogu/k8s-exposition-lib => /home/bernst/projects/k8s-exposition-lib
-
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect

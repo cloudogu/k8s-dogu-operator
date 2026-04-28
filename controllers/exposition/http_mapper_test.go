@@ -23,7 +23,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []expv1.HTTPEntry{
 			{
-				Name:    "admin",
+				Name:    "admin-80",
 				Service: "cas",
 				Port:    80,
 				Path:    "/admin",
@@ -45,7 +45,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []expv1.HTTPEntry{
 			{
-				Name:    "admin-api",
+				Name:    "admin-api-80",
 				Service: "cas",
 				Port:    80,
 				Path:    "/api",
@@ -104,7 +104,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []expv1.HTTPEntry{
 			{
-				Name:    "admin",
+				Name:    "admin-80",
 				Service: "cas",
 				Port:    80,
 				Path:    "/portainer",
@@ -133,5 +133,39 @@ func TestBuildHTTPEntries(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, entries)
 		assert.ErrorContains(t, err, "failed to parse rewrite config")
+	})
+
+	t.Run("should create unique names for duplicate route names", func(t *testing.T) {
+		routes := []serviceaccess.Route{
+			{
+				Name:     "jenkins",
+				Port:     8080,
+				Location: "/jenkins",
+				Pass:     "/jenkins",
+			},
+			{
+				Name:     "jenkins",
+				Port:     50000,
+				Location: "/jenkins-agent",
+				Pass:     "/jenkins-agent",
+			},
+		}
+
+		entries, err := buildHTTPEntries("jenkins", routes)
+		assert.NoError(t, err)
+		assert.Equal(t, []expv1.HTTPEntry{
+			{
+				Name:    "jenkins-8080",
+				Service: "jenkins",
+				Port:    8080,
+				Path:    "/jenkins",
+			},
+			{
+				Name:    "jenkins-50000",
+				Service: "jenkins",
+				Port:    50000,
+				Path:    "/jenkins-agent",
+			},
+		}, entries)
 	})
 }
