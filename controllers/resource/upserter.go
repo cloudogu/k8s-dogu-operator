@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -142,7 +141,7 @@ func needsPVCs(dogu *core.Dogu) bool {
 }
 
 // UpsertDoguNetworkPolicies generates the network policies for a dogu
-func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, service *v1.Service) error {
+func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, hasIngress bool) error {
 	logger := log.FromContext(ctx)
 	if !u.networkPoliciesEnabled {
 		logger.Info("Do not create network policies as they are disabled by configuration; deleting previously applied network policies")
@@ -176,7 +175,7 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 		multiErr = errors.Join(multiErr, err)
 	}
 
-	if err := u.upsertServiceAnnotationNetworkPolicy(ctx, doguResource, dogu, service); err != nil {
+	if err := u.upsertIngressNetworkPolicy(ctx, doguResource, dogu, hasIngress); err != nil {
 		multiErr = errors.Join(multiErr, err)
 	}
 
@@ -240,8 +239,8 @@ func (u *upserter) deleteNonExistentDependencyPolicies(ctx context.Context, dogu
 	return multiErr
 }
 
-func (u *upserter) upsertServiceAnnotationNetworkPolicy(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, service *v1.Service) error {
-	if _, ok := service.Annotations[annotation.CesServicesAnnotation]; !ok {
+func (u *upserter) upsertIngressNetworkPolicy(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, hasIngress bool) error {
+	if !hasIngress {
 		return nil
 	}
 	dependencyNetworkPolicy, err := generateIngressNetPol(doguResource, dogu, u.scheme)
