@@ -30,7 +30,7 @@ func TestNewResourceGenerator(t *testing.T) {
 	securityGenMock := NewMockSecurityContextGenerator(t)
 
 	// when
-	generator := NewResourceGenerator(getTestScheme(), NewRequirementsGenerator(doguRepoMock), hostAliasGenMock, securityGenMock, testAdditionalImages)
+	generator := NewResourceGenerator(getTestScheme(), NewRequirementsGenerator(doguRepoMock), hostAliasGenMock, securityGenMock, testAdditionalImages, &config.OperatorConfig{})
 
 	// then
 	require.NotNil(t, generator)
@@ -402,6 +402,24 @@ func TestResourceGenerator_GetDoguService(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, readLdapDoguExpectedService(t), actualService)
+	})
+
+	t.Run("Return simple service without legacy annotations when exposition is enabled", func(t *testing.T) {
+		// given
+		ldapDoguResource := readLdapDoguResource(t)
+		ldapDogu := readLdapDogu(t)
+		imageConf := readLdapDoguImageConfig(t)
+		generator := resourceGenerator{
+			scheme:            getTestScheme(),
+			expositionEnabled: true,
+		}
+
+		// when
+		actualService, err := generator.CreateDoguService(ldapDoguResource, ldapDogu, imageConf)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, readLdapDoguExpectedServiceWithoutLegacyAnnotations(t), actualService)
 	})
 
 	t.Run("Return error when reference owner cannot be set", func(t *testing.T) {

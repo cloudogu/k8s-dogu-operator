@@ -51,6 +51,9 @@ var expectedDoguPVCWithCustomStorageClassBytes []byte
 //go:embed testdata/ldap_expectedService.yaml
 var expectedServiceBytes []byte
 
+//go:embed testdata/ldap_expectedService_withoutLegacyAnnotations.yaml
+var expectedServiceWithoutLegacyAnnotationsBytes []byte
+
 //go:embed testdata/cas-dogu.json
 var casBytes []byte
 
@@ -189,6 +192,18 @@ func readLdapDoguExpectedService(t *testing.T) *v1.Service {
 
 	data := &v1.Service{}
 	err := yaml.Unmarshal(expectedServiceBytes, data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return data
+}
+
+func readLdapDoguExpectedServiceWithoutLegacyAnnotations(t *testing.T) *v1.Service {
+	t.Helper()
+
+	data := &v1.Service{}
+	err := yaml.Unmarshal(expectedServiceWithoutLegacyAnnotationsBytes, data)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
