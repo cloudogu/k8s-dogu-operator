@@ -251,6 +251,42 @@ func TestCollectRoutes(t *testing.T) {
 	})
 }
 
+func TestGetDefaultPortFromService(t *testing.T) {
+	t.Run("should return zero if service has no ports", func(t *testing.T) {
+		service := &corev1.Service{}
+
+		port := getDefaultPortFromService(service)
+
+		assert.Equal(t, int32(0), port)
+	})
+}
+
+func TestIsServiceWebApp(t *testing.T) {
+	t.Run("should return false for tcp port without any webapp tag", func(t *testing.T) {
+		isWebApp := isServiceWebApp(8080, corev1.ProtocolTCP, map[string]string{})
+
+		assert.False(t, isWebApp)
+	})
+
+	t.Run("should return true for port specific webapp tag without global tag", func(t *testing.T) {
+		isWebApp := isServiceWebApp(8080, corev1.ProtocolTCP, map[string]string{
+			"8080_TAGS": "webapp",
+		})
+
+		assert.True(t, isWebApp)
+	})
+}
+
+func TestHasAnyPortSpecificWebappTag(t *testing.T) {
+	t.Run("should ignore non numeric port specific suffixes", func(t *testing.T) {
+		hasPortSpecificTag := hasAnyPortSpecificWebappTag(map[string]string{
+			"HTTP_TAGS": "webapp",
+		})
+
+		assert.False(t, hasPortSpecificTag)
+	})
+}
+
 func newTestService(name string, port int32) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
