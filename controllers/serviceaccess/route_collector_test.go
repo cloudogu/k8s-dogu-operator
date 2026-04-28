@@ -1,4 +1,4 @@
-package exposition
+package serviceaccess
 
 import (
 	"testing"
@@ -221,23 +221,6 @@ func TestCollectRoutes(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, routes)
 		assert.ErrorContains(t, err, "error parsing int")
-	})
-}
-
-func TestBuildServiceForRoutes(t *testing.T) {
-	t.Run("should skip invalid exposed ports", func(t *testing.T) {
-		service := buildServiceForRoutes(newDoguResource(), &imagev1.ConfigFile{
-			Config: imagev1.Config{
-				ExposedPorts: map[string]struct{}{
-					"80/tcp": {},
-					"tcp":    {},
-				},
-			},
-		})
-
-		require.Len(t, service.Spec.Ports, 1)
-		assert.Equal(t, int32(80), service.Spec.Ports[0].Port)
-		assert.Equal(t, corev1.ProtocolTCP, service.Spec.Ports[0].Protocol)
 	})
 }
 

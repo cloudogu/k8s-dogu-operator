@@ -214,6 +214,6 @@ type authRegistrationManager interface {
 }
 
 type expositionManager interface {
-	EnsureExposition(ctx context.Context, doguResource *v2.Dogu) error
+	EnsureExposition(ctx context.Context, doguResource *v2.Dogu, doguService *coreV1.Service) error
 	RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error
 }

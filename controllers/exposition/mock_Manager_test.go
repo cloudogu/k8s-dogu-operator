@@ -8,6 +8,8 @@ import (
 	dogu "github.com/cloudogu/ces-commons-lib/dogu"
 	mock "github.com/stretchr/testify/mock"
 
+	v1 "k8s.io/api/core/v1"
+
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
@@ -24,17 +26,17 @@ func (_m *MockManager) EXPECT() *MockManager_Expecter {
 	return &MockManager_Expecter{mock: &_m.Mock}
 }
 
-// EnsureExposition provides a mock function with given fields: ctx, doguResource
-func (_m *MockManager) EnsureExposition(ctx context.Context, doguResource *v2.Dogu) error {
-	ret := _m.Called(ctx, doguResource)
+// EnsureExposition provides a mock function with given fields: ctx, doguResource, doguService
+func (_m *MockManager) EnsureExposition(ctx context.Context, doguResource *v2.Dogu, doguService *v1.Service) error {
+	ret := _m.Called(ctx, doguResource, doguService)
 
 	if len(ret) == 0 {
 		panic("no return value specified for EnsureExposition")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu) error); ok {
-		r0 = rf(ctx, doguResource)
+	if rf, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *v1.Service) error); ok {
+		r0 = rf(ctx, doguResource, doguService)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -50,13 +52,14 @@ type MockManager_EnsureExposition_Call struct {
 // EnsureExposition is a helper method to define mock.On call
 //   - ctx context.Context
 //   - doguResource *v2.Dogu
-func (_e *MockManager_Expecter) EnsureExposition(ctx interface{}, doguResource interface{}) *MockManager_EnsureExposition_Call {
-	return &MockManager_EnsureExposition_Call{Call: _e.mock.On("EnsureExposition", ctx, doguResource)}
+//   - doguService *v1.Service
+func (_e *MockManager_Expecter) EnsureExposition(ctx interface{}, doguResource interface{}, doguService interface{}) *MockManager_EnsureExposition_Call {
+	return &MockManager_EnsureExposition_Call{Call: _e.mock.On("EnsureExposition", ctx, doguResource, doguService)}
 }
 
-func (_c *MockManager_EnsureExposition_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu)) *MockManager_EnsureExposition_Call {
+func (_c *MockManager_EnsureExposition_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, doguService *v1.Service)) *MockManager_EnsureExposition_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v2.Dogu))
+		run(args[0].(context.Context), args[1].(*v2.Dogu), args[2].(*v1.Service))
 	})
 	return _c
 }
@@ -66,7 +69,7 @@ func (_c *MockManager_EnsureExposition_Call) Return(_a0 error) *MockManager_Ensu
 	return _c
 }
 
-func (_c *MockManager_EnsureExposition_Call) RunAndReturn(run func(context.Context, *v2.Dogu) error) *MockManager_EnsureExposition_Call {
+func (_c *MockManager_EnsureExposition_Call) RunAndReturn(run func(context.Context, *v2.Dogu, *v1.Service) error) *MockManager_EnsureExposition_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -22,14 +22,14 @@ func TestExpositionRemoverStep_Run(t *testing.T) {
 
 	t.Run("should requeue on manager error", func(t *testing.T) {
 		manager := newMockExpositionManager(t)
-		manager.On("RemoveExposition", testCtx, cescommons.SimpleName("test")).Return(assert.AnError)
+		manager.EXPECT().RemoveExposition(testCtx, cescommons.SimpleName("test")).Return(assert.AnError)
 		step := &ExpositionRemoverStep{expositionManager: manager}
 		assert.Equal(t, steps.RequeueWithError(assert.AnError), step.Run(testCtx, doguResource))
 	})
 
 	t.Run("should continue on success", func(t *testing.T) {
 		manager := newMockExpositionManager(t)
-		manager.On("RemoveExposition", testCtx, cescommons.SimpleName("test")).Return(nil)
+		manager.EXPECT().RemoveExposition(testCtx, cescommons.SimpleName("test")).Return(nil)
 		step := &ExpositionRemoverStep{expositionManager: manager}
 		assert.Equal(t, steps.Continue(), step.Run(testCtx, doguResource))
 	})

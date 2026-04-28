@@ -8,12 +8,13 @@ import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	expv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Manager describes the Exposition lifecycle for a dogu.
 type Manager interface {
-	EnsureExposition(ctx context.Context, doguResource *doguv2.Dogu) error
+	EnsureExposition(ctx context.Context, doguResource *doguv2.Dogu, doguService *corev1.Service) error
 	RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error
 }
 

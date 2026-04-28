@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strconv"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 	expv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
-	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +31,7 @@ func NewManager(client expClientV1.ExpositionInterface, doguFetcher cesregistry.
 	}
 }
 
-func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource *doguv2.Dogu) error {
+func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource *doguv2.Dogu, doguService *corev1.Service) error {
 	if doguResource == nil {
 		return fmt.Errorf("dogu resource must not be nil")
 	}
@@ -47,8 +46,7 @@ func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource 
 		return fmt.Errorf("failed to pull image config: %w", err)
 	}
 
-	service := buildServiceForRoutes(doguResource, imageConfig)
-	routes, err := CollectRoutes(service, &imageConfig.Config)
+	routes, err := serviceaccess.CollectRoutes(doguService, &imageConfig.Config)
 	if err != nil {
 		return fmt.Errorf("failed to collect web routes: %w", err)
 	}
@@ -57,7 +55,7 @@ func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource 
 		return em.RemoveExposition(ctx, doguResource.GetSimpleDoguName())
 	}
 
-	spec, err := BuildSpec(doguResource.Name, routes)
+	spec, err := buildSpec(doguResource.Name, routes)
 	if err != nil {
 		return fmt.Errorf("failed to build Exposition spec: %w", err)
 	}
@@ -117,28 +115,15 @@ func (em *ExpositionManager) ensureExposition(ctx context.Context, desired *expv
 	return updated, nil
 }
 
-func buildServiceForRoutes(doguResource *doguv2.Dogu, imageConfig *imagev1.ConfigFile) *corev1.Service {
-	service := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: doguResource.Name,
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{},
-		},
+// buildSpec maps collected legacy routes to an Exposition HTTP spec for a given Kubernetes Service.
+func buildSpec(serviceName string, routes []serviceaccess.Route) (expv1.ExpositionSpec, error) {
+	httpEntries, err := buildHTTPEntries(serviceName, routes)
+	if err != nil {
+		return expv1.ExpositionSpec{}, err
 	}
 
-	for exposedPort := range imageConfig.Config.ExposedPorts {
-		port, protocol, err := SplitImagePortConfig(exposedPort)
-		if err != nil {
-			continue
-		}
-
-		service.Spec.Ports = append(service.Spec.Ports, corev1.ServicePort{
-			Name:     strconv.Itoa(int(port)),
-			Protocol: protocol,
-			Port:     port,
-		})
-	}
-
-	return service
+	return expv1.ExpositionSpec{
+		HTTP: httpEntries,
+		// TODO: Add TCP and UDP routes
+	}, nil
 }
