@@ -1,4 +1,4 @@
-package exposition
+package serviceaccess
 
 import (
 	"encoding/json"
@@ -22,11 +22,7 @@ const (
 	serviceTagWebapp          = "webapp"
 )
 
-type legacyServiceRewrite struct {
-	Pattern string `json:"pattern"`
-	Rewrite string `json:"rewrite"`
-}
-
+// CollectRoutes extracts legacy v2 web route data from service and image config.
 func CollectRoutes(service *corev1.Service, config *imagev1.Config) ([]Route, error) {
 	serviceVariables, err := getServiceVariables(config)
 	if err != nil {
@@ -142,15 +138,13 @@ func createWebAppRoutes(service *corev1.Service, config *imagev1.Config, service
 		pass := getServiceTargetPath(serviceVariables, port, name)
 		serviceRewrite := getValueFromServiceVariables(serviceVariables, port, serviceVarRewrite)
 
-		route := Route{
+		webAppRoutes = append(webAppRoutes, Route{
 			Name:     name,
 			Port:     port,
 			Location: location,
 			Pass:     pass,
 			Rewrite:  serviceRewrite,
-		}
-
-		webAppRoutes = append(webAppRoutes, route)
+		})
 	}
 
 	return webAppRoutes, nil
@@ -244,24 +238,21 @@ func createAdditionalRoutes(serviceVariables map[string]string, defaultPort int3
 			return nil, fmt.Errorf("failed to unmarshal additional services: %w", err)
 		}
 
-		routes := make([]Route, 0, len(additionalRoutes))
-		for _, route := range additionalRoutes {
+		for i, route := range additionalRoutes {
 			if !strings.HasPrefix(route.Location, "/") {
-				route.Location = fmt.Sprintf("/%s", route.Location)
+				additionalRoutes[i].Location = fmt.Sprintf("/%s", route.Location)
 			}
 
 			if !strings.HasPrefix(route.Pass, "/") {
-				route.Pass = fmt.Sprintf("/%s", route.Pass)
+				additionalRoutes[i].Pass = fmt.Sprintf("/%s", route.Pass)
 			}
 
 			if route.Port == 0 {
-				route.Port = defaultPort
+				additionalRoutes[i].Port = defaultPort
 			}
-
-			routes = append(routes, route)
 		}
 
-		return routes, nil
+		return additionalRoutes, nil
 	}
 
 	return nil, nil

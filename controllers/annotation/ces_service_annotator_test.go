@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 )
 
 func getTestFileMap(t *testing.T) map[string]string {
@@ -159,18 +159,18 @@ func TestCollectRoutes(t *testing.T) {
 		config := getImageConfigFromTestFile(t, "./testdata/test_additional_services.json")
 
 		// when
-		routes, err := exposition.CollectRoutes(service, config)
+		routes, err := serviceaccess.CollectRoutes(service, config)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, routes, 2)
-		assert.Contains(t, routes, exposition.Route{
+		assert.Contains(t, routes, serviceaccess.Route{
 			Name:     "admin",
 			Port:     80,
 			Location: "/admin",
 			Pass:     "/admin",
 		})
-		assert.Contains(t, routes, exposition.Route{
+		assert.Contains(t, routes, serviceaccess.Route{
 			Name:     "admin-api",
 			Port:     80,
 			Location: "/api",
@@ -188,7 +188,7 @@ func TestCollectRoutes(t *testing.T) {
 		service := &corev1.Service{}
 
 		// when
-		routes, err := exposition.CollectRoutes(service, config)
+		routes, err := serviceaccess.CollectRoutes(service, config)
 
 		// then
 		require.Error(t, err)

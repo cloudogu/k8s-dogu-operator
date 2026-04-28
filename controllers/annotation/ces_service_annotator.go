@@ -3,7 +3,7 @@ package annotation
 import (
 	"fmt"
 
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -29,7 +29,7 @@ type CesServiceAnnotator struct{}
 // image configuration which includes defined environment variables and labels used to customize the service for the
 // ecosystem.
 func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *imagev1.Config) error {
-	routes, err := exposition.CollectRoutes(service, config)
+	routes, err := serviceaccess.CollectRoutes(service, config)
 	if err != nil {
 		return fmt.Errorf("failed to collect web routes: %w", err)
 	}
@@ -42,7 +42,7 @@ func (c *CesServiceAnnotator) AnnotateService(service *corev1.Service, config *i
 	return nil
 }
 
-func appendServiceAnnotations(service *corev1.Service, routes []exposition.Route) error {
+func appendServiceAnnotations(service *corev1.Service, routes []serviceaccess.Route) error {
 	if len(routes) < 1 {
 		return nil
 	}

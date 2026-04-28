@@ -22,7 +22,7 @@ import (
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 )
 
 const ReplicaCountStarted = 1
@@ -528,7 +528,7 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 	}
 
 	for exposedPort := range imageConfig.Config.ExposedPorts {
-		port, protocol, err := exposition.SplitImagePortConfig(exposedPort)
+		port, protocol, err := serviceaccess.SplitImagePortConfig(exposedPort)
 		if err != nil {
 			return service, fmt.Errorf("error splitting port config: %w", err)
 		}

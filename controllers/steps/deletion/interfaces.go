@@ -12,7 +12,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	appsv1 "k8s.io/api/apps/v1"
-	coreV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -75,6 +75,6 @@ type exposedPortsManager interface {
 }
 
 type expositionManager interface {
-	EnsureExposition(ctx context.Context, doguResource *v2.Dogu) error
+	EnsureExposition(ctx context.Context, doguResource *v2.Dogu, doguService *corev1.Service) error
 	RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error
 }

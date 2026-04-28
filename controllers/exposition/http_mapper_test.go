@@ -3,13 +3,14 @@ package exposition
 import (
 	"testing"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 	expv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildHTTPEntries(t *testing.T) {
 	t.Run("should map routes without rewrite if path and target path are equal", func(t *testing.T) {
-		routes := []Route{
+		routes := []serviceaccess.Route{
 			{
 				Name:     "admin",
 				Port:     80,
@@ -18,7 +19,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 			},
 		}
 
-		entries, err := BuildHTTPEntries("cas", routes)
+		entries, err := buildHTTPEntries("cas", routes)
 		assert.NoError(t, err)
 		assert.Equal(t, []expv1.HTTPEntry{
 			{
@@ -31,7 +32,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 	})
 
 	t.Run("should map routes with normalized regex rewrite", func(t *testing.T) {
-		routes := []Route{
+		routes := []serviceaccess.Route{
 			{
 				Name:     "admin-api",
 				Port:     80,
@@ -40,7 +41,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 			},
 		}
 
-		entries, err := BuildHTTPEntries("cas", routes)
+		entries, err := buildHTTPEntries("cas", routes)
 		assert.NoError(t, err)
 		assert.Equal(t, []expv1.HTTPEntry{
 			{
@@ -59,7 +60,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 	})
 
 	t.Run("should build exposition spec with http entries", func(t *testing.T) {
-		routes := []Route{
+		routes := []serviceaccess.Route{
 			{
 				Name:     "admin",
 				Port:     80,
@@ -68,7 +69,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 			},
 		}
 
-		spec, err := BuildSpec("cas", routes)
+		spec, err := buildSpec("cas", routes)
 		assert.NoError(t, err)
 		assert.Equal(t, expv1.ExpositionSpec{
 			HTTP: []expv1.HTTPEntry{
@@ -83,7 +84,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 	})
 
 	t.Run("should not create rewrite if target path is empty", func(t *testing.T) {
-		routes := []Route{
+		routes := []serviceaccess.Route{
 			{
 				Name:     "admin",
 				Port:     80,
@@ -92,13 +93,13 @@ func TestBuildHTTPEntries(t *testing.T) {
 			},
 		}
 
-		entries, err := BuildHTTPEntries("cas", routes)
+		entries, err := buildHTTPEntries("cas", routes)
 		assert.NoError(t, err)
 		assert.Nil(t, entries[0].Rewrite)
 	})
 
 	t.Run("should not create rewrite if paths only differ by trailing slash", func(t *testing.T) {
-		routes := []Route{
+		routes := []serviceaccess.Route{
 			{
 				Name:     "admin",
 				Port:     80,
@@ -107,13 +108,13 @@ func TestBuildHTTPEntries(t *testing.T) {
 			},
 		}
 
-		entries, err := BuildHTTPEntries("cas", routes)
+		entries, err := buildHTTPEntries("cas", routes)
 		assert.NoError(t, err)
 		assert.Nil(t, entries[0].Rewrite)
 	})
 
-	t.Run("should map legacy rewrite path and regex", func(t *testing.T) {
-		routes := []Route{
+	t.Run("should map rewrite path and regex", func(t *testing.T) {
+		routes := []serviceaccess.Route{
 			{
 				Name:     "admin",
 				Port:     80,
@@ -123,7 +124,7 @@ func TestBuildHTTPEntries(t *testing.T) {
 			},
 		}
 
-		entries, err := BuildHTTPEntries("cas", routes)
+		entries, err := buildHTTPEntries("cas", routes)
 		assert.NoError(t, err)
 		assert.Equal(t, []expv1.HTTPEntry{
 			{
@@ -141,8 +142,8 @@ func TestBuildHTTPEntries(t *testing.T) {
 		}, entries)
 	})
 
-	t.Run("should fail for invalid legacy rewrite", func(t *testing.T) {
-		routes := []Route{
+	t.Run("should fail for invalid rewrite", func(t *testing.T) {
+		routes := []serviceaccess.Route{
 			{
 				Name:     "admin",
 				Port:     80,
@@ -152,9 +153,9 @@ func TestBuildHTTPEntries(t *testing.T) {
 			},
 		}
 
-		entries, err := BuildHTTPEntries("cas", routes)
+		entries, err := buildHTTPEntries("cas", routes)
 		assert.Error(t, err)
 		assert.Nil(t, entries)
-		assert.ErrorContains(t, err, "failed to parse legacy rewrite config")
+		assert.ErrorContains(t, err, "failed to parse rewrite config")
 	})
 }

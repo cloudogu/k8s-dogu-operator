@@ -6,18 +6,20 @@ import (
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 	expv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	k8sErr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func newNormalizedRoutes() []Route {
-	return []Route{
+func newNormalizedRoutes() []serviceaccess.Route {
+	return []serviceaccess.Route{
 		{
 			Name:     "admin",
 			Port:     80,
@@ -45,11 +47,12 @@ func TestNewManager(t *testing.T) {
 func TestExpositionManager_EnsureExposition(t *testing.T) {
 	ctx := context.Background()
 	doguResource := newDoguResource()
+	doguService := newDoguService()
 
 	t.Run("should fail if dogu resource is nil", func(t *testing.T) {
 		manager := &ExpositionManager{}
 
-		err := manager.EnsureExposition(ctx, nil)
+		err := manager.EnsureExposition(ctx, nil, nil)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "dogu resource must not be nil")
@@ -64,7 +67,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: newMockImageRegistry(t),
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to fetch dogu descriptor")
@@ -81,7 +84,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to pull image config")
@@ -104,7 +107,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to collect web routes")
@@ -123,7 +126,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.NoError(t, err)
 	})
@@ -147,7 +150,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.NoError(t, err)
 	})
@@ -165,7 +168,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get Exposition")
@@ -185,7 +188,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		resultErr := manager.EnsureExposition(ctx, doguResource)
+		resultErr := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.Error(t, resultErr)
 		assert.ErrorContains(t, resultErr, "failed to create Exposition")
@@ -196,7 +199,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
-		existingSpec, buildErr := BuildSpec("redmine", newNormalizedRoutes())
+		existingSpec, buildErr := buildSpec("redmine", newNormalizedRoutes())
 		require.NoError(t, buildErr)
 		existing := &expv1.Exposition{
 			ObjectMeta: metav1.ObjectMeta{
@@ -212,7 +215,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		resultErr := manager.EnsureExposition(ctx, doguResource)
+		resultErr := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.NoError(t, resultErr)
 	})
@@ -237,7 +240,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		resultErr := manager.EnsureExposition(ctx, doguResource)
+		resultErr := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.NoError(t, resultErr)
 	})
@@ -247,7 +250,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
-		existingSpec, buildErr := BuildSpec("redmine", newNormalizedRoutes())
+		existingSpec, buildErr := buildSpec("redmine", newNormalizedRoutes())
 		require.NoError(t, buildErr)
 		existing := &expv1.Exposition{
 			ObjectMeta: metav1.ObjectMeta{
@@ -267,7 +270,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		resultErr := manager.EnsureExposition(ctx, doguResource)
+		resultErr := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.NoError(t, resultErr)
 	})
@@ -290,7 +293,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 			imageRegistry: imageRegistry,
 		}
 
-		err := manager.EnsureExposition(ctx, doguResource)
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to update Exposition")
@@ -354,6 +357,19 @@ func newDoguDescriptor() *cesappcore.Dogu {
 		Name:    "official/redmine",
 		Image:   "cloudogu/redmine",
 		Version: "1.0.0",
+	}
+}
+
+func newDoguService() *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "redmine",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{Port: 80, Protocol: corev1.ProtocolTCP},
+			},
+		},
 	}
 }
 

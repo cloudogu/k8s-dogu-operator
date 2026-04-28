@@ -6,9 +6,9 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,7 +48,7 @@ func (nps *NetworkPoliciesStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 		return steps.RequeueWithError(fmt.Errorf("failed to pull dogu image config for %q: %w", doguResource.Name, err))
 	}
 
-	routes, err := exposition.CollectRoutes(doguService, &imageConfig.Config)
+	routes, err := serviceaccess.CollectRoutes(doguService, &imageConfig.Config)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to collect dogu routes for %q: %w", doguResource.Name, err))
 	}
