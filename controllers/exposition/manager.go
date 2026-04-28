@@ -57,14 +57,19 @@ func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource 
 		return em.RemoveExposition(ctx, doguResource.GetSimpleDoguName())
 	}
 
+	spec, err := BuildSpec(doguResource.Name, routes)
+	if err != nil {
+		return fmt.Errorf("failed to build Exposition spec: %w", err)
+	}
+
 	desired := &expv1.Exposition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: createExpositionName(doguResource.Name),
+			Name: doguResource.Name,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu")),
 			},
 		},
-		Spec: BuildSpec(doguResource.Name, routes),
+		Spec: spec,
 	}
 
 	_, err = em.ensureExposition(ctx, desired)
@@ -72,7 +77,7 @@ func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource 
 }
 
 func (em *ExpositionManager) RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error {
-	err := em.client.Delete(ctx, createExpositionName(doguName.String()), metav1.DeleteOptions{})
+	err := em.client.Delete(ctx, doguName.String(), metav1.DeleteOptions{})
 	if err != nil {
 		if k8sErr.IsNotFound(err) {
 			return nil
@@ -81,10 +86,6 @@ func (em *ExpositionManager) RemoveExposition(ctx context.Context, doguName cesc
 	}
 
 	return nil
-}
-
-func createExpositionName(doguName string) string {
-	return fmt.Sprintf("%s-exposition", doguName)
 }
 
 func (em *ExpositionManager) ensureExposition(ctx context.Context, desired *expv1.Exposition) (*expv1.Exposition, error) {

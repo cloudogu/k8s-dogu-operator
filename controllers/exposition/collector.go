@@ -1,13 +1,13 @@
 package exposition
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/json"
 )
 
 const (
@@ -21,6 +21,11 @@ const (
 	serviceVarTags            = "TAGS"
 	serviceTagWebapp          = "webapp"
 )
+
+type legacyServiceRewrite struct {
+	Pattern string `json:"pattern"`
+	Rewrite string `json:"rewrite"`
+}
 
 func CollectRoutes(service *corev1.Service, config *imagev1.Config) ([]Route, error) {
 	serviceVariables, err := getServiceVariables(config)
@@ -133,17 +138,19 @@ func createWebAppRoutes(service *corev1.Service, config *imagev1.Config, service
 		}
 
 		name := getServiceName(serviceVariables, port, service)
-		path := getServicePath(serviceVariables, port, name)
-		targetPath := getServiceTargetPath(serviceVariables, port, name)
-		rewrite := getServiceRewrite(serviceVariables, port)
+		location := getServicePath(serviceVariables, port, name)
+		pass := getServiceTargetPath(serviceVariables, port, name)
+		serviceRewrite := getValueFromServiceVariables(serviceVariables, port, serviceVarRewrite)
 
-		webAppRoutes = append(webAppRoutes, Route{
-			Name:       name,
-			Port:       port,
-			Path:       path,
-			TargetPath: targetPath,
-			Rewrite:    rewrite,
-		})
+		route := Route{
+			Name:     name,
+			Port:     port,
+			Location: location,
+			Pass:     pass,
+			Rewrite:  serviceRewrite,
+		}
+
+		webAppRoutes = append(webAppRoutes, route)
 	}
 
 	return webAppRoutes, nil
@@ -211,10 +218,6 @@ func getServiceTargetPath(serviceVariables map[string]string, port int32, servic
 	return targetPath
 }
 
-func getServiceRewrite(serviceVariables map[string]string, port int32) string {
-	return getValueFromServiceVariables(serviceVariables, port, serviceVarRewrite)
-}
-
 func getValueFromServiceVariables(serviceVariables map[string]string, port int32, variableName string) string {
 	value := ""
 
@@ -241,21 +244,24 @@ func createAdditionalRoutes(serviceVariables map[string]string, defaultPort int3
 			return nil, fmt.Errorf("failed to unmarshal additional services: %w", err)
 		}
 
-		for i, route := range additionalRoutes {
-			if !strings.HasPrefix(route.Path, "/") {
-				additionalRoutes[i].Path = fmt.Sprintf("/%s", route.Path)
+		routes := make([]Route, 0, len(additionalRoutes))
+		for _, route := range additionalRoutes {
+			if !strings.HasPrefix(route.Location, "/") {
+				route.Location = fmt.Sprintf("/%s", route.Location)
 			}
 
-			if !strings.HasPrefix(route.TargetPath, "/") {
-				additionalRoutes[i].TargetPath = fmt.Sprintf("/%s", route.TargetPath)
+			if !strings.HasPrefix(route.Pass, "/") {
+				route.Pass = fmt.Sprintf("/%s", route.Pass)
 			}
 
 			if route.Port == 0 {
-				additionalRoutes[i].Port = defaultPort
+				route.Port = defaultPort
 			}
+
+			routes = append(routes, route)
 		}
 
-		return additionalRoutes, nil
+		return routes, nil
 	}
 
 	return nil, nil

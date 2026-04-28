@@ -11,15 +11,15 @@ func TestBuildHTTPEntries(t *testing.T) {
 	t.Run("should map routes without rewrite if path and target path are equal", func(t *testing.T) {
 		routes := []Route{
 			{
-				Name:       "admin",
-				Port:       80,
-				Path:       "/admin",
-				TargetPath: "/admin",
+				Name:     "admin",
+				Port:     80,
+				Location: "/admin",
+				Pass:     "/admin",
 			},
 		}
 
-		entries := BuildHTTPEntries("cas", routes)
-
+		entries, err := BuildHTTPEntries("cas", routes)
+		assert.NoError(t, err)
 		assert.Equal(t, []expv1.HTTPEntry{
 			{
 				Name:    "admin",
@@ -30,18 +30,18 @@ func TestBuildHTTPEntries(t *testing.T) {
 		}, entries)
 	})
 
-	t.Run("should map routes with regex rewrite if path and target path differ", func(t *testing.T) {
+	t.Run("should map routes with normalized regex rewrite", func(t *testing.T) {
 		routes := []Route{
 			{
-				Name:       "admin-api",
-				Port:       80,
-				Path:       "/api",
-				TargetPath: "/admin/api/v2/",
+				Name:     "admin-api",
+				Port:     80,
+				Location: "/api",
+				Pass:     "/admin/api/v2/",
 			},
 		}
 
-		entries := BuildHTTPEntries("cas", routes)
-
+		entries, err := BuildHTTPEntries("cas", routes)
+		assert.NoError(t, err)
 		assert.Equal(t, []expv1.HTTPEntry{
 			{
 				Name:    "admin-api",
@@ -61,15 +61,15 @@ func TestBuildHTTPEntries(t *testing.T) {
 	t.Run("should build exposition spec with http entries", func(t *testing.T) {
 		routes := []Route{
 			{
-				Name:       "admin",
-				Port:       80,
-				Path:       "/admin",
-				TargetPath: "/admin",
+				Name:     "admin",
+				Port:     80,
+				Location: "/admin",
+				Pass:     "/admin",
 			},
 		}
 
-		spec := BuildSpec("cas", routes)
-
+		spec, err := BuildSpec("cas", routes)
+		assert.NoError(t, err)
 		assert.Equal(t, expv1.ExpositionSpec{
 			HTTP: []expv1.HTTPEntry{
 				{
@@ -85,55 +85,76 @@ func TestBuildHTTPEntries(t *testing.T) {
 	t.Run("should not create rewrite if target path is empty", func(t *testing.T) {
 		routes := []Route{
 			{
-				Name:       "admin",
-				Port:       80,
-				Path:       "/admin",
-				TargetPath: "",
+				Name:     "admin",
+				Port:     80,
+				Location: "/admin",
+				Pass:     "",
 			},
 		}
 
-		entries := BuildHTTPEntries("cas", routes)
-
+		entries, err := BuildHTTPEntries("cas", routes)
+		assert.NoError(t, err)
 		assert.Nil(t, entries[0].Rewrite)
 	})
 
 	t.Run("should not create rewrite if paths only differ by trailing slash", func(t *testing.T) {
 		routes := []Route{
 			{
-				Name:       "admin",
-				Port:       80,
-				Path:       "/admin/",
-				TargetPath: "/admin",
+				Name:     "admin",
+				Port:     80,
+				Location: "/admin/",
+				Pass:     "/admin",
 			},
 		}
 
-		entries := BuildHTTPEntries("cas", routes)
-
+		entries, err := BuildHTTPEntries("cas", routes)
+		assert.NoError(t, err)
 		assert.Nil(t, entries[0].Rewrite)
 	})
-}
 
-func TestSplitImagePortConfig(t *testing.T) {
-	t.Run("should parse port without protocol", func(t *testing.T) {
-		port, protocol, err := SplitImagePortConfig("8080")
+	t.Run("should map legacy rewrite path and regex", func(t *testing.T) {
+		routes := []Route{
+			{
+				Name:     "admin",
+				Port:     80,
+				Location: "/admin",
+				Pass:     "/admin",
+				Rewrite:  `'{"pattern":"portainer","rewrite":""}'`,
+			},
+		}
 
+		entries, err := BuildHTTPEntries("cas", routes)
 		assert.NoError(t, err)
-		assert.Equal(t, int32(8080), port)
-		assert.Equal(t, "TCP", string(protocol))
+		assert.Equal(t, []expv1.HTTPEntry{
+			{
+				Name:    "admin",
+				Service: "cas",
+				Port:    80,
+				Path:    "/portainer",
+				Rewrite: &expv1.Rewrite{
+					Regex: &expv1.RegexRewrite{
+						Pattern:     "^/portainer(/|$)(.*)",
+						Replacement: "/$2",
+					},
+				},
+			},
+		}, entries)
 	})
 
-	t.Run("should parse port with protocol", func(t *testing.T) {
-		port, protocol, err := SplitImagePortConfig("53/udp")
+	t.Run("should fail for invalid legacy rewrite", func(t *testing.T) {
+		routes := []Route{
+			{
+				Name:     "admin",
+				Port:     80,
+				Location: "/admin",
+				Pass:     "/admin",
+				Rewrite:  `{"pattern":"broken"`,
+			},
+		}
 
-		assert.NoError(t, err)
-		assert.Equal(t, int32(53), port)
-		assert.Equal(t, "UDP", string(protocol))
-	})
-
-	t.Run("should fail for invalid port", func(t *testing.T) {
-		_, _, err := SplitImagePortConfig("http/tcp")
-
+		entries, err := BuildHTTPEntries("cas", routes)
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "error parsing int")
+		assert.Nil(t, entries)
+		assert.ErrorContains(t, err, "failed to parse legacy rewrite config")
 	})
 }
