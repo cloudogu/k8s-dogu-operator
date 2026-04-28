@@ -96,6 +96,33 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to collect web routes")
 	})
 
+	t.Run("should return build spec error for invalid rewrite", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
+		imageRegistry := newMockImageRegistry(t)
+		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(&imagev1.ConfigFile{
+			Config: imagev1.Config{
+				Env: []string{
+					"SERVICE_TAGS=webapp",
+					"SERVICE_REWRITE=invalid-json",
+				},
+				ExposedPorts: map[string]struct{}{
+					"80/tcp": {},
+				},
+			},
+		}, nil)
+		manager := &ExpositionManager{
+			client:        newMockExpositionClient(t),
+			doguFetcher:   fetcher,
+			imageRegistry: imageRegistry,
+		}
+
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to build Exposition spec")
+	})
+
 	t.Run("should delete existing exposition if no routes exist", func(t *testing.T) {
 		fetcher := newMockLocalDoguFetcher(t)
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
@@ -346,6 +373,31 @@ func TestExpositionManager_RemoveExposition(t *testing.T) {
 
 func TestCreateExpositionName(t *testing.T) {
 	assert.Equal(t, "redmine", "redmine")
+}
+
+func TestBuildSpec(t *testing.T) {
+	t.Run("should build empty spec", func(t *testing.T) {
+		spec, err := buildSpec("redmine", nil, nil)
+
+		require.NoError(t, err)
+		assert.Empty(t, spec.HTTP)
+		assert.Empty(t, spec.TCP)
+		assert.Empty(t, spec.UDP)
+	})
+
+	t.Run("should return error for invalid http route", func(t *testing.T) {
+		_, err := buildSpec("redmine", []serviceaccess.Route{
+			{
+				Name:     "admin",
+				Port:     80,
+				Location: "/admin",
+				Pass:     "/admin",
+				Rewrite:  "invalid-json",
+			},
+		}, nil)
+
+		require.Error(t, err)
+	})
 }
 
 // ++++++++++ helper functions +++++++++++

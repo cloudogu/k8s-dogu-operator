@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 	expv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuildHTTPEntries(t *testing.T) {
@@ -135,6 +136,26 @@ func TestBuildHTTPEntries(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to parse rewrite config")
 	})
 
+	t.Run("should parse rewrite without adding a slash if replacement already has one", func(t *testing.T) {
+		route := serviceaccess.Route{
+			Name:     "admin",
+			Port:     80,
+			Location: "/admin",
+			Pass:     "/admin",
+			Rewrite:  `'{"pattern":"portainer","rewrite":"/foo/"}'`,
+		}
+
+		entries, err := buildHTTPEntries("cas", []serviceaccess.Route{route})
+
+		require.NoError(t, err)
+		require.Len(t, entries, 1)
+		require.NotNil(t, entries[0].Rewrite)
+		require.NotNil(t, entries[0].Rewrite.Regex)
+		assert.Equal(t, "/portainer", entries[0].Path)
+		assert.Equal(t, "^/portainer(/|$)(.*)", entries[0].Rewrite.Regex.Pattern)
+		assert.Equal(t, "/foo/$2", entries[0].Rewrite.Regex.Replacement)
+	})
+
 	t.Run("should create unique names for duplicate route names", func(t *testing.T) {
 		routes := []serviceaccess.Route{
 			{
@@ -167,5 +188,21 @@ func TestBuildHTTPEntries(t *testing.T) {
 				Path:    "/jenkins-agent",
 			},
 		}, entries)
+	})
+}
+
+func TestEnsureLeadingSlash(t *testing.T) {
+	assert.Equal(t, "/admin", ensureLeadingSlash("admin"))
+}
+
+func TestParseRewrite(t *testing.T) {
+	t.Run("should keep leading slash in pattern and add missing trailing slash in replacement", func(t *testing.T) {
+		rewritePath, rewrite, err := parseRewrite(`{"pattern":"/portainer","rewrite":"foo"}`)
+
+		require.NoError(t, err)
+		require.NotNil(t, rewrite)
+		assert.Equal(t, "/portainer", rewritePath)
+		assert.Equal(t, "^/portainer(/|$)(.*)", rewrite.Pattern)
+		assert.Equal(t, "/foo/$2", rewrite.Rewrite)
 	})
 }
