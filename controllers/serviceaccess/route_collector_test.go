@@ -73,6 +73,33 @@ func TestCollectRoutes(t *testing.T) {
 		}, routes)
 	})
 
+	t.Run("should prefer port specific webapp tags over global webapp tag", func(t *testing.T) {
+		service := newTestService("jenkins", 8080)
+		config := &imagev1.Config{
+			Env: []string{
+				"SERVICE_TAGS=webapp",
+				"SERVICE_8080_TAGS=webapp",
+				"SERVICE_8080_NAME=jenkins",
+			},
+			ExposedPorts: map[string]struct{}{
+				"8080/tcp":  {},
+				"50000/tcp": {},
+			},
+		}
+
+		routes, err := CollectRoutes(service, config)
+
+		require.NoError(t, err)
+		assert.Equal(t, []Route{
+			{
+				Name:     "jenkins",
+				Port:     8080,
+				Location: "/jenkins",
+				Pass:     "/jenkins",
+			},
+		}, routes)
+	})
+
 	t.Run("should collect legacy rewrite config", func(t *testing.T) {
 		service := newTestService("cas", 80)
 		config := &imagev1.Config{

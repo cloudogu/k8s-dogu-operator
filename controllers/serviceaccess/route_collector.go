@@ -155,11 +155,35 @@ func isServiceWebApp(port int32, protocol corev1.Protocol, serviceVariables map[
 		return false
 	}
 
+	// Port-specific webapp tags must take precedence over the global tag.
+	// Some dogus expose multiple TCP ports but only one of them serves HTTP.
+	if hasAnyPortSpecificWebappTag(serviceVariables) {
+		return hasTag(serviceVariables, fmt.Sprintf("%d_%s", port, serviceVarTags), serviceTagWebapp)
+	}
+
 	if hasTag(serviceVariables, serviceVarTags, serviceTagWebapp) {
 		return true
 	}
 
 	return hasTag(serviceVariables, fmt.Sprintf("%d_%s", port, serviceVarTags), serviceTagWebapp)
+}
+
+func hasAnyPortSpecificWebappTag(serviceVariables map[string]string) bool {
+	for name := range serviceVariables {
+		if !strings.HasSuffix(name, "_"+serviceVarTags) {
+			continue
+		}
+
+		if _, err := strconv.Atoi(strings.TrimSuffix(name, "_"+serviceVarTags)); err != nil {
+			continue
+		}
+
+		if hasTag(serviceVariables, name, serviceTagWebapp) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func hasTag(serviceVariables map[string]string, tagListName string, tag string) bool {
