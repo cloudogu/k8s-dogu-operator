@@ -80,6 +80,7 @@ type resourceGenerator struct {
 	hostAliasGenerator       HostAliasGenerator
 	securityContextGenerator SecurityContextGenerator
 	additionalImages         AdditionalImages
+	expositionEnabled        bool
 }
 
 type AdditionalImages map[string]string
@@ -91,6 +92,7 @@ func NewResourceGenerator(
 	hostAliasGenerator HostAliasGenerator,
 	securityContextGenerator SecurityContextGenerator,
 	additionalImages AdditionalImages,
+	operatorConfig *config.OperatorConfig,
 ) DoguResourceGenerator {
 	return &resourceGenerator{
 		scheme:                   scheme,
@@ -98,6 +100,7 @@ func NewResourceGenerator(
 		hostAliasGenerator:       hostAliasGenerator,
 		securityContextGenerator: securityContextGenerator,
 		additionalImages:         additionalImages,
+		expositionEnabled:        operatorConfig.ExpositionEnabled,
 	}
 }
 
@@ -539,19 +542,21 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 		})
 	}
 
-	cesServiceAnnotationCreator := annotation.CesServiceAnnotator{}
-	err := cesServiceAnnotationCreator.AnnotateService(service, &imageConfig.Config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to annotate service: %w", err)
+	if !r.expositionEnabled {
+		cesServiceAnnotationCreator := annotation.CesServiceAnnotator{}
+		err := cesServiceAnnotationCreator.AnnotateService(service, &imageConfig.Config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to annotate service: %w", err)
+		}
+
+		cesExposedPortAnnotator := annotation.CesExposedPortAnnotator{}
+		err = cesExposedPortAnnotator.AnnotateService(service, dogu)
+		if err != nil {
+			return nil, fmt.Errorf("failed to annotate service with exposed ports: %w", err)
+		}
 	}
 
-	cesExposedPortAnnotator := annotation.CesExposedPortAnnotator{}
-	err = cesExposedPortAnnotator.AnnotateService(service, dogu)
-	if err != nil {
-		return nil, fmt.Errorf("failed to annotate service with exposed ports: %w", err)
-	}
-
-	err = ctrl.SetControllerReference(doguResource, service, r.scheme)
+	err := ctrl.SetControllerReference(doguResource, service, r.scheme)
 	if err != nil {
 		return nil, wrapControllerReferenceError(err)
 	}
