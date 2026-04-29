@@ -21,6 +21,7 @@ controllerManager:
     logLevel: debug
     stage: development
     authRegistrationEnabled: false
+    expositionEnabled: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3

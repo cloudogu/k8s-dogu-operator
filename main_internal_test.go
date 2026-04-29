@@ -8,6 +8,7 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
+	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/fx/fxtest"
@@ -59,6 +60,9 @@ func Test_options(t *testing.T) {
 	authRegMock := newMockAuthRegistrationInterface(t)
 	authRegClientsetMock := newMockAuthRegistrationClient(t)
 	authRegClientsetMock.EXPECT().AuthRegistrations(testNamespace).Return(authRegMock)
+	expositionMock := newMockExpositionInterface(t)
+	expositionClientsetMock := newMockExpositionClient(t)
+	expositionClientsetMock.EXPECT().Expositions(testNamespace).Return(expositionMock).Maybe()
 
 	oldOperatorConfigFn := initfx.NewOperatorConfig
 	initfx.NewOperatorConfig = newTestOperatorConfig(t)
@@ -68,6 +72,8 @@ func Test_options(t *testing.T) {
 	initfx.NewEcoSystemClientSet = newTestEcoSystemInterfaceFn(ecoSystemInterfaceMock)
 	oldAuthRegistrationClientSet := initfx.NewAuthRegistrationClientSet
 	initfx.NewAuthRegistrationClientSet = newTestAuthRegistrationClientSetFn(authRegClientsetMock)
+	oldExpositionClientSet := initfx.NewExpositionClientSet
+	initfx.NewExpositionClientSet = newTestExpositionClientSetFn(expositionClientsetMock)
 	oldGetRestConfig := ctrl.GetConfig
 	ctrl.GetConfig = newTestGetConfig()
 	oldGetArgs := initfx.GetArgs
@@ -79,6 +85,7 @@ func Test_options(t *testing.T) {
 		initfx.NewKubernetesClientSet = oldKubernetesClientSet
 		initfx.NewEcoSystemClientSet = oldEcoSystemClientSet
 		initfx.NewAuthRegistrationClientSet = oldAuthRegistrationClientSet
+		initfx.NewExpositionClientSet = oldExpositionClientSet
 		ctrl.GetConfig = oldGetRestConfig
 		initfx.GetArgs = oldGetArgs
 	})
@@ -108,6 +115,12 @@ func newTestEcoSystemInterfaceFn(v2Interface doguClient.EcoSystemV2Interface) fu
 func newTestAuthRegistrationClientSetFn(authRegInterface authRegClientV1.ApiV1Interface) func(c *rest.Config) (authRegClientV1.ApiV1Interface, error) {
 	return func(c *rest.Config) (authRegClientV1.ApiV1Interface, error) {
 		return authRegInterface, nil
+	}
+}
+
+func newTestExpositionClientSetFn(expositionInterface expClientV1.ApiV1Interface) func(c *rest.Config) (expClientV1.ApiV1Interface, error) {
+	return func(c *rest.Config) (expClientV1.ApiV1Interface, error) {
+		return expositionInterface, nil
 	}
 }
 

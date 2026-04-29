@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -67,4 +68,9 @@ type authRegistrationManager interface {
 	EnsureAuthRegistration(ctx context.Context, doguResource *v2.Dogu) error
 	// RemoveAuthRegistration removes the AuthRegistration belonging to the given dogu.
 	RemoveAuthRegistration(ctx context.Context, doguName cescommons.SimpleName) error
+}
+
+type expositionManager interface {
+	EnsureExposition(ctx context.Context, doguResource *v2.Dogu, doguService *corev1.Service) error
+	RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error
 }

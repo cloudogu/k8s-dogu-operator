@@ -411,6 +411,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 			ldapQualifiedVersion, _ := cescommons.NewQualifiedVersion(ldapQualifiedName, ldapVersion)
 			RemoteDoguDescriptorRepositoryMock.EXPECT().Get(mock.Anything, ldapQualifiedVersion).Return(upgradeLdapToDoguDescriptor, nil)
 
+			ImageRegistryMock.EXPECT().PullImageConfig(mock.Anything, "registry.cloudogu.com/official/ldap:2.4.48-4").Return(imageConfig, nil)
 			ImageRegistryMock.EXPECT().PullImageConfig(mock.Anything, "registry.cloudogu.com/official/ldap:2.4.49-1").Return(imageConfig, nil)
 
 			CommandExecutorMock.EXPECT().ExecCommandForPod(mock.Anything, mock.Anything, mock.Anything).Return(bytes.NewBufferString(""), nil)

@@ -5,15 +5,10 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
-
-type CesExposedPort struct {
-	Protocol   string `json:"protocol"`
-	Port       int    `json:"port"`
-	TargetPort int    `json:"targetPort"`
-}
 
 const CesExposedPortAnnotation = "k8s-dogu-operator.cloudogu.com/ces-exposed-ports"
 
@@ -25,7 +20,7 @@ type CesExposedPortAnnotator struct{}
 // Services are annotated like this:
 // k8s-dogu-operator.cloudogu.com/ces-exposed-ports = [{"protocol":"tcp","port":2222,"targetPort":2222},{"protocol":"udp","port":8080,"targetPort":80}]
 func (c *CesExposedPortAnnotator) AnnotateService(service *corev1.Service, dogu *core.Dogu) error {
-	exposedPorts := parseExposedPorts(dogu.ExposedPorts)
+	exposedPorts := serviceaccess.CollectExposedPorts(dogu)
 
 	err := appendAnnotations(service, exposedPorts)
 	if err != nil {
@@ -35,24 +30,7 @@ func (c *CesExposedPortAnnotator) AnnotateService(service *corev1.Service, dogu 
 	return nil
 }
 
-func parseExposedPorts(exposedPorts []core.ExposedPort) []CesExposedPort {
-	if len(exposedPorts) < 1 {
-		return []CesExposedPort{}
-	}
-	var annotationExposedPorts []CesExposedPort
-
-	for _, exposedPort := range exposedPorts {
-		annotationExposedPorts = append(annotationExposedPorts, CesExposedPort{
-			Protocol:   exposedPort.Type,
-			Port:       exposedPort.Container,
-			TargetPort: exposedPort.Host,
-		})
-	}
-
-	return annotationExposedPorts
-}
-
-func appendAnnotations(service *corev1.Service, exposedPorts []CesExposedPort) error {
+func appendAnnotations(service *corev1.Service, exposedPorts []serviceaccess.ExposedPort) error {
 	if len(exposedPorts) < 1 && service.Annotations[CesExposedPortAnnotation] != "" {
 		removeAnnotation(service)
 	}

@@ -95,6 +95,22 @@ func TestNewAuthRegistrationInterface(t *testing.T) {
 	})
 }
 
+func TestNewExpositionInterface(t *testing.T) {
+	t.Run("should successfully create exposition interface", func(t *testing.T) {
+		// given
+		expositionMock := newMockExpositionInterface(t)
+		expositionClient := newMockExpositionClient(t)
+		expositionClient.EXPECT().Expositions(namespace).Return(expositionMock)
+		operatorConfig := &config.OperatorConfig{Namespace: namespace}
+
+		// when
+		interf := NewExpositionInterface(expositionClient, operatorConfig)
+
+		// then
+		assert.NotNil(t, interf)
+	})
+}
+
 func TestNewEventRecorder(t *testing.T) {
 	t.Run("should successfully create dogu restart interface", func(t *testing.T) {
 		// given
@@ -247,6 +263,20 @@ func Test_newAuthRegistrationClientSet(t *testing.T) {
 
 		// when
 		cliSet, err := newAuthRegistrationClientSet(operatorConfig)
+
+		// then
+		assert.NotNil(t, cliSet)
+		assert.NoError(t, err)
+	})
+}
+
+func Test_newExpositionClientSet(t *testing.T) {
+	t.Run("should successfully create exposition client set", func(t *testing.T) {
+		// given
+		operatorConfig := &rest.Config{}
+
+		// when
+		cliSet, err := newExpositionClientSet(operatorConfig)
 
 		// then
 		assert.NotNil(t, cliSet)

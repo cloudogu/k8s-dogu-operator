@@ -1,0 +1,25 @@
+metadata:
+  creationTimestamp: null
+  labels:
+    app: ces
+    dogu.name: ldap
+  name: ldap
+  namespace: ecosystem
+  ownerReferences:
+    - apiVersion: k8s.cloudogu.com/v2
+      blockOwnerDeletion: true
+      controller: true
+      kind: Dogu
+      name: ldap
+      uid: ""
+spec:
+  ports:
+    - name: "80"
+      port: 80
+      protocol: TCP
+      targetPort: 0
+  selector:
+    dogu.name: ldap
+  type: ClusterIP
+status:
+  loadBalancer: {}

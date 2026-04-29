@@ -10,7 +10,6 @@ import (
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/annotation"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/mock"
 	netv1 "k8s.io/api/networking/v1"
@@ -542,15 +541,10 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				mockClient.EXPECT().Get(context.Background(), mock.Anything, mock.AnythingOfType("*v1.NetworkPolicy")).Return(nil).Times(times)
 			}
 
-			service := v1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
-				},
-			}
+			hasIngress := false
 
 			if test.networkPoliciesEnabled {
-
-				service.Annotations[annotation.CesServicesAnnotation] = "smthing"
+				hasIngress = true
 
 				mockClient.EXPECT().List(context.Background(), mock.Anything, client.MatchingLabels{"dogu.name": dogu.GetSimpleName()}).Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
 					newList := list.(*netv1.NetworkPolicyList)
@@ -612,7 +606,7 @@ func Test_upserter_UpsertDoguNetworkPolicies(t *testing.T) {
 				scheme:                 getTestScheme(),
 			}
 
-			err := ups.UpsertDoguNetworkPolicies(context.Background(), doguResource, dogu, &service)
+			err := ups.UpsertDoguNetworkPolicies(context.Background(), doguResource, dogu, hasIngress)
 			if !test.expectError {
 				require.NoError(t, err)
 			} else {

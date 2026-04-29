@@ -49,10 +49,29 @@ rules:
       - create
       - update
       - delete
+      - watch
   - apiGroups:
       - k8s.cloudogu.com
     resources:
       - authregistrations/status
+    verbs:
+      - get
+  # CRUD for Exposition CRs used for integration of v2 Dogus
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - expositions
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - watch
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - expositions/status
     verbs:
       - get
   # configuration of operator, local dogu registry, dogu + global config, health states
