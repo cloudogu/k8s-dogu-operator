@@ -158,14 +158,14 @@ func isServiceWebApp(port int32, protocol corev1.Protocol, serviceVariables map[
 	// Port-specific webapp tags must take precedence over the global tag.
 	// Some dogus expose multiple TCP ports but only one of them serves HTTP.
 	if hasAnyPortSpecificWebappTag(serviceVariables) {
-		return hasTag(serviceVariables, fmt.Sprintf("%d_%s", port, serviceVarTags), serviceTagWebapp)
+		return hasWebappTag(serviceVariables, fmt.Sprintf("%d_%s", port, serviceVarTags))
 	}
 
-	if hasTag(serviceVariables, serviceVarTags, serviceTagWebapp) {
+	if hasWebappTag(serviceVariables, serviceVarTags) {
 		return true
 	}
 
-	return hasTag(serviceVariables, fmt.Sprintf("%d_%s", port, serviceVarTags), serviceTagWebapp)
+	return hasWebappTag(serviceVariables, fmt.Sprintf("%d_%s", port, serviceVarTags))
 }
 
 func hasAnyPortSpecificWebappTag(serviceVariables map[string]string) bool {
@@ -178,7 +178,7 @@ func hasAnyPortSpecificWebappTag(serviceVariables map[string]string) bool {
 			continue
 		}
 
-		if hasTag(serviceVariables, name, serviceTagWebapp) {
+		if hasWebappTag(serviceVariables, name) {
 			return true
 		}
 	}
@@ -186,13 +186,13 @@ func hasAnyPortSpecificWebappTag(serviceVariables map[string]string) bool {
 	return false
 }
 
-func hasTag(serviceVariables map[string]string, tagListName string, tag string) bool {
+func hasWebappTag(serviceVariables map[string]string, tagListName string) bool {
 	tagList, hasTags := serviceVariables[tagListName]
 
 	if hasTags {
 		tags := strings.Split(tagList, ",")
 		for _, t := range tags {
-			if strings.ToLower(t) == tag {
+			if strings.ToLower(t) == serviceTagWebapp {
 				return true
 			}
 		}
