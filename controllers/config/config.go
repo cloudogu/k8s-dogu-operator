@@ -48,6 +48,7 @@ const (
 	envVarExpositionEnabled                       = "EXPOSITION_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
+	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
 )
 
 // DoguRegistryData contains all necessary data for the dogu registry.
@@ -270,7 +271,7 @@ func getNetworkPoliciesEnabled() bool {
 
 	netPolEnabled, err := strconv.ParseBool(netPolEnabledStr)
 	if err != nil {
-		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarNetworkPolicyEnabled, err), "Enabling network policies by default")
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarNetworkPolicyEnabled, err), "Enabling network policies by default")
 		return true
 	}
 
@@ -286,7 +287,7 @@ func getAuthRegistrationEnabled() bool {
 
 	authRegistrationEnabled, err := strconv.ParseBool(authRegistrationEnabledStr)
 	if err != nil {
-		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarAuthRegistrationEnabled, err), "Disabling auth registration by default")
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarAuthRegistrationEnabled, err), "Disabling auth registration by default")
 		return false
 	}
 
@@ -302,7 +303,7 @@ func getExpositionEnabled() bool {
 
 	expositionEnabled, err := strconv.ParseBool(expositionEnabledStr)
 	if err != nil {
-		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarExpositionEnabled, err), "Disabling exposition by default")
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarExpositionEnabled, err), "Disabling exposition by default")
 		return false
 	}
 
@@ -318,7 +319,7 @@ func getDisablePostfixDependencyCheck() bool {
 
 	disablePostfixDependencyCheck, err := strconv.ParseBool(disablePostfixDependencyCheckStr)
 	if err != nil {
-		log.Error(fmt.Errorf("failed to parse value of environment variable %s: %w", envVarDisablePostfixDependencyCheck, err), "Leaving postfix dependency check enabled")
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarDisablePostfixDependencyCheck, err), "Leaving postfix dependency check enabled")
 		return false
 	}
 
