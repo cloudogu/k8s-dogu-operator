@@ -109,7 +109,10 @@ func (epm *exposedPortsManager) addPorts(data map[string]string, ports []core.Ex
 		}
 		portName := fmt.Sprintf("%s-%d", strings.ToLower(p.Protocol), p.Port)
 
-		cmPorts[portName] = p
+		cmPorts[portName] = map[string]interface{}{
+			"port":     p.Port,
+			"protocol": p.Protocol,
+		}
 	}
 
 	cmBytes, err := yaml.Marshal(cmConfigValues)
@@ -176,5 +179,25 @@ func (epm *exposedPortsManager) getPortsOutOfMap(data map[string]string) (map[st
 	if !ok {
 		return nil, nil, fmt.Errorf("type assertion for ports failed")
 	}
+
+	// normalize port and protocol to lowercase
+	for name, raw := range cmPorts {
+		entry, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		if val, exists := entry["Port"]; exists {
+			entry["port"] = val
+			delete(entry, "Port")
+		}
+		if val, exists := entry["Protocol"]; exists {
+			entry["protocol"] = val
+			delete(entry, "Protocol")
+		}
+
+		cmPorts[name] = entry
+	}
+
 	return cmPorts, cmConfigValues, nil
 }
