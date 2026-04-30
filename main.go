@@ -166,6 +166,7 @@ func options() []fx.Option {
 			deletion.NewAuthRegistrationRemoverStep,
 			deletion.NewServiceAccountRemoverStep,
 			deletion.NewDeleteOutOfHealthConfigMapStep,
+			deletion.NewDeleteExposedPortsStep,
 			fx.Annotate(deletion.NewRemoveDoguConfigStep, fx.ParamTags(`name:"sensitiveDoguConfig"`), fx.As(new(deletion.RemoveSensitiveDoguConfigStep))),
 			deletion.NewRemoveFinalizerStep,
 
@@ -207,6 +208,7 @@ func options() []fx.Option {
 			),
 			install.NewRemoveServiceAccountStep,
 			install.NewAuthRegistrationStep,
+			install.NewExposePortStep,
 			install.NewServiceAccountStep,
 			install.NewServiceStep,
 			install.NewCreateExecPodStep,

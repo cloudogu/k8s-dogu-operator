@@ -20,6 +20,7 @@ func NewDoguDeleteUseCase(
 	authRegistrationRemoverStep *deletion.AuthRegistrationRemoverStep,
 	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
 	deleteOutOfHealthConfigMapStep *deletion.DeleteOutOfHealthConfigMapStep,
+	deleteExposedPortsStep *deletion.DeleteExposedPortsStep,
 	removeSensitiveDoguConfigStep deletion.RemoveSensitiveDoguConfigStep,
 	removeFinalizerStep *deletion.RemoveFinalizerStep,
 ) *DoguUseCase {
@@ -29,6 +30,7 @@ func NewDoguDeleteUseCase(
 			authRegistrationRemoverStep,
 			serviceAccountRemoverStep,
 			deleteOutOfHealthConfigMapStep,
+			deleteExposedPortsStep,
 			removeSensitiveDoguConfigStep,
 			removeFinalizerStep,
 		}}
@@ -50,6 +52,7 @@ func NewDoguInstallOrChangeUseCase(
 	registerDoguVersionStep *install.RegisterDoguVersionStep,
 	localDoguDescriptorOwnerReferenceStep install.LocalDoguDescriptorOwnerReferenceStep,
 	authRegistrationStep *install.AuthRegistrationStep,
+	exposedPortStep *install.ExposePortStep,
 	serviceAccountStep *install.ServiceAccountStep,
 	serviceStep *install.ServiceStep,
 	execPodCreateStep *install.CreateExecPodStep,
@@ -93,6 +96,7 @@ func NewDoguInstallOrChangeUseCase(
 			registerDoguVersionStep,
 			localDoguDescriptorOwnerReferenceStep,
 			authRegistrationStep,
+			exposedPortStep,
 			serviceAccountStep,
 			serviceStep,
 			execPodCreateStep,
