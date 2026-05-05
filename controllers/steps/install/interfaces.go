@@ -212,3 +212,7 @@ type authRegistrationManager interface {
 	// RemoveAuthRegistration removes the AuthRegistration belonging to the given dogu.
 	RemoveAuthRegistration(ctx context.Context, doguName cescommons.SimpleName) error
 }
+
+type exposedPortsManager interface {
+	AddPorts(ctx context.Context, ports []cesappcore.ExposedPort) (*coreV1.ConfigMap, error)
+}

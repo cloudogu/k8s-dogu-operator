@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	errors2 "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/stretchr/testify/mock"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -224,6 +225,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
 					mck := newMockDoguInterface(t)
+					mck.EXPECT().Get(testCtx, "", v1.GetOptions{}).Return(nil, errors2.NewNotFoundError(assert.AnError))
 					return mck
 				},
 			},
@@ -244,6 +246,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
 					mck := newMockDoguInterface(t)
+					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Now()}}}, nil)
 					return mck
 				},
 			},
