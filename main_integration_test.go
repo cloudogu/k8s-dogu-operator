@@ -58,6 +58,7 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 	ldapQualifiedName, _ := cescommons.NewQualifiedName("official", "ldap")
 	imageConfig := readImageConfig(t, imageConfigBytes)
 	ldapDogu := readDoguDescriptor(t, ldapDoguDescriptorWithLocalConfigVolumeBytes)
+	initialExposedPortsCm := readConfigMap(t, initalExposedPortsCmBytes)
 
 	ldapCr.Namespace = testNamespace
 	ldapCr.ResourceVersion = ""
@@ -92,6 +93,10 @@ var _ = Describe("Dogu Upgrade Tests", func() {
 				},
 			}
 			_, err := k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(testCtx, healthCM, metav1.CreateOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Create initial exposed ports config map")
+			_, err = k8sClientSet.CoreV1().ConfigMaps(testNamespace).Create(testCtx, initialExposedPortsCm, metav1.CreateOptions{})
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Creating dogu resource")

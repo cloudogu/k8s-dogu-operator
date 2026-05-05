@@ -14,7 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const globalConfigMapName = "global-config"
+const (
+	globalConfigMapName       = "global-config"
+	exposedPortsConfigMapName = "k8s-ces-gateway-config"
+)
 
 type GlobalConfigReconciler struct {
 	doguInterface doguInterface
@@ -61,16 +64,16 @@ func (r *GlobalConfigReconciler) setupWithManager(mgr ctrl.Manager) error {
 func globalConfigPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
-			return e.Object.GetName() == globalConfigMapName
+			return e.Object.GetName() == globalConfigMapName || e.Object.GetName() == exposedPortsConfigMapName
 		},
 		DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
-			return e.Object.GetName() == globalConfigMapName
+			return e.Object.GetName() == globalConfigMapName || e.Object.GetName() == exposedPortsConfigMapName
 		},
 		UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
-			return e.ObjectOld.GetName() == globalConfigMapName
+			return e.ObjectOld.GetName() == globalConfigMapName || e.ObjectOld.GetName() == exposedPortsConfigMapName
 		},
 		GenericFunc: func(e event.TypedGenericEvent[client.Object]) bool {
-			return e.Object.GetName() == globalConfigMapName
+			return e.Object.GetName() == globalConfigMapName || e.Object.GetName() == exposedPortsConfigMapName
 		},
 	}
 }

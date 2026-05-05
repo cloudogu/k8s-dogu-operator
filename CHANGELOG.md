@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.23.0] - 2026-05-05
+### Added
+- [#302] expose ports for dogus
+
 ## [v3.22.0] - 2026-04-08
 ### Added 
 - [#297] add timezone to dogus
@@ -18,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#285] Ignore auth-registration events when auth-registration is not enabled
 - [#298] Feature flag to ignore postfix dependency for v2-dogus
   - This is to be used when postfix is installed as a component instead of a dogu.
+
+### Fixed
+- Make sure dogus can access new dogu version after upgrade; #298
 
 ## [v3.21.0] - 2026-03-19
 ### Removed
