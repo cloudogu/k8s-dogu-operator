@@ -53,13 +53,13 @@ func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource 
 
 	exposedPorts := serviceaccess.CollectExposedPorts(doguDescriptor)
 
-	if len(routes) == 0 && len(exposedPorts) == 0 {
-		return em.RemoveExposition(ctx, doguResource.GetSimpleDoguName())
-	}
-
 	spec, err := buildSpec(doguResource.Name, routes, exposedPorts)
 	if err != nil {
 		return fmt.Errorf("failed to build Exposition spec: %w", err)
+	}
+
+	if isEmptySpec(spec) {
+		return em.RemoveExposition(ctx, doguResource.GetSimpleDoguName())
 	}
 
 	desired := &expv1.Exposition{
@@ -129,4 +129,8 @@ func buildSpec(serviceName string, routes []serviceaccess.Route, exposedPorts []
 		TCP:  buildTCPEntries(serviceName, exposedPorts),
 		UDP:  buildUDPEntries(serviceName, exposedPorts),
 	}, nil
+}
+
+func isEmptySpec(spec expv1.ExpositionSpec) bool {
+	return len(spec.HTTP) == 0 && len(spec.TCP) == 0 && len(spec.UDP) == 0
 }

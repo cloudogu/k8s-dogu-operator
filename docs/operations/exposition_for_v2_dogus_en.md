@@ -42,11 +42,11 @@ This prevents unrelated non-HTTP ports from being treated as web routes.
 
 In addition, exposed ports from `dogu.json` are mapped to layer-4 entries of the `Exposition`:
 
-- `spec.tcp`
-- `spec.udp`
+- `type: tcp` is mapped to `spec.tcp`
+- `type: udp` is mapped to `spec.udp`
 
-Because the legacy exposed-port model does not distinguish the protocol precisely enough for this migration path, each
-exposed port currently creates both one TCP and one UDP entry.
+If `type` is missing, the operator follows the Dogu model and assumes `tcp`. Other protocols are not added to the
+`Exposition` CR.
 
 Simplified example:
 
@@ -88,15 +88,10 @@ spec:
       service: jenkins
       port: 50000
       requestedExternalPort: 50000
-  udp:
-    - name: port-50000-50000
-      service: jenkins
-      port: 50000
-      requestedExternalPort: 50000
 ```
 
 In this example, only port `8080` is treated as an HTTP route although multiple ports are exposed overall. The
-additional port `50000` is mapped only as a layer-4 TCP and UDP entry.
+additional port `50000` is mapped only as a layer-4 TCP entry.
 
 If a v2 Dogu has neither web routes nor exposed ports, the operator removes an already existing `Exposition` CR for
 that Dogu again. This avoids leaving empty exposition resources in the cluster.

@@ -38,10 +38,10 @@ Dadurch werden zusätzliche Nicht-HTTP-Ports nicht versehentlich als Web-Routen 
 
 Zusätzlich werden Exposed Ports aus der `dogu.json` auf Layer-4-Einträge der `Exposition` abgebildet:
 
-- `spec.tcp`
-- `spec.udp`
+- `type: tcp` wird auf `spec.tcp` abgebildet
+- `type: udp` wird auf `spec.udp` abgebildet
 
-Da das Legacy-Modell der Exposed Ports für diesen Migrationspfad den Protokolltyp nicht präzise genug trennt, wird aktuell für jeden Exposed Port jeweils ein TCP- und ein UDP-Eintrag erzeugt.
+Wenn `type` fehlt, wird wie im Dogu-Modell `tcp` angenommen. Andere Protokolle werden nicht in die `Exposition`-CR übernommen.
 
 Ein vereinfachtes Beispiel:
 
@@ -83,15 +83,10 @@ spec:
       service: jenkins
       port: 50000
       requestedExternalPort: 50000
-  udp:
-    - name: port-50000-50000
-      service: jenkins
-      port: 50000
-      requestedExternalPort: 50000
 ```
 
 In diesem Beispiel wird nur Port `8080` als HTTP-Route behandelt, obwohl global mehrere Ports exponiert sind.
-Der zusätzliche Port `50000` wird nur auf Layer 4 als TCP- und UDP-Eintrag abgebildet.
+Der zusätzliche Port `50000` wird nur auf Layer 4 als TCP-Eintrag abgebildet.
 
 Wenn ein v2-Dogu weder Webrouten noch Exposed Ports besitzt, entfernt der Operator eine bereits vorhandene `Exposition`-CR für dieses Dogu wieder. Dadurch verbleiben keine leeren Exposition-Ressourcen im Cluster.
 

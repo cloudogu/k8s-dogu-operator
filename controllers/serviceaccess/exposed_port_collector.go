@@ -1,6 +1,10 @@
 package serviceaccess
 
-import "github.com/cloudogu/cesapp-lib/core"
+import (
+	"strings"
+
+	"github.com/cloudogu/cesapp-lib/core"
+)
 
 func CollectExposedPorts(dogu *core.Dogu) []ExposedPort {
 	exposedPorts := dogu.ExposedPorts
@@ -11,7 +15,7 @@ func CollectExposedPorts(dogu *core.Dogu) []ExposedPort {
 
 	for _, exposedPort := range exposedPorts {
 		annotationExposedPorts = append(annotationExposedPorts, ExposedPort{
-			Protocol:   exposedPort.Type,
+			Protocol:   strings.ToLower(exposedPort.GetType()),
 			Port:       exposedPort.Container,
 			TargetPort: exposedPort.Host,
 		})

@@ -141,6 +141,24 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("should delete existing exposition if only unsupported exposed ports exist", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptorWithUnsupportedExposedPorts(), nil)
+		imageRegistry := newMockImageRegistry(t)
+		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(&imagev1.ConfigFile{}, nil)
+		client := newMockExpositionClient(t)
+		client.EXPECT().Delete(ctx, "redmine", metav1.DeleteOptions{}).Return(nil)
+		manager := &ExpositionManager{
+			client:        client,
+			doguFetcher:   fetcher,
+			imageRegistry: imageRegistry,
+		}
+
+		err := manager.EnsureExposition(ctx, doguResource, doguService)
+
+		require.NoError(t, err)
+	})
+
 	t.Run("should create exposition if it does not exist", func(t *testing.T) {
 		fetcher := newMockLocalDoguFetcher(t)
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
@@ -268,7 +286,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 				len(exp.Spec.TCP) == 1 &&
 				len(exp.Spec.UDP) == 1 &&
 				exp.Spec.TCP[0].Port == 2222 &&
-				exp.Spec.UDP[0].Port == 2222
+				exp.Spec.UDP[0].Port == 5353
 		}), metav1.CreateOptions{}).Return(&expv1.Exposition{}, nil)
 		manager := &ExpositionManager{
 			client:        client,
@@ -450,6 +468,26 @@ func newDoguDescriptorWithExposedPorts() *cesappcore.Dogu {
 				Type:      "tcp",
 				Container: 2222,
 				Host:      32222,
+			},
+			{
+				Type:      "udp",
+				Container: 5353,
+				Host:      3053,
+			},
+		},
+	}
+}
+
+func newDoguDescriptorWithUnsupportedExposedPorts() *cesappcore.Dogu {
+	return &cesappcore.Dogu{
+		Name:    "official/redmine",
+		Image:   "cloudogu/redmine",
+		Version: "1.0.0",
+		ExposedPorts: []cesappcore.ExposedPort{
+			{
+				Type:      "sctp",
+				Container: 9090,
+				Host:      39090,
 			},
 		},
 	}

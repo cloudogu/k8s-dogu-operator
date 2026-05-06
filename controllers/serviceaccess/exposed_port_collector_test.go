@@ -25,9 +25,13 @@ func TestCollectExposedPorts(t *testing.T) {
 					Host:      32222,
 				},
 				{
-					Type:      "udp",
+					Type:      "UDP",
 					Container: 8080,
 					Host:      30080,
+				},
+				{
+					Container: 8443,
+					Host:      30443,
 				},
 			},
 		}
@@ -44,6 +48,11 @@ func TestCollectExposedPorts(t *testing.T) {
 				Protocol:   "udp",
 				Port:       8080,
 				TargetPort: 30080,
+			},
+			{
+				Protocol:   "tcp",
+				Port:       8443,
+				TargetPort: 30443,
 			},
 		}, exposedPorts)
 	})
