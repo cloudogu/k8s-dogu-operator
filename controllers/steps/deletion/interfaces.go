@@ -71,7 +71,7 @@ type authRegistrationManager interface {
 }
 
 type exposedPortsManager interface {
-	DeletePorts(ctx context.Context, ports []cesappcore.ExposedPort) (*coreV1.ConfigMap, error)
+	DeletePorts(ctx context.Context, ports []cesappcore.ExposedPort) (*corev1.ConfigMap, error)
 }
 
 type expositionManager interface {
