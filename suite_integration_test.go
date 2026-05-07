@@ -86,6 +86,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	err = os.Setenv("NETWORK_POLICIES_ENABLED", "true")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	err = os.Setenv("AUTH_REGISTRATION_ENABLED", "false")
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	err = os.Setenv("EXPOSITION_ENABLED", "false")
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = os.Setenv(config.StageEnvironmentVariable, config.StageProduction)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())

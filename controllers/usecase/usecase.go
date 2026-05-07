@@ -18,6 +18,7 @@ type DoguUseCase struct {
 func NewDoguDeleteUseCase(
 	statusStep *deletion.StatusStep,
 	authRegistrationRemoverStep *deletion.AuthRegistrationRemoverStep,
+	expositionRemoverStep *deletion.ExpositionRemoverStep,
 	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
 	deleteOutOfHealthConfigMapStep *deletion.DeleteOutOfHealthConfigMapStep,
 	deleteExposedPortsStep *deletion.DeleteExposedPortsStep,
@@ -28,6 +29,7 @@ func NewDoguDeleteUseCase(
 		steps: []Step{
 			statusStep,
 			authRegistrationRemoverStep,
+			expositionRemoverStep,
 			serviceAccountRemoverStep,
 			deleteOutOfHealthConfigMapStep,
 			deleteExposedPortsStep,
@@ -55,6 +57,7 @@ func NewDoguInstallOrChangeUseCase(
 	exposedPortStep *install.ExposePortStep,
 	serviceAccountStep *install.ServiceAccountStep,
 	serviceStep *install.ServiceStep,
+	expositionStep *install.ExpositionStep,
 	execPodCreateStep *install.CreateExecPodStep,
 	customK8sResourceStep *install.CustomK8sResourceStep,
 	volumeGeneratorStep *install.CreateVolumeStep,
@@ -99,6 +102,7 @@ func NewDoguInstallOrChangeUseCase(
 			exposedPortStep,
 			serviceAccountStep,
 			serviceStep,
+			expositionStep,
 			execPodCreateStep,
 			customK8sResourceStep,
 			volumeGeneratorStep,
