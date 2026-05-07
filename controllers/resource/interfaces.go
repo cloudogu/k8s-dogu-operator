@@ -51,7 +51,7 @@ type ResourceUpserter interface {
 	UpsertDoguPVCs(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu) (*v1.PersistentVolumeClaim, error)
 	// SetControllerReferenceForPVC sets a controller reference to the dogu in the specified PVC.
 	SetControllerReferenceForPVC(ctx context.Context, pvc *v1.PersistentVolumeClaim, doguResource *k8sv2.Dogu) error
-	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, service *v1.Service) error
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *cesappcore.Dogu, hasIngress bool) error
 }
 
 type doguSecretHandler interface {

@@ -10,6 +10,7 @@ import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -61,6 +62,7 @@ type DoguReconciler struct {
 	externalEvents          <-chan event.TypedGenericEvent[*doguv2.Dogu]
 	eventRecorder           eventRecorder
 	authRegistrationEnabled bool
+	expositionEnabled       bool
 }
 
 func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
@@ -96,6 +98,7 @@ func NewDoguReconciler(
 		externalEvents:          externalEvents,
 		eventRecorder:           recorder,
 		authRegistrationEnabled: config.AuthRegistrationEnabled,
+		expositionEnabled:       config.ExpositionEnabled,
 	}
 	err := r.setupWithManager(manager)
 	if err != nil {
@@ -163,6 +166,9 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{}))
 	if r.authRegistrationEnabled {
 		controllerBuilder = controllerBuilder.Owns(&authRegApiV1.AuthRegistration{})
+	}
+	if r.expositionEnabled {
+		controllerBuilder = controllerBuilder.Owns(&expositionv1.Exposition{})
 	}
 	return controllerBuilder.Complete(r)
 }

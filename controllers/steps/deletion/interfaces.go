@@ -12,7 +12,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	appsv1 "k8s.io/api/apps/v1"
-	coreV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -71,5 +71,10 @@ type authRegistrationManager interface {
 }
 
 type exposedPortsManager interface {
-	DeletePorts(ctx context.Context, ports []cesappcore.ExposedPort) (*coreV1.ConfigMap, error)
+	DeletePorts(ctx context.Context, ports []cesappcore.ExposedPort) (*corev1.ConfigMap, error)
+}
+
+type expositionManager interface {
+	EnsureExposition(ctx context.Context, doguResource *v2.Dogu, doguService *corev1.Service) error
+	RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error
 }
