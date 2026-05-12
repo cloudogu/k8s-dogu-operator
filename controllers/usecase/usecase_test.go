@@ -110,7 +110,6 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 		expositionRemoverStep := &deletion.ExpositionRemoverStep{}
 		serviceAccountRemoverStep := &deletion.ServiceAccountRemoverStep{}
 		deleteOutOfHealthConfigMapStep := &deletion.DeleteOutOfHealthConfigMapStep{}
-		deleteExposedPortsStep := &deletion.DeleteExposedPortsStep{}
 		removeSensitiveDoguConfigStep := deletion.NewRemoveDoguConfigStep(nil)
 		removeFinalizerStep := &deletion.RemoveFinalizerStep{}
 
@@ -120,7 +119,6 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 			expositionRemoverStep,
 			serviceAccountRemoverStep,
 			deleteOutOfHealthConfigMapStep,
-			deleteExposedPortsStep,
 			removeSensitiveDoguConfigStep,
 			removeFinalizerStep,
 		)
@@ -131,7 +129,6 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 			"*deletion.ExpositionRemoverStep",
 			"*deletion.ServiceAccountRemoverStep",
 			"*deletion.DeleteOutOfHealthConfigMapStep",
-			"*deletion.DeleteExposedPortsStep",
 			"*deletion.removeDoguConfigStep",
 			"*deletion.RemoveFinalizerStep",
 		}
@@ -162,7 +159,6 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			&install.RegisterDoguVersionStep{},
 			install.NewOwnerReferenceStep(nil, nil),
 			&install.AuthRegistrationStep{},
-			&install.ExposePortStep{},
 			&install.ServiceAccountStep{},
 			&install.ServiceStep{},
 			&install.ExpositionStep{},
@@ -207,7 +203,6 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*install.RegisterDoguVersionStep",
 			"*install.OwnerReferenceStep",
 			"*install.AuthRegistrationStep",
-			"*install.ExposePortStep",
 			"*install.ServiceAccountStep",
 			"*install.ServiceStep",
 			"*install.ExpositionStep",
