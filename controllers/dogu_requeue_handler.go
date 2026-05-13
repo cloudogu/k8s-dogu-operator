@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/cloudogu/ces-commons-lib/errors"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -49,16 +50,18 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *doguv2.Do
 
 func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource *doguv2.Dogu, result *ctrl.Result) {
 	logger := log.FromContext(ctx)
-	emptyDogu := &doguv2.Dogu{}
-	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
-		return
-	}
 
 	var err error
 	doguResource, err = d.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return
+		}
 		result.RequeueAfter = d.requeueTime
 		logger.Error(err, "failed to get doguResource for setting requeue time")
+		return
+	}
+	if !doguResource.DeletionTimestamp.IsZero() {
 		return
 	}
 
