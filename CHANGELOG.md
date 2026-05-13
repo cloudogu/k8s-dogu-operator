@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.24.0] - 2026-05-07
+### Added
+- Add Exposition CR support for v2 dogus behind the `EXPOSITION_ENABLED` feature flag
+  - Create and update `Exposition` CRs for routes and exposed ports of v2 dogus
+  - Stop generating the legacy service annotations `k8s-dogu-operator.cloudogu.com/ces-services` and `k8s-dogu-operator.cloudogu.com/ces-exposed-ports` when Exposition is enabled
+
+## [v3.23.0] - 2026-05-05
+### Added
+- [#302] expose ports for dogus
+
 ## [v3.22.0] - 2026-04-08
 ### Added 
 - [#297] add timezone to dogus
