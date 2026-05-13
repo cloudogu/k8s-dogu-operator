@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+ - [#309] revert #302
+   - do not write exposed ports to gateway configmap
 
 ## [v3.24.0] - 2026-05-07
 ### Added
