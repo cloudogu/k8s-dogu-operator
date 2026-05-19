@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.25.0] - 2026-05-19
+### Fixed
+ - [#309] revert #302
+   - do not write exposed ports to gateway configmap
+
 ## [v3.24.0] - 2026-05-07
 ### Added
 - Add Exposition CR support for v2 dogus behind the `EXPOSITION_ENABLED` feature flag
