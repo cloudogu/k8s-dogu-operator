@@ -213,10 +213,6 @@ type authRegistrationManager interface {
 	RemoveAuthRegistration(ctx context.Context, doguName cescommons.SimpleName) error
 }
 
-type exposedPortsManager interface {
-	AddPorts(ctx context.Context, ports []cesappcore.ExposedPort) (*coreV1.ConfigMap, error)
-}
-
 type expositionManager interface {
 	EnsureExposition(ctx context.Context, doguResource *v2.Dogu, doguService *coreV1.Service) error
 	RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error
