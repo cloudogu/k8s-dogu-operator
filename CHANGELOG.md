@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - [#305] Fixed a restore issue where serviceaccounts of non-existing dogus caused the restore to fail.
+- [#305] Update Makefiles to 10.7.2.
 
 ## [v3.22.0] - 2026-04-08
 ### Added 
