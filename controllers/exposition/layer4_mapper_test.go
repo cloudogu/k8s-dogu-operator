@@ -12,17 +12,17 @@ func TestBuildTCPEntries(t *testing.T) {
 	exposedPorts := []serviceaccess.ExposedPort{
 		{
 			Protocol:   "tcp",
-			Port:       2222,
-			TargetPort: 32222,
+			Port:       32222,
+			TargetPort: 2222,
 		},
 		{
 			Protocol:   "udp",
-			Port:       5353,
-			TargetPort: 3053,
+			Port:       3053,
+			TargetPort: 5353,
 		},
 		{
-			Port:       8443,
-			TargetPort: 30443,
+			Port:       30443,
+			TargetPort: 8443,
 		},
 	}
 
@@ -48,13 +48,13 @@ func TestBuildUDPEntries(t *testing.T) {
 	exposedPorts := []serviceaccess.ExposedPort{
 		{
 			Protocol:   "tcp",
-			Port:       2222,
-			TargetPort: 32222,
+			Port:       32222,
+			TargetPort: 2222,
 		},
 		{
 			Protocol:   "UDP",
-			Port:       5353,
-			TargetPort: 3053,
+			Port:       3053,
+			TargetPort: 5353,
 		},
 	}
 
