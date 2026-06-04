@@ -41,18 +41,18 @@ func TestCollectExposedPorts(t *testing.T) {
 		assert.Equal(t, []ExposedPort{
 			{
 				Protocol:   "tcp",
-				Port:       2222,
-				TargetPort: 32222,
+				Port:       32222,
+				TargetPort: 2222,
 			},
 			{
 				Protocol:   "udp",
-				Port:       8080,
-				TargetPort: 30080,
+				Port:       30080,
+				TargetPort: 8080,
 			},
 			{
 				Protocol:   "tcp",
-				Port:       8443,
-				TargetPort: 30443,
+				Port:       30443,
+				TargetPort: 8443,
 			},
 		}, exposedPorts)
 	})

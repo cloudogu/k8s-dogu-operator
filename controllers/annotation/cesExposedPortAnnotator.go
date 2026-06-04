@@ -18,7 +18,7 @@ type CesExposedPortAnnotator struct{}
 // AnnotateService annotates a given service with exposed ports.
 // Can bes used to identify services with exposed ports and get information about these ports
 // Services are annotated like this:
-// k8s-dogu-operator.cloudogu.com/ces-exposed-ports = [{"protocol":"tcp","port":2222,"targetPort":2222},{"protocol":"udp","port":8080,"targetPort":80}]
+// k8s-dogu-operator.cloudogu.com/ces-exposed-ports = [{"protocol":"tcp","port":2222,"targetPort":2222},{"protocol":"udp","port":80,"targetPort":8080}]
 func (c *CesExposedPortAnnotator) AnnotateService(service *corev1.Service, dogu *core.Dogu) error {
 	exposedPorts := serviceaccess.CollectExposedPorts(dogu)
 

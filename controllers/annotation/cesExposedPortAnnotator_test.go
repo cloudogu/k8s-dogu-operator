@@ -35,7 +35,7 @@ func TestCesExposedPortAnnotator_AnnotateService(t *testing.T) {
 					Container: 8080,
 				},
 			},
-			expectedAnnotation: "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":8080,\"targetPort\":80}]",
+			expectedAnnotation: "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":80,\"targetPort\":8080}]",
 		},
 		{
 			name: "Successfully remove unnecessary annotations",
@@ -51,7 +51,7 @@ func TestCesExposedPortAnnotator_AnnotateService(t *testing.T) {
 					Container: 8080,
 				},
 			},
-			expectedAnnotation: "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":8080,\"targetPort\":80}]",
+			expectedAnnotation: "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":80,\"targetPort\":8080}]",
 			updatedExposedPorts: []core.ExposedPort{
 				{
 					Type:      "tcp",
@@ -85,7 +85,7 @@ func TestCesExposedPortAnnotator_AnnotateService(t *testing.T) {
 					Container: 443,
 				},
 			},
-			expectedAnnotation:        "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":8080,\"targetPort\":80},{\"protocol\":\"tcp\",\"port\":22,\"targetPort\":22},{\"protocol\":\"tcp\",\"port\":443,\"targetPort\":443}]",
+			expectedAnnotation:        "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":80,\"targetPort\":8080},{\"protocol\":\"tcp\",\"port\":22,\"targetPort\":22},{\"protocol\":\"tcp\",\"port\":443,\"targetPort\":443}]",
 			updatedExposedPorts:       []core.ExposedPort{},
 			updatedExpectedAnnotation: "",
 		},
@@ -103,7 +103,7 @@ func TestCesExposedPortAnnotator_AnnotateService(t *testing.T) {
 					Container: 8080,
 				},
 			},
-			expectedAnnotation: "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":8080,\"targetPort\":80}]",
+			expectedAnnotation: "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":80,\"targetPort\":8080}]",
 			updatedExposedPorts: []core.ExposedPort{
 				{
 					Type:      "tcp",
@@ -126,7 +126,7 @@ func TestCesExposedPortAnnotator_AnnotateService(t *testing.T) {
 					Container: 443,
 				},
 			},
-			updatedExpectedAnnotation: "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":8080,\"targetPort\":80},{\"protocol\":\"tcp\",\"port\":22,\"targetPort\":22},{\"protocol\":\"tcp\",\"port\":443,\"targetPort\":443}]",
+			updatedExpectedAnnotation: "[{\"protocol\":\"tcp\",\"port\":2222,\"targetPort\":2222},{\"protocol\":\"udp\",\"port\":80,\"targetPort\":8080},{\"protocol\":\"tcp\",\"port\":22,\"targetPort\":22},{\"protocol\":\"tcp\",\"port\":443,\"targetPort\":443}]",
 		},
 	}
 	for _, tt := range tests {
