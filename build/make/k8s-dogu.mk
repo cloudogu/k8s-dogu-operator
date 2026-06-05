@@ -13,7 +13,9 @@ IMAGE=$(shell $(BINARY_YQ) -oy -e ".Image" $(DOGU_JSON_FILE)):$(VERSION)
 
 PRE_BUILD_TARGETS ?=
 
-include $(BUILD_DIR)/make/k8s.mk
+ifeq (${K8S_MK_INCLUDE_MARKER}, )
+	include ${BUILD_DIR}/make/k8s.mk
+endif
 
 ##@ K8s - EcoSystem
 

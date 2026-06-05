@@ -10,6 +10,7 @@ import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
+	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
@@ -40,6 +41,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(doguv2.AddToScheme(scheme))
 	utilruntime.Must(authRegApiV1.AddToScheme(scheme))
+	utilruntime.Must(expositionv1.AddToScheme(scheme))
 }
 
 func NewControllerManager(

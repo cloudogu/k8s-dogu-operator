@@ -79,7 +79,7 @@ type doguConfigRepository interface {
 }
 
 type netPolUpserter interface {
-	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, doguService *coreV1.Service) error
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, hasIngress bool) error
 }
 
 type serviceGenerator interface {
@@ -138,7 +138,7 @@ type resourceUpserter interface {
 	UpsertDoguPVCs(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu) (*coreV1.PersistentVolumeClaim, error)
 	// SetControllerReferenceForPVC sets a controller reference to the dogu in the specified PVC.
 	SetControllerReferenceForPVC(ctx context.Context, pvc *coreV1.PersistentVolumeClaim, doguResource *v2.Dogu) error
-	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, doguService *coreV1.Service) error
+	UpsertDoguNetworkPolicies(ctx context.Context, doguResource *v2.Dogu, dogu *cesappcore.Dogu, hasIngress bool) error
 }
 
 type ownerReferenceSetter interface {
@@ -211,4 +211,9 @@ type authRegistrationManager interface {
 	EnsureAuthRegistration(ctx context.Context, doguResource *v2.Dogu) error
 	// RemoveAuthRegistration removes the AuthRegistration belonging to the given dogu.
 	RemoveAuthRegistration(ctx context.Context, doguName cescommons.SimpleName) error
+}
+
+type expositionManager interface {
+	EnsureExposition(ctx context.Context, doguResource *v2.Dogu, doguService *coreV1.Service) error
+	RemoveExposition(ctx context.Context, doguName cescommons.SimpleName) error
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 )
 
 //go:embed testdata/redmine-cr.yaml
@@ -107,6 +108,10 @@ func getTestScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 
 	err := authRegApiV1.AddToScheme(scheme)
+	if err != nil {
+		panic(err)
+	}
+	err = expositionv1.AddToScheme(scheme)
 	if err != nil {
 		panic(err)
 	}
