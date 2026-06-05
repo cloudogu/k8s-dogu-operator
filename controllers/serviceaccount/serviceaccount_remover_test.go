@@ -6,11 +6,10 @@ import (
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +25,7 @@ import (
 func TestNewRemover(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// when
-		result := NewRemover(nil, nil, nil, nil, nil, &opConfig.OperatorConfig{})
+		result := NewRemover(nil, nil, nil, nil, nil, &opConfig.OperatorConfig{}, nil)
 
 		// then
 		require.NotNil(t, result)
@@ -87,11 +86,15 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
+
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil, nil)
 		serviceAccountCreator := remover{
 			client:            cli,
 			sensitiveDoguRepo: sensitiveConfigRepoMock,
 			doguFetcher:       localFetcher,
 			executor:          commandExecutorMock,
+			doguInterface:     doguInterfaceMock,
 		}
 
 		// when
@@ -128,11 +131,15 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("cas")).Return(true, nil)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(false, assert.AnError)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("cas")).Return(casDescriptor, nil)
+
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil, nil)
 		serviceAccountRemover := remover{
 			client:            cli,
 			sensitiveDoguRepo: sensitiveConfigRepoMock,
 			doguFetcher:       localFetcher,
 			executor:          commandExecutorMock,
+			doguInterface:     doguInterfaceMock,
 		}
 
 		// when
@@ -246,7 +253,11 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		cliWithoutReadyPod := fake2.NewClientBuilder().
 			WithScheme(getTestScheme()).
 			Build()
-		serviceAccountCreator := remover{client: cliWithoutReadyPod, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher}
+
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil, nil)
+
+		serviceAccountCreator := remover{client: cliWithoutReadyPod, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, doguInterface: doguInterfaceMock}
 
 		// when
 		err := serviceAccountCreator.RemoveAll(testCtx, redmineDescriptor)
@@ -278,7 +289,11 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(invalidPostgresqlDescriptor, nil)
-		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher}
+
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil, nil)
+
+		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, doguInterface: doguInterfaceMock}
 
 		// when
 		err := serviceAccountRemover.RemoveAll(testCtx, redmineDescriptor)
@@ -311,7 +326,10 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
-		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, executor: commandExecutorMock}
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil, nil)
+
+		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, executor: commandExecutorMock, doguInterface: doguInterfaceMock}
 
 		// when
 		err := serviceAccountRemover.RemoveAll(testCtx, redmineDescriptor)
@@ -346,11 +364,16 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
+
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil, nil)
+
 		serviceAccountCreator := remover{
 			client:            cli,
 			sensitiveDoguRepo: sensitiveConfigRepoMock,
 			doguFetcher:       localFetcher,
 			executor:          commandExecutorMock,
+			doguInterface:     doguInterfaceMock,
 		}
 
 		// when
@@ -388,6 +411,42 @@ func TestRemover_RemoveServiceAccounts(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get service:")
+	})
+
+	t.Run("service account removal does not fail if dogu does not exist", func(t *testing.T) {
+		// given
+		cli := fake2.NewClientBuilder().
+			WithScheme(getTestScheme()).
+			WithObjects(availablePostgresqlDoguResource).
+			Build()
+
+		doguCfg := config.CreateDoguConfig("test", config.Entries{
+			"sa-postgresql/username": "testUser",
+			"sa-postgresql/password": "testPassword",
+		})
+
+		sensitiveConfigRepoMock := NewMockSensitiveDoguConfigRepository(t)
+		sensitiveConfigRepoMock.EXPECT().Get(mock.Anything, mock.Anything).Return(doguCfg, nil)
+		sensitiveConfigRepoMock.EXPECT().Update(mock.Anything, mock.Anything).Return(config.DoguConfig{}, nil)
+
+		postgresRemoveSAShellCmd := exec.NewShellCommand(postgresRemoveCmd.Command, "redmine")
+
+		commandExecutorMock := &mockCommandExecutor{}
+		commandExecutorMock.EXPECT().ExecCommandForDogu(testCtx, availablePostgresqlDoguResource, postgresRemoveSAShellCmd).Return(nil, nil)
+
+		localFetcher := newMockLocalDoguFetcher(t)
+		localFetcher.EXPECT().Enabled(testCtx, cescommons.SimpleName("postgresql")).Return(true, nil)
+		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postgresql")).Return(postgresqlDescriptor, nil)
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, mock.Anything, mock.Anything).Return(nil, cloudoguerrors.NewNotFoundError(assert.AnError))
+
+		serviceAccountRemover := remover{client: cli, sensitiveDoguRepo: sensitiveConfigRepoMock, doguFetcher: localFetcher, executor: commandExecutorMock, doguInterface: doguInterfaceMock}
+
+		// when
+		err := serviceAccountRemover.RemoveAll(testCtx, redmineDescriptor)
+
+		// then
+		require.NoError(t, err)
 	})
 }
 

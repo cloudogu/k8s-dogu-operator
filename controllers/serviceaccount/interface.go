@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-registry-lib/config"
@@ -76,4 +77,8 @@ type localDoguFetcher interface {
 type commandExecutor interface {
 	// ExecCommandForDogu executes a command in a dogu.
 	ExecCommandForDogu(ctx context.Context, resource *v2.Dogu, command exec.ShellCommand) (*bytes.Buffer, error)
+}
+
+type doguInterface interface {
+	doguClient.DoguInterface
 }

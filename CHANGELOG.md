@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - [#311] exposed port annotation mapping to use the dogu host port as `port` and container port as `targetPort`
+- [#305] Fixed a restore issue where serviceaccounts of non-existing dogus caused the restore to fail.
+- [#305] Update Makefiles to 10.7.2.
 
 ## [v3.25.0] - 2026-05-19
 ### Fixed
