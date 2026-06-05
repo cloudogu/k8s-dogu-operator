@@ -26,7 +26,7 @@ github.com/cloudogu/k8s-apply-lib v0.5.0 h1:XeQKwTgT8FIozpqyPO/b09LAenPswBilmatw
 github.com/cloudogu/k8s-apply-lib v0.5.0/go.mod h1:jR/+7q47O5gb++4gVsmEElT8/EJoi+Msw2dVzArTPW0=
 github.com/cloudogu/k8s-auth-registration-lib v0.1.0 h1:Xq0wdsDGJoGkqchqDlwEzfOpch4w8D/SCXU6HSok5GI=
 github.com/cloudogu/k8s-auth-registration-lib v0.1.0/go.mod h1:PltBfG8QfrZNcayG33azghsq3O0anl4oJH2mWnx2oo8=
-github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0 h1:F1/AsSMJN1/hM2ucog1r2+yhSDHK1zsScQGqjxdBHPg=
+github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0 h1:As1MZ1adsFPZdjETA16JYEMD7l7idMYe+GIPIRNfiCc=
 github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0/go.mod h1:IgA9mxjv/dKkLJ4e7n7+AyFbHvtO5sjxpZKN3GEoX44=
 github.com/cloudogu/k8s-exposition-lib v1.0.0 h1:WKL8oXt3N9CVH3WNuLUbbkmBAUjs1CcEvOoUnlnFtAo=
 github.com/cloudogu/k8s-exposition-lib v1.0.0/go.mod h1:psu5GdaD2wjUGVY9njtfmUjnxi4QX4Ks4txS8pGQhgY=
