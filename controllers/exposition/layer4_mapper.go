@@ -24,8 +24,8 @@ func buildTCPEntries(serviceName string, exposedPorts []serviceaccess.ExposedPor
 		entries = append(entries, expv1.TCPEntry{
 			Name:                  buildExposedPortEntryName(exposedPort),
 			Service:               serviceName,
-			Port:                  int32(exposedPort.Port),
-			RequestedExternalPort: new(int32(exposedPort.TargetPort)),
+			Port:                  int32(exposedPort.TargetPort),
+			RequestedExternalPort: new(int32(exposedPort.Port)),
 		})
 	}
 
@@ -43,8 +43,8 @@ func buildUDPEntries(serviceName string, exposedPorts []serviceaccess.ExposedPor
 		entries = append(entries, expv1.UDPEntry{
 			Name:                  buildExposedPortEntryName(exposedPort),
 			Service:               serviceName,
-			Port:                  int32(exposedPort.Port),
-			RequestedExternalPort: new(int32(exposedPort.TargetPort)),
+			Port:                  int32(exposedPort.TargetPort),
+			RequestedExternalPort: new(int32(exposedPort.Port)),
 		})
 	}
 
@@ -52,7 +52,7 @@ func buildUDPEntries(serviceName string, exposedPorts []serviceaccess.ExposedPor
 }
 
 func buildExposedPortEntryName(exposedPort serviceaccess.ExposedPort) string {
-	return fmt.Sprintf("port-%d-%d", exposedPort.Port, exposedPort.TargetPort)
+	return fmt.Sprintf("port-%d-%d", exposedPort.TargetPort, exposedPort.Port)
 }
 
 func normalizedProtocol(exposedPort serviceaccess.ExposedPort) string {

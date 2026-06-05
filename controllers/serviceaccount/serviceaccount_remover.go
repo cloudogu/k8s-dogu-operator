@@ -6,6 +6,9 @@ import (
 	"fmt"
 
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
@@ -28,6 +31,7 @@ type remover struct {
 	clientSet         kubernetes.Interface
 	apiClient         serviceAccountApiClient
 	namespace         string
+	doguInterface     doguInterface
 }
 
 // NewRemover creates a new instance of ServiceAccountRemover
@@ -38,6 +42,7 @@ func NewRemover(
 	client client.Client,
 	clientSet kubernetes.Interface,
 	operatorConfig *opConfig.OperatorConfig,
+	doguInterface doguClient.DoguInterface,
 ) *remover {
 	return &remover{
 		client:            client,
@@ -47,6 +52,7 @@ func NewRemover(
 		clientSet:         clientSet,
 		apiClient:         &apiClient{},
 		namespace:         operatorConfig.Namespace,
+		doguInterface:     doguInterface,
 	}
 }
 
@@ -149,6 +155,13 @@ func (r *remover) delete(
 	saDogu, err := r.doguFetcher.FetchInstalled(ctx, cescommons.SimpleName(serviceAccount.Type))
 	if err != nil {
 		return fmt.Errorf("failed to get service account dogu.json: %w", err)
+	}
+
+	_, err = r.doguInterface.Get(ctx, serviceAccount.Type, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 	}
 
 	err = r.executeCommand(ctx, dogu, saDogu, serviceAccount)

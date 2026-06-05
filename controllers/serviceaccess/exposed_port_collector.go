@@ -16,8 +16,8 @@ func CollectExposedPorts(dogu *core.Dogu) []ExposedPort {
 	for _, exposedPort := range exposedPorts {
 		annotationExposedPorts = append(annotationExposedPorts, ExposedPort{
 			Protocol:   strings.ToLower(exposedPort.GetType()),
-			Port:       exposedPort.Container,
-			TargetPort: exposedPort.Host,
+			Port:       exposedPort.Host,
+			TargetPort: exposedPort.Container,
 		})
 	}
 
