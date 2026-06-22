@@ -11,6 +11,7 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
+	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -163,6 +164,7 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
+		Owns(&warpMenuEntryV1.WarpMenuEntry{}).
 		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{}))
 	if r.authRegistrationEnabled {
 		controllerBuilder = controllerBuilder.Owns(&authRegApiV1.AuthRegistration{})

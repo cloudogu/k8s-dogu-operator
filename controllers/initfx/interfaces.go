@@ -9,6 +9,7 @@ import (
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
+	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"go.uber.org/fx"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -58,6 +59,8 @@ type k8sClient interface {
 	client.Client
 }
 
+//nolint:unused
+//goland:noinspection GoUnusedType
 type clientSet interface {
 	kubernetes.Interface
 }
@@ -144,6 +147,18 @@ type expositionClient interface {
 //goland:noinspection GoUnusedType
 type expositionInterface interface {
 	expClientV1.ExpositionInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type warpmenuentryClient interface {
+	warpMenuEntryV1.ApiV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type warpmenuentryInterface interface {
+	warpMenuEntryV1.WarpMenuEntryInterface
 }
 
 //nolint:unused

@@ -6,6 +6,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -24,6 +25,7 @@ func NewWarpMenuEntryStep(warpMenuEntryManager warpmenuentry.Manager, serviceInt
 
 func (wmes *WarpMenuEntryStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
 
+	logrus.Infof("manoj , inside deployment method [%s]", doguResource.Name)
 	logger := log.FromContext(ctx).WithName("WarpMenuEntryStep")
 	logger.Info("Entered WarpMenuEntryStep")
 

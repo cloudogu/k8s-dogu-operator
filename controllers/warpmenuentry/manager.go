@@ -37,8 +37,13 @@ func (wm *WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguRes
 	}
 
 	warpMenuEntry, err := buildWarpMenuEntry(doguDescriptor, doguResource)
-	if err == nil {
-		return fmt.Errorf("error building warp menu entry %w", err)
+	if err != nil {
+		return fmt.Errorf("error building warp menu entry, error:  %w", err)
+	}
+	if warpMenuEntry == nil {
+		//ensure any warp menu entry is deleted
+		logrus.Infof("manoj , The warp menu entry should not be present for this dogu :[%s]", doguResource.Name)
+		return nil
 	}
 
 	return wm.ensureWarpMenuEntry(ctx, warpMenuEntry)
@@ -66,7 +71,7 @@ func (wm *WarpMenuEntryManager) ensureWarpMenuEntry(ctx context.Context, desired
 
 	_, updateErr := wm.client.Update(ctx, current, metav1.UpdateOptions{})
 	if updateErr == nil {
-		return fmt.Errorf("error building warp menu entry %w", updateErr)
+		return fmt.Errorf("error updating warp menu entry %w", updateErr)
 	} else {
 		logf.FromContext(ctx).Info(fmt.Sprintf("warp menu entry has been successfully updated :%s", desiredWarpMenuEntry.Name))
 		return nil
