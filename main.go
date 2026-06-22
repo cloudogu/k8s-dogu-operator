@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
 	"go.uber.org/fx"
 
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
@@ -43,6 +44,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/repository"
+	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 )
 
 var (
@@ -88,6 +90,10 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewAuthRegistrationInterface, fx.As(new(authRegClientV1.AuthRegistrationInterface))),
 			fx.Annotate(initfx.NewExpositionClientSet, fx.As(new(expClientV1.ApiV1Interface))),
 			fx.Annotate(initfx.NewExpositionInterface, fx.As(new(expClientV1.ExpositionInterface))),
+
+			fx.Annotate(initfx.NewWarpMenuEntryClientSet, fx.As(new(warpMenuEntryV1.ApiV1Interface))),
+			fx.Annotate(initfx.NewWarpMenuEntryInterface, fx.As(new(warpMenuEntryV1.WarpMenuEntryInterface))),
+
 			fx.Annotate(health.NewShutdownHandler, fx.As(new(health.HealthShutdownHandler))),
 
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
@@ -141,6 +147,7 @@ func options() []fx.Option {
 			fx.Annotate(serviceaccount.NewRemover, fx.As(new(serviceaccount.ServiceAccountRemover))),
 			fx.Annotate(authregistration.NewManager, fx.As(new(authregistration.Manager))),
 			fx.Annotate(exposition.NewManager, fx.As(new(exposition.Manager))),
+			fx.Annotate(warpmenuentry.NewWarpMenuEntryManager, fx.As(new(warpmenuentry.Manager))),
 			fx.Annotate(dependency.NewCompositeDependencyValidator, fx.As(new(dependency.Validator))),
 			fx.Annotate(security.NewValidator, fx.As(new(security.Validator))),
 			fx.Annotate(additionalMount.NewValidator, fx.As(new(additionalMount.Validator))),
@@ -221,6 +228,7 @@ func options() []fx.Option {
 			install.NewCreateVolumeStep,
 			install.NewNetworkPoliciesStep,
 			install.NewCreateDeploymentStep,
+			install.NewWarpMenuEntryStep,
 			postinstall.NewStartStopStep,
 			postinstall.NewVolumeExpanderStep,
 			postinstall.NewMismatchedStorageClassWarningStep,
