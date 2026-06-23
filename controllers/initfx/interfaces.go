@@ -7,6 +7,7 @@ import (
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
+	warpClientV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"go.uber.org/fx"
@@ -144,6 +145,18 @@ type expositionClient interface {
 //goland:noinspection GoUnusedType
 type expositionInterface interface {
 	expClientV1.ExpositionInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type warpMenuEntryClient interface {
+	warpClientV1.ApiV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type warpMenuEntryInterface interface {
+	warpClientV1.WarpMenuEntryInterface
 }
 
 //nolint:unused
