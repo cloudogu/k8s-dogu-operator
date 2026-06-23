@@ -108,6 +108,7 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 		statusStep := &deletion.StatusStep{}
 		authRegistrationRemoverStep := &deletion.AuthRegistrationRemoverStep{}
 		expositionRemoverStep := &deletion.ExpositionRemoverStep{}
+		warpMenuEntryRemoverStep := &deletion.WarpMenuEntryRemoverStep{}
 		serviceAccountRemoverStep := &deletion.ServiceAccountRemoverStep{}
 		deleteOutOfHealthConfigMapStep := &deletion.DeleteOutOfHealthConfigMapStep{}
 		removeSensitiveDoguConfigStep := deletion.NewRemoveDoguConfigStep(nil)
@@ -117,6 +118,7 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 			statusStep,
 			authRegistrationRemoverStep,
 			expositionRemoverStep,
+			warpMenuEntryRemoverStep,
 			serviceAccountRemoverStep,
 			deleteOutOfHealthConfigMapStep,
 			removeSensitiveDoguConfigStep,
@@ -127,6 +129,7 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 			"*deletion.StatusStep",
 			"*deletion.AuthRegistrationRemoverStep",
 			"*deletion.ExpositionRemoverStep",
+			"*deletion.WarpMenuEntryRemoverStep",
 			"*deletion.ServiceAccountRemoverStep",
 			"*deletion.DeleteOutOfHealthConfigMapStep",
 			"*deletion.removeDoguConfigStep",
@@ -162,6 +165,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			&install.ServiceAccountStep{},
 			&install.ServiceStep{},
 			&install.ExpositionStep{},
+			&install.WarpMenuEntryStep{},
 			&install.CreateExecPodStep{},
 			&install.CustomK8sResourceStep{},
 			&install.CreateVolumeStep{},
@@ -206,6 +210,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 			"*install.ServiceAccountStep",
 			"*install.ServiceStep",
 			"*install.ExpositionStep",
+			"*install.WarpMenuEntryStep",
 			"*install.CreateExecPodStep",
 			"*install.CustomK8sResourceStep",
 			"*install.CreateVolumeStep",
