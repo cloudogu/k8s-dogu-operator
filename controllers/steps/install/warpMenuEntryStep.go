@@ -7,7 +7,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -16,10 +15,9 @@ type WarpMenuEntryStep struct {
 	serviceInterface     serviceInterface
 }
 
-func NewWarpMenuEntryStep(warpMenuEntryManager warpmenuentry.Manager, serviceInterface v1.ServiceInterface) *WarpMenuEntryStep {
+func NewWarpMenuEntryStep(warpMenuEntryManager warpmenuentry.Manager) *WarpMenuEntryStep {
 	return &WarpMenuEntryStep{
 		warpMenuEntryManager: warpMenuEntryManager,
-		serviceInterface:     serviceInterface,
 	}
 }
 

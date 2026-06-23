@@ -118,5 +118,5 @@ rules:
     - list
     - watch
     - create
-    - patch
     - update
+    - delete

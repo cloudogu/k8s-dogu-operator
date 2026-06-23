@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	v1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
@@ -36,6 +37,11 @@ func (wm *WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguRes
 		return fmt.Errorf("failed to fetch dogu descriptor: %w", err)
 	}
 
+	if !doguShouldBeInWarpMenu(doguDescriptor) {
+		logrus.Infof("manoj , The warp menu entry should not be present for this dogu :[%s]", doguResource.Name)
+		return wm.deleteWarpMenuEntryIfItExists(ctx, doguDescriptor)
+	}
+
 	warpMenuEntry, err := buildWarpMenuEntry(doguDescriptor, doguResource)
 	if err != nil {
 		return fmt.Errorf("error building warp menu entry, error:  %w", err)
@@ -48,6 +54,10 @@ func (wm *WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguRes
 
 	return wm.ensureWarpMenuEntry(ctx, warpMenuEntry)
 
+}
+
+func doguShouldBeInWarpMenu(doguDescriptor *core.Dogu) bool {
+	return containsString(doguDescriptor.Tags, "warp")
 }
 
 func (wm *WarpMenuEntryManager) ensureWarpMenuEntry(ctx context.Context, desiredWarpMenuEntry *v1.WarpMenuEntry) error {
@@ -79,5 +89,23 @@ func (wm *WarpMenuEntryManager) ensureWarpMenuEntry(ctx context.Context, desired
 }
 
 func (wm *WarpMenuEntryManager) DeleteWarpMenuEntry(ctx context.Context, doguName *cescommons.SimpleName) error {
+	//TODO
+	return nil
+}
+
+func (wm *WarpMenuEntryManager) deleteWarpMenuEntryIfItExists(ctx context.Context, dogu *core.Dogu) error {
+	warpMenuEntry, err := wm.client.Get(ctx, dogu.Name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			//Nothing to do
+			return nil
+		} else {
+			return fmt.Errorf("error updating getting the menu entry %w", err)
+		}
+	}
+	err = wm.client.Delete(ctx, warpMenuEntry.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("error deleting the menu entry %w", err)
+	}
 	return nil
 }

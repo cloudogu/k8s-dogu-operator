@@ -19,6 +19,7 @@ type warpmenuentryClient interface {
 	Create(ctx context.Context, warpMenuEntry *warpMenuEntryV1.WarpMenuEntry, opts metav1.CreateOptions) (*warpMenuEntryV1.WarpMenuEntry, error)
 	Update(ctx context.Context, warpMenuEntry *warpMenuEntryV1.WarpMenuEntry, opts metav1.UpdateOptions) (*warpMenuEntryV1.WarpMenuEntry, error)
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*warpMenuEntryV1.WarpMenuEntry, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 }
 
 type localDoguFetcher interface {
