@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#60189] Add WarpMenuEntry CR support for v2 dogus
+  - Create, update and delete `WarpMenuEntry` CRs derived from the local dogu descriptor for dogus carrying the `warp` tag
 
 ## [v3.26.0] - 2026-06-05
 ### Fixed
