@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
+	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/fx/fxtest"
@@ -64,6 +65,10 @@ func Test_options(t *testing.T) {
 	expositionClientsetMock := newMockExpositionClient(t)
 	expositionClientsetMock.EXPECT().Expositions(testNamespace).Return(expositionMock).Maybe()
 
+	warpMenuEntryMock := newMockWarpMenuEntryInterface(t)
+	warpMenuEntryClientSetMock := newMockWarpMenuEntryClient(t)
+	warpMenuEntryClientSetMock.EXPECT().WarpMenuEntries(testNamespace).Return(warpMenuEntryMock).Maybe()
+
 	oldOperatorConfigFn := initfx.NewOperatorConfig
 	initfx.NewOperatorConfig = newTestOperatorConfig(t)
 	oldKubernetesClientSet := initfx.NewKubernetesClientSet
@@ -74,6 +79,11 @@ func Test_options(t *testing.T) {
 	initfx.NewAuthRegistrationClientSet = newTestAuthRegistrationClientSetFn(authRegClientsetMock)
 	oldExpositionClientSet := initfx.NewExpositionClientSet
 	initfx.NewExpositionClientSet = newTestExpositionClientSetFn(expositionClientsetMock)
+	initfx.NewExpositionClientSet = newTestExpositionClientSetFn(expositionClientsetMock)
+
+	oldWarpMenuEntryClientSet := initfx.NewWarpMenuEntryClientSet
+	initfx.NewWarpMenuEntryClientSet = newTestWarpMenuEntryClientSetFn(warpMenuEntryClientSetMock)
+
 	oldGetRestConfig := ctrl.GetConfig
 	ctrl.GetConfig = newTestGetConfig()
 	oldGetArgs := initfx.GetArgs
@@ -86,6 +96,7 @@ func Test_options(t *testing.T) {
 		initfx.NewEcoSystemClientSet = oldEcoSystemClientSet
 		initfx.NewAuthRegistrationClientSet = oldAuthRegistrationClientSet
 		initfx.NewExpositionClientSet = oldExpositionClientSet
+		initfx.NewWarpMenuEntryClientSet = oldWarpMenuEntryClientSet
 		ctrl.GetConfig = oldGetRestConfig
 		initfx.GetArgs = oldGetArgs
 	})
@@ -122,6 +133,10 @@ func newTestExpositionClientSetFn(expositionInterface expClientV1.ApiV1Interface
 	return func(c *rest.Config) (expClientV1.ApiV1Interface, error) {
 		return expositionInterface, nil
 	}
+}
+
+func newTestWarpMenuEntryClientSetFn(warpMenuEntryInterface warpMenuEntryV1.ApiV1Interface) func(config *rest.Config) (warpMenuEntryV1.ApiV1Interface, error) {
+	return func(c *rest.Config) (warpMenuEntryV1.ApiV1Interface, error) { return warpMenuEntryInterface, nil }
 }
 
 func newTestOperatorConfig(t *testing.T) func(version config.Version) (*config.OperatorConfig, error) {

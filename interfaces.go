@@ -6,6 +6,7 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
+	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"k8s.io/client-go/kubernetes"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -120,4 +121,16 @@ type authRegistrationClient interface {
 //goland:noinspection GoUnusedType
 type authRegistrationInterface interface {
 	authRegClientV1.AuthRegistrationInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type warpMenuEntryClient interface {
+	warpMenuEntryV1.ApiV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type warpMenuEntryInterface interface {
+	warpMenuEntryV1.WarpMenuEntryInterface
 }
