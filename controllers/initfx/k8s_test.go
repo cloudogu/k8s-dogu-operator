@@ -95,6 +95,22 @@ func TestNewAuthRegistrationInterface(t *testing.T) {
 	})
 }
 
+func TestNewWarpMenuEntryInterface(t *testing.T) {
+	t.Run("should successfully create warp menu entry interface", func(t *testing.T) {
+		// given
+		warpMenuEntryMock := newMockWarpMenuEntryInterface(t)
+		warpMenuEntryClient := newMockWarpMenuEntryClient(t)
+		warpMenuEntryClient.EXPECT().WarpMenuEntries(namespace).Return(warpMenuEntryMock)
+		operatorConfig := &config.OperatorConfig{Namespace: namespace}
+
+		// when
+		interf := NewWarpMenuEntryInterface(warpMenuEntryClient, operatorConfig)
+
+		// then
+		assert.NotNil(t, interf)
+	})
+}
+
 func TestNewExpositionInterface(t *testing.T) {
 	t.Run("should successfully create exposition interface", func(t *testing.T) {
 		// given
@@ -277,6 +293,20 @@ func Test_newExpositionClientSet(t *testing.T) {
 
 		// when
 		cliSet, err := newExpositionClientSet(operatorConfig)
+
+		// then
+		assert.NotNil(t, cliSet)
+		assert.NoError(t, err)
+	})
+}
+
+func Test_newWarpMenuEntryClientSet(t *testing.T) {
+	t.Run("should successfully create warp menu entry client set", func(t *testing.T) {
+		// given
+		operatorConfig := &rest.Config{}
+
+		// when
+		cliSet, err := newWarpMenuEntryClientSet(operatorConfig)
 
 		// then
 		assert.NotNil(t, cliSet)
