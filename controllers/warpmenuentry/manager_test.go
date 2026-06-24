@@ -54,7 +54,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 
 	})
 
-	t.Run("should create warp menu entries", func(t *testing.T) {
+	t.Run("should create warp menu entries if it does not exist", func(t *testing.T) {
 		fetcher := newMockLocalDoguFetcher(t)
 		client := newMockWarpmenuentryClient(t)
 		notFoundWarpMenuEntryError := &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
@@ -70,6 +70,89 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 
 		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
 		require.NoError(t, err)
+	})
+
+	t.Run("errorcase: should create warp menu entries if it does not exist, create fails", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+		notFoundWarpMenuEntryError := &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguResource.Name, metav1.GetOptions{}).Return(nil, notFoundWarpMenuEntryError)
+
+		const createWarpMenuErrorMessage = "error creating warpmenuentry"
+		createErr := fmt.Errorf(createWarpMenuErrorMessage)
+
+		warpMenuEntryToUpdate := getExpectedWarpMenuEntry(defaultDoguName, doguResource, displayName, warpMenuDisabled, path, doguCategory)
+		client.EXPECT().Create(ctx, warpMenuEntryToUpdate, metav1.CreateOptions{}).Return(nil, createErr)
+		manager := &WarpMenuEntryManager{
+			client:      client,
+			doguFetcher: fetcher,
+		}
+
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to create warpmenuentry:")
+		assert.ErrorContains(t, err, createWarpMenuErrorMessage)
+	})
+
+	t.Run("should create warp menu entries if it exists, and has same value", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+
+		warpMenuEntryToUpdate := getExpectedWarpMenuEntry(defaultDoguName, doguResource, displayName, warpMenuDisabled, path, doguCategory)
+		client.EXPECT().Get(ctx, doguResource.Name, metav1.GetOptions{}).Return(warpMenuEntryToUpdate, nil)
+		manager := &WarpMenuEntryManager{
+			client:      client,
+			doguFetcher: fetcher,
+		}
+
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		require.NoError(t, err)
+	})
+
+	t.Run("should create warp menu entries if it exists, but has a different value", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+
+		warpMenuEntryToUpdate := getExpectedWarpMenuEntry(defaultDoguName, doguResource, displayName, warpMenuDisabled, path, doguCategory)
+
+		existingEntry := getExpectedWarpMenuEntry(defaultDoguName, doguResource, displayName, warpMenuDisabled, path+"somechange", doguCategory)
+		client.EXPECT().Get(ctx, doguResource.Name, metav1.GetOptions{}).Return(existingEntry, nil)
+
+		client.EXPECT().Update(ctx, warpMenuEntryToUpdate, metav1.UpdateOptions{}).Return(warpMenuEntryToUpdate, nil)
+		manager := &WarpMenuEntryManager{
+			client:      client,
+			doguFetcher: fetcher,
+		}
+
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		require.NoError(t, err)
+	})
+
+	t.Run("Fail in should create warp menu entries if it exists, but has a different value, error while updating the warp menu entry", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+
+		warpMenuEntryToUpdate := getExpectedWarpMenuEntry(defaultDoguName, doguResource, displayName, warpMenuDisabled, path, doguCategory)
+
+		existingEntry := getExpectedWarpMenuEntry(defaultDoguName, doguResource, displayName, warpMenuDisabled, path+"somechange", doguCategory)
+		client.EXPECT().Get(ctx, doguResource.Name, metav1.GetOptions{}).Return(existingEntry, nil)
+
+		const updateWarpMenuErrorMessage = "error updating warpmenuentry"
+		updateErr := fmt.Errorf(updateWarpMenuErrorMessage)
+		client.EXPECT().Update(ctx, warpMenuEntryToUpdate, metav1.UpdateOptions{}).Return(nil, updateErr)
+		manager := &WarpMenuEntryManager{
+			client:      client,
+			doguFetcher: fetcher,
+		}
+
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error updating warp menu entry")
+		assert.ErrorContains(t, err, updateWarpMenuErrorMessage)
 	})
 
 }
