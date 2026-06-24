@@ -6,23 +6,21 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
-	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const kind_dogu = "Dogu"
+const (
+	kindDogu = "Dogu"
+	warpTag  = "warp"
+)
 
-func buildWarpMenuEntry(doguDescriptor *cesappcore.Dogu, doguResource *doguv2.Dogu) (*warpMenuEntryV1.WarpMenuEntry, error) {
+func buildWarpMenuEntry(doguDescriptor *cesappcore.Dogu, doguResource *doguv2.Dogu) *warpMenuEntryV1.WarpMenuEntry {
 
-	logrus.Infof("buildWarpMenuEntry, for the dogu [%s]", doguResource.Name)
-	if !containsString(doguDescriptor.Tags, "warp") {
-		return nil, nil
-	}
 	warpMenuEntry := &warpMenuEntryV1.WarpMenuEntry{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: doguResource.Name,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind(kind_dogu)),
+				*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind(kindDogu)),
 			},
 		},
 		Spec: warpMenuEntryV1.WarpMenuEntrySpec{
@@ -35,13 +33,17 @@ func buildWarpMenuEntry(doguDescriptor *cesappcore.Dogu, doguResource *doguv2.Do
 			Category: doguDescriptor.Category,
 		},
 	}
-	return warpMenuEntry, nil
+	return warpMenuEntry
 }
 
 func createPath(name string) string {
 	// remove namespace
 	parts := strings.Split(name, "/")
 	return "/" + parts[len(parts)-1]
+}
+
+func doguShouldBeInWarpMenu(doguDescriptor *cesappcore.Dogu) bool {
+	return containsString(doguDescriptor.Tags, warpTag)
 }
 
 // ContainsString returns true if the slice contains the item

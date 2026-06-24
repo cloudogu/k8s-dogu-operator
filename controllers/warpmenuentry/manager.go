@@ -42,22 +42,10 @@ func (wm *WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguRes
 		return wm.deleteWarpMenuEntryIfItExists(ctx, doguDescriptor)
 	}
 
-	warpMenuEntry, err := buildWarpMenuEntry(doguDescriptor, doguResource)
-	if err != nil {
-		return fmt.Errorf("error building warp menu entry, error:  %w", err)
-	}
-	if warpMenuEntry == nil {
-		//ensure any warp menu entry is deleted
-		logrus.Infof("manoj , The warp menu entry should not be present for this dogu :[%s]", doguResource.Name)
-		return nil
-	}
+	warpMenuEntry := buildWarpMenuEntry(doguDescriptor, doguResource)
 
 	return wm.ensureWarpMenuEntry(ctx, warpMenuEntry)
 
-}
-
-func doguShouldBeInWarpMenu(doguDescriptor *core.Dogu) bool {
-	return containsString(doguDescriptor.Tags, "warp")
 }
 
 func (wm *WarpMenuEntryManager) ensureWarpMenuEntry(ctx context.Context, desiredWarpMenuEntry *v1.WarpMenuEntry) error {
