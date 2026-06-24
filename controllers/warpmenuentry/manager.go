@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	v1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
@@ -31,7 +30,9 @@ func NewWarpMenuEntryManager(client warpMenuEntryV1.WarpMenuEntryInterface,
 }
 
 func (wm *WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResource *doguv2.Dogu) error {
-	logrus.Infof("Entered EnsureWarpMenuEntry method for the warpmenuentry, for the dogu [%s]", doguResource.Name)
+	if doguResource == nil {
+		return fmt.Errorf("dogu resource must not be nil")
+	}
 	doguDescriptor, err := wm.doguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to fetch dogu descriptor: %w", err)
@@ -39,7 +40,7 @@ func (wm *WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguRes
 
 	if !doguShouldBeInWarpMenu(doguDescriptor) {
 		logrus.Infof("manoj , The warp menu entry should not be present for this dogu :[%s]", doguResource.Name)
-		return wm.deleteWarpMenuEntryIfItExists(ctx, doguDescriptor)
+		return wm.deleteWarpMenuEntryIfItExists(ctx, doguResource)
 	}
 
 	warpMenuEntry := buildWarpMenuEntry(doguDescriptor, doguResource)
@@ -81,7 +82,7 @@ func (wm *WarpMenuEntryManager) DeleteWarpMenuEntry(ctx context.Context, doguNam
 	return nil
 }
 
-func (wm *WarpMenuEntryManager) deleteWarpMenuEntryIfItExists(ctx context.Context, dogu *core.Dogu) error {
+func (wm *WarpMenuEntryManager) deleteWarpMenuEntryIfItExists(ctx context.Context, dogu *doguv2.Dogu) error {
 	warpMenuEntry, err := wm.client.Get(ctx, dogu.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
