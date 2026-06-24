@@ -155,4 +155,90 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		assert.ErrorContains(t, err, updateWarpMenuErrorMessage)
 	})
 
+	t.Run("should delete warp menu entries if warp tag does not exist", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+		//notFoundWarpMenuEntryError := &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
+
+		existingEntry := getExpectedWarpMenuEntry(defaultDoguName, doguResource, displayName, warpMenuDisabled, path, doguCategory)
+		doguDescriptor := getDoguDescriptor(defaultDoguName, displayName, doguCategory, "nonwarptag")
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguResource.Name, metav1.GetOptions{}).Return(existingEntry, nil)
+
+		client.EXPECT().Delete(ctx, doguResource.Name, metav1.DeleteOptions{}).Return(nil)
+		manager := &WarpMenuEntryManager{
+			client:      client,
+			doguFetcher: fetcher,
+		}
+
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		require.NoError(t, err)
+	})
+
+	t.Run("should do nothing to warp menu entries if warp tag does not exist and there is no existing warp menu entry", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		notFoundWarpMenuEntryError := &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
+
+		doguDescriptor := getDoguDescriptor(defaultDoguName, displayName, doguCategory, "nonwarptag")
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguResource.Name, metav1.GetOptions{}).Return(nil, notFoundWarpMenuEntryError)
+
+		manager := &WarpMenuEntryManager{
+			client:      client,
+			doguFetcher: fetcher,
+		}
+
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		require.NoError(t, err)
+	})
+
+	t.Run("should return error if there is an error fetching warp menu entries if warp tag does not exist ", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		const getWarpMenuErrorMessage = "error getting warpmenuentry"
+		getErr := fmt.Errorf(getWarpMenuErrorMessage)
+
+		doguDescriptor := getDoguDescriptor(defaultDoguName, displayName, doguCategory, "nonwarptag")
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguResource.Name, metav1.GetOptions{}).Return(nil, getErr)
+
+		manager := &WarpMenuEntryManager{
+			client:      client,
+			doguFetcher: fetcher,
+		}
+
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error updating getting the menu entry")
+		assert.ErrorContains(t, err, getWarpMenuErrorMessage)
+	})
+
+	t.Run("Errorcase: should delete warp menu entries if warp tag does not exist and there is an error", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+		//notFoundWarpMenuEntryError := &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
+
+		const deleteWarpMenuErrorMessage = "error getting warpmenuentry"
+		deleteErr := fmt.Errorf(deleteWarpMenuErrorMessage)
+
+		existingEntry := getExpectedWarpMenuEntry(defaultDoguName, doguResource, displayName, warpMenuDisabled, path, doguCategory)
+		doguDescriptor := getDoguDescriptor(defaultDoguName, displayName, doguCategory, "nonwarptag")
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguResource.Name, metav1.GetOptions{}).Return(existingEntry, nil)
+
+		client.EXPECT().Delete(ctx, doguResource.Name, metav1.DeleteOptions{}).Return(deleteErr)
+		manager := &WarpMenuEntryManager{
+			client:      client,
+			doguFetcher: fetcher,
+		}
+
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error deleting the menu entry")
+		assert.ErrorContains(t, err, deleteWarpMenuErrorMessage)
+	})
 }
