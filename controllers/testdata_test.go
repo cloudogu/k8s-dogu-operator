@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
+	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -116,6 +117,11 @@ func getTestScheme() *runtime.Scheme {
 		panic(err)
 	}
 
+	err = warpMenuEntryV1.AddToScheme(scheme)
+	if err != nil {
+		panic(err)
+	}
+
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "k8s.cloudogu.com",
 		Version: "v2",
@@ -166,6 +172,11 @@ func getTestScheme() *runtime.Scheme {
 		Version: "v1",
 		Kind:    "PodList",
 	}, &v1.PodList{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v1",
+		Kind:    "WarpMenuEntry",
+	}, &warpMenuEntryV1.WarpMenuEntry{})
 
 	return scheme
 }

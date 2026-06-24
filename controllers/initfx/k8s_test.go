@@ -111,6 +111,21 @@ func TestNewExpositionInterface(t *testing.T) {
 	})
 }
 
+func TestNewWarpMenuEntryInterface(t *testing.T) {
+	t.Run("Should successfully create WarpMenuEntry interface", func(t *testing.T) {
+		//given
+		warpMenuEntryMock := newMockWarpmenuentryInterface(t)
+		warpMenuEntryClient := newMockWarpmenuentryClient(t)
+		warpMenuEntryClient.EXPECT().WarpMenuEntries(namespace).Return(warpMenuEntryMock)
+		operatorConfig := &config.OperatorConfig{Namespace: namespace}
+
+		//when
+		interf := NewWarpMenuEntryInterface(warpMenuEntryClient, operatorConfig)
+		//then
+		assert.NotNil(t, interf)
+	})
+}
+
 func TestNewEventRecorder(t *testing.T) {
 	t.Run("should successfully create dogu restart interface", func(t *testing.T) {
 		// given
