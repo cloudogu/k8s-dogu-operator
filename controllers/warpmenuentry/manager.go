@@ -82,6 +82,10 @@ func hasWarpMenuTag(descriptor *core.Dogu) bool {
 }
 
 func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescriptor *core.Dogu) *warpMenuEntry.WarpMenuEntry {
+	displayName := doguDescriptor.DisplayName
+	if displayName == "" {
+		displayName = doguDescriptor.Name
+	}
 
 	return &warpMenuEntry.WarpMenuEntry{
 		ObjectMeta: v1.ObjectMeta{
@@ -92,11 +96,11 @@ func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescript
 		},
 		Spec: warpMenuEntry.WarpMenuEntrySpec{
 			DisplayName: warpMenuEntry.DisplayName{
-				DE: doguDescriptor.DisplayName,
-				EN: doguDescriptor.DisplayName,
+				DE: displayName,
+				EN: displayName,
 			},
 			Category: doguDescriptor.Category,
-			Path:     "/" + doguDescriptor.Name,
+			Path:     "/" + dogu.GetSimpleDoguName().String(),
 			Disabled: false,
 		},
 	}
