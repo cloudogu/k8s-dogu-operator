@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	warpTag = "warp"
+	warpTag  = "warp"
+	kindDogu = "Dogu"
 )
 
 type WarpMenuEntryManager struct {
@@ -48,7 +49,7 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 			return fmt.Errorf("error while getting warp menu entry : %w", err)
 		}
 		if hasWarpMenuTag(doguDescriptor) {
-			_, createrr := w.client.Create(ctx, w.createNewWarpMenuEntry(doguResource.Name, doguDescriptor), v1.CreateOptions{})
+			_, createrr := w.client.Create(ctx, w.createNewWarpMenuEntry(doguResource, doguDescriptor), v1.CreateOptions{})
 			if createrr != nil {
 				return fmt.Errorf("error while creating the new warp menu entry: %w", createrr)
 			}
@@ -69,11 +70,14 @@ func hasWarpMenuTag(descriptor *core.Dogu) bool {
 	return slices.Contains(descriptor.Tags, warpTag)
 }
 
-func (w WarpMenuEntryManager) createNewWarpMenuEntry(doguName string, doguDescriptor *core.Dogu) *warpMenuEntry.WarpMenuEntry {
+func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescriptor *core.Dogu) *warpMenuEntry.WarpMenuEntry {
 
 	return &warpMenuEntry.WarpMenuEntry{
 		ObjectMeta: v1.ObjectMeta{
-			Name: doguName,
+			Name: dogu.Name,
+			OwnerReferences: []v1.OwnerReference{
+				*v1.NewControllerRef(dogu, v2.GroupVersion.WithKind(kindDogu)),
+			},
 		},
 		Spec: warpMenuEntry.WarpMenuEntrySpec{
 			DisplayName: warpMenuEntry.DisplayName{

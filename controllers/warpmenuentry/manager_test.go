@@ -168,6 +168,22 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		assert.ErrorContains(t, err, "error while deleting existing warp menu entry")
 		assert.ErrorContains(t, err, deleteError)
 	})
+
+	t.Run("Should  do nothing if there is an existing warp menu entry and there are no changes", func(t *testing.T) {
+		//given
+		doguDescriptor := newDoguDescriptor(false)
+		doguFetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(newWarpMenuEntry(doguResource), nil)
+		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
+
+		//when
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		//then
+		require.NoError(t, err)
+	})
 }
 
 func newNotFoundError() *errors2.StatusError {
