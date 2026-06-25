@@ -42,16 +42,20 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 		return fmt.Errorf("dogu spec cannot be retrieved : %w", err)
 	}
 
-	_, err = w.client.Get(ctx, doguResource.Name, v1.GetOptions{})
+	entry, err := w.client.Get(ctx, doguResource.Name, v1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("error while getting warp menu entry : %w", err)
 		}
 		if hasWarpMenuTag(doguDescriptor) {
-			_, createrr := w.client.Create(ctx, w.createNewWarpMenuEntry(), v1.CreateOptions{})
+			_, createrr := w.client.Create(ctx, w.createNewWarpMenuEntry(doguResource.Name), v1.CreateOptions{})
 			if createrr != nil {
 				return fmt.Errorf("error while creating the new warp menu entry: %w", createrr)
 			}
+		}
+	} else {
+		if !hasWarpMenuTag(doguDescriptor) {
+			w.client.Delete(ctx, entry.Name, v1.DeleteOptions{})
 		}
 	}
 
@@ -62,8 +66,12 @@ func hasWarpMenuTag(descriptor *core.Dogu) bool {
 	return slices.Contains(descriptor.Tags, warpTag)
 }
 
-func (w WarpMenuEntryManager) createNewWarpMenuEntry() *warpMenuEntry.WarpMenuEntry {
-	return &warpMenuEntry.WarpMenuEntry{}
+func (w WarpMenuEntryManager) createNewWarpMenuEntry(doguName string) *warpMenuEntry.WarpMenuEntry {
+	return &warpMenuEntry.WarpMenuEntry{
+		ObjectMeta: v1.ObjectMeta{
+			Name: doguName,
+		},
+	}
 }
 
 func (w WarpMenuEntryManager) DeleteWarpMenuEntry(ctx context.Context, doguName dogu.SimpleName) error {

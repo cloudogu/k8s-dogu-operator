@@ -159,7 +159,11 @@ func newDoguDescriptor(withWarpTag bool) *cesappcore.Dogu {
 }
 
 func newWarpMenuEntry() *warpMenuEntryV1.WarpMenuEntry {
-	return &warpMenuEntryV1.WarpMenuEntry{}
+	return &warpMenuEntryV1.WarpMenuEntry{
+		ObjectMeta: v1.ObjectMeta{
+			Name: doguName,
+		},
+	}
 }
 
 func newNotFoundError() *errors2.StatusError {
