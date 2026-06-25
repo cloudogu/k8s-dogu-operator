@@ -205,6 +205,29 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("Should update existing warp menu entry if it differs from the dogu", func(t *testing.T) {
+		//given
+		doguDescriptor := newDoguDescriptor(true)
+		doguFetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		existingEntry := newWarpMenuEntry(doguResource)
+
+		existingEntry.SetOwnerReferences([]v1.OwnerReference{
+			*v1.NewControllerRef(doguResource, v2.GroupVersion.WithKind("Dogu1")),
+		})
+
+		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(existingEntry, nil)
+		client.EXPECT().Update(ctx, newWarpMenuEntry(doguResource), v1.UpdateOptions{}).Return(newWarpMenuEntry(doguResource), nil)
+		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
+
+		//when
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		//then
+		require.NoError(t, err)
+	})
+
 	t.Run("Should return error when updating an existing warp menu entry returns an error", func(t *testing.T) {
 		//given
 		doguDescriptor := newDoguDescriptor(true)

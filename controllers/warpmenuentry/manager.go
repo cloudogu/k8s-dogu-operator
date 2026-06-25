@@ -63,7 +63,7 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 			}
 		} else {
 			desiredEntry := w.createNewWarpMenuEntry(doguResource, doguDescriptor)
-			if !reflect.DeepEqual(entry.Spec, desiredEntry.Spec) {
+			if !reflect.DeepEqual(entry.Spec, desiredEntry.Spec) || !reflect.DeepEqual(entry.OwnerReferences, desiredEntry.OwnerReferences) {
 				_, updateErr := w.client.Update(ctx, desiredEntry, v1.UpdateOptions{})
 				if updateErr != nil {
 					return fmt.Errorf("error while updating the warp menu entry: %w", updateErr)
