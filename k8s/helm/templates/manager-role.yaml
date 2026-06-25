@@ -74,6 +74,24 @@ rules:
       - expositions/status
     verbs:
       - get
+  # CRUD for WarpMenuEntry CRs used for integration of v2 Dogus
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - warpmenuentries
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - warpmenuentries/status
+    verbs:
+      - get
   # configuration of operator, local dogu registry, dogu + global config, health states
   - apiGroups:
       - ""
