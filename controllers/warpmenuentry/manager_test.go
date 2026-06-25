@@ -184,6 +184,50 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		//then
 		require.NoError(t, err)
 	})
+
+	t.Run("Should update existing warp menu entry if it differs from the dogu", func(t *testing.T) {
+		//given
+		doguDescriptor := newDoguDescriptor(true)
+		doguFetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		existingEntry := newWarpMenuEntry(doguResource)
+		existingEntry.Spec.Category = "outdated-category"
+
+		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(existingEntry, nil)
+		client.EXPECT().Update(ctx, newWarpMenuEntry(doguResource), v1.UpdateOptions{}).Return(newWarpMenuEntry(doguResource), nil)
+		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
+
+		//when
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		//then
+		require.NoError(t, err)
+	})
+
+	t.Run("Should return error when updating an existing warp menu entry returns an error", func(t *testing.T) {
+		//given
+		doguDescriptor := newDoguDescriptor(true)
+		doguFetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		existingEntry := newWarpMenuEntry(doguResource)
+		existingEntry.Spec.Category = "outdated-category"
+
+		const updateError = "update warp menu entry error"
+
+		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(existingEntry, nil)
+		client.EXPECT().Update(ctx, newWarpMenuEntry(doguResource), v1.UpdateOptions{}).Return(nil, fmt.Errorf(updateError))
+		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
+
+		//when
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		//then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error while updating the warp menu entry")
+		assert.ErrorContains(t, err, updateError)
+	})
 }
 
 func newNotFoundError() *errors2.StatusError {
