@@ -88,7 +88,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 
 		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
 		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(nil, newNotFoundError())
-		client.EXPECT().Create(ctx, newWarpMenuEntry(), v1.CreateOptions{}).Return(nil, fmt.Errorf(createWarpMenuEntryError))
+		client.EXPECT().Create(ctx, newWarpMenuEntry(doguResource), v1.CreateOptions{}).Return(nil, fmt.Errorf(createWarpMenuEntryError))
 		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
 
 		//when
@@ -107,7 +107,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 
 		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
 		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(nil, newNotFoundError())
-		client.EXPECT().Create(ctx, newWarpMenuEntry(), v1.CreateOptions{}).Return(newWarpMenuEntry(), nil)
+		client.EXPECT().Create(ctx, newWarpMenuEntry(doguResource), v1.CreateOptions{}).Return(newWarpMenuEntry(doguResource), nil)
 		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
 
 		//when
@@ -139,7 +139,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		client := newMockWarpmenuentryClient(t)
 
 		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
-		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(newWarpMenuEntry(), nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(newWarpMenuEntry(doguResource), nil)
 		client.EXPECT().Delete(ctx, doguResource.Name, v1.DeleteOptions{}).Return(nil)
 		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
 
@@ -156,7 +156,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		client := newMockWarpmenuentryClient(t)
 
 		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
-		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(newWarpMenuEntry(), nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(newWarpMenuEntry(doguResource), nil)
 		const deleteError = "deleteError"
 		client.EXPECT().Delete(ctx, doguResource.Name, v1.DeleteOptions{}).Return(fmt.Errorf(deleteError))
 		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
@@ -189,15 +189,18 @@ func newDoguDescriptor(withWarpTag bool) *cesappcore.Dogu {
 	}
 	return &cesappcore.Dogu{
 		Name:        doguName,
-		DisplayName: "",
-		Category:    "",
+		DisplayName: displayName,
+		Category:    category,
 		Tags:        tags,
 	}
 }
 
-func newWarpMenuEntry() *warpMenuEntryV1.WarpMenuEntry {
+func newWarpMenuEntry(doguResource *v2.Dogu) *warpMenuEntryV1.WarpMenuEntry {
 	return &warpMenuEntryV1.WarpMenuEntry{
 		ObjectMeta: v1.ObjectMeta{
+			OwnerReferences: []v1.OwnerReference{
+				*v1.NewControllerRef(doguResource, v2.GroupVersion.WithKind("Dogu")),
+			},
 			Name: doguName,
 		},
 		Spec: warpMenuEntryV1.WarpMenuEntrySpec{
