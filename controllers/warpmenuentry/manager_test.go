@@ -96,10 +96,27 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		assert.ErrorContains(t, err, createWarpMenuEntryError)
 	})
 
+	t.Run("Should create a new warp menu entry if warp menu entry does not exist", func(t *testing.T) {
+		//given
+		doguDescriptor := &cesappcore.Dogu{}
+		doguFetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(nil, newNotFoundError())
+		client.EXPECT().Create(ctx, newWarpMenuEntry(), v1.CreateOptions{}).Return(newWarpMenuEntry(), nil)
+		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
+
+		//when
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		//then
+		require.NoError(t, err)
+	})
+
 }
 
-func newWarpMenuEntry() warpMenuEntryV1.WarpMenuEntry {
-	return warpMenuEntryV1.WarpMenuEntry{}
+func newWarpMenuEntry() *warpMenuEntryV1.WarpMenuEntry {
+	return &warpMenuEntryV1.WarpMenuEntry{}
 }
 
 func newNotFoundError() *errors2.StatusError {

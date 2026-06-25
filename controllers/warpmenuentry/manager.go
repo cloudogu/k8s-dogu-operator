@@ -2,13 +2,14 @@ package warpmenuentry
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	warpMenuEntry "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,7 +29,7 @@ func NewWarpMenuEntryManager(
 
 func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResource *v2.Dogu) error {
 	if doguResource == nil {
-		return errors.New("doguResource must not be nil")
+		return fmt.Errorf("doguResource must not be nil")
 	}
 	_, err := w.doguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
@@ -37,6 +38,12 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 
 	_, err = w.client.Get(ctx, doguResource.Name, v1.GetOptions{})
 	if err != nil {
+		if errors.IsNotFound(err) {
+			_, createrr := w.client.Create(ctx, &warpMenuEntry.WarpMenuEntry{}, v1.CreateOptions{})
+			if createrr != nil {
+				return fmt.Errorf("error while creating the new warp menu entry: %w", createrr)
+			}
+		}
 		return fmt.Errorf("error while getting warp menu entry : %w", err)
 	}
 
