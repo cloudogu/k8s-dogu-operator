@@ -7,9 +7,12 @@ import (
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const (
@@ -72,11 +75,40 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		assert.ErrorContains(t, err, getWarpMenuEntryError)
 	})
 
+	t.Run("Should return error when creating a new warp menu entry returns an error", func(t *testing.T) {
+		//given
+		doguDescriptor := &cesappcore.Dogu{}
+		doguFetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		const createWarpMenuEntryError = "create warp menu entry error"
+
+		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(nil, newNotFoundError())
+		client.EXPECT().Create(ctx, newWarpMenuEntry(), v1.CreateOptions{}).Return(nil, fmt.Errorf(createWarpMenuEntryError))
+		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
+
+		//when
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		//then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error while creating the new warp menu entry")
+		assert.ErrorContains(t, err, createWarpMenuEntryError)
+	})
+
+}
+
+func newWarpMenuEntry() warpMenuEntryV1.WarpMenuEntry {
+	return warpMenuEntryV1.WarpMenuEntry{}
+}
+
+func newNotFoundError() *errors2.StatusError {
+	return errors2.NewNotFound(schema.GroupResource{Group: "k8s", Resource: "warpmenuentry"}, doguName)
 }
 
 func newDoguResource(doguName string) *v2.Dogu {
 	return &v2.Dogu{
-		Spec: v2.DoguSpec{
+		ObjectMeta: v1.ObjectMeta{
 			Name: doguName,
 		},
 	}

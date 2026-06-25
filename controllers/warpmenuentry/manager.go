@@ -9,6 +9,7 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type WarpMenuEntryManager struct {
@@ -32,6 +33,11 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 	_, err := w.doguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("dogu spec cannot be retrieved : %w", err)
+	}
+
+	_, err = w.client.Get(ctx, doguResource.Name, v1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error while getting warp menu entry : %w", err)
 	}
 
 	return nil
