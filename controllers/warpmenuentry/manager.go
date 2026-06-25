@@ -55,7 +55,10 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 		}
 	} else {
 		if !hasWarpMenuTag(doguDescriptor) {
-			w.client.Delete(ctx, entry.Name, v1.DeleteOptions{})
+			err = w.client.Delete(ctx, entry.Name, v1.DeleteOptions{})
+			if err != nil {
+				return fmt.Errorf("eerror while deleting existing warp menu entry: %w", err)
+			}
 		}
 	}
 
