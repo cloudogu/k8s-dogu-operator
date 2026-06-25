@@ -254,20 +254,19 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 }
 
 func TestDeleteWarpMenuEntry(t *testing.T) {
-
 	ctx := context.Background()
 
 	t.Run("Should not give an error if no warp menu entry exists for the given name", func(t *testing.T) {
 		//given
 		client := newMockWarpmenuentryClient(t)
-
 		client.EXPECT().Delete(ctx, doguName, v1.DeleteOptions{}).Return(newNotFoundError())
 		manager := &WarpMenuEntryManager{client: client}
+
 		//when
 		err := manager.DeleteWarpMenuEntry(ctx, doguName)
+
 		//then
 		require.NoError(t, err)
-
 	})
 
 	t.Run("Should return an error when deleting warp menu entry fails", func(t *testing.T) {
@@ -276,26 +275,27 @@ func TestDeleteWarpMenuEntry(t *testing.T) {
 		const deleteError = "delete warpmenu entry fail"
 		client.EXPECT().Delete(ctx, doguName, v1.DeleteOptions{}).Return(fmt.Errorf(deleteError))
 		manager := &WarpMenuEntryManager{client: client}
+
 		//when
 		err := manager.DeleteWarpMenuEntry(ctx, doguName)
+
 		//then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "error  deleting existing warp menu entry")
+		assert.ErrorContains(t, err, "error deleting existing warp menu entry")
 		assert.ErrorContains(t, err, deleteError)
-
 	})
 
 	t.Run("Should delete existing warp menu entry for the given dogu name", func(t *testing.T) {
 		//given
 		client := newMockWarpmenuentryClient(t)
-
 		client.EXPECT().Delete(ctx, doguName, v1.DeleteOptions{}).Return(nil)
 		manager := &WarpMenuEntryManager{client: client}
+
 		//when
 		err := manager.DeleteWarpMenuEntry(ctx, doguName)
+
 		//then
 		require.NoError(t, err)
-
 	})
 }
 

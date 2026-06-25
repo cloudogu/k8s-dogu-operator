@@ -103,6 +103,9 @@ func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescript
 }
 
 func (w WarpMenuEntryManager) DeleteWarpMenuEntry(ctx context.Context, doguName dogu.SimpleName) error {
-	//TODO implement me
-	panic("implement me")
+	err := w.client.Delete(ctx, doguName.String(), v1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("error deleting existing warp menu entry: %w", err)
+	}
+	return nil
 }
