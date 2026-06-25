@@ -16,7 +16,10 @@ import (
 )
 
 const (
-	doguName = "testdogu"
+	doguName    = "testdogu"
+	displayName = "testdoguDisplayName"
+	category    = "category"
+	path        = "/testdogu"
 )
 
 func TestNewManager(t *testing.T) {
@@ -167,25 +170,6 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 	})
 }
 
-func newDoguDescriptor(withWarpTag bool) *cesappcore.Dogu {
-	var tags []string
-	if withWarpTag {
-		tags = append(tags, warpTag)
-	}
-	return &cesappcore.Dogu{
-		Name: doguName,
-		Tags: tags,
-	}
-}
-
-func newWarpMenuEntry() *warpMenuEntryV1.WarpMenuEntry {
-	return &warpMenuEntryV1.WarpMenuEntry{
-		ObjectMeta: v1.ObjectMeta{
-			Name: doguName,
-		},
-	}
-}
-
 func newNotFoundError() *errors2.StatusError {
 	return errors2.NewNotFound(schema.GroupResource{Group: "k8s", Resource: "warpmenuentry"}, doguName)
 }
@@ -194,6 +178,36 @@ func newDoguResource(doguName string) *v2.Dogu {
 	return &v2.Dogu{
 		ObjectMeta: v1.ObjectMeta{
 			Name: doguName,
+		},
+	}
+}
+
+func newDoguDescriptor(withWarpTag bool) *cesappcore.Dogu {
+	var tags []string
+	if withWarpTag {
+		tags = append(tags, warpTag)
+	}
+	return &cesappcore.Dogu{
+		Name:        doguName,
+		DisplayName: "",
+		Category:    "",
+		Tags:        tags,
+	}
+}
+
+func newWarpMenuEntry() *warpMenuEntryV1.WarpMenuEntry {
+	return &warpMenuEntryV1.WarpMenuEntry{
+		ObjectMeta: v1.ObjectMeta{
+			Name: doguName,
+		},
+		Spec: warpMenuEntryV1.WarpMenuEntrySpec{
+			DisplayName: warpMenuEntryV1.DisplayName{
+				DE: displayName,
+				EN: displayName,
+			},
+			Category: category,
+			Path:     path,
+			Disabled: false,
 		},
 	}
 }
