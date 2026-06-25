@@ -38,16 +38,20 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 
 	_, err = w.client.Get(ctx, doguResource.Name, v1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
-			_, createrr := w.client.Create(ctx, &warpMenuEntry.WarpMenuEntry{}, v1.CreateOptions{})
-			if createrr != nil {
-				return fmt.Errorf("error while creating the new warp menu entry: %w", createrr)
-			}
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("error while getting warp menu entry : %w", err)
 		}
-		return fmt.Errorf("error while getting warp menu entry : %w", err)
+		_, createrr := w.client.Create(ctx, w.createNewWarpMenuEntry(), v1.CreateOptions{})
+		if createrr != nil {
+			return fmt.Errorf("error while creating the new warp menu entry: %w", createrr)
+		}
 	}
 
 	return nil
+}
+
+func (w WarpMenuEntryManager) createNewWarpMenuEntry() *warpMenuEntry.WarpMenuEntry {
+	return &warpMenuEntry.WarpMenuEntry{}
 }
 
 func (w WarpMenuEntryManager) DeleteWarpMenuEntry(ctx context.Context, doguName dogu.SimpleName) error {
