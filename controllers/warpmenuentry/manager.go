@@ -56,18 +56,20 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 			}
 		}
 	} else {
-		if !hasWarpMenuTag(doguDescriptor) {
-			err = w.client.Delete(ctx, entry.Name, v1.DeleteOptions{})
-			if err != nil {
-				return fmt.Errorf("eerror while deleting existing warp menu entry: %w", err)
-			}
-		} else {
+		if hasWarpMenuTag(doguDescriptor) {
 			desiredEntry := w.createNewWarpMenuEntry(doguResource, doguDescriptor)
-			if !reflect.DeepEqual(entry.Spec, desiredEntry.Spec) || !reflect.DeepEqual(entry.OwnerReferences, desiredEntry.OwnerReferences) {
+			if reflect.DeepEqual(entry.Spec, desiredEntry.Spec) && reflect.DeepEqual(entry.OwnerReferences, desiredEntry.OwnerReferences) {
+				return nil
+			} else {
 				_, updateErr := w.client.Update(ctx, desiredEntry, v1.UpdateOptions{})
 				if updateErr != nil {
 					return fmt.Errorf("error while updating the warp menu entry: %w", updateErr)
 				}
+			}
+		} else {
+			err = w.client.Delete(ctx, entry.Name, v1.DeleteOptions{})
+			if err != nil {
+				return fmt.Errorf("eerror while deleting existing warp menu entry: %w", err)
 			}
 		}
 	}
