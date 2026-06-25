@@ -113,7 +113,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("Should not create a new warp menu entry if dogu has no warp tag", func(t *testing.T) {
+	t.Run("Should not create a new warp menu entry if warpmenu entry is not present and dogu has no warp tag", func(t *testing.T) {
 		//given
 		doguDescriptor := newDoguDescriptor(false)
 		doguFetcher := newMockLocalDoguFetcher(t)
@@ -128,12 +128,29 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		//then
 		require.NoError(t, err)
 	})
+
+	t.Run("Should delete existing warp menu entry if dogu has no warp tag", func(t *testing.T) {
+		//given
+		doguDescriptor := newDoguDescriptor(false)
+		doguFetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptor, nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(newWarpMenuEntry(), nil)
+		client.EXPECT().Delete(ctx, doguResource.Name, v1.DeleteOptions{}).Return(nil)
+		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
+
+		//when
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+		//then
+		require.NoError(t, err)
+	})
 }
 
 func newDoguDescriptor(withWarpTag bool) *cesappcore.Dogu {
 	var tags []string
 	if withWarpTag {
-		tags = append(tags, "warp")
+		tags = append(tags, warpTag)
 	}
 	return &cesappcore.Dogu{
 		Name: doguName,

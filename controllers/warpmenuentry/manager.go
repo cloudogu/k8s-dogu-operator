@@ -3,14 +3,20 @@ package warpmenuentry
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
+	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	warpMenuEntry "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	warpTag = "warp"
 )
 
 type WarpMenuEntryManager struct {
@@ -31,7 +37,7 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 	if doguResource == nil {
 		return fmt.Errorf("doguResource must not be nil")
 	}
-	_, err := w.doguFetcher.FetchForResource(ctx, doguResource)
+	doguDescriptor, err := w.doguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("dogu spec cannot be retrieved : %w", err)
 	}
@@ -41,13 +47,19 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("error while getting warp menu entry : %w", err)
 		}
-		_, createrr := w.client.Create(ctx, w.createNewWarpMenuEntry(), v1.CreateOptions{})
-		if createrr != nil {
-			return fmt.Errorf("error while creating the new warp menu entry: %w", createrr)
+		if hasWarpMenuTag(doguDescriptor) {
+			_, createrr := w.client.Create(ctx, w.createNewWarpMenuEntry(), v1.CreateOptions{})
+			if createrr != nil {
+				return fmt.Errorf("error while creating the new warp menu entry: %w", createrr)
+			}
 		}
 	}
 
 	return nil
+}
+
+func hasWarpMenuTag(descriptor *core.Dogu) bool {
+	return slices.Contains(descriptor.Tags, warpTag)
 }
 
 func (w WarpMenuEntryManager) createNewWarpMenuEntry() *warpMenuEntry.WarpMenuEntry {
