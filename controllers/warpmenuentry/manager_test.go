@@ -171,7 +171,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 
 	t.Run("Should  do nothing if there is an existing warp menu entry and there are no changes", func(t *testing.T) {
 		//given
-		doguDescriptor := newDoguDescriptor(false)
+		doguDescriptor := newDoguDescriptor(true)
 		doguFetcher := newMockLocalDoguFetcher(t)
 		client := newMockWarpmenuentryClient(t)
 
