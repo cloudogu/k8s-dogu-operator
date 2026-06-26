@@ -124,16 +124,7 @@ node('docker') {
             }
 
             stage('Wait for Ready Rollout') {
-                try {
-                    k3d.kubectl("--namespace default wait --for=condition=Ready pods --all")
-                } catch (Exception e) {
-                    // dump operator state + logs to the console
-                    k3d.kubectl("--namespace default get pods -o wide")
-                    k3d.kubectl("--namespace default describe deployment -l app.kubernetes.io/name=${repositoryName}")
-                    k3d.kubectl("--namespace default describe pod -l app.kubernetes.io/name=${repositoryName}")
-                    k3d.kubectl("--namespace default logs -l app.kubernetes.io/name=${repositoryName} --tail=200 --all-containers --prefix")
-                    throw e
-                }
+                k3d.kubectl("--namespace default wait --for=condition=Ready pods --all")
             }
 
             stageAutomaticRelease()
