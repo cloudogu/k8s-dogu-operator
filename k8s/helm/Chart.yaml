@@ -29,3 +29,5 @@ annotations:
   "k8s.cloudogu.com/ces-dependency/k8s-dogu-operator-crd": "2.x.x-0"
   # The dependency for the CES Gateway is needed because the dogu-operator creates network policies for dogu ingress traffic from CES Gateway.
   "k8s.cloudogu.com/ces-dependency/k8s-ces-gateway": "1.x.x-0 || 2.x.x-0 || 3.x.x-0"
+  # Dependency for the WarpMenuEntry-CRD.
+  "k8s.cloudogu.com/ces-dependency/k8s-warp-menu-entry-crd": "0.x.x-0 || 1.x.x-0"
