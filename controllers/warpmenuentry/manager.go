@@ -44,35 +44,48 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 	}
 
 	entry, err := w.client.Get(ctx, doguResource.Name, v1.GetOptions{})
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("error while getting warp menu entry : %w", err)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("error while getting warp menu entry : %w", err)
+	}
+	entryExists := err == nil
+
+	// Without the warp tag there must be no warp menu entry.
+	if !hasWarpMenuTag(doguDescriptor) {
+		if !entryExists {
+			return nil
 		}
-		if hasWarpMenuTag(doguDescriptor) {
-			_, createErr := w.client.Create(ctx, w.createNewWarpMenuEntry(doguResource, doguDescriptor), v1.CreateOptions{})
-			if createErr != nil {
-				return fmt.Errorf("error while creating the new warp menu entry: %w", createErr)
-			}
-		}
-	} else {
-		if hasWarpMenuTag(doguDescriptor) {
-			desiredEntry := w.createNewWarpMenuEntry(doguResource, doguDescriptor)
-			if reflect.DeepEqual(entry.Spec, desiredEntry.Spec) && reflect.DeepEqual(entry.OwnerReferences, desiredEntry.OwnerReferences) {
-				return nil
-			} else {
-				_, updateErr := w.client.Update(ctx, desiredEntry, v1.UpdateOptions{})
-				if updateErr != nil {
-					return fmt.Errorf("error while updating the warp menu entry: %w", updateErr)
-				}
-			}
-		} else {
-			err = w.client.Delete(ctx, entry.Name, v1.DeleteOptions{})
-			if err != nil {
-				return fmt.Errorf("error while deleting existing warp menu entry: %w", err)
-			}
-		}
+		return w.deleteEntry(ctx, entry)
 	}
 
+	// With the warp tag the warp menu entry must exist and be up to date.
+	desiredEntry := w.createNewWarpMenuEntry(doguResource, doguDescriptor)
+	if !entryExists {
+		return w.createEntry(ctx, desiredEntry)
+	}
+	return w.updateEntryIfChanged(ctx, entry, desiredEntry)
+}
+
+func (w WarpMenuEntryManager) createEntry(ctx context.Context, entry *warpMenuEntry.WarpMenuEntry) error {
+	if _, err := w.client.Create(ctx, entry, v1.CreateOptions{}); err != nil {
+		return fmt.Errorf("error while creating the new warp menu entry: %w", err)
+	}
+	return nil
+}
+
+func (w WarpMenuEntryManager) updateEntryIfChanged(ctx context.Context, current, desired *warpMenuEntry.WarpMenuEntry) error {
+	if reflect.DeepEqual(current.Spec, desired.Spec) && reflect.DeepEqual(current.OwnerReferences, desired.OwnerReferences) {
+		return nil
+	}
+	if _, err := w.client.Update(ctx, desired, v1.UpdateOptions{}); err != nil {
+		return fmt.Errorf("error while updating the warp menu entry: %w", err)
+	}
+	return nil
+}
+
+func (w WarpMenuEntryManager) deleteEntry(ctx context.Context, entry *warpMenuEntry.WarpMenuEntry) error {
+	if err := w.client.Delete(ctx, entry.Name, v1.DeleteOptions{}); err != nil {
+		return fmt.Errorf("error while deleting existing warp menu entry: %w", err)
+	}
 	return nil
 }
 
