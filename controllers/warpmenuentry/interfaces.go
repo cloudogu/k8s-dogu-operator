@@ -3,7 +3,6 @@ package warpmenuentry
 import (
 	"context"
 
-	"github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
@@ -12,7 +11,6 @@ import (
 
 type Manager interface {
 	EnsureWarpMenuEntry(ctx context.Context, doguResource *doguv2.Dogu) error
-	DeleteWarpMenuEntry(ctx context.Context, doguName dogu.SimpleName) error
 }
 
 type localDoguFetcher interface {

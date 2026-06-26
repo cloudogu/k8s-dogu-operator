@@ -220,5 +220,4 @@ type expositionManager interface {
 
 type warpMenuEntryManager interface {
 	EnsureWarpMenuEntry(ctx context.Context, doguResource *v2.Dogu) error
-	DeleteWarpMenuEntry(ctx context.Context, doguName cescommons.SimpleName) error
 }

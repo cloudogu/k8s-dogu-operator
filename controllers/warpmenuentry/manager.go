@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
@@ -104,12 +103,4 @@ func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescript
 			Disabled: false,
 		},
 	}
-}
-
-func (w WarpMenuEntryManager) DeleteWarpMenuEntry(ctx context.Context, doguName dogu.SimpleName) error {
-	err := w.client.Delete(ctx, doguName.String(), v1.DeleteOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("error deleting existing warp menu entry: %w", err)
-	}
-	return nil
 }
