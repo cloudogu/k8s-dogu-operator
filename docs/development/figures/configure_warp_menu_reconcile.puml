@@ -1,0 +1,40 @@
+Warp Menu Functionality Configuration @startuml
+
+!define CLOUDOGUURL https://raw.githubusercontent.com/cloudogu/plantuml-cloudogu-sprites/master
+
+!includeurl CLOUDOGUURL/common.puml
+!includeurl CLOUDOGUURL/dogus/cloudogu.puml
+!includeurl CLOUDOGUURL/tools/docker.puml
+!includeurl CLOUDOGUURL/tools/k8s.puml
+!includeurl CLOUDOGUURL/dogus/cas.puml
+!includeurl CLOUDOGUURL/dogus/openldap.puml
+!includeurl CLOUDOGUURL/dogus/nginx.puml
+!includeurl CLOUDOGUURL/dogus/scm.puml
+!includeurl CLOUDOGUURL/dogus/redmine.puml
+!includeurl CLOUDOGUURL/dogus/postgresql.puml
+!define SECONDARY_COLOR #55EE55
+
+
+title Warp Menu Functionality Configuration
+
+rectangle "Dogu operator" as backend <<$cloudogu>> #white {
+root.main : configure manager, step, client-set/interfaces
+root.controller.dogu_controller : add owns_WarpMenuEntry
+
+
+
+root.controller.initfx.controlManager  : add warpMenuEntryV1.AddToScheme
+root.controller.initfx.interfaces : create interfaces for warpmenuentryClient , warpmenuentryInterface
+root.controller.initfx.k8s : methods to return  warpmenuentry Client , Interface
+
+root.controller.steps.install.WarpMenuEntryStep : new struct
+root.controller.steps.install.interfaces :  create warpMenuEntryManager interface
+
+root.controller.usecase.usecase : include warpMenuEntryStep
+
+root.controller.warpmenuentry.interface : interface
+root.controller.warpmenuentry.manager : main logic implementation
+
+}
+
+@enduml
