@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
@@ -100,7 +101,7 @@ func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescript
 				EN: displayName,
 			},
 			Category: doguDescriptor.Category,
-			Path:     "/" + dogu.GetSimpleDoguName().String(),
+			Path:     createPath(doguDescriptor.Name),
 			Disabled: false,
 		},
 	}
@@ -112,4 +113,10 @@ func (w WarpMenuEntryManager) DeleteWarpMenuEntry(ctx context.Context, doguName 
 		return fmt.Errorf("error deleting existing warp menu entry: %w", err)
 	}
 	return nil
+}
+
+func createPath(name string) string {
+	// remove namespace
+	parts := strings.Split(name, "/")
+	return "/" + parts[len(parts)-1]
 }
