@@ -38,6 +38,12 @@ node('docker') {
             make 'clean'
         }
 
+        // free up disk on the docker agent (go build hit "no space left on device")
+        stage('Prune Docker') {
+            sh 'docker system prune -a -f --volumes || true'
+            sh 'df -h || true'
+        }
+
         stage('Lint') {
             lintDockerfile()
         }
