@@ -79,8 +79,6 @@ func Test_options(t *testing.T) {
 	initfx.NewAuthRegistrationClientSet = newTestAuthRegistrationClientSetFn(authRegClientsetMock)
 	oldExpositionClientSet := initfx.NewExpositionClientSet
 	initfx.NewExpositionClientSet = newTestExpositionClientSetFn(expositionClientsetMock)
-	initfx.NewWarpMenuEntryClientSet = newTestWarpMenuEntryClientSetFn(warpMenuEntryClientSetMock)
-
 	oldWarpMenuEntryClientSet := initfx.NewWarpMenuEntryClientSet
 	initfx.NewWarpMenuEntryClientSet = newTestWarpMenuEntryClientSetFn(warpMenuEntryClientSetMock)
 
