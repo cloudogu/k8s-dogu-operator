@@ -16,12 +16,11 @@ import (
 )
 
 const (
-	doguName                 = "testdogu"
-	doguDescriptorSimpleName = "testdogudescriptorname"
-	doguDescriptorName       = "testing/" + doguDescriptorSimpleName
-	displayName              = "testdoguDisplayName"
-	category                 = "category"
-	path                     = "/testdogudescriptorname"
+	doguName           = "testdogu"
+	doguDescriptorName = "testing/" + doguName
+	displayName        = "testdoguDisplayName"
+	category           = "category"
+	path               = "/" + doguName
 )
 
 func TestNewManager(t *testing.T) {
@@ -35,11 +34,11 @@ func TestNewManager(t *testing.T) {
 
 func TestEnsureWarpMenuEntry(t *testing.T) {
 	ctx := context.Background()
-	doguResource := newDoguResource(doguName)
+	doguResource := newDoguResource()
 	doguDescriptorWithWarp := newDoguDescriptor(true)
-	warpMenuEntryWithWarp := newWarpMenuEntry(doguResource, doguDescriptorWithWarp)
+	warpMenuEntryWithWarp := newWarpMenuEntry(doguResource)
 	doguDescriptorWithoutWarp := newDoguDescriptor(false)
-	warpMenuEntryWithoutWarp := newWarpMenuEntry(doguResource, doguDescriptorWithoutWarp)
+	warpMenuEntryWithoutWarp := newWarpMenuEntry(doguResource)
 
 	t.Run("Should return error when doguresource is nil", func(t *testing.T) {
 		//given
@@ -197,7 +196,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		doguFetcher := newMockLocalDoguFetcher(t)
 		client := newMockWarpmenuentryClient(t)
 
-		existingEntry := newWarpMenuEntry(doguResource, doguDescriptorWithWarp)
+		existingEntry := newWarpMenuEntry(doguResource)
 		existingEntry.Spec.Category = "outdated-category"
 
 		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptorWithWarp, nil)
@@ -217,7 +216,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		doguFetcher := newMockLocalDoguFetcher(t)
 		client := newMockWarpmenuentryClient(t)
 
-		existingEntry := newWarpMenuEntry(doguResource, doguDescriptorWithWarp)
+		existingEntry := newWarpMenuEntry(doguResource)
 
 		existingEntry.SetOwnerReferences([]v1.OwnerReference{
 			*v1.NewControllerRef(doguResource, v2.GroupVersion.WithKind("Dogu1")),
@@ -240,7 +239,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		doguFetcher := newMockLocalDoguFetcher(t)
 		client := newMockWarpmenuentryClient(t)
 
-		existingEntry := newWarpMenuEntry(doguResource, doguDescriptorWithWarp)
+		existingEntry := newWarpMenuEntry(doguResource)
 		existingEntry.Spec.Category = "outdated-category"
 
 		const updateError = "update warp menu entry error"
@@ -310,7 +309,7 @@ func newNotFoundError() *errors2.StatusError {
 	return errors2.NewNotFound(schema.GroupResource{Group: "k8s", Resource: "warpmenuentry"}, doguName)
 }
 
-func newDoguResource(doguName string) *v2.Dogu {
+func newDoguResource() *v2.Dogu {
 	return &v2.Dogu{
 		ObjectMeta: v1.ObjectMeta{
 			Name: doguName,
@@ -331,21 +330,21 @@ func newDoguDescriptor(withWarpTag bool) *cesappcore.Dogu {
 	}
 }
 
-func newWarpMenuEntry(doguResource *v2.Dogu, doguDescriptor *cesappcore.Dogu) *warpMenuEntryV1.WarpMenuEntry {
+func newWarpMenuEntry(doguResource *v2.Dogu) *warpMenuEntryV1.WarpMenuEntry {
 
 	return &warpMenuEntryV1.WarpMenuEntry{
 		ObjectMeta: v1.ObjectMeta{
 			OwnerReferences: []v1.OwnerReference{
 				*v1.NewControllerRef(doguResource, v2.GroupVersion.WithKind("Dogu")),
 			},
-			Name: doguResource.Name,
+			Name: doguName,
 		},
 		Spec: warpMenuEntryV1.WarpMenuEntrySpec{
 			DisplayName: warpMenuEntryV1.DisplayName{
-				DE: doguDescriptor.DisplayName,
-				EN: doguDescriptor.DisplayName,
+				DE: displayName,
+				EN: displayName,
 			},
-			Category: doguDescriptor.Category,
+			Category: category,
 			Path:     path,
 			Disabled: false,
 		},
