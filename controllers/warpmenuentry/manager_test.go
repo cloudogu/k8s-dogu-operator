@@ -292,6 +292,10 @@ func newWarpMenuEntry(doguResource *v2.Dogu) *warpMenuEntryV1.WarpMenuEntry {
 				*v1.NewControllerRef(doguResource, v2.GroupVersion.WithKind("Dogu")),
 			},
 			Name: doguName,
+			Labels: map[string]string{
+				"app":       "ces",
+				"dogu.name": doguName,
+			},
 		},
 		Spec: warpMenuEntryV1.WarpMenuEntrySpec{
 			DisplayName: warpMenuEntryV1.DisplayName{

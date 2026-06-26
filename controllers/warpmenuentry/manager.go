@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	warpMenuEntry "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -105,6 +106,7 @@ func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescript
 			OwnerReferences: []v1.OwnerReference{
 				*v1.NewControllerRef(dogu, v2.GroupVersion.WithKind(kindDogu)),
 			},
+			Labels: resource.GetAppLabel().Add(dogu.GetDoguNameLabel()),
 		},
 		Spec: warpMenuEntry.WarpMenuEntrySpec{
 			DisplayName: warpMenuEntry.DisplayName{
