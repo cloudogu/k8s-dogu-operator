@@ -191,17 +191,21 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("Should update existing warp menu entry if it differs from the dogu", func(t *testing.T) {
+	t.Run("Should update existing warp menu entry preserving its resourceVersion if the spec differs", func(t *testing.T) {
 		//given
 		doguFetcher := newMockLocalDoguFetcher(t)
 		client := newMockWarpmenuentryClient(t)
 
 		existingEntry := newWarpMenuEntry(doguResource)
+		existingEntry.ResourceVersion = "57900"
 		existingEntry.Spec.Category = "outdated-category"
+
+		expectedUpdate := newWarpMenuEntry(doguResource)
+		expectedUpdate.ResourceVersion = "57900"
 
 		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptorWithWarp, nil)
 		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(existingEntry, nil)
-		client.EXPECT().Update(ctx, warpMenuEntryWithWarp, v1.UpdateOptions{}).Return(warpMenuEntryWithWarp, nil)
+		client.EXPECT().Update(ctx, expectedUpdate, v1.UpdateOptions{}).Return(expectedUpdate, nil)
 		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
 
 		//when
@@ -211,20 +215,23 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("Should update existing warp menu entry if it differs from the dogu", func(t *testing.T) {
+	t.Run("Should update existing warp menu entry preserving its resourceVersion if the owner references differ", func(t *testing.T) {
 		//given
 		doguFetcher := newMockLocalDoguFetcher(t)
 		client := newMockWarpmenuentryClient(t)
 
 		existingEntry := newWarpMenuEntry(doguResource)
-
+		existingEntry.ResourceVersion = "57900"
 		existingEntry.SetOwnerReferences([]v1.OwnerReference{
 			*v1.NewControllerRef(doguResource, v2.GroupVersion.WithKind("Dogu1")),
 		})
 
+		expectedUpdate := newWarpMenuEntry(doguResource)
+		expectedUpdate.ResourceVersion = "57900"
+
 		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptorWithWarp, nil)
 		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(existingEntry, nil)
-		client.EXPECT().Update(ctx, warpMenuEntryWithWarp, v1.UpdateOptions{}).Return(warpMenuEntryWithWarp, nil)
+		client.EXPECT().Update(ctx, expectedUpdate, v1.UpdateOptions{}).Return(expectedUpdate, nil)
 		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
 
 		//when

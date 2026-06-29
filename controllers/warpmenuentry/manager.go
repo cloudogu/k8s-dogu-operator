@@ -77,10 +77,10 @@ func (w WarpMenuEntryManager) updateEntryIfChanged(ctx context.Context, current,
 	if reflect.DeepEqual(current.Spec, desired.Spec) && reflect.DeepEqual(current.OwnerReferences, desired.OwnerReferences) {
 		return nil
 	}
-	
+
 	current.Spec = desired.Spec
-    current.OwnerReferences = desired.OwnerReferences
-	
+	current.OwnerReferences = desired.OwnerReferences
+
 	if _, err := w.client.Update(ctx, current, v1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("error while updating the warp menu entry: %w", err)
 	}
