@@ -74,11 +74,11 @@ func (w WarpMenuEntryManager) createEntry(ctx context.Context, entry *warpMenuEn
 }
 
 func (w WarpMenuEntryManager) updateEntryIfChanged(ctx context.Context, current, desired *warpMenuEntry.WarpMenuEntry) error {
-	if reflect.DeepEqual(current.Spec, desired.Spec) && reflect.DeepEqual(current.ObjectMeta.OwnerReferences, desired.ObjectMeta.OwnerReferences) {
+	if reflect.DeepEqual(current.Spec, desired.Spec) && reflect.DeepEqual(current.OwnerReferences, desired.OwnerReferences) {
 		return nil
 	}
 	current.Spec = desired.Spec
-	current.ObjectMeta.OwnerReferences = desired.ObjectMeta.OwnerReferences
+	current.OwnerReferences = desired.OwnerReferences
 	if _, err := w.client.Update(ctx, current, v1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("error while updating the warp menu entry: %w", err)
 	}
