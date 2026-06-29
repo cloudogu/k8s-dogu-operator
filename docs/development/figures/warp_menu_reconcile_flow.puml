@@ -32,22 +32,22 @@ participant WarpMenuEntryManager as manager
 activate manager
 warpMenuEntryStep -> manager : EnsureWarpMenuEntry
 manager -> doguFetcher : FetchForResource
-manager -> wm.client : Get
+manager -> WarpMenuEntryInterface : Get
 alt warp tag present
     manager -> manager : createNewWarpMenuEntry
     activate manager
     alt warp menu not found
-        manager -> wm.client : create
+        manager -> WarpMenuEntryInterface : create
     else warp menu is present
         alt warp menu is not same
-            manager -> wm.client : Update
+            manager -> WarpMenuEntryInterface : Update
         end
     end
     deactivate manager
 else warp tag is not present
-    manager -> wm.client : Get
+    manager -> WarpMenuEntryInterface : Get
     alt warp menu present
-    manager -> wm.client : delete
+    manager -> WarpMenuEntryInterface : delete
     end
 end
 deactivate manager
