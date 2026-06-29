@@ -59,7 +59,7 @@ func (w WarpMenuEntryManager) EnsureWarpMenuEntry(ctx context.Context, doguResou
 	}
 
 	// With the warp tag the warp menu entry must exist and be up to date.
-	desiredEntry := w.createNewWarpMenuEntry(doguResource, doguDescriptor)
+	desiredEntry := w.buildNewWarpMenuEntry(doguResource, doguDescriptor)
 	if !entryExists {
 		return w.createEntry(ctx, desiredEntry)
 	}
@@ -74,13 +74,11 @@ func (w WarpMenuEntryManager) createEntry(ctx context.Context, entry *warpMenuEn
 }
 
 func (w WarpMenuEntryManager) updateEntryIfChanged(ctx context.Context, current, desired *warpMenuEntry.WarpMenuEntry) error {
-	if reflect.DeepEqual(current.Spec, desired.Spec) && reflect.DeepEqual(current.OwnerReferences, desired.OwnerReferences) {
+	if reflect.DeepEqual(current.Spec, desired.Spec) && reflect.DeepEqual(current.ObjectMeta.OwnerReferences, desired.ObjectMeta.OwnerReferences) {
 		return nil
 	}
-
 	current.Spec = desired.Spec
-	current.OwnerReferences = desired.OwnerReferences
-
+	current.ObjectMeta.OwnerReferences = desired.ObjectMeta.OwnerReferences
 	if _, err := w.client.Update(ctx, current, v1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("error while updating the warp menu entry: %w", err)
 	}
@@ -98,7 +96,7 @@ func hasWarpMenuTag(descriptor *core.Dogu) bool {
 	return slices.Contains(descriptor.Tags, warpTag)
 }
 
-func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescriptor *core.Dogu) *warpMenuEntry.WarpMenuEntry {
+func (w WarpMenuEntryManager) buildNewWarpMenuEntry(dogu *v2.Dogu, doguDescriptor *core.Dogu) *warpMenuEntry.WarpMenuEntry {
 	displayName := doguDescriptor.DisplayName
 	if displayName == "" {
 		displayName = doguDescriptor.GetSimpleName()

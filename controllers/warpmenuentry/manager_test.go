@@ -64,7 +64,7 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		assert.ErrorContains(t, err, fetchError)
 	})
 
-	t.Run("Should return error when warp menu entry get returns an error", func(t *testing.T) {
+	t.Run("Should return error when warp menu entry get returns an error other than not found", func(t *testing.T) {
 		//given
 		doguFetcher := newMockLocalDoguFetcher(t)
 		client := newMockWarpmenuentryClient(t)
