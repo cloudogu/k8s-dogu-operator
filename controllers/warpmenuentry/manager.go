@@ -101,7 +101,7 @@ func hasWarpMenuTag(descriptor *core.Dogu) bool {
 func (w WarpMenuEntryManager) createNewWarpMenuEntry(dogu *v2.Dogu, doguDescriptor *core.Dogu) *warpMenuEntry.WarpMenuEntry {
 	displayName := doguDescriptor.DisplayName
 	if displayName == "" {
-		displayName = doguDescriptor.Name
+		displayName = doguDescriptor.GetSimpleName()
 	}
 
 	return &warpMenuEntry.WarpMenuEntry{
