@@ -166,7 +166,6 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
-		Owns(&warpmenuentryv1.WarpMenuEntry{}).
 		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{}))
 	if r.authRegistrationEnabled {
 		controllerBuilder = controllerBuilder.Owns(&authRegApiV1.AuthRegistration{})
