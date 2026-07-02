@@ -39,6 +39,8 @@ spec:
               value: {{ quote .Values.controllerManager.env.authRegistrationEnabled | default false }}
             - name: EXPOSITION_ENABLED
               value: {{ quote .Values.controllerManager.env.expositionEnabled | default false }}
+            - name: WARP_MENU_ENTRY_ENABLED
+              value: {{ quote .Values.controllerManager.env.WarpMenuEntryEnabled | default false }}
             - name: DISABLE_POSTFIX_DEPENDENCY_CHECK
               value: {{ quote .Values.controllerManager.env.disablePostfixDependencyCheck | default false }}
             - name: STAGE

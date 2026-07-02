@@ -6,13 +6,15 @@ import (
 	"testing"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewWarpMenuEntryStep(t *testing.T) {
-	step := NewWarpMenuEntryStep(newMockWarpMenuEntryManager(t))
+	step := NewWarpMenuEntryStep(newMockWarpMenuEntryManager(t), &config.OperatorConfig{WarpMenuEntryEnabled: true})
 	assert.NotNil(t, step)
+	assert.True(t, step.warpMenuEntryEnabled)
 }
 
 func TestWarpMenuEntryStep_Run(t *testing.T) {
@@ -24,17 +26,24 @@ func TestWarpMenuEntryStep_Run(t *testing.T) {
 		managerErr := errors.New("warpMenuEntry not ready yet")
 		manager.EXPECT().EnsureWarpMenuEntry(testCtx, doguResource).Return(managerErr)
 
-		step := &WarpMenuEntryStep{warpmenuEntryManager: manager}
+		step := &WarpMenuEntryStep{warpmenuEntryManager: manager, warpMenuEntryEnabled: true}
 		result := step.Run(testCtx, doguResource)
 		assert.ErrorIs(t, result.Err, managerErr)
 		assert.False(t, result.Continue)
+	})
+
+	t.Run("should continue if warpmenuentry is disabled", func(t *testing.T) {
+		step := NewWarpMenuEntryStep(newMockWarpMenuEntryManager(t), &config.OperatorConfig{WarpMenuEntryEnabled: false})
+		result := step.Run(testCtx, doguResource)
+		assert.NoError(t, result.Err)
+		assert.True(t, result.Continue)
 	})
 
 	t.Run("should continue on success", func(t *testing.T) {
 		manager := newMockWarpMenuEntryManager(t)
 		manager.EXPECT().EnsureWarpMenuEntry(testCtx, doguResource).Return(nil)
 
-		step := &WarpMenuEntryStep{warpmenuEntryManager: manager}
+		step := &WarpMenuEntryStep{warpmenuEntryManager: manager, warpMenuEntryEnabled: true}
 		result := step.Run(testCtx, doguResource)
 		assert.NoError(t, result.Err)
 		assert.True(t, result.Continue)

@@ -64,6 +64,7 @@ type DoguReconciler struct {
 	eventRecorder           eventRecorder
 	authRegistrationEnabled bool
 	expositionEnabled       bool
+	warpMenuEntryEnabled    bool
 }
 
 func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
@@ -100,6 +101,7 @@ func NewDoguReconciler(
 		eventRecorder:           recorder,
 		authRegistrationEnabled: config.AuthRegistrationEnabled,
 		expositionEnabled:       config.ExpositionEnabled,
+		warpMenuEntryEnabled:    config.WarpMenuEntryEnabled,
 	}
 	err := r.setupWithManager(manager)
 	if err != nil {
@@ -171,6 +173,9 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	}
 	if r.expositionEnabled {
 		controllerBuilder = controllerBuilder.Owns(&expositionv1.Exposition{})
+	}
+	if r.warpMenuEntryEnabled {
+		controllerBuilder = controllerBuilder.Owns(&warpmenuentryv1.WarpMenuEntry{})
 	}
 	return controllerBuilder.Complete(r)
 }

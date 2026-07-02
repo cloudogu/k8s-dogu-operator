@@ -15,7 +15,6 @@ gpg = new Gpg(this, docker)
 goVersion = "1.26.1"
 makefile = new Makefile(this)
 doguOperatorCrdVersion="2.13.0"
-warpMenuEntryCrdVersion="0.2.0"
 
 // Configuration of repository
 repositoryOwner = "cloudogu"
@@ -97,7 +96,6 @@ node('docker') {
                     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harborhelmchartpush', usernameVariable: 'HARBOR_USERNAME', passwordVariable: 'HARBOR_PASSWORD']]) {
                         k3d.helm("registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'")
                         k3d.helm("install k8s-dogu-operator-crd oci://${registry}/${registry_namespace}/k8s-dogu-operator-crd --version ${doguOperatorCrdVersion}")
-                        k3d.helm("install k8s-warp-menu-entry-crd oci://${registry}/${registry_namespace}/k8s-warp-menu-entry-crd --version ${warpMenuEntryCrdVersion}")
                 }
             }
 

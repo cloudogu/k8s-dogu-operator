@@ -16,6 +16,11 @@ Note that the `WarpMenuEntry` CR will only be created if there is a warp tag in 
 else, the reconcile process would ensure that there is no warp menu entry with the dogu name.
 If a `WarpMenuEntry` CR exists, but there is a change in the display name, category or path, the `WarpMenuEntry` CR will be updated during the reconciliation.
 
+## WARP_MENU_ENTRY_ENABLED
+
+The WarpMenuEntry-CR is created only if `WARP_MENU_ENTRY_ENABLED=true` .
+If `WARP_MENU_ENTRY_ENABLED=false` (or not set), WarpMenuEntry-CR is not created.
+
 ## Format of warp menu entry to be created
 
 ### For dogus that have a warp tag

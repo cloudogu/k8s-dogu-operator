@@ -43,8 +43,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
-	warpClientV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/repository"
+	warpClientV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 )
 
 var (
@@ -266,7 +266,7 @@ func options() []fx.Option {
 			),
 
 			// reconcilers
-			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, "", "", "", "", "", "")),
+			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, "", "", "", "", "", "", "")),
 			controllers.NewGlobalConfigReconciler,
 			controllers.NewDoguRestartReconciler,
 

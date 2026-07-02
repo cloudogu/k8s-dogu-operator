@@ -17,6 +17,11 @@ Zu beachten ist dabei, dass der `WarpMenuEntry`-CR nur erstellt wird, wenn in de
 andernfalls stellt der Reconcile-Ablauf sicher, dass kein WarpMenuEntry mit dem Namen des Dogu vorhanden ist.
 Wenn ein `WarpMenuEntry`-CR existiert, sich jedoch der Anzeigename, die Kategorie oder der Pfad geändert hat, wird der `WarpMenuEntry`-CR während des Reconcile aktualisiert.
 
+## WARP_MENU_ENTRY_ENABLED
+
+Diese WarpMenuEntry wird nur erzeugt, wenn `WARP_MENU_ENTRY_ENABLED=true` ist. 
+Wenn `WARP_MENU_ENTRY_ENABLED=false` ist, erstellt der Operator keine WarpMenuEntry-CRs
+
 ## Format des zu erstellenden WarpMenuEntry
 
 ### Für Dogus, die ein Warp-Tag haben
