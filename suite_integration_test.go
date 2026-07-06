@@ -90,6 +90,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	err = os.Setenv("EXPOSITION_ENABLED", "false")
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	err = os.Setenv("WARP_MENU_ENTRY_ENABLED", "false")
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = os.Setenv(config.StageEnvironmentVariable, config.StageProduction)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())

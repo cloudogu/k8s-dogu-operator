@@ -33,12 +33,13 @@ func TestNewDoguReconciler(t *testing.T) {
 	managerMock.EXPECT().GetRESTMapper().Return(nil)
 
 	// when
-	reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{ExpositionEnabled: true})
+	reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
 
 	// then
 	assert.NoError(t, err)
 	assert.NotNil(t, reconciler)
 	assert.True(t, reconciler.expositionEnabled)
+	assert.True(t, reconciler.warpMenuEntryEnabled)
 }
 
 func TestDoguReconciler_Reconcile(t *testing.T) {

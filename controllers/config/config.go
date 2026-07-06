@@ -46,6 +46,7 @@ const (
 	envVarNetworkPolicyEnabled                    = "NETWORK_POLICIES_ENABLED"
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
 	envVarExpositionEnabled                       = "EXPOSITION_ENABLED"
+	envVarWarpMenuEntryEnabled                    = "WARP_MENU_ENTRY_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
@@ -73,6 +74,8 @@ type OperatorConfig struct {
 	AuthRegistrationEnabled bool `json:"auth_registration_enabled"`
 	// ExpositionEnabled defines whether the operator should manage Exposition CRs for v2 dogus.
 	ExpositionEnabled bool `json:"exposition_enabled"`
+	// WarpMenuEntryEnabled defines whether the operator should manage WarpMenuEntry CRs for v2 dogus.
+	WarpMenuEntryEnabled bool `json:"warpmenuentry_enabled"`
 	// DisablePostfixDependencyCheck defines whether the operator should validate dependencies on postfix.
 	// If set to false, the operator will assume that postfix is installed as a normal dogu and will validate the dependencies accordingly.
 	// If set to true, the operator will assume that postfix is installed as a component and will not validate the dependencies.
@@ -126,6 +129,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		NetworkPoliciesEnabled:        getNetworkPoliciesEnabled(),
 		AuthRegistrationEnabled:       getAuthRegistrationEnabled(),
 		ExpositionEnabled:             getExpositionEnabled(),
+		WarpMenuEntryEnabled:          getWarpMenuEntryEnabled(),
 		DisablePostfixDependencyCheck: getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
 	}, nil
@@ -308,6 +312,22 @@ func getExpositionEnabled() bool {
 	}
 
 	return expositionEnabled
+}
+
+func getWarpMenuEntryEnabled() bool {
+	warpMenuEntryEnabledStr, found := os.LookupEnv(envVarWarpMenuEntryEnabled)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Disabling warpMenuEntry by default", warpMenuEntryEnabledStr))
+		return false
+	}
+
+	warpMenuEntryEnabled, err := strconv.ParseBool(warpMenuEntryEnabledStr)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarWarpMenuEntryEnabled, err), "Disabling warpMenuEntry by default")
+		return false
+	}
+
+	return warpMenuEntryEnabled
 }
 
 func getDisablePostfixDependencyCheck() bool {

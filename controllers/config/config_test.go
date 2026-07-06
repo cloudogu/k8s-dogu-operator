@@ -18,6 +18,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("DOGU_REGISTRY_URLSCHEMA")
 	_ = os.Unsetenv("AUTH_REGISTRATION_ENABLED")
 	_ = os.Unsetenv("EXPOSITION_ENABLED")
+	_ = os.Unsetenv("WARP_MENU_ENTRY_ENABLED")
 
 	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
@@ -75,6 +76,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("NETWORK_POLICIES_ENABLED", "true")
 	t.Setenv("AUTH_REGISTRATION_ENABLED", "true")
 	t.Setenv("EXPOSITION_ENABLED", "true")
+	t.Setenv("WARP_MENU_ENTRY_ENABLED", "true")
 	t.Setenv("DISABLE_POSTFIX_DEPENDENCY_CHECK", "true")
 
 	t.Run("Create config successfully", func(t *testing.T) {
@@ -89,6 +91,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.Equal(t, "0.1.0", operatorConfig.Version.Raw)
 		assert.True(t, operatorConfig.AuthRegistrationEnabled)
 		assert.True(t, operatorConfig.ExpositionEnabled)
+		assert.True(t, operatorConfig.WarpMenuEntryEnabled)
 	})
 }
 
@@ -122,6 +125,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarNetworkPolicyEnabled, "true")
 	t.Setenv(envVarAuthRegistrationEnabled, "false")
 	t.Setenv(envVarExpositionEnabled, "false")
+	t.Setenv(envVarWarpMenuEntryEnabled, "false")
 	t.Setenv(envVarRequeueTimeForDoguResourceInNanoseconds, "5")
 
 	for _, tt := range tests {

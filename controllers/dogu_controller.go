@@ -64,6 +64,7 @@ type DoguReconciler struct {
 	eventRecorder           eventRecorder
 	authRegistrationEnabled bool
 	expositionEnabled       bool
+	warpMenuEntryEnabled    bool
 }
 
 func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
@@ -100,6 +101,7 @@ func NewDoguReconciler(
 		eventRecorder:           recorder,
 		authRegistrationEnabled: config.AuthRegistrationEnabled,
 		expositionEnabled:       config.ExpositionEnabled,
+		warpMenuEntryEnabled:    config.WarpMenuEntryEnabled,
 	}
 	err := r.setupWithManager(manager)
 	if err != nil {
@@ -164,13 +166,15 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
-		Owns(&warpmenuentryv1.WarpMenuEntry{}).
 		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{}))
 	if r.authRegistrationEnabled {
 		controllerBuilder = controllerBuilder.Owns(&authRegApiV1.AuthRegistration{})
 	}
 	if r.expositionEnabled {
 		controllerBuilder = controllerBuilder.Owns(&expositionv1.Exposition{})
+	}
+	if r.warpMenuEntryEnabled {
+		controllerBuilder = controllerBuilder.Owns(&warpmenuentryv1.WarpMenuEntry{})
 	}
 	return controllerBuilder.Complete(r)
 }
