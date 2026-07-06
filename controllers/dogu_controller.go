@@ -11,6 +11,7 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
+	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -63,6 +64,7 @@ type DoguReconciler struct {
 	eventRecorder           eventRecorder
 	authRegistrationEnabled bool
 	expositionEnabled       bool
+	warpMenuEntryEnabled    bool
 }
 
 func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
@@ -99,6 +101,7 @@ func NewDoguReconciler(
 		eventRecorder:           recorder,
 		authRegistrationEnabled: config.AuthRegistrationEnabled,
 		expositionEnabled:       config.ExpositionEnabled,
+		warpMenuEntryEnabled:    config.WarpMenuEntryEnabled,
 	}
 	err := r.setupWithManager(manager)
 	if err != nil {
@@ -169,6 +172,9 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	}
 	if r.expositionEnabled {
 		controllerBuilder = controllerBuilder.Owns(&expositionv1.Exposition{})
+	}
+	if r.warpMenuEntryEnabled {
+		controllerBuilder = controllerBuilder.Owns(&warpmenuentryv1.WarpMenuEntry{})
 	}
 	return controllerBuilder.Complete(r)
 }

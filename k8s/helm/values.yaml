@@ -22,6 +22,7 @@ controllerManager:
     stage: development
     authRegistrationEnabled: false
     expositionEnabled: false
+    warpMenuEntryEnabled: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3

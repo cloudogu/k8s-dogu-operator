@@ -1,6 +1,6 @@
 module github.com/cloudogu/k8s-dogu-operator/v3
 
-go 1.26.0
+go 1.26.4
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
@@ -12,6 +12,7 @@ require (
 	github.com/cloudogu/k8s-exposition-lib v1.0.0
 	github.com/cloudogu/k8s-host-change v0.8.0
 	github.com/cloudogu/k8s-registry-lib v0.6.0
+	github.com/cloudogu/k8s-warp-menu-entry-lib v0.2.0
 	github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1
 	github.com/cloudogu/retry-lib v0.1.0
 	github.com/dlclark/regexp2 v1.11.5
