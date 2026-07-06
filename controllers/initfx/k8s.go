@@ -5,6 +5,7 @@ import (
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
+	warpClientV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -39,6 +40,12 @@ func newExpositionClientSet(config *rest.Config) (expClientV1.ApiV1Interface, er
 	return expClientV1.NewForConfig(config)
 }
 
+var NewWarpMenuEntryClientSet = newWarpMenuEntryClientSet
+
+func newWarpMenuEntryClientSet(config *rest.Config) (warpClientV1.ApiV1Interface, error) {
+	return warpClientV1.NewForConfig(config)
+}
+
 func NewK8sClient(mgr manager.Manager) client.Client {
 	return mgr.GetClient()
 }
@@ -57,6 +64,10 @@ func NewAuthRegistrationInterface(authRegistrationClientSet authRegClientV1.ApiV
 
 func NewExpositionInterface(expositionClientSet expClientV1.ApiV1Interface, operatorConfig *config.OperatorConfig) expClientV1.ExpositionInterface {
 	return expositionClientSet.Expositions(operatorConfig.Namespace)
+}
+
+func NewWarpMenuEntryInterface(warpMenuEntryClientSet warpClientV1.ApiV1Interface, operatorConfig *config.OperatorConfig) warpClientV1.WarpMenuEntryInterface {
+	return warpMenuEntryClientSet.WarpMenuEntries(operatorConfig.Namespace)
 }
 
 func NewConfigMapInterface(clientSet kubernetes.Interface, operatorConfig *config.OperatorConfig) v1.ConfigMapInterface {

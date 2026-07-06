@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
+	warpmenuentryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -112,6 +113,11 @@ func getTestScheme() *runtime.Scheme {
 		panic(err)
 	}
 	err = expositionv1.AddToScheme(scheme)
+	if err != nil {
+		panic(err)
+	}
+
+	err = warpmenuentryV1.AddToScheme(scheme)
 	if err != nil {
 		panic(err)
 	}

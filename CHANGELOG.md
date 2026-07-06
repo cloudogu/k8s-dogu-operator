@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.27.0] - 2026-07-06
+### Added
+- [#313] Add WarpMenuEntry CR support for v2 dogus
+  - Create and update `WarpMenuEntry` CRs derived from the local dogu descriptor for dogus carrying the `warp` tag
+  - The feature can be enabled/disabled with `WARP_MENU_ENTRY_ENABLED` feature flag
+
 ## [v3.26.0] - 2026-06-05
 ### Fixed
 - [#311] exposed port annotation mapping to use the dogu host port as `port` and container port as `targetPort`
