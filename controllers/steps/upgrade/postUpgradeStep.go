@@ -74,8 +74,8 @@ func (rsps *PostUpgradeStep) Run(ctx context.Context, doguResource *v2.Dogu) ste
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch deployment: %w", err))
 	}
 
-	fromVersion, prevVersionSet := deployment.Annotations[previousVersionAnnotationKey]
-	if !prevVersionSet || fromVersion == "" ||
+	fromVersion := deployment.Annotations[previousVersionAnnotationKey]
+	if fromVersion == "" ||
 		rsps.startupProbeHasDefaultValue(deployment, doguResource.Name, resource.CreateStartupProbe(toDogu)) {
 		return steps.Continue()
 	}
