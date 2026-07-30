@@ -790,3 +790,43 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 		})
 	}
 }
+
+func Test_setPreviousVersionInDeployment(t *testing.T) {
+	type args struct {
+		deployment *appsv1.Deployment
+		fromDogu   *core.Dogu
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantAnnotations map[string]string
+	}{
+		{
+			"handle nil annotations",
+			args{
+				deployment: &appsv1.Deployment{},
+				fromDogu:   &core.Dogu{Version: "1.2.3-4"},
+			},
+			map[string]string{
+				"k8s.cloudogu.com/previous-version": "1.2.3-4",
+			},
+		},
+		{
+			"don't overwrite annotations",
+			args{
+				deployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{"my-annotation": "abc"}}},
+				fromDogu:   &core.Dogu{Version: "1.2.3-4"},
+			},
+			map[string]string{
+				"my-annotation":                     "abc",
+				"k8s.cloudogu.com/previous-version": "1.2.3-4",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setPreviousVersionInDeployment(tt.args.deployment, tt.args.fromDogu)
+			assert.Equal(t, tt.wantAnnotations, tt.args.deployment.Annotations)
+		})
+	}
+}
