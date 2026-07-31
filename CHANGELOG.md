@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.27.1] - 2026-07-31
+### Added
+- [#316] add German translations for releasing_crd
+### Fixed
+- [#320] Dogu post-upgrade scripts failed in some cases
+  - Post-upgrade scripts should be called with both the old and the new version of the dogu as arguments.
+    Because the new version was registered as current before calling the post-upgrade script, 
+    the script got the new version in both arguments.
+
 ## [v3.27.0] - 2026-07-06
 ### Added
 - [#313] Add WarpMenuEntry CR support for v2 dogus
