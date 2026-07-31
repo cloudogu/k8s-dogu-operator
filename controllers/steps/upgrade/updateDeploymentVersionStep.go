@@ -26,6 +26,7 @@ const requeueAfterUpdateDeployment = time.Second * 3
 const podTemplateVersionKey = "dogu.version"
 const upgradeStartupProbeFailureThresholdRetries = int32(1080)
 const preUpgradeScriptDir = "/tmp/pre-upgrade"
+const previousVersionAnnotationKey = "k8s.cloudogu.com/previous-version"
 
 // The UpdateDeploymentVersionStep updates the dogu version inside the deployment and runs the pre upgrade script.
 type UpdateDeploymentVersionStep struct {
@@ -56,6 +57,10 @@ func NewUpdateDeploymentVersionStep(
 }
 
 func (uds *UpdateDeploymentVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	logger := log.FromContext(ctx).
+		WithName("update deployment version step").
+		WithValues("dogu", doguResource.Name)
+
 	deployment, err := uds.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
 		return steps.RequeueWithError(err)
@@ -64,6 +69,8 @@ func (uds *UpdateDeploymentVersionStep) Run(ctx context.Context, doguResource *v
 	if uds.isDoguVersionUpdatedInDeployment(doguResource, deployment) {
 		return steps.Continue()
 	}
+
+	logger.Info("new version detected, deployment needs to be updated")
 
 	dogu, err := uds.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
@@ -85,11 +92,15 @@ func (uds *UpdateDeploymentVersionStep) Run(ctx context.Context, doguResource *v
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
 	}
 
+	logger.Info("starting pre-upgrade script")
+
 	// Apply pre upgrade
 	err = uds.applyPreUpgradeScript(ctx, doguResource, fromDogu.Version, dogu)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("pre-upgrade failed: %w", err))
 	}
+
+	logger.Info("updating deployment with new version")
 
 	// update Deployment
 	_, err = uds.upserter.UpsertDoguDeployment(
@@ -98,6 +109,7 @@ func (uds *UpdateDeploymentVersionStep) Run(ctx context.Context, doguResource *v
 		dogu,
 		func(deployment *v1.Deployment) {
 			increaseStartupProbeTimeoutForUpdate(doguResource.Name, deployment)
+			setPreviousVersionInDeployment(deployment, fromDogu)
 		},
 	)
 	if err != nil {
@@ -105,6 +117,14 @@ func (uds *UpdateDeploymentVersionStep) Run(ctx context.Context, doguResource *v
 	}
 
 	return steps.RequeueAfter(requeueAfterUpdateDeployment)
+}
+
+func setPreviousVersionInDeployment(deployment *v1.Deployment, fromDogu *core.Dogu) {
+	if deployment.Annotations == nil {
+		deployment.Annotations = make(map[string]string)
+	}
+
+	deployment.Annotations[previousVersionAnnotationKey] = fromDogu.Version
 }
 
 func (uds *UpdateDeploymentVersionStep) isDoguVersionUpdatedInDeployment(doguResource *v2.Dogu, deployment *v1.Deployment) bool {

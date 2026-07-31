@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const requeueAfterRevertStartupProbe = time.Second * 3
@@ -43,7 +44,26 @@ func NewPostUpgradeStep(
 	}
 }
 
+//1. set conditions to false
+//2. update deployment version
+//2.1. skip if deployment version is == dogu resource spec version
+//2.2. fetch local dogu json for new version
+//2.3. requeue if exec pod does not exist or is not ready
+//2.4. apply pre-upgrade script
+//2.5. update deployment with increased startup probe failure threshold
+//3. set new version as current version
+//4. delete exec pod
+//5. post-upgrade
+//5.1. fetch local dogu json for new version
+//5.2. fetch deployment
+//5.3. skip if previous version is not set
+//5.4. execute post-upgrade script
+//5.5. revert startup probe
+//5.6. requeue
+
 func (rsps *PostUpgradeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
+	logger := log.FromContext(ctx).WithName("post-upgrade step").WithValues("dogu", doguResource.Name)
+
 	toDogu, err := rsps.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch dogu descriptor: %w", err))
@@ -54,21 +74,21 @@ func (rsps *PostUpgradeStep) Run(ctx context.Context, doguResource *v2.Dogu) ste
 		return steps.RequeueWithError(fmt.Errorf("failed to fetch deployment: %w", err))
 	}
 
-	originalStartupProbe := resource.CreateStartupProbe(toDogu)
-	if rsps.startupProbeHasDefaultValue(deployment, toDogu.GetSimpleName(), originalStartupProbe) {
+	fromVersion := deployment.Annotations[previousVersionAnnotationKey]
+	if fromVersion == "" ||
+		rsps.startupProbeHasDefaultValue(deployment, doguResource.Name, resource.CreateStartupProbe(toDogu)) {
 		return steps.Continue()
 	}
 
-	fromDogu, err := rsps.localDoguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
-	if err != nil {
-		return steps.RequeueWithError(fmt.Errorf("failed to fetch installed dogu: %w", err))
-	}
+	logger.Info("executing post-upgrade script")
 
 	// Run Postupgrade Script
-	err = rsps.applyPostUpgradeScript(ctx, doguResource, fromDogu.Version, toDogu)
+	err = rsps.applyPostUpgradeScript(ctx, doguResource, fromVersion, toDogu)
 	if err != nil {
 		return steps.RequeueWithError(fmt.Errorf("post-upgrade failed: %w", err))
 	}
+
+	logger.Info("reverting startup probe to default value")
 
 	// Revert probe
 	err = rsps.revertStartupProbeAfterUpdate(ctx, doguResource, toDogu, deployment)
