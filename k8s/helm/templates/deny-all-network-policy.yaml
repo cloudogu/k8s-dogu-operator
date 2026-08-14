@@ -11,4 +11,11 @@ spec:
       app.kubernetes.io/name: k8s-dogu-operator
   policyTypes:
     - Ingress
+  # The kube-apiserver calls the Dogu CRD's conversion webhook directly on this port. Its source
+  # IP isn't predictable (may be outside the cluster's pod CIDR, e.g. managed control planes), so
+  # this is left open to all sources on the webhook port only - everything else stays denied.
+  ingress:
+    - ports:
+        - port: 9443
+          protocol: TCP
 {{- end }}

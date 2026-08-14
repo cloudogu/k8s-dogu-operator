@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: k8s-dogu-operator-webhook-cert # contract with dogu-lib
+spec:
+  secretName: k8s-dogu-operator-webhook-cert
+  dnsNames:
+    - {{ include "k8s-dogu-operator.name" . }}-webhook.{{ .Release.Namespace }}.svc
+    - {{ include "k8s-dogu-operator.name" . }}-webhook.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    name: {{ include "k8s-dogu-operator.name" . }}-selfsigned-issuer

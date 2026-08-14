@@ -66,11 +66,28 @@ func Test_addChecks(t *testing.T) {
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "failed to add readyz check:")
 	})
-	t.Run("should fail to add ready check", func(t *testing.T) {
+	t.Run("should fail to add ready check for webhook-server", func(t *testing.T) {
 		// given
 		managerMock := newMockK8sManager(t)
 		managerMock.EXPECT().AddHealthzCheck("healthz", mock.AnythingOfType("healthz.Checker")).Return(nil)
 		managerMock.EXPECT().AddReadyzCheck("readyz", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		managerMock.EXPECT().GetWebhookServer().Return(webhook.NewServer(webhook.Options{}))
+		managerMock.EXPECT().AddReadyzCheck("webhook-server", mock.AnythingOfType("healthz.Checker")).Return(assert.AnError)
+
+		// when
+		err := addChecks(managerMock)
+
+		// then
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "failed to add readyz check for webhook-server:")
+	})
+	t.Run("should succeed", func(t *testing.T) {
+		// given
+		managerMock := newMockK8sManager(t)
+		managerMock.EXPECT().AddHealthzCheck("healthz", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		managerMock.EXPECT().AddReadyzCheck("readyz", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		managerMock.EXPECT().GetWebhookServer().Return(webhook.NewServer(webhook.Options{}))
+		managerMock.EXPECT().AddReadyzCheck("webhook-server", mock.AnythingOfType("healthz.Checker")).Return(nil)
 
 		// when
 		err := addChecks(managerMock)
