@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.27.2] - 2026-08-20
+### Fixed
+- [#322] Prevent "resource name may not be empty" on dogu delete
+- [#323] Requeue dogu deletions to be able to resolve SA dependency problems
+
 ## [v3.27.1] - 2026-07-31
 ### Added
 - [#316] add German translations for releasing_crd

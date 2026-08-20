@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	errors2 "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/stretchr/testify/mock"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -21,6 +20,11 @@ import (
 )
 
 const requeueTime = time.Second * 5
+
+var deletedDoguResource = &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{
+	Name:              testDoguName,
+	DeletionTimestamp: &v1.Time{Time: time.Date(2025, 10, 7, 8, 50, 59, 0, time.UTC)},
+}}
 
 func TestNewDoguRequeueHandler(t *testing.T) {
 	t.Run("should fail to create DoguRequeueHandler", func(t *testing.T) {
@@ -224,9 +228,8 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
-					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, "", v1.GetOptions{}).Return(nil, errors2.NewNotFoundError(assert.AnError))
-					return mck
+					// an empty dogu resource must not be fetched; the api would reject it with "resource name may not be empty"
+					return newMockDoguInterface(t)
 				},
 			},
 			args: args{
@@ -238,22 +241,75 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
-			name: "should not reconcile when deletion timestamp is set",
+			// a dogu that is being deleted must still be requeued on error, otherwise its deletion is stuck forever
+			name: "should reconcile on error when deletion timestamp is set",
 			fields: fields{
 				recorderFn: func(t *testing.T) record.EventRecorder {
 					mck := newMockEventRecorder(t)
+					mck.EXPECT().Eventf(
+						deletedDoguResource,
+						v2.EventTypeWarning,
+						ReasonReconcileFail,
+						"Trying again in %s because of: %s", requeueTime.String(), "deletion failed").Return()
 					return mck
 				},
 				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
-					mck := newMockDoguInterface(t)
-					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Now()}}}, nil)
-					return mck
+					// the requeue time must not be written to a dogu resource that is being deleted
+					return newMockDoguInterface(t)
 				},
 			},
 			args: args{
-				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName, DeletionTimestamp: &v1.Time{Time: time.Now()}}},
-				err:          errors.New(""),
+				doguResource: deletedDoguResource,
+				err:          errors.New("deletion failed"),
+				reqTime:      time.Duration(0),
+			},
+			want:    controllerruntime.Result{RequeueAfter: requeueTime},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "should reconcile on requeue time when deletion timestamp is set",
+			fields: fields{
+				recorderFn: func(t *testing.T) record.EventRecorder {
+					mck := newMockEventRecorder(t)
+					mck.EXPECT().Eventf(
+						deletedDoguResource,
+						v2.EventTypeNormal,
+						RequeueEventReason,
+						"Trying again in %s.", time.Duration(2).String()).Return()
+					return mck
+				},
+				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+					return newMockDoguInterface(t)
+				},
+			},
+			args: args{
+				doguResource: deletedDoguResource,
+				err:          nil,
 				reqTime:      time.Duration(2),
+			},
+			want:    controllerruntime.Result{RequeueAfter: time.Duration(2)},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "should not reconcile when deletion timestamp is set and no error occurred",
+			fields: fields{
+				recorderFn: func(t *testing.T) record.EventRecorder {
+					mck := newMockEventRecorder(t)
+					mck.EXPECT().Event(
+						deletedDoguResource,
+						v2.EventTypeNormal,
+						ReasonReconcileOK,
+						"resource synced").Return()
+					return mck
+				},
+				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+					return newMockDoguInterface(t)
+				},
+			},
+			args: args{
+				doguResource: deletedDoguResource,
+				err:          nil,
+				reqTime:      time.Duration(0),
 			},
 			want:    controllerruntime.Result{},
 			wantErr: assert.NoError,

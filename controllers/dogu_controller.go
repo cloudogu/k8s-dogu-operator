@@ -15,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -115,7 +116,11 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	doguResource := &doguv2.Dogu{}
 	err := r.client.Get(ctx, req.NamespacedName, doguResource)
 	if err != nil {
-		return r.requeueHandler.Handle(ctx, doguResource, client.IgnoreNotFound(err), 0)
+		if apierrors.IsNotFound(err) {
+			// the dogu resource is gone; there is nothing left to reconcile or to requeue.
+			return ctrl.Result{}, nil
+		}
+		return r.requeueHandler.Handle(ctx, doguResource, err, 0)
 	}
 	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 

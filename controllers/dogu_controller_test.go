@@ -114,13 +114,11 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					return newMockEventRecorder(t)
 				},
 				requeueHandlerFn: func(t *testing.T) RequeueHandler {
-					mck := NewMockRequeueHandler(t)
-					mck.EXPECT().Handle(testCtx, &v2.Dogu{}, nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
-					return mck
+					return NewMockRequeueHandler(t)
 				},
 			},
 			req:     controllerruntime.Request{},
-			want:    controllerruntime.Result{Requeue: false, RequeueAfter: 0},
+			want:    controllerruntime.Result{},
 			wantErr: assert.NoError,
 		},
 		{
