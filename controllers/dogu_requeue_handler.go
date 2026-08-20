@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/cloudogu/ces-commons-lib/errors"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
@@ -51,16 +51,23 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *doguv2.Do
 func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource *doguv2.Dogu, result *ctrl.Result) {
 	logger := log.FromContext(ctx)
 
+	// A Get on an empty dogu would lead to "resource name may not be empty". Prevent by skipping.
+	emptyDogu := &doguv2.Dogu{}
+	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
+		return
+	}
+
 	var err error
 	doguResource, err = d.doguInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFoundError(err) {
+		if apierrors.IsNotFound(err) {
 			return
 		}
 		result.RequeueAfter = d.requeueTime
 		logger.Error(err, "failed to get doguResource for setting requeue time")
 		return
 	}
+	// check deletionTimestamp again to catch the race condition that the dogu was deleted in the meantime
 	if !doguResource.DeletionTimestamp.IsZero() {
 		return
 	}
@@ -79,7 +86,7 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 
 func (d *doguRequeueHandler) handleRequeueEvent(doguResource *doguv2.Dogu, reconcileError error, reqTime time.Duration) {
 	emptyDogu := &doguv2.Dogu{}
-	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
+	if reflect.DeepEqual(doguResource, emptyDogu) {
 		return
 	}
 	if reconcileError == nil && reqTime == 0 {
@@ -94,7 +101,7 @@ func (d *doguRequeueHandler) handleRequeueEvent(doguResource *doguv2.Dogu, recon
 func (d *doguRequeueHandler) handleRequeue(doguResource *doguv2.Dogu, reconcileError error, reqTime time.Duration) ctrl.Result {
 	result := ctrl.Result{}
 	emptyDogu := &doguv2.Dogu{}
-	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
+	if reflect.DeepEqual(doguResource, emptyDogu) {
 		return result
 	}
 
