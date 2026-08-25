@@ -36,3 +36,6 @@ controllerManager:
   resourceRequests:
     cpu: 15m
     memory: 105M
+
+reloader:
+  enabled: false
