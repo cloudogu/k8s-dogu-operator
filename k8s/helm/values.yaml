@@ -39,3 +39,23 @@ controllerManager:
 
 reloader:
   enabled: false
+  global:
+    imagePullSecrets:
+      - name: "ces-container-registries"
+  # V3 Dogus are installed as Helm charts via flux, which is incompatible with the default reload strategy
+  reloadStrategy: annotations
+  # watch only namespaces that are listed here + the release namespace
+  watchGlobally: false
+  namespaces: []
+  # TODO evaluate if these are the annotations we want to use
+  custom_annotations:
+    auto: "k8s.cloudogu.com/reload"
+    configmap_auto: "k8s.cloudogu.com/reload-configmaps-auto"
+    secret_auto: "k8s.cloudogu.com/reload-secrets-auto"
+    configmap: "k8s.cloudogu.com/reload-configmaps"
+    secret: "k8s.cloudogu.com/reload-secrets"
+    search: "k8s.cloudogu.com/reload-search"
+    match: "k8s.cloudogu.com/reload-match"
+    ignore: "k8s.cloudogu.com/reload-exclude"
+    pausePeriod: "k8s.cloudogu.com/reload-pause-period"
+    pauseTime: "k8s.cloudogu.com/reload-paused-at"
