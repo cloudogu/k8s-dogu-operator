@@ -39,15 +39,13 @@ controllerManager:
 
 reloader:
   enabled: false
+
   global:
     imagePullSecrets:
       - name: "ces-container-registries"
 
   # V3 Dogus are installed as Helm charts via flux, which is incompatible with the default reload strategy
   reloadStrategy: annotations
-  # watch only namespaces that are listed here + the release namespace
-  watchGlobally: false
-  namespaces: []
 
   # Custom annotations so that we stay independent of the stakater reloader.
   # In the future, stakater reloader might be replaced by our own implementation.
@@ -84,3 +82,15 @@ reloader:
     match: "k8s.cloudogu.com/reload-match"
     pausePeriod: "k8s.cloudogu.com/reload-pause-period"
     pauseTime: "k8s.cloudogu.com/reload-paused-at"
+
+  # use a more restrictive security context as it costs us nothing and is good practice
+  deployment:
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+  # watch only namespaces that are listed here + the release namespace
+  watchGlobally: false
+  namespaces: []
