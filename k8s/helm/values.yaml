@@ -36,61 +36,56 @@ controllerManager:
   resourceRequests:
     cpu: 15m
     memory: 105M
-
 reloader:
   enabled: false
-
   global:
     imagePullSecrets:
       - name: "ces-container-registries"
-
-  # V3 Dogus are installed as Helm charts via flux, which is incompatible with the default reload strategy
-  reloadStrategy: annotations
-
-  # Custom annotations so that we stay independent of the stakater reloader.
-  # In the future, stakater reloader might be replaced by our own implementation.
-  custom_annotations:
-    # To be used on workloads. If any ConfigMaps or Secrets that are referenced by the workload change,
-    # the workload will be restarted.
-    # Value can be "true" or "false".
-    auto: "k8s.cloudogu.com/reload-auto"
-    # To be used on workloads. If any ConfigMaps that are referenced by the workload change,
-    # the workload will be restarted. Secret changes are ignored.
-    # Value can be "true" or "false".
-    configmap_auto: "k8s.cloudogu.com/reload-configmaps-auto"
-    # To be used on workloads. If any Secrets that are referenced by the workload change,
-    # the workload will be restarted. ConfigMap changes are ignored.
-    # Value can be "true" or "false".
-    secret_auto: "k8s.cloudogu.com/reload-secrets-auto"
-    # To be used on workloads. If any ConfigMaps that are referenced by this annotation change,
-    # the workload will be restarted. Secret changes and ConfigMaps not in this annotation are ignored.
-    # Value is a comma-separated list of ConfigMap names.
-    configmap: "k8s.cloudogu.com/reload-configmaps"
-    # To be used on workloads. If any Secrets that are referenced by this annotation change,
-    # the workload will be restarted. ConfigMaps changes and Secrets not in this annotation are ignored.
-    # Value is a comma-separated list of Secret names.
-    secret: "k8s.cloudogu.com/reload-secrets"
-    # To be used on ConfigMaps and Secrets. If the ConfigMap or Secret changes,
-    # it will not trigger a restart of any workloads.
-    # Value can be "true" or "false".
-    ignore: "k8s.cloudogu.com/reload-ignore"
-
-    # We do not support the following annotations officially, and they might not work in future revisions.
-    # We overwrite them with our own annotations to stop people from using the original stakater annotations.
-    # We recommend using the above annotations instead.
-    search: "k8s.cloudogu.com/reload-search"
-    match: "k8s.cloudogu.com/reload-match"
-    pausePeriod: "k8s.cloudogu.com/reload-pause-period"
-    pauseTime: "k8s.cloudogu.com/reload-paused-at"
-
-  # use a more restrictive security context as it costs us nothing and is good practice
-  deployment:
-    containerSecurityContext:
-      allowPrivilegeEscalation: false
-      capabilities:
-        drop:
-          - ALL
-      readOnlyRootFilesystem: true
-  # watch only namespaces that are listed here + the release namespace
-  watchGlobally: false
-  namespaces: []
+  reloader:
+    # V3 Dogus are installed as Helm charts via flux, which is incompatible with the default reload strategy
+    reloadStrategy: annotations
+    # Custom annotations so that we stay independent of the stakater reloader.
+    # In the future, stakater reloader might be replaced by our own implementation.
+    custom_annotations:
+      # To be used on workloads. If any ConfigMaps or Secrets that are referenced by the workload change,
+      # the workload will be restarted.
+      # Value can be "true" or "false".
+      auto: "k8s.cloudogu.com/reload-auto"
+      # To be used on workloads. If any ConfigMaps that are referenced by the workload change,
+      # the workload will be restarted. Secret changes are ignored.
+      # Value can be "true" or "false".
+      configmap_auto: "k8s.cloudogu.com/reload-configmaps-auto"
+      # To be used on workloads. If any Secrets that are referenced by the workload change,
+      # the workload will be restarted. ConfigMap changes are ignored.
+      # Value can be "true" or "false".
+      secret_auto: "k8s.cloudogu.com/reload-secrets-auto"
+      # To be used on workloads. If any ConfigMaps that are referenced by this annotation change,
+      # the workload will be restarted. Secret changes and ConfigMaps not in this annotation are ignored.
+      # Value is a comma-separated list of ConfigMap names.
+      configmap: "k8s.cloudogu.com/reload-configmaps"
+      # To be used on workloads. If any Secrets that are referenced by this annotation change,
+      # the workload will be restarted. ConfigMaps changes and Secrets not in this annotation are ignored.
+      # Value is a comma-separated list of Secret names.
+      secret: "k8s.cloudogu.com/reload-secrets"
+      # To be used on ConfigMaps and Secrets. If the ConfigMap or Secret changes,
+      # it will not trigger a restart of any workloads.
+      # Value can be "true" or "false".
+      ignore: "k8s.cloudogu.com/reload-ignore"
+      # We do not support the following annotations officially, and they might not work in future revisions.
+      # We overwrite them with our own annotations to stop people from using the original stakater annotations.
+      # We recommend using the above annotations instead.
+      search: "k8s.cloudogu.com/reload-search"
+      match: "k8s.cloudogu.com/reload-match"
+      pausePeriod: "k8s.cloudogu.com/reload-pause-period"
+      pauseTime: "k8s.cloudogu.com/reload-paused-at"
+    # use a more restrictive security context as it costs us nothing and is good practice
+    deployment:
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+    # watch only namespaces that are listed here + the release namespace
+    watchGlobally: false
+    namespaces: []
