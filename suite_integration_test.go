@@ -12,6 +12,8 @@ import (
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/ces-commons-lib/dogu"
+	doguscheme "github.com/cloudogu/k8s-dogu-lib/v2/client/scheme"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
@@ -20,6 +22,7 @@ import (
 	"go.uber.org/fx/fxtest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -33,11 +36,13 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+
+	_ "github.com/cloudogu/k8s-dogu-lib/v2/crds"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-var ecosystemClientSet *doguClient.EcoSystemV2Client
+var doguV2Client *doguv2.DoguV2Interface
 var k8sClientSet controllers.ClientSet
 var testEnv *envtest.Environment
 
@@ -101,7 +106,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	logf.SetLogger(logrusr.New(logrus.New()))
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
-			filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "api", "v2"),
+			filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "crds"),
 			filepath.Join("testdata", "crd"),
 		},
 		ErrorIfCRDPathMissing: true,
@@ -145,20 +150,22 @@ var _ = ginkgo.BeforeSuite(func() {
 	oldCtrlBuilder = ctrl.NewControllerManagedBy
 	ctrl.NewControllerManagedBy = func(m manager.Manager) *ctrl.Builder {
 		builder := oldCtrlBuilder(m)
-		skipNameValidation := true
-		builder.WithOptions(controller.Options{SkipNameValidation: &skipNameValidation})
+		builder.WithOptions(controller.Options{SkipNameValidation: new(true)})
 
 		return builder
 	}
 
 	ginkgo.By("creating clients")
-	ecosystemClientSet, err = doguClient.NewForConfig(cfg)
+	doguClientset, err := doguClient.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	doguV2Client = new(doguClientset.DoguV2())
 
 	k8sClientSet, err = kubernetes.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	k8sClient, err = client.New(cfg, client.Options{})
+	err = doguscheme.AddToScheme(scheme.Scheme)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	ginkgo.By("creating operator config")

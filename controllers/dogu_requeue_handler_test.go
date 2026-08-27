@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/stretchr/testify/mock"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/core/v1"
@@ -46,7 +46,7 @@ func TestNewDoguRequeueHandler(t *testing.T) {
 func Test_doguRequeueHandler_Handle(t *testing.T) {
 	type fields struct {
 		recorderFn      func(t *testing.T) record.EventRecorder
-		doguInterfaceFn func(t *testing.T) client.DoguInterface
+		doguInterfaceFn func(t *testing.T) doguClientV2.DoguInterface
 	}
 	type args struct {
 		doguResource *doguv2.Dogu
@@ -74,7 +74,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 						"Trying again in %s because of: %s", requeueTime.String(), err.Error()).Return()
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
 					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
 					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
@@ -108,7 +108,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 						"Trying again in %s because of: %s", requeueTime.String(), err.Error()).Return()
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
 					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
@@ -138,7 +138,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 						"Trying again in %s because of: %s", requeueTime.String(), err.Error()).Return()
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(nil, assert.AnError)
 					return mck
@@ -166,7 +166,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 					).Return()
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
 					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
 					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
@@ -199,7 +199,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 						"resource synced").Return()
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
 					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
 					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
@@ -227,7 +227,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 					mck := newMockEventRecorder(t)
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					// an empty dogu resource must not be fetched; the api would reject it with "resource name may not be empty"
 					return newMockDoguInterface(t)
 				},
@@ -253,7 +253,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 						"Trying again in %s because of: %s", requeueTime.String(), "deletion failed").Return()
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					// the requeue time must not be written to a dogu resource that is being deleted
 					return newMockDoguInterface(t)
 				},
@@ -278,7 +278,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 						"Trying again in %s.", time.Duration(2).String()).Return()
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					return newMockDoguInterface(t)
 				},
 			},
@@ -302,7 +302,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 						"resource synced").Return()
 					return mck
 				},
-				doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					return newMockDoguInterface(t)
 				},
 			},

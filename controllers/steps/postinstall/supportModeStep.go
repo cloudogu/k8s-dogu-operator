@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,7 +28,7 @@ type SupportModeStep struct {
 	deploymentInterface deploymentInterface
 }
 
-func NewSupportModeStep(supportManager manager.SupportManager, doguInterface doguClient.DoguInterface, deploymentInterface v1.DeploymentInterface) *SupportModeStep {
+func NewSupportModeStep(supportManager manager.SupportManager, doguInterface doguClientV2.DoguInterface, deploymentInterface v1.DeploymentInterface) *SupportModeStep {
 	return &SupportModeStep{
 		supportManager:      supportManager,
 		doguInterface:       doguInterface,

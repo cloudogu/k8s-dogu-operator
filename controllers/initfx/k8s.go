@@ -3,6 +3,7 @@ package initfx
 import (
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	warpClientV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
@@ -22,9 +23,9 @@ func newKubernetesClientSet(config *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(config)
 }
 
-var NewEcoSystemClientSet = newEcoSystemClientSet
+var NewDoguClientset = newDoguClientset
 
-func newEcoSystemClientSet(config *rest.Config) (doguClient.EcoSystemV2Interface, error) {
+func newDoguClientset(config *rest.Config) (doguClient.Interface, error) {
 	return doguClient.NewForConfig(config)
 }
 
@@ -50,12 +51,12 @@ func NewK8sClient(mgr manager.Manager) client.Client {
 	return mgr.GetClient()
 }
 
-func NewDoguInterface(ecosystemClientSet doguClient.EcoSystemV2Interface, config *config.OperatorConfig) doguClient.DoguInterface {
-	return ecosystemClientSet.Dogus(config.Namespace)
+func NewDoguInterface(doguClientset doguClient.Interface, config *config.OperatorConfig) doguv2.DoguInterface {
+	return doguClientset.DoguV2().Dogus(config.Namespace)
 }
 
-func NewDoguRestartInterface(ecosystemClientSet doguClient.EcoSystemV2Interface, config *config.OperatorConfig) doguClient.DoguRestartInterface {
-	return ecosystemClientSet.DoguRestarts(config.Namespace)
+func NewDoguRestartInterface(doguClientset doguClient.Interface, config *config.OperatorConfig) doguv2.DoguRestartInterface {
+	return doguClientset.DoguV2().DoguRestarts(config.Namespace)
 }
 
 func NewAuthRegistrationInterface(authRegistrationClientSet authRegClientV1.ApiV1Interface, operatorConfig *config.OperatorConfig) authRegClientV1.AuthRegistrationInterface {

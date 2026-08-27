@@ -51,12 +51,14 @@ func TestNewDoguInterface(t *testing.T) {
 	t.Run("should successfully create dogu interface", func(t *testing.T) {
 		// given
 		doguClientMock := newMockDoguInterface(t)
-		ecosystemClientMock := newMockEcosystemClient(t)
-		ecosystemClientMock.EXPECT().Dogus(namespace).Return(doguClientMock)
+		doguClientsetMock := newMockDoguClientset(t)
+		doguV2Mock := newMockDoguV2Interface(t)
+		doguClientsetMock.EXPECT().DoguV2().Return(doguV2Mock)
+		doguV2Mock.EXPECT().Dogus(namespace).Return(doguClientMock)
 		operatorConfig := &config.OperatorConfig{Namespace: namespace}
 
 		// when
-		interf := NewDoguInterface(ecosystemClientMock, operatorConfig)
+		interf := NewDoguInterface(doguClientsetMock, operatorConfig)
 
 		// then
 		assert.NotNil(t, interf)
@@ -67,12 +69,14 @@ func TestNewDoguRestartInterface(t *testing.T) {
 	t.Run("should successfully create dogu restart interface", func(t *testing.T) {
 		// given
 		doguRestartClientMock := newMockDoguRestartInterface(t)
-		ecosystemClientMock := newMockEcosystemClient(t)
-		ecosystemClientMock.EXPECT().DoguRestarts(namespace).Return(doguRestartClientMock)
+		doguClientsetMock := newMockDoguClientset(t)
+		doguV2Mock := newMockDoguV2Interface(t)
+		doguClientsetMock.EXPECT().DoguV2().Return(doguV2Mock)
+		doguV2Mock.EXPECT().DoguRestarts(namespace).Return(doguRestartClientMock)
 		operatorConfig := &config.OperatorConfig{Namespace: namespace}
 
 		// when
-		interf := NewDoguRestartInterface(ecosystemClientMock, operatorConfig)
+		interf := NewDoguRestartInterface(doguClientsetMock, operatorConfig)
 
 		// then
 		assert.NotNil(t, interf)
@@ -263,7 +267,7 @@ func Test_newEcoSystemClientSet(t *testing.T) {
 		operatorConfig := &rest.Config{}
 
 		// when
-		cliSet, err := newEcoSystemClientSet(operatorConfig)
+		cliSet, err := newDoguClientset(operatorConfig)
 
 		// then
 		assert.NotNil(t, cliSet)

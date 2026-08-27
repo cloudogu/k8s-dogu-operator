@@ -231,7 +231,9 @@ func Test_createDoguVolumes(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Len(t, volumes, 1)
-		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumes[0].Name)
+		name, err := ldapDoguResource.GetDataVolumeName()
+		require.NoError(t, err)
+		assert.Equal(t, name, volumes[0].Name)
 		assert.IsType(t, &corev1.PersistentVolumeClaimVolumeSource{}, volumes[0].VolumeSource.PersistentVolumeClaim)
 		assert.Equal(t, ldapDoguResource.Name, volumes[0].VolumeSource.PersistentVolumeClaim.ClaimName)
 	})
@@ -289,7 +291,9 @@ func Test_createDoguVolumes(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Len(t, volumes, 2)
-		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumes[0].Name)
+		name, err := ldapDoguResource.GetDataVolumeName()
+		require.NoError(t, err)
+		assert.Equal(t, name, volumes[0].Name)
 		assert.Equal(t, doguVolumes[3].Name, volumes[1].Name)
 	})
 }
@@ -300,7 +304,8 @@ func Test_createVolumeMounts(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		volumeMounts := createVolumeMounts(ldapDoguResource, &core.Dogu{})
+		volumeMounts, err := createVolumeMounts(ldapDoguResource, &core.Dogu{})
+		require.NoError(t, err)
 
 		// then
 		assert.Len(t, volumeMounts, noOfStaticVolumes+1)
@@ -309,7 +314,9 @@ func Test_createVolumeMounts(t *testing.T) {
 		assert.True(t, volumeMounts[0].ReadOnly)
 		assert.Equal(t, "/etc/ces/health", volumeMounts[0].MountPath)
 
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumeMounts[1].Name)
+		name, err := ldapDoguResource.GetEphemeralDataVolumeName()
+		require.NoError(t, err)
+		assert.Equal(t, name, volumeMounts[1].Name)
 		assert.False(t, volumeMounts[1].ReadOnly)
 		assert.Equal(t, "/var/ces/state", volumeMounts[1].MountPath)
 		assert.Equal(t, "state", volumeMounts[1].SubPath)
@@ -336,9 +343,10 @@ func Test_createVolumeMounts(t *testing.T) {
 		ldapDoguResource := readLdapDoguResource(t)
 
 		// when
-		volumeMounts := createVolumeMounts(ldapDoguResource, &core.Dogu{Name: "official/ldap"})
+		volumeMounts, err := createVolumeMounts(ldapDoguResource, &core.Dogu{Name: "official/ldap"})
 
 		// then
+		require.NoError(t, err)
 		assert.Len(t, volumeMounts, noOfStaticVolumes+1)
 
 		assert.Equal(t, "ldap-dogu-json", volumeMounts[6].Name)
@@ -372,24 +380,29 @@ func Test_createVolumeMounts(t *testing.T) {
 		}
 
 		// when
-		volumeMounts := createVolumeMounts(ldapDoguResource, &core.Dogu{
+		volumeMounts, err := createVolumeMounts(ldapDoguResource, &core.Dogu{
 			Name:    "official/ldap",
 			Volumes: volumes,
 		})
 
 		// then
+		require.NoError(t, err)
 		assert.Len(t, volumeMounts, noOfStaticVolumes+4)
 
 		assert.Equal(t, "ldap-dogu-json", volumeMounts[noOfStaticVolumes].Name)
 		assert.True(t, volumeMounts[noOfStaticVolumes].ReadOnly)
 		assert.Equal(t, "/etc/ces/dogu_json/ldap", volumeMounts[noOfStaticVolumes].MountPath)
 
-		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumeMounts[noOfStaticVolumes+1].Name)
+		name, err := ldapDoguResource.GetDataVolumeName()
+		require.NoError(t, err)
+		assert.Equal(t, name, volumeMounts[noOfStaticVolumes+1].Name)
 		assert.False(t, volumeMounts[noOfStaticVolumes+1].ReadOnly)
 		assert.Equal(t, volumes[0].Path, volumeMounts[noOfStaticVolumes+1].MountPath)
 		assert.Equal(t, volumes[0].Name, volumeMounts[noOfStaticVolumes+1].SubPath)
 
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumeMounts[noOfStaticVolumes+2].Name)
+		volumeName, err := ldapDoguResource.GetEphemeralDataVolumeName()
+		require.NoError(t, err)
+		assert.Equal(t, volumeName, volumeMounts[noOfStaticVolumes+2].Name)
 		assert.False(t, volumeMounts[noOfStaticVolumes+2].ReadOnly)
 		assert.Equal(t, volumes[1].Path, volumeMounts[noOfStaticVolumes+2].MountPath)
 		assert.Equal(t, volumes[1].Name, volumeMounts[noOfStaticVolumes+2].SubPath)
@@ -413,7 +426,9 @@ func Test_createVolumes(t *testing.T) {
 
 		assert.Len(t, volumes, noOfStaticVolumes+1)
 
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[1].Name)
+		name, err := ldapDoguResource.GetEphemeralDataVolumeName()
+		require.NoError(t, err)
+		assert.Equal(t, name, volumes[1].Name)
 	})
 
 	t.Run("should create own dogu.json volume", func(t *testing.T) {
@@ -474,12 +489,16 @@ func Test_createVolumes(t *testing.T) {
 		assert.Len(t, volumes, noOfStaticVolumes+2)
 
 		assert.Equal(t, "dogu-health", volumes[0].Name)
-		assert.Equal(t, ldapDoguResource.GetEphemeralDataVolumeName(), volumes[1].Name)
+		name, err := ldapDoguResource.GetEphemeralDataVolumeName()
+		require.NoError(t, err)
+		assert.Equal(t, name, volumes[1].Name)
 		assert.Equal(t, globalConfig, volumes[2].Name)
 		assert.Equal(t, normalConfig, volumes[3].Name)
 		assert.Equal(t, sensitiveConfig, volumes[4].Name)
 		assert.Equal(t, "ldap-dogu-json", volumes[6].Name)
-		assert.Equal(t, ldapDoguResource.GetDataVolumeName(), volumes[7].Name)
+		volumeName, err := ldapDoguResource.GetDataVolumeName()
+		require.NoError(t, err)
+		assert.Equal(t, volumeName, volumes[7].Name)
 	})
 
 	t.Run("should fail create dogu volumes with invalid client-params", func(t *testing.T) {
@@ -605,8 +624,9 @@ func Test_createDoguJsonVolumeMountsFromDependencies(t *testing.T) {
 
 func Test_createExporterSidecarVolumeMounts(t *testing.T) {
 	t.Run("should create volume-mount for exporter sidecar", func(t *testing.T) {
-		mounts := createExporterSidecarVolumeMounts(&k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{})
+		mounts, err := createExporterSidecarVolumeMounts(&k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{})
 
+		require.NoError(t, err)
 		require.NotNil(t, mounts)
 		require.Len(t, mounts, 1)
 
@@ -617,8 +637,9 @@ func Test_createExporterSidecarVolumeMounts(t *testing.T) {
 	})
 
 	t.Run("should create volume-mount for exporter sidecar including data-volume", func(t *testing.T) {
-		mounts := createExporterSidecarVolumeMounts(&k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{Volumes: []core.Volume{{NeedsBackup: true}}})
+		mounts, err := createExporterSidecarVolumeMounts(&k8sv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, &core.Dogu{Volumes: []core.Volume{{NeedsBackup: true}}})
 
+		require.NoError(t, err)
 		require.NotNil(t, mounts)
 		require.Len(t, mounts, 2)
 

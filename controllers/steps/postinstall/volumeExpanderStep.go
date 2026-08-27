@@ -8,7 +8,7 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	opresource "github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -30,7 +30,7 @@ type VolumeExpanderStep struct {
 	localDoguFetcher localDoguFetcher
 }
 
-func NewVolumeExpanderStep(client client.Client, doguInterface doguClient.DoguInterface, fetcher cesregistry.LocalDoguFetcher) *VolumeExpanderStep {
+func NewVolumeExpanderStep(client client.Client, doguInterface doguClientV2.DoguInterface, fetcher cesregistry.LocalDoguFetcher) *VolumeExpanderStep {
 	return &VolumeExpanderStep{
 		client:           client,
 		doguInterface:    doguInterface,

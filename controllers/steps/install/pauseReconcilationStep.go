@@ -4,7 +4,7 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +20,7 @@ type PauseReconciliationStep struct {
 	doguInterface doguInterface
 }
 
-func NewPauseReconciliationStep(doguInterface doguClient.DoguInterface) *PauseReconciliationStep {
+func NewPauseReconciliationStep(doguInterface doguClientV2.DoguInterface) *PauseReconciliationStep {
 	return &PauseReconciliationStep{
 		doguInterface: doguInterface,
 	}

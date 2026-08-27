@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -42,7 +42,7 @@ func NewRemover(
 	client client.Client,
 	clientSet kubernetes.Interface,
 	operatorConfig *opConfig.OperatorConfig,
-	doguInterface doguClient.DoguInterface,
+	doguInterface doguClientV2.DoguInterface,
 ) *remover {
 	return &remover{
 		client:            client,

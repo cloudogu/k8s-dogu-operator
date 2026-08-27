@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -14,10 +14,10 @@ import (
 
 // ShutdownHandler is responsible for setting health states to unknown on shutdown of the operator.
 type ShutdownHandler struct {
-	doguInterface doguClient.DoguInterface
+	doguInterface doguv2.DoguInterface
 }
 
-func NewShutdownHandler(doguInterface doguClient.DoguInterface) *ShutdownHandler {
+func NewShutdownHandler(doguInterface doguv2.DoguInterface) *ShutdownHandler {
 	return &ShutdownHandler{doguInterface: doguInterface}
 }
 

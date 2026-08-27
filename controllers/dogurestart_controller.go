@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -27,8 +27,8 @@ type DoguRestartGarbageCollector interface {
 }
 
 func NewDoguRestartReconciler(
-	doguRestartInterface doguClient.DoguRestartInterface,
-	doguInterface doguClient.DoguInterface,
+	doguRestartInterface doguClientV2.DoguRestartInterface,
+	doguInterface doguClientV2.DoguInterface,
 	recorder record.EventRecorder,
 	gc DoguRestartGarbageCollector,
 	manager manager.Manager,

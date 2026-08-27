@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,7 +31,7 @@ type K8sClient interface {
 }
 
 type doguInterface interface {
-	doguClient.DoguInterface
+	doguv2.DoguInterface
 }
 
 type eventRecorder interface {
@@ -46,7 +46,7 @@ type GenericReconciler interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
-	doguClient.DoguRestartInterface
+	doguv2.DoguRestartInterface
 }
 
 type DoguUsecase interface {

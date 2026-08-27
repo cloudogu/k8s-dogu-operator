@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -31,12 +31,12 @@ func TestNewShutdownHandler(t *testing.T) {
 func TestShutdownHandler_Handle(t *testing.T) {
 	tests := []struct {
 		name            string
-		doguInterfaceFn func(t *testing.T) client.DoguInterface
+		doguInterfaceFn func(t *testing.T) doguClientV2.DoguInterface
 		wantErr         assert.ErrorAssertionFunc
 	}{
 		{
 			name: "should fail to list dogus",
-			doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+			doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 				mck := newMockDoguInterface(t)
 				mck.EXPECT().List(testCtx, metav1.ListOptions{}).Return(nil, assert.AnError)
 				return mck
@@ -47,7 +47,7 @@ func TestShutdownHandler_Handle(t *testing.T) {
 		},
 		{
 			name: "should fail to update dogu status",
-			doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+			doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 				mck := newMockDoguInterface(t)
 				ldapDogu := &v2.Dogu{
 					ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
@@ -71,7 +71,7 @@ func TestShutdownHandler_Handle(t *testing.T) {
 		},
 		{
 			name: "should succeed to update dogu status",
-			doguInterfaceFn: func(t *testing.T) client.DoguInterface {
+			doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 				mck := newMockDoguInterface(t)
 				ldapDogu := &v2.Dogu{
 					ObjectMeta: metav1.ObjectMeta{Name: "ldap"},

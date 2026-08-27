@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +29,7 @@ type RetroactiveServiceAccountStep struct {
 
 func NewRetroactiveServiceAccountStep(
 	doguEvents chan<- event.TypedGenericEvent[*doguv2.Dogu],
-	doguClient doguClient.DoguInterface,
+	doguClient doguClientV2.DoguInterface,
 	localDoguFetcher cesregistry.LocalDoguFetcher,
 ) *RetroactiveServiceAccountStep {
 	return &RetroactiveServiceAccountStep{

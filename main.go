@@ -1,6 +1,7 @@
 package main
 
 import (
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"go.uber.org/fx"
 
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
@@ -83,9 +84,9 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewPodInterface, fx.As(new(v1.PodInterface))),
 			fx.Annotate(initfx.NewServiceInterface, fx.As(new(v1.ServiceInterface))),
 			fx.Annotate(initfx.NewPersistentVolumeClaimInterface, fx.As(new(v1.PersistentVolumeClaimInterface))),
-			fx.Annotate(initfx.NewEcoSystemClientSet, fx.As(new(doguClient.EcoSystemV2Interface))),
-			fx.Annotate(initfx.NewDoguInterface, fx.As(new(doguClient.DoguInterface))),
-			fx.Annotate(initfx.NewDoguRestartInterface, fx.As(new(doguClient.DoguRestartInterface))),
+			fx.Annotate(initfx.NewDoguClientset, fx.As(new(doguClient.Interface))),
+			fx.Annotate(initfx.NewDoguInterface, fx.As(new(doguv2.DoguInterface))),
+			fx.Annotate(initfx.NewDoguRestartInterface, fx.As(new(doguv2.DoguRestartInterface))),
 			fx.Annotate(initfx.NewAuthRegistrationClientSet, fx.As(new(authRegClientV1.ApiV1Interface))),
 			fx.Annotate(initfx.NewAuthRegistrationInterface, fx.As(new(authRegClientV1.AuthRegistrationInterface))),
 			fx.Annotate(initfx.NewExpositionClientSet, fx.As(new(expClientV1.ApiV1Interface))),

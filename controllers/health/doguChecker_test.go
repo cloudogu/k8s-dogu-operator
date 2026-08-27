@@ -43,10 +43,12 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
-		ecosystemClientMock := newMockEcosystemInterface(t)
-		ecosystemClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguV2ClientMock := newMockDoguV2Interface(t)
+		doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguClientsetMock := newMockDoguClientset(t)
+		doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClientMock, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
@@ -63,10 +65,12 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(nil, assert.AnError)
-		ecosystemClient := newMockEcosystemInterface(t)
-		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguV2ClientMock := newMockDoguV2Interface(t)
+		doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguClientsetMock := newMockDoguClientset(t)
+		doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
@@ -85,10 +89,12 @@ func Test_doguChecker_checkDoguHealth(t *testing.T) {
 
 		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, ldapResource.Name, metav1.GetOptions{}).Return(ldapResource, nil)
-		ecosystemClient := newMockEcosystemInterface(t)
-		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguV2ClientMock := newMockDoguV2Interface(t)
+		doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguClientsetMock := newMockDoguClientset(t)
+		doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckByName(testCtx, ldapResource.GetObjectKey())
@@ -149,10 +155,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-		ecosystemClient := newMockEcosystemInterface(t)
-		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguV2ClientMock := newMockDoguV2Interface(t)
+		doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguClientsetMock := newMockDoguClientset(t)
+		doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -172,9 +180,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		ignoreNginxRegistratorDogu := readTestDataDogu(t, ignoreNginxRegistratorBytes)
-		ecosystemClient := newMockEcosystemInterface(t)
+		doguClientsetMock := newMockDoguClientset(t)
 
-		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, ignoreNginxRegistratorDogu, testNamespace)
@@ -192,9 +200,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		ignoreAuhRegistrationCasDogu := readTestDataDogu(t, ignoreAuhRegistrationCasBytes)
-		ecosystemClient := newMockEcosystemInterface(t)
+		doguClientsetMock := newMockDoguClientset(t)
 
-		sut := NewDoguChecker(&config.OperatorConfig{AuthRegistrationEnabled: true}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{AuthRegistrationEnabled: true}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, ignoreAuhRegistrationCasDogu, testNamespace)
@@ -213,9 +221,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("cas")).Return(nil, registryKeyNotFoundTestErr)
 		ignoreAuhRegistrationCasDogu := readTestDataDogu(t, ignoreAuhRegistrationCasBytes)
-		ecosystemClient := newMockEcosystemInterface(t)
+		doguClientsetMock := newMockDoguClientset(t)
 
-		sut := NewDoguChecker(&config.OperatorConfig{AuthRegistrationEnabled: false}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{AuthRegistrationEnabled: false}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, ignoreAuhRegistrationCasDogu, testNamespace)
@@ -234,9 +242,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 
 		localFetcher := newMockLocalDoguFetcher(t)
 		ignorePostfixDependencyDogu := readTestDataDogu(t, ignorePostfixDependencyBytes)
-		ecosystemClient := newMockEcosystemInterface(t)
+		doguClientsetMock := newMockDoguClientset(t)
 
-		sut := NewDoguChecker(&config.OperatorConfig{DisablePostfixDependencyCheck: true}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{DisablePostfixDependencyCheck: true}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, ignorePostfixDependencyDogu, testNamespace)
@@ -255,9 +263,9 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		localFetcher := newMockLocalDoguFetcher(t)
 		localFetcher.EXPECT().FetchInstalled(testCtx, cescommons.SimpleName("postfix")).Return(nil, registryKeyNotFoundTestErr)
 		ignorePostfixDependencyDogu := readTestDataDogu(t, ignorePostfixDependencyBytes)
-		ecosystemClient := newMockEcosystemInterface(t)
+		doguClientsetMock := newMockDoguClientset(t)
 
-		sut := NewDoguChecker(&config.OperatorConfig{DisablePostfixDependencyCheck: false}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{DisablePostfixDependencyCheck: false}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, ignorePostfixDependencyDogu, testNamespace)
@@ -307,10 +315,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		doguClientMock := newMockDoguInterface(t)
 		doguClientMock.EXPECT().Get(testCtx, "testDogu2", metav1.GetOptions{}).Return(dependencyResource2, nil)
 		doguClientMock.EXPECT().Get(testCtx, "testDogu3", metav1.GetOptions{}).Return(dependencyResource3, nil)
-		ecosystemClient := newMockEcosystemInterface(t)
-		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguV2ClientMock := newMockDoguV2Interface(t)
+		doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguClientsetMock := newMockDoguClientset(t)
+		doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, testDogu, testNamespace)
@@ -358,10 +368,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 		doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(nil, notFoundError)
 		doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 		doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-		ecosystemClient := newMockEcosystemInterface(t)
-		ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguV2ClientMock := newMockDoguV2Interface(t)
+		doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+		doguClientsetMock := newMockDoguClientset(t)
+		doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-		sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+		sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 		// when
 		err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -412,10 +424,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -464,10 +478,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -515,10 +531,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -569,10 +587,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -609,10 +629,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock := newMockDoguInterface(t)
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -659,10 +681,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -712,10 +736,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -765,10 +791,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(nil, notFoundError)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -816,10 +844,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -868,10 +898,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -919,10 +951,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "mandatory2", metav1.GetOptions{}).Return(dependencyResource3, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(nil, notFoundError)
 				doguClientMock.EXPECT().Get(testCtx, "optional2", metav1.GetOptions{}).Return(dependencyResource5, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)
@@ -964,10 +998,12 @@ func Test_doguChecker_checkDependencyDogusHealthy(t *testing.T) {
 				doguClientMock.EXPECT().Get(testCtx, "postgresql", metav1.GetOptions{}).Return(dependencyResource1, nil)
 				doguClientMock.EXPECT().Get(testCtx, "mandatory1", metav1.GetOptions{}).Return(dependencyResource2, nil)
 				doguClientMock.EXPECT().Get(testCtx, "optional1", metav1.GetOptions{}).Return(dependencyResource4, nil)
-				ecosystemClient := newMockEcosystemInterface(t)
-				ecosystemClient.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguV2ClientMock := newMockDoguV2Interface(t)
+				doguV2ClientMock.EXPECT().Dogus(testNamespace).Return(doguClientMock)
+				doguClientsetMock := newMockDoguClientset(t)
+				doguClientsetMock.EXPECT().DoguV2().Return(doguV2ClientMock)
 
-				sut := NewDoguChecker(&config.OperatorConfig{}, ecosystemClient, localFetcher)
+				sut := NewDoguChecker(&config.OperatorConfig{}, doguClientsetMock, localFetcher)
 
 				// when
 				err := sut.CheckDependenciesRecursive(testCtx, redmineDogu, testNamespace)

@@ -8,7 +8,7 @@ import (
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
@@ -85,7 +85,7 @@ func NewDoguReconciler(
 	k8sClient client.Client,
 	doguChangeHandler DoguInstallOrChangeUseCase,
 	doguDeleteHandler DoguDeleteUseCase,
-	doguInterface doguClient.DoguInterface,
+	doguInterface doguClientV2.DoguInterface,
 	requeueHandler RequeueHandler,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	recorder record.EventRecorder,

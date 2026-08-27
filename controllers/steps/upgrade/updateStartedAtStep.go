@@ -4,7 +4,7 @@ import (
 	"context"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,7 +18,7 @@ type UpdateStartedAtStep struct {
 }
 
 func NewUpdateStartedAtStep(
-	doguInterface doguClient.DoguInterface,
+	doguInterface doguClientV2.DoguInterface,
 	deploymentManager manager.DeploymentManager,
 ) *UpdateStartedAtStep {
 	return &UpdateStartedAtStep{

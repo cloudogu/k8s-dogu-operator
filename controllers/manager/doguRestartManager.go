@@ -5,7 +5,7 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
@@ -17,7 +17,7 @@ type doguRestartManager struct {
 	deploymentInterface deploymentInterface
 }
 
-func NewDoguRestartManager(doguClient doguClient.DoguInterface, deploymentClient appsv1.DeploymentInterface) DoguRestartManager {
+func NewDoguRestartManager(doguClient doguClientV2.DoguInterface, deploymentClient appsv1.DeploymentInterface) DoguRestartManager {
 	return &doguRestartManager{
 		doguInterface:       doguClient,
 		deploymentInterface: deploymentClient,

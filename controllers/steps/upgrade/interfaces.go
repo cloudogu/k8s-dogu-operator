@@ -8,6 +8,7 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
@@ -47,7 +48,7 @@ type upgradeChecker interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguInterface interface {
-	doguClient.DoguInterface
+	doguClientV2.DoguInterface
 }
 
 type k8sClient interface {
@@ -101,8 +102,8 @@ type resourceGenerator interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
-type ecosystemInterface interface {
-	doguClient.EcoSystemV2Interface
+type doguClientset interface {
+	doguClient.Interface
 }
 
 type deploymentManager interface {

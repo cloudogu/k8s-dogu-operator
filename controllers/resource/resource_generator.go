@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -173,6 +172,14 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		return nil, err
 	}
 
+	volumeMounts, err := createVolumeMounts(doguResource, dogu)
+	if err != nil {
+		return nil, err
+	}
+	sidecarContainers, err := r.generateSidecarContainers(doguResource, dogu)
+	if err != nil {
+		return nil, err
+	}
 	podTemplate := newPodSpecBuilder(doguResource, dogu).
 		labels(GetAppLabel().Add(doguResource.GetPodLabels())).
 		annotations(map[string]string{"kubectl.kubernetes.io/default-container": doguResource.Name}).
@@ -181,12 +188,12 @@ func (r *resourceGenerator) GetPodTemplate(ctx context.Context, doguResource *k8
 		// Avoid env vars like <service_name>_PORT="tcp://<ip>:<port>" because they could override regular dogu env vars.
 		enableServiceLinks(false).
 		initContainers(initContainers...).
-		sidecarContainers(r.generateSidecarContainers(doguResource, dogu)...).
+		sidecarContainers(sidecarContainers...).
 		containerEmptyCommandAndArgs().
 		containerLivenessProbe().
 		containerStartupProbe().
 		containerPullPolicy().
-		containerVolumeMounts(createVolumeMounts(doguResource, dogu)).
+		containerVolumeMounts(volumeMounts).
 		containerEnvVars(envVars).
 		containerResourceRequirements(resourceRequirements).
 		serviceAccount().
@@ -220,17 +227,20 @@ func (r *resourceGenerator) generateInitContainers(ctx context.Context, doguReso
 	return initContainers, nil
 }
 
-func (r *resourceGenerator) generateSidecarContainers(doguResource *k8sv2.Dogu, dogu *core.Dogu) []*corev1.Container {
+func (r *resourceGenerator) generateSidecarContainers(doguResource *k8sv2.Dogu, dogu *core.Dogu) ([]*corev1.Container, error) {
 	sidecars := make([]*corev1.Container, 0)
 
 	if doguResource.Spec.ExportMode {
 		exporterImage := r.additionalImages[config.ExporterImageConfigmapNameKey]
 
-		exporterContainer := getExporterContainer(dogu, doguResource, exporterImage)
+		exporterContainer, err := getExporterContainer(dogu, doguResource, exporterImage)
+		if err != nil {
+			return nil, err
+		}
 
 		sidecars = append(sidecars, exporterContainer)
 	}
-	return sidecars
+	return sidecars, nil
 }
 
 func hasLocalConfigVolume(dogu *core.Dogu) bool {
@@ -261,8 +271,6 @@ func (r *resourceGenerator) BuildAdditionalMountInitContainer(ctx context.Contex
 	}
 
 	uid, gid := getUIDAndGIDFromDogu(ctx, dogu)
-	runAsNonRoot := false
-	readOnlyRootFilesystem := false
 	return &corev1.Container{
 		Name:            additionalMountsInitContainerName,
 		Image:           image,
@@ -279,8 +287,8 @@ func (r *resourceGenerator) BuildAdditionalMountInitContainer(ctx context.Contex
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{core.All},
 			},
-			RunAsNonRoot:           &runAsNonRoot,
-			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
+			RunAsNonRoot:           new(false),
+			ReadOnlyRootFilesystem: new(false),
 			SELinuxOptions:         &corev1.SELinuxOptions{},
 			SeccompProfile:         &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
 			AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
@@ -310,7 +318,7 @@ func getUIDAndGIDFromDogu(ctx context.Context, dogu *core.Dogu) (*int64, *int64)
 		return nil, nil
 	}
 
-	return ptr.To(int64(owner)), ptr.To(int64(group))
+	return new(int64(owner)), new(int64(group))
 }
 
 func logInvalidVolumePropertyError(ctx context.Context, err error, property, doguName, value string) {
@@ -346,7 +354,11 @@ func prepareAdditionalMountsAndArgs(dogu *core.Dogu, doguResource *k8sv2.Dogu) (
 	}
 
 	// mount all dogu descriptor volumes as target, so that the deletion of unneeded files is still possible
-	volumeMounts = append(volumeMounts, createDoguVolumeMountsWithMountPathPrefix(doguResource, dogu, additionalMountsDoguMountDir)...)
+	withMountPathPrefix, err := createDoguVolumeMountsWithMountPathPrefix(doguResource, dogu, additionalMountsDoguMountDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	volumeMounts = append(volumeMounts, withMountPathPrefix...)
 	// add static volumes needed by the init container to write config
 	volumeMounts = append(volumeMounts, createStaticDoguConfigVolumeMounts(additionalMountsDoguMountDir)...)
 
@@ -387,8 +399,10 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 		commands = append(commands, chownCommand)
 	}
 
-	runAsNonRoot := false
-	readOnlyRootFilesystem := false
+	mounts, err := createDoguVolumeMounts(doguResource, dogu)
+	if err != nil {
+		return nil, err
+	}
 	return &corev1.Container{
 		Name:  chownInitContainerName,
 		Image: chownInitImage,
@@ -397,23 +411,27 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 				Drop: []corev1.Capability{core.All},
 				Add:  []corev1.Capability{core.Chown, core.DacOverride},
 			},
-			RunAsNonRoot:           &runAsNonRoot,
-			ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
+			RunAsNonRoot:           new(false),
+			ReadOnlyRootFilesystem: new(false),
 			SELinuxOptions:         &corev1.SELinuxOptions{},
 			SeccompProfile:         &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
 			AppArmorProfile:        &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined},
 		},
 		Command:      []string{"sh", "-c", strings.Join(commands, " && ")},
-		VolumeMounts: createDoguVolumeMounts(doguResource, dogu),
+		VolumeMounts: mounts,
 		Resources:    requirements,
 	}, nil
 }
 
-func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) *corev1.Container {
+func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) (*corev1.Container, error) {
+	mounts, err := createExporterSidecarVolumeMounts(doguResource, dogu)
+	if err != nil {
+		return nil, err
+	}
 	exporter := &corev1.Container{
 		Name:         CreateExporterContainerName(doguResource.Name),
 		Image:        exporterImage,
-		VolumeMounts: createExporterSidecarVolumeMounts(doguResource, dogu),
+		VolumeMounts: mounts,
 		Env: []corev1.EnvVar{
 			{
 				Name:  "DOGU_NAME",
@@ -431,7 +449,7 @@ func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterIma
 		},
 	}
 
-	return exporter
+	return exporter, nil
 }
 
 func filterVolumesWithClient(volumes []core.Volume, client string) []core.Volume {
@@ -459,8 +477,8 @@ func updateDeploymentSpec(deployment *appsv1.Deployment, doguResource *k8sv2.Dog
 	}
 	deployment.Spec.Replicas = &replicas
 	deployment.Spec.Template = *podTemplate
-	deployment.Spec.ProgressDeadlineSeconds = ptr.To(int32(600))
-	deployment.Spec.RevisionHistoryLimit = ptr.To(int32(10))
+	deployment.Spec.ProgressDeadlineSeconds = new(int32(600))
+	deployment.Spec.RevisionHistoryLimit = new(int32(10))
 }
 
 // CreateStartupProbe returns a container start-up probe for the given dogu if it contains a state healthcheck.
