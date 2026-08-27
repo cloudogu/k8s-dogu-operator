@@ -125,6 +125,11 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 
+	if !doguResource.IsV2() {
+		log.FromContext(ctx).Error(fmt.Errorf("dogu api version %q is not v2", req.NamespacedName), "the operator currently only supports v2 dogus.")
+		return ctrl.Result{}, nil
+	}
+
 	var requeueAfter time.Duration
 	var cont bool
 	if doguResource.GetDeletionTimestamp().IsZero() {

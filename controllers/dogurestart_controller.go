@@ -107,6 +107,12 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 		return
 	}
 
+	if !dogu.IsV2() {
+		instruction.op = handleGetDoguRestartFailed
+		instruction.err = fmt.Errorf("the referenced dogu in dogurestart %q is not dogu api version v2, the operator currently only supports v2 dogus", req.NamespacedName)
+		return
+	}
+
 	instruction.dogu = dogu
 
 	return
