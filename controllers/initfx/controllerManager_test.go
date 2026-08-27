@@ -2,6 +2,7 @@ package initfx
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -71,6 +72,12 @@ func Test_addChecks(t *testing.T) {
 		managerMock := newMockK8sManager(t)
 		managerMock.EXPECT().AddHealthzCheck("healthz", mock.AnythingOfType("healthz.Checker")).Return(nil)
 		managerMock.EXPECT().AddReadyzCheck("readyz", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		managerMock.EXPECT().AddReadyzCheck("webhook-server", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		webhookServerMock := NewMockWebhookServer(t)
+		webhookServerMock.EXPECT().StartedChecker().Return(func(req *http.Request) error {
+			return nil
+		})
+		managerMock.EXPECT().GetWebhookServer().Return(webhookServerMock)
 
 		// when
 		err := addChecks(managerMock)
@@ -86,7 +93,7 @@ func TestNewManagerOptions(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 
 		// when
-		managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{})
+		managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{}, webhook.NewServer(webhook.Options{Port: 9443}))
 		require.NoError(t, err)
 
 		// then
@@ -138,7 +145,7 @@ func TestNewControllerManager(t *testing.T) {
 					return logr.Logger{}
 				},
 				optionsFn: func(t *testing.T) manager.Options {
-					managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{})
+					managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{}, nil)
 					require.NoError(t, err)
 					return managerOptions
 				},

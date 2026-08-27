@@ -162,6 +162,15 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return r.requeueHandler.Handle(ctx, doguResource, errs, requeueAfter)
 }
 
+// Helper function to simplify mocking for SetupWebhookWithManager
+var webhookRegisterFn = func(mgr ctrlManager) error {
+	err := (&v3beta1.Dogu{}).SetupWebhookWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup dogu webhook with manager: %w", err)
+	}
+	return nil
+}
+
 // setupWithManager sets up the controller with the manager.
 // The dogu controller should be triggered when resources on which a dogu cr has an OwnerReference change.
 // These resource types are listed here with owns.
@@ -169,9 +178,8 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // This is intended, for example, for the GlobalConfigReconciler to reconcile the dogus again.
 func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	// register webhook server for roundtrip conversion (v2, v3beta1)
-	err := (&v3beta1.Dogu{}).SetupWebhookWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to setup dogu webhook with manager: %w", err)
+	if err := webhookRegisterFn(mgr); err != nil {
+		return err
 	}
 
 	controllerBuilder := ctrl.NewControllerManagedBy(mgr).

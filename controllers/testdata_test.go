@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
+	"github.com/cloudogu/k8s-dogu-lib/v2/api/v3beta1"
 	warpmenuentryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -127,6 +128,11 @@ func getTestScheme() *runtime.Scheme {
 		Version: "v2",
 		Kind:    "Dogu",
 	}, &doguv2.Dogu{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
+		Group:   "k8s.cloudogu.com",
+		Version: "v3beta1",
+		Kind:    "Dogu",
+	}, &v3beta1.Dogu{})
 	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",

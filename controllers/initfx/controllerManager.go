@@ -95,9 +95,15 @@ func getArgs() Args {
 	return os.Args
 }
 
+var GetWebhookServer = getWebhookServer
+
+func getWebhookServer() webhook.Server {
+	return webhook.NewServer(webhook.Options{Port: 9443})
+}
+
 var NewOperatorConfig = config.NewOperatorConfig
 
-func NewManagerOptions(args Args, operatorConfig *config.OperatorConfig) (manager.Options, error) {
+func NewManagerOptions(args Args, operatorConfig *config.OperatorConfig, webhookServer webhook.Server) (manager.Options, error) {
 	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
 
 	metricsAddr := flags.String("metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -117,7 +123,7 @@ func NewManagerOptions(args Args, operatorConfig *config.OperatorConfig) (manage
 		Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{
 			operatorConfig.Namespace: {},
 		}},
-		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
+		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: *probeAddr,
 		LeaderElection:         *enableLeaderElection,
 		LeaderElectionID:       "951e217a.cloudogu.com",

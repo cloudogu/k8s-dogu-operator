@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -68,6 +69,7 @@ var (
 	oldNewRemoteDoguDescriptorRepository func(operatorConfig *config.OperatorConfig) (dogu.RemoteDoguDescriptorRepository, error)
 	oldNewImageRegistry                  func() imageregistry.ImageRegistry
 	oldGetArgs                           func() initfx.Args
+	oldGetWebhookServer                  func() webhook.Server
 )
 
 func TestAPIs(t *testing.T) {
@@ -109,6 +111,9 @@ var _ = ginkgo.BeforeSuite(func() {
 			filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "crds"),
 			filepath.Join("testdata", "crd"),
 		},
+		WebhookInstallOptions: envtest.WebhookInstallOptions{
+			Paths: []string{filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "crds")},
+		},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -145,6 +150,15 @@ var _ = ginkgo.BeforeSuite(func() {
 	oldGetConfig = ctrl.GetConfig
 	ctrl.GetConfig = func() (*rest.Config, error) {
 		return cfg, nil
+	}
+
+	oldGetWebhookServer = initfx.GetWebhookServer
+	initfx.GetWebhookServer = func() webhook.Server {
+		return webhook.NewServer(webhook.Options{
+			Host:    testEnv.WebhookInstallOptions.LocalServingHost,
+			Port:    testEnv.WebhookInstallOptions.LocalServingPort,
+			CertDir: testEnv.WebhookInstallOptions.LocalServingCertDir,
+		})
 	}
 
 	oldCtrlBuilder = ctrl.NewControllerManagedBy
@@ -198,6 +212,7 @@ var _ = ginkgo.AfterSuite(func() {
 	initfx.NewRemoteDoguDescriptorRepository = oldNewRemoteDoguDescriptorRepository
 	initfx.NewImageRegistry = oldNewImageRegistry
 	initfx.GetArgs = oldGetArgs
+	initfx.GetWebhookServer = oldGetWebhookServer
 
 	ctrl.GetConfig = oldGetConfig
 	ctrl.GetConfigOrDie = oldGetConfigOrDie

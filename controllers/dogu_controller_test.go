@@ -24,6 +24,14 @@ import (
 
 func TestNewDoguReconciler(t *testing.T) {
 	// given
+	oldWebhookFn := webhookRegisterFn
+	webhookRegisterFn = func(mgr ctrlManager) error {
+		return nil
+	}
+	defer func() {
+		webhookRegisterFn = oldWebhookFn
+	}()
+
 	managerMock := newMockCtrlManager(t)
 	managerMock.EXPECT().GetControllerOptions().Return(config.Controller{})
 	managerMock.EXPECT().GetScheme().Return(getTestScheme())

@@ -72,6 +72,7 @@ func options() []fx.Option {
 			initfx.GetArgs,
 
 			// k8s dependencies
+			initfx.GetWebhookServer,
 			initfx.NewManagerOptions,
 			ctrl.GetConfig,
 			initfx.NewScheme,

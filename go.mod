@@ -8,7 +8,7 @@ require (
 	github.com/cloudogu/cesapp-lib v0.18.2
 	github.com/cloudogu/k8s-apply-lib v0.5.0
 	github.com/cloudogu/k8s-auth-registration-lib v0.1.0
-	github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20260827082713-f3fa9e2b59b2
+	github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20260827093246-ffb672086128
 	github.com/cloudogu/k8s-exposition-lib v1.0.0
 	github.com/cloudogu/k8s-host-change v0.8.0
 	github.com/cloudogu/k8s-registry-lib v0.6.0
