@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
@@ -650,7 +649,7 @@ func Test_upserter_SetControllerReferenceForPVC(t *testing.T) {
 					},
 				},
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorContains(t, err, "failed to set controller reference", i)
 			},
 		},
@@ -675,7 +674,7 @@ func Test_upserter_SetControllerReferenceForPVC(t *testing.T) {
 					},
 				},
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorContains(t, err, "failed to update pvc with controller reference", i) &&
 					assert.ErrorIs(t, err, assert.AnError, i)
 			},
@@ -694,8 +693,8 @@ func Test_upserter_SetControllerReferenceForPVC(t *testing.T) {
 							Kind:               "Dogu",
 							Name:               "dogu",
 							UID:                "asdf",
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						}},
 					},
 				}).Return(nil).Once()
@@ -731,8 +730,8 @@ func Test_upserter_SetControllerReferenceForPVC(t *testing.T) {
 							Kind:               "Dogu",
 							Name:               "test",
 							UID:                "asdf",
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						}},
 					},
 				},

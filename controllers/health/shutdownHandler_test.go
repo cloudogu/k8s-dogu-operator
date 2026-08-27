@@ -41,7 +41,7 @@ func TestShutdownHandler_Handle(t *testing.T) {
 				mck.EXPECT().List(testCtx, metav1.ListOptions{}).Return(nil, assert.AnError)
 				return mck
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, assert.AnError)
 			},
 		},
@@ -63,7 +63,7 @@ func TestShutdownHandler_Handle(t *testing.T) {
 				mck.EXPECT().UpdateStatusWithRetry(testCtx, casDogu, mock.Anything, metav1.UpdateOptions{}).Return(nil, assert.AnError)
 				return mck
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, assert.AnError) &&
 					assert.ErrorContains(t, err, "failed to set health status and conditions of \"ldap\" to unknown") &&
 					assert.ErrorContains(t, err, "failed to set health status and conditions of \"cas\" to unknown")

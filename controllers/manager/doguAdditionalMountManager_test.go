@@ -290,7 +290,7 @@ func Test_doguAdditionalMountsManager_getDoguDeployment(t *testing.T) {
 				doguResource: nginxDoguResource,
 			},
 			want: nil,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.ErrorIs(t, err, assert.AnError)
 				assert.ErrorContains(t, err, "failed to get deployment for dogu nginx")
 				return true
@@ -308,7 +308,7 @@ func Test_doguAdditionalMountsManager_getDoguDeployment(t *testing.T) {
 				doguResource: nginxDoguResource,
 			},
 			want: nil,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.ErrorContains(t, err, "dogu nginx has more than one or zero deployments")
 				return true
 			},
@@ -363,7 +363,7 @@ func Test_doguAdditionalMountsManager_createDataMountInitContainer(t *testing.T)
 				doguResource: nginxDoguResource,
 			},
 			want: nil,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.ErrorContains(t, err, "failed to get dogu descriptor for dogu nginx")
 				return true
 			},
@@ -392,7 +392,7 @@ func Test_doguAdditionalMountsManager_createDataMountInitContainer(t *testing.T)
 				doguResource: nginxDoguResource,
 			},
 			want: nil,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.ErrorContains(t, err, "failed to generate dogu additional mounts init container while diff calculation")
 				return true
 			},
@@ -646,7 +646,7 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 				ctx:          testCtx,
 				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.ErrorIs(t, err, assert.AnError)
 				assert.ErrorContains(t, err, "failed to update deployment additional mounts for dogu nginx")
 				return true
@@ -682,7 +682,7 @@ func Test_doguAdditionalMountsManager_UpdateAdditionalMounts(t *testing.T) {
 				ctx:          testCtx,
 				doguResource: nginxDoguResourceWithAdditionalMounts,
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				assert.ErrorIs(t, err, assert.AnError)
 				assert.ErrorContains(t, err, "additional mounts are not valid for dogu nginx")
 				return true

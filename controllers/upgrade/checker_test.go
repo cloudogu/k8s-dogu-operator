@@ -36,7 +36,7 @@ func Test_checker_IsUpgrade(t *testing.T) {
 			},
 			doguResource: &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 			want:         false,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i) &&
 					assert.ErrorContains(t, err, "failed to fetch dogu when checking for upgrade", i)
 			},
@@ -50,7 +50,7 @@ func Test_checker_IsUpgrade(t *testing.T) {
 			},
 			doguResource: &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}, Spec: doguv2.DoguSpec{Version: "invalid"}},
 			want:         false,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorContains(t, err, "failed to parse desired dogu version", i)
 			},
 		},
@@ -63,7 +63,7 @@ func Test_checker_IsUpgrade(t *testing.T) {
 			},
 			doguResource: &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}, Spec: doguv2.DoguSpec{Name: "test", Version: "1.2.3-4"}},
 			want:         false,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorContains(t, err, "failed to parse installed dogu version", i)
 			},
 		},

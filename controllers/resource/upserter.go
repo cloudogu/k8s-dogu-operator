@@ -362,7 +362,7 @@ func sameResourceTypes(resourceType client.Object, newResource client.Object) (b
 	return false, getTypeName(resourceType), getTypeName(newResource)
 }
 
-func getTypeName(objectInQuestion interface{}) string {
+func getTypeName(objectInQuestion any) string {
 	// we don't check if the object is of pointer type because the method signature of updateOrInsert enforces this for us
 	t := reflect.TypeOf(objectInQuestion)
 	return "*" + t.Elem().Name()

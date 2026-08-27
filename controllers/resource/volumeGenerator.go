@@ -57,7 +57,7 @@ type volumeParams struct {
 	// Content contains the actual information that is needed to create a volume of a given Type.
 	// The structure of this information is therefore dependent on the Type.
 	// To describe a configmap, it could f.i. contain data of type volumeConfigMapContent.
-	Content interface{}
+	Content any
 }
 
 // volumeConfigMapContent contains information needed to create a volume of type configmap.
@@ -315,7 +315,7 @@ func createVolumeByClient(doguVolume core.Volume, client *core.VolumeClient) (*c
 // convertGenericJsonObject is necessary because go unmarshalls generic json objects as `map[string]interface{}`,
 // and, therefore, a type assertion is not possible. This method marshals the generic object (`map[string]interface{}`)
 // back into a string. This string is then unmarshalled back into a specific given struct.
-func convertGenericJsonObject(genericObject interface{}, targetObject interface{}) error {
+func convertGenericJsonObject(genericObject any, targetObject any) error {
 	marshalledContent, err := json.Marshal(genericObject)
 	if err != nil {
 		return err

@@ -41,7 +41,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromExecPod(ctx context.Context, 
 		return resultDocs, nil
 	}
 
-	for _, file := range strings.Split(fileList, " ") {
+	for file := range strings.SplitSeq(fileList, " ") {
 		trimmedFile := doguCustomK8sResourceDirectory + strings.TrimSpace(file)
 		logger.Info("Reading k8s resource " + trimmedFile)
 

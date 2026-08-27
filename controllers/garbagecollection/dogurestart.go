@@ -100,7 +100,7 @@ func (r *DoguRestartGarbageCollector) truncateDoguRestartHistory(ctx context.Con
 
 	var errs []error
 	// We can not delete as collection by .name because the field selector does not support the || operator.
-	for i := 0; i < amountOfItemsToDelete; i++ {
+	for i := range amountOfItemsToDelete {
 		errs = append(errs, r.doguRestartInterface.Delete(ctx, items[i].Name, metav1.DeleteOptions{}))
 	}
 
