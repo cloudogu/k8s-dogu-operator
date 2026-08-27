@@ -94,3 +94,10 @@ reloader:
       enabled: false
       labels:
         release: k8s-prometheus
+    netpol:
+      from:
+        - podSelector:
+            matchLabels:
+              app: k8s-prometheus
+              k8s-prometheus: prometheus-server
+              k8s.cloudogu.com/component.name: k8s-prometheus
