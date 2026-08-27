@@ -89,3 +89,8 @@ reloader:
     # watch only namespaces that are listed here + the release namespace
     watchGlobally: false
     namespaces: []
+    # enable prometheus metrics
+    podMonitor:
+      enabled: false
+      labels:
+        release: k8s-prometheus
