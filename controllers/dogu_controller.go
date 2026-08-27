@@ -8,6 +8,7 @@ import (
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v2/api/v3beta1"
 	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
@@ -162,6 +163,12 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // In addition, the dogu reconciler can be triggered via an events channel.
 // This is intended, for example, for the GlobalConfigReconciler to reconcile the dogus again.
 func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
+	// register webhook server for roundtrip conversion (v2, v3beta1)
+	err := (&v3beta1.Dogu{}).SetupWebhookWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup dogu webhook with manager: %w", err)
+	}
+
 	controllerBuilder := ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&coreV1.ConfigMap{}).

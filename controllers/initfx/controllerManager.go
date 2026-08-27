@@ -7,7 +7,7 @@ import (
 	"os"
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguscheme "github.com/cloudogu/k8s-dogu-lib/v2/client/scheme"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
@@ -40,7 +40,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(doguv2.AddToScheme(scheme))
+	// registers v2 and v3beta1
+	utilruntime.Must(doguscheme.AddToScheme(scheme))
 	utilruntime.Must(authRegApiV1.AddToScheme(scheme))
 	utilruntime.Must(expositionv1.AddToScheme(scheme))
 	utilruntime.Must(warpmenuentryv1.AddToScheme(scheme))
@@ -148,6 +149,13 @@ func addChecks(mgr manager.Manager) error {
 	err = mgr.AddReadyzCheck("readyz", healthz.Ping)
 	if err != nil {
 		return fmt.Errorf("failed to add readyz check: %w", err)
+	}
+
+	// The health check only returns nil if the server is ready and the certifacte is available.
+	// Additionally, we could check if the caBundle in the CRD is equal ca.crt.
+	err = mgr.AddReadyzCheck("webhook-server", mgr.GetWebhookServer().StartedChecker())
+	if err != nil {
+		return fmt.Errorf("failed to add readyz check for webhook-server: %w", err)
 	}
 
 	return nil
