@@ -123,12 +123,13 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 		return r.requeueHandler.Handle(ctx, doguResource, err, 0)
 	}
-	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 
 	if !doguResource.IsV2() {
 		log.FromContext(ctx).Error(fmt.Errorf("dogu api version %q is not v2", req.NamespacedName), "the operator currently only supports v2 dogus.")
 		return ctrl.Result{}, nil
 	}
+
+	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 
 	var requeueAfter time.Duration
 	var cont bool
@@ -163,7 +164,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 }
 
 // Helper function to simplify mocking for SetupWebhookWithManager
-var webhookRegisterFn = func(mgr ctrlManager) error {
+var webhookRegister = func(mgr ctrlManager) error {
 	err := (&v3beta1.Dogu{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup dogu webhook with manager: %w", err)
@@ -178,7 +179,7 @@ var webhookRegisterFn = func(mgr ctrlManager) error {
 // This is intended, for example, for the GlobalConfigReconciler to reconcile the dogus again.
 func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	// register webhook server for roundtrip conversion (v2, v3beta1)
-	if err := webhookRegisterFn(mgr); err != nil {
+	if err := webhookRegister(mgr); err != nil {
 		return err
 	}
 

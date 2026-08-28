@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	context "context"
 	"errors"
 	"fmt"
 	"testing"
@@ -23,31 +24,50 @@ import (
 )
 
 func TestNewDoguReconciler(t *testing.T) {
-	// given
-	oldWebhookFn := webhookRegisterFn
-	webhookRegisterFn = func(mgr ctrlManager) error {
-		return nil
-	}
-	defer func() {
-		webhookRegisterFn = oldWebhookFn
-	}()
+	t.Run("success", func(t *testing.T) {
+		// given
+		oldWebhookFn := webhookRegister
+		webhookRegister = func(mgr ctrlManager) error {
+			return nil
+		}
+		defer func() {
+			webhookRegister = oldWebhookFn
+		}()
 
-	managerMock := newMockCtrlManager(t)
-	managerMock.EXPECT().GetControllerOptions().Return(config.Controller{})
-	managerMock.EXPECT().GetScheme().Return(getTestScheme())
-	managerMock.EXPECT().GetLogger().Return(logr.Logger{})
-	managerMock.EXPECT().Add(mock.Anything).Return(nil)
-	managerMock.EXPECT().GetCache().Return(nil)
-	managerMock.EXPECT().GetRESTMapper().Return(nil)
+		managerMock := newMockCtrlManager(t)
+		managerMock.EXPECT().GetControllerOptions().Return(config.Controller{})
+		managerMock.EXPECT().GetScheme().Return(getTestScheme())
+		managerMock.EXPECT().GetLogger().Return(logr.Logger{})
+		managerMock.EXPECT().Add(mock.Anything).Return(nil)
+		managerMock.EXPECT().GetCache().Return(nil)
+		managerMock.EXPECT().GetRESTMapper().Return(nil)
 
-	// when
-	reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
+		// when
+		reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
 
-	// then
-	assert.NoError(t, err)
-	assert.NotNil(t, reconciler)
-	assert.True(t, reconciler.expositionEnabled)
-	assert.True(t, reconciler.warpMenuEntryEnabled)
+		// then
+		assert.NoError(t, err)
+		assert.NotNil(t, reconciler)
+		assert.True(t, reconciler.expositionEnabled)
+		assert.True(t, reconciler.warpMenuEntryEnabled)
+	})
+
+	t.Run("should return error on error registering the webhook", func(t *testing.T) {
+		// given
+		oldWebhookFn := webhookRegister
+		webhookRegister = func(mgr ctrlManager) error {
+			return assert.AnError
+		}
+		defer func() {
+			webhookRegister = oldWebhookFn
+		}()
+
+		// when
+		_, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, nil, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
+
+		// then
+		require.Error(t, err)
+	})
 }
 
 func TestDoguReconciler_Reconcile(t *testing.T) {
@@ -94,6 +114,37 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 			},
 			req:     controllerruntime.Request{},
 			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "should return and not requeue on incompatible dogu api version",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := NewMockK8sClient(t)
+					dogu := &v2.Dogu{}
+					mck.EXPECT().Get(testCtx, types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}, dogu).Return(nil).Run(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) {
+						*obj.(*v2.Dogu) = v2.Dogu{
+							ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3beta1"}},
+						}
+					})
+					return mck
+				},
+				doguChangeHandlerFn: func(t *testing.T) DoguUsecase {
+					return NewMockDoguUsecase(t)
+				},
+				doguDeleteHandlerFn: func(t *testing.T) DoguUsecase {
+					return NewMockDoguUsecase(t)
+				},
+				doguInterfaceFn: func(t *testing.T) doguInterface {
+					return newMockDoguInterface(t)
+				},
+				eventRecorderFn: func(t *testing.T) eventRecorder {
+					return newMockEventRecorder(t)
+				},
+				requeueHandlerFn: func(t *testing.T) RequeueHandler { return NewMockRequeueHandler(t) },
+			},
+			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}},
+			want:    controllerruntime.Result{},
 			wantErr: assert.NoError,
 		},
 		{
@@ -319,4 +370,20 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 			assert.Equalf(t, tt.want, got, "Reconcile(%v, %v)", testCtx, tt.req)
 		})
 	}
+}
+
+func TestDoguReconciler_webhookRegister(t *testing.T) {
+	t.Run("should return error on error registering the webhgook", func(t *testing.T) {
+		// given
+		managerMock := newMockCtrlManager(t)
+		managerMock.EXPECT().GetConfig().Return(nil)
+		// produces no kind registered error
+		managerMock.EXPECT().GetScheme().Return(&runtime.Scheme{})
+
+		// when
+		err := webhookRegister(managerMock)
+
+		// then
+		require.ErrorContains(t, err, "failed to setup dogu webhook with manager")
+	})
 }

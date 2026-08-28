@@ -26,7 +26,7 @@ const (
 
 var testCtx = context.Background()
 
-var testCasRestartRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: testCasRestartName}}
+var testCasRestartRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: testCasRestartName, Namespace: testNamespace}}
 
 func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 	t.Run("should return error on error getting restart resource", func(t *testing.T) {
@@ -128,6 +128,29 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 		// then
 		require.Error(t, instruction.err)
 		assert.Equal(t, handleDoguNotFound, instruction.op)
+	})
+
+	t.Run("should return error on incompatible dogu api version", func(t *testing.T) {
+		// given
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
+		doguRestart := &v2.DoguRestart{Spec: v2.DoguRestartSpec{DoguName: testCasDoguName}, Status: v2.DoguRestartStatus{Phase: v2.RestartStatusPhaseStopping}}
+		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
+
+		dogu := &v2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3beta1"}},
+		}
+
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, testCasDoguName, metav1.GetOptions{}).Return(dogu, nil)
+
+		sut := DoguRestartReconciler{doguRestartInterface: doguRestartInterfaceMock, doguInterface: doguInterfaceMock}
+
+		// when
+		instruction := sut.createRestartInstruction(testCtx, testCasRestartRequest)
+
+		// then
+		require.ErrorContains(t, instruction.err, "the referenced dogu in dogurestart \"ecosystem/cas-1234\" is not dogu api version v2, the operator currently only supports v2 dogus")
+		assert.Equal(t, handleGetDoguRestartFailed, instruction.op)
 	})
 
 	t.Run("should check if stopped on status phase stopping", func(t *testing.T) {
