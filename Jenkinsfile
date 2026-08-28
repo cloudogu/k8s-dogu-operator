@@ -69,6 +69,7 @@ node('docker') {
                             }
 
                             stage('Generate k8s Resources') {
+                                make 'helm-update-dependencies'
                                 make 'helm-generate'
                                 archiveArtifacts "${k8sTargetDir}/**/*"
                             }
