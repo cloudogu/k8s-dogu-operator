@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#326] Support the `v3beta1` Dogu CRD API version via a conversion webhook; `v2` remains the storage version for now to avoid unnecessary webhook calls during the migration period
+  - Requires `cert-manager` to issue the webhook's TLS certificate; see `docs/development/v3beta1_conversion_webhook_en.md`
+  - The operator only processes `v2` dogus for now; non-v2 dogus are safely skipped/rejected
 
 ## [v3.27.2] - 2026-08-20
 ### Fixed
