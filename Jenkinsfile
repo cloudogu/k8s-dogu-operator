@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('github.com/cloudogu/ces-build-lib@0573306641da88aec5540121dbb6fe9e1d7b2acd')
+@Library('github.com/cloudogu/ces-build-lib@89aa3293335c2d73853fd690775517783cbda897')
 import com.cloudogu.ces.cesbuildlib.*
 
 // Creating necessary git objects
