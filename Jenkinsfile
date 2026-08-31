@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('github.com/cloudogu/ces-build-lib@a932f0b7caad193ada60e7eacd833a4a7340ea5d')
+@Library('github.com/cloudogu/ces-build-lib@0573306641da88aec5540121dbb6fe9e1d7b2acd')
 import com.cloudogu.ces.cesbuildlib.*
 
 // Creating necessary git objects
@@ -97,7 +97,7 @@ node('docker') {
                         k3d.helm("registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'")
                         k3d.helm("install k8s-dogu-operator-crd oci://${registry}/${registry_namespace}/k8s-dogu-operator-crd --version ${doguOperatorCrdVersion}")
                         // TODO Remove if cert-manager component is released
-                        k3d.helm("install cert-manager oci://quay.io/jetstack/charts/cert-manager --version v1.21.1 --namespace ecosystem --set crds.enabled=true")
+                        k3d.helm("install cert-manager oci://quay.io/jetstack/charts/cert-manager --version v1.21.1 --namespace default --set crds.enabled=true")
                 }
             }
 
