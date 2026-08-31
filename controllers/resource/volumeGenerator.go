@@ -24,6 +24,8 @@ const doguOperatorClient = "k8s-dogu-operator"
 // configMapParamType describes a volume of type config map.
 const configMapParamType volumeParamsType = "configmap"
 
+const getEphemeralVolumeErrFmt = "failed to get ephemeral data volume name: %w"
+
 const (
 	fmtDoguJsonVolumeName = "%s-dogu-json"
 	doguDependencyType    = "dogu"
@@ -195,7 +197,7 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
 	// add EmptyDir-VolumeSource for all dogus to at least give them the ability to write state
 	volumeName, err := doguResource.GetEphemeralDataVolumeName()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get ephemeral data volume name: %w", err)
+		return nil, fmt.Errorf(getEphemeralVolumeErrFmt, err)
 	}
 
 	ephemeralVolume := corev1.Volume{
@@ -346,7 +348,7 @@ func createVolumeMounts(doguResource *k8sv2.Dogu, dogu *core.Dogu) ([]corev1.Vol
 func createStaticVolumeMounts(doguResource *k8sv2.Dogu) ([]corev1.VolumeMount, error) {
 	ephemeralDataVolumeName, err := doguResource.GetEphemeralDataVolumeName()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get ephemeral data volume name: %w", err)
+		return nil, fmt.Errorf(getEphemeralVolumeErrFmt, err)
 	}
 	doguVolumeMounts := []corev1.VolumeMount{
 		{
@@ -449,7 +451,7 @@ func createDoguVolumeMount(doguVolume core.Volume, doguResource *k8sv2.Dogu, mou
 	if !doguVolume.NeedsBackup {
 		ephemeralDataVolumeName, err := doguResource.GetEphemeralDataVolumeName()
 		if err != nil {
-			return corev1.VolumeMount{}, fmt.Errorf("failed to get ephemeral data volume name: %w", err)
+			return corev1.VolumeMount{}, fmt.Errorf(getEphemeralVolumeErrFmt, err)
 		}
 		return corev1.VolumeMount{
 			Name:      ephemeralDataVolumeName,
