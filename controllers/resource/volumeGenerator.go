@@ -170,8 +170,8 @@ func getDoguJsonVolumeForDogu(simpleDoguName string) corev1.Volume {
 	}
 }
 
-func createStaticVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
-	doguHealthVolume := corev1.Volume{
+func doguHealthVolume() corev1.Volume {
+	return corev1.Volume{
 		Name: doguHealth,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -179,8 +179,10 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
 			},
 		},
 	}
+}
 
-	timezoneVolume := corev1.Volume{
+func timeZoneVolume() corev1.Volume {
+	return corev1.Volume{
 		Name: timeZoneMountName,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -193,21 +195,10 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
 			},
 		},
 	}
+}
 
-	// add EmptyDir-VolumeSource for all dogus to at least give them the ability to write state
-	volumeName, err := doguResource.GetEphemeralDataVolumeName()
-	if err != nil {
-		return nil, fmt.Errorf(getEphemeralVolumeErrFmt, err)
-	}
-
-	ephemeralVolume := corev1.Volume{
-		Name: volumeName,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
-
-	globalConfigVolume := corev1.Volume{
+func globalConfigVolume() corev1.Volume {
+	return corev1.Volume{
 		Name: globalConfig,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -215,19 +206,10 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
 			},
 		},
 	}
+}
 
-	doguConfigName := fmt.Sprintf("%s-config", doguResource.Name)
-
-	normalConfigVolume := corev1.Volume{
-		Name: normalConfig,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: doguConfigName},
-			},
-		},
-	}
-
-	sensitiveConfigVolume := corev1.Volume{
+func sensitiveConfigVolume(doguConfigName string) corev1.Volume {
+	return corev1.Volume{
 		Name: sensitiveConfig,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
@@ -235,14 +217,48 @@ func createStaticVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
 			},
 		},
 	}
+}
+
+func normalConfigVolume(doguConfigName string) corev1.Volume {
+	return corev1.Volume{
+		Name: normalConfig,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: doguConfigName},
+			},
+		},
+	}
+}
+
+func ephemeralConfigVolume(doguResource *k8sv2.Dogu) (corev1.Volume, error) {
+	volumeName, err := doguResource.GetEphemeralDataVolumeName()
+	if err != nil {
+		return corev1.Volume{}, fmt.Errorf(getEphemeralVolumeErrFmt, err)
+	}
+
+	return corev1.Volume{
+		Name: volumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}, nil
+}
+
+func createStaticVolumes(doguResource *k8sv2.Dogu) ([]corev1.Volume, error) {
+	ephemeralVolume, err := ephemeralConfigVolume(doguResource)
+	if err != nil {
+		return nil, err
+	}
+	doguConfigName := fmt.Sprintf("%s-config", doguResource.Name)
 
 	return []corev1.Volume{
-		doguHealthVolume,
+		doguHealthVolume(),
+		// add EmptyDir-VolumeSource for all dogus to at least give them the ability to write state
 		ephemeralVolume,
-		globalConfigVolume,
-		normalConfigVolume,
-		sensitiveConfigVolume,
-		timezoneVolume,
+		globalConfigVolume(),
+		normalConfigVolume(doguConfigName),
+		sensitiveConfigVolume(doguConfigName),
+		timeZoneVolume(),
 	}, nil
 }
 
