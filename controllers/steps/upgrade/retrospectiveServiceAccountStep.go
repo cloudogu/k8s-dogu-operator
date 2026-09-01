@@ -47,6 +47,11 @@ func (r *RetroactiveServiceAccountStep) Run(ctx context.Context, resource *doguv
 
 	var errs []error
 	for _, dogu := range doguList.Items {
+		// Non-v2 dogus are skipped by the reconciler, so they never get a dogu descriptor config map.
+		// Fetching their descriptor would fail forever and block the reconcile of this dogu.
+		if !dogu.IsV2() {
+			continue
+		}
 		doguDescriptor, fetchErr := r.localDoguFetcher.FetchForResource(ctx, &dogu)
 		if fetchErr != nil {
 			errs = append(errs, fetchErr)
