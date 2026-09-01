@@ -12,7 +12,7 @@ github = new GitHub(this, git)
 changelog = new Changelog(this)
 Docker docker = new Docker(this)
 gpg = new Gpg(this, docker)
-goVersion = "1.26.4"
+goVersion = "1.26.5"
 makefile = new Makefile(this)
 doguOperatorCrdVersion="2.13.0"
 
