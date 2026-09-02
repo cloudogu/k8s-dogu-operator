@@ -6,7 +6,7 @@ webhook needs.
 
 ## Background: a second served API version
 
-`k8s-dogu-lib/v2` defines two API versions for the Dogu CRD: `v2` and `v3beta1`. Both are **served**.
+`k8s-dogu-lib/v3` defines two API versions for the Dogu CRD: `v2` and `v3beta1`. Both are **served**.
 `v2` is the **storage version**.
 Because two served versions with a non-trivial schema difference exist side by side, the Kubernetes API
 server needs a **conversion webhook** for the Dogu CRD, regardless of which one is the storage version.
@@ -20,7 +20,7 @@ The operator implements and serves that webhook, as described in
   to the fx options; `NewManagerOptions(args, operatorConfig, webhookServer webhook.Server)` receives it
   and assigns it to `manager.Options.WebhookServer`.
 - The scheme registration in the same file's `init()` calls `doguscheme.AddToScheme(scheme)` (package
-  `k8s-dogu-lib/v2/client/scheme`), which registers **both** `v2` and `v3beta1` — both API versions must
+  `k8s-dogu-lib/v3/client/scheme`), which registers **both** `v2` and `v3beta1` — both API versions must
   be known to the scheme for conversion to work.
 - `controllers/dogu_controller.go` defines `webhookRegister = func(mgr ctrlManager) error { return
   (&v3beta1.Dogu{}).SetupWebhookWithManager(mgr) }` as a package-level variable rather than a plain

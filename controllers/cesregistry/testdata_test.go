@@ -3,11 +3,12 @@ package cesregistry
 import (
 	_ "embed"
 	"encoding/json"
-	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"testing"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
+
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"

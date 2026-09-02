@@ -5,7 +5,7 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	authRegV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

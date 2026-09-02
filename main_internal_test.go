@@ -5,7 +5,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"

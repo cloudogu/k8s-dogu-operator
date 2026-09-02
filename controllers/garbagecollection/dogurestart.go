@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strconv"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

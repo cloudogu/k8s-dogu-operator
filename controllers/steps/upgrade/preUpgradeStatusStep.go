@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"k8s.io/apimachinery/pkg/api/meta"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

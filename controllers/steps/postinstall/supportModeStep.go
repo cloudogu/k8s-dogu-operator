@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	appsv1 "k8s.io/api/apps/v1"

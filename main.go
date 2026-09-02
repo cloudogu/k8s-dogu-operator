@@ -1,7 +1,7 @@
 package main
 
 import (
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"go.uber.org/fx"
 
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
@@ -18,7 +18,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/authregistration"

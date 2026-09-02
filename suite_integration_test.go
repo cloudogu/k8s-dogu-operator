@@ -12,8 +12,8 @@ import (
 
 	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/ces-commons-lib/dogu"
-	doguscheme "github.com/cloudogu/k8s-dogu-lib/v2/client/scheme"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
+	doguscheme "github.com/cloudogu/k8s-dogu-lib/v3/client/scheme"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -38,7 +38,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	_ "github.com/cloudogu/k8s-dogu-lib/v2/crds"
+	_ "github.com/cloudogu/k8s-dogu-lib/v3/crds"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -108,11 +108,11 @@ var _ = ginkgo.BeforeSuite(func() {
 	logf.SetLogger(logrusr.New(logrus.New()))
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
-			filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "crds"),
+			filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v3", "crds"),
 			filepath.Join("testdata", "crd"),
 		},
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v2", "crds")},
+			Paths: []string{filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v3", "crds")},
 		},
 		ErrorIfCRDPathMissing: true,
 	}

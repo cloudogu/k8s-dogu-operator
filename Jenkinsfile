@@ -14,7 +14,7 @@ Docker docker = new Docker(this)
 gpg = new Gpg(this, docker)
 goVersion = "1.26.4"
 makefile = new Makefile(this)
-doguOperatorCrdVersion="2.13.0"
+doguOperatorCrdVersion="3.0.0"
 certManagerVersion="1.21.1-1"
 
 // Configuration of repository

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-dogu-lib/v2/api/v3beta1"
-	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"

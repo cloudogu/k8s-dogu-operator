@@ -6,7 +6,7 @@ Helm-Ressourcen, die der Webhook benötigt.
 
 ## Hintergrund: eine zweite ausgelieferte API-Version
 
-`k8s-dogu-lib/v2` definiert zwei API-Versionen für die Dogu-CRD: `v2` und `v3beta1`. Beide werden
+`k8s-dogu-lib/v3` definiert zwei API-Versionen für die Dogu-CRD: `v2` und `v3beta1`. Beide werden
 ausgeliefert ("served"). `v2` ist die **Storage-Version**
 
 Weil zwei ausgelieferte Versionen mit nicht-trivialem Schema-Unterschied nebeneinander existieren,
@@ -21,7 +21,7 @@ Version die Storage-Version ist. Der Operator implementiert und stellt dieses We
   `initfx.GetWebhookServer` den fx-Options hinzu; `NewManagerOptions(args, operatorConfig, webhookServer
   webhook.Server)` erhält sie und weist sie `manager.Options.WebhookServer` zu.
 - Die Scheme-Registrierung im `init()` derselben Datei ruft `doguscheme.AddToScheme(scheme)` auf (Paket
-  `k8s-dogu-lib/v2/client/scheme`), was **sowohl** `v2` als auch `v3beta1` registriert — beide
+  `k8s-dogu-lib/v3/client/scheme`), was **sowohl** `v2` als auch `v3beta1` registriert — beide
   API-Versionen müssen dem Scheme bekannt sein, damit Conversion funktioniert.
 - `controllers/dogu_controller.go` definiert `webhookRegister = func(mgr ctrlManager) error { return
   (&v3beta1.Dogu{}).SetupWebhookWithManager(mgr) }` als paketweite Variable statt als einfachen

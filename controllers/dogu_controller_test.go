@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"

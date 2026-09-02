@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/client/typed/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"

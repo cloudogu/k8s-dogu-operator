@@ -7,7 +7,7 @@ import (
 	"os"
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
-	doguscheme "github.com/cloudogu/k8s-dogu-lib/v2/client/scheme"
+	doguscheme "github.com/cloudogu/k8s-dogu-lib/v3/client/scheme"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"

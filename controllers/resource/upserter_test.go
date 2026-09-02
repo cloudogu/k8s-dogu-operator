@@ -9,7 +9,7 @@ import (
 	"time"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/mock"
 	netv1 "k8s.io/api/networking/v1"

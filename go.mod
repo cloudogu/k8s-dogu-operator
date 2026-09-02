@@ -8,7 +8,7 @@ require (
 	github.com/cloudogu/cesapp-lib v0.18.2
 	github.com/cloudogu/k8s-apply-lib v0.5.0
 	github.com/cloudogu/k8s-auth-registration-lib v0.1.0
-	github.com/cloudogu/k8s-dogu-lib/v2 v2.0.0-20260828140916-2beab600e041
+	github.com/cloudogu/k8s-dogu-lib/v3 v3.0.0
 	github.com/cloudogu/k8s-exposition-lib v1.0.0
 	github.com/cloudogu/k8s-host-change v0.8.0
 	github.com/cloudogu/k8s-registry-lib v0.6.0
@@ -37,6 +37,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/cloudogu/k8s-dogu-lib v0.0.0-20250505182238-860c909518c1 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.18.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/docker/cli v29.1.3+incompatible // indirect
