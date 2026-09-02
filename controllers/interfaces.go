@@ -54,7 +54,7 @@ type DoguUsecase interface {
 	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error)
 }
 
-// requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
+// RequeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
 type RequeueHandler interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
 	Handle(ctx context.Context, doguResource *v2.Dogu, err error, reqTime time.Duration) (result ctrl.Result, requeueErr error)

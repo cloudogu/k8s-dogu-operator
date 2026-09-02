@@ -42,6 +42,12 @@ const (
 	ReasonHasToReconcile   = "HasToReconcile"
 )
 
+// keys that control which dogu API versions the dogu operator can handle
+const (
+	doguApiV2 = "doguApiV2"
+	doguApiV3 = "doguApiV3"
+)
+
 // The DoguReconciler knows where the [*doguv2.Dogu] is at all times. It knows this because it knows where it isn't.
 // By subtracting where it is from where it isn't, or where it isn't from where it is (whichever is greater), it obtains
 // a difference, or deviation. The guidance subsystem uses deviations to generate corrective commands to drive the
@@ -61,13 +67,15 @@ type DoguReconciler struct {
 	doguChangeHandler       DoguInstallOrChangeUseCase
 	doguDeleteHandler       DoguDeleteUseCase
 	doguInterface           doguInterface
-	requeueHandler          RequeueHandler
+	requeueHandlers         RequeueHandlers
 	externalEvents          <-chan event.TypedGenericEvent[*doguv2.Dogu]
 	eventRecorder           eventRecorder
 	authRegistrationEnabled bool
 	expositionEnabled       bool
 	warpMenuEntryEnabled    bool
 }
+
+type RequeueHandlers map[string]RequeueHandler
 
 func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
 	return make(chan event.TypedGenericEvent[*doguv2.Dogu])
@@ -87,7 +95,7 @@ func NewDoguReconciler(
 	doguChangeHandler DoguInstallOrChangeUseCase,
 	doguDeleteHandler DoguDeleteUseCase,
 	doguInterface doguClientV2.DoguInterface,
-	requeueHandler RequeueHandler,
+	requeueHandlers RequeueHandlers,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	recorder record.EventRecorder,
 	manager manager.Manager,
@@ -98,7 +106,7 @@ func NewDoguReconciler(
 		doguChangeHandler:       doguChangeHandler,
 		doguDeleteHandler:       doguDeleteHandler,
 		doguInterface:           doguInterface,
-		requeueHandler:          requeueHandler,
+		requeueHandlers:         requeueHandlers,
 		externalEvents:          externalEvents,
 		eventRecorder:           recorder,
 		authRegistrationEnabled: config.AuthRegistrationEnabled,
@@ -121,7 +129,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			// the dogu resource is gone; there is nothing left to reconcile or to requeue.
 			return ctrl.Result{}, nil
 		}
-		return r.requeueHandler.Handle(ctx, doguResource, err, 0)
+		return r.requeueHandlers[doguApiV2].Handle(ctx, doguResource, err, 0)
 	}
 
 	if !doguResource.IsV2() {
@@ -145,7 +153,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	getDoguResourceErr := r.client.Get(ctx, req.NamespacedName, doguResource)
 	if getDoguResourceErr != nil {
-		return r.requeueHandler.Handle(ctx, doguResource, errors.Join(fmt.Errorf("failed to get doguResource %q: %w", req.NamespacedName, getDoguResourceErr), err), 0)
+		return r.requeueHandlers[doguApiV2].Handle(ctx, doguResource, errors.Join(fmt.Errorf("failed to get doguResource %q: %w", req.NamespacedName, getDoguResourceErr), err), 0)
 	}
 
 	if requeueAfter != 0 {
@@ -160,7 +168,16 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	errs := errors.Join(getDoguResourceErr, err)
 
-	return r.requeueHandler.Handle(ctx, doguResource, errs, requeueAfter)
+	doguNeedsV3Handling := false
+	if doguNeedsV3Handling {
+		v3Handler, ok := r.requeueHandlers[doguApiV3]
+		if !ok {
+			return r.requeueHandlers[doguApiV2].Handle(ctx, doguResource, err, 0)
+		}
+		return v3Handler.Handle(ctx, doguResource, errs, requeueAfter)
+	}
+
+	return r.requeueHandlers[doguApiV2].Handle(ctx, doguResource, errs, requeueAfter)
 }
 
 // Helper function to simplify mocking for SetupWebhookWithManager
