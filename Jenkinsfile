@@ -15,6 +15,7 @@ gpg = new Gpg(this, docker)
 goVersion = "1.26.4"
 makefile = new Makefile(this)
 doguOperatorCrdVersion="2.13.0"
+certManagerVersion="1.21.1-1"
 
 // Configuration of repository
 repositoryOwner = "cloudogu"
@@ -97,8 +98,7 @@ node('docker') {
                     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harborhelmchartpush', usernameVariable: 'HARBOR_USERNAME', passwordVariable: 'HARBOR_PASSWORD']]) {
                         k3d.helm("registry login ${registry} --username '${HARBOR_USERNAME}' --password '${HARBOR_PASSWORD}'")
                         k3d.helm("install k8s-dogu-operator-crd oci://${registry}/${registry_namespace}/k8s-dogu-operator-crd --version ${doguOperatorCrdVersion}")
-                        // TODO Remove if cert-manager component is released
-                        k3d.helm("install cert-manager oci://quay.io/jetstack/charts/cert-manager --version v1.21.1 --namespace default --set crds.enabled=true")
+                        k3d.helm("install k8s-cert-manager oci://${registry}/${registry_namespace}/k8s-cert-manager --version ${certManagerVersion}")
                 }
             }
 
