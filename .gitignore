@@ -14,6 +14,9 @@ target
 !vendor/**/zz_generated.*
 vendor
 
+# Helm charts dir
+k8s/helm/charts
+
 # editor and IDE paraphernalia
 .idea
 *.swp

@@ -31,3 +31,9 @@ annotations:
   "k8s.cloudogu.com/ces-dependency/k8s-ces-gateway": "1.x.x-0 || 2.x.x-0 || 3.x.x-0"
   # Dependency for the cert-manager to generate the webhook certificate.
   "k8s.cloudogu.com/ces-dependency/k8s-cert-manager": "1.x.x-0"
+
+dependencies:
+  - name: reloader
+    repository: https://stakater.github.io/stakater-charts
+    version: "2.2.16"
+    condition: reloader.enabled

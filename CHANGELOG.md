@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Requires `cert-manager` to issue the webhook's TLS certificate; see `docs/development/v3beta1_conversion_webhook_en.md`
   - The operator only processes `v2` dogus for now; non-v2 dogus are safely skipped/rejected
 
+## [v3.28.0] - 2026-08-28
+### Added
+- [#325] Reloader for restarting workloads on ConfigMap and Secret changes
+  - This feature is in preparation for DoguV3 and disabled by default.
+
 ## [v3.27.2] - 2026-08-20
 ### Fixed
 - [#322] Prevent "resource name may not be empty" on dogu delete
