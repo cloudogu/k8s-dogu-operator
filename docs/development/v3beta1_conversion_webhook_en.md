@@ -6,49 +6,12 @@ webhook needs.
 
 ## Background: a second served API version
 
-`k8s-dogu-lib/v2` defines two API versions for the Dogu CRD: `v2` and `v3beta1`. Both are **served**,
-but `v2` is the **storage version** (`+kubebuilder:storageversion` is on `v2.Dogu`, not on
-`v3beta1.Dogu`) — see ["Why `v2` is the storage version"](#why-v2-is-the-storage-version) below for the
-reasoning.
-
-`v3beta1.Dogu` is the conversion **hub** (`func (*Dogu) Hub() {}`) — the canonical type the conversion
-machinery converts through — and `v2.Dogu` implements `conversion.Convertible` via
-`ConvertTo`/`ConvertFrom`:
-
-- `ConvertTo` (v2 → v3beta1, runs whenever a `v2` object needs to be represented as `v3beta1`, e.g. a
-  `v3beta1` client reading a stored `v2` object) splits `Spec.Name` (`"namespace/name"`) into
-  `DoguNamespace`/`Name`, maps resources/security/mounts and defaults `Spec.DoguApiVersion` to `v2`.
-  Fields that only exist in `v3beta1` (`DoguApiVersion`, `Values`) are round-tripped through transport
-  annotations (`k8s.cloudogu.com/v3beta1-doguApiVersion`, `k8s.cloudogu.com/v3beta1-values`,
-  `k8s.cloudogu.com/v3beta1-status-appVersion`), which are consumed and removed again here.
-- `ConvertFrom` (v3beta1 → v2, runs whenever a `v3beta1` object needs to be stored/served as `v2`, e.g.
-  a `v2` client reading, or the apiserver persisting a `v3beta1` write) does the reverse mapping and
-  stashes `DoguApiVersion`/`Values`/`Status.AppVersion` into the same annotations, unless they already
-  match the v2 default (so a genuinely-v2 dogu round-trips without annotation clutter).
-- `v2.Dogu.IsV2()` returns `true` if there is no `doguApiVersionAnnotationKey` annotation, or if it is
-  `"v2"`; `false` otherwise. This is how a `v2`-typed object can tell whether it actually originated
-  from a non-v2 dogu.
-
+`k8s-dogu-lib/v2` defines two API versions for the Dogu CRD: `v2` and `v3beta1`. Both are **served**.
+`v2` is the **storage version**.
 Because two served versions with a non-trivial schema difference exist side by side, the Kubernetes API
 server needs a **conversion webhook** for the Dogu CRD, regardless of which one is the storage version.
 The operator implements and serves that webhook, as described in
 ["Webhook server wiring"](#webhook-server-wiring).
-
-## Why `v2` is the storage version
-
-Keeping `v2` as the storage version means: as long as a client reads/writes a Dogu as `v2`, the
-apiserver serves it directly from etcd with **no conversion webhook call**. The webhook only fires for
-the minority case — a client explicitly using `v3beta1`. Were `v3beta1` the storage version instead, it
-would be the other way around: every `v2` read/write — the overwhelming majority of traffic — would
-need a conversion webhook round-trip.
-
-Migrating ecosystems from `v2` to `v3beta1` is a slow, gradual process — many systems keep using `v2`
-dogus for a long time. Making `v3beta1` the storage version would trade a small amount of `v3beta1`
-traffic for a webhook call on every `v2` reconcile, cluster-wide, for as long as that migration takes.
-So the storage version stays `v2` until `v3beta1` usage is common enough to justify the switch.
-
-This doesn't remove the webhook itself — it's still required and still wired up as described below — it
-just keeps it off the hot path for the common case.
 
 ## Webhook server wiring
 
@@ -74,24 +37,6 @@ just keeps it off the hot path for the common case.
   this fake instead of standing up a real HTTPS listener; see `TestDoguReconciler_webhookRegister` in
   `controllers/dogu_controller_test.go`.
 
-## Doguv2 guards
-
-Because the conversion webhook lets `v3beta1`-native dogus exist in the cluster, but the operator's
-business logic only understands `v2` semantics, two reconcilers guard against processing anything that
-isn't v2:
-
-- `DoguReconciler.Reconcile` (`controllers/dogu_controller.go`) checks `doguResource.IsV2()` right after
-  fetching the resource. If it's not v2, it logs an error ("the operator currently only supports v2
-  dogus.") and returns `ctrl.Result{}, nil` — the reconcile is silently dropped, no requeue, no event.
-- `DoguRestartReconciler.createRestartInstruction` (`controllers/dogurestart_controller.go`) performs
-  the same check but propagates it as a failure through the restart-instruction/error path
-  (`handleGetDoguRestartFailed`).
-
-These are stop-gaps, not a v3 implementation: they exist so the operator fails safe rather than
-misbehaving on a dogu flavor it doesn't support. Test coverage in `controllers/dogu_controller_test.go`,
-`controllers/dogu_requeue_handler_test.go` and `controllers/dogurestart_controller_test.go` constructs
-dogus with the `k8s.cloudogu.com/v3beta1-doguApiVersion: v3beta1` annotation to exercise this guard.
-
 ## Helm resources
 
 ### `cert-manager.yaml`
@@ -111,11 +56,10 @@ A `Service` named `<name>-webhook` (again a contract with `k8s-dogu-lib`), port 
 `targetPort: webhook-server` (matching the container port name in `deployment.yaml`).
 
 It sets `publishNotReadyAddresses: true` deliberately: the apiserver calls this Service to run the
-conversion webhook, and on operator startup all Dogu resources immediately trigger a reconcile. The
-in-code comment flags this as forward-looking: *if* the storage version were ever switched to
-`v3beta1`, every one of those startup reconciles would need the webhook right away — but the webhook
-server takes ~5-10 seconds to become ready. Without `publishNotReadyAddresses`, there would be no
-Service endpoints yet, those webhook calls would fail, the reconciles would fail, and the pod could get
+conversion webhook, and on operator startup all Dogu resources immediately trigger a reconcile.
+*If* the storage version were ever switched to `v3beta1`, every one of those startup reconciles would need the webhook
+right away — but the webhook server takes ~5-10 seconds to become ready. Without `publishNotReadyAddresses`, there would
+be no Service endpoints yet, those webhook calls would fail, the reconciles would fail, and the pod could get
 stuck never reaching readiness (a self-inflicted deadlock). With `v2` as the storage version, most
 startup reconciles don't hit the webhook at all, so the risk is currently latent rather than active —
 but the setting is in place either way.
@@ -124,8 +68,7 @@ but the setting is in place either way.
 
 Gated by `.Values.global.networkPolicies.enabled`. Denies all ingress to the operator pods except TCP
 port `9443` (the webhook port). That port is deliberately left open to all sources because the
-kube-apiserver calls the conversion webhook directly, and its source IP is unpredictable (it may be
-outside the cluster's pod CIDR on managed control planes).
+kube-apiserver calls the conversion webhook directly, and its source IP is unpredictable.
 
 ### `deployment.yaml`
 
