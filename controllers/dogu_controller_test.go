@@ -148,8 +148,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 { return NewMockRequeueHandlerV2(t) },
 				requeueHandlerV3Fn: func(t *testing.T) RequeueHandlerV3 {
 					v3HandlerMock := NewMockRequeueHandlerV3(t)
-					v3Dogu := v3beta1.Dogu{
-						ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace},
+					v3Dogu := &v3beta1.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{}},
 						Spec: v3beta1.DoguSpec{
 							DoguApiVersion: "v3",
 							Name:           testCasDoguName,
@@ -408,4 +408,29 @@ func TestDoguReconciler_webhookRegister(t *testing.T) {
 		// then
 		require.ErrorContains(t, err, "failed to setup dogu webhook with manager")
 	})
+}
+
+func TestDoguV2ConvertsToV3(t *testing.T) {
+	v2Dogu := &v2.Dogu{
+		ObjectMeta: v1.ObjectMeta{
+			Name:        testDoguName,
+			Namespace:   testNamespace,
+			Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"},
+		},
+		Spec: v2.DoguSpec{Name: "official/" + testDoguName},
+	}
+
+	v3Dogu := &v3beta1.Dogu{}
+	err := v2Dogu.ConvertTo(v3Dogu)
+
+	require.NoError(t, err)
+	v3Dogu2 := &v3beta1.Dogu{
+		ObjectMeta: v1.ObjectMeta{Name: testDoguName, Namespace: testNamespace, Annotations: map[string]string{}},
+		Spec: v3beta1.DoguSpec{
+			Name:           testDoguName,
+			DoguNamespace:  "official",
+			DoguApiVersion: "v3",
+		},
+	}
+	assert.Equal(t, v3Dogu, v3Dogu2)
 }
