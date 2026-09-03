@@ -103,7 +103,7 @@ func options() []fx.Option {
 			fx.Annotate(controllers.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandlerV2))),
 
 			fx.Annotate(controllersv3.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandlerV3))),
-			fx.Annotate(initfx.NewDoguInterface, fx.As(new(v3beta1.DoguInterface))),
+			fx.Annotate(initfx.NewDoguV3Interface, fx.As(new(v3beta1.DoguInterface))),
 
 			// our own dependencies
 			fx.Annotate(health.NewAvailabilityChecker, fx.As(new(health.DeploymentAvailabilityChecker))),
