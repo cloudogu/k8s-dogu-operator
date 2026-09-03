@@ -1,6 +1,7 @@
 package util
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -30,20 +31,10 @@ func TestGetMapKeysAsString(t *testing.T) {
 			}
 
 			for _, want := range wandSplit {
-				if !containsInSlice(resultSplit, want) {
+				if !slices.Contains(resultSplit, want) {
 					t.Errorf("GetMapKeysAsString() = %v, want %v", got, tt.want)
 				}
 			}
 		})
 	}
-}
-
-func containsInSlice(slice []string, s string) bool {
-	for _, e := range slice {
-		if e == s {
-			return true
-		}
-	}
-
-	return false
 }

@@ -26,8 +26,8 @@ github.com/cloudogu/k8s-apply-lib v0.5.0 h1:XeQKwTgT8FIozpqyPO/b09LAenPswBilmatw
 github.com/cloudogu/k8s-apply-lib v0.5.0/go.mod h1:jR/+7q47O5gb++4gVsmEElT8/EJoi+Msw2dVzArTPW0=
 github.com/cloudogu/k8s-auth-registration-lib v0.1.0 h1:Xq0wdsDGJoGkqchqDlwEzfOpch4w8D/SCXU6HSok5GI=
 github.com/cloudogu/k8s-auth-registration-lib v0.1.0/go.mod h1:PltBfG8QfrZNcayG33azghsq3O0anl4oJH2mWnx2oo8=
-github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0 h1:As1MZ1adsFPZdjETA16JYEMD7l7idMYe+GIPIRNfiCc=
-github.com/cloudogu/k8s-dogu-lib/v2 v2.13.0/go.mod h1:IgA9mxjv/dKkLJ4e7n7+AyFbHvtO5sjxpZKN3GEoX44=
+github.com/cloudogu/k8s-dogu-lib/v3 v3.0.0 h1:sM931MJRYBcDdn82Gdw0YgwTFKI6cOjwZW9KhIlLI7Q=
+github.com/cloudogu/k8s-dogu-lib/v3 v3.0.0/go.mod h1:up4m1SOcOGDxD3EIu21fl3PEcjPfOHkHvaCKK48h0Ro=
 github.com/cloudogu/k8s-exposition-lib v1.0.0 h1:WKL8oXt3N9CVH3WNuLUbbkmBAUjs1CcEvOoUnlnFtAo=
 github.com/cloudogu/k8s-exposition-lib v1.0.0/go.mod h1:psu5GdaD2wjUGVY9njtfmUjnxi4QX4Ks4txS8pGQhgY=
 github.com/cloudogu/k8s-host-change v0.8.0 h1:a1Xil1I1wJ5yDX6flLSDwHeIKCcP3WvlIL4mo7nTIYg=
@@ -195,8 +195,8 @@ github.com/moby/go-archive v0.1.0 h1:Kk/5rdW/g+H8NHdJW2gsXyZ7UnzvJNOy6VKJqueWdcQ
 github.com/moby/go-archive v0.1.0/go.mod h1:G9B+YoujNohJmrIYFBpSd54GTUB4lt9S+xVQvsJyFuo=
 github.com/moby/patternmatcher v0.6.0 h1:GmP9lR19aU5GqSSFko+5pRqHi+Ohk1O69aFiKkVGiPk=
 github.com/moby/patternmatcher v0.6.0/go.mod h1:hDPoyOpDY7OrrMDLaYoY3hf52gNCR/YOUYxkhApJIxc=
-github.com/moby/spdystream v0.5.0 h1:7r0J1Si3QO/kjRitvSLVVFUjxMEb/YLj6S9FF62JBCU=
-github.com/moby/spdystream v0.5.0/go.mod h1:xBAYlnt/ay+11ShkdFKNAG7LsyK/tmNBVvVOwrfMgdI=
+github.com/moby/spdystream v0.5.1 h1:9sNYeYZUcci9R6/w7KDaFWEWeV4LStVG78Mpyq/Zm/Y=
+github.com/moby/spdystream v0.5.1/go.mod h1:xBAYlnt/ay+11ShkdFKNAG7LsyK/tmNBVvVOwrfMgdI=
 github.com/moby/sys/sequential v0.6.0 h1:qrx7XFUd/5DxtqcoH1h438hF5TmOvzC/lspjy7zgvCU=
 github.com/moby/sys/sequential v0.6.0/go.mod h1:uyv8EUTrca5PnDsdMGXhZe6CCe8U/UiTWd+lL+7b/Ko=
 github.com/moby/sys/user v0.4.0 h1:jhcMKit7SA80hivmFJcbB1vqmw//wU61Zdui2eQXuMs=

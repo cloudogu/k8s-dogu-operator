@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-webhook # contract with k8s-dogu-lib
+  labels:
+    control-plane: controller-manager
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+spec:
+  # We need this option because the operator handles the conversion webhook itself.
+  # On startup all dogu resources will trigger a reconcile immediately.
+  # If the storage version would be v3beta1 the api server would call the webhook-service but the webhook server
+  # needs some time to be ready. Aprrox 5-10 seconds. In this time there are no endpoints for the webhook-serivce
+  # and it could be possible that the pod will never be ready because the operator would prevent itself from being ready with the produced errors.
+  publishNotReadyAddresses: true
+  selector:
+    control-plane: controller-manager
+    {{- include "k8s-dogu-operator.selectorLabels" . | nindent 4 }}
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: webhook-server

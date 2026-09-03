@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"k8s.io/client-go/rest"
 )

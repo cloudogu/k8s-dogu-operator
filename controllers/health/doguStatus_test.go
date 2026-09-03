@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	errors "k8s.io/apimachinery/pkg/api/errors"

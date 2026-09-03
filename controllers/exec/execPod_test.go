@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -429,7 +429,7 @@ func Test_execPodFactory_Create(t *testing.T) {
 			setControllerReferenceFn: func(owner, controlled metav1.Object, scheme *runtime.Scheme, opts ...controllerutil.OwnerReferenceOption) error {
 				return assert.AnError
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, assert.AnError) &&
 					assert.ErrorContains(t, err, "failed to set controller reference to exec pod \"dogu-execpod\"")
 			},
@@ -485,7 +485,7 @@ func Test_execPodFactory_Create(t *testing.T) {
 					Version: "1.2.3-1",
 				},
 			},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, assert.AnError)
 			},
 		},

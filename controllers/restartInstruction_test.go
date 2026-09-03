@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"context"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"testing"
+
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -11,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"testing"
 )
 
 func Test_restartInstruction_execute(t *testing.T) {

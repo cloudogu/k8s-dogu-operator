@@ -3,8 +3,8 @@ package upgrade
 import (
 	"context"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
@@ -32,7 +32,7 @@ func NewRestartAfterConfigChangeStep(
 	restartManager manager.DoguRestartManager,
 	deploymentManager manager.DeploymentManager,
 	globalConfigRepository resource.GlobalConfigRepository,
-	doguInterface doguClient.DoguInterface,
+	doguInterface doguClientV2.DoguInterface,
 ) *RestartAfterConfigChangeStep {
 	return &RestartAfterConfigChangeStep{
 		doguConfigRepository:    doguConfigRepo,

@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	"github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 )

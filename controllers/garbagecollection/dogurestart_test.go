@@ -3,13 +3,14 @@ package garbagecollection
 import (
 	"context"
 	"fmt"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"testing"
 	"time"
+
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var testCtx = context.Background()

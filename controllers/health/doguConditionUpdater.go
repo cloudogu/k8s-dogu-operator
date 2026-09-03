@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,7 +14,7 @@ type DoguConditionUpdater struct {
 	doguInterface doguInterface
 }
 
-func NewDoguConditionUpdater(doguInterface doguClient.DoguInterface) *DoguConditionUpdater {
+func NewDoguConditionUpdater(doguInterface doguv2.DoguInterface) *DoguConditionUpdater {
 	return &DoguConditionUpdater{
 		doguInterface: doguInterface,
 	}

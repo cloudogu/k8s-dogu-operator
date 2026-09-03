@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

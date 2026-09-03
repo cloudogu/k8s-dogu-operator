@@ -6,8 +6,8 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -33,7 +33,7 @@ type HealthCheckStep struct {
 }
 
 func NewHealthCheckStep(client client.Client, availabilityChecker health.DeploymentAvailabilityChecker,
-	doguHealthStatusUpdater health.DoguHealthStatusUpdater, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *HealthCheckStep {
+	doguHealthStatusUpdater health.DoguHealthStatusUpdater, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClientV2.DoguInterface) *HealthCheckStep {
 	return &HealthCheckStep{
 		client:                  client,
 		availabilityChecker:     availabilityChecker,

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -59,7 +59,7 @@ func TestMismatchedStorageClassWarningStep_Run(t *testing.T) {
 			},
 			args: args{
 				ctx:      context.TODO(),
-				resource: &v2.Dogu{Spec: v2.DoguSpec{Resources: v2.DoguResources{StorageClassName: strPtr("fast")}}},
+				resource: &v2.Dogu{Spec: v2.DoguSpec{Resources: v2.DoguResources{StorageClassName: new("fast")}}},
 			},
 			want: steps.RequeueWithError(fmt.Errorf("failed to get data pvc for dogu : %w", assert.AnError)),
 		},
@@ -97,7 +97,7 @@ func TestMismatchedStorageClassWarningStep_Run(t *testing.T) {
 			args: args{
 				ctx: context.TODO(),
 				resource: &v2.Dogu{ // StorageClassName set in dogu
-					Spec: v2.DoguSpec{Resources: v2.DoguResources{StorageClassName: strPtr("fast")}},
+					Spec: v2.DoguSpec{Resources: v2.DoguResources{StorageClassName: new("fast")}},
 				},
 			},
 			want: steps.Continue(),
@@ -154,7 +154,7 @@ func TestMismatchedStorageClassWarningStep_Run(t *testing.T) {
 			},
 			args: args{
 				ctx:      context.TODO(),
-				resource: &v2.Dogu{Spec: v2.DoguSpec{Resources: v2.DoguResources{StorageClassName: strPtr("fast")}}},
+				resource: &v2.Dogu{Spec: v2.DoguSpec{Resources: v2.DoguResources{StorageClassName: new("fast")}}},
 			},
 			want: steps.Continue(),
 		},
@@ -169,14 +169,3 @@ func TestMismatchedStorageClassWarningStep_Run(t *testing.T) {
 		})
 	}
 }
-
-// helpers for tests
-func strPtr(s string) *string { return &s }
-
-// mock argument helpers to keep expectations readable; these accept any value since we only care about obj population
-// We rely on mock.Anything from testify/mock but keep wrappers to avoid importing types not needed in test cases.
-type anyArg struct{}
-
-func mockCtx() interface{} { return mock.Anything }
-func mockKey() interface{} { return mock.Anything }
-func mockPVC() interface{} { return mock.Anything }

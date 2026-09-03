@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -590,7 +590,8 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		expectedAdditionalMountsContainerName := "dogu-additional-mounts-init"
 		expectedContainerImage := testInitContainerImage
 		expectedArgs := []string{"copy", "-source=/datamount/cm-1", "-target=/dogumount/etc/test/testSubFolder"}
-		expectedDataVolumeName := doguResource.GetDataVolumeName()
+		expectedDataVolumeName, err := doguResource.GetDataVolumeName()
+		require.NoError(t, err)
 
 		resources := v1.ResourceRequirements{
 			Limits: map[v1.ResourceName]resource.Quantity{
@@ -637,7 +638,8 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 
 		expectedContainerImage := testInitContainerImage
 		expectedArgs := []string{"copy", "-source=/datamount/redis-config", "-target=/dogumount/var/cache/config"}
-		expectedEphemeralVolumeName := doguResource.GetEphemeralDataVolumeName()
+		expectedEphemeralVolumeName, err := doguResource.GetEphemeralDataVolumeName()
+		require.NoError(t, err)
 
 		resources := v1.ResourceRequirements{
 			Limits: map[v1.ResourceName]resource.Quantity{
@@ -676,8 +678,10 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 
 		expectedContainerImage := testInitContainerImage
 		expectedArgs := []string{"copy", "-source=/datamount/redis-config", "-target=/dogumount/var/cache/config"}
-		expectedEphemeralVolumeName := doguResource.GetEphemeralDataVolumeName()
-		expectedDataVolumeName := doguResource.GetDataVolumeName()
+		expectedEphemeralVolumeName, err := doguResource.GetEphemeralDataVolumeName()
+		require.NoError(t, err)
+		expectedDataVolumeName, err := doguResource.GetDataVolumeName()
+		require.NoError(t, err)
 
 		resources := v1.ResourceRequirements{
 			Limits: map[v1.ResourceName]resource.Quantity{
@@ -750,7 +754,9 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 		// The target volume should only be mounted once
 		volumeCount := 0
 		for _, mount := range container.VolumeMounts {
-			if mount.Name == doguResource.GetDataVolumeName() {
+			name, volumeErr := doguResource.GetDataVolumeName()
+			require.NoError(t, volumeErr)
+			if mount.Name == name {
 				volumeCount++
 			}
 		}
@@ -879,7 +885,8 @@ func Test_BuildAdditionalMountInitContainer(t *testing.T) {
 
 		expectedAdditionalMountsContainerName := "dogu-additional-mounts-init"
 		expectedContainerImage := testInitContainerImage
-		expectedDataVolumeName := doguResource.GetDataVolumeName()
+		expectedDataVolumeName, err := doguResource.GetDataVolumeName()
+		require.NoError(t, err)
 
 		sut := &resourceGenerator{}
 

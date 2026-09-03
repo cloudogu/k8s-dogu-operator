@@ -2,6 +2,7 @@ package initfx
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
@@ -66,11 +67,37 @@ func Test_addChecks(t *testing.T) {
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "failed to add readyz check:")
 	})
-	t.Run("should fail to add ready check", func(t *testing.T) {
+
+	t.Run("should fail to add webhook readyz check", func(t *testing.T) {
 		// given
 		managerMock := newMockK8sManager(t)
 		managerMock.EXPECT().AddHealthzCheck("healthz", mock.AnythingOfType("healthz.Checker")).Return(nil)
 		managerMock.EXPECT().AddReadyzCheck("readyz", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		managerMock.EXPECT().AddReadyzCheck("webhook-server", mock.AnythingOfType("healthz.Checker")).Return(assert.AnError)
+		webhookServerMock := NewMockWebhookServer(t)
+		webhookServerMock.EXPECT().StartedChecker().Return(func(req *http.Request) error {
+			return nil
+		})
+		managerMock.EXPECT().GetWebhookServer().Return(webhookServerMock)
+
+		// when
+		err := addChecks(managerMock)
+
+		// then
+		require.ErrorContains(t, err, "failed to add readyz check for webhook-server")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		// given
+		managerMock := newMockK8sManager(t)
+		managerMock.EXPECT().AddHealthzCheck("healthz", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		managerMock.EXPECT().AddReadyzCheck("readyz", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		managerMock.EXPECT().AddReadyzCheck("webhook-server", mock.AnythingOfType("healthz.Checker")).Return(nil)
+		webhookServerMock := NewMockWebhookServer(t)
+		webhookServerMock.EXPECT().StartedChecker().Return(func(req *http.Request) error {
+			return nil
+		})
+		managerMock.EXPECT().GetWebhookServer().Return(webhookServerMock)
 
 		// when
 		err := addChecks(managerMock)
@@ -86,7 +113,7 @@ func TestNewManagerOptions(t *testing.T) {
 		operatorConfig := &config.OperatorConfig{}
 
 		// when
-		managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{})
+		managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{}, webhook.NewServer(webhook.Options{Port: 9443}))
 		require.NoError(t, err)
 
 		// then
@@ -108,6 +135,17 @@ func Test_getArgs(t *testing.T) {
 
 		// then
 		assert.NotNil(t, args)
+	})
+}
+
+func Test_getWebhookServer(t *testing.T) {
+	t.Run("should return server with 9443 as port", func(t *testing.T) {
+		// when
+		webhookServer := getWebhookServer()
+
+		// then
+		require.NotNil(t, webhookServer)
+		assert.Equal(t, 9443, webhookServer.(*webhook.DefaultServer).Options.Port)
 	})
 }
 
@@ -138,7 +176,7 @@ func TestNewControllerManager(t *testing.T) {
 					return logr.Logger{}
 				},
 				optionsFn: func(t *testing.T) manager.Options {
-					managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{})
+					managerOptions, err := NewManagerOptions(Args{"1"}, &config.OperatorConfig{}, nil)
 					require.NoError(t, err)
 					return managerOptions
 				},

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -21,7 +21,7 @@ type StatusStep struct {
 	doguInterface doguInterface
 }
 
-func NewStatusStep(doguInterface doguClient.DoguInterface) *StatusStep {
+func NewStatusStep(doguInterface doguClientV2.DoguInterface) *StatusStep {
 	return &StatusStep{doguInterface: doguInterface}
 }
 

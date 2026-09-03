@@ -3,8 +3,8 @@ package health
 import (
 	"context"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -12,13 +12,13 @@ import (
 )
 
 type StartupHandler struct {
-	doguInterface doguClient.DoguInterface
+	doguInterface doguv2.DoguInterface
 	doguEvents    chan<- event.TypedGenericEvent[*v2.Dogu]
 }
 
 // NewStartupHandler creates the StartupHandler as a manager.Runnable and adds it to the manager.Manager.
 // The doguEvents channel is used to trigger reconciles by enqueuing generic events for dogus.
-func NewStartupHandler(manager manager.Manager, doguInterface doguClient.DoguInterface, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (*StartupHandler, error) {
+func NewStartupHandler(manager manager.Manager, doguInterface doguv2.DoguInterface, doguEvents chan<- event.TypedGenericEvent[*v2.Dogu]) (*StartupHandler, error) {
 	sh := &StartupHandler{
 		doguInterface: doguInterface,
 		doguEvents:    doguEvents,
@@ -40,6 +40,10 @@ func (s *StartupHandler) Start(ctx context.Context) error {
 		return err
 	}
 	for _, dogu := range list.Items {
+		// Skip Non-V2-Dogus for now
+		if !dogu.IsV2() {
+			continue
+		}
 		s.doguEvents <- event.TypedGenericEvent[*v2.Dogu]{Object: &dogu}
 	}
 	return nil

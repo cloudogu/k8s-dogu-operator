@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -14,10 +14,10 @@ import (
 
 // ShutdownHandler is responsible for setting health states to unknown on shutdown of the operator.
 type ShutdownHandler struct {
-	doguInterface doguClient.DoguInterface
+	doguInterface doguv2.DoguInterface
 }
 
-func NewShutdownHandler(doguInterface doguClient.DoguInterface) *ShutdownHandler {
+func NewShutdownHandler(doguInterface doguv2.DoguInterface) *ShutdownHandler {
 	return &ShutdownHandler{doguInterface: doguInterface}
 }
 
@@ -33,6 +33,11 @@ func (s *ShutdownHandler) Handle(ctx context.Context) error {
 
 	var errs []error
 	for _, dogu := range dogus.Items {
+		// Skip Non-V2-Dogus for now
+		if !dogu.IsV2() {
+			continue
+		}
+
 		_, updateErr := s.doguInterface.UpdateStatusWithRetry(ctx, &dogu, func(status v2.DoguStatus) v2.DoguStatus {
 			status.Health = v2.UnknownHealthStatus
 			reason := "StoppingOperator"

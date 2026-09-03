@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"sigs.k8s.io/cluster-api/util/conditions"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

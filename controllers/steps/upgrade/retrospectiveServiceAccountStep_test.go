@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,13 +81,14 @@ func TestRetroactiveServiceAccountStep_Run(t *testing.T) {
 			want:           steps.StepResult{Err: fmt.Errorf("retrieve retroactive service accounts: %w", errors.Join(assert.AnError, assert.AnError))},
 		},
 		{
-			name: "success",
+			name: "success only v2 (skip other)",
 			fields: fields{
 				doguClientFn: func(t *testing.T) doguInterface {
 					mck := newMockDoguInterface(t)
 					doguList := &doguv2.DoguList{Items: []doguv2.Dogu{
 						{ObjectMeta: metav1.ObjectMeta{Name: "dogu1"}},
 						{ObjectMeta: metav1.ObjectMeta{Name: "dogu2"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "dogu3", Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"}}},
 					}}
 					mck.EXPECT().List(testCtx, metav1.ListOptions{}).Return(doguList, nil)
 					return mck
