@@ -235,6 +235,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
 					return mck
 				},
+				requeueHandlerV3Fn: func(t *testing.T) RequeueHandlerV3 { return NewMockRequeueHandlerV3(t) },
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testDoguName}},
 			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
