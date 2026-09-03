@@ -1,0 +1,38 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-manager-dogu-v3-role
+  labels:
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+rules:
+  # dogu v3: create and delete flux resources analogous to the dogu CR
+  - apiGroups:
+      - "helm.toolkit.fluxcd.io/v2"
+    resources:
+      - HelmRelease
+    verbs:
+      - create
+      - list
+      - get
+      - delete
+  - apiGroups:
+      - "helm.toolkit.fluxcd.io/v2"
+    resources:
+      - HelmRelease/status
+    verbs:
+      - get
+  - apiGroups:
+      - "source.toolkit.fluxcd.io/v1"
+    resources:
+      - OCIRepository
+    verbs:
+      - create
+      - list
+      - get
+      - delete
+  - apiGroups:
+      - "source.toolkit.fluxcd.io/v1"
+    resources:
+      - OCIRepository/status
+    verbs:
+      - get
