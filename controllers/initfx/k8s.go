@@ -55,6 +55,8 @@ func NewDoguInterface(doguClientset doguClient.Interface, config *config.Operato
 	return doguClientset.DoguV2().Dogus(config.Namespace)
 }
 
+// TODO create similar constructor for v3
+
 func NewDoguRestartInterface(doguClientset doguClient.Interface, config *config.OperatorConfig) doguv2.DoguRestartInterface {
 	return doguClientset.DoguV2().DoguRestarts(config.Namespace)
 }

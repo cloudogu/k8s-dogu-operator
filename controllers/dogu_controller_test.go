@@ -43,7 +43,7 @@ func TestNewDoguReconciler(t *testing.T) {
 		managerMock.EXPECT().GetRESTMapper().Return(nil)
 
 		// when
-		reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
+		reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
 
 		// then
 		assert.NoError(t, err)
@@ -63,7 +63,7 @@ func TestNewDoguReconciler(t *testing.T) {
 		}()
 
 		// when
-		_, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, nil, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
+		_, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, nil, nil, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
 
 		// then
 		require.Error(t, err)
@@ -76,7 +76,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 		doguChangeHandlerFn func(t *testing.T) DoguUsecase
 		doguDeleteHandlerFn func(t *testing.T) DoguUsecase
 		doguInterfaceFn     func(t *testing.T) doguInterface
-		requeueHandlerFn    func(t *testing.T) RequeueHandlerV2
+		requeueHandlerV2Fn  func(t *testing.T) RequeueHandlerV2
+		requeueHandlerV3Fn  func(t *testing.T) RequeueHandlerV3
 		eventRecorderFn     func(t *testing.T) eventRecorder
 	}
 	tests := []struct {
@@ -106,11 +107,12 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				eventRecorderFn: func(t *testing.T) eventRecorder {
 					return newMockEventRecorder(t)
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandlerV2 {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, &v2.Dogu{}, assert.AnError, time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
 					return mck
 				},
+				requeueHandlerV3Fn: func(t *testing.T) RequeueHandlerV3 { return NewMockRequeueHandlerV3(t) },
 			},
 			req:     controllerruntime.Request{},
 			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
@@ -141,7 +143,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				eventRecorderFn: func(t *testing.T) eventRecorder {
 					return newMockEventRecorder(t)
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandlerV2 { return NewMockRequeueHandler(t) },
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 { return NewMockRequeueHandlerV2(t) },
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}},
 			want:    controllerruntime.Result{},
@@ -172,8 +174,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				eventRecorderFn: func(t *testing.T) eventRecorder {
 					return newMockEventRecorder(t)
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandlerV2 {
-					return NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					return NewMockRequeueHandlerV2(t)
 				},
 			},
 			req:     controllerruntime.Request{},
@@ -213,8 +215,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
 					return mck
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandlerV2 {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
 					return mck
 				},
@@ -256,8 +258,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
 					return mck
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandlerV2 {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
 					return mck
 				},
@@ -299,8 +301,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
 					return mck
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandlerV2 {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
 					return mck
 				},
@@ -342,8 +344,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
 					return mck
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandlerV2 {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
 					return mck
 				},
@@ -360,7 +362,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				doguChangeHandler: tt.fields.doguChangeHandlerFn(t),
 				doguDeleteHandler: tt.fields.doguDeleteHandlerFn(t),
 				doguInterface:     tt.fields.doguInterfaceFn(t),
-				requeueHandler:    tt.fields.requeueHandlerFn(t),
+				requeueHandlerV2:  tt.fields.requeueHandlerV2Fn(t),
+				requeueHandlerV3:  tt.fields.requeueHandlerV3Fn(t),
 				eventRecorder:     tt.fields.eventRecorderFn(t),
 			}
 			got, err := r.Reconcile(testCtx, tt.req)

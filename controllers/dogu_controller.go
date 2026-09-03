@@ -164,8 +164,13 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	errs := errors.Join(getDoguResourceErr, err)
 
 	if !doguResource.IsV2() {
-		// TODO how to convert v2 dogu to v3 dogu?
 		v3Dogu := &v3beta1.Dogu{}
+		err := doguResource.ConvertTo(v3Dogu)
+		if err != nil {
+			log.FromContext(ctx).Error(err, "failed to convert v2 dogu to v3 dogu", "dogu", doguResource.Spec.Name)
+			// do not reconcile, end here and have your admin look into the problem
+			return ctrl.Result{}, nil
+		}
 		return r.requeueHandlerV3.Handle(ctx, v3Dogu, errs, requeueAfter)
 	}
 

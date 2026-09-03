@@ -2,6 +2,7 @@ package main
 
 import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
 	"go.uber.org/fx"
 
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
@@ -96,11 +97,13 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewWarpMenuEntryClientSet, fx.As(new(warpClientV1.ApiV1Interface))),
 			fx.Annotate(initfx.NewWarpMenuEntryInterface, fx.As(new(warpClientV1.WarpMenuEntryInterface))),
 			fx.Annotate(health.NewShutdownHandler, fx.As(new(health.HealthShutdownHandler))),
-
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
+
 			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder))),
 			fx.Annotate(controllers.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandlerV2))),
+
 			fx.Annotate(controllersv3.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandlerV3))),
+			fx.Annotate(initfx.NewDoguInterface, fx.As(new(v3beta1.DoguInterface))),
 
 			// our own dependencies
 			fx.Annotate(health.NewAvailabilityChecker, fx.As(new(health.DeploymentAvailabilityChecker))),
