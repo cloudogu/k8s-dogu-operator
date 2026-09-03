@@ -30,6 +30,6 @@ func NewDoguRequeueHandler(doguInterface v3beta1client.DoguInterface, recorder r
 }
 
 // Handle acts on changes of the provided dogu v3 resource.
-func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *v3beta1.Dogu, err error, reqTime time.Duration) (result ctrl.Result, requeueErr error) {
+func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *v3beta1.Dogu) (result ctrl.Result, requeueErr error) {
 	panic("implement me")
 }

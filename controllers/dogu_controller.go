@@ -127,11 +127,14 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return r.requeueHandlerV2.Handle(ctx, doguResource, err, 0)
 	}
 
-	if !doguResource.IsV2() {
-		log.FromContext(ctx).Error(fmt.Errorf("dogu api version %q is not v2", req.NamespacedName), "the operator currently only supports v2 dogus.")
-		return ctrl.Result{}, nil
+	if doguResource.IsV2() {
+		return r.handleDoguV2(ctx, req, doguResource, err)
 	}
 
+	return r.handleDoguV3(ctx, doguResource)
+}
+
+func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, doguResource *doguv2.Dogu, err error) (ctrl.Result, error) {
 	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 
 	var requeueAfter time.Duration
@@ -162,19 +165,18 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	errs := errors.Join(getDoguResourceErr, err)
-
-	if !doguResource.IsV2() {
-		v3Dogu := &v3beta1.Dogu{}
-		err := doguResource.ConvertTo(v3Dogu)
-		if err != nil {
-			log.FromContext(ctx).Error(err, "failed to convert v2 dogu to v3 dogu", "dogu", doguResource.Spec.Name)
-			// do not reconcile, end here and have your admin look into the problem
-			return ctrl.Result{}, nil
-		}
-		return r.requeueHandlerV3.Handle(ctx, v3Dogu, errs, requeueAfter)
-	}
-
 	return r.requeueHandlerV2.Handle(ctx, doguResource, errs, requeueAfter)
+}
+
+func (r *DoguReconciler) handleDoguV3(ctx context.Context, doguResource *doguv2.Dogu) (ctrl.Result, error) {
+	v3Dogu := &v3beta1.Dogu{}
+	err := doguResource.ConvertTo(v3Dogu)
+	if err != nil {
+		log.FromContext(ctx).Error(err, "failed to convert v2 dogu to v3 dogu", "dogu", doguResource.Spec.Name)
+		// do not reconcile, end here and have your admin look into the problem
+		return ctrl.Result{}, nil
+	}
+	return r.requeueHandlerV3.Handle(ctx, v3Dogu)
 }
 
 // Helper function to simplify mocking for SetupWebhookWithManager

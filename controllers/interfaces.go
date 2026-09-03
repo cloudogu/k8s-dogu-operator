@@ -64,7 +64,7 @@ type RequeueHandlerV2 interface {
 // RequeueHandlerV3 abstracts the process to decide whether a requeue process should be done based on received errors.
 type RequeueHandlerV3 interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
-	Handle(ctx context.Context, doguResource *v3beta1.Dogu, err error, reqTime time.Duration) (result ctrl.Result, requeueErr error)
+	Handle(ctx context.Context, doguResource *v3beta1.Dogu) (result ctrl.Result, requeueErr error)
 }
 
 type DoguInstallOrChangeUseCase interface {
