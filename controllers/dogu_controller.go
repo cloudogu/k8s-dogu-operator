@@ -19,6 +19,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -131,7 +132,7 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return r.handleDoguV2(ctx, req, doguResource, err)
 	}
 
-	return r.handleDoguV3(ctx, doguResource)
+	return r.handleDoguV3(ctx, doguResource, req.NamespacedName)
 }
 
 func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, doguResource *doguv2.Dogu, err error) (ctrl.Result, error) {
@@ -168,7 +169,7 @@ func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, dog
 	return r.requeueHandlerV2.Handle(ctx, doguResource, errs, requeueAfter)
 }
 
-func (r *DoguReconciler) handleDoguV3(ctx context.Context, doguResource *doguv2.Dogu) (ctrl.Result, error) {
+func (r *DoguReconciler) handleDoguV3(ctx context.Context, doguResource *doguv2.Dogu, namespacedName types.NamespacedName) (ctrl.Result, error) {
 	v3Dogu := &v3beta1.Dogu{}
 	err := doguResource.ConvertTo(v3Dogu)
 	if err != nil {
@@ -176,7 +177,7 @@ func (r *DoguReconciler) handleDoguV3(ctx context.Context, doguResource *doguv2.
 		// do not reconcile, end here and have your admin look into the problem
 		return ctrl.Result{}, nil
 	}
-	return r.requeueHandlerV3.Handle(ctx, v3Dogu)
+	return r.requeueHandlerV3.Handle(ctx, v3Dogu, namespacedName)
 }
 
 // Helper function to simplify mocking for SetupWebhookWithManager

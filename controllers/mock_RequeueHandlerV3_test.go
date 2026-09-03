@@ -8,6 +8,8 @@ import (
 	mock "github.com/stretchr/testify/mock"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
+	types "k8s.io/apimachinery/pkg/types"
+
 	v3beta1 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 )
 
@@ -24,9 +26,9 @@ func (_m *MockRequeueHandlerV3) EXPECT() *MockRequeueHandlerV3_Expecter {
 	return &MockRequeueHandlerV3_Expecter{mock: &_m.Mock}
 }
 
-// Handle provides a mock function with given fields: ctx, doguResource
-func (_m *MockRequeueHandlerV3) Handle(ctx context.Context, doguResource *v3beta1.Dogu) (controllerruntime.Result, error) {
-	ret := _m.Called(ctx, doguResource)
+// Handle provides a mock function with given fields: ctx, doguResource, name
+func (_m *MockRequeueHandlerV3) Handle(ctx context.Context, doguResource *v3beta1.Dogu, name types.NamespacedName) (controllerruntime.Result, error) {
+	ret := _m.Called(ctx, doguResource, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Handle")
@@ -34,17 +36,17 @@ func (_m *MockRequeueHandlerV3) Handle(ctx context.Context, doguResource *v3beta
 
 	var r0 controllerruntime.Result
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu) (controllerruntime.Result, error)); ok {
-		return rf(ctx, doguResource)
+	if rf, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, types.NamespacedName) (controllerruntime.Result, error)); ok {
+		return rf(ctx, doguResource, name)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu) controllerruntime.Result); ok {
-		r0 = rf(ctx, doguResource)
+	if rf, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, types.NamespacedName) controllerruntime.Result); ok {
+		r0 = rf(ctx, doguResource, name)
 	} else {
 		r0 = ret.Get(0).(controllerruntime.Result)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *v3beta1.Dogu) error); ok {
-		r1 = rf(ctx, doguResource)
+	if rf, ok := ret.Get(1).(func(context.Context, *v3beta1.Dogu, types.NamespacedName) error); ok {
+		r1 = rf(ctx, doguResource, name)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -60,13 +62,14 @@ type MockRequeueHandlerV3_Handle_Call struct {
 // Handle is a helper method to define mock.On call
 //   - ctx context.Context
 //   - doguResource *v3beta1.Dogu
-func (_e *MockRequeueHandlerV3_Expecter) Handle(ctx interface{}, doguResource interface{}) *MockRequeueHandlerV3_Handle_Call {
-	return &MockRequeueHandlerV3_Handle_Call{Call: _e.mock.On("Handle", ctx, doguResource)}
+//   - name types.NamespacedName
+func (_e *MockRequeueHandlerV3_Expecter) Handle(ctx interface{}, doguResource interface{}, name interface{}) *MockRequeueHandlerV3_Handle_Call {
+	return &MockRequeueHandlerV3_Handle_Call{Call: _e.mock.On("Handle", ctx, doguResource, name)}
 }
 
-func (_c *MockRequeueHandlerV3_Handle_Call) Run(run func(ctx context.Context, doguResource *v3beta1.Dogu)) *MockRequeueHandlerV3_Handle_Call {
+func (_c *MockRequeueHandlerV3_Handle_Call) Run(run func(ctx context.Context, doguResource *v3beta1.Dogu, name types.NamespacedName)) *MockRequeueHandlerV3_Handle_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v3beta1.Dogu))
+		run(args[0].(context.Context), args[1].(*v3beta1.Dogu), args[2].(types.NamespacedName))
 	})
 	return _c
 }
@@ -76,7 +79,7 @@ func (_c *MockRequeueHandlerV3_Handle_Call) Return(result controllerruntime.Resu
 	return _c
 }
 
-func (_c *MockRequeueHandlerV3_Handle_Call) RunAndReturn(run func(context.Context, *v3beta1.Dogu) (controllerruntime.Result, error)) *MockRequeueHandlerV3_Handle_Call {
+func (_c *MockRequeueHandlerV3_Handle_Call) RunAndReturn(run func(context.Context, *v3beta1.Dogu, types.NamespacedName) (controllerruntime.Result, error)) *MockRequeueHandlerV3_Handle_Call {
 	_c.Call.Return(run)
 	return _c
 }
