@@ -40,6 +40,10 @@ func (s *StartupHandler) Start(ctx context.Context) error {
 		return err
 	}
 	for _, dogu := range list.Items {
+		// Skip Non-V2-Dogus for now
+		if !dogu.IsV2() {
+			continue
+		}
 		s.doguEvents <- event.TypedGenericEvent[*v2.Dogu]{Object: &dogu}
 	}
 	return nil

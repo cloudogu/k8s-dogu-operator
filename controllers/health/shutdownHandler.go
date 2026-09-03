@@ -33,6 +33,11 @@ func (s *ShutdownHandler) Handle(ctx context.Context) error {
 
 	var errs []error
 	for _, dogu := range dogus.Items {
+		// Skip Non-V2-Dogus for now
+		if !dogu.IsV2() {
+			continue
+		}
+
 		_, updateErr := s.doguInterface.UpdateStatusWithRetry(ctx, &dogu, func(status v2.DoguStatus) v2.DoguStatus {
 			status.Health = v2.UnknownHealthStatus
 			reason := "StoppingOperator"

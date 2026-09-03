@@ -54,8 +54,11 @@ func TestStartupHandler_Start(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "ldap"},
 			Status:     v2.DoguStatus{},
 		}
+		doguToIgnore := &v2.Dogu{
+			ObjectMeta: metav1.ObjectMeta{Name: "ignore", Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"}},
+		}
 
-		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu}}
+		doguList := &v2.DoguList{Items: []v2.Dogu{*casDogu, *ldapDogu, *doguToIgnore}}
 		doguInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(doguList, nil)
 
 		doguEvents := make(chan event.TypedGenericEvent[*v2.Dogu])

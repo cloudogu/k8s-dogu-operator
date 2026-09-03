@@ -45,6 +45,10 @@ func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, _ ctrl.Request) 
 	}
 
 	for _, dogu := range doguList.Items {
+		// Skip Non-V2-Dogus for now
+		if !dogu.IsV2() {
+			continue
+		}
 		r.doguEvents <- event.TypedGenericEvent[*v2.Dogu]{Object: &dogu}
 	}
 	return ctrl.Result{}, nil

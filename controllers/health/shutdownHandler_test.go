@@ -79,9 +79,13 @@ func TestShutdownHandler_Handle(t *testing.T) {
 				casDogu := &v2.Dogu{
 					ObjectMeta: metav1.ObjectMeta{Name: "cas"},
 				}
+				v3DoguToIgnore := &v2.Dogu{
+					ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"}},
+				}
 				mck.EXPECT().List(testCtx, metav1.ListOptions{}).Return(&v2.DoguList{Items: []v2.Dogu{
 					*ldapDogu,
 					*casDogu,
+					*v3DoguToIgnore,
 				}}, nil)
 				runAndReturnFn := func(ctx context.Context, dogu *v2.Dogu, f func(v2.DoguStatus) v2.DoguStatus, options metav1.UpdateOptions) (*v2.Dogu, error) {
 					dogu.Status = f(dogu.Status)
