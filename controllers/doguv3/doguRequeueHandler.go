@@ -2,6 +2,7 @@ package doguv3
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
@@ -31,5 +32,5 @@ func NewDoguRequeueHandler(doguInterface v3beta1client.DoguInterface, recorder r
 
 // Handle acts on changes of the provided dogu v3 resource.
 func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *v3beta1.Dogu) (result ctrl.Result, requeueErr error) {
-	panic("implement me")
+	return ctrl.Result{}, errors.New("not implemented")
 }

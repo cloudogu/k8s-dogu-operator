@@ -8,6 +8,7 @@ import (
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -119,14 +120,15 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
-			name: "should return and not requeue on incompatible dogu api version",
+			name: "should reconcile new dogu api version v3",
 			fields: fields{
 				clientFn: func(t *testing.T) client.Client {
 					mck := NewMockK8sClient(t)
 					dogu := &v2.Dogu{}
 					mck.EXPECT().Get(testCtx, types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}, dogu).Return(nil).Run(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) {
 						*obj.(*v2.Dogu) = v2.Dogu{
-							ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3beta1"}},
+							ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"}},
+							Spec:       v2.DoguSpec{Name: "official/" + testCasDoguName},
 						}
 					})
 					return mck
@@ -144,6 +146,19 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					return newMockEventRecorder(t)
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 { return NewMockRequeueHandlerV2(t) },
+				requeueHandlerV3Fn: func(t *testing.T) RequeueHandlerV3 {
+					v3HandlerMock := NewMockRequeueHandlerV3(t)
+					v3Dogu := v3beta1.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace},
+						Spec: v3beta1.DoguSpec{
+							DoguApiVersion: "v3",
+							Name:           testCasDoguName,
+							DoguNamespace:  "official",
+						},
+					}
+					v3HandlerMock.EXPECT().Handle(testCtx, v3Dogu).Return(controllerruntime.Result{}, nil)
+					return v3HandlerMock
+				},
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}},
 			want:    controllerruntime.Result{},
