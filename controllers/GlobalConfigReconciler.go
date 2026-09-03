@@ -3,8 +3,8 @@ package controllers
 import (
 	"context"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -22,7 +22,7 @@ type GlobalConfigReconciler struct {
 }
 
 func NewGlobalConfigReconciler(
-	doguInterface doguClient.DoguInterface,
+	doguInterface doguv2.DoguInterface,
 	doguEvents chan<- event.TypedGenericEvent[*v2.Dogu],
 	manager manager.Manager,
 ) (*GlobalConfigReconciler, error) {
@@ -45,6 +45,10 @@ func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, _ ctrl.Request) 
 	}
 
 	for _, dogu := range doguList.Items {
+		// Skip Non-V2-Dogus for now
+		if !dogu.IsV2() {
+			continue
+		}
 		r.doguEvents <- event.TypedGenericEvent[*v2.Dogu]{Object: &dogu}
 	}
 	return ctrl.Result{}, nil

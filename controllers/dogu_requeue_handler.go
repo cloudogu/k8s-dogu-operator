@@ -5,13 +5,12 @@ import (
 	"reflect"
 	"time"
 
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -27,12 +26,12 @@ const (
 type doguRequeueHandler struct {
 	namespace     string
 	recorder      record.EventRecorder
-	doguInterface doguClient.DoguInterface
+	doguInterface doguClientV2.DoguInterface
 	requeueTime   time.Duration
 }
 
 // NewDoguRequeueHandler creates a new dogu requeue handler.
-func NewDoguRequeueHandler(doguInterface doguClient.DoguInterface, recorder record.EventRecorder, operatorConfig *config.OperatorConfig) *doguRequeueHandler {
+func NewDoguRequeueHandler(doguInterface doguClientV2.DoguInterface, recorder record.EventRecorder, operatorConfig *config.OperatorConfig) *doguRequeueHandler {
 	return &doguRequeueHandler{
 		doguInterface: doguInterface,
 		namespace:     operatorConfig.Namespace,

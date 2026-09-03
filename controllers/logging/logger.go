@@ -26,43 +26,43 @@ type libraryLogger struct {
 	name   string
 }
 
-func (ll *libraryLogger) log(level int, args ...interface{}) {
+func (ll *libraryLogger) log(level int, args ...any) {
 	ll.logger.Info(level, fmt.Sprintf("[%s] %s", ll.name, fmt.Sprint(args...)))
 }
 
-func (ll *libraryLogger) logf(level int, format string, args ...interface{}) {
+func (ll *libraryLogger) logf(level int, format string, args ...any) {
 	ll.logger.Info(level, fmt.Sprintf("[%s] %s", ll.name, fmt.Sprintf(format, args...)))
 }
 
-func (ll *libraryLogger) Debug(args ...interface{}) {
+func (ll *libraryLogger) Debug(args ...any) {
 	ll.log(debugLevel, args...)
 }
 
-func (ll *libraryLogger) Info(args ...interface{}) {
+func (ll *libraryLogger) Info(args ...any) {
 	ll.log(infoLevel, args...)
 }
 
-func (ll *libraryLogger) Warning(args ...interface{}) {
+func (ll *libraryLogger) Warning(args ...any) {
 	ll.log(warningLevel, args...)
 }
 
-func (ll *libraryLogger) Error(args ...interface{}) {
+func (ll *libraryLogger) Error(args ...any) {
 	ll.log(errorLevel, args...)
 }
 
-func (ll *libraryLogger) Debugf(format string, args ...interface{}) {
+func (ll *libraryLogger) Debugf(format string, args ...any) {
 	ll.logf(debugLevel, format, args...)
 }
 
-func (ll *libraryLogger) Infof(format string, args ...interface{}) {
+func (ll *libraryLogger) Infof(format string, args ...any) {
 	ll.logf(infoLevel, format, args...)
 }
 
-func (ll *libraryLogger) Warningf(format string, args ...interface{}) {
+func (ll *libraryLogger) Warningf(format string, args ...any) {
 	ll.logf(warningLevel, format, args...)
 }
 
-func (ll *libraryLogger) Errorf(format string, args ...interface{}) {
+func (ll *libraryLogger) Errorf(format string, args ...any) {
 	ll.logf(errorLevel, format, args...)
 }
 

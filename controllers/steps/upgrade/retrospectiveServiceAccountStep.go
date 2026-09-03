@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +29,7 @@ type RetroactiveServiceAccountStep struct {
 
 func NewRetroactiveServiceAccountStep(
 	doguEvents chan<- event.TypedGenericEvent[*doguv2.Dogu],
-	doguClient doguClient.DoguInterface,
+	doguClient doguClientV2.DoguInterface,
 	localDoguFetcher cesregistry.LocalDoguFetcher,
 ) *RetroactiveServiceAccountStep {
 	return &RetroactiveServiceAccountStep{
@@ -47,6 +47,11 @@ func (r *RetroactiveServiceAccountStep) Run(ctx context.Context, resource *doguv
 
 	var errs []error
 	for _, dogu := range doguList.Items {
+		// Non-v2 dogus are skipped by the reconciler, so they never get a dogu descriptor config map.
+		// Fetching their descriptor would fail forever and block the reconcile of this dogu.
+		if !dogu.IsV2() {
+			continue
+		}
 		doguDescriptor, fetchErr := r.localDoguFetcher.FetchForResource(ctx, &dogu)
 		if fetchErr != nil {
 			errs = append(errs, fetchErr)

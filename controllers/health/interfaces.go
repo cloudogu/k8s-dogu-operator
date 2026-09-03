@@ -4,8 +4,9 @@ import (
 	"context"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,8 +40,8 @@ type localDoguFetcher interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
-type ecosystemInterface interface {
-	doguClient.EcoSystemV2Interface
+type doguClientset interface {
+	doguClient.Interface
 }
 
 //nolint:unused
@@ -51,14 +52,20 @@ type ctrlManager interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
+type doguV2Interface interface {
+	doguv2.DoguV2Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
 type doguInterface interface {
-	doguClient.DoguInterface
+	doguv2.DoguInterface
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
-	doguClient.DoguRestartInterface
+	doguv2.DoguRestartInterface
 }
 
 //nolint:unused

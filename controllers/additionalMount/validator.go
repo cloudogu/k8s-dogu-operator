@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/retry-lib/retry"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

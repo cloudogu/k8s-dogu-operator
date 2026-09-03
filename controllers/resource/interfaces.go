@@ -6,8 +6,8 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-apply-lib/apply"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	image "github.com/google/go-containerregistry/pkg/v1"
 	apps "k8s.io/api/apps/v1"
@@ -104,5 +104,5 @@ type k8sClient interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguClientInterface interface {
-	doguClient.DoguInterface
+	doguClientV2.DoguInterface
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -41,7 +41,7 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromExecPod(ctx context.Context, 
 		return resultDocs, nil
 	}
 
-	for _, file := range strings.Split(fileList, " ") {
+	for file := range strings.SplitSeq(fileList, " ") {
 		trimmedFile := doguCustomK8sResourceDirectory + strings.TrimSpace(file)
 		logger.Info("Reading k8s resource " + trimmedFile)
 

@@ -10,7 +10,7 @@ import (
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	k8sErr "k8s.io/apimachinery/pkg/api/errors"

@@ -8,8 +8,8 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	doguDepencency "github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
@@ -39,9 +39,9 @@ func (dhe *DoguHealthError) Error() string {
 }
 
 // NewDoguChecker creates a checker for dogu health.
-func NewDoguChecker(operatorConfig *config.OperatorConfig, ecosystemClient doguClient.EcoSystemV2Interface, localFetcher cesregistry.LocalDoguFetcher) DoguHealthChecker {
+func NewDoguChecker(operatorConfig *config.OperatorConfig, doguClientset doguClient.Interface, localFetcher cesregistry.LocalDoguFetcher) DoguHealthChecker {
 	return &doguChecker{
-		ecosystemClient:               ecosystemClient,
+		doguClientset:                 doguClientset,
 		doguLocalRegistry:             localFetcher,
 		authRegistrationEnabled:       operatorConfig.AuthRegistrationEnabled,
 		disablePostfixDependencyCheck: operatorConfig.DisablePostfixDependencyCheck,
@@ -49,7 +49,7 @@ func NewDoguChecker(operatorConfig *config.OperatorConfig, ecosystemClient doguC
 }
 
 type doguChecker struct {
-	ecosystemClient               doguClient.EcoSystemV2Interface
+	doguClientset                 doguClient.Interface
 	doguLocalRegistry             localDoguFetcher
 	authRegistrationEnabled       bool
 	disablePostfixDependencyCheck bool
@@ -61,7 +61,7 @@ type doguChecker struct {
 //	var doguHealthError *health.DoguHealthError
 //	if errors.As(err, &doguHealthError) { ... }
 func (dc *doguChecker) CheckByName(ctx context.Context, doguName types.NamespacedName) error {
-	doguResource, err := dc.ecosystemClient.
+	doguResource, err := dc.doguClientset.DoguV2().
 		Dogus(doguName.Namespace).
 		Get(ctx, doguName.Name, metav1api.GetOptions{})
 	if err != nil {

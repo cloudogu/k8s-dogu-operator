@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 )
 

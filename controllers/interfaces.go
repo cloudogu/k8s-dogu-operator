@@ -4,14 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 // basically a reimplementation of manager.Manager, but the mocks generate illegal files out of that interface
@@ -31,7 +32,7 @@ type K8sClient interface {
 }
 
 type doguInterface interface {
-	doguClient.DoguInterface
+	doguv2.DoguInterface
 }
 
 type eventRecorder interface {
@@ -46,7 +47,7 @@ type GenericReconciler interface {
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
-	doguClient.DoguRestartInterface
+	doguv2.DoguRestartInterface
 }
 
 type DoguUsecase interface {
@@ -64,4 +65,10 @@ type DoguInstallOrChangeUseCase interface {
 }
 type DoguDeleteUseCase interface {
 	DoguUsecase
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type WebhookServer interface {
+	webhook.Server
 }

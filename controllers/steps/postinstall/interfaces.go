@@ -4,8 +4,9 @@ import (
 	"context"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -21,7 +22,7 @@ import (
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguInterface interface {
-	doguClient.DoguInterface
+	doguClientV2.DoguInterface
 }
 
 // localDoguFetcher includes functionality to search the local dogu registry for a dogu.
@@ -72,8 +73,8 @@ type clientSet interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
-type ecosystemInterface interface {
-	doguClient.EcoSystemV2Interface
+type doguClientset interface {
+	doguClient.Interface
 }
 
 //nolint:unused

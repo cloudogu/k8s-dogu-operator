@@ -5,8 +5,8 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	"github.com/cloudogu/k8s-registry-lib/config"
@@ -55,7 +55,7 @@ type k8sClient interface {
 }
 
 type doguInterface interface {
-	doguClient.DoguInterface
+	doguClientV2.DoguInterface
 }
 
 type doguHealthStatusUpdater interface {

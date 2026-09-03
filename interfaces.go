@@ -3,7 +3,8 @@ package main
 import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
@@ -75,20 +76,20 @@ type restInterface interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
-type ecoSystemInterface interface {
-	doguClient.EcoSystemV2Interface
+type doguClientsetInterface interface {
+	doguClient.Interface
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
-type doguInterface interface {
-	doguClient.DoguInterface
+type doguV2Interface interface {
+	doguv2.DoguV2Interface
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
-	doguClient.DoguRestartInterface
+	doguv2.DoguRestartInterface
 }
 
 // mocks for integration tests

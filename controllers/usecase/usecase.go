@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"

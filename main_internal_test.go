@@ -5,7 +5,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
@@ -54,9 +54,11 @@ func Test_options(t *testing.T) {
 
 	doguInterfaceMock := newMockDoguInterface(t)
 	doguRestartInterfaceMock := newMockDoguRestartInterface(t)
-	ecoSystemInterfaceMock := newMockEcoSystemInterface(t)
-	ecoSystemInterfaceMock.EXPECT().Dogus(testNamespace).Return(doguInterfaceMock)
-	ecoSystemInterfaceMock.EXPECT().DoguRestarts(testNamespace).Return(doguRestartInterfaceMock)
+	doguClientsetInterfaceMock := newMockDoguClientsetInterface(t)
+	doguClientV2InterfaceMock := newMockDoguV2Interface(t)
+	doguClientsetInterfaceMock.EXPECT().DoguV2().Return(doguClientV2InterfaceMock)
+	doguClientV2InterfaceMock.EXPECT().Dogus(testNamespace).Return(doguInterfaceMock)
+	doguClientV2InterfaceMock.EXPECT().DoguRestarts(testNamespace).Return(doguRestartInterfaceMock)
 
 	authRegMock := newMockAuthRegistrationInterface(t)
 	authRegClientsetMock := newMockAuthRegistrationClient(t)
@@ -73,8 +75,8 @@ func Test_options(t *testing.T) {
 	initfx.NewOperatorConfig = newTestOperatorConfig(t)
 	oldKubernetesClientSet := initfx.NewKubernetesClientSet
 	initfx.NewKubernetesClientSet = newTestKubernetesInterfaceFn(kubernetesInterfaceMock)
-	oldEcoSystemClientSet := initfx.NewEcoSystemClientSet
-	initfx.NewEcoSystemClientSet = newTestEcoSystemInterfaceFn(ecoSystemInterfaceMock)
+	oldEcoSystemClientSet := initfx.NewDoguClientset
+	initfx.NewDoguClientset = newTestEcoSystemInterfaceFn(doguClientsetInterfaceMock)
 	oldAuthRegistrationClientSet := initfx.NewAuthRegistrationClientSet
 	initfx.NewAuthRegistrationClientSet = newTestAuthRegistrationClientSetFn(authRegClientsetMock)
 	oldExpositionClientSet := initfx.NewExpositionClientSet
@@ -91,7 +93,7 @@ func Test_options(t *testing.T) {
 	t.Cleanup(func() {
 		initfx.NewOperatorConfig = oldOperatorConfigFn
 		initfx.NewKubernetesClientSet = oldKubernetesClientSet
-		initfx.NewEcoSystemClientSet = oldEcoSystemClientSet
+		initfx.NewDoguClientset = oldEcoSystemClientSet
 		initfx.NewAuthRegistrationClientSet = oldAuthRegistrationClientSet
 		initfx.NewExpositionClientSet = oldExpositionClientSet
 		initfx.NewWarpMenuEntryClientSet = oldWarpMenuEntryClientSet
@@ -115,9 +117,9 @@ func newTestKubernetesInterfaceFn(p kubernetes.Interface) func(c *rest.Config) (
 	}
 }
 
-func newTestEcoSystemInterfaceFn(v2Interface doguClient.EcoSystemV2Interface) func(c *rest.Config) (doguClient.EcoSystemV2Interface, error) {
-	return func(c *rest.Config) (doguClient.EcoSystemV2Interface, error) {
-		return v2Interface, nil
+func newTestEcoSystemInterfaceFn(doguInterface doguClient.Interface) func(c *rest.Config) (doguClient.Interface, error) {
+	return func(c *rest.Config) (doguClient.Interface, error) {
+		return doguInterface, nil
 	}
 }
 

@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strconv"
 
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -17,7 +17,7 @@ type DoguRestartGarbageCollector struct {
 	doguRestartInterface doguRestartInterface
 }
 
-func NewDoguRestartGarbageCollector(doguRestartInterface doguClient.DoguRestartInterface) *DoguRestartGarbageCollector {
+func NewDoguRestartGarbageCollector(doguRestartInterface doguv2.DoguRestartInterface) *DoguRestartGarbageCollector {
 	return &DoguRestartGarbageCollector{doguRestartInterface: doguRestartInterface}
 }
 
@@ -100,7 +100,7 @@ func (r *DoguRestartGarbageCollector) truncateDoguRestartHistory(ctx context.Con
 
 	var errs []error
 	// We can not delete as collection by .name because the field selector does not support the || operator.
-	for i := 0; i < amountOfItemsToDelete; i++ {
+	for i := range amountOfItemsToDelete {
 		errs = append(errs, r.doguRestartInterface.Delete(ctx, items[i].Name, metav1.DeleteOptions{}))
 	}
 

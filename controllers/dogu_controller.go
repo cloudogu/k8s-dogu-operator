@@ -7,8 +7,9 @@ import (
 	"time"
 
 	authRegApiV1 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
@@ -85,7 +86,7 @@ func NewDoguReconciler(
 	k8sClient client.Client,
 	doguChangeHandler DoguInstallOrChangeUseCase,
 	doguDeleteHandler DoguDeleteUseCase,
-	doguInterface doguClient.DoguInterface,
+	doguInterface doguClientV2.DoguInterface,
 	requeueHandler RequeueHandler,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	recorder record.EventRecorder,
@@ -122,6 +123,12 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 		return r.requeueHandler.Handle(ctx, doguResource, err, 0)
 	}
+
+	if !doguResource.IsV2() {
+		log.FromContext(ctx).Error(fmt.Errorf("dogu api version %q is not v2", req.NamespacedName), "the operator currently only supports v2 dogus.")
+		return ctrl.Result{}, nil
+	}
+
 	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 
 	var requeueAfter time.Duration
@@ -156,12 +163,26 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return r.requeueHandler.Handle(ctx, doguResource, errs, requeueAfter)
 }
 
+// Helper function to simplify mocking for SetupWebhookWithManager
+var webhookRegister = func(mgr ctrlManager) error {
+	err := (&v3beta1.Dogu{}).SetupWebhookWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup dogu webhook with manager: %w", err)
+	}
+	return nil
+}
+
 // setupWithManager sets up the controller with the manager.
 // The dogu controller should be triggered when resources on which a dogu cr has an OwnerReference change.
 // These resource types are listed here with owns.
 // In addition, the dogu reconciler can be triggered via an events channel.
 // This is intended, for example, for the GlobalConfigReconciler to reconcile the dogus again.
 func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
+	// register webhook server for roundtrip conversion (v2, v3beta1)
+	if err := webhookRegister(mgr); err != nil {
+		return err
+	}
+
 	controllerBuilder := ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&coreV1.ConfigMap{}).

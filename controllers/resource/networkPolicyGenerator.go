@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

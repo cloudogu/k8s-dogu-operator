@@ -5,7 +5,8 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
@@ -67,8 +68,8 @@ type clientSet interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
-type ecosystemClient interface {
-	doguClient.EcoSystemV2Interface
+type doguClientset interface {
+	doguClient.Interface
 }
 
 //nolint:unused
@@ -115,14 +116,20 @@ type pvcInterface interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
+type doguV2Interface interface {
+	doguClientV2.DoguV2Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
 type doguInterface interface {
-	doguClient.DoguInterface
+	doguClientV2.DoguInterface
 }
 
 //nolint:unused
 //goland:noinspection GoUnusedType
 type doguRestartInterface interface {
-	doguClient.DoguRestartInterface
+	doguClientV2.DoguRestartInterface
 }
 
 //nolint:unused

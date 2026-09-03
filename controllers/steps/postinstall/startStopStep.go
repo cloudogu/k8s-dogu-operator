@@ -5,8 +5,8 @@ import (
 	"time"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +27,7 @@ type StartStopStep struct {
 	doguInterface       doguInterface
 }
 
-func NewStartStopStep(client client.Client, deploymentInterface v1.DeploymentInterface, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *StartStopStep {
+func NewStartStopStep(client client.Client, deploymentInterface v1.DeploymentInterface, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClientV2.DoguInterface) *StartStopStep {
 	return &StartStopStep{
 		client:              client,
 		deploymentInterface: deploymentInterface,

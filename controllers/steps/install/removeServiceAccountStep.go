@@ -3,8 +3,8 @@ package install
 import (
 	"context"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
@@ -19,7 +19,7 @@ type RemoveServiceAccountStep struct {
 	doguInterface         doguInterface
 }
 
-func NewRemoveServiceAccountStep(creator serviceaccount.ServiceAccountRemover, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClient.DoguInterface) *RemoveServiceAccountStep {
+func NewRemoveServiceAccountStep(creator serviceaccount.ServiceAccountRemover, fetcher cesregistry.LocalDoguFetcher, doguInterface doguClientV2.DoguInterface) *RemoveServiceAccountStep {
 	return &RemoveServiceAccountStep{
 		serviceAccountRemover: creator,
 		localDoguFetcher:      fetcher,

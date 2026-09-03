@@ -3,8 +3,8 @@ package upgrade
 import (
 	"context"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,7 +14,7 @@ type InstalledVersionStep struct {
 	doguInterface doguInterface
 }
 
-func NewInstalledVersionStep(doguInterface doguClient.DoguInterface) *InstalledVersionStep {
+func NewInstalledVersionStep(doguInterface doguClientV2.DoguInterface) *InstalledVersionStep {
 	return &InstalledVersionStep{
 		doguInterface: doguInterface,
 	}

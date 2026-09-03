@@ -3,6 +3,7 @@ package serviceaccess
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -44,9 +45,7 @@ func getServiceVariables(config *imagev1.Config) (map[string]string, error) {
 	}
 
 	labelServiceVariables := getServiceVariablesFromLabels(config.Labels)
-	for serviceVariable, value := range labelServiceVariables {
-		serviceVariables[serviceVariable] = value
-	}
+	maps.Copy(serviceVariables, labelServiceVariables)
 
 	return serviceVariables, nil
 }
@@ -55,8 +54,8 @@ func getServiceVariablesFromLabels(labels map[string]string) map[string]string {
 	serviceVariables := map[string]string{}
 
 	for label, value := range labels {
-		if strings.HasPrefix(label, serviceVarsPrefix) {
-			trimmedVariable := strings.TrimPrefix(label, serviceVarsPrefix)
+		if after, ok := strings.CutPrefix(label, serviceVarsPrefix); ok {
+			trimmedVariable := after
 			serviceVariables[trimmedVariable] = value
 		}
 	}
@@ -190,8 +189,8 @@ func hasWebappTag(serviceVariables map[string]string, tagListName string) bool {
 	tagList, hasTags := serviceVariables[tagListName]
 
 	if hasTags {
-		tags := strings.Split(tagList, ",")
-		for _, t := range tags {
+		tags := strings.SplitSeq(tagList, ",")
+		for t := range tags {
 			if strings.ToLower(t) == serviceTagWebapp {
 				return true
 			}

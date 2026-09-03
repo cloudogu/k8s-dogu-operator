@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	doguClient "github.com/cloudogu/k8s-dogu-lib/v2/client"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -27,8 +27,8 @@ type DoguRestartGarbageCollector interface {
 }
 
 func NewDoguRestartReconciler(
-	doguRestartInterface doguClient.DoguRestartInterface,
-	doguInterface doguClient.DoguInterface,
+	doguRestartInterface doguClientV2.DoguRestartInterface,
+	doguInterface doguClientV2.DoguInterface,
 	recorder record.EventRecorder,
 	gc DoguRestartGarbageCollector,
 	manager manager.Manager,
@@ -104,6 +104,12 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 		}
 		instruction.op = handleGetDoguFailed
 		instruction.err = err
+		return
+	}
+
+	if !dogu.IsV2() {
+		instruction.op = handleGetDoguRestartFailed
+		instruction.err = fmt.Errorf("the referenced dogu in dogurestart %q is not dogu api version v2, the operator currently only supports v2 dogus", req.NamespacedName)
 		return
 	}
 

@@ -10,7 +10,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/cloudogu/cesapp-lib/core"
-	v2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 )
 
 func TestSecurityContextGenerator_Generate(t *testing.T) {
@@ -26,16 +26,16 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			dogu:         &core.Dogu{},
 			doguResource: &v2.Dogu{},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(false),
+				RunAsNonRoot: new(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(false),
-				ReadOnlyRootFilesystem: ptr.To(false),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(false),
+				ReadOnlyRootFilesystem: new(false),
 			},
 		},
 		{
@@ -44,8 +44,8 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			doguResource: &v2.Dogu{
 				Spec: v2.DoguSpec{
 					Security: v2.Security{
-						RunAsNonRoot:           ptr.To(true),
-						ReadOnlyRootFileSystem: ptr.To(true),
+						RunAsNonRoot:           new(true),
+						ReadOnlyRootFileSystem: new(true),
 						SELinuxOptions: &v2.SELinuxOptions{
 							User:  "myUser",
 							Role:  "myRole",
@@ -54,17 +54,17 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 						},
 						SeccompProfile: &v2.SeccompProfile{
 							Type:             v2.SeccompProfileTypeLocalhost,
-							LocalhostProfile: ptr.To("myProfile"),
+							LocalhostProfile: new("myProfile"),
 						},
 						AppArmorProfile: &v2.AppArmorProfile{
 							Type:             v2.AppArmorProfileTypeLocalhost,
-							LocalhostProfile: ptr.To("myProfile"),
+							LocalhostProfile: new("myProfile"),
 						},
 					},
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(true),
+				RunAsNonRoot: new(true),
 				SELinuxOptions: &corev1.SELinuxOptions{
 					User:  "myUser",
 					Role:  "myRole",
@@ -73,11 +73,11 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 				SeccompProfile: &corev1.SeccompProfile{
 					Type:             corev1.SeccompProfileTypeLocalhost,
-					LocalhostProfile: ptr.To("myProfile"),
+					LocalhostProfile: new("myProfile"),
 				},
 				AppArmorProfile: &corev1.AppArmorProfile{
 					Type:             corev1.AppArmorProfileTypeLocalhost,
-					LocalhostProfile: ptr.To("myProfile"),
+					LocalhostProfile: new("myProfile"),
 				},
 			},
 			want2: &corev1.SecurityContext{
@@ -85,9 +85,9 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(true),
-				ReadOnlyRootFilesystem: ptr.To(true),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(true),
+				ReadOnlyRootFilesystem: new(true),
 				SELinuxOptions: &corev1.SELinuxOptions{
 					User:  "myUser",
 					Role:  "myRole",
@@ -96,11 +96,11 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 				SeccompProfile: &corev1.SeccompProfile{
 					Type:             corev1.SeccompProfileTypeLocalhost,
-					LocalhostProfile: ptr.To("myProfile"),
+					LocalhostProfile: new("myProfile"),
 				},
 				AppArmorProfile: &corev1.AppArmorProfile{
 					Type:             corev1.AppArmorProfileTypeLocalhost,
-					LocalhostProfile: ptr.To("myProfile"),
+					LocalhostProfile: new("myProfile"),
 				},
 			},
 		},
@@ -118,16 +118,16 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(false),
+				RunAsNonRoot: new(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"AUDIT_READ", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(false),
-				ReadOnlyRootFilesystem: ptr.To(false),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(false),
+				ReadOnlyRootFilesystem: new(false),
 			},
 		},
 		{
@@ -143,16 +143,16 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(false),
+				RunAsNonRoot: new(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"AUDIT_READ", "CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(false),
-				ReadOnlyRootFilesystem: ptr.To(false),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(false),
+				ReadOnlyRootFilesystem: new(false),
 			},
 		},
 		{
@@ -168,16 +168,16 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(false),
+				RunAsNonRoot: new(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Add:  make([]corev1.Capability, 0),
 					Drop: []corev1.Capability{"ALL"},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(false),
-				ReadOnlyRootFilesystem: ptr.To(false),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(false),
+				ReadOnlyRootFilesystem: new(false),
 			},
 		},
 		{
@@ -193,7 +193,7 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(false),
+				RunAsNonRoot: new(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
@@ -206,9 +206,9 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 						core.SysPTrace, core.SysResource, core.SysTime, core.SysTtyCONFIG, core.WakeAlarm,
 					},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(false),
-				ReadOnlyRootFilesystem: ptr.To(false),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(false),
+				ReadOnlyRootFilesystem: new(false),
 			},
 		},
 		{
@@ -225,7 +225,7 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 				},
 			},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(false),
+				RunAsNonRoot: new(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
@@ -238,9 +238,9 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 						core.SysPTrace, core.SysResource, core.SysTime, core.SysTtyCONFIG, core.WakeAlarm,
 					},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(false),
-				ReadOnlyRootFilesystem: ptr.To(false),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(false),
+				ReadOnlyRootFilesystem: new(false),
 			},
 		},
 		{
@@ -257,8 +257,8 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			},
 			doguResource: &v2.Dogu{},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot:        ptr.To(false),
-				FSGroup:             ptr.To(int64(10000)),
+				RunAsNonRoot:        new(false),
+				FSGroup:             new(int64(10000)),
 				FSGroupChangePolicy: ptr.To(corev1.FSGroupChangeOnRootMismatch),
 			},
 			want2: &corev1.SecurityContext{
@@ -266,9 +266,9 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(false),
-				ReadOnlyRootFilesystem: ptr.To(false),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(false),
+				ReadOnlyRootFilesystem: new(false),
 			},
 		},
 		{
@@ -285,16 +285,16 @@ func TestSecurityContextGenerator_Generate(t *testing.T) {
 			},
 			doguResource: &v2.Dogu{},
 			want1: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(false),
+				RunAsNonRoot: new(false),
 			},
 			want2: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 					Add:  []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "NET_BIND_SERVICE", "SETGID", "SETPCAP", "SETUID"},
 				},
-				Privileged:             ptr.To(false),
-				RunAsNonRoot:           ptr.To(false),
-				ReadOnlyRootFilesystem: ptr.To(false),
+				Privileged:             new(false),
+				RunAsNonRoot:           new(false),
+				ReadOnlyRootFilesystem: new(false),
 			},
 		},
 	}
