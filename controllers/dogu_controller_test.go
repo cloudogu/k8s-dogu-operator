@@ -357,13 +357,17 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var requeueHandlerV3 RequeueHandlerV3
+			if tt.fields.requeueHandlerV3Fn != nil {
+				requeueHandlerV3 = tt.fields.requeueHandlerV3Fn(t)
+			}
 			r := &DoguReconciler{
 				client:            tt.fields.clientFn(t),
 				doguChangeHandler: tt.fields.doguChangeHandlerFn(t),
 				doguDeleteHandler: tt.fields.doguDeleteHandlerFn(t),
 				doguInterface:     tt.fields.doguInterfaceFn(t),
 				requeueHandlerV2:  tt.fields.requeueHandlerV2Fn(t),
-				requeueHandlerV3:  tt.fields.requeueHandlerV3Fn(t),
+				requeueHandlerV3:  requeueHandlerV3,
 				eventRecorder:     tt.fields.eventRecorderFn(t),
 			}
 			got, err := r.Reconcile(testCtx, tt.req)
