@@ -3,6 +3,9 @@ package main
 import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
+	installv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/v3/install"
+	usecasev2 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/v2"
+	usecasev3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/v3"
 	"go.uber.org/fx"
 
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
@@ -38,12 +41,11 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
-	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/v2/deletion"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/v2/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/v2/postinstall"
+	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/v2/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/repository"
@@ -252,28 +254,44 @@ func options() []fx.Option {
 			upgradeSteps.NewUpdateStartedAtStep,
 			upgradeSteps.NewRetroactiveServiceAccountStep,
 
+			// v3 steps
+			// install/update
+			installv3.NewDummyStep,
+
+			// delete
+
 			// use-cases
 			fx.Annotate(
-				usecase.NewDoguDeleteUseCase,
+				usecasev2.NewDoguDeleteUseCase,
 				fx.As(new(controllers.DoguDeleteUseCase)),
 				fx.ResultTags(`name:"doguDeleteUseCase"`),
 			),
 			fx.Annotate(
-				usecase.NewDoguDeleteUseCase,
+				usecasev2.NewDoguDeleteUseCase,
 				fx.As(new(controllers.DoguDeleteUseCase)),
 			),
 			fx.Annotate(
-				usecase.NewDoguInstallOrChangeUseCase,
+				usecasev2.NewDoguInstallOrChangeUseCase,
 				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
 				fx.ResultTags(`name:"doguInstallOrChangeUseCase"`),
 			),
 			fx.Annotate(
-				usecase.NewDoguInstallOrChangeUseCase,
+				usecasev2.NewDoguInstallOrChangeUseCase,
 				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
+			),
+			fx.Annotate(
+				usecasev3.NewDoguDeleteUseCase,
+				fx.As(new(controllers.DoguV3DeleteUseCase)),
+				fx.ResultTags(`name:"doguV3DeleteUseCase"`),
+			),
+			fx.Annotate(
+				usecasev3.NewDoguInstallOrChangeUseCase,
+				fx.As(new(controllers.DoguV3InstallOrChangeUseCase)),
+				fx.ResultTags(`name:"doguV3InstallOrChangeUseCase"`),
 			),
 
 			// reconcilers
-			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, "", "", "", "", "", "", "")),
+			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, `name:"doguV3InstallOrChangeUseCase"`, `name:"doguV3DeleteUseCase"`, "", "", "", "", "", "")),
 			controllers.NewGlobalConfigReconciler,
 			controllers.NewDoguRestartReconciler,
 

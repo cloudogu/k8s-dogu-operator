@@ -19,7 +19,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -61,6 +60,8 @@ type DoguReconciler struct {
 	client                  client.Client
 	doguChangeHandler       DoguInstallOrChangeUseCase
 	doguDeleteHandler       DoguDeleteUseCase
+	doguV3ChangeHandler     DoguV3InstallOrChangeUseCase
+	doguV3DeleteHandler     DoguV3DeleteUseCase
 	doguInterface           doguInterface
 	requeueHandlerV2        RequeueHandlerV2
 	requeueHandlerV3        RequeueHandlerV3
@@ -88,9 +89,10 @@ func NewDoguReconciler(
 	k8sClient client.Client,
 	doguChangeHandler DoguInstallOrChangeUseCase,
 	doguDeleteHandler DoguDeleteUseCase,
+	doguV3ChangeHandler DoguV3InstallOrChangeUseCase,
+	doguV3DeleteHandler DoguV3DeleteUseCase,
 	doguInterface doguClientV2.DoguInterface,
 	requeueHandlerV2 RequeueHandlerV2,
-	requeueHandlerV3 RequeueHandlerV3,
 	externalEvents <-chan event.TypedGenericEvent[*doguv2.Dogu],
 	recorder record.EventRecorder,
 	manager manager.Manager,
@@ -100,9 +102,10 @@ func NewDoguReconciler(
 		client:                  k8sClient,
 		doguChangeHandler:       doguChangeHandler,
 		doguDeleteHandler:       doguDeleteHandler,
+		doguV3ChangeHandler:     doguV3ChangeHandler,
+		doguV3DeleteHandler:     doguV3DeleteHandler,
 		doguInterface:           doguInterface,
 		requeueHandlerV2:        requeueHandlerV2,
-		requeueHandlerV3:        requeueHandlerV3,
 		externalEvents:          externalEvents,
 		eventRecorder:           recorder,
 		authRegistrationEnabled: config.AuthRegistrationEnabled,
@@ -128,11 +131,13 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return r.requeueHandlerV2.Handle(ctx, doguResource, err, 0)
 	}
 
+	// TODO General error handling because we cannot decide if the error belongs to a v2 or v3 dogu.
+
 	if doguResource.IsV2() {
 		return r.handleDoguV2(ctx, req, doguResource, err)
 	}
 
-	return r.handleDoguV3(ctx, doguResource, req.NamespacedName)
+	return r.handleDoguV3(ctx, req, doguResource)
 }
 
 func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, doguResource *doguv2.Dogu, err error) (ctrl.Result, error) {
@@ -169,7 +174,7 @@ func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, dog
 	return r.requeueHandlerV2.Handle(ctx, doguResource, errs, requeueAfter)
 }
 
-func (r *DoguReconciler) handleDoguV3(ctx context.Context, doguResource *doguv2.Dogu, namespacedName types.NamespacedName) (ctrl.Result, error) {
+func (r *DoguReconciler) handleDoguV3(ctx context.Context, _ ctrl.Request, doguResource *doguv2.Dogu) (ctrl.Result, error) {
 	v3Dogu := &v3beta1.Dogu{}
 	err := doguResource.ConvertTo(v3Dogu)
 	if err != nil {
@@ -177,7 +182,22 @@ func (r *DoguReconciler) handleDoguV3(ctx context.Context, doguResource *doguv2.
 		// do not reconcile, end here and have your admin look into the problem
 		return ctrl.Result{}, nil
 	}
-	return r.requeueHandlerV3.Handle(ctx, v3Dogu, namespacedName)
+
+	var _ time.Duration
+	var done bool
+	if v3Dogu.GetDeletionTimestamp().IsZero() {
+		_, done, err = r.doguV3ChangeHandler.HandleUntilApplied(ctx, v3Dogu)
+	} else {
+		_, done, err = r.doguV3DeleteHandler.HandleUntilApplied(ctx, v3Dogu)
+		err = client.IgnoreNotFound(err)
+		if done {
+			return ctrl.Result{}, nil
+		}
+	}
+
+	// TODO Write v3 status conditions and do requeuing
+
+	return ctrl.Result{}, nil
 }
 
 // Helper function to simplify mocking for SetupWebhookWithManager

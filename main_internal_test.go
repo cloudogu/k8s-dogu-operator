@@ -60,11 +60,6 @@ func Test_options(t *testing.T) {
 	doguV2InterfaceMock.EXPECT().Dogus(testNamespace).Return(doguV2ClientMock)
 	doguV2InterfaceMock.EXPECT().DoguRestarts(testNamespace).Return(doguV2RestartMock)
 
-	doguV3InterfaceMock := newMockDoguV3Interface(t)
-	doguClientsetInterfaceMock.EXPECT().DoguV3beta1().Return(doguV3InterfaceMock)
-	doguV3ClientMock := newMockDoguV3Client(t)
-	doguV3InterfaceMock.EXPECT().Dogus(testNamespace).Return(doguV3ClientMock)
-
 	authRegMock := newMockAuthRegistrationInterface(t)
 	authRegClientsetMock := newMockAuthRegistrationClient(t)
 	authRegClientsetMock.EXPECT().AuthRegistrations(testNamespace).Return(authRegMock)

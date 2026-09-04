@@ -55,6 +55,9 @@ type doguRestartInterface interface {
 type DoguUsecase interface {
 	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error)
 }
+type DoguV3Usecase interface {
+	HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, bool, error)
+}
 
 // RequeueHandlerV2 abstracts the process to decide whether a requeue process should be done based on received errors.
 type RequeueHandlerV2 interface {
@@ -73,6 +76,13 @@ type DoguInstallOrChangeUseCase interface {
 }
 type DoguDeleteUseCase interface {
 	DoguUsecase
+}
+
+type DoguV3InstallOrChangeUseCase interface {
+	DoguV3Usecase
+}
+type DoguV3DeleteUseCase interface {
+	DoguV3Usecase
 }
 
 //nolint:unused
