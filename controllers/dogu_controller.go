@@ -150,9 +150,7 @@ func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, dog
 		requeueAfter, cont, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
 	} else {
 		requeueAfter, cont, err = r.doguDeleteHandler.HandleUntilApplied(ctx, doguResource)
-		if err != nil {
-			err = client.IgnoreNotFound(err)
-		}
+		err = client.IgnoreNotFound(err)
 
 		if cont {
 			return ctrl.Result{}, nil
@@ -190,12 +188,11 @@ func (r *DoguReconciler) handleDoguV3(ctx context.Context, _ ctrl.Request, doguR
 	var _ time.Duration
 	var done bool
 	if v3Dogu.GetDeletionTimestamp().IsZero() {
-		_, _, err = r.doguV3ChangeHandler.HandleUntilApplied(ctx, v3Dogu)
+		_, _, _ = r.doguV3ChangeHandler.HandleUntilApplied(ctx, v3Dogu)
 	} else {
 		_, done, err = r.doguV3DeleteHandler.HandleUntilApplied(ctx, v3Dogu)
-		if err != nil {
-			err = client.IgnoreNotFound(err)
-		}
+		_ = client.IgnoreNotFound(err)
+
 		if done {
 			return ctrl.Result{}, nil
 		}
