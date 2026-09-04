@@ -1,4 +1,4 @@
-package v2
+package v3
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/v3/install"
 )
 
+// Usecases v3 and v2 could be refactored with go1.27 generics
+
 type DoguUseCase struct {
 	steps []v3.Step
 }
@@ -18,7 +20,6 @@ func NewDoguDeleteUseCase() *DoguUseCase {
 		steps: []v3.Step{}}
 }
 
-//nolint:funlen
 func NewDoguInstallOrChangeUseCase(dummyStep *install.DummyStep) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []v3.Step{
