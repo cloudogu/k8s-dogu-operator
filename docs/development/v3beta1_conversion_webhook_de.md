@@ -1,8 +1,4 @@
-# Das `v3beta1`-Conversion-Webhook
-
-Dieses Dokument beschreibt die `v3beta1`-API-Version der Dogu-CRD, den Conversion-Webhook, den sie
-unterstützt, die "doguv2-Guards", die die Geschäftslogik des Operators davor schützen, sowie die
-Helm-Ressourcen, die der Webhook benötigt.
+# Der `v3beta1`-Conversion-Webhook
 
 ## Hintergrund: eine zweite ausgelieferte API-Version
 
@@ -11,33 +7,8 @@ ausgeliefert ("served"). `v2` ist die **Storage-Version**
 
 Weil zwei ausgelieferte Versionen mit nicht-trivialem Schema-Unterschied nebeneinander existieren,
 benötigt der Kubernetes-Apiserver für die Dogu-CRD ein **Conversion-Webhook**, unabhängig davon, welche
-Version die Storage-Version ist. Der Operator implementiert und stellt dieses Webhook bereit, wie unter
-["Verdrahtung des Webhook-Servers"](#verdrahtung-des-webhook-servers) beschrieben.
-
-## Verdrahtung des Webhook-Servers
-
-- `controllers/initfx/controllerManager.go` stellt `GetWebhookServer()` bereit, eine per fx
-  injizierbare Factory, die `webhook.NewServer(webhook.Options{Port: 9443})` zurückgibt. `main.go` fügt
-  `initfx.GetWebhookServer` den fx-Options hinzu; `NewManagerOptions(args, operatorConfig, webhookServer
-  webhook.Server)` erhält sie und weist sie `manager.Options.WebhookServer` zu.
-- Die Scheme-Registrierung im `init()` derselben Datei ruft `doguscheme.AddToScheme(scheme)` auf (Paket
-  `k8s-dogu-lib/v3/client/scheme`), was **sowohl** `v2` als auch `v3beta1` registriert — beide
-  API-Versionen müssen dem Scheme bekannt sein, damit Conversion funktioniert.
-- `controllers/dogu_controller.go` definiert `webhookRegister = func(mgr ctrlManager) error { return
-  (&v3beta1.Dogu{}).SetupWebhookWithManager(mgr) }` als paketweite Variable statt als einfachen
-  Funktionsaufruf, damit sie in Tests ausgetauscht werden kann. `DoguReconciler.setupWithManager(mgr)`
-  ruft `webhookRegister(mgr)` auf, bevor der Controller aufgebaut wird. `SetupWebhookWithManager` wird
-  von der Dogu-Lib generiert und registriert den eigentlichen `/convert`-Handler am Webhook-Server des
-  Managers.
-- `addChecks(mgr)` in `controllers/initfx/controllerManager.go` registriert
-  `mgr.AddReadyzCheck("webhook-server", mgr.GetWebhookServer().StartedChecker())`. Damit hängt die
-  Pod-Readiness daran, dass das TLS-Zertifikat des Webhooks geladen ist (eine im Code vermerkte mögliche
-  künftige Verbesserung wäre zusätzlich, das `caBundle` der CRD mit `ca.crt` zu vergleichen).
-- Das `WebhookServer`-Interface (`type WebhookServer interface { webhook.Server }`) in
-  `controllers/interfaces.go` existiert einzig, damit mockery `MockWebhookServer`
-  (`controllers/mock_WebhookServer_test.go`, `controllers/initfx/mock_WebhookServer_test.go`) generieren
-  kann. Tests verwenden dieses Fake, statt einen echten HTTPS-Listener aufzusetzen; siehe
-  `TestDoguReconciler_webhookRegister` in `controllers/dogu_controller_test.go`.
+Version die Storage-Version ist. Der Operator implementiert diesen mit dem Kubebuilder-Framework.
+Für die Kommunikation des API-Servers mit dem Webhook-Server wird zusätzliche Konfiguration benötigt.
 
 ## Helm-Ressourcen
 
