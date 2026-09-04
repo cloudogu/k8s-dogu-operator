@@ -64,7 +64,6 @@ type DoguReconciler struct {
 	doguV3DeleteHandler     DoguV3DeleteUseCase
 	doguInterface           doguInterface
 	requeueHandlerV2        RequeueHandlerV2
-	requeueHandlerV3        RequeueHandlerV3
 	externalEvents          <-chan event.TypedGenericEvent[*doguv2.Dogu]
 	eventRecorder           eventRecorder
 	authRegistrationEnabled bool

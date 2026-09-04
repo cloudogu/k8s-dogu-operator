@@ -29,7 +29,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
-	controllersv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
@@ -104,7 +103,6 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder))),
 			fx.Annotate(controllers.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandlerV2))),
 
-			fx.Annotate(controllersv3.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandlerV3))),
 			fx.Annotate(initfx.NewDoguV3Interface, fx.As(new(v3beta1.DoguInterface))),
 
 			// our own dependencies
