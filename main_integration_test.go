@@ -616,7 +616,7 @@ func setDeploymentAvailable(ctx context.Context, doguName string) {
 func checkDoguAvailable(ctx context.Context, doguName string) {
 	By("Expect dogu to be available")
 	Eventually(func() bool {
-		dogu, err := (*doguV2Client).Dogus(testNamespace).Get(ctx, doguName, metav1.GetOptions{})
+		dogu, err := (*doguV2).Dogus(testNamespace).Get(ctx, doguName, metav1.GetOptions{})
 		if err != nil {
 			return false
 		}
@@ -648,13 +648,13 @@ func createDoguPod(ctx context.Context, doguCr *doguv2.Dogu, podLabels doguv2.Ce
 }
 
 func installDoguCr(ctx context.Context, doguCr *doguv2.Dogu) {
-	doguClient := (*doguV2Client).Dogus(doguCr.Namespace)
+	doguClient := (*doguV2).Dogus(doguCr.Namespace)
 	_, err := doguClient.Create(ctx, doguCr, metav1.CreateOptions{})
 	Expect(err).Should(Succeed())
 }
 
 func updateDoguCr(ctx context.Context, doguCr *doguv2.Dogu) {
-	doguClient := (*doguV2Client).Dogus(doguCr.Namespace)
+	doguClient := (*doguV2).Dogus(doguCr.Namespace)
 
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		latestDogu, getErr := doguClient.Get(ctx, doguCr.Name, metav1.GetOptions{})
@@ -673,7 +673,7 @@ func updateDoguCr(ctx context.Context, doguCr *doguv2.Dogu) {
 }
 
 func deleteDoguCr(ctx context.Context, doguCr *doguv2.Dogu, deleteAdditional bool) {
-	doguClient := (*doguV2Client).Dogus(doguCr.Namespace)
+	doguClient := (*doguV2).Dogus(doguCr.Namespace)
 	err := doguClient.Delete(ctx, doguCr.Name, metav1.DeleteOptions{})
 	Expect(err).Should(Succeed())
 

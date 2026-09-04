@@ -43,7 +43,7 @@ import (
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-var doguV2Client *doguv2.DoguV2Interface
+var doguV2 *doguv2.DoguV2Interface
 var k8sClientSet controllers.ClientSet
 var testEnv *envtest.Environment
 
@@ -172,7 +172,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	ginkgo.By("creating clients")
 	doguClientset, err := doguClient.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
-	doguV2Client = new(doguClientset.DoguV2())
+	doguV2 = new(doguClientset.DoguV2())
 
 	k8sClientSet, err = kubernetes.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
