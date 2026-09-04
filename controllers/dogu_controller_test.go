@@ -72,6 +72,7 @@ func TestNewDoguReconciler(t *testing.T) {
 }
 
 func TestDoguReconciler_Reconcile(t *testing.T) {
+	testRequest := controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}}
 	type fields struct {
 		clientFn            func(t *testing.T) client.Client
 		doguChangeHandlerFn func(t *testing.T) DoguUsecase
@@ -156,11 +157,11 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 							DoguNamespace:  "official",
 						},
 					}
-					v3HandlerMock.EXPECT().Handle(testCtx, v3Dogu).Return(controllerruntime.Result{}, nil)
+					v3HandlerMock.EXPECT().Handle(testCtx, v3Dogu, testRequest).Return(controllerruntime.Result{}, nil)
 					return v3HandlerMock
 				},
 			},
-			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}},
+			req:     testRequest,
 			want:    controllerruntime.Result{},
 			wantErr: assert.NoError,
 		},
