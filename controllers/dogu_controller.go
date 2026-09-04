@@ -134,17 +134,18 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// TODO General error handling because we cannot decide if the error belongs to a v2 or v3 dogu.
 
 	if doguResource.IsV2() {
-		return r.handleDoguV2(ctx, req, doguResource, err)
+		return r.handleDoguV2(ctx, req, doguResource)
 	}
 
 	return r.handleDoguV3(ctx, req, doguResource)
 }
 
-func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, doguResource *doguv2.Dogu, err error) (ctrl.Result, error) {
+func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, doguResource *doguv2.Dogu) (ctrl.Result, error) {
 	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 
 	var requeueAfter time.Duration
 	var cont bool
+	var err error
 	if doguResource.GetDeletionTimestamp().IsZero() {
 		requeueAfter, cont, err = r.doguChangeHandler.HandleUntilApplied(ctx, doguResource)
 	} else {
