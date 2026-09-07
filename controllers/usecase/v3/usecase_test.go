@@ -101,7 +101,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 }
 
 func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
-	dummyStep := &install.DummyStep{}
+	dummyStep := &install.EnsureOCIRepositoryStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		dummyStep,

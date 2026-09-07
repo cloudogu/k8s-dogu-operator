@@ -20,7 +20,7 @@ func NewDoguDeleteUseCase() *DoguUseCase {
 		steps: []v3.Step{}}
 }
 
-func NewDoguInstallOrChangeUseCase(dummyStep *install.DummyStep) *DoguUseCase {
+func NewDoguInstallOrChangeUseCase(dummyStep *install.EnsureOCIRepositoryStep) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []v3.Step{
 			dummyStep,

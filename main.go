@@ -254,7 +254,7 @@ func options() []fx.Option {
 
 			// v3 steps
 			// install/update
-			installv3.NewDummyStep,
+			installv3.NewEnsureOCIRepositoryStep,
 
 			// delete
 
