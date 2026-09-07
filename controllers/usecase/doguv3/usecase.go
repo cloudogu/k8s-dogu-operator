@@ -21,6 +21,12 @@ func NewDoguDeleteUseCase() *DoguUseCase {
 		steps: []v3.Step{}}
 }
 
+// NewDoguInstallOrChangeUseCase creates a new DoguUseCase instance with the given steps.
+// The steps are executed in the order they are provided.
+// With new steps the parameter list will grow.
+// Unfortunately, this is the only way to provide the steps in the correct order.
+// Uber fx provides value groups to use variadic parameters like NewDoguInstallOrChangeUseCase(steps ...doguv3.Step),
+// but these are unordered.
 func NewDoguInstallOrChangeUseCase(dummyStep *install.DummyStep) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []v3.Step{
@@ -29,10 +35,10 @@ func NewDoguInstallOrChangeUseCase(dummyStep *install.DummyStep) *DoguUseCase {
 	}
 }
 
-// HandleUntilApplied acts as the core control function which runs all use-case steps, independently of the dogu at hand. This function will wait until the Step was fully executed, resulting in either 
-//  - continuing to the next step (if any), 
-//  - a requeue if a step needs more time or errored in a way that might be handled programmatically
-//  - an abortion of the dogus reconciliation
+// HandleUntilApplied acts as the core control function which runs all use-case steps, independently of the dogu at hand. This function will wait until the Step was fully executed, resulting in either
+//   - continuing to the next step (if any),
+//   - a requeue if a step needs more time or errored in a way that might be handled programmatically
+//   - an abortion of the dogus reconciliation
 //
 // If the dogu executed all steps successfully, the duration and the error will contain null values and the bool is set to true indicating the dogu phase is done.
 func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, bool, error) {
