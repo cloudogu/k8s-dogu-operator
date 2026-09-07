@@ -29,6 +29,12 @@ func NewDoguInstallOrChangeUseCase(dummyStep *install.DummyStep) *DoguUseCase {
 	}
 }
 
+// HandleUntilApplied acts as the core control function which runs all use-case steps, independently of the dogu at hand. This function will wait until the Step was fully executed, resulting in either 
+//  - continuing to the next step (if any), 
+//  - a requeue if a step needs more time or errored in a way that might be handled programmatically
+//  - an abortion of the dogus reconciliation
+//
+// If the dogu executed all steps successfully, the duration and the error will contain null values and the bool is set to true indicating the dogu phase is done.
 func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, bool, error) {
 	for _, s := range duc.steps {
 		result := s.Run(ctx, doguResource)
