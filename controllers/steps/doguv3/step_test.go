@@ -1,7 +1,6 @@
 package doguv3
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -14,8 +13,8 @@ func TestRequeueAfter(t *testing.T) {
 		result := RequeueAfter(time.Second * 3)
 
 		assert.Equal(t, time.Second*3, result.RequeueAfter)
-		assert.Equal(t, nil, result.Err)
-		assert.Equal(t, false, result.Continue)
+		assert.NoError(t, result.Err)
+		assert.False(t, result.Continue)
 	})
 }
 
@@ -25,8 +24,8 @@ func TestContinue(t *testing.T) {
 		result := Continue()
 
 		assert.Equal(t, time.Duration(0), result.RequeueAfter)
-		assert.Equal(t, nil, result.Err)
-		assert.Equal(t, true, result.Continue)
+		assert.NoError(t, result.Err)
+		assert.True(t, result.Continue)
 	})
 }
 
@@ -36,19 +35,17 @@ func TestAbort(t *testing.T) {
 		result := Abort()
 
 		assert.Equal(t, time.Duration(0), result.RequeueAfter)
-		assert.Equal(t, nil, result.Err)
-		assert.Equal(t, false, result.Continue)
+		assert.NoError(t, result.Err)
+		assert.False(t, result.Continue)
 	})
 }
 
 func TestRequeueWithError(t *testing.T) {
 	t.Run("should return error", func(t *testing.T) {
-		err := errors.New("test error")
-		result := RequeueWithError(err)
+		result := RequeueWithError(assert.AnError)
 
 		assert.Equal(t, time.Duration(0), result.RequeueAfter)
-		assert.Equal(t, false, result.Continue)
-		assert.NotEqual(t, nil, result.Err)
-		assert.ErrorContains(t, result.Err, "test error")
+		assert.False(t, result.Continue)
+		assert.ErrorContains(t, result.Err, assert.AnError.Error())
 	})
 }
