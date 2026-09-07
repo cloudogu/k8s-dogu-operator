@@ -9,7 +9,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 )
 
-// DoguUseCase is a controlling structure responsible for handling all those actions that occur within the dogu's lifecycle phase. The actions are set up as [v3.Step]s during the use-case construction, independently of the dogu at hand, i. e. different dogus within the same lifecycle phase traverse the same list of steps.
+// DoguUseCase is a controlling structure responsible for handling all those actions that occur within the dogu's lifecycle phase.
+// The actions are set up as [v3.Step]s during the use-case construction, independently of the dogu at hand, i. e. different
+// dogus within the same lifecycle phase traverse the same list of steps.
 type DoguUseCase struct {
 	steps []v3.Step
 }
