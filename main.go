@@ -2,14 +2,29 @@ package main
 
 import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/authregistration"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
+	installv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
+	usecasev2 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/doguv2"
+	usecasev3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
 	"go.uber.org/fx"
+	"k8s.io/client-go/tools/record"
 
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	"k8s.io/client-go/kubernetes"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlMan "sigs.k8s.io/controller-runtime/pkg/manager"
@@ -20,29 +35,17 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/authregistration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/dependency"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/garbagecollection"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/manager"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/security"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/deletion"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/install"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/postinstall"
-	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/upgrade"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/deletion"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/postinstall"
+	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/upgrade"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	warpClientV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
@@ -59,19 +62,44 @@ func newVersion() config.Version {
 }
 
 func main() {
-	fx.New(options()...).Run()
+	fx.New(allOptions()).Run()
+}
+
+func allOptions() fx.Option {
+	return fx.Options(k8sOptions(), v3Options(), v2DependencyOptions(), v2StepOptions(), generalOptions())
 }
 
 //nolint:funlen
-func options() []fx.Option {
-	return []fx.Option{
+func v3Options() fx.Option {
+	return fx.Options(
 		fx.Provide(
-			newVersion,
-			logging.NewLogger,
-			initfx.NewOperatorConfig,
-			initfx.GetArgs,
+			// v3 steps
+			// install/update
+			installv3.NewDummyStep,
+			// delete
 
-			// k8s dependencies
+			// usecases
+			fx.Annotate(
+				usecasev3.NewDoguDeleteUseCase,
+				fx.As(new(controllers.DoguV3DeleteUseCase)),
+				fx.ResultTags(`name:"doguV3DeleteUseCase"`),
+			),
+			fx.Annotate(
+				usecasev3.NewDoguInstallOrChangeUseCase,
+				fx.As(new(controllers.DoguV3InstallOrChangeUseCase)),
+				fx.ResultTags(`name:"doguV3InstallOrChangeUseCase"`),
+			),
+			fx.Annotate(initfx.NewDoguV3Interface, fx.As(new(v3beta1.DoguInterface))),
+		),
+	)
+}
+
+// general dependencies used by v2 and v3 steps
+//
+//nolint:funlen
+func k8sOptions() fx.Option {
+	return fx.Options(
+		fx.Provide(
 			initfx.GetWebhookServer,
 			initfx.NewManagerOptions,
 			ctrl.GetConfig,
@@ -86,7 +114,6 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewServiceInterface, fx.As(new(v1.ServiceInterface))),
 			fx.Annotate(initfx.NewPersistentVolumeClaimInterface, fx.As(new(v1.PersistentVolumeClaimInterface))),
 			fx.Annotate(initfx.NewDoguClientset, fx.As(new(doguClient.Interface))),
-			fx.Annotate(initfx.NewDoguInterface, fx.As(new(doguv2.DoguInterface))),
 			fx.Annotate(initfx.NewDoguRestartInterface, fx.As(new(doguv2.DoguRestartInterface))),
 			fx.Annotate(initfx.NewAuthRegistrationClientSet, fx.As(new(authRegClientV1.ApiV1Interface))),
 			fx.Annotate(initfx.NewAuthRegistrationInterface, fx.As(new(authRegClientV1.AuthRegistrationInterface))),
@@ -95,11 +122,18 @@ func options() []fx.Option {
 			fx.Annotate(initfx.NewWarpMenuEntryClientSet, fx.As(new(warpClientV1.ApiV1Interface))),
 			fx.Annotate(initfx.NewWarpMenuEntryInterface, fx.As(new(warpClientV1.WarpMenuEntryInterface))),
 			fx.Annotate(health.NewShutdownHandler, fx.As(new(health.HealthShutdownHandler))),
-
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
 			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder))),
-			fx.Annotate(controllers.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandler))),
+		),
+	)
+}
 
+//nolint:funlen
+func v2DependencyOptions() fx.Option {
+	return fx.Options(
+		fx.Provide(
+			fx.Annotate(initfx.NewDoguInterface, fx.As(new(doguv2.DoguInterface))),
+			fx.Annotate(controllers.NewDoguRequeueHandler, fx.As(new(controllers.RequeueHandlerV2))),
 			// our own dependencies
 			fx.Annotate(health.NewAvailabilityChecker, fx.As(new(health.DeploymentAvailabilityChecker))),
 			fx.Annotate(health.NewDoguStatusUpdater, fx.As(new(health.DoguHealthStatusUpdater))),
@@ -159,9 +193,8 @@ func options() []fx.Option {
 			fx.Annotate(resource.NewResourceGenerator, fx.As(new(resource.DoguResourceGenerator))),
 			fx.Annotate(resource.NewUpserter, fx.As(new(resource.ResourceUpserter)), fx.As(new(upgradeSteps.ResourceUpserter))),
 			fx.Annotate(cesregistry.NewCESDoguRegistrator, fx.As(new(cesregistry.DoguRegistrator))),
-			fx.Annotate(initfx.NewImageRegistry, fx.As(new(imageregistry.ImageRegistry))),
+
 			fx.Annotate(manager.NewDoguRestartManager, fx.As(new(manager.DoguRestartManager))),
-			fx.Annotate(garbagecollection.NewDoguRestartGarbageCollector, fx.As(new(controllers.DoguRestartGarbageCollector))),
 			fx.Annotate(health.NewDoguConditionUpdater, fx.As(new(install.ConditionUpdater))),
 			fx.Annotate(health.NewDoguChecker, fx.As(new(health.DoguHealthChecker))),
 			fx.Annotate(manager.NewDoguExportManager, fx.As(new(manager.DoguExportManager))),
@@ -173,6 +206,33 @@ func options() []fx.Option {
 			controllers.NewDoguEventsIn,
 			controllers.NewDoguEventsOut,
 
+			// use-cases
+			fx.Annotate(
+				usecasev2.NewDoguDeleteUseCase,
+				fx.As(new(controllers.DoguDeleteUseCase)),
+				fx.ResultTags(`name:"doguDeleteUseCase"`),
+			),
+			fx.Annotate(
+				usecasev2.NewDoguDeleteUseCase,
+				fx.As(new(controllers.DoguDeleteUseCase)),
+			),
+			fx.Annotate(
+				usecasev2.NewDoguInstallOrChangeUseCase,
+				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
+				fx.ResultTags(`name:"doguInstallOrChangeUseCase"`),
+			),
+			fx.Annotate(
+				usecasev2.NewDoguInstallOrChangeUseCase,
+				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
+			),
+		),
+	)
+}
+
+//nolint:funlen
+func v2StepOptions() fx.Option {
+	return fx.Options(
+		fx.Provide(
 			// delete steps
 			deletion.NewStatusStep,
 			deletion.NewAuthRegistrationRemoverStep,
@@ -246,29 +306,23 @@ func options() []fx.Option {
 			upgradeSteps.NewRegenerateDeploymentStep,
 			upgradeSteps.NewUpdateStartedAtStep,
 			upgradeSteps.NewRetroactiveServiceAccountStep,
+		),
+	)
+}
 
-			// use-cases
-			fx.Annotate(
-				usecase.NewDoguDeleteUseCase,
-				fx.As(new(controllers.DoguDeleteUseCase)),
-				fx.ResultTags(`name:"doguDeleteUseCase"`),
-			),
-			fx.Annotate(
-				usecase.NewDoguDeleteUseCase,
-				fx.As(new(controllers.DoguDeleteUseCase)),
-			),
-			fx.Annotate(
-				usecase.NewDoguInstallOrChangeUseCase,
-				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
-				fx.ResultTags(`name:"doguInstallOrChangeUseCase"`),
-			),
-			fx.Annotate(
-				usecase.NewDoguInstallOrChangeUseCase,
-				fx.As(new(controllers.DoguInstallOrChangeUseCase)),
-			),
+//nolint:funlen
+func generalOptions() fx.Option {
+	return fx.Options(
+		fx.Provide(
+			newVersion,
+			logging.NewLogger,
+			initfx.NewOperatorConfig,
+			initfx.GetArgs,
+			fx.Annotate(initfx.NewImageRegistry, fx.As(new(imageregistry.ImageRegistry))),
+			fx.Annotate(garbagecollection.NewDoguRestartGarbageCollector, fx.As(new(controllers.DoguRestartGarbageCollector))),
 
 			// reconcilers
-			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, "", "", "", "", "", "", "")),
+			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, `name:"doguV3InstallOrChangeUseCase"`, `name:"doguV3DeleteUseCase"`, "", "", "", "", "", "")),
 			controllers.NewGlobalConfigReconciler,
 			controllers.NewDoguRestartReconciler,
 
@@ -293,5 +347,5 @@ func options() []fx.Option {
 				// creates a fx dependency on the StartupHandler
 			},
 		),
-	}
+	)
 }

@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -53,11 +55,20 @@ type doguRestartInterface interface {
 type DoguUsecase interface {
 	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error)
 }
+type DoguV3Usecase interface {
+	HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, bool, error)
+}
 
-// requeueHandler abstracts the process to decide whether a requeue process should be done based on received errors.
-type RequeueHandler interface {
+// RequeueHandlerV2 abstracts the process to decide whether a requeue process should be done based on received errors.
+type RequeueHandlerV2 interface {
 	// Handle takes an error and handles the requeue process for the current dogu operation.
 	Handle(ctx context.Context, doguResource *v2.Dogu, err error, reqTime time.Duration) (result ctrl.Result, requeueErr error)
+}
+
+// RequeueHandlerV3 abstracts the process to decide whether a requeue process should be done based on received errors.
+type RequeueHandlerV3 interface {
+	// Handle takes an error and handles the requeue process for the current dogu operation.
+	Handle(ctx context.Context, doguResource *v3beta1.Dogu, name types.NamespacedName) (result ctrl.Result, requeueErr error)
 }
 
 type DoguInstallOrChangeUseCase interface {
@@ -65,6 +76,13 @@ type DoguInstallOrChangeUseCase interface {
 }
 type DoguDeleteUseCase interface {
 	DoguUsecase
+}
+
+type DoguV3InstallOrChangeUseCase interface {
+	DoguV3Usecase
+}
+type DoguV3DeleteUseCase interface {
+	DoguV3Usecase
 }
 
 //nolint:unused
