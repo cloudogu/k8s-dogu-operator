@@ -198,7 +198,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	ginkgo.By("starting application")
 	go func() {
 		defer ginkgo.GinkgoRecover()
-		fxApp = fxtest.New(ginkgo.GinkgoT(), options()...).RequireStart()
+		fxApp = fxtest.New(ginkgo.GinkgoT(), allOptions()).RequireStart()
 	}()
 }, 60)
 

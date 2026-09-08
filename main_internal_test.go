@@ -102,7 +102,7 @@ func Test_options(t *testing.T) {
 	})
 
 	// when
-	_ = fxtest.New(t, options()...)
+	_ = fxtest.New(t, allOptions())
 }
 
 func newTestGetConfig() func() (*rest.Config, error) {
