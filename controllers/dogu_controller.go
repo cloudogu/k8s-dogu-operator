@@ -13,6 +13,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
+	flux "github.com/fluxcd/source-controller/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -184,22 +185,14 @@ func (r *DoguReconciler) handleDoguV3(ctx context.Context, _ ctrl.Request, doguR
 		return ctrl.Result{}, nil
 	}
 
-	var _ time.Duration
-	var done bool
+	var requeueTime time.Duration
 	if v3Dogu.GetDeletionTimestamp().IsZero() {
-		_, _, _ = r.doguV3ChangeHandler.HandleUntilApplied(ctx, v3Dogu)
+		requeueTime, err = r.doguV3ChangeHandler.HandleUntilApplied(ctx, v3Dogu)
 	} else {
-		_, done, err = r.doguV3DeleteHandler.HandleUntilApplied(ctx, v3Dogu)
-		_ = client.IgnoreNotFound(err)
-
-		if done {
-			return ctrl.Result{}, nil
-		}
+		requeueTime, err = r.doguV3DeleteHandler.HandleUntilApplied(ctx, v3Dogu)
 	}
 
-	// TODO Write v3 status conditions and do requeuing
-
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: requeueTime}, err
 }
 
 // Helper function to simplify mocking for SetupWebhookWithManager
@@ -231,6 +224,7 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
+		Owns(&flux.OCIRepository{}).
 		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{}))
 	if r.authRegistrationEnabled {
 		controllerBuilder = controllerBuilder.Owns(&authRegApiV1.AuthRegistration{})

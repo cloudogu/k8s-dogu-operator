@@ -73,10 +73,17 @@ func allOptions() fx.Option {
 func v3Options() fx.Option {
 	return fx.Options(
 		fx.Provide(
-			// v3 steps
-			// install/update
+			// Dependencies
+			fx.Annotate(
+				initfx.NewDoguV3RegistryReader,
+				fx.As(new(installv3.DoguRegistryReader)),
+			),
+
+			// install/update steps
 			installv3.NewEnsureOCIRepositoryStep,
-			// delete
+			installv3.NewWaitForOCIRepositoryReadyStep,
+
+			// delete steps
 
 			// usecases
 			fx.Annotate(

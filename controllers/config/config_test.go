@@ -13,6 +13,7 @@ import (
 func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("NAMESPACE")
 	_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
+	_ = os.Unsetenv("DOGU_V3_REGISTRY_ENDPOINT")
 	_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
 	_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
 	_ = os.Unsetenv("DOGU_REGISTRY_URLSCHEMA")
@@ -22,9 +23,10 @@ func TestNewOperatorConfig(t *testing.T) {
 
 	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
-		Endpoint: "myEndpoint",
-		Username: "myUsername",
-		Password: "myPassword",
+		Endpoint:   "myEndpoint",
+		Username:   "myUsername",
+		Password:   "myPassword",
+		V3Endpoint: "myV3Endpoint",
 	}
 
 	t.Run("Error on missing namespace env var", func(t *testing.T) {
@@ -78,6 +80,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("EXPOSITION_ENABLED", "true")
 	t.Setenv("WARP_MENU_ENTRY_ENABLED", "true")
 	t.Setenv("DISABLE_POSTFIX_DEPENDENCY_CHECK", "true")
+	t.Setenv("DOGU_V3_REGISTRY_ENDPOINT", expectedDoguRegistryData.V3Endpoint)
 
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when

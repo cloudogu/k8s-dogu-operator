@@ -101,14 +101,17 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 }
 
 func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
-	dummyStep := &install.EnsureOCIRepositoryStep{}
+	ensureOCIStep := &install.EnsureOCIRepositoryStep{}
+	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
-		dummyStep,
+		ensureOCIStep,
+		waitOCIStep,
 	)
 
 	wantTypes := []string{
-		"*install.DummyStep",
+		"*install.EnsureOCIRepositoryStep",
+		"*install.WaitForOCIRepositoryReadyStep",
 	}
 
 	assert.NotNil(t, got)

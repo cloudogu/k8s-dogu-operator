@@ -9,7 +9,7 @@ require (
 	github.com/cloudogu/dogu-lib v1.2.0
 	github.com/cloudogu/k8s-apply-lib v0.5.0
 	github.com/cloudogu/k8s-auth-registration-lib v1.0.0
-	github.com/cloudogu/k8s-dogu-lib/v3 v3.0.0
+	github.com/cloudogu/k8s-dogu-lib/v3 v3.0.0-20260909083903-13697a37b9d9
 	github.com/cloudogu/k8s-exposition-lib v1.0.0
 	github.com/cloudogu/k8s-host-change v0.8.1
 	github.com/cloudogu/k8s-registry-lib v1.0.0
@@ -17,6 +17,7 @@ require (
 	github.com/cloudogu/remote-dogu-descriptor-lib v0.1.1
 	github.com/cloudogu/retry-lib v0.1.0
 	github.com/dlclark/regexp2 v1.12.0
+	github.com/fluxcd/pkg/apis/meta v1.30.2
 	github.com/fluxcd/source-controller/api v1.9.5
 	github.com/go-logr/logr v1.4.4
 	github.com/google/go-containerregistry v0.20.7
@@ -48,7 +49,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fluxcd/pkg/apis/acl v0.10.0 // indirect
-	github.com/fluxcd/pkg/apis/meta v1.30.2 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/gammazero/toposort v0.2.0 // indirect
@@ -72,6 +72,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
+	github.com/maypok86/otter/v2 v2.3.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moby/spdystream v0.5.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
