@@ -6,6 +6,7 @@ import (
 )
 
 // NewImageRegistry creates the container image registry, sizing its image config cache from the operator config.
-func NewImageRegistry(operatorConfig *config.OperatorConfig) imageregistry.ImageRegistry {
+// It is a var so integration tests can override it with a mock.
+var NewImageRegistry = func(operatorConfig *config.OperatorConfig) imageregistry.ImageRegistry {
 	return imageregistry.NewCraneContainerImageRegistry(operatorConfig.ImageConfigCacheSize)
 }
