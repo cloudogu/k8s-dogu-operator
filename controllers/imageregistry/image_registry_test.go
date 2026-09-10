@@ -22,7 +22,8 @@ import (
 )
 
 func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
-	imageRegistry := imageregistry.NewCraneContainerImageRegistry()
+	// caching disabled so these pull tests exercise the registry on every call
+	imageRegistry := imageregistry.NewCraneContainerImageRegistry(0)
 
 	t.Run("successfully pulling image", func(t *testing.T) {
 		server, src := setupCraneRegistry(t)
@@ -106,6 +107,69 @@ func TestCraneContainerImageRegistry_PullImageConfig(t *testing.T) {
 	})
 }
 
+func TestCraneContainerImageRegistry_PullImageConfig_caching(t *testing.T) {
+	t.Run("should serve the second pull for the same image from the cache", func(t *testing.T) {
+		imageRegistry := imageregistry.NewCraneContainerImageRegistry(50)
+
+		expectedConfig := &imagev1.ConfigFile{Author: "cached-config"}
+		pullCount := 0
+		oldImagePull := imageregistry.ImagePull
+		imageregistry.ImagePull = func(src string, opt ...crane.Option) (imagev1.Image, error) {
+			pullCount++
+			return mockImageWithConfig{config: expectedConfig}, nil
+		}
+		defer func() { imageregistry.ImagePull = oldImagePull }()
+
+		first, err := imageRegistry.PullImageConfig(context.Background(), "registry.example.com/dogu:1.2.3-4")
+		require.NoError(t, err)
+
+		second, err := imageRegistry.PullImageConfig(context.Background(), "registry.example.com/dogu:1.2.3-4")
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, pullCount, "second pull should be served from cache")
+		assert.Same(t, expectedConfig, first)
+		assert.Same(t, expectedConfig, second)
+	})
+
+	t.Run("should pull every time when caching is disabled", func(t *testing.T) {
+		imageRegistry := imageregistry.NewCraneContainerImageRegistry(0)
+
+		pullCount := 0
+		oldImagePull := imageregistry.ImagePull
+		imageregistry.ImagePull = func(src string, opt ...crane.Option) (imagev1.Image, error) {
+			pullCount++
+			return mockImageWithConfig{config: &imagev1.ConfigFile{}}, nil
+		}
+		defer func() { imageregistry.ImagePull = oldImagePull }()
+
+		_, err := imageRegistry.PullImageConfig(context.Background(), "registry.example.com/dogu:1.2.3-4")
+		require.NoError(t, err)
+		_, err = imageRegistry.PullImageConfig(context.Background(), "registry.example.com/dogu:1.2.3-4")
+		require.NoError(t, err)
+
+		assert.Equal(t, 2, pullCount, "every pull should hit the registry when caching is disabled")
+	})
+
+	t.Run("should pull separately for different image references", func(t *testing.T) {
+		imageRegistry := imageregistry.NewCraneContainerImageRegistry(50)
+
+		pullCount := 0
+		oldImagePull := imageregistry.ImagePull
+		imageregistry.ImagePull = func(src string, opt ...crane.Option) (imagev1.Image, error) {
+			pullCount++
+			return mockImageWithConfig{config: &imagev1.ConfigFile{Author: src}}, nil
+		}
+		defer func() { imageregistry.ImagePull = oldImagePull }()
+
+		_, err := imageRegistry.PullImageConfig(context.Background(), "registry.example.com/dogu:1.0.0-1")
+		require.NoError(t, err)
+		_, err = imageRegistry.PullImageConfig(context.Background(), "registry.example.com/dogu:2.0.0-1")
+		require.NoError(t, err)
+
+		assert.Equal(t, 2, pullCount, "distinct image references must not share a cache entry")
+	})
+}
+
 func setupCraneRegistry(t *testing.T) (*httptest.Server, string) {
 	// Create local registry
 	s := httptest.NewServer(craneRegistry.New())
@@ -136,4 +200,13 @@ type mockImage struct {
 
 func (mi mockImage) ConfigFile() (*imagev1.ConfigFile, error) {
 	return nil, nil
+}
+
+type mockImageWithConfig struct {
+	imagev1.Image
+	config *imagev1.ConfigFile
+}
+
+func (mi mockImageWithConfig) ConfigFile() (*imagev1.ConfigFile, error) {
+	return mi.config, nil
 }

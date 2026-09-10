@@ -49,8 +49,13 @@ const (
 	envVarWarpMenuEntryEnabled                    = "WARP_MENU_ENTRY_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
+	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
 	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
 )
+
+// defaultImageConfigCacheSize is the number of image configs kept in the in-memory cache when
+// IMAGE_CONFIG_CACHE_SIZE is unset or invalid.
+const defaultImageConfigCacheSize = 50
 
 // DoguRegistryData contains all necessary data for the dogu registry.
 type DoguRegistryData struct {
@@ -82,6 +87,9 @@ type OperatorConfig struct {
 	DisablePostfixDependencyCheck bool `json:"disable_postfix_dependency_check"`
 	// RequeueTimeForDoguReconciler defines the requeue time for the dogu reconciler
 	RequeueTimeForDoguReconciler time.Duration `json:"requeue_time_for_dogu_reconciler"`
+	// ImageConfigCacheSize defines the maximum number of dogu image configs kept in the in-memory image config cache.
+	// A value <= 0 disables the cache.
+	ImageConfigCacheSize int `json:"image_config_cache_size"`
 }
 
 type Version string
@@ -132,6 +140,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		WarpMenuEntryEnabled:          getWarpMenuEntryEnabled(),
 		DisablePostfixDependencyCheck: getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
+		ImageConfigCacheSize:          getImageConfigCacheSize(),
 	}, nil
 }
 
@@ -344,6 +353,25 @@ func getDisablePostfixDependencyCheck() bool {
 	}
 
 	return disablePostfixDependencyCheck
+}
+
+// getImageConfigCacheSize returns the maximum number of image configs kept in the in-memory image config cache.
+// A value <= 0 disables the cache. It defaults to defaultImageConfigCacheSize when the environment variable is
+// unset or cannot be parsed.
+func getImageConfigCacheSize() int {
+	sizeStr, found := os.LookupEnv(envVarImageConfigCacheSize)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Using default image config cache size %d", envVarImageConfigCacheSize, defaultImageConfigCacheSize))
+		return defaultImageConfigCacheSize
+	}
+
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarImageConfigCacheSize, err), fmt.Sprintf("Using default image config cache size %d", defaultImageConfigCacheSize))
+		return defaultImageConfigCacheSize
+	}
+
+	return size
 }
 
 func GetStage() (string, error) {
